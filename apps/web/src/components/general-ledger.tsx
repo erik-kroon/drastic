@@ -59,7 +59,7 @@ export function GeneralLedger(props: {
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <PageCaption>
-        {report.startsOn} – {report.endsOn} · {report.currency}
+        {report.startsOn} – {report.endsOn}, {report.currency}
       </PageCaption>
       <AccountingStatus locale={locale} pending={ledger.isPending} error={ledger.error} />
       {ledger.isError ? (

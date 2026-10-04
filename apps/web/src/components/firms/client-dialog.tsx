@@ -76,7 +76,7 @@ export function ClientDialog(props: {
           defaultValue={available[0]?.id ?? ""}
           options={available.map((book) => ({
             value: book.id,
-            label: `${book.name} · ${book.currency}`,
+            label: `${book.name}, ${book.currency}`,
           }))}
         />
       ) : null}

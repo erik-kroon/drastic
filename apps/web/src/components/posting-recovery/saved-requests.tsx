@@ -125,7 +125,7 @@ export function SavedPostingRequestsPanel(props: {
           {list.data.items.map((item) => (
             <Box key={item.key} display="grid" gap="sm" minWidth="zero">
               <Text>
-                {item.operation} · {item.savedAt} · {item.actorId}
+                {item.operation}, {item.savedAt}, {item.actorId}
               </Text>
               <Text>
                 {copy.requestKey}: {item.key}
@@ -396,7 +396,7 @@ function SavedProposalContent(props: {
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
-        {copy[props.current.summary.postingStatus]} · {copy.checked}: {props.current.checkedAt}
+        {copy[props.current.summary.postingStatus]}, {copy.checked}: {props.current.checkedAt}
       </Text>
       {props.current.validation.blocker ? (
         <Text>{props.current.validation.blocker.message}</Text>

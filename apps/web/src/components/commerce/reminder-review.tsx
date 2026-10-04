@@ -134,7 +134,7 @@ export function ReminderReview({
       {issue.data && destination ? (
         <Box display="grid" gap="md">
           <Text>
-            {issue.data.legalDocumentNumber} · {destination.destination}
+            {issue.data.legalDocumentNumber}, {destination.destination}
           </Text>
           {!ready ? (
             <Text>
@@ -229,7 +229,7 @@ function ReminderPreview({
       </Text>
       <Text>{message.subject}</Text>
       <Text>
-        {sv ? "Förberett belopp" : "Prepared amount"} ·{" "}
+        {sv ? "Förberett belopp" : "Prepared amount"},{" "}
         {formatMinorAmount(message.outstandingMinor, 2, locale)} SEK
       </Text>
       <Box overflow="auto" minWidth="zero">
@@ -243,7 +243,7 @@ function ReminderPreview({
       <Text role="status">{statuses[view?.status ?? "prepared"]}</Text>
       {view?.currentOutstandingMinor !== null && view?.currentOutstandingMinor !== undefined ? (
         <Text>
-          {sv ? "Nuvarande obetalda belopp" : "Current outstanding amount"} ·{" "}
+          {sv ? "Nuvarande obetalda belopp" : "Current outstanding amount"},{" "}
           {formatMinorAmount(view.currentOutstandingMinor, 2, locale)} SEK
         </Text>
       ) : null}

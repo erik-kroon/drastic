@@ -154,7 +154,7 @@ export function PreparationBackground(props: {
       {captured ? (
         <Box display="grid" gap="md">
           <Text>
-            {captured.runId} · {captured.key}
+            {captured.runId}, {captured.key}
           </Text>
           <Box display="flex" flexWrap="wrap" gap="md">
             {start.isError ? (
@@ -191,8 +191,8 @@ export function PreparationBackground(props: {
       {job.data ? (
         <Text role="status">
           {!jobCurrent ? `${copy.lastRead}: ` : ""}
-          {copy[job.data.state]} · {job.data.id}
-          {job.data.reason ? ` · ${job.data.reason}` : ""}
+          {copy[job.data.state]}, {job.data.id}
+          {job.data.reason ? `, ${job.data.reason}` : ""}
         </Text>
       ) : null}
     </Box>

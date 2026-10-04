@@ -1,3 +1,10 @@
+import * as Option from "effect/Option";
+import {
+  ReportCatalog,
+  ReportCatalogToolbar,
+  ReportCatalogFooter,
+  ReportCatalogRow,
+} from "@open-erp/ui/components/report-catalog";
 import { useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -25,13 +32,7 @@ import {
   RecordSummary,
 } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
-import {
-  TaskSection,
-  TaskRow,
-  PageCaption,
-  PageEmpty,
-  RegisterSearch,
-} from "@open-erp/ui/components/accounting-page";
+import { PageCaption, PageEmpty, RegisterSearch } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { AccountExplanation, TrialBalance } from "@/components/trial-balance";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
@@ -136,27 +137,27 @@ export function ReportLibrary() {
     .filter((section) => section.items.length);
 
   return (
-    <Box display="grid" gap="xl">
-      <RecordHeading title={labels.reports} subtitle={labels.fromTheNumbersToThe} />
-      <RegisterSearch
-        aria-label={sv ? "Sök rapport" : "Search reports"}
-        placeholder={sv ? "Sök rapport…" : "Search reports…"}
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
-      {sections.map((section) => (
-        <TaskSection key={section.title} title={section.title}>
-          {section.items.map((item) => (
-            <TaskRow
-              key={item.view}
-              href={`${base}?view=${item.view}`}
-              icon={<item.icon size={16} strokeWidth={1.5} />}
-              title={item.title}
-              detail={item.detail}
-            />
-          ))}
-        </TaskSection>
-      ))}
+    <ReportCatalog>
+      <ReportCatalogToolbar>
+        <RegisterSearch
+          compact
+          aria-label={sv ? "Sök rapport" : "Search reports"}
+          placeholder={sv ? "Sök rapport…" : "Search reports…"}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </ReportCatalogToolbar>
+      {sections
+        .flatMap((section) => section.items)
+        .map((item) => (
+          <ReportCatalogRow
+            key={item.view}
+            href={`${base}?view=${item.view}`}
+            title={item.title}
+            detail={item.detail}
+            action={sv ? "Öppna" : "Open"}
+          />
+        ))}
       {!sections.length ? (
         <PageEmpty
           title={sv ? "Inga matchande rapporter" : "No matching reports"}
@@ -167,8 +168,10 @@ export function ReportLibrary() {
           }
         />
       ) : null}
-      <PageCaption>{labels.reportsCoverRecordedMaterialThey}</PageCaption>
-    </Box>
+      <ReportCatalogFooter>
+        <PageCaption>{labels.reportsCoverRecordedMaterialThey}</PageCaption>
+      </ReportCatalogFooter>
+    </ReportCatalog>
   );
 }
 
@@ -480,7 +483,7 @@ export function ReportFamilyWorkspace(props: {
             mapping,
           });
 
-          if (decoded._tag === "None") {
+          if (Option.isNone(decoded)) {
             setInputError(
               sv
                 ? "Ange en fullständig granskad konto- till rollmappning."
@@ -625,7 +628,7 @@ function SavedReportFamily(props: {
       {accountId ? (
         <Box display="grid" gap="lg">
           <RecordHeading
-            title={`${sv ? "Bidragande verifikat" : "Contributing entries"} · ${accountId}`}
+            title={`${sv ? "Bidragande verifikat" : "Contributing entries"}, ${accountId}`}
             subtitle={snapshot.mappingDigest}
           />
           <AccountExplanation

@@ -117,17 +117,17 @@ function Contents({
       <Text>{report.hasReviewGaps ? copy.gaps : copy.noGaps}</Text>
       <Text>{copy.warning}</Text>
       <Text>
-        {report.input.startsOn} — {report.input.endsOn} · {copy.sequence}: {report.sequence}
+        {report.input.startsOn} — {report.input.endsOn}, {copy.sequence}: {report.sequence}
       </Text>
       <Text>
-        {copy.currency}: {report.currency} / {report.currencyScale} · {copy.units}
+        {copy.currency}: {report.currency} / {report.currencyScale}, {copy.units}
       </Text>
       <InputField label={copy.digest} value={report.digest} readOnly />
       <Text>
-        {copy.inventory}: {report.inventory.id} · {copy.evidence}: {report.inventory.evidenceId}
+        {copy.inventory}: {report.inventory.id}, {copy.evidence}: {report.inventory.evidenceId}
       </Text>
       <Text>
-        {report.inventory.declaredAt} · {report.inventory.actorId}
+        {report.inventory.declaredAt}, {report.inventory.actorId}
       </Text>
       {report.diagnostics.map((diagnostic) => (
         <Text key={diagnostic}>{copy.diagnostics[diagnostic]}</Text>
@@ -177,21 +177,21 @@ function AccountReview({
   return (
     <details>
       <summary>
-        {account.code} · {account.name} · {account.hasReviewGaps ? copy.gaps : copy.noGaps}
+        {account.code}, {account.name}, {account.hasReviewGaps ? copy.gaps : copy.noGaps}
       </summary>
       <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
         <Text>
-          {account.accountId} · {account.declared ? copy.declared : copy.notDeclared}
+          {account.accountId}, {account.declared ? copy.declared : copy.notDeclared}
         </Text>
         <Text>
-          {copy.accountVersion}: {account.accountVersion} · {copy.sourceRevision}:{" "}
+          {copy.accountVersion}: {account.accountVersion}, {copy.sourceRevision}:{" "}
           {account.sourceRevision ?? copy.missing}
         </Text>
         <Text>
           {copy.mappedSource}: {account.sourceBankAccountId ?? copy.missing}
         </Text>
         <Text>
-          {copy.opening}: {account.openingMinor ?? copy.missing} · {copy.closing}:{" "}
+          {copy.opening}: {account.openingMinor ?? copy.missing}, {copy.closing}:{" "}
           {account.closingMinor ?? copy.missing}
         </Text>
         {account.diagnostics.map((diagnostic) => (
@@ -223,10 +223,10 @@ function AccountReview({
         {account.adjacentBalances.map((pair) => (
           <Box key={`${pair.leftStatementId}:${pair.rightStatementId}`} display="grid" gap="sm">
             <Text>
-              {copy.left}: {pair.leftStatementId} · {copy.closing}: {pair.leftClosingMinor}
+              {copy.left}: {pair.leftStatementId}, {copy.closing}: {pair.leftClosingMinor}
             </Text>
             <Text>
-              {copy.right}: {pair.rightStatementId} · {copy.opening}: {pair.rightOpeningMinor}
+              {copy.right}: {pair.rightStatementId}, {copy.opening}: {pair.rightOpeningMinor}
             </Text>
             <Text>
               {copy.difference}: {pair.differenceMinor}
@@ -258,17 +258,17 @@ function StatementReview({
   return (
     <details>
       <summary>
-        {statement.startsOn} — {statement.endsOn} · {statement.statementIdentifier}
+        {statement.startsOn} — {statement.endsOn}, {statement.statementIdentifier}
       </summary>
       <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
         <Text>
-          {statement.id} · {copy.evidence}: {statement.evidenceId}
+          {statement.id}, {copy.evidence}: {statement.evidenceId}
         </Text>
         <Text>
-          {copy.opening}: {statement.openingMinor} · {copy.closing}: {statement.closingMinor}
+          {copy.opening}: {statement.openingMinor}, {copy.closing}: {statement.closingMinor}
         </Text>
         <Text>
-          {copy.movement}: {item.movementMinor} · {copy.movementDifference}:{" "}
+          {copy.movement}: {item.movementMinor}, {copy.movementDifference}:{" "}
           {item.movementDifferenceMinor}
         </Text>
         <Text>

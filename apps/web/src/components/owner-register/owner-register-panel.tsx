@@ -300,7 +300,7 @@ function OwnerIdentities(props: Props) {
       {detail.data ? (
         <>
           <Text>
-            {detail.data.displayName} · {detail.data.id} · {detail.data.dataNature}
+            {detail.data.displayName}, {detail.data.id}, {detail.data.dataNature}
           </Text>
           <Evidence {...props} reference={detail.data.evidence} />
           <Facts
@@ -326,7 +326,7 @@ function OwnerIdentities(props: Props) {
       {page.data?.items.map((owner) => (
         <Box key={owner.id}>
           <Button size="xl" variant="outline" onClick={() => setId(owner.id)}>
-            {owner.displayName} · {owner.id}
+            {owner.displayName}, {owner.id}
           </Button>
         </Box>
       ))}
@@ -520,10 +520,10 @@ function OwnerRecords(props: Props) {
             id: record.source.id,
             cells: [
               <RecordOpen key="source" onClick={() => setId(record.source.id)}>
-                {record.currentRevision.description} · {record.source.ownerName}
+                {record.currentRevision.description}, {record.source.ownerName}
               </RecordOpen>,
               `${formatMinorAmount(record.source.amountMinor, record.source.currencyScale, locale)} ${record.source.currency}`,
-              `${record.currentRevision.classification} · ${record.review ? words(locale, "Operator reviewed", "Operatörsgranskad") : words(locale, "Not reviewed", "Inte granskad")}`,
+              `${record.currentRevision.classification}, ${record.review ? words(locale, "Operator reviewed", "Operatörsgranskad") : words(locale, "Not reviewed", "Inte granskad")}`,
               <Button size="xl" variant="outline" onClick={() => setId(record.source.id)}>
                 {words(locale, "Review", "Granska")}
               </Button>,
@@ -578,7 +578,7 @@ function OwnerRecordDetail(props: Props & { id: string }) {
       {view.data ? (
         <>
           <Text>
-            {view.data.currentRevision.description} ·{" "}
+            {view.data.currentRevision.description},{" "}
             {formatMinorAmount(
               view.data.source.amountMinor,
               view.data.source.currencyScale,
@@ -623,7 +623,7 @@ function OwnerRecordDetail(props: Props & { id: string }) {
                 "Posted effect / allocated / remaining minor units:",
                 "Bokförd effekt / fördelat / återstående i minsta valutaenhet:",
               )}{" "}
-              {view.data.effect.id} · {view.data.allocatedMinor} / {view.data.remainingMinor}.{" "}
+              {view.data.effect.id}, {view.data.allocatedMinor} / {view.data.remainingMinor}.{" "}
               {words(
                 locale,
                 "Contribution residuals are not repayment entitlements.",
@@ -1014,7 +1014,7 @@ function OwnerAllocationReview(props: Props & { id: string }) {
               "Total / unallocated settlement after (minor units):",
               "Totalt / ofördelad ersättning efter (minsta valutaenhet):",
             )}{" "}
-            {plan.totalMinor} / {plan.settlementRemainingAfterMinor} ·{" "}
+            {plan.totalMinor} / {plan.settlementRemainingAfterMinor},{" "}
             {plan.settlement.effect.currency} / {plan.settlement.effect.currencyScale}
           </Text>
           <Text>{plan.input.rationale}</Text>
@@ -1208,7 +1208,7 @@ function OwnerControls(props: Props) {
       {snapshot ? (
         <>
           <Text>
-            {snapshot.owner.displayName} · {snapshot.startsOn} — {snapshot.endsOn} ·{" "}
+            {snapshot.owner.displayName}, {snapshot.startsOn} — {snapshot.endsOn},{" "}
             {snapshot.currency} / {snapshot.currencyScale}
           </Text>
           <Text>

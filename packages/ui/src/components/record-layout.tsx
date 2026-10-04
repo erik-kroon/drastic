@@ -14,10 +14,9 @@ const styles = stylex.create({
     minWidth: 0,
   },
   title: {
-    fontFamily: tokens.fontSerif,
-    fontSize: tokens.fontSize2xl,
-    fontWeight: tokens.fontWeightNormal,
-    lineHeight: tokens.lineHeight32Px,
+    fontSize: tokens.fontSizeBase,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight20Px,
     overflowWrap: "anywhere",
   },
   subtitle: {
@@ -67,7 +66,7 @@ const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: tokens.border,
-    borderRadius: tokens.radiusMd,
+    borderRadius: tokens.radiusSurface,
     backgroundColor: tokens.card,
     minWidth: 0,
   },
@@ -119,7 +118,7 @@ const styles = stylex.create({
   },
   sectionTitle: {
     fontSize: tokens.fontSizeSm,
-    fontWeight: tokens.fontWeightMedium,
+    fontWeight: tokens.fontWeightSemibold,
     paddingBlockEnd: 12,
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",

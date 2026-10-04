@@ -86,7 +86,7 @@ export function InvoicePaymentUndo(props: UndoProps) {
             </Button>
           </Box>
           <RecordHeading
-            title={`${copy.title} · ${props.invoice.documentNumber}`}
+            title={`${copy.title}, ${props.invoice.documentNumber}`}
             subtitle={props.invoice.counterpartyName}
           />
           <PrepareUndo {...props} ready={ready && status.data?.active === true} />

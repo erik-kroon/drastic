@@ -129,7 +129,7 @@ export function BankingWorkspace({
                 .filter((account) => account.active)
                 .map((account) => ({
                   value: account.id,
-                  label: `${account.code} · ${account.name}`,
+                  label: `${account.code}, ${account.name}`,
                 }))}
             />
             <InputField

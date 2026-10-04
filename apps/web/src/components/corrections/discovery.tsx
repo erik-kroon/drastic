@@ -132,7 +132,7 @@ export function CorrectionDiscovery({
             {recovery.data.status === "recorded" ? copy.requestRecorded : copy.requestUnknown}
           </Text>
           <Text>
-            {recovery.data.checkedAt} · {recovery.data.operation}
+            {recovery.data.checkedAt}, {recovery.data.operation}
           </Text>
           {recovery.data.result && Schema.is(Corrections.CorrectionBundle)(recovery.data.result) ? (
             <Box>

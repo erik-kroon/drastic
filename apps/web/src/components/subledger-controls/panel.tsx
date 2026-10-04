@@ -296,7 +296,7 @@ function CaptureControl({
             >
               <input name="accountIds" type="checkbox" value={account.id} />
               <Text>
-                {account.code} · {account.name} · {account.id}
+                {account.code}, {account.name}, {account.id}
               </Text>
             </Box>
           ))}

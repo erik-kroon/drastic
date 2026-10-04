@@ -6,9 +6,12 @@ docs/design/*
 .codex/*
 .codex/
 .codex
+verification/paper/*
+./verification/paper/*
 .agents/
 .agents/*
 .agents
+
 # Build outputs
 # These paths are load-bearing, not cosmetic: infra/alchemy deploys the web Worker
 # from apps/web and apps/api/scripts/self-host.ts serves apps/web/dist/client.

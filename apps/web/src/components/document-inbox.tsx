@@ -356,7 +356,8 @@ export function DocumentInbox(props: {
           ? node.querySelector<HTMLAnchorElement>(`[data-document-id="${pendingFocus.current}"]`)
           : null;
 
-        const target = row ?? node;
+        const target =
+          row ?? node.closest("section")?.querySelector<HTMLHeadingElement>("h1") ?? node;
 
         if (target) {
           if (!row) target.tabIndex = -1;
@@ -884,7 +885,7 @@ function documentAmount(fact: typeof Sources.DocumentFact.Type, locale: "en" | "
   if (fact.grossMinor === null) return locale === "sv" ? "Okänt belopp" : "Unknown amount";
 
   if (fact.currency === null || fact.currencyScale === null)
-    return `${fact.grossMinor} · ${locale === "sv" ? "valutaenhet okänd" : "currency units unknown"}`;
+    return `${fact.grossMinor}, ${locale === "sv" ? "valutaenhet okänd" : "currency units unknown"}`;
 
   return `${formatMinorAmount(fact.grossMinor, fact.currencyScale, locale)} ${fact.currency}`;
 }
@@ -915,11 +916,11 @@ function DocumentFactSummary({ row }: { row: typeof Sources.DocumentSearchRow.Ty
       {current.map((fact) => (
         <Box key={`${fact.ownerKind}:${fact.ownerId}:${fact.revision}:${fact.basis}`}>
           <Text>
-            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")} ·{" "}
+            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")},{" "}
             {documentAmount(fact, locale)}
           </Text>
           <PageCaption>
-            {factBasis(fact, sv)} ·{" "}
+            {factBasis(fact, sv)},{" "}
             {fact.documentDate ?? (sv ? "Dokumentdatum okänt" : "Document date unknown")}
           </PageCaption>
           {fact.withdrawn ? (
@@ -976,11 +977,11 @@ function DocumentFacts({
           key={`${fact.ownerKind}:${fact.ownerId}:${fact.revision}:${fact.basis}`}
         >
           <Text>
-            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")} ·{" "}
+            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")},{" "}
             {documentAmount(fact, locale)}
           </Text>
           <Text>
-            {factBasis(fact, sv)} ·{" "}
+            {factBasis(fact, sv)},{" "}
             {fact.currentSource
               ? sv
                 ? "Aktuellt underlag"
@@ -988,7 +989,7 @@ function DocumentFacts({
               : sv
                 ? "Tidigare underlag"
                 : "Earlier source"}{" "}
-            · {fact.documentDate ?? (sv ? "Dokumentdatum okänt" : "Document date unknown")}
+            , {fact.documentDate ?? (sv ? "Dokumentdatum okänt" : "Document date unknown")}
           </Text>
           <PageAction
             href={`${purchase(fact.ownerKind === "supplier_draft" ? "supplier-drafts" : "expenses", fact.ownerId)}&${defaultStringifySearch(fact.ownerKind === "supplier_draft" ? { draftRevision: fact.revision } : { expenseRevision: fact.revision }).slice(1)}`}
@@ -1010,7 +1011,7 @@ function DocumentFacts({
                 {sv ? "Utgiftsgranskning version" : "Expense review version"} {fact.reviewRevision}
               </PageAction>
               <PageCaption>
-                {sv ? "Granskning" : "Review"} {fact.reviewedAt} · {fact.reviewDigest}
+                {sv ? "Granskning" : "Review"} {fact.reviewedAt}, {fact.reviewDigest}
               </PageCaption>
             </Box>
           ) : null}
@@ -1030,7 +1031,7 @@ function DocumentFacts({
             <PageCaption>{sv ? "Återtaget underlag" : "Withdrawn source"}</PageCaption>
           ) : null}
           <PageCaption>
-            {sv ? "Sparad version" : "Retained revision"} {fact.revision} · {fact.recordedAt} ·{" "}
+            {sv ? "Sparad version" : "Retained revision"} {fact.revision}, {fact.recordedAt},{" "}
             {fact.digest}
           </PageCaption>
         </Box>
@@ -1038,8 +1039,8 @@ function DocumentFacts({
       {row.suggestions.map((suggestion) => (
         <Box key={suggestion.attemptId} display="grid" gap="sm">
           <Text>
-            {sv ? "Ogranskade tolkningsförslag" : "Unreviewed extraction suggestions"} ·{" "}
-            {suggestion.engineRelease} · {suggestion.createdAt}
+            {sv ? "Ogranskade tolkningsförslag" : "Unreviewed extraction suggestions"},{" "}
+            {suggestion.engineRelease}, {suggestion.createdAt}
           </Text>
           {suggestion.fields.map((field, index) => (
             <PageCaption key={`${field.fieldKey}:${field.lineOrdinal}:${index}`}>

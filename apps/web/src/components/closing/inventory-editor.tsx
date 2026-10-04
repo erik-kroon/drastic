@@ -81,7 +81,7 @@ export function PeriodInventoryEditor({
         </PageCaption>
       }
       source={() => ({
-        title: `${sv ? "Periodgranskning" : "Period review"} · ${basis.startsOn} – ${basis.endsOn}`,
+        title: `${sv ? "Periodgranskning" : "Period review"}, ${basis.startsOn} – ${basis.endsOn}`,
         origin: "Period scope entered in OpenERP",
         mediaType: "application/json",
         content: JSON.stringify({ periodId: basis.periodId, bankAccountIds: accounts, decisions }),
@@ -203,14 +203,14 @@ export function PeriodInventoryEditor({
                         )
                       }
                     />
-                    {account.code} · {account.name}
+                    {account.code}, {account.name}
                   </Box>
                 ))}
               <PageCaption>
                 {sv ? "Valda konton" : "Selected accounts"}:{" "}
                 {setup.accounts
                   .filter((account) => accounts.includes(account.id))
-                  .map((account) => `${account.code} · ${account.name}`)
+                  .map((account) => `${account.code}, ${account.name}`)
                   .join(", ") || (sv ? "Inga" : "None")}
               </PageCaption>
             </RecordSection>

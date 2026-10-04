@@ -34,7 +34,7 @@ const styles = stylex.create({
   },
   compactField: { gap: tokens.space1 },
   compactLabel: {
-    color: tokens.mutedForeground,
+    color: tokens.captionForeground,
     fontSize: tokens.fontSizeXs,
     fontWeight: tokens.fontWeightNormal,
     lineHeight: tokens.lineHeight16Px,
@@ -98,22 +98,28 @@ export function SelectField({
   label,
   id,
   styleX,
+  compact = false,
   ...props
-}: SelectControlProps & { label: string }) {
+}: SelectControlProps & { label: string; compact?: boolean }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
   const labelId = `${controlId}-label`;
 
   return (
-    <div {...stylex.props(styles.field)}>
-      <Label id={labelId} htmlFor={controlId} disabled={props.disabled} styleX={styles.label}>
+    <div {...stylex.props(styles.field, compact && styles.compactField)}>
+      <Label
+        id={labelId}
+        htmlFor={controlId}
+        disabled={props.disabled}
+        styleX={[styles.label, compact && styles.compactLabel]}
+      >
         {label}
       </Label>
       <SelectControl
         aria-labelledby={labelId}
         {...props}
         id={controlId}
-        styleX={[styles.control, styleX]}
+        styleX={[styles.control, compact && styles.compactControl, styleX]}
       />
     </div>
   );

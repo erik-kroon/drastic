@@ -60,7 +60,7 @@ export function BookSearch({
   const result = term.length >= 2 && invoices.isSuccess ? invoices.data : undefined;
 
   const items = (result?.items ?? []).map((item) => ({
-    title: `${item.customer}${item.number ? ` · ${item.number}` : ""}`,
+    title: `${item.customer}${item.number ? `, ${item.number}` : ""}`,
     detail:
       item.amountMinor === null
         ? undefined

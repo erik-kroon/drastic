@@ -23,8 +23,8 @@ export function PreparationSelection({
         {copy.bank_checkpoint}: {selection.sequence} / {selection.sourceRevision}
       </Text>
       <Text>
-        {copy.auto_matching_count}: {selection.matchingCount} · {copy.auto_unmatched_count}:{" "}
-        {selection.unmatchedCount} · {copy.auto_matched_count}: {selection.alreadyMatchedCount}
+        {copy.auto_matching_count}: {selection.matchingCount}, {copy.auto_unmatched_count}:{" "}
+        {selection.unmatchedCount}, {copy.auto_matched_count}: {selection.alreadyMatchedCount}
       </Text>
       <Text>
         {copy.auto_total}: {selection.totalMinor}

@@ -40,7 +40,7 @@ function SupplierInboxList(props: {
           variant="ghost"
           onClick={() => props.onOpen(item.occurrence.occurrence.id)}
         >
-          {item.occurrence.occurrence.filename} · {item.channel} ·{" "}
+          {item.occurrence.occurrence.filename}, {item.channel},{" "}
           {item.draftId
             ? sv
               ? "Granskat utkast"
@@ -48,7 +48,7 @@ function SupplierInboxList(props: {
             : sv
               ? "Väntar på granskning"
               : "Awaiting review"}
-          {item.reviewReason ? ` · ${item.reviewReason}` : ""}
+          {item.reviewReason ? `, ${item.reviewReason}` : ""}
         </Button>
       ))}
       {props.hasNextPage ? (
@@ -78,7 +78,7 @@ function SupplierInboxEntry(props: {
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>
-        {props.entry.occurrence.occurrence.filename} · {props.entry.channel} ·{" "}
+        {props.entry.occurrence.occurrence.filename}, {props.entry.channel},{" "}
         {props.entry.draftId
           ? sv
             ? "Granskat utkast"
@@ -111,14 +111,14 @@ function SupplierInboxEntry(props: {
       {props.entry.attempts.map((attempt) => (
         <Box key={attempt.id} display="grid" gap="sm">
           <Text>
-            {attempt.ordinal}. {attempt.parserVersion} · {attempt.status} · {attempt.createdAt}
+            {attempt.ordinal}. {attempt.parserVersion}, {attempt.status}, {attempt.createdAt}
           </Text>
           {attempt.diagnostics.map((message, index) => (
             <Text key={index}>{message}</Text>
           ))}
           {attempt.suggestions.map((suggestion, index) => (
             <Text key={index}>
-              {suggestion.field}: {suggestion.value} · {suggestion.sourceLocation} ·{" "}
+              {suggestion.field}: {suggestion.value}, {suggestion.sourceLocation},{" "}
               {suggestion.confidence}
             </Text>
           ))}

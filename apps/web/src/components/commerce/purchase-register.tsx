@@ -171,7 +171,7 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
               caption={selected.number ?? selected.state}
             />
             <PageCaption>
-              {selected.state} · {selected.currency}
+              {selected.state}, {selected.currency}
             </PageCaption>
             <PageCaption>{selected.date}</PageCaption>
             <RegisterDetailActions>

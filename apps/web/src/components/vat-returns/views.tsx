@@ -132,8 +132,7 @@ export function VatFactSummary({
             />
           ))}
           <PageCaption>
-            {copy.sourceKey}: {input.sourceKey} · {copy.voucherId}:{" "}
-            {input.voucherId ?? copy.unknown}
+            {copy.sourceKey}: {input.sourceKey}, {copy.voucherId}: {input.voucherId ?? copy.unknown}
           </PageCaption>
         </Box>
       </Disclosure>
@@ -262,7 +261,7 @@ export function VatDraftView({
                       : sv
                         ? "Ingen ruta kan fastställas för denna avvikelse"
                         : "No box can be established for this finding"}
-                    {" · "}
+                    {", "}
                     {sv ? "Visa källposten nedan" : "View the source record below"}
                   </PageCaption>
                 </Box>
@@ -357,7 +356,7 @@ export function VatDraftView({
                   rows={observation.taxLines.map((line) => ({
                     id: line.id,
                     cells: [
-                      `${line.id} · ${line.accountId}`,
+                      `${line.id}, ${line.accountId}`,
                       `${line.debitMinor} / ${line.creditMinor}`,
                     ],
                   }))}
@@ -369,7 +368,7 @@ export function VatDraftView({
       <Disclosure label={sv ? "Sparat beräkningsunderlag" : "Saved calculation basis"}>
         <Box display="grid" gap="sm" paddingBlock="md">
           <PageCaption>
-            {draft.id} · {draft.recordedAt}
+            {draft.id}, {draft.recordedAt}
           </PageCaption>
           <PageCaption>
             {copy.sequence}: {draft.basis.bookSequence}

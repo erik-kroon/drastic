@@ -112,7 +112,7 @@ export function AllocationReview({
             {copy.digest}: {view.plan.digest}
           </Text>
           <Text>
-            {copy.version}: {view.plan.version} · {copy.currency}: {view.plan.currency} /{" "}
+            {copy.version}: {view.plan.version}, {copy.currency}: {view.plan.currency} /{" "}
             {view.plan.currencyScale}
           </Text>
           <Text>
@@ -143,7 +143,7 @@ export function AllocationReview({
               minWidth="zero"
             >
               <Text>
-                {copy.leg} {index + 1}: {capacity.leg.amountMinor} · {copy.candidates}:{" "}
+                {copy.leg} {index + 1}: {capacity.leg.amountMinor}, {copy.candidates}:{" "}
                 {capacity.candidateCount}
               </Text>
               <DataTable
@@ -159,7 +159,7 @@ export function AllocationReview({
                   {
                     id: "source",
                     cells: [
-                      `${capacity.leg.statementId} / ${capacity.leg.rowOrdinal} · ${capacity.observedOn}`,
+                      `${capacity.leg.statementId} / ${capacity.leg.rowOrdinal}, ${capacity.observedOn}`,
                       capacity.sourceAmountMinor,
                       capacity.sourceAllocatedMinor,
                       (
@@ -170,7 +170,7 @@ export function AllocationReview({
                   {
                     id: "line",
                     cells: [
-                      `${capacity.leg.voucherId} / ${capacity.leg.lineId} · ${capacity.postedOn}`,
+                      `${capacity.leg.voucherId} / ${capacity.leg.lineId}, ${capacity.postedOn}`,
                       capacity.lineAmountMinor,
                       capacity.lineAllocatedMinor,
                       (
@@ -197,7 +197,7 @@ export function AllocationReview({
           {executed ? (
             <>
               <Text>
-                {copy.receipt}: {executed.receipt.key} · {executed.receipt.actorId} ·{" "}
+                {copy.receipt}: {executed.receipt.key}, {executed.receipt.actorId},{" "}
                 {executed.executedAt}
               </Text>
               <Text>
@@ -234,7 +234,7 @@ export function AllocationReview({
               )}
               {view.approval ? (
                 <Text>
-                  {copy.approvalExpires}: {view.approval.expiresAt} · {view.approval.actorId}
+                  {copy.approvalExpires}: {view.approval.expiresAt}, {view.approval.actorId}
                 </Text>
               ) : null}
               <Box>
@@ -336,14 +336,14 @@ function RequestRecovery(props: {
       <Text>{props.request}</Text>
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
-          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} ·{" "}
+          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"},{" "}
           {props.label}
         </Button>
         <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
           {props.locale === "sv"
             ? "Kasta anrop och återförsöksnyckel"
             : "Discard request and retry key"}{" "}
-          · {props.label}
+          , {props.label}
         </Button>
       </Box>
     </Box>

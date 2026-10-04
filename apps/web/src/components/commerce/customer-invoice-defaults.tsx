@@ -140,8 +140,8 @@ export function InvoiceDefaultsSelection(props: CommerceProps & { session: Draft
       ) : null}
       {selection ? (
         <Text tone="muted">
-          {sv ? "Kopierade standardvärden" : "Copied defaults"} · {selection.revision} ·{" "}
-          {session.state.copiedCustomerDefaults?.language} ·{" "}
+          {sv ? "Kopierade standardvärden" : "Copied defaults"}, {selection.revision},{" "}
+          {session.state.copiedCustomerDefaults?.language},{" "}
           {session.state.copiedCustomerDefaults?.currency}
         </Text>
       ) : null}
@@ -443,7 +443,7 @@ function DefaultsForm(
             ? [
                 {
                   value: "reviewed",
-                  label: `${props.recipient.destination} · ${props.recipient.revision}`,
+                  label: `${props.recipient.destination}, ${props.recipient.revision}`,
                 },
               ]
             : []),

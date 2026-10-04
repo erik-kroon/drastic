@@ -60,7 +60,7 @@ export function PostingRecoveryPanel({
       {recovery.data && !recovery.isError ? (
         <>
           <Text tone="muted">
-            {copy.checked}: {recovery.data.checkedAt} · {copy.sequence}: {recovery.data.sequence}
+            {copy.checked}: {recovery.data.checkedAt}, {copy.sequence}: {recovery.data.sequence}
           </Text>
           {recovery.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
           {recovery.data.items.map((item) => (
@@ -77,7 +77,7 @@ export function PostingRecoveryPanel({
               <Text>{copy[item.postingStatus]}</Text>
               <Text>ID: {item.changeSetId}</Text>
               <Text tone="muted">
-                {item.createdAt} · {copy.createdBy}: {item.createdBy}
+                {item.createdAt}, {copy.createdBy}: {item.createdBy}
               </Text>
               <Box>
                 <Button size="xl" variant="outline" onClick={() => onPrepared(item.changeSetId)}>
@@ -178,7 +178,7 @@ function RequestLookup({
           </Text>
           {receipt.state === "committed" ? (
             <Text>
-              {receipt.operation} · {receipt.actorId} · {receipt.recordedAt}
+              {receipt.operation}, {receipt.actorId}, {receipt.recordedAt}
             </Text>
           ) : null}
           {proposalId ? (

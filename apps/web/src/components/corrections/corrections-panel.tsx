@@ -305,7 +305,7 @@ function ReplacementDraft(props: {
             required
             options={setup.periods.map((period) => ({
               value: period.id,
-              label: `${period.id} · ${period.startsOn} – ${period.endsOn}`,
+              label: `${period.id}, ${period.startsOn} – ${period.endsOn}`,
               disabled: period.locked,
             }))}
           />
@@ -348,7 +348,7 @@ function ReplacementDraft(props: {
               required
               options={setup.accounts.map((account) => ({
                 value: account.id,
-                label: `${account.code} · ${account.name}`,
+                label: `${account.code}, ${account.name}`,
                 disabled: !account.active,
               }))}
             />

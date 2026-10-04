@@ -486,7 +486,7 @@ function CatalogArticleSelect(props: {
 
   const option = (article: typeof Catalog.Article.Type) => ({
     value: `${article.code}:${article.revision}`,
-    label: `${article.code} · ${article.revision} — ${article.description}`,
+    label: `${article.code}, ${article.revision} — ${article.description}`,
     disabled: article.description.length > 200,
   });
 
@@ -508,7 +508,7 @@ function CatalogArticleSelect(props: {
             ? [
                 {
                   value: selectedValue,
-                  label: `${selection.code} · ${selection.revision} — ${line.defaults?.description ?? ""}`,
+                  label: `${selection.code}, ${selection.revision} — ${line.defaults?.description ?? ""}`,
                 },
               ]
             : []),
@@ -563,7 +563,7 @@ function CatalogArticleSelect(props: {
       {selection ? (
         <Box display="flex" flexWrap="wrap" alignItems="center" gap="sm">
           <PageCaption>
-            {selection.code} · {selection.revision} · {selection.unit}
+            {selection.code}, {selection.revision}, {selection.unit}
           </PageCaption>
           <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
             {sv ? "Ta bort val" : "Clear selection"}

@@ -1,5 +1,25 @@
 # Paper product implementation proof
 
+To do supplier-preview fixture obligations, recorded before implementation: reject a non-local launcher session; read the named synthetic journal and reject another scope or missing retained evidence; use actual evidence, counterparty, supplier-draft and acceptance-preparation owners; fail on any HTTP error; retain created identities without credentials. Preparing a review must not approve, execute, register payment or assert a legal invoice. The UI must show the retained debit and credit lines, keep a stale review distinct, and open the existing review owner.
+
+Compact original-preview obligations: retain a small synthetic text original through the source owner, reject failed retention, keep its exact filename and bytes, verify a 150px preview in Att göra and the full original through its existing owner. Retention is not an accounting review, approval or posting. No live extraction provider is used in this disposable runtime.
+
+The screenshot's read-error boundary repair and To do proposal/geometry observations are recorded in [todo-error-observations.json](todo-error-observations.json). The disposable review runtime uses port 3001 to avoid interfering with the other agent's sales work. The receipt includes repeatable read-failure and retry steps. It establishes the listed browser behavior and dimensions, not whole-screen pixel parity; screenshot capture failed and the full changed-file gate still reports lint failures elsewhere in the shared checkout.
+
+The active gap ledger is [adoption-gaps.md](adoption-gaps.md). The 2026-10-04 register/dialog observations are retained in [careful-pass-observations.json](careful-pass-observations.json), with source and screenshot hashes. These receipts establish their listed observations, not pixel parity or completion of the other states.
+
+To repeat the added workflows on a fresh seeded runtime:
+
+1. Open sales. Check 48px header, 224px sidebar, 340px preview and the selected draft's retained line/VAT amounts.
+2. Open Articles → New article. Create code `paper_article`, unit `tim`, description `Konferensrådgivning · syntetisk`, price `1080`, tax description `Ej verifierad`, unresolved reviewed policy and active status. Close and assert `1 080,00 SEK` in the register. Reopen the row, Escape, and assert focus returns to that article button. Repeat the dialog at 390px and verify it stays within x10–380.
+3. Open Quotes and orders → New quote. Choose Nordhamn's saved draft by customer/title, load the source and create. Assert `12 480,00` and draft status. Repeat for Sjöstrand and assert `32 500,00`. Open Sjöstrand, accept through Save decision, and assert accepted status and retained revision 2. Acceptance must not create an invoice or post accounting.
+4. Open Recurring and wait for the real list read. With the default seed, assert the empty agreement state rather than indefinite loading.
+5. Save screenshots and source hashes after these observations. Run `bun run check:changed:full`; consult the gap ledger before describing visual coverage.
+
+## Current Paper adoption obligations
+
+The 2026-10-03 continuation uses the live Enthusiastic lantern file, including its v2 component specification, rather than assuming the retained exports are current. Before changing shared controls and route composition: navigation must preserve its existing search and return context; selection must remain visible without relying on color alone; disabled controls must retain readable labels; dialogs must keep their close and focus-return behavior; remote reads, authorization and financial commands must remain with their existing owners; compact desktop controls must reflow at 390px and use larger touch targets. Browser receipts must distinguish observed layout and interaction from full pixel parity.
+
 The reference is Enthusiastic lantern, pages 01–13. Exact exports and the frame inventory live in `docs/design/implementation/`. Product UI uses real application reads and commands; Paper examples are used only in the disposable synthetic fixture; product data always comes from retained application records.
 
 ## Failure cases
@@ -45,3 +65,20 @@ After posting the initial journal, run `node verification/paper/seed-purchases.m
 Bank layout verification obligations (written before this slice): selecting an account must retain its exact date scope; unmatched, matched, all and ledger filters must retain server counts and paging; a statement row must open the existing matching owner and a ledger row its retained voucher; no missing statement balance may become zero; a nonzero allocation must not be called paid; narrow layouts must retain date controls without horizontal page overflow. The Paper missing-evidence groups cannot be inferred from unmatched allocation, so the UI must name the retained matching state instead.
 
 Document archive verification obligations (before this slice): the archive must retain exact filename/source/date filtering, page cursors and export intent; opening and returning from a document must preserve the applied filters and restore keyboard focus; uploaded originals must use the existing source retention owner and remain inspectable; PDF/image/CSV MIME types must not be called accounting classifications; the archive list must not invent a linked voucher; export applies to the retained page scope rather than claiming a complete archive. Row and toolbar changes must remain readable at narrow widths.
+
+
+## Current live design pass
+
+`current-design-observations.json` records this pass against live Paper's v2 foundation and current register, report, settings, closing and overview frames. Source hashes and screenshot hashes bind the observations to this checkout; screenshots are retained in `screenshots/`. These are browser E2E observations, not whole-screen pixel parity.
+
+Repeat with a fresh launcher and seed, using the native T3 browser at 1440×900 and 390×844 in Swedish light mode:
+
+1. Open sales → customers, select Sjöstrand, open New customer and press Escape. Assert the same record stays selected and focus returns to New customer.
+2. Search for Sjöstrand and submit. Assert one directory row. Clear and submit to restore the directory.
+3. Open purchases → suppliers. Create Tallvik Material AB, supplier role, reference `paper_supplier_e2e`. Assert the modal closes, the new row is selected and the preview shows the saved supplier role/reference. Invoke directory export; inspect its downloaded manifest separately if asserting content.
+4. Open closing. Assert the synthetic period dates, 10 / 14 passed checks and four pending rows. Open period scope review, inspect the existing form, close it, open Prepare period lock and assert the incomplete-readiness block remains. Do not submit financial commands for this layout proof.
+5. Open reports. Assert nine report destinations remain reachable; inspect the plain catalog and compact inline navigation.
+6. Open settings → accounting. Assert dimension forms, period dates and the chart-of-accounts link remain available.
+7. Open overview. Assert existing financial facts and draft actions, with deadline/rule forms inside collapsed sections. No Paper chart examples may appear as live financial facts.
+8. At 390px, compare `document.documentElement.scrollWidth` with `innerWidth` on these pages and sales, purchases, documents, bookkeeping, bank and tax. Wait for each owner's read before claiming data-state proof; loading-state checks establish layout only.
+9. Run `bun run check:changed:full`. Compare the retained source hashes before reusing any previous screenshot result.

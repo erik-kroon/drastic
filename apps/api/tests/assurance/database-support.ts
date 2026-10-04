@@ -82,9 +82,16 @@ export const faultTables = [
   "command_receipts",
 ] as const;
 
-export type FaultTable = (typeof faultTables)[number] | "bank_allocation_legs";
+export type FaultTable =
+  | (typeof faultTables)[number]
+  | "bank_allocation_legs"
+  | "correction_bundle_receipts";
 
-const allowedFaultTables: ReadonlyArray<string> = [...faultTables, "bank_allocation_legs"];
+const allowedFaultTables: ReadonlyArray<string> = [
+  ...faultTables,
+  "bank_allocation_legs",
+  "correction_bundle_receipts",
+];
 
 /** Only installed after fixture preparation, on the disposable harness database. */
 export async function injectScopedInsertFault(book: BookFixture, table: FaultTable) {

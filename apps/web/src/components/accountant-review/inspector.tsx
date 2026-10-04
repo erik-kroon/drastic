@@ -78,7 +78,7 @@ export function ReviewPackInspector({
         title={copy.title}
         subtitle={
           pack
-            ? `${pack.report.startsOn} – ${pack.report.endsOn} · ${pack.report.currency}`
+            ? `${pack.report.startsOn} – ${pack.report.endsOn}, ${pack.report.currency}`
             : undefined
         }
         action={
@@ -247,7 +247,7 @@ function ArtifactDownload({
         <Box display="grid" gap="xs" minWidth="zero">
           <Text>{names[descriptor.format]}</Text>
           <PageCaption>
-            {descriptor.mediaType === "application/json" ? "JSON" : "CSV"} ·{" "}
+            {descriptor.mediaType === "application/json" ? "JSON" : "CSV"},{" "}
             {new Intl.NumberFormat(locale).format(descriptor.byteLength)} {copy.bytes}
           </PageCaption>
         </Box>
@@ -417,7 +417,7 @@ function ReviewRows({
                 minWidth="zero"
               >
                 <Text>
-                  {row.title} · {row.id}
+                  {row.title}, {row.id}
                 </Text>
                 <Text>
                   {copy.disposition}: {row.disposition}

@@ -67,7 +67,7 @@ export function BasisForm({ book, locale }: Props) {
           { value: "", label: copy.choose },
           ...(list.data?.pages.flatMap((page) => page.items) ?? []).map((item) => ({
             value: item.id,
-            label: `${item.name} · ${item.id}`,
+            label: `${item.name}, ${item.id}`,
           })),
         ]}
       />
@@ -253,7 +253,7 @@ function RecordBasis({
     >
       <Text>{copy.amounts}</Text>
       <Text>
-        {copy.carrying}: {schedule.terms.costMinor} · {schedule.currency} · {schedule.currencyScale}
+        {copy.carrying}: {schedule.terms.costMinor}, {schedule.currency}, {schedule.currencyScale}
       </Text>
       <Box
         as="fieldset"
@@ -292,7 +292,7 @@ function RecordBasis({
             { value: "", label: "—" },
             ...voucher.action.evidenceRefs.map((evidence) => ({
               value: evidence.evidenceId,
-              label: `${evidence.evidenceId} · ${evidence.locator}`,
+              label: `${evidence.evidenceId}, ${evidence.locator}`,
             })),
           ]}
         />
@@ -335,8 +335,8 @@ function RecordBasis({
             >
               <input name="lineIds" type="checkbox" value={line.lineId} />
               <Text>
-                {line.accountId} · {line.lineId} · {copy.debit}: {line.debitMinor} · {copy.credit}:{" "}
-                {line.creditMinor} · {line.description}
+                {line.accountId}, {line.lineId}, {copy.debit}: {line.debitMinor}, {copy.credit}:{" "}
+                {line.creditMinor}, {line.description}
               </Text>
             </Box>
           ))}

@@ -156,7 +156,7 @@ export function PostedRecords(props: PostedRecordsProps) {
             {
               id: "amount",
               width: "content",
-              label: `${copy.amount} · ${book.currency}`,
+              label: `${copy.amount}, ${book.currency}`,
               numeric: true,
               cell: (voucher) => {
                 const total = voucher.action.lines.reduce(
@@ -262,7 +262,7 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
       {voucher ? (
         <>
           <RecordHeading
-            title={`${voucher.action.series}${voucher.number} · ${voucher.action.description}`}
+            title={`${voucher.action.series}${voucher.number}, ${voucher.action.description}`}
             subtitle={voucher.action.postingDate}
           />
           <VoucherDetails {...props} voucher={voucher} />
@@ -313,7 +313,7 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
           return {
             id: line.lineId,
             cells: [
-              account ? `${account.code} · ${account.name}` : line.accountId,
+              account ? `${account.code}, ${account.name}` : line.accountId,
               line.description,
               amount(line.debitMinor),
               amount(line.creditMinor),
@@ -331,14 +331,14 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
         </Disclosure>
       ))}
       <PageCaption>
-        {copy.recorded} ·{" "}
+        {copy.recorded},{" "}
         {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium", timeStyle: "short" }).format(
           new Date(props.voucher.recordedAt),
         )}
       </PageCaption>
       <Disclosure title={copy.details}>
         <PageCaption>
-          {props.voucher.id} · {props.voucher.sequence}
+          {props.voucher.id}, {props.voucher.sequence}
         </PageCaption>
       </Disclosure>
       {props.setup ? (

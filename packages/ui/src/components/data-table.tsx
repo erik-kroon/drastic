@@ -11,7 +11,7 @@ export function DataTable({
   title: string;
   narrow?: "scroll" | "stack";
   minWidth?: "standard" | "wide" | "fit";
-  columns: { id: string; label: string; numeric?: boolean }[];
+  columns: { id: string; label: string; numeric?: boolean; width?: "content" | "fill" | number }[];
   rows: { id: string; cells: ReactNode[] }[];
 }) {
   return (

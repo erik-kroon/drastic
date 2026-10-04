@@ -1,8 +1,16 @@
-import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState, type ReactNode } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Sales from "@open-erp/contracts/sales-orders";
+import * as SalesRegister from "@open-erp/contracts/sales-register";
+import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { Box } from "@open-erp/ui/components/box";
+import { DataTable } from "@open-erp/ui/components/data-table";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { RecordSheet } from "@open-erp/ui/components/record-sheet";
+import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
+import { PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -78,9 +86,15 @@ function salesLineInput(fields: FormData, line: EditableInvoiceLine, scale: numb
   };
 }
 
-export function SalesOrders({ book, locale }: CommerceProps) {
+export function SalesOrders({
+  book,
+  locale,
+  navigation,
+}: CommerceProps & { navigation: ReactNode }) {
   const sv = locale === "sv";
   const path = `${commercePath(book)}/sales-documents`;
+  const [creating, setCreating] = useState(false);
+  const newQuoteButton = useRef<HTMLButtonElement>(null);
   const [sourceId, setSourceId] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [source, setSource] = useState<typeof Drafts.InvoiceDraftRevision.Type | null>(null);
@@ -104,151 +118,321 @@ export function SalesOrders({ book, locale }: CommerceProps) {
 
   const detail = useQuery({
     queryKey: [...commerceKey(book), "sales-document", selectedId],
-    queryFn: async ({ signal }) =>
-      readAccounting(`${path}/${encodeURIComponent(selectedId)}`, Sales.SalesDocumentView, {
-        signal,
-      }),
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${path}/${encodeURIComponent(selectedId)}`,
+        Sales.SalesDocumentView,
+        {
+          signal,
+        },
+      );
+
+      checkScope(book, result.record.scope);
+
+      if (result.record.id !== selectedId) throw new Error("Sales document identity mismatch");
+
+      return result;
+    },
     enabled: !!selectedId,
     retry: false,
   });
 
   return (
-    <Box display="grid" gap="xl" minWidth="zero">
-      <h2>{sv ? "Offerter och order" : "Quotes and orders"}</h2>
-      <Text tone="muted">
-        {sv
-          ? "En accepterad order kan delas upp i granskade fakturautkast. Ingen faktura skapas vid accept."
-          : "Split an accepted order into reviewed invoice drafts. Acceptance does not issue an invoice."}
-      </Text>
-      <Box
-        as="form"
-        display="grid"
-        gap="md"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setSourceError(null);
-          setSource(null);
-          setSourceLines([]);
-          void readAccounting(
-            `${commercePath(book)}/invoice-drafts/${encodeURIComponent(sourceId)}`,
-            Drafts.InvoiceDraftView,
-          )
-            .then((result) => {
-              checkScope(book, result.record.scope);
-              setSource(result.record);
-              setSourceLines(
-                result.record.content.lines.map((line) =>
-                  editableInvoiceLine(result.record.content.currencyScale, line),
-                ),
-              );
-            })
-            .catch((error: unknown) =>
-              setSourceError(
-                error instanceof Error ? error : new Error("Unable to load source draft"),
-              ),
-            );
-        }}
-      >
-        <InputField
-          label={sv ? "Befintligt fakturautkast-ID" : "Existing invoice draft ID"}
-          name="draftId"
-          required
-          value={sourceId}
-          onChange={(event) => setSourceId(event.target.value)}
-        />
-        <Button type="submit" variant="outline">
-          {sv ? "Hämta underlag" : "Review source draft"}
+    <RegisterWorkspace
+      title={sv ? "Försäljning" : "Sales"}
+      tabs={navigation}
+      action={
+        <Button
+          size="sm"
+          ref={newQuoteButton}
+          disabled={book.role !== "operator"}
+          onClick={() => {
+            setSourceId("");
+            setSource(null);
+            setSourceLines([]);
+            setSourceError(null);
+            creationKeys.current.clear();
+            setCreating(true);
+          }}
+        >
+          {sv ? "Ny offert" : "New quote"}
         </Button>
-        <AccountingStatus locale={locale} error={sourceError} />
-      </Box>
-      {source ? (
-        <Box display="grid" gap="md">
-          <Text>
-            {source.content.title} · {source.content.customer.legalName}
-          </Text>
-          <SelectField
-            label={sv ? "Dokumenttyp" : "Document type"}
-            value={documentKind}
-            options={[
-              { value: "quote", label: sv ? "Offert" : "Quote" },
-              { value: "order", label: sv ? "Order" : "Order" },
-            ]}
-            onValueChange={(value) => {
-              if (value === "quote" || value === "order") setDocumentKind(value);
-            }}
-          />
-          <Text tone="muted">
-            {documentKind === "quote"
-              ? sv
-                ? "Kopierar underlaget och de valda artikelraderna som en ny offert. Källutkastet ändras inte."
-                : "Copies the source envelope and selected article lines into a new quote. The source draft remains unchanged."
-              : sv
-                ? "Kopierar underlaget och de valda artikelraderna som en ny order. Källutkastet ändras inte."
-                : "Copies the source envelope and selected article lines into a new order. The source draft remains unchanged."}
-          </Text>
-          <InvoiceEditorLines
-            book={book}
-            lines={sourceLines}
-            onChange={setSourceLines}
-            scale={source.content.currencyScale}
-            currency={source.content.currency}
-            locale={locale}
-          />
-          <CommandForm
-            book={book}
-            locale={locale}
-            path={path}
-            schema={Sales.CreateSalesDocument}
-            output={Sales.SalesDocument}
-            input={(fields) => ({
-              kind: documentKind,
-              content: {
-                ...source.content,
-                sourceTotalMinor: null,
-                lines: sourceLines.map((line) =>
-                  salesLineInput(fields, line, source.content.currencyScale),
-                ),
-              },
-            })}
-            label={
-              documentKind === "quote"
-                ? sv
-                  ? "Skapa offert"
-                  : "Create quote"
-                : sv
-                  ? "Skapa order"
-                  : "Create order"
-            }
-            allowed={book.role === "operator"}
-            keys={creationKeys.current}
-            onSuccess={(result) => setSelectedId(result.id)}
-            onNewCommand={() => creationKeys.current.clear()}
-          />
-        </Box>
+      }
+    >
+      {creating ? (
+        <FormDialog
+          title={sv ? "Ny offert eller order" : "New quote or order"}
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => setCreating(false)}
+          onEscape={() => setCreating(false)}
+          finalFocus={newQuoteButton}
+        >
+          <Box display="grid" gap="lg">
+            <Box
+              as="form"
+              display="grid"
+              gap="md"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSourceError(null);
+                setSource(null);
+                setSourceLines([]);
+                void readAccounting(
+                  `${commercePath(book)}/invoice-drafts/${encodeURIComponent(sourceId)}`,
+                  Drafts.InvoiceDraftView,
+                )
+                  .then((result) => {
+                    checkScope(book, result.record.scope);
+                    setSource(result.record);
+                    setSourceLines(
+                      result.record.content.lines.map((line) =>
+                        editableInvoiceLine(result.record.content.currencyScale, line),
+                      ),
+                    );
+                  })
+                  .catch((error: unknown) =>
+                    setSourceError(
+                      error instanceof Error ? error : new Error("Unable to load source draft"),
+                    ),
+                  );
+              }}
+            >
+              <SalesSourceDraft
+                book={book}
+                locale={locale}
+                value={sourceId}
+                onChange={(id) => {
+                  setSourceId(id);
+                  setSource(null);
+                  setSourceLines([]);
+                  setSourceError(null);
+                }}
+              />
+              <Button type="submit" variant="outline" disabled={!sourceId}>
+                {sv ? "Hämta underlag" : "Review source draft"}
+              </Button>
+              <AccountingStatus locale={locale} error={sourceError} />
+            </Box>
+            {source ? (
+              <Box display="grid" gap="md">
+                <Text>
+                  {source.content.title}, {source.content.customer.legalName}
+                </Text>
+                <SelectField
+                  label={sv ? "Dokumenttyp" : "Document type"}
+                  value={documentKind}
+                  options={[
+                    { value: "quote", label: sv ? "Offert" : "Quote" },
+                    { value: "order", label: sv ? "Order" : "Order" },
+                  ]}
+                  onValueChange={(value) => {
+                    if (value === "quote" || value === "order") setDocumentKind(value);
+                  }}
+                />
+                <Text tone="muted">
+                  {documentKind === "quote"
+                    ? sv
+                      ? "Kopierar underlaget och de valda artikelraderna som en ny offert. Källutkastet ändras inte."
+                      : "Copies the source envelope and selected article lines into a new quote. The source draft remains unchanged."
+                    : sv
+                      ? "Kopierar underlaget och de valda artikelraderna som en ny order. Källutkastet ändras inte."
+                      : "Copies the source envelope and selected article lines into a new order. The source draft remains unchanged."}
+                </Text>
+                <CommandForm
+                  book={book}
+                  locale={locale}
+                  path={path}
+                  schema={Sales.CreateSalesDocument}
+                  output={Sales.SalesDocument}
+                  input={(fields) => ({
+                    kind: documentKind,
+                    content: {
+                      ...source.content,
+                      sourceTotalMinor: null,
+                      lines: sourceLines.map((line) =>
+                        salesLineInput(fields, line, source.content.currencyScale),
+                      ),
+                    },
+                  })}
+                  label={
+                    documentKind === "quote"
+                      ? sv
+                        ? "Skapa offert"
+                        : "Create quote"
+                      : sv
+                        ? "Skapa order"
+                        : "Create order"
+                  }
+                  allowed={book.role === "operator"}
+                  keys={creationKeys.current}
+                  onSuccess={(result) => {
+                    setSelectedId(result.id);
+                    setCreating(false);
+                  }}
+                  onNewCommand={() => creationKeys.current.clear()}
+                >
+                  <InvoiceEditorLines
+                    book={book}
+                    lines={sourceLines}
+                    onChange={setSourceLines}
+                    scale={source.content.currencyScale}
+                    currency={source.content.currency}
+                    locale={locale}
+                  />
+                </CommandForm>
+              </Box>
+            ) : null}
+          </Box>
+        </FormDialog>
       ) : null}
       <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
-      {list.data?.items.map((item) => (
-        <Button
-          key={item.id}
-          variant={selectedId === item.id ? "secondary" : "ghost"}
-          onClick={() => setSelectedId(item.id)}
-        >
-          {item.kind === "quote" ? (sv ? "Offert" : "Quote") : sv ? "Order" : "Order"}:{" "}
-          {item.content.title} · {item.state}
-        </Button>
-      ))}
+      <SalesDocumentRegister items={list.data?.items} locale={locale} onOpen={setSelectedId} />
       {record ? (
-        <SalesOrderDetail
-          book={book}
-          locale={locale}
-          record={record}
-          detail={detail}
-          path={path}
-          source={source}
-        />
+        <RecordSheet
+          title={record.content.title}
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => setSelectedId("")}
+        >
+          <SalesOrderDetail
+            book={book}
+            locale={locale}
+            record={record}
+            detail={detail}
+            path={path}
+            source={source}
+          />
+        </RecordSheet>
+      ) : null}
+    </RegisterWorkspace>
+  );
+}
+
+function SalesSourceDraft({
+  book,
+  locale,
+  value,
+  onChange,
+}: CommerceProps & {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const sv = locale === "sv";
+
+  const drafts = useInfiniteQuery({
+    queryKey: [...commerceKey(book), "sales-source-drafts"],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/sales-register?status=draft&sort=newest&page=${pageParam}`,
+        SalesRegister.SalesPage,
+        { signal },
+      );
+
+      checkScope(book, result.scope);
+
+      return result;
+    },
+    getNextPageParam: (page, _pages, pageParam) =>
+      pageParam * page.pageSize < page.total ? pageParam + 1 : undefined,
+    retry: false,
+  });
+
+  const items = drafts.data?.pages.flatMap((page) => page.items) ?? [];
+
+  return (
+    <Box display="grid" gap="sm">
+      <SelectField
+        label={sv ? "Fakturaunderlag" : "Invoice source"}
+        value={value}
+        onValueChange={(id) => onChange(id ?? "")}
+        options={[
+          { value: "", label: sv ? "Välj ett sparat utkast…" : "Choose a saved draft…" },
+          ...items.map((draft) => ({
+            value: draft.id,
+            label: `${draft.customer}, ${draft.title}`,
+          })),
+        ]}
+      />
+      <AccountingStatus locale={locale} pending={drafts.isPending} error={drafts.error} />
+      {drafts.hasNextPage ? (
+        <Button
+          variant="ghost"
+          disabled={drafts.isFetchingNextPage}
+          onClick={() => void drafts.fetchNextPage()}
+        >
+          {sv ? "Läs in fler underlag" : "Load more sources"}
+        </Button>
       ) : null}
     </Box>
   );
+}
+
+function SalesDocumentRegister({
+  items,
+  locale,
+  onOpen,
+}: {
+  items: readonly (typeof Sales.SalesDocument.Type)[] | undefined;
+  locale: "en" | "sv";
+  onOpen: (id: string) => void;
+}) {
+  const sv = locale === "sv";
+
+  return (
+    <>
+      {items?.length === 0 ? (
+        <PageEmpty
+          title={sv ? "Inga offerter eller order" : "No quotes or orders"}
+          detail={
+            sv
+              ? "Skapa en offert från ett granskat fakturaunderlag."
+              : "Create a quote from a reviewed invoice source."
+          }
+        />
+      ) : null}
+      {items && items.length > 0 ? (
+        <DataTable
+          title={sv ? "Offerter och order" : "Quotes and orders"}
+          narrow="stack"
+          columns={[
+            { id: "title", label: sv ? "Offert eller order" : "Quote or order", width: "fill" },
+            { id: "customer", label: sv ? "Kund" : "Customer", width: 330 },
+            { id: "amount", label: sv ? "Belopp" : "Amount", width: 120, numeric: true },
+            { id: "status", label: sv ? "Status" : "Status", width: 150 },
+          ]}
+          rows={items.map((item) => ({
+            id: item.id,
+            cells: [
+              <RecordOpen key="title" onClick={() => onOpen(item.id)}>
+                {item.content.title}
+              </RecordOpen>,
+              item.content.customer.legalName,
+              documentAmount(item, locale),
+              documentStatus(item, sv),
+            ],
+          }))}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function documentAmount(item: typeof Sales.SalesDocument.Type, locale: "en" | "sv") {
+  const calculation = Schema.decodeUnknownOption(Schema.Struct({ totals: Drafts.DraftTotals }))(
+    item.calculation,
+  );
+
+  if (Option.isNone(calculation) || calculation.value.totals.grossMinor === null) return "—";
+
+  return formatMinorAmount(calculation.value.totals.grossMinor, item.content.currencyScale, locale);
+}
+
+function documentStatus(item: typeof Sales.SalesDocument.Type, sv: boolean) {
+  if (item.state === "cancelled") return sv ? "Avbruten" : "Cancelled";
+
+  if (item.state === "accepted") return sv ? "Accepterad" : "Accepted";
+
+  return sv ? "Utkast" : "Draft";
 }
 
 function SalesOrderDetail(
@@ -268,10 +452,11 @@ function SalesOrderDetail(
   return (
     <Box display="grid" gap="lg">
       <h3>
-        {record.content.title} · {record.kind} · {record.state}
+        {record.content.title}, {record.kind === "quote" ? (sv ? "Offert" : "Quote") : "Order"},{" "}
+        {documentStatus(record, sv)}
       </h3>
       <Text tone="muted">
-        {sv ? "Källa och revision" : "Source and revision"}: {record.sourceQuoteId ?? "—"} ·{" "}
+        {sv ? "Källa och revision" : "Source and revision"}: {record.sourceQuoteId ?? "—"},{" "}
         {record.revision}
       </Text>
       <AccountingStatus locale={locale} pending={detail.isPending} error={detail.error} />
@@ -440,10 +625,10 @@ function OrderConversionHistory(
 
             return (
               <Text key={portion.id}>
-                {line?.description ?? portion.id} · {sv ? "antal" : "quantity"}: {portion.quantity}{" "}
-                · {sv ? "bas" : "base"}: {amount(portion.baseMinor)} · {sv ? "rabatt" : "discount"}:{" "}
-                {amount(portion.discountMinor)} · {sv ? "avgift" : "charge"}:{" "}
-                {amount(portion.chargeMinor)} · {sv ? "moms" : "tax"}: {amount(portion.taxMinor)} ·{" "}
+                {line?.description ?? portion.id}, {sv ? "antal" : "quantity"}: {portion.quantity} ,{" "}
+                {sv ? "bas" : "base"}: {amount(portion.baseMinor)}, {sv ? "rabatt" : "discount"}:{" "}
+                {amount(portion.discountMinor)}, {sv ? "avgift" : "charge"}:{" "}
+                {amount(portion.chargeMinor)}, {sv ? "moms" : "tax"}: {amount(portion.taxMinor)},{" "}
                 {sv ? "källbrutto" : "source gross"}: {amount(portion.sourceGrossMinor)}
               </Text>
             );

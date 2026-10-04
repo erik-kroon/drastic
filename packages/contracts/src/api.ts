@@ -91,6 +91,7 @@ import { PrepaymentsApi } from "./prepayments";
 import { CashMethodApi } from "./cash-method";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
+import { describeAuthentication } from "./api-authentication";
 
 export { AccountingErrorStatus } from "./accounting-errors";
 
@@ -276,4 +277,10 @@ export class Api extends HttpApi.make("open-erp")
     SubledgersApi,
   )
   .prefix("/api")
-  .annotateMerge(OpenApi.annotations({ title: "OpenERP API", version: "1.0.0" })) {}
+  .annotateMerge(
+    OpenApi.annotations({
+      title: "OpenERP API",
+      version: "1.0.0",
+      transform: describeAuthentication,
+    }),
+  ) {}

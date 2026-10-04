@@ -186,7 +186,7 @@ export function PreviewReview(
               { id: "provider", label: copy.provider },
               {
                 id: "amount",
-                label: `${locale === "sv" ? "Belopp" : "Amount"} · ${preview.mapping.currency}`,
+                label: `${locale === "sv" ? "Belopp" : "Amount"}, ${preview.mapping.currency}`,
                 numeric: true,
               },
             ]}
@@ -370,14 +370,14 @@ export function IntakeRequestRecovery(props: {
       </Disclosure>
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
-          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} ·{" "}
+          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"},{" "}
           {props.label}
         </Button>
         <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
           {props.locale === "sv"
             ? "Kasta anrop och återförsöksnyckel"
             : "Discard request and retry key"}{" "}
-          · {props.label}
+          , {props.label}
         </Button>
       </Box>
     </Box>
@@ -401,11 +401,11 @@ function PreviewSummary(props: {
     <Box display="grid" gap="md">
       <PageCaption>
         {account
-          ? `${account.code} · ${account.name}`
+          ? `${account.code}, ${account.name}`
           : sv
             ? "Kontot är inte tillgängligt"
             : "Account unavailable"}{" "}
-        · {mapping.startsOn} – {mapping.endsOn}
+        , {mapping.startsOn} – {mapping.endsOn}
       </PageCaption>
       <RecordSummary>
         <RecordFact label={sv ? "Ingående saldo" : "Opening balance"}>
@@ -427,7 +427,7 @@ function PreviewSummary(props: {
           : sv
             ? "Ofullständig täckning"
             : "Partial coverage"}{" "}
-        · {mapping.completeness.basis}
+        , {mapping.completeness.basis}
       </PageCaption>
     </Box>
   );
@@ -456,7 +456,7 @@ function PreviewTechnicalDetails({
         {copy.digest}: {preview.digest}
       </Text>
       <Text>
-        {copy.bom}: {preview.hasBom ? copy.yes : copy.no} · {copy.structuralComplete}:{" "}
+        {copy.bom}: {preview.hasBom ? copy.yes : copy.no}, {copy.structuralComplete}:{" "}
         {preview.structuralComplete ? copy.yes : copy.no}
       </Text>
       <DataTable
@@ -541,7 +541,7 @@ function PreviewDiagnostics({
                 id: String(index),
                 cells: [
                   `${diagnostic.severity}: ${diagnostic.code}`,
-                  `${diagnostic.recordOrdinal ?? "—"} · ${copy.line} ${diagnostic.line ?? "—"} · byte ${diagnostic.byteOffset ?? "—"}`,
+                  `${diagnostic.recordOrdinal ?? "—"}, ${copy.line} ${diagnostic.line ?? "—"}, byte ${diagnostic.byteOffset ?? "—"}`,
                   diagnostic.message,
                 ],
               }))}

@@ -255,7 +255,7 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
           <RecordHeading
             title={view.current.facts.description}
             subtitle={
-              locale === "sv" ? "Utgift · underlag och granskning" : "Expense · source and review"
+              locale === "sv" ? "Utgift, underlag och granskning" : "Expense, source and review"
             }
             action={
               <Box display="flex" gap="md">
@@ -456,7 +456,7 @@ function ExpenseTaxHistory({
             variant={selected === entry.id ? "secondary" : "outline"}
             onClick={() => setSelected(selected === entry.id ? null : entry.id)}
           >
-            {entry.label} {entry.revision} · {new Date(entry.recordedAt).toLocaleDateString(locale)}
+            {entry.label} {entry.revision}, {new Date(entry.recordedAt).toLocaleDateString(locale)}
           </Button>
         ))}
       </Box>
@@ -677,8 +677,7 @@ function ExpenseTaxSnapshots({
       {snapshots.data?.items.map((snapshot) => (
         <Box key={snapshot.id}>
           <Button size="xl" variant="outline" onClick={() => onOpen(snapshot.id)}>
-            {copy.open} · {snapshot.input.startsOn} – {snapshot.input.endsOn} ·{" "}
-            {snapshot.recordedAt}
+            {copy.open}, {snapshot.input.startsOn} – {snapshot.input.endsOn}, {snapshot.recordedAt}
           </Button>
         </Box>
       ))}
@@ -816,7 +815,7 @@ function ExpenseTaxSnapshotDetail({
           >
             <Box display="grid" gap="sm" paddingBlock="md">
               <PageCaption>
-                {snapshot.id} · {snapshot.recordedAt}
+                {snapshot.id}, {snapshot.recordedAt}
               </PageCaption>
               <PageCaption>{snapshot.digest}</PageCaption>
             </Box>

@@ -268,12 +268,12 @@ function PreparationForm(
 
   const accountOptions = setup.accounts.map((account) => ({
     value: account.id,
-    label: `${account.code} · ${account.name} · ${account.id}`,
+    label: `${account.code}, ${account.name}, ${account.id}`,
   }));
 
   const periodOptions = setup.periods.map((period) => ({
     value: period.id,
-    label: `${period.startsOn} – ${period.endsOn} · ${period.id}${period.locked ? ` · ${locale === "sv" ? "låst" : "locked"}` : ""}`,
+    label: `${period.startsOn} – ${period.endsOn}, ${period.id}${period.locked ? `, ${locale === "sv" ? "låst" : "locked"}` : ""}`,
   }));
 
   return (
@@ -314,7 +314,7 @@ function PreparationForm(
     >
       <RecordHeading
         title={labels.prepareTitle}
-        subtitle={`${draft.id} · ${copy.digest} ${draft.digest}`}
+        subtitle={`${draft.id}, ${copy.digest} ${draft.digest}`}
       />
       <PageCaption>{labels.boundary}</PageCaption>
       {!props.basisCurrent ? <Text role="alert">{copy.stale}</Text> : null}
@@ -741,7 +741,7 @@ function ReviewSummary(props: {
     <>
       <RecordHeading
         title={`${labels.review} ${props.review.id}`}
-        subtitle={`${props.review.input.draftId} · ${copy.digest} ${props.review.digest}`}
+        subtitle={`${props.review.input.draftId}, ${copy.digest} ${props.review.digest}`}
       />
       <RecordSummary>
         <RecordFact label={labels.exactNet}>
@@ -761,7 +761,7 @@ function ReviewSummary(props: {
         {labels.rationale}: {props.review.input.rationale}
       </Text>
       <Text>
-        {labels.syntheticBoundaryShort} ·{" "}
+        {labels.syntheticBoundaryShort},{" "}
         {props.review.input.acknowledgeSyntheticOnly ? copy.confirmed : copy.unknown}
       </Text>
     </>
@@ -810,7 +810,7 @@ function ReviewBasis(props: { locale: Locale; review: Review }) {
               id: "period",
               cells: [
                 labels.accountingPeriod,
-                `${props.review.basis.period.id} · ${props.review.basis.period.version}`,
+                `${props.review.basis.period.id}, ${props.review.basis.period.version}`,
               ],
             },
             { id: "coverage", cells: [labels.coverage, props.review.basis.coverage] },
@@ -839,7 +839,7 @@ function ReviewBasis(props: { locale: Locale; review: Review }) {
             id: role.role,
             cells: [
               labels.roleName(role.role),
-              `${role.code} · ${role.name} · ${role.accountId}`,
+              `${role.code}, ${role.name}, ${role.accountId}`,
               role.accountVersion,
               role.active ? labels.active : labels.inactive,
             ],
@@ -869,8 +869,8 @@ function ReviewContributions(props: { locale: Locale; review: Review }) {
         rows={props.review.basis.contributions.map((line) => ({
           id: `${line.voucherId}:${line.lineId}`,
           cells: [
-            `${line.factId} · ${line.factRevisionId} · ${line.factRevision}`,
-            `${line.voucherId} · ${line.lineId} · ${line.accountId}`,
+            `${line.factId}, ${line.factRevisionId}, ${line.factRevision}`,
+            `${line.voucherId}, ${line.lineId}, ${line.accountId}`,
             labels.roleName(line.role),
             line.debitMinor,
             line.creditMinor,
@@ -890,7 +890,7 @@ function ReviewPostingLines(props: { locale: Locale; review: Review }) {
     <RecordSection title={labels.proposedPostingLines}>
       {props.review.postingPlan ? (
         <Text>
-          {labels.changeSet}: {props.review.postingPlan.id} · {copy.digest}{" "}
+          {labels.changeSet}: {props.review.postingPlan.id}, {copy.digest}{" "}
           {props.review.postingPlan.planDigest}
         </Text>
       ) : null}
@@ -969,16 +969,16 @@ function ReviewReceipt(props: { locale: Locale; effect: ReclassificationEffect }
           {labels.outcome}: {labels.effectOutcome(props.effect.outcome)}
         </Text>
         <Text>
-          {labels.effectId}: {props.effect.id} · {copy.digest} {props.effect.digest}
+          {labels.effectId}: {props.effect.id}, {copy.digest} {props.effect.digest}
         </Text>
         <Text>
-          {labels.approvalId}: {props.effect.approvalId} · {labels.changeSet}:{" "}
-          {props.effect.changeSetId ?? "—"} · {labels.voucherId}: {props.effect.voucherId ?? "—"}
+          {labels.approvalId}: {props.effect.approvalId}, {labels.changeSet}:{" "}
+          {props.effect.changeSetId ?? "—"}, {labels.voucherId}: {props.effect.voucherId ?? "—"}
         </Text>
         {props.effect.postingReceipt ? (
           <Text>
-            {labels.postingReceipt}: {props.effect.postingReceipt.id} ·{" "}
-            {props.effect.postingReceipt.voucherNumber} · {props.effect.postingReceipt.committedAt}
+            {labels.postingReceipt}: {props.effect.postingReceipt.id},{" "}
+            {props.effect.postingReceipt.voucherNumber}, {props.effect.postingReceipt.committedAt}
           </Text>
         ) : (
           <Text>{labels.noEffectResult}</Text>
@@ -1031,7 +1031,7 @@ function ReviewActions(props: {
           disabled={props.uncertainWrite}
           options={props.approvalHistory.map((approval) => ({
             value: approval.id,
-            label: `${approval.id} · ${approval.actorId} · ${approval.expiresAt}`,
+            label: `${approval.id}, ${approval.actorId}, ${approval.expiresAt}`,
           }))}
         />
       ) : null}
@@ -1197,17 +1197,17 @@ function RecoveryResult({
             : labels.executed}
       </Text>
       <Text>
-        {labels.review}: {reviewId} · {copy.digest} {digest}
+        {labels.review}: {reviewId}, {copy.digest} {digest}
       </Text>
       {Schema.is(Vat.VatControlReclassificationApproval)(result) ? (
         <Text>
-          {labels.actor}: {result.actorId} · {labels.expires}: {result.expiresAt}
+          {labels.actor}: {result.actorId}, {labels.expires}: {result.expiresAt}
         </Text>
       ) : null}
       {Schema.is(Vat.VatControlReclassificationEffect)(result) ? (
         <Text>
-          {labels.effectId}: {result.id} · {labels.outcome}: {labels.effectOutcome(result.outcome)}{" "}
-          · {labels.voucherId}: {result.voucherId ?? "—"}
+          {labels.effectId}: {result.id}, {labels.outcome}: {labels.effectOutcome(result.outcome)} ,{" "}
+          {labels.voucherId}: {result.voucherId ?? "—"}
         </Text>
       ) : null}
       <Box>

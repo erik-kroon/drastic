@@ -440,8 +440,8 @@ function DraftConflict(
           <Details
             title={
               sv
-                ? `Senast sparat · version ${latest.data.revision}`
-                : `Latest saved · revision ${latest.data.revision}`
+                ? `Senast sparat, version ${latest.data.revision}`
+                : `Latest saved, revision ${latest.data.revision}`
             }
           >
             <Text>

@@ -346,7 +346,7 @@ function ExpenseAmounts(props: {
       <InputField
         name="gross"
         defaultValue={editableAmount(props.amounts?.grossMinor, props.scale)}
-        label={`${sv ? "Totalt" : "Total"} · ${props.currency}`}
+        label={`${sv ? "Totalt" : "Total"}, ${props.currency}`}
         inputMode="decimal"
       />
       <InputField

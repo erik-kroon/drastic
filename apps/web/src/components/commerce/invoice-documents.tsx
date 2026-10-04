@@ -117,7 +117,7 @@ function DocumentPanel(props: IssuedDocumentProps) {
           <Box display="grid" gap="sm">
             {earlier.map((item) => (
               <Button key={item.id} variant="ghost" onClick={() => setId(item.id)}>
-                {copy.original} ·{" "}
+                {copy.original},{" "}
                 {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(item.createdAt),
                 )}

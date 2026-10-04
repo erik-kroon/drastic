@@ -137,16 +137,16 @@ export function AdmitOpenItems({
                       <Text>
                         {"sourceIdentity" in entry
                           ? entry.sourceIdentity
-                          : `${entry.sourceAccount} · ${entry.currency}`}{" "}
-                        · {"amountMinor" in entry ? entry.amountMinor : entry.independentTotalMinor}{" "}
-                        · {entry.basis}
+                          : `${entry.sourceAccount}, ${entry.currency}`}{" "}
+                        , {"amountMinor" in entry ? entry.amountMinor : entry.independentTotalMinor}{" "}
+                        , {entry.basis}
                       </Text>
                       {"sourceIdentity" in entry ? (
                         <Text>
                           {"paymentIdentity" in entry
                             ? `${entry.paymentIdentity} → ${entry.itemIdentity}`
-                            : `${entry.sourceAccount} · ${entry.currency}`}{" "}
-                          · {entry.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")}
+                            : `${entry.sourceAccount}, ${entry.currency}`}{" "}
+                          , {entry.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")}
                         </Text>
                       ) : null}
                       <Box>

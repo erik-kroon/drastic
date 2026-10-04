@@ -117,7 +117,7 @@ export function SupplierPaymentFiles(props: CommerceProps & { recordId?: string 
                   </Button>
                 ) : invoice.reasons.length ? (
                   <Text key="state" tone="muted">
-                    {invoice.reasons.join(" · ")}
+                    {invoice.reasons.join(", ")}
                   </Text>
                 ) : (
                   <Text key="state" tone="muted">
@@ -312,7 +312,7 @@ function PayeeSetup(
             {sv ? "Förslags-ID" : "Proposal ID"}: {review.data.proposal.id}
           </PageCaption>
           <Text>
-            {review.data.proposal.creditorName} · {review.data.proposal.creditorIban} ·{" "}
+            {review.data.proposal.creditorName}, {review.data.proposal.creditorIban},{" "}
             {review.data.proposal.creditorBic}
           </Text>
           {review.data.verification ? (
@@ -492,8 +492,8 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
       {view ? (
         <>
           <PageCaption>
-            {sv ? "Förhandsgranskning" : "Preview"} {view.preview.id} ·{" "}
-            {view.preview.selection.count} {sv ? "fakturor" : "invoices"} ·{" "}
+            {sv ? "Förhandsgranskning" : "Preview"} {view.preview.id},{" "}
+            {view.preview.selection.count} {sv ? "fakturor" : "invoices"},{" "}
             {formatMinorAmount(view.preview.selection.totalMinor, 2, props.locale)} SEK
           </PageCaption>
           <DataTable
@@ -508,7 +508,7 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
               id: item.invoiceId,
               cells: [
                 item.supplierDocumentNumber,
-                `${item.creditorName} · ${item.creditorIban}`,
+                `${item.creditorName}, ${item.creditorIban}`,
                 `${formatMinorAmount(item.amountMinor, 2, props.locale)} SEK`,
               ],
             }))}
@@ -597,7 +597,7 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
           <PageCaption>{view.recovery}</PageCaption>
           {view.outcomes.map((outcome) => (
             <Text key={outcome.id} tone="muted">
-              {outcome.status} · {outcome.externalReference}
+              {outcome.status}, {outcome.externalReference}
             </Text>
           ))}
         </>

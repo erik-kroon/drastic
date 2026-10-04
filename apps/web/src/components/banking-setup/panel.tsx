@@ -130,12 +130,12 @@ export function BankingSetup({ consent, returnTo }: { consent?: string; returnTo
                 .map((item) => (
                   <Box key={item.id} display="grid" gap="sm">
                     <Text>
-                      {item.providerId} · {item.externalAccountId}
+                      {item.providerId}, {item.externalAccountId}
                     </Text>
                     <Text>
                       {setup.accounts.find((account) => account.id === item.accountId)?.code ??
                         item.accountId}{" "}
-                      ·{" "}
+                      ,{" "}
                       {item.revoked
                         ? sv
                           ? "Stoppad"
@@ -195,16 +195,16 @@ export function BankingSetup({ consent, returnTo }: { consent?: string; returnTo
                 .map((feed) => (
                   <Box key={feed.consent.id} display="grid" gap="sm">
                     <Text>
-                      {feed.consent.providerId} · {feed.consent.externalAccountId} ·{" "}
+                      {feed.consent.providerId}, {feed.consent.externalAccountId},{" "}
                       {feed.account.accountId}
                     </Text>
                     <Text>
-                      {sv ? "Läst" : "Read at"}: {feed.readAt} · {sv ? "Sidor" : "Pages"}:{" "}
+                      {sv ? "Läst" : "Read at"}: {feed.readAt}, {sv ? "Sidor" : "Pages"}:{" "}
                       {feed.cursorSnapshot.retainedPageCount}
                       {feed.pageEvidenceTruncated
                         ? sv
-                          ? " · listan är förkortad"
-                          : " · list truncated"
+                          ? ", listan är förkortad"
+                          : ", list truncated"
                         : ""}
                     </Text>
                     <Text>

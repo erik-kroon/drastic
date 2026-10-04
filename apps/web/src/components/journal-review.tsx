@@ -189,12 +189,12 @@ function PlanReview({
         {copy.journal_digest}: {plan.planDigest}
       </Text>
       <Text tone="muted">
-        {plan.canonicalization} · v{plan.version} · {plan.createdAt}
+        {plan.canonicalization}, v{plan.version}, {plan.createdAt}
       </Text>
       {plan.groups.map((group) => (
         <Box key={group.id} display="grid" gap="lg" minWidth="zero">
           <Text tone="muted">
-            {group.id} · {group.dependsOnGroupIds.join(", ")}
+            {group.id}, {group.dependsOnGroupIds.join(", ")}
           </Text>
           {group.actions.map((action) => (
             <SealedAction
@@ -304,7 +304,7 @@ function PlanReview({
             {copy.journal_plan_id}: {execution.data.changeSetId}
           </Text>
           <Text>
-            {copy.journal_voucher}: {execution.data.voucherId} · {execution.data.voucherNumber}
+            {copy.journal_voucher}: {execution.data.voucherId}, {execution.data.voucherNumber}
           </Text>
           <Text>
             {copy.journal_sequence}: {execution.data.sequence}
@@ -341,12 +341,11 @@ export function SealedAction({
         {copy.journal_rationale}: {action.rationale}
       </Text>
       <Text tone="muted">
-        {action.postingDate} · {action.currency} · {action.series} · {action.postingPurpose} ·{" "}
+        {action.postingDate}, {action.currency}, {action.series}, {action.postingPurpose},{" "}
         {action.taxAssessment}
       </Text>
       <Text tone="muted">
-        {action.eventId} · {action.occurrenceKey} · {action.fiscalYearId} ·{" "}
-        {action.accountingPeriodId}
+        {action.eventId}, {action.occurrenceKey}, {action.fiscalYearId}, {action.accountingPeriodId}
       </Text>
       {action.correctsVoucherId ? (
         <Text>
@@ -370,7 +369,7 @@ export function SealedAction({
             id: line.lineId,
             cells: [
               line.lineId,
-              account ? `${account.code} · ${account.name} · ${line.accountId}` : line.accountId,
+              account ? `${account.code}, ${account.name}, ${line.accountId}` : line.accountId,
               line.debitMinor,
               line.creditMinor,
               line.description,

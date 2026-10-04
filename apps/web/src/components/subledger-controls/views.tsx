@@ -27,24 +27,24 @@ export function BasisDetails({
       </summary>
       <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
         <Text>
-          {basis.input.kind === "acquisition" ? copy.acquisition : copy.imported} ·{" "}
+          {basis.input.kind === "acquisition" ? copy.acquisition : copy.imported},{" "}
           {basis.input.effectiveOn}
         </Text>
         <Text>
-          {copy.cost}: {basis.input.originalCostMinor} · {copy.accumulated}:{" "}
-          {basis.input.accumulatedMinor} · {copy.carrying}: {basis.input.carryingMinor}
+          {copy.cost}: {basis.input.originalCostMinor}, {copy.accumulated}:{" "}
+          {basis.input.accumulatedMinor}, {copy.carrying}: {basis.input.carryingMinor}
         </Text>
         <Text>
-          {basis.input.sourceLocator} · {basis.input.rationale}
+          {basis.input.sourceLocator}, {basis.input.rationale}
         </Text>
         <Text>
-          {copy.evidence}: {basis.input.evidenceId} · {basis.sourceSha256}
+          {copy.evidence}: {basis.input.evidenceId}, {basis.sourceSha256}
         </Text>
         <Text>
-          {copy.reviewEvidence}: {basis.input.reviewEvidenceId} · {basis.reviewSha256}
+          {copy.reviewEvidence}: {basis.input.reviewEvidenceId}, {basis.reviewSha256}
         </Text>
         <Text>
-          {copy.voucher}: {basis.input.voucherId} · {basis.receipt.actorId} · {basis.createdAt}
+          {copy.voucher}: {basis.input.voucherId}, {basis.receipt.actorId}, {basis.createdAt}
         </Text>
         <DataTable
           title={copy.lines}
@@ -164,14 +164,14 @@ function Contents({
       <Text>{report.hasReviewGaps ? copy.gaps : copy.noGaps}</Text>
       <Text>{copy.warning}</Text>
       <Text>
-        {copy.asOf}: {report.input.asOfDate} · {copy.sequence}: {report.sequence} ·{" "}
-        {report.currency} · {report.currencyScale}
+        {copy.asOf}: {report.input.asOfDate}, {copy.sequence}: {report.sequence}, {report.currency},{" "}
+        {report.currencyScale}
       </Text>
       <Text>
         {copy.digest}: {report.digest}
       </Text>
       <Text>
-        {report.input.rationale} · {copy.inventory}: {report.input.inventoryEvidenceId} ·{" "}
+        {report.input.rationale}, {copy.inventory}: {report.input.inventoryEvidenceId},{" "}
         {report.inventorySha256}
       </Text>
       <Text>{copy.downloadWarning}</Text>
@@ -207,7 +207,7 @@ function Contents({
         rows={report.controls.map((account) => ({
           id: account.accountId,
           cells: [
-            `${account.code} · ${account.name}`,
+            `${account.code}, ${account.name}`,
             account.expectedMinor,
             account.ledgerMinor,
             account.differenceMinor,
@@ -223,11 +223,11 @@ function Contents({
             <Box key={schedule.revision.scheduleId} display="grid" gap="md" minWidth="zero">
               <Heading>{schedule.revision.terms.name}</Heading>
               <Text>
-                {schedule.revision.scheduleId} · {schedule.revision.digest}
+                {schedule.revision.scheduleId}, {schedule.revision.digest}
               </Text>
               <Text>
-                {copy.recognized}: {schedule.recognizedMinor} · {copy.impairment}:{" "}
-                {schedule.impairmentMinor ?? "0"} · {copy.carrying}:{" "}
+                {copy.recognized}: {schedule.recognizedMinor}, {copy.impairment}:{" "}
+                {schedule.impairmentMinor ?? "0"}, {copy.carrying}:{" "}
                 {schedule.carryingMinor ?? copy.unavailable}
               </Text>
               {schedule.basisReversed ? <Text>{copy.reversed}</Text> : null}
@@ -277,7 +277,7 @@ function Contents({
             rows={report.ledgerLines.map((line) => ({
               id: `${line.voucherId}:${line.lineId}`,
               cells: [
-                `${line.voucherId} · ${line.postingDate}`,
+                `${line.voucherId}, ${line.postingDate}`,
                 line.lineId,
                 line.accountId,
                 line.debitMinor,

@@ -92,8 +92,8 @@ export function InvoicePaymentReview(
         </Button>
       </Box>
       <RecordHeading
-        title={`${view.data?.application ? copy.savedTitle : copy.reviewTitle} · ${invoice.documentNumber}`}
-        subtitle={`${invoice.counterpartyName}${plan ? ` · ${plan.payment.postingDate}` : ""}`}
+        title={`${view.data?.application ? copy.savedTitle : copy.reviewTitle}, ${invoice.documentNumber}`}
+        subtitle={`${invoice.counterpartyName}${plan ? `, ${plan.payment.postingDate}` : ""}`}
         action={
           <Button
             variant="ghost"

@@ -192,7 +192,7 @@ function AccountReportSheet(props: {
     <RecordSheet
       title={
         props.line
-          ? `${props.line.code} · ${props.line.name}`
+          ? `${props.line.code}, ${props.line.name}`
           : locale === "sv"
             ? "Kontodetaljer"
             : "Account details"
@@ -286,7 +286,7 @@ function ReportBasis({
   return (
     <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
       <Text>
-        {report.id} · {report.sequence}
+        {report.id}, {report.sequence}
       </Text>
       <Text>
         {sv
@@ -367,10 +367,10 @@ export function AccountExplanation({
       {first ? (
         <>
           <Text>
-            {first.line.code} · {first.line.name}
+            {first.line.code}, {first.line.name}
           </Text>
           <Text tone="muted">
-            {first.report.currency} · {first.report.startsOn} – {first.report.endsOn}
+            {first.report.currency}, {first.report.startsOn} – {first.report.endsOn}
           </Text>
           <Text>{copy.report_formula}</Text>
           <DataTable

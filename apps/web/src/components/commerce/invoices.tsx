@@ -500,7 +500,7 @@ function InvoiceHistory(props: CommerceProps & { id: string }) {
           {history.data.items.map((revision) => (
             <Details
               key={revision.revision}
-              title={`${copy.revision} ${revision.revision} · ${revision.dueOn}`}
+              title={`${copy.revision} ${revision.revision}, ${revision.dueOn}`}
             >
               <Text>{revision.description}</Text>
               <Text>

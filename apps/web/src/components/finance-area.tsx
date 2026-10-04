@@ -4,7 +4,7 @@ import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { Box } from "@open-erp/ui/components/box";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
 import { ArrowLeft } from "lucide-react";
-import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
+import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import {
@@ -67,6 +67,12 @@ const InvoiceDrafts = lazy(() =>
 const Counterparties = lazy(() =>
   import("@/components/commerce/counterparties").then((module) => ({
     default: module.Counterparties,
+  })),
+);
+
+const CounterpartyRegister = lazy(() =>
+  import("@/components/commerce/counterparty-register").then((module) => ({
+    default: module.CounterpartyRegister,
   })),
 );
 
@@ -171,6 +177,9 @@ export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
     return <DocumentArea {...props} />;
   }
 
+  if (props.area === "purchases" && props.view === "parties")
+    return <SupplierDirectoryArea {...props} />;
+
   if (
     props.area === "purchases" &&
     (props.view === undefined || props.view === "register") &&
@@ -185,6 +194,46 @@ export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
   }
 
   return <OwnedFinanceArea {...props} />;
+}
+
+function SupplierDirectoryArea(props: ComponentProps<typeof OwnedFinanceArea>) {
+  const { book, locale } = useBookWorkspace();
+  const navigate = useNavigate();
+  const base = `${workspacePath(book)}/purchases`;
+  const work = decodeWorkReturn(props.work);
+
+  return (
+    <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+      <CounterpartyRegister
+        book={book}
+        locale={locale}
+        role="supplier"
+        title={locale === "sv" ? "Inköp" : "Purchases"}
+        recordId={props.record}
+        navigation={
+          <FinanceNavigation
+            area="purchases"
+            selected="parties"
+            base={base}
+            locale={locale}
+            work={work}
+          />
+        }
+        onOpen={(id) =>
+          void navigate({
+            to: base,
+            search: {
+              view: "parties",
+              record: id || undefined,
+              work: props.work,
+              returnTo: props.returnTo,
+            },
+            resetScroll: false,
+          })
+        }
+      />
+    </Suspense>
+  );
 }
 
 function DocumentArea(props: ComponentProps<typeof OwnedFinanceArea>) {
@@ -274,22 +323,44 @@ function OwnedFinanceArea(props: {
   const onOpenOccurrence = (id: string) =>
     navigateArea({ record: record || undefined, occurrence: id || undefined });
 
+  if (area === "closing")
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        <ClosingWorkspace
+          title={copy.closing}
+          navigation={
+            <FinanceNavigation
+              area={area}
+              selected={selected}
+              base={base}
+              locale={locale}
+              work={work}
+            />
+          }
+          recordId={record}
+          onOpen={onOpen}
+        />
+      </Suspense>
+    );
+
   return (
     <>
       <WorkspaceHeader
         title={copy[area]}
+        navigation={
+          <FinanceNavigation
+            area={area}
+            selected={selected}
+            base={base}
+            locale={locale}
+            work={work}
+          />
+        }
         action={
           <AreaActions area={area} base={base} selected={selected} locale={locale} work={work} />
         }
       />
       <PageContent>
-        <FinanceNavigation
-          area={area}
-          selected={selected}
-          base={base}
-          locale={locale}
-          work={work}
-        />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
           {selected === "coverage" ? (
@@ -421,7 +492,6 @@ function OwnedFinanceArea(props: {
               onOpen={onOpen}
             />
           ) : null}
-          {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}
         </Suspense>
       </PageContent>
     </>
@@ -494,24 +564,33 @@ function FinanceNavigation(props: {
 }) {
   const owner = useOwnerReturn();
 
-  if (props.area === "reports") return null;
   const tabs = areaTabs(props.area, props.locale);
+
+  const primary = new Set(primaryFinanceTabs(props.area, tabs));
 
   if (tabs.length < 2) return null;
 
   return (
-    <PageTabs label={frontendCopy(props.locale)[props.area]}>
-      {tabs.map((tab) => (
-        <PageTab
-          key={tab.key}
-          href={workReturnHref(props.base, tab.key, props.work, owner)}
-          active={props.selected === tab.key}
-        >
-          {tab.label}
-        </PageTab>
-      ))}
-    </PageTabs>
+    <RegisterNavigation
+      label={frontendCopy(props.locale)[props.area]}
+      options={tabs
+        .filter((tab) => primary.has(tab.key) || props.selected === tab.key)
+        .map((tab) => ({
+          label: tab.label,
+          href: workReturnHref(props.base, tab.key, props.work, owner),
+          active: props.selected === tab.key,
+        }))}
+    />
   );
+}
+
+function primaryFinanceTabs(area: string, tabs: readonly { key: string }[]) {
+  if (area === "purchases") return ["register", "parties", "expenses", "supplier-payment-files"];
+
+  if (area === "reports")
+    return ["library", "profit_and_loss", "balance_sheet", "ledger", "register", "cash_flow"];
+
+  return tabs.map((tab) => tab.key);
 }
 
 function areaTabs(
@@ -537,21 +616,22 @@ function areaTabs(
       { key: "parties", label: copy.parties },
     ],
     purchases: [
+      { key: "register", label: sv ? "Leverantörsfakturor" : "Supplier invoices" },
+      { key: "parties", label: sv ? "Leverantörer" : "Suppliers" },
+      { key: "expenses", label: sv ? "Utlägg och kvitton" : "Expenses and receipts" },
+      { key: "supplier-payment-files", label: sv ? "Betalfil" : "Payment files" },
       { key: "supplier-drafts", label: sv ? "Fakturautkast" : "Invoice drafts" },
       { key: "invoices", label: sv ? "Registrerade" : "Registered" },
-      { key: "supplier-payment-files", label: sv ? "Betalningsfiler" : "Payment files" },
       { key: "documents", label: sv ? "Dokument" : "Documents" },
-      { key: "expenses", label: copy.expenses },
-      { key: "parties", label: copy.parties },
     ],
     reports: [
       { key: "library", label: sv ? "Alla rapporter" : "All reports" },
-      { key: "trial", label: sv ? "Saldobalans" : "Trial balance" },
+      { key: "profit_and_loss", label: sv ? "Resultat" : "Profit and loss" },
+      { key: "balance_sheet", label: sv ? "Balans" : "Balance sheet" },
       { key: "ledger", label: copy.ledger },
-      { key: "profit_and_loss", label: sv ? "Resultaträkning" : "Profit and loss" },
-      { key: "balance_sheet", label: sv ? "Balansräkning" : "Balance sheet" },
-      { key: "cash_flow", label: sv ? "Kassaflöde" : "Cash flow" },
       { key: "register", label: sv ? "Fakturaregister" : "Invoice register" },
+      { key: "cash_flow", label: sv ? "Kassaflöde" : "Cash flow" },
+      { key: "trial", label: sv ? "Saldobalans" : "Trial balance" },
       { key: "subledgers", label: sv ? "Tillgångskontroller" : "Asset controls" },
       { key: "exchange-rates", label: sv ? "Valutakurser" : "Exchange rates" },
       { key: "export", label: sv ? "Granskningspaket" : "Review pack" },

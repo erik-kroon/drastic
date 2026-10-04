@@ -308,14 +308,14 @@ function ExactCoverChoices({
 
               return (
                 <Text key={`${leg.voucherId}:${leg.lineId}`}>
-                  {line?.postedOn} · {line?.description} ·{" "}
+                  {line?.postedOn}, {line?.description},{" "}
                   {formatMinorAmount(leg.amountMinor, data.currencyScale, locale)} {data.currency}
                 </Text>
               );
             })}
             <Text>
               {sv ? "Totalt" : "Total"}:{" "}
-              {formatMinorAmount(cover.totalMinor, data.currencyScale, locale)} {data.currency} ·{" "}
+              {formatMinorAmount(cover.totalMinor, data.currencyScale, locale)} {data.currency},{" "}
               {sv ? "Kvar" : "Left over"}: 0
             </Text>
             {conflicts.length ? (
@@ -540,14 +540,14 @@ function MatchLineChoices({
             <Box minWidth="zero" flexGrow>
               <Text>{item.description}</Text>
               <PageCaption>
-                {item.postedOn} ·{" "}
+                {item.postedOn},{" "}
                 {formatMinorAmount(item.remainingMinor, data.currencyScale, locale)} {data.currency}{" "}
                 {sv ? "kvar" : "remaining"}
               </PageCaption>
             </Box>
             {selected ? (
               <InputField
-                label={`${sv ? "Belopp" : "Amount"} · ${item.description}`}
+                label={`${sv ? "Belopp" : "Amount"}, ${item.description}`}
                 value={amounts[key] ?? ""}
                 inputMode="decimal"
                 required
@@ -972,13 +972,13 @@ function MatchingTransactions(
         <RecordColumns>
           <Box display="grid" gap="sm">
             <PageCaption>
-              {sv ? "Banktransaktion" : "Bank transaction"} · {capacity.observedOn}
+              {sv ? "Banktransaktion" : "Bank transaction"}, {capacity.observedOn}
             </PageCaption>
             <Text>{records.data.source.description}</Text>
           </Box>
           <Box display="grid" gap="sm">
             <PageCaption>
-              {sv ? "Bokförd transaktion" : "Posted transaction"} · {capacity.postedOn}
+              {sv ? "Bokförd transaktion" : "Posted transaction"}, {capacity.postedOn}
             </PageCaption>
             <Text>{records.data.line.description}</Text>
             <Box>

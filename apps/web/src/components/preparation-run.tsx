@@ -91,7 +91,7 @@ export function PreparationRunPanel({
             {copy.auto_run_id}: {run.data.id}
           </Text>
           <Text>
-            {copy.auto_rule_id}: {run.data.ruleId} · {copy.auto_activation_id}:{" "}
+            {copy.auto_rule_id}: {run.data.ruleId}, {copy.auto_activation_id}:{" "}
             {run.data.activationId}
           </Text>
           <Text>
@@ -154,7 +154,7 @@ export function PreparationRunPanel({
                 entry.blocker ? `${entry.blocker.code}: ${entry.blocker.message}` : "—",
                 entry.actorId,
                 entry.recordedAt,
-                `${entry.receipt.key} · ${entry.receipt.operation}`,
+                `${entry.receipt.key}, ${entry.receipt.operation}`,
               ],
             }))}
           />

@@ -306,7 +306,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
         <>
           <RecordHeading
             title={view.current.terms.name}
-            subtitle={`${view.current.terms.kind === "asset" ? copy.asset : copy.deferral} · ${copy.revision} ${view.current.revision}`}
+            subtitle={`${view.current.terms.kind === "asset" ? copy.asset : copy.deferral}, ${copy.revision} ${view.current.revision}`}
             action={
               view.revisionAllowed && setup?.blockers.length === 0 ? (
                 <Button onClick={() => setEditing(true)}>
@@ -423,7 +423,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                         if (occurrence.changeSetId) props.onPrepared(occurrence.changeSetId);
                       }}
                     >
-                      {copy.review} · {occurrence.ordinal}
+                      {copy.review}, {occurrence.ordinal}
                     </Button>
                   ) : null}
                 </Box>,
@@ -463,7 +463,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               }}
             />
             <Text>
-              {view.current.scheduleId} · {view.current.digest}
+              {view.current.scheduleId}, {view.current.digest}
             </Text>
             <Text>{copy.balanceHelp}</Text>
           </Disclosure>
@@ -473,7 +473,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               {view.revisions.map((revision) => (
                 <Box key={revision.digest} display="grid" gap="md" minWidth="zero">
                   <Text>
-                    {copy.revision} {revision.revision} · {revision.createdAt}
+                    {copy.revision} {revision.revision}, {revision.createdAt}
                   </Text>
                   <Text>{revision.digest}</Text>
                   <Text>
@@ -483,12 +483,12 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                     {copy.rationale}: {revision.terms.rationale}
                   </Text>
                   <Text>
-                    {copy.cost}: {revision.terms.costMinor} · {copy.residual}:{" "}
+                    {copy.cost}: {revision.terms.costMinor}, {copy.residual}:{" "}
                     {revision.terms.residualMinor}
                   </Text>
                   <Text>
-                    {copy.debit}: {revision.terms.debitAccountId} · {copy.credit}:{" "}
-                    {revision.terms.creditAccountId} · {copy.series}: {revision.terms.series}
+                    {copy.debit}: {revision.terms.debitAccountId}, {copy.credit}:{" "}
+                    {revision.terms.creditAccountId}, {copy.series}: {revision.terms.series}
                   </Text>
                   <DataTable
                     title={`${copy.revision} ${revision.revision}`}
@@ -856,7 +856,7 @@ function AssetImpairmentPrepareForm(props: {
       )
       .map((account) => ({
         value: account.id,
-        label: `${account.code} · ${account.name}`,
+        label: `${account.code}, ${account.name}`,
       })),
   ];
 
@@ -1331,16 +1331,16 @@ function AssetImpairmentReviewFacts(props: {
           {copy.impairmentDecisionKey}: {review.input.decisionKey}
         </Text>
         <Text>
-          {copy.impairmentPostingDate}: {review.input.postingDate} · {copy.period}:{" "}
-          {review.input.accountingPeriodId} · {copy.series}: {review.input.series}
+          {copy.impairmentPostingDate}: {review.input.postingDate}, {copy.period}:{" "}
+          {review.input.accountingPeriodId}, {copy.series}: {review.input.series}
         </Text>
         <Text>
-          {copy.impairmentLossAccount}: {review.input.lossAccountId} ·{" "}
-          {copy.impairmentContraAccount}: {review.input.accumulatedImpairmentAccountId}
+          {copy.impairmentLossAccount}: {review.input.lossAccountId}, {copy.impairmentContraAccount}
+          : {review.input.accumulatedImpairmentAccountId}
         </Text>
         <Text>
-          {copy.impairment}: {money(review.input.impairmentMinor)} · {copy.future}:{" "}
-          {money(review.basis.futureMinor)} · {copy.impairmentResidual}:{" "}
+          {copy.impairment}: {money(review.input.impairmentMinor)}, {copy.future}:{" "}
+          {money(review.basis.futureMinor)}, {copy.impairmentResidual}:{" "}
           {money(review.input.residualMinor)}
         </Text>
         <Text>{review.input.rationale}</Text>
@@ -1365,7 +1365,7 @@ function AssetImpairmentReviewFacts(props: {
       </RecordSection>
       <RecordSection title={copy.impairmentProposedLines}>
         <Text>
-          {copy.impairmentChangeSet}: {review.postingPlan.id} · {copy.digest}:{" "}
+          {copy.impairmentChangeSet}: {review.postingPlan.id}, {copy.digest}:{" "}
           {review.postingPlan.planDigest}
         </Text>
         <DataTable
@@ -1498,8 +1498,8 @@ function AssetImpairmentReviewActions(props: {
       ) : null}
       {props.approval ? (
         <Text>
-          {copy.impairmentApproval}: {props.approval.id} · {copy.impairmentApprovalActor}:{" "}
-          {props.approval.actorId} · {copy.impairmentApprovalExpiry}: {props.approval.expiresAt}
+          {copy.impairmentApproval}: {props.approval.id}, {copy.impairmentApprovalActor}:{" "}
+          {props.approval.actorId}, {copy.impairmentApprovalExpiry}: {props.approval.expiresAt}
         </Text>
       ) : null}
       {props.approvalCurrent ? (
@@ -1611,8 +1611,8 @@ function AssetImpairmentConsequences(props: {
               </RecordFact>
             </RecordSummary>
             <Text>
-              {copy.impairmentReceipt}: {effect.postingReceipt.id} · {copy.voucher}:{" "}
-              {effect.postingReceipt.voucherId} · {effect.postingReceipt.committedAt}
+              {copy.impairmentReceipt}: {effect.postingReceipt.id}, {copy.voucher}:{" "}
+              {effect.postingReceipt.voucherId}, {effect.postingReceipt.committedAt}
             </Text>
             <Text>{copy.impairmentControlCoverage}</Text>
           </>
@@ -1643,11 +1643,11 @@ function AssetImpairmentConsequences(props: {
           <Box role="status" display="grid" gap="sm">
             <Text>{copy.impairmentDisposalCommitted}</Text>
             <Text>
-              {copy.voucher}: {disposal.postingReceipt.voucherId} · {copy.impairmentReceipt}:{" "}
+              {copy.voucher}: {disposal.postingReceipt.voucherId}, {copy.impairmentReceipt}:{" "}
               {disposal.postingReceipt.id}
             </Text>
             <Text>
-              {copy.impairmentContraDebit}: {money(disposal.impairmentMinorReleased ?? "0")} ·{" "}
+              {copy.impairmentContraDebit}: {money(disposal.impairmentMinorReleased ?? "0")},{" "}
               {copy.impairmentCarryingLoss}: {money(disposal.carryingMinorReleased)}
             </Text>
           </Box>

@@ -139,11 +139,11 @@ function PaymentAllocation(
       {capacity.data ? (
         <>
           <Text>
-            {copy.units} {capacity.data.currency} · {copy.scale}: {capacity.data.currencyScale}
+            {copy.units} {capacity.data.currency}, {copy.scale}: {capacity.data.currencyScale}
           </Text>
           <Text>
-            {copy.amount}: {capacity.data.amountMinor} · {copy.recordedAllocated}:{" "}
-            {capacity.data.allocatedMinor} · {copy.remaining}: {capacity.data.remainingMinor}
+            {copy.amount}: {capacity.data.amountMinor}, {copy.recordedAllocated}:{" "}
+            {capacity.data.allocatedMinor}, {copy.remaining}: {capacity.data.remainingMinor}
           </Text>
           <Facts title={copy.facts} value={capacity.data} />
         </>
@@ -292,10 +292,10 @@ function AllocationReview(props: CommerceProps & { id: string }) {
             {copy.digest}: {plan.digest}
           </Text>
           <Text>
-            {copy.units} {plan.payment.currency} · {copy.scale}: {plan.payment.currencyScale}
+            {copy.units} {plan.payment.currency}, {copy.scale}: {plan.payment.currencyScale}
           </Text>
           <Text>
-            {copy.total}: {plan.totalMinor} · {copy.remaining}: {plan.paymentRemainingAfterMinor}
+            {copy.total}: {plan.totalMinor}, {copy.remaining}: {plan.paymentRemainingAfterMinor}
           </Text>
           <Text>
             {copy.reason}: {plan.rationale}
@@ -316,7 +316,7 @@ function AllocationReview(props: CommerceProps & { id: string }) {
             rows={plan.legs.map((leg) => ({
               id: leg.invoiceId,
               cells: [
-                `${leg.documentNumber} · ${leg.invoiceId}`,
+                `${leg.documentNumber}, ${leg.invoiceId}`,
                 leg.counterpartyName,
                 leg.revision,
                 leg.outstandingBeforeMinor,

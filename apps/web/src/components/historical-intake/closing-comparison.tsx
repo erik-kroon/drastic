@@ -55,14 +55,14 @@ export function ClosingComparison({
                 : "The import or balance comparison is incomplete."}
           </Text>
           <Text>
-            {sv ? "Till och med" : "Through"} {comparison.data.asOf} ·{" "}
+            {sv ? "Till och med" : "Through"} {comparison.data.asOf},{" "}
             {sv ? "Bokföringsversion" : "Ledger sequence"} {comparison.data.bookSequence}
           </Text>
           {comparison.data.items.map((item) => (
             <Box key={item.accountId} display="grid" gap="sm">
               <Text>
-                {item.code} · {sv ? "Källa" : "Source"}: {item.expectedMinor} ·{" "}
-                {sv ? "Bokfört" : "Ledger"}: {item.actualMinor} · {sv ? "Skillnad" : "Difference"}:{" "}
+                {item.code}, {sv ? "Källa" : "Source"}: {item.expectedMinor},{" "}
+                {sv ? "Bokfört" : "Ledger"}: {item.actualMinor}, {sv ? "Skillnad" : "Difference"}:{" "}
                 {item.differenceMinor}
               </Text>
             </Box>

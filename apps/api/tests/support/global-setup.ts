@@ -23,6 +23,7 @@ const sourceRoots = [
   "jurisdictions/se",
   "packages/config",
   "config",
+  "patches",
   "package.json",
   "bun.lock",
   "vite.config.ts",

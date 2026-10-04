@@ -83,11 +83,11 @@ function IntakeWorkspace(props: IntakeProps) {
         {inventory.data?.items.map((item) => (
           <Box key={item.occurrence.id} display="grid" gap="sm" minWidth="zero">
             <Text>
-              {item.occurrence.filename} · {item.occurrence.sourceSystem} ·{" "}
+              {item.occurrence.filename}, {item.occurrence.sourceSystem},{" "}
               {item.occurrence.sourceAccountId}
             </Text>
             <Text>
-              {item.occurrence.occurrenceKey} / {item.occurrence.sourceRevision} ·{" "}
+              {item.occurrence.occurrenceKey} / {item.occurrence.sourceRevision},{" "}
               {item.occurrence.retainedAt}
             </Text>
             <Text>{item.admission ? copy.admitted : item.occurrence.id}</Text>

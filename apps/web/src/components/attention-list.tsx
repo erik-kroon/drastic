@@ -39,8 +39,8 @@ export function AttentionList(props: {
           </Text>
           {page ? (
             <PageCaption>
-              {copy.openCount}: {page.counts.open} · {copy.completedCount}: {page.counts.completed}{" "}
-              · {copy.splitScope}
+              {copy.openCount}: {page.counts.open}, {copy.completedCount}: {page.counts.completed} ,{" "}
+              {copy.splitScope}
             </PageCaption>
           ) : null}
         </Box>

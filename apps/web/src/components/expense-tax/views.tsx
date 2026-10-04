@@ -133,7 +133,7 @@ export function TaxSnapshotEntry(props: {
   return (
     <details>
       <summary>
-        {entry.source.facts.description} ·{" "}
+        {entry.source.facts.description},{" "}
         {entry.assessment.state === "included_synthetic" ? copy.synthetic : copy.excluded}
       </summary>
       <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
@@ -202,12 +202,12 @@ export function TaxSnapshotEntry(props: {
           <Box display="grid" gap="sm">
             <Text>{copy.calculation}</Text>
             <Text>
-              {calculation.taxProductNumerator} / {calculation.rateDenominator} · {copy.remainder}:{" "}
+              {calculation.taxProductNumerator} / {calculation.rateDenominator}, {copy.remainder}:{" "}
               {calculation.taxRemainder}
             </Text>
             {calculation.deductionProductNumerator !== null ? (
               <Text>
-                {calculation.deductionProductNumerator} / {calculation.deductionDenominator} ·{" "}
+                {calculation.deductionProductNumerator} / {calculation.deductionDenominator},{" "}
                 {copy.remainder}: {calculation.deductionRemainder}
               </Text>
             ) : null}
@@ -240,7 +240,7 @@ export function TaxSnapshotEntry(props: {
             <summary>{copy.reviewTitle}</summary>
             <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
               <Text>
-                {copy.reviewedBy}: {entry.review.receipt.actorId} · {entry.review.recordedAt}
+                {copy.reviewedBy}: {entry.review.receipt.actorId}, {entry.review.recordedAt}
               </Text>
               <TaxFactsTable facts={entry.review.facts} locale={locale} />
               {entry.review.evidenceRefs.map((ref) => (

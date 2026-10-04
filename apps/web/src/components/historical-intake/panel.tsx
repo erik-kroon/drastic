@@ -77,7 +77,7 @@ export function HistoricalIntake({
                 .map(({ occurrence }) => (
                   <Box key={occurrence.id}>
                     <Button variant="ghost" onClick={() => openSource(occurrence.id)}>
-                      {occurrence.filename} · {occurrence.retainedAt.slice(0, 10)}
+                      {occurrence.filename}, {occurrence.retainedAt.slice(0, 10)}
                     </Button>
                   </Box>
                 ))}
@@ -219,7 +219,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
                 });
               }}
             >
-              {item.ordinal}. {item.encoding} · {item.createdAt.slice(0, 10)}
+              {item.ordinal}. {item.encoding}, {item.createdAt.slice(0, 10)}
             </Button>
             <Text tone="muted">
               {item.ready
@@ -375,7 +375,7 @@ function InspectionSummary({ preview, sv }: { preview: typeof Sie.SiePreview.Typ
             : "Resolve the file errors before continuing."}
       </Text>
       <Text>
-        {preview.vouchers.length} {sv ? "verifikationer" : "vouchers"} · {preview.controls.length}{" "}
+        {preview.vouchers.length} {sv ? "verifikationer" : "vouchers"}, {preview.controls.length}{" "}
         {sv ? "kontrollsaldon" : "control balances"}
       </Text>
       {preview.diagnostics.map((item, index) => (

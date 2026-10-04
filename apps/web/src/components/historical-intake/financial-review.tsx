@@ -236,15 +236,14 @@ export function ReviewSourceVoucher({
         .map((action) => (
           <Box key={action.eventId} display="grid" gap="sm">
             <Text>
-              {action.description} · {action.postingDate} · {action.currency}
+              {action.description}, {action.postingDate}, {action.currency}
             </Text>
             {action.lines.map((line) => (
               <Text key={line.lineId}>
                 {setup.accounts.find((account) => account.id === line.accountId)?.code ??
                   line.accountId}{" "}
-                · {sv ? "Debet" : "Debit"}: {line.debitMinor} · {sv ? "Kredit" : "Credit"}:{" "}
-                {line.creditMinor} ({sv ? "minsta valutaenhet" : "minor units"}) ·{" "}
-                {line.description}
+                , {sv ? "Debet" : "Debit"}: {line.debitMinor}, {sv ? "Kredit" : "Credit"}:{" "}
+                {line.creditMinor} ({sv ? "minsta valutaenhet" : "minor units"}), {line.description}
               </Text>
             ))}
             <Text>{action.rationale}</Text>

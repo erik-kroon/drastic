@@ -91,7 +91,7 @@ export function ConsentDetail({ id }: { id: string }) {
     <Box display="grid" gap="lg">
       <AccountingStatus locale={locale} pending={consent.isPending} error={consent.error} />
       {consent.data ? (
-        <RecordSection title={`${consent.data.providerId} · ${consent.data.externalAccountId}`}>
+        <RecordSection title={`${consent.data.providerId}, ${consent.data.externalAccountId}`}>
           <RecordSummary>
             <RecordFact label="Status">
               {consent.data.revoked
@@ -164,7 +164,7 @@ export function ConsentDetail({ id }: { id: string }) {
                   timeStyle: "short",
                   timeZone: "UTC",
                 }).format(new Date(batch.receivedAt))}{" "}
-                UTC ·{" "}
+                UTC,{" "}
                 {batch.providerOutcome === "delivered"
                   ? sv
                     ? "Levererat"
@@ -178,18 +178,18 @@ export function ConsentDetail({ id }: { id: string }) {
                       : "Failed"}
               </Text>
               <Text>
-                {sv ? "Nya poster" : "New records"}: {batch.recordCount} · {batch.overlapCount}{" "}
+                {sv ? "Nya poster" : "New records"}: {batch.recordCount}, {batch.overlapCount}{" "}
                 {sv ? "redan sparade" : "already retained"}
               </Text>
               <details>
                 <summary>{sv ? "Leveranskvitto" : "Delivery receipt"}</summary>
                 <Text>
-                  {batch.id} · {batch.sourceRevision}
+                  {batch.id}, {batch.sourceRevision}
                 </Text>
                 <Text>{batch.receivedAt}</Text>
                 {batch.items.map((item) => (
                   <Text key={`${item.externalId}:${item.revision}`}>
-                    {item.externalId} · {item.status} · {item.occurrenceId}
+                    {item.externalId}, {item.status}, {item.occurrenceId}
                   </Text>
                 ))}
               </details>
@@ -242,18 +242,18 @@ function RetainedFeedEvidence({
       {data ? (
         <Box display="grid" gap="sm">
           <Text>
-            {sv ? "Läst" : "Read at"}: {data.readAt} · {sv ? "Bevarade sidor" : "Retained pages"}:{" "}
+            {sv ? "Läst" : "Read at"}: {data.readAt}, {sv ? "Bevarade sidor" : "Retained pages"}:{" "}
             {data.cursorSnapshot.retainedPageCount}
-            {data.pageEvidenceTruncated ? (sv ? " · förkortad vy" : " · truncated view") : ""}
+            {data.pageEvidenceTruncated ? (sv ? ", förkortad vy" : ", truncated view") : ""}
           </Text>
           <Text>
-            {sv ? "Konto" : "Account"}: {data.account.accountId} · {sv ? "aktiv" : "active"}:{" "}
+            {sv ? "Konto" : "Account"}: {data.account.accountId}, {sv ? "aktiv" : "active"}:{" "}
             {data.account.active ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No"}
           </Text>
           <Text>
             {sv ? "Leverantörsgodkännande" : "Provider acceptance"}:{" "}
-            {sv ? "Ej fastställt" : "Not established"} · {sv ? "Kontotäckning" : "Account coverage"}
-            : {sv ? "Ej fastställt" : "Not established"}
+            {sv ? "Ej fastställt" : "Not established"}, {sv ? "Kontotäckning" : "Account coverage"}:{" "}
+            {sv ? "Ej fastställt" : "Not established"}
           </Text>
           {data.recoveryBlockers.map((blocker) => (
             <Text key={blocker.code} role="alert">

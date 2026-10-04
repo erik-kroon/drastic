@@ -185,7 +185,7 @@ function ReconciliationForm({
           required
           options={setup.accounts.map((account) => ({
             value: account.id,
-            label: `${account.code} · ${account.name} · ${account.id}`,
+            label: `${account.code}, ${account.name}, ${account.id}`,
           }))}
         />
         <Box display="grid" columns={1} columnsAtSm={2} gap="lg">

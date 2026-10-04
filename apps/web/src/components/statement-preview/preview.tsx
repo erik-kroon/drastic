@@ -159,7 +159,7 @@ function StatementDetails({ statement, locale }: { statement: StatementPreview; 
       id: "closing",
       cells: [
         copy.closing,
-        `${money(statement.controls.lastObservedMinor, locale)} SEK · ${statement.rows[0]?.bookedOn}`,
+        `${money(statement.controls.lastObservedMinor, locale)} SEK, ${statement.rows[0]?.bookedOn}`,
       ],
     },
   ];

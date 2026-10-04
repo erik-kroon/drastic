@@ -167,7 +167,7 @@ export function CorrectionReview({
           ) : null}
           <details>
             <summary>
-              {copy.original} · {bundle.originalVoucher.id}
+              {copy.original}, {bundle.originalVoucher.id}
             </summary>
             <Box paddingBlock="lg">
               <SealedAction
@@ -185,7 +185,7 @@ export function CorrectionReview({
             <Box key={plan.id} display="grid" gap="md" minWidth="zero">
               <Heading>{title}</Heading>
               <Text>
-                {plan.id} · {plan.planDigest}
+                {plan.id}, {plan.planDigest}
               </Text>
               {plan.groups.flatMap((group) =>
                 group.actions.map((action) => (
@@ -209,7 +209,7 @@ export function CorrectionReview({
                 rows={plan.dependencies.map((dependency) => ({
                   id: `${dependency.kind}/${dependency.resourceId}`,
                   cells: [
-                    `${dependency.kind} · ${dependency.resourceId}`,
+                    `${dependency.kind}, ${dependency.resourceId}`,
                     dependency.version,
                     dependency.reason,
                   ],
@@ -230,18 +230,18 @@ export function CorrectionReview({
               <Heading>{copy.receipt}</Heading>
               <Text>{copy.committed}</Text>
               <Text>
-                {receipt.id} · {receipt.committedAt}
+                {receipt.id}, {receipt.committedAt}
               </Text>
               <Text>
                 {copy.original}: {receipt.originalVoucherId}
               </Text>
               <Text>
-                {copy.reversal}: {receipt.reversal.voucherId} · {receipt.reversal.voucherNumber} ·{" "}
+                {copy.reversal}: {receipt.reversal.voucherId}, {receipt.reversal.voucherNumber},{" "}
                 {receipt.reversal.sequence}
               </Text>
               <Text>
-                {copy.replacement}: {receipt.replacement.voucherId} ·{" "}
-                {receipt.replacement.voucherNumber} · {receipt.replacement.sequence}
+                {copy.replacement}: {receipt.replacement.voucherId},{" "}
+                {receipt.replacement.voucherNumber}, {receipt.replacement.sequence}
               </Text>
               <Text>
                 {copy.digest}: {receipt.bundleDigest}
@@ -262,7 +262,7 @@ export function CorrectionReview({
               {currentApproval ? (
                 <Box role="status" display="grid" gap="sm">
                   <Text>
-                    {copy.approval}: {currentApproval.id} · {currentApproval.actorId}
+                    {copy.approval}: {currentApproval.id}, {currentApproval.actorId}
                   </Text>
                   <Text>
                     {copy.expiry}: {currentApproval.expiresAt}

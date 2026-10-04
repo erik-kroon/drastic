@@ -2,6 +2,7 @@ import { CustomerInvoiceDefaults } from "./customer-invoice-defaults";
 import { useRef, useState } from "react";
 import {
   infiniteQueryOptions,
+  queryOptions,
   useInfiniteQuery,
   useQuery,
   useMutation,
@@ -41,6 +42,7 @@ import {
 import { AccountingStatus } from "@/components/accounting-status";
 import { downloadIntake } from "@/components/source-intake/download";
 import { ContactEditor } from "./contact-editor";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { readAccounting } from "@/lib/accounting-api";
 import {
   Details,
@@ -80,29 +82,8 @@ export function counterpartyRegisterOptions(book: CommerceProps["book"], search 
   });
 }
 
-export function Counterparties(
-  props: CommerceProps & {
-    recordId?: string;
-    onOpen?: (id: string) => void;
-    defaultRole?: "customer" | "supplier";
-  },
-) {
-  const { book, locale } = props;
-  const sv = locale === "sv";
-  const labels = sv ? swedish : english;
-  const [local, setLocal] = useState("");
-  const [search, setSearch] = useState("");
-  const [draft, setDraft] = useState("");
-  const [role, setRole] = useState(props.defaultRole ?? "");
-  const selected = props.recordId ?? local;
-  const select = props.onOpen ?? setLocal;
-
-  const page = useInfiniteQuery({
-    ...counterpartyRegisterOptions(book, search, role),
-    enabled: !selected || selected === "new",
-  });
-
-  const exportDirectory = useQuery({
+export function counterpartyExportOptions(book: CommerceProps["book"], search = "", role = "") {
+  return queryOptions({
     queryKey: [...commerceKey(book), "crm-directory-export", search, role],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams();
@@ -125,6 +106,31 @@ export function Counterparties(
     enabled: false,
     retry: false,
   });
+}
+
+export function Counterparties(
+  props: CommerceProps & {
+    recordId?: string;
+    onOpen?: (id: string) => void;
+    defaultRole?: "customer" | "supplier";
+  },
+) {
+  const { book, locale } = props;
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
+  const [local, setLocal] = useState("");
+  const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState("");
+  const [role, setRole] = useState(props.defaultRole ?? "");
+  const selected = props.recordId ?? local;
+  const select = props.onOpen ?? setLocal;
+
+  const page = useInfiniteQuery({
+    ...counterpartyRegisterOptions(book, search, role),
+    enabled: !selected || selected === "new",
+  });
+
+  const exportDirectory = useQuery(counterpartyExportOptions(book, search, role));
 
   const roles = {
     customer: labels.customer,
@@ -275,7 +281,7 @@ export function Counterparties(
   );
 }
 
-function ContactDetail(props: CommerceProps & { id: string }) {
+export function ContactDetail(props: CommerceProps & { id: string; compact?: boolean }) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
   const [editing, setEditing] = useState(false);
@@ -329,9 +335,23 @@ function ContactDetail(props: CommerceProps & { id: string }) {
           </RecordSummary>
           <Text>{party.data.reason}</Text>
           {party.data.role !== "supplier" ? (
-            <CustomerInvoiceDefaults {...props} party={party.data} />
+            props.compact ? (
+              <Disclosure title={sv ? "Fakturastandardvärden" : "Invoice defaults"}>
+                <CustomerInvoiceDefaults {...props} party={party.data} />
+              </Disclosure>
+            ) : (
+              <CustomerInvoiceDefaults {...props} party={party.data} />
+            )
           ) : null}
-          <Annotations {...props} partyId={props.id} partyName={party.data.displayName} />
+          {props.compact ? (
+            <Disclosure
+              title={sv ? "Kontakter, alias och ursprung" : "Contacts, aliases & provenance"}
+            >
+              <Annotations {...props} partyId={props.id} partyName={party.data.displayName} />
+            </Disclosure>
+          ) : (
+            <Annotations {...props} partyId={props.id} partyName={party.data.displayName} />
+          )}
           <RecordSection title={labels.source}>
             <Evidence {...props} reference={party.data.evidence} />
           </RecordSection>
@@ -486,7 +506,7 @@ function Annotations({
           </Text>
           <Text tone="muted">{note.detail}</Text>
           <PageCaption>
-            {sv ? "Underlag" : "Evidence"}: {note.evidenceId} · {note.recordedAt}
+            {sv ? "Underlag" : "Evidence"}: {note.evidenceId}, {note.recordedAt}
           </PageCaption>
         </Box>
       ))}

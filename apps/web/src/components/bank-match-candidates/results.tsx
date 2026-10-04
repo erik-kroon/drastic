@@ -171,7 +171,7 @@ export function BankCandidateResults({
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
         title={locale === "sv" ? "Möjliga matchningar" : "Possible matches"}
-        subtitle={result ? `${result.source.observedOn} · ${result.source.description}` : undefined}
+        subtitle={result ? `${result.source.observedOn}, ${result.source.description}` : undefined}
         action={
           <Button
             type="button"
@@ -191,7 +191,7 @@ export function BankCandidateResults({
         <>
           <RecordSummary>
             <RecordFact label={locale === "sv" ? "Konto" : "Account"}>
-              {account ? `${account.code} · ${account.name}` : result.window.accountId}
+              {account ? `${account.code}, ${account.name}` : result.window.accountId}
             </RecordFact>
             <RecordFact label={copy.amount}>{money(result.source.amountMinor)}</RecordFact>
             <RecordFact label={copy.used}>{money(result.source.allocatedMinor)}</RecordFact>
@@ -213,7 +213,7 @@ export function BankCandidateResults({
               {copy.candidates}: {result.candidates.length}
             </Heading>
             <Text>
-              {copy.eligible}: {result.eligibleCount} · {copy.equal}:{" "}
+              {copy.eligible}: {result.eligibleCount}, {copy.equal}:{" "}
               {result.equalAmountEligibleCount}
             </Text>
             {result.multipleEligibleCandidates ? <Text>{copy.ambiguous}</Text> : null}
@@ -258,8 +258,8 @@ export function BankCandidateResults({
             {result.candidates.map((candidate) => (
               <details key={`${candidate.voucherId}:${candidate.lineId}`}>
                 <summary>
-                  {candidate.postedOn} · {candidate.description} · {copy.remaining}:{" "}
-                  {money(candidate.remainingMinor)} ·{" "}
+                  {candidate.postedOn}, {candidate.description}, {copy.remaining}:{" "}
+                  {money(candidate.remainingMinor)},{" "}
                   {candidate.eligible ? copy.allowed : copy.blocked}
                 </summary>
                 <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
@@ -269,13 +269,13 @@ export function BankCandidateResults({
                     {copy.date}: {candidate.postedOn}
                   </Text>
                   <Text>
-                    {copy.amount}: {money(candidate.amountMinor)} · {copy.used}:{" "}
-                    {money(candidate.allocatedMinor)} · {copy.remaining}:{" "}
+                    {copy.amount}: {money(candidate.amountMinor)}, {copy.used}:{" "}
+                    {money(candidate.allocatedMinor)}, {copy.remaining}:{" "}
                     {money(candidate.remainingMinor)}
                   </Text>
                   <Text>
-                    {copy.sameAccount}: {copy.yes} · {copy.sameCurrency}:{" "}
-                    {candidate.sameCurrency ? copy.yes : copy.no} · {copy.sameSign}:{" "}
+                    {copy.sameAccount}: {copy.yes}, {copy.sameCurrency}:{" "}
+                    {candidate.sameCurrency ? copy.yes : copy.no}, {copy.sameSign}:{" "}
                     {candidate.sameSign ? copy.yes : copy.no}
                   </Text>
                   <Text>
@@ -293,8 +293,8 @@ export function BankCandidateResults({
                       gap="sm"
                     >
                       <Text>
-                        {copy.referenceEvidence}: {reference.value} · {reference.issuerNamespace}/
-                        {reference.issuerId} · {reference.documentId}/{reference.documentRevision}
+                        {copy.referenceEvidence}: {reference.value}, {reference.issuerNamespace}/
+                        {reference.issuerId}, {reference.documentId}/{reference.documentRevision}
                       </Text>
                       <InputField
                         label={copy.documentDigest}
@@ -361,7 +361,7 @@ export function BankCandidateResults({
               {copy.paymentReference}: {result.source.paymentReference?.value ?? copy.unavailable}
             </Text>
             <Text>
-              {copy.cutoff}: {result.cutoff.committedSequence} · {copy.revision}:{" "}
+              {copy.cutoff}: {result.cutoff.committedSequence}, {copy.revision}:{" "}
               {result.cutoff.sourceRevision}
             </Text>
             <Text>{copy.snapshot}</Text>

@@ -157,8 +157,8 @@ export function SiePlanReview({
       <RecordSection title={sv ? "Koppla konton" : "Map accounts"}>
         <Text>
           {sv
-            ? `${sourceAccounts.length} källkonton · ${sourceAccounts.length - unresolvedAccounts.length} exakta förslag · ${unresolvedAccounts.length} kräver val. Kontrollera även föreslagna konton före låsning.`
-            : `${sourceAccounts.length} source accounts · ${sourceAccounts.length - unresolvedAccounts.length} exact suggestions · ${unresolvedAccounts.length} need selection. Check suggested accounts before sealing.`}
+            ? `${sourceAccounts.length} källkonton, ${sourceAccounts.length - unresolvedAccounts.length} exakta förslag, ${unresolvedAccounts.length} kräver val. Kontrollera även föreslagna konton före låsning.`
+            : `${sourceAccounts.length} source accounts, ${sourceAccounts.length - unresolvedAccounts.length} exact suggestions, ${unresolvedAccounts.length} need selection. Check suggested accounts before sealing.`}
         </Text>
         {sourceAccounts.map((code, index) => (
           <form.Field key={code} name={`mappings[${index}].accountId`}>
@@ -172,7 +172,7 @@ export function SiePlanReview({
                   { value: "", label: sv ? "Välj konto" : "Select account" },
                   ...activeAccounts.map((account) => ({
                     value: account.id,
-                    label: `${account.code} · ${account.name}`,
+                    label: `${account.code}, ${account.name}`,
                   })),
                 ]}
                 onValueChange={(value) => {
@@ -193,7 +193,7 @@ export function SiePlanReview({
         {controls.map((control, index) => (
           <Box key={`${control.account}:${control.year}`} display="grid" gap="md">
             <Text>
-              {sv ? "Konto" : "Account"} {control.account} · {sv ? "Källår" : "Source year"}{" "}
+              {sv ? "Konto" : "Account"} {control.account}, {sv ? "Källår" : "Source year"}{" "}
               {control.year}
             </Text>
             <form.Field name={`openingControls[${index}].independentOpeningMinor`}>
@@ -262,7 +262,7 @@ export function SiePlanReview({
                   gap="md"
                 >
                   <Text>
-                    {item.sourceIdentity} · {item.sourceAccount} · {item.outstandingMinor}{" "}
+                    {item.sourceIdentity}, {item.sourceAccount}, {item.outstandingMinor}{" "}
                     {item.currency} {sv ? "minsta valutaenheter" : "minor units"}
                   </Text>
                   <Button
@@ -295,8 +295,8 @@ export function SiePlanReview({
                   gap="md"
                 >
                   <Text>
-                    {control.sourceAccount} · {control.independentOutstandingMinor}{" "}
-                    {control.currency} {sv ? "minsta valutaenheter" : "minor units"} ·{" "}
+                    {control.sourceAccount}, {control.independentOutstandingMinor}{" "}
+                    {control.currency} {sv ? "minsta valutaenheter" : "minor units"},{" "}
                     {control.basis}
                   </Text>
                   <Button

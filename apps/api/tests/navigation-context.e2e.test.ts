@@ -84,6 +84,7 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
       "?period=period_2026&status=open&sort=oldest&q=navigation&after=invoice_navigation";
 
     await page.goto(`${workspace}/purchases?view=documents&work=${encodeURIComponent(queue)}`);
+    await page.getByText("Filename, source and period", { exact: true }).click();
     await page.getByLabel("Source system", { exact: true }).fill("navigation_fixture");
     await page.getByRole("button", { name: "Search archive", exact: true }).click();
     await expect
@@ -330,7 +331,7 @@ test("bank voucher links preserve scoped owner state and reject unknown return o
       "account=account_bank&from=2026-01-01&to=2026-12-31&tab=ledger&q=Bank&page=1";
 
     await page.goto(`${workspace}/accounts?${bankSearch}`);
-    const voucherLink = page.getByRole("link", { name: "View voucher", exact: true }).first();
+    const voucherLink = page.getByRole("link", { name: /Bank debit/ }).first();
 
     await voucherLink.waitFor({ timeout: 5000 });
     const href = await voucherLink.getAttribute("href");
@@ -492,7 +493,10 @@ test("sales page two, secondary routes and browser history retain the register a
     const queue = "?period=period_2026&status=open&q=Navigation";
     const register = `${workspace}/sales?status=draft&sort=oldest&q=Navigation&page=2&work=${encodeURIComponent(queue)}`;
     await page.goto(register);
-    const opener = page.getByRole("link", { name: selected.title, exact: true });
+    const opener = page.getByRole("link", { name: "Open invoice", exact: true });
+    expect(
+      new URL((await opener.getAttribute("href"))!, workspace).searchParams.get("record"),
+    ).toBe(selected.id);
     await opener.click();
     await page.getByRole("button", { name: "Edit draft", exact: true }).waitFor();
     expect(new URL(page.url()).searchParams.get("work")).toBe(queue);
@@ -500,10 +504,10 @@ test("sales page two, secondary routes and browser history retain the register a
     await expect.poll(() => new URL(page.url()).searchParams.get("record")).toBe(null);
     expect(String(JSON.parse(new URL(page.url()).searchParams.get("page")!))).toBe("2");
     await expect
-      .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
-      .toBe(selected.title);
+      .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-sales-id")))
+      .toBe(selected.id);
 
-    for (const action of ["Quotes and orders", "Article catalog", "Collections"]) {
+    for (const action of ["Quotes", "Article catalog", "Collections"]) {
       await page.getByRole("link", { name: action, exact: true }).click();
       await page.getByRole("link", { name: "Back to invoices", exact: true }).click();
       expect(new URL(page.url()).searchParams.get("q")).toBe("Navigation");
@@ -564,7 +568,7 @@ test("sales page two, secondary routes and browser history retain the register a
       await expect.poll(() => opener.count()).toBe(0);
       await expect
         .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
-        .toBe("Invoicing");
+        .toBe("Sales");
     } finally {
       releaseRegister.resolve();
       await page.unroute(filteredRegister);
@@ -662,13 +666,12 @@ test("a delayed archive response from another book cannot replace the current bo
     });
 
     try {
-      await page.getByRole("link", { name: "Synthetic E2E book", exact: true }).first().click();
+      await page.getByRole("link").filter({ hasText: "Synthetic E2E book" }).first().click();
       await page.getByRole("link", { name: "Purchases", exact: true }).first().click();
       await page.getByRole("link", { name: "Documents", exact: true }).click();
       await expect.poll(() => captured).toBe(true);
-      await page.locator("summary").filter({ hasText: "Synthetic E2E book" }).click();
-      await page.getByRole("link", { name: "Change workspace", exact: true }).click();
-      await page.getByRole("link", { name: "Synthetic isolation book", exact: true }).click();
+      await page.getByRole("link", { name: "Synthetic E2E book", exact: true }).click();
+      await page.getByRole("link").filter({ hasText: "Synthetic isolation book" }).click();
       await page.getByRole("link", { name: "Purchases", exact: true }).first().click();
       await page.getByRole("link", { name: "Documents", exact: true }).click();
       await page.getByRole("link", { name: "current-book-original.txt", exact: true }).waitFor();

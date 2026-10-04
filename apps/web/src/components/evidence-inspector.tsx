@@ -106,10 +106,10 @@ export function EvidenceInspector(props: {
                 </Text>
                 <Disclosure title={copy.workspace_source_details}>
                   <Text tone="muted">
-                    {evidence.data.mediaType} · {evidence.data.createdAt}
+                    {evidence.data.mediaType}, {evidence.data.createdAt}
                   </Text>
                   <Text tone="muted">
-                    {reference.evidenceId} · {reference.locator}
+                    {reference.evidenceId}, {reference.locator}
                   </Text>
                   <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
                 </Disclosure>

@@ -374,7 +374,7 @@ function CancellationReviewContents(
                 return {
                   id: line.lineId,
                   cells: [
-                    account ? `${account.code} · ${account.name}` : line.accountId,
+                    account ? `${account.code}, ${account.name}` : line.accountId,
                     formatMinorAmount(line.debitMinor, invoice.currencyScale, locale),
                     formatMinorAmount(line.creditMinor, invoice.currencyScale, locale),
                   ],

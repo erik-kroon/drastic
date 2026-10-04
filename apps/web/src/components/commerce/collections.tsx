@@ -240,7 +240,7 @@ function ReceivableWorklist(
                   : `${formatMinorAmount(item.residualMinor, item.currencyScale, locale)} ${item.currency}`,
                 <Text key="dispute">
                   {item.disputed ? (sv ? "Tvist" : "Disputed") : sv ? "Ingen tvist" : "No dispute"}
-                  {item.holdReminders ? (sv ? " · Påminnelsespärr" : " · Reminder held") : ""}
+                  {item.holdReminders ? (sv ? ", Påminnelsespärr" : ", Reminder held") : ""}
                 </Text>,
                 actions[item.nextAction],
               ],
@@ -341,7 +341,7 @@ function CollectionHistory(
         <Box key={statement.id} display="grid" gap="sm" minWidth="zero">
           <Box display="flex" justifyContent="between" alignItems="center" gap="md" flexWrap="wrap">
             <strong>
-              {statement.asOf} · {statement.id}
+              {statement.asOf}, {statement.id}
             </strong>
             <Button
               type="button"
@@ -369,15 +369,15 @@ function CollectionHistory(
           ) : null}
           {statement.items.map((item) => (
             <Text key={item.invoiceId}>
-              {item.number} · {sv ? "Belopp" : "Amount"} {item.amountMinor} ·{" "}
-              {sv ? "Betalt" : "Allocated"} {item.allocatedMinor} · {sv ? "Kvar" : "Outstanding"}{" "}
+              {item.number}, {sv ? "Belopp" : "Amount"} {item.amountMinor},{" "}
+              {sv ? "Betalt" : "Allocated"} {item.allocatedMinor}, {sv ? "Kvar" : "Outstanding"}{" "}
               {item.outstandingMinor}{" "}
               {item.currency
                 ? `${item.currency} (${sv ? "minsta enhet" : "minor units"})`
                 : sv
                   ? "Valuta saknas i äldre utdrag"
                   : "Currency absent in older statement"}
-              {item.disputed ? " · disputed" : ""}
+              {item.disputed ? ", disputed" : ""}
             </Text>
           ))}
         </Box>
@@ -385,7 +385,7 @@ function CollectionHistory(
       <h3>{sv ? "Tvister och spärrar" : "Disputes and holds"}</h3>
       {data.disputes.map((dispute) => (
         <Text key={dispute.id}>
-          {dispute.invoiceId} · {dispute.reason} ·{" "}
+          {dispute.invoiceId}, {dispute.reason},{" "}
           {dispute.holdReminders
             ? sv
               ? "Pausad påminnelse"
@@ -393,7 +393,7 @@ function CollectionHistory(
             : sv
               ? "Ingen spärr"
               : "No hold"}{" "}
-          ·{" "}
+          ,{" "}
           {data.events.some(
             (event) => event.kind === "dispute_resolved" && event.disputeId === dispute.id,
           )
@@ -413,15 +413,15 @@ function CollectionHistory(
       </Text>
       {data.events.map((event) => (
         <Text key={event.id}>
-          {event.createdAt} · {event.invoiceId} ·{" "}
+          {event.createdAt}, {event.invoiceId},{" "}
           {event.kind === "reminder_prepared"
             ? sv
-              ? "Påminnelse förberedd · leverans ej godkänd eller registrerad"
-              : "Reminder prepared · delivery not authorized or recorded"
+              ? "Påminnelse förberedd, leverans ej godkänd eller registrerad"
+              : "Reminder prepared, delivery not authorized or recorded"
             : event.kind}{" "}
-          · {event.note}
+          , {event.note}
           {event.outstandingMinor !== null
-            ? ` · ${sv ? "Kvar" : "Outstanding"} ${event.outstandingMinor}`
+            ? `, ${sv ? "Kvar" : "Outstanding"} ${event.outstandingMinor}`
             : ""}
         </Text>
       ))}
@@ -600,7 +600,7 @@ function CollectionActions(
                   )
                   .map((dispute) => (
                     <option key={dispute.id} value={dispute.id}>
-                      {dispute.reason} · {dispute.id}
+                      {dispute.reason}, {dispute.id}
                     </option>
                   ))}
               </select>

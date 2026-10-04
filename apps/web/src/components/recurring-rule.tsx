@@ -87,11 +87,11 @@ export function RecurringRulePanel({
           {rule.data.activeActivation ? (
             <>
               <Text>
-                {copy.auto_activation_id}: {rule.data.activeActivation.id} ·{" "}
+                {copy.auto_activation_id}: {rule.data.activeActivation.id},{" "}
                 {rule.data.activeActivation.authority}
               </Text>
               <Text tone="muted">
-                {rule.data.activeActivation.actorId} · {rule.data.activeActivation.activatedAt}
+                {rule.data.activeActivation.actorId}, {rule.data.activeActivation.activatedAt}
               </Text>
             </>
           ) : (
@@ -175,13 +175,13 @@ function RuleFacts({
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
-        {rule.input.name} · {copy.auto_rule_id}: {rule.id} · v{rule.version}
+        {rule.input.name}, {copy.auto_rule_id}: {rule.id}, v{rule.version}
       </Text>
       <Text>
         {copy.auto_rule_digest}: {rule.digest}
       </Text>
       <Text tone="muted">
-        {rule.createdAt} · {rule.proposedBy}
+        {rule.createdAt}, {rule.proposedBy}
       </Text>
       <DataTable
         title={copy.auto_rule}
@@ -239,7 +239,7 @@ function RuleFacts({
         }))}
       />
       <Text tone="muted">
-        {copy.bank_receipt}: {rule.receipt.key} · {rule.receipt.operation} · {rule.receipt.actorId}
+        {copy.bank_receipt}: {rule.receipt.key}, {rule.receipt.operation}, {rule.receipt.actorId}
       </Text>
     </Box>
   );
@@ -431,7 +431,7 @@ function SimulationReview(props: {
       {simulation.data ? (
         <>
           <Text>
-            {copy.auto_simulation_id}: {simulation.data.id} · {simulation.data.createdAt}
+            {copy.auto_simulation_id}: {simulation.data.id}, {simulation.data.createdAt}
           </Text>
           <Text>
             {copy.auto_rule_digest}: {simulation.data.ruleDigest}
@@ -441,7 +441,7 @@ function SimulationReview(props: {
           </Text>
           <PreparationSelection selection={simulation.data} locale={locale} />
           <Text tone="muted">
-            {copy.bank_receipt}: {simulation.data.receipt.key} · {simulation.data.receipt.actorId}
+            {copy.bank_receipt}: {simulation.data.receipt.key}, {simulation.data.receipt.actorId}
           </Text>
           {!matchesRule ? <Text role="alert">{copy.auto_activation_mismatch}</Text> : null}
         </>
@@ -565,7 +565,7 @@ function ActivateRule({
       ) : null}
       {activation.data ? (
         <Text role="status">
-          {copy.auto_activated} · {activation.data.id}
+          {copy.auto_activated}, {activation.data.id}
         </Text>
       ) : null}
     </Box>

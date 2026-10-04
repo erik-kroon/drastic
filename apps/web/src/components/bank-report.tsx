@@ -143,7 +143,7 @@ function ReportDetails({
           setup.data?.accounts.find((account) => account.id === report.accountId)?.name ??
           copy.journal_account
         }
-        subtitle={`${report.startsOn} – ${report.endsOn} · ${report.currency}`}
+        subtitle={`${report.startsOn} – ${report.endsOn}, ${report.currency}`}
       />
       <AccountingStatus
         locale={locale}
@@ -191,7 +191,7 @@ function ReportDetails({
         <Box paddingBlock="lg" display="grid" gap="md">
           <Text tone="muted">
             {copy.bank_checkpoint}: {report.checkpoint.sequence} /{" "}
-            {report.checkpoint.sourceRevision} · {report.createdAt}
+            {report.checkpoint.sourceRevision}, {report.createdAt}
           </Text>
           <Text tone="muted">
             {copy.bank_account_checkpoint}: {report.accountLedgerSequence}
@@ -200,7 +200,7 @@ function ReportDetails({
             {copy.bank_current}: {view.currentAccountLedgerSequence} / {view.currentSourceRevision}
           </Text>
           <Text tone="muted">
-            {copy.bank_receipt}: {report.receipt.key} · {report.receipt.operation} ·{" "}
+            {copy.bank_receipt}: {report.receipt.key}, {report.receipt.operation},{" "}
             {report.receipt.actorId}
           </Text>
         </Box>

@@ -342,7 +342,7 @@ function CommercialTemplateActions(
                 { value: "", label: copy.choose },
                 ...templates.map((item) => ({
                   value: item.id,
-                  label: `${item.name} · ${item.currency} · ${item.revision}`,
+                  label: `${item.name}, ${item.currency}, ${item.revision}`,
                 })),
               ]}
             />

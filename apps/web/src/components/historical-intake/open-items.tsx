@@ -49,7 +49,7 @@ export function SavedOpenItems({ plan }: { plan: typeof Sie.SiePlan.Type }) {
         {plan.input.openItems.map((item) => (
           <Box key={item.sourceIdentity} display="grid" gap="sm">
             <Text>
-              {item.sourceIdentity} · {item.sourceAccount} · {item.asOf}
+              {item.sourceIdentity}, {item.sourceAccount}, {item.asOf}
             </Text>
             <Text>
               {sv ? "Ursprungligt / återstående" : "Original / outstanding"}: {item.originalMinor} /{" "}
@@ -82,9 +82,9 @@ export function SavedOpenItems({ plan }: { plan: typeof Sie.SiePlan.Type }) {
         ))}
         {plan.input.openItemControls.map((control) => (
           <Text key={`${control.sourceAccount}:${control.currency}`}>
-            {sv ? "Oberoende kontroll" : "Independent control"}: {control.sourceAccount} ·{" "}
+            {sv ? "Oberoende kontroll" : "Independent control"}: {control.sourceAccount},{" "}
             {control.independentOutstandingMinor} {control.currency}{" "}
-            {sv ? "minsta valutaenheter" : "minor units"} · {control.basis}
+            {sv ? "minsta valutaenheter" : "minor units"}, {control.basis}
           </Text>
         ))}
         <Text tone="muted">

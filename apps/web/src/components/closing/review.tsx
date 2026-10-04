@@ -43,7 +43,7 @@ export function ClosingFacts({
             {copy.inventorySaved}: {basis.inventory.bankAccountIds.join(", ") || copy.none}
           </Text>
           <Text>
-            {copy.evidence}: {basis.inventory.evidenceId} · {basis.inventory.actorId}
+            {copy.evidence}: {basis.inventory.evidenceId}, {basis.inventory.actorId}
           </Text>
         </>
       ) : (
@@ -54,7 +54,7 @@ export function ClosingFacts({
         basis.families.map((family) => (
           <details key={family.family}>
             <summary>
-              {copy.familyLabels[family.family]} · {family.passed ? copy.passed : copy.blocked}
+              {copy.familyLabels[family.family]}, {family.passed ? copy.passed : copy.blocked}
             </summary>
             <Box display="grid" gap="sm" paddingBlock="md" minWidth="zero">
               <Text>
@@ -65,7 +65,7 @@ export function ClosingFacts({
               {family.declaration ? (
                 <>
                   <Text>
-                    {copy.familyDate}: {family.declaration.reviewedOn} · {basis.inventory?.actorId}
+                    {copy.familyDate}: {family.declaration.reviewedOn}, {basis.inventory?.actorId}
                   </Text>
                   <Text>
                     {copy.familyEvidence}: {family.declaration.evidenceId}
@@ -314,7 +314,7 @@ export function ClosingReview({
           {approve.data && !receipt ? (
             <>
               <Text>
-                {copy.approvedBy}: {approve.data.actorId} · {copy.expires}: {approve.data.expiresAt}
+                {copy.approvedBy}: {approve.data.actorId}, {copy.expires}: {approve.data.expiresAt}
               </Text>
               <Box>
                 <Button
@@ -364,8 +364,8 @@ function ClosingReceiptView({
         {copy.receipt}: {receipt.id}
       </Text>
       <Text>
-        {receipt.action === "close" ? copy.closeAction : copy.reopenAction} · {copy.version}:{" "}
-        {receipt.periodVersion} · {receipt.committedAt}
+        {receipt.action === "close" ? copy.closeAction : copy.reopenAction}, {copy.version}:{" "}
+        {receipt.periodVersion}, {receipt.committedAt}
       </Text>
       <Text>
         {copy.approvedBy}: {receipt.approvedBy}
@@ -554,7 +554,7 @@ function ClosingProposalDetails({
   return (
     <>
       <Text>
-        {proposal.periodId} · {proposal.action === "close" ? copy.closeAction : copy.reopenAction}
+        {proposal.periodId}, {proposal.action === "close" ? copy.closeAction : copy.reopenAction}
       </Text>
       <Text>
         {copy.reason}: {proposal.reason}

@@ -202,7 +202,7 @@ export function PeriodWorkBatch(props: {
             <PageEmpty title={copy.batchNoMembers} />
           )}
           <PageCaption>
-            {chosen.length} {copy.batchSelected} · {copy.batchMaximum(props.maximumMembers)}
+            {chosen.length} {copy.batchSelected}, {copy.batchMaximum(props.maximumMembers)}
           </PageCaption>
           <Box display="flex">
             <Button

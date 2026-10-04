@@ -2,10 +2,12 @@ import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router"
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { RecurringDraftRecovery } from "@/components/commerce/recurring-draft-recovery";
+import { RecurringRegister } from "@/components/commerce/recurring-register";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
+import { SalesNavigation } from "@/components/commerce/sales-navigation";
 import { CatalogArticles } from "@/components/commerce/catalog-articles";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { WorkReturnSearch, OwnerReturnSearch } from "@/lib/work-return";
@@ -80,14 +82,11 @@ function OrdersPage() {
   const search = Route.useSearch();
 
   return (
-    <PageContent>
-      <Link
-        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: undefined, record: undefined })}`}
-      >
-        {locale === "sv" ? "Till fakturor" : "Back to invoices"}
-      </Link>
-      <SalesOrders book={book} locale={locale} />
-    </PageContent>
+    <SalesOrders
+      book={book}
+      locale={locale}
+      navigation={<SalesNavigation view="orders" work={search.work} returnTo={search.returnTo} />}
+    />
   );
 }
 
@@ -96,14 +95,11 @@ function CatalogPage() {
   const search = Route.useSearch();
 
   return (
-    <PageContent>
-      <Link
-        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: undefined, record: undefined })}`}
-      >
-        {locale === "sv" ? "Till fakturor" : "Back to invoices"}
-      </Link>
-      <CatalogArticles book={book} locale={locale} />
-    </PageContent>
+    <CatalogArticles
+      book={book}
+      locale={locale}
+      navigation={<SalesNavigation view="articles" work={search.work} returnTo={search.returnTo} />}
+    />
   );
 }
 
@@ -126,6 +122,8 @@ function CollectionsPage() {
 function RecurringPage() {
   const { book, locale } = useBookWorkspace();
   const search = Route.useSearch();
+
+  if (!search.record) return <RecurringRegister work={search.work} returnTo={search.returnTo} />;
 
   return (
     <PageContent>

@@ -66,8 +66,8 @@ export function BookReadiness({
           <>
             <Text>{copy.readiness_warning}</Text>
             <Text tone="muted">
-              {copy.journal_profile}: {status.data.profile} · {copy.readiness_authority}:{" "}
-              {status.data.writerAuthority} · {copy.journal_sequence}: {status.data.sequence}
+              {copy.journal_profile}: {status.data.profile}, {copy.readiness_authority}:{" "}
+              {status.data.writerAuthority}, {copy.journal_sequence}: {status.data.sequence}
             </Text>
             <DataTable
               title={copy.readiness_features}

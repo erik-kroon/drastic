@@ -83,7 +83,7 @@ export function RecurringDraftRecovery({
             {first.enabled ? (sv ? "Aktiva" : "Enabled") : sv ? "Pausade" : "Paused"}
           </Text>
           <Text>
-            {sv ? "Nästa cykel" : "Next cycle"}: {first.nextCycleDate} · {first.timeZone}
+            {sv ? "Nästa cykel" : "Next cycle"}: {first.nextCycleDate}, {first.timeZone}
           </Text>
           <Text>
             {sv
@@ -108,9 +108,9 @@ export function RecurringDraftRecovery({
               <Link
                 href={`${workspacePath(book)}/sales?view=recurring&record=${encodeURIComponent(first.agreementId)}&job=${encodeURIComponent(job.id)}`}
               >
-                {sv ? "Cykel" : "Cycle"} {job.cycleOrdinal} · {job.cycleDate} ·{" "}
+                {sv ? "Cykel" : "Cycle"} {job.cycleOrdinal}, {job.cycleDate},{" "}
                 {jobStatus(job.state, sv)}
-                {job.reason ? ` · ${jobReason(job.reason, sv)}` : ""}
+                {job.reason ? `, ${jobReason(job.reason, sv)}` : ""}
               </Link>
             </Box>
           ))}
@@ -145,9 +145,9 @@ function SelectedCycle(
   return (
     <RecordSection title={sv ? "Vald cykel" : "Selected cycle"}>
       <Text>
-        {sv ? "Cykel" : "Cycle"} {selected.cycleOrdinal} · {selected.cycleDate}:{" "}
+        {sv ? "Cykel" : "Cycle"} {selected.cycleOrdinal}, {selected.cycleDate}:{" "}
         {jobStatus(selected.state, sv)}
-        {selected.reason ? ` · ${jobReason(selected.reason, sv)}` : ""}
+        {selected.reason ? `, ${jobReason(selected.reason, sv)}` : ""}
       </Text>
       {selected.draftId ? (
         <Link

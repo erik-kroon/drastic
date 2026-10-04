@@ -205,15 +205,14 @@ export function SiePanel({
             <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
             {list.isSuccess ? (
               <Text>
-                {copy.inventoryCount}: {list.data.total} · {copy.inventoryCutoff}:{" "}
-                {list.data.cutoff}
+                {copy.inventoryCount}: {list.data.total}, {copy.inventoryCutoff}: {list.data.cutoff}
               </Text>
             ) : null}
             {list.isSuccess && list.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
             {list.data?.items.map((item) => (
               <Box key={item.id} display="grid" gap="sm">
                 <Text>
-                  {item.id} · {item.createdAt}
+                  {item.id}, {item.createdAt}
                 </Text>
                 <Box>
                   <Button variant="outline" size="xl" onClick={() => setId(item.id)}>
@@ -282,11 +281,11 @@ function SieInspector({
             {copy.pack}: {capture.input.packId}
           </Text>
           <Text>
-            {capture.startsOn} – {capture.endsOn} · {capture.currency} · {copy.generatedOn}:{" "}
+            {capture.startsOn} – {capture.endsOn}, {capture.currency}, {copy.generatedOn}:{" "}
             {capture.generatedOn}
           </Text>
           <Text>
-            {capture.input.legalName} · {copy.evidence}: {capture.input.legalNameEvidenceId}
+            {capture.input.legalName}, {copy.evidence}: {capture.input.legalNameEvidenceId}
           </Text>
           <details>
             <summary>{copy.source}</summary>
@@ -376,7 +375,7 @@ function SieDownload({
   return (
     <Box display="grid" gap="sm" minWidth="zero">
       <Text>
-        {artifact.filename} · {artifact.byteLength} {copy.bytes}
+        {artifact.filename}, {artifact.byteLength} {copy.bytes}
       </Text>
       <Box display="grid" minWidth="zero">
         <textarea aria-label={copy.hash} value={artifact.sha256} readOnly rows={2} cols={16} />

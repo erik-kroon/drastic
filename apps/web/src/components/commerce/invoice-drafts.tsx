@@ -483,7 +483,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
                   { value: "", label: sv ? "Ej fastställd" : "Unresolved" },
                   ...(policies.data?.items.map((policy) => ({
                     value: policy.id,
-                    label: `${policy.candidate.input.sellerIdentity.legalName} · ${policy.candidate.input.vatTreatment}`,
+                    label: `${policy.candidate.input.sellerIdentity.legalName}, ${policy.candidate.input.vatTreatment}`,
                   })) ?? []),
                 ]}
               />
@@ -512,9 +512,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               party={seller}
             />
           </RecordColumns>
-          <RecordSection
-            title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}
-          >
+          <RecordSection title={`${labels.lineItems}, ${content?.currency ?? props.book.currency}`}>
             <InvoiceEditorLines
               commercial={commercial}
               calculation={calculation}
@@ -734,7 +732,7 @@ function DraftDetail(
                       variant="ghost"
                       onClick={() => setRevision(item.revision)}
                     >
-                      {labels.revision} {item.revision} ·{" "}
+                      {labels.revision} {item.revision},{" "}
                       {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
                         new Date(item.createdAt),
                       )}
@@ -935,7 +933,7 @@ const english = {
   revision: "Revision",
   showLatest: "Show latest",
   technicalReferences: "Technical references",
-  invoiceDraft: "Invoice · Draft",
+  invoiceDraft: "Invoice, Draft",
   billTo: "Bill to",
   dates: "Dates",
   invoiceLines: "Invoice lines",
@@ -1009,7 +1007,7 @@ const swedish: typeof english = {
   revision: "Version",
   showLatest: "Visa senaste",
   technicalReferences: "Tekniska referenser",
-  invoiceDraft: "Faktura · Utkast",
+  invoiceDraft: "Faktura, Utkast",
   billTo: "Faktureras till",
   dates: "Datum",
   invoiceLines: "Fakturarader",

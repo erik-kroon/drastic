@@ -267,6 +267,7 @@ test("real overview follows the server date despite browser clock skew and suppl
         { query: "?from=2026-03-01&to=2026-03-31", from: "2026-03-01", to: "2026-03-31" },
       ]) {
         await page.goto(`${workspace}/accounts${period.query}`);
+        await page.getByText(/^Period and bank account ·/).click();
         await expect
           .poll(() => page.getByLabel("From", { exact: true }).inputValue())
           .toBe(period.from);

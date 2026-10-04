@@ -1,19 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Closing from "@open-erp/contracts/closing";
-import { CheckCircle2, Circle, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectField } from "@open-erp/ui/components/field";
-import { Badge } from "@open-erp/ui/components/badge";
+import {
+  RegisterWorkspace,
+  RegisterGroup,
+  RegisterRow,
+  RegisterCheckRow,
+} from "@open-erp/ui/components/register-workspace";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
-import {
-  RecordHeading,
-  RecordSection,
-  RecordSummary,
-  RecordFact,
-} from "@open-erp/ui/components/record-layout";
+import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -22,12 +21,16 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { PeriodClosing } from "./panel";
 import { ClosingReview } from "./review";
 import { PeriodInventoryEditor } from "./inventory-editor";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 export function ClosingWorkspace({
   recordId,
   onOpen,
+  title,
+  navigation,
 }: {
+  title: string;
+  navigation: ReactNode;
   recordId?: string;
   onOpen: (id: string) => void;
 }) {
@@ -66,47 +69,20 @@ export function ClosingWorkspace({
   if (!period)
     return <PageEmpty title={labels.noAccountingPeriod} detail={labels.setUpAnAccountingPeriod} />;
 
-  return (
-    <Box display="grid" gap="xl">
+  const detail = (
+    <Box display="grid" gap="lg">
       <RecordHeading
-        title={labels.getThePeriodReady}
+        title={`${period.startsOn} – ${period.endsOn}`}
         subtitle={labels.seeWhatIsCompleteAnd}
-        action={
-          setup.periods.length > 1 ? (
-            <Box width="fit">
-              <SelectField
-                label={labels.period}
-                value={period.id}
-                onValueChange={(value) => {
-                  setProposal("");
-                  setPreparing(false);
-                  setReviewingScope(false);
-
-                  if (value) onOpen(value);
-                }}
-                options={setup.periods.map((item) => ({
-                  value: item.id,
-                  label: `${item.startsOn} – ${item.endsOn}`,
-                }))}
-              />
-            </Box>
-          ) : undefined
-        }
       />
       <AccountingStatus locale={locale} pending={readiness.isPending} error={readiness.error} />
       {basis ? (
         <>
-          <RecordSummary>
-            <RecordFact label="Status">
-              <Badge variant={basis.locked ? "secondary" : "outline"}>
-                {basis.locked ? labels.locked : labels.open}
-              </Badge>
-            </RecordFact>
-            <RecordFact label={labels.checksComplete}>
-              {basis.checks.filter((check) => check.passed).length} / {basis.checks.length}
-            </RecordFact>
-            <RecordFact label={labels.periodEnd}>{basis.endsOn}</RecordFact>
-          </RecordSummary>
+          <PageCaption>
+            {basis.locked ? labels.locked : labels.open},{" "}
+            {basis.checks.filter((check) => check.passed).length} / {basis.checks.length}{" "}
+            {labels.checksComplete.toLocaleLowerCase(locale)}
+          </PageCaption>
           <ReadinessChecklist
             checks={basis.checks}
             locale={locale}
@@ -173,6 +149,28 @@ export function ClosingWorkspace({
         </>
       ) : null}
     </Box>
+  );
+
+  return (
+    <RegisterWorkspace title={title} tabs={navigation} detail={detail} detailSize="wide">
+      <RegisterGroup title={labels.period} count={setup.periods.length} />
+      {[...setup.periods].reverse().map((item) => (
+        <RegisterRow
+          key={item.id}
+          title={`${item.startsOn} – ${item.endsOn}`}
+          status={item.locked ? "completed" : "open"}
+          state={item.locked ? labels.locked : labels.open}
+          amount=""
+          selected={item.id === period.id}
+          onSelect={() => {
+            setProposal("");
+            setPreparing(false);
+            setReviewingScope(false);
+            onOpen(item.id);
+          }}
+        />
+      ))}
+    </RegisterWorkspace>
   );
 }
 
@@ -264,7 +262,10 @@ function ReadinessChecklist({
           ]}
           rows={checks.map((check) => ({
             id: check.code,
-            cells: [readinessNames.get(check.code)?.[locale] ?? check.code, check.detail],
+            cells: [
+              readinessNames.get(check.code)?.[locale] ?? check.code,
+              readinessHelp.get(check.code)?.[locale] ?? check.detail,
+            ],
           }))}
         />
       </Disclosure>
@@ -288,31 +289,31 @@ function ReadinessCheck({
   const scope = check.code === "DeclaredBankInventory" || check.code === "CompleteFamilyInventory";
 
   return (
-    <Box display="flex" gap="lg" alignItems="start" paddingBlock="md">
-      <Box paddingBlock="md">
-        {check.passed ? (
-          <CheckCircle2 size={18} strokeWidth={1.5} />
+    <RegisterCheckRow
+      title={name}
+      completed={check.passed}
+      action={
+        !check.passed && scope ? (
+          <Button static variant="ghost" onClick={onReviewScope}>
+            {locale === "sv" ? "Granska" : "Review"}
+          </Button>
+        ) : !check.passed && destination ? (
+          <PageAction compact quiet href={`${base}/${destination.path}`}>
+            {locale === "sv" ? "Öppna" : "Open"}
+          </PageAction>
         ) : (
-          <Circle size={18} strokeWidth={1.5} />
-        )}
-      </Box>
-      <Box flexGrow minWidth="zero" display="grid" gap="sm">
-        <Text>{name}</Text>
-        {!check.passed ? (
-          <PageCaption>{readinessHelp.get(check.code)?.[locale] ?? check.detail}</PageCaption>
-        ) : null}
-      </Box>
-      {!check.passed && scope ? (
-        <Button static variant="outline" onClick={onReviewScope}>
-          {locale === "sv" ? "Granska omfattning" : "Review scope"}
-        </Button>
-      ) : null}
-      {!check.passed && destination ? (
-        <PageAction quiet href={`${base}/${destination.path}`}>
-          {destination[locale]}
-        </PageAction>
-      ) : null}
-    </Box>
+          <PageCaption>
+            {check.passed
+              ? locale === "sv"
+                ? "Klart"
+                : "Done"
+              : locale === "sv"
+                ? "Återstår"
+                : "Pending"}
+          </PageCaption>
+        )
+      }
+    />
   );
 }
 

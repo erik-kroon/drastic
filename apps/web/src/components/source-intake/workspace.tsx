@@ -267,7 +267,7 @@ function MappingForm(
       .filter((account) => account.active)
       .map((account) => ({
         value: account.id,
-        label: `${account.code} · ${account.name}`,
+        label: `${account.code}, ${account.name}`,
       })),
   };
 
@@ -399,7 +399,7 @@ function MappingForm(
           {(["openingMinor", "closingMinor"] as const).map((name) => (
             <InputField
               key={name}
-              label={`${name === "openingMinor" ? (locale === "sv" ? "Ingående saldo" : "Opening balance") : locale === "sv" ? "Utgående saldo" : "Closing balance"} · ${book.currency}`}
+              label={`${name === "openingMinor" ? (locale === "sv" ? "Ingående saldo" : "Opening balance") : locale === "sv" ? "Utgående saldo" : "Closing balance"}, ${book.currency}`}
               name={name}
               defaultValue={initial ? minorToDecimal(initial[name], scale) : ""}
               inputMode="decimal"

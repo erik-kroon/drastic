@@ -157,7 +157,7 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
                 .filter((account) => account.active)
                 .map((account) => ({
                   value: account.id,
-                  label: `${account.code} · ${account.name}`,
+                  label: `${account.code}, ${account.name}`,
                 })),
             ]}
             onValueChange={(value) => {

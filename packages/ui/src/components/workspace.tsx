@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useState, useRef, useLayoutEffect, type ComponentProps, type ReactNode } from "react";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
@@ -17,7 +17,7 @@ const styles = stylex.create({
     minHeight: "100dvh",
   },
   focusedShell: { gridTemplateColumns: "minmax(0, 1fr)" },
-  focusedContent: { padding: 0 },
+  focusedContent: { paddingInline: 0, paddingBlockStart: 0, paddingBlockEnd: 0 },
   sidebar: {
     display: { default: "flex", "@media (max-width: 767px)": "none" },
     flexDirection: "column",
@@ -64,16 +64,19 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeight16Px,
   },
   brandDetail: { color: tokens.mutedForeground, fontSize: tokens.fontSizeXs },
-  navGroup: { marginBlockEnd: tokens.space2 },
+  navGroup: { marginBlockEnd: 0 },
   navigation: { display: "grid", gap: 1 },
   navigationLabel: {
-    color: tokens.mutedForeground,
+    color: tokens.captionForeground,
     fontSize: tokens.fontSizeCompact,
     fontWeight: tokens.fontWeightSemibold,
-    letterSpacing: tokens.trackingLabel,
+    lineHeight: tokens.lineHeight14Px,
+    letterSpacing: tokens.trackingGroup,
     textTransform: "uppercase",
     paddingInline: tokens.space2,
-    marginBlockEnd: tokens.space1,
+    paddingBlockStart: tokens.space3,
+    paddingBlockEnd: tokens.space1,
+    marginBlockEnd: 1,
   },
   navItem: {
     color: { default: tokens.mutedForeground, ":hover": tokens.foreground },
@@ -101,9 +104,35 @@ const styles = stylex.create({
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
   navActive: {
-    backgroundColor: { default: tokens.secondary, ":hover": tokens.secondary },
-    color: { default: tokens.foreground, ":hover": tokens.foreground },
-    fontWeight: tokens.fontWeightMedium,
+    backgroundColor: { default: tokens.muted, ":hover": tokens.muted },
+    color: { default: tokens.mutedForeground, ":hover": tokens.foreground },
+  },
+  navCount: {
+    marginInlineStart: "auto",
+    color: tokens.captionForeground,
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+    fontVariantNumeric: "tabular-nums",
+  },
+  companyChevron: {
+    color: tokens.captionForeground,
+    fontFamily: tokens.fontFamilySystem,
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+    marginInlineStart: "auto",
+  },
+  avatar: {
+    display: "grid",
+    placeItems: "center",
+    width: 20,
+    height: 20,
+    flexShrink: 0,
+    borderRadius: tokens.radiusFull,
+    backgroundColor: tokens.avatarBackground,
+    color: tokens.primary,
+    fontSize: tokens.fontSizeAvatarInitials,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight12Px,
   },
   navSub: {
     borderInlineStartWidth: 1,
@@ -117,7 +146,7 @@ const styles = stylex.create({
   },
   footer: {
     display: "grid",
-    gap: tokens.space2,
+    gap: 1,
     marginBlockStart: "auto",
     paddingBlockStart: tokens.space4,
   },
@@ -165,9 +194,17 @@ const styles = stylex.create({
     marginBlockEnd: 16,
   },
   title: {
-    fontSize: tokens.fontSizeSm,
-    lineHeight: tokens.lineHeight18Px,
+    fontSize: tokens.fontSizeBase,
+    lineHeight: tokens.lineHeight20Px,
     fontWeight: tokens.fontWeightSemibold,
+  },
+  navigationHeader: { paddingBlock: 0 },
+  headerHeading: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: tokens.space4_5,
+    minWidth: 0,
   },
   scope: { display: "flex", alignItems: "center", gap: tokens.space2, minWidth: 0 },
   toolbar: {
@@ -398,6 +435,9 @@ export function WorkspaceAccount({
   return (
     <details {...stylex.props(styles.account)}>
       <summary {...stylex.props(styles.accountSummary)}>
+        <span aria-hidden="true" {...stylex.props(styles.avatar)}>
+          {initialsOf(name)}
+        </span>
         <span {...stylex.props(styles.accountName)}>
           {name}
           {detail ? (
@@ -407,7 +447,6 @@ export function WorkspaceAccount({
             </span>
           ) : null}
         </span>
-        <ChevronDown size={14} aria-hidden="true" />
       </summary>
       <div {...stylex.props(styles.accountDetails)}>{children}</div>
     </details>
@@ -489,14 +528,18 @@ export function WorkspaceBrand({
   );
 }
 
-export function WorkspaceCompany({ name, href }: { name: string; href: string }) {
-  const initials = name
+function initialsOf(name: string) {
+  return name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
     .toLocaleUpperCase();
+}
+
+export function WorkspaceCompany({ name, href }: { name: string; href: string }) {
+  const initials = initialsOf(name);
 
   return (
     <Link href={href} {...stylex.props(styles.brand, styles.companyLink)}>
@@ -504,7 +547,9 @@ export function WorkspaceCompany({ name, href }: { name: string; href: string })
         {initials}
       </span>
       <span {...stylex.props(styles.brandName)}>{name}</span>
-      <ChevronDown size={12} aria-hidden="true" />
+      <span aria-hidden="true" {...stylex.props(styles.companyChevron)}>
+        ⌄
+      </span>
     </Link>
   );
 }
@@ -545,10 +590,21 @@ export function WorkspaceNavItem({
   );
 }
 
-export function WorkspaceHeader({ title, action }: { title: string; action?: ReactNode }) {
+export function WorkspaceHeader({
+  title,
+  action,
+  navigation,
+}: {
+  title: string;
+  action?: ReactNode;
+  navigation?: ReactNode;
+}) {
   return (
-    <header {...stylex.props(styles.header)}>
-      <h1 {...stylex.props(styles.title)}>{title}</h1>
+    <header {...stylex.props(styles.header, Boolean(navigation) && styles.navigationHeader)}>
+      <div {...stylex.props(styles.headerHeading)}>
+        <h1 {...stylex.props(styles.title)}>{title}</h1>
+        {navigation}
+      </div>
       {action}
     </header>
   );
@@ -557,14 +613,19 @@ export function WorkspaceHeader({ title, action }: { title: string; action?: Rea
 export function WorkspaceNavLink({
   active = false,
   current = active,
+  count,
+  children,
   ...props
-}: ComponentProps<typeof Link> & { active?: boolean; current?: boolean }) {
+}: ComponentProps<typeof Link> & { active?: boolean; current?: boolean; count?: number }) {
   return (
     <Link
       {...props}
       aria-current={current ? "page" : undefined}
       {...stylex.props(styles.navItem, styles.navLink, active && styles.navActive)}
-    />
+    >
+      {children}
+      {count ? <span {...stylex.props(styles.navCount)}>{count}</span> : null}
+    </Link>
   );
 }
 

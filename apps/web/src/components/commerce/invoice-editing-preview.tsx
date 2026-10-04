@@ -56,7 +56,7 @@ export function InvoiceEditingPreview(
       ]}
       terms={restoredField(session, "terms", content?.paymentTerms ?? "")}
       labels={{
-        state: sv ? "Förhandsvisning · Utkast" : "Preview · Draft",
+        state: sv ? "Förhandsvisning, Utkast" : "Preview, Draft",
         from: sv ? "Från" : "From",
         billTo: sv ? "Kund" : "Customer",
         invoiceLines: sv ? "Fakturarader" : "Invoice lines",

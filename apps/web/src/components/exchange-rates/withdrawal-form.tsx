@@ -81,7 +81,7 @@ export function WithdrawalForm(props: {
     >
       <Text>{copy.withdrawalHelp}</Text>
       <Text>
-        {rate.observationId} · {rate.revision} · {rate.digest}
+        {rate.observationId}, {rate.revision}, {rate.digest}
       </Text>
       <Text>{copy.retry}</Text>
       <Box
@@ -107,7 +107,7 @@ export function WithdrawalForm(props: {
       <Text role="status">{invalid ? copy.invalid : save.isSuccess ? copy.withdrawn : ""}</Text>
       {save.data ? (
         <Text>
-          {save.data.id} · {save.data.digest}
+          {save.data.id}, {save.data.digest}
         </Text>
       ) : null}
       <AccountingStatus locale={locale} write pending={save.isPending} error={save.error} />

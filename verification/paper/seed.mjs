@@ -48,10 +48,13 @@ const evidence = await post("/evidence", {
 
 const drafts = [];
 
-for (const example of [
-  { name: "Nordhamn Studio AB", amountMinor: "1248000" },
-  { name: "Sjöstrand Design AB", amountMinor: "3250000" },
-]) {
+// The two legacy drafts predate the canonical fixture; they stay behind a flag for old receipts.
+for (const example of process.env.SEED_LEGACY_DRAFTS
+  ? [
+      { name: "Nordhamn Studio AB", amountMinor: "1248000" },
+      { name: "Sjöstrand Design AB", amountMinor: "3250000" },
+    ]
+  : []) {
   const party = await post("/commerce/counterparties", {
     kind: "synthetic_counterparty_v1",
     externalKey: `paper_${randomUUID()}`,
@@ -73,7 +76,7 @@ for (const example of [
   const draft = await post("/commerce/invoice-drafts", {
     draftKey: `paper_${randomUUID()}`,
     content: {
-      title: "Konsultarbete · syntetiskt utkast",
+      title: "Konsultarbete",
       counterpartyId: party.id,
       counterpartyRevision: party.revision,
       seller: identity,
@@ -83,7 +86,7 @@ for (const example of [
       plannedIssueDate: "2026-10-03",
       supplyDate: "2026-10-03",
       dueDate: "2026-11-02",
-      paymentTerms: "30 dagar · syntetiskt underlag",
+      paymentTerms: "30 dagar netto",
       sourceTotalMinor: example.amountMinor,
       lines: [
         {
@@ -110,6 +113,20 @@ for (const example of [
     revision: draft.revision,
   });
 }
+
+for (const article of [
+  { code: "konferensradgivning", description: "Konferensrådgivning", unit: "tim", price: "108000" },
+  { code: "lopande-radgivning", description: "Löpande rådgivning", unit: "tim", price: "100000" },
+  { code: "workshop-heldag", description: "Workshop, heldag", unit: "st", price: "800000" },
+])
+  await post("/commerce/articles", {
+    code: article.code,
+    expectedRevision: 0,
+    description: article.description,
+    unit: article.unit,
+    unitPriceMinor: article.price,
+    taxDescription: "25 %",
+  });
 
 const journal = await post("/change-sets", {
   kind: "manual_journal",
@@ -149,3 +166,6 @@ await writeFile(
 );
 
 console.log(JSON.stringify({ seeded: true, artifact, drafts: drafts.length }));
+
+// Canonical customers, invoices F-2026-0035..0043 and the Skogsbruk Nord draft.
+await import("./seed-sales.mjs");

@@ -281,7 +281,7 @@ function SavedComparison({
                     variant="outline"
                     onClick={() => setAccountId(line.accountId)}
                   >
-                    {line.right?.code ?? line.left?.code} · {line.right?.name ?? line.left?.name}
+                    {line.right?.code ?? line.left?.code}, {line.right?.name ?? line.left?.name}
                   </Button>,
                   line.left ? amount(line.left.closingMinor) : "—",
                   line.right ? amount(line.right.closingMinor) : "—",

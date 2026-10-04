@@ -91,7 +91,7 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
               { id: "description", label: copy.journal_description },
               {
                 id: "amount",
-                label: `${locale === "sv" ? "Belopp" : "Amount"} · ${book.currency}`,
+                label: `${locale === "sv" ? "Belopp" : "Amount"}, ${book.currency}`,
                 numeric: true,
               },
               { id: "candidates", label: candidateLabel },
@@ -108,7 +108,7 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
                   key="candidates"
                   static
                   variant="outline"
-                  aria-label={`${candidateLabel} · ${row.description}`}
+                  aria-label={`${candidateLabel}, ${row.description}`}
                   onClick={() => setCandidateRow(row.rowOrdinal)}
                 >
                   {candidateLabel}
@@ -183,11 +183,11 @@ export function BankStatementDetails({
     <Box display="grid" gap="md" minWidth="zero">
       <PageCaption>
         {account
-          ? `${account.code} · ${account.name}`
+          ? `${account.code}, ${account.name}`
           : sv
             ? "Konto ej tillgängligt"
             : "Account unavailable"}{" "}
-        · {statement.startsOn} – {statement.endsOn}
+        , {statement.startsOn} – {statement.endsOn}
       </PageCaption>
       <RecordSummary>
         <RecordFact label={sv ? "Ingående saldo" : "Opening balance"}>
@@ -201,12 +201,12 @@ export function BankStatementDetails({
         </RecordFact>
       </RecordSummary>
       <PageCaption>
-        {statement.completeness.declaredComplete ? copy.bank_declared : copy.bank_not_declared} ·{" "}
+        {statement.completeness.declaredComplete ? copy.bank_declared : copy.bank_not_declared},{" "}
         {statement.completeness.basis}
       </PageCaption>
       <Disclosure title={sv ? "Underlag och referenser" : "Source and references"}>
         <Text>
-          {copy.bank_statement_id}: {statement.id} · {statement.statementIdentifier}
+          {copy.bank_statement_id}: {statement.id}, {statement.statementIdentifier}
         </Text>
         <Text>
           {copy.bank_source_account}: {statement.sourceBankAccountId}
@@ -253,7 +253,7 @@ export function BankMatches({
             String(match.rowOrdinal),
             match.voucherId,
             match.lineId,
-            `${match.origin} · ${match.actorId}`,
+            `${match.origin}, ${match.actorId}`,
           ],
         }))}
       />
@@ -342,7 +342,7 @@ function BankMatchForm({
           required
           options={statement.statement.rows.map((row) => ({
             value: String(row.rowOrdinal),
-            label: `${row.rowOrdinal} · ${row.date} · ${row.amountMinor} · ${row.description}`,
+            label: `${row.rowOrdinal}, ${row.date}, ${row.amountMinor}, ${row.description}`,
             disabled: matchedRows.has(row.rowOrdinal),
           }))}
         />
@@ -373,7 +373,7 @@ function BankMatchForm({
             {match.data.match.lineId}
           </Text>
           <Text tone="muted">
-            {copy.bank_receipt}: {match.data.receipt.key} · {match.data.receipt.actorId}
+            {copy.bank_receipt}: {match.data.receipt.key}, {match.data.receipt.actorId}
           </Text>
         </Box>
       ) : null}

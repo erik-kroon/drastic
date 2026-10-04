@@ -45,7 +45,7 @@ export function RecurringRuleForm({
 
   const accounts = setup.accounts.map((account) => ({
     value: account.id,
-    label: `${account.code} · ${account.name} · ${account.id}`,
+    label: `${account.code}, ${account.name}, ${account.id}`,
     disabled: !account.active,
   }));
 

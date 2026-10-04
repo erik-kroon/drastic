@@ -178,7 +178,7 @@ function IssueDraftPicker(props: CommerceProps & { id: string; onSelect: (id: st
 
   const options =
     drafts.data?.pages.flatMap((page) =>
-      page.items.map((item) => ({ value: item.id, label: `${item.title} · ${item.customerName}` })),
+      page.items.map((item) => ({ value: item.id, label: `${item.title}, ${item.customerName}` })),
     ) ?? [];
 
   const selectedRecord = selectedDraft.data?.record;
@@ -186,7 +186,7 @@ function IssueDraftPicker(props: CommerceProps & { id: string; onSelect: (id: st
   if (selectedRecord !== undefined && !options.some((item) => item.value === selectedRecord.id)) {
     options.unshift({
       value: selectedRecord.id,
-      label: `${selectedRecord.content.title} · ${selectedRecord.content.customer.legalName}`,
+      label: `${selectedRecord.content.title}, ${selectedRecord.content.customer.legalName}`,
     });
   }
 
@@ -320,7 +320,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
               id: item.id,
               cells: [
                 <RecordOpen key="open" onClick={() => props.onOpen(item.id)}>
-                  {copy.review} · {item.draftRevision}
+                  {copy.review}, {item.draftRevision}
                 </RecordOpen>,
                 item.draftRevision,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
@@ -825,10 +825,10 @@ function LegalPolicySection({
           rows={history.items.map((item) => ({
             id: item.id,
             cells: [
-              `${item.id} · ${item.digest}`,
+              `${item.id}, ${item.digest}`,
               item.input.series,
               `${item.candidate.id} → ${item.review.id}`,
-              `${copy.issue}: ${String(item.legalInvoiceEnabled)} · ${copy.legalCredit}: ${String(item.creditEnabled)} · ${copy.delivery}: ${String(item.deliveryEnabled)}`,
+              `${copy.issue}: ${String(item.legalInvoiceEnabled)}, ${copy.legalCredit}: ${String(item.creditEnabled)}, ${copy.delivery}: ${String(item.deliveryEnabled)}`,
             ],
           }))}
         />
@@ -867,7 +867,7 @@ function LegalReviewsSection({
             id: item.id,
             cells: [
               <RecordOpen key="open" onClick={() => onOpen(item.id)}>
-                {item.ordinal} · {item.id}
+                {item.ordinal}, {item.id}
               </RecordOpen>,
               item.draftRevision,
               new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
@@ -900,13 +900,13 @@ function LegalIdentitySection({
     <RecordSection title={copy.immutableIdentities}>
       <RecordSummary>
         <RecordFact label={copy.draftIdentity}>
-          {draft ? `${draft.id} · ${draft.revision} · ${draft.digest}` : copy.notAvailable}
+          {draft ? `${draft.id}, ${draft.revision}, ${draft.digest}` : copy.notAvailable}
         </RecordFact>
         <RecordFact label={copy.legalReview}>
-          {review ? `${review.review.id} · ${review.review.digest}` : copy.notAvailable}
+          {review ? `${review.review.id}, ${review.review.digest}` : copy.notAvailable}
         </RecordFact>
         <RecordFact label={copy.issueIdentity}>
-          {issue ? `${issue.id} · ${issue.digest}` : copy.notIssued}
+          {issue ? `${issue.id}, ${issue.digest}` : copy.notIssued}
         </RecordFact>
         <RecordFact label={copy.approvalIdentity}>
           {review?.approval?.id ?? copy.notAvailable}
@@ -981,10 +981,10 @@ function LegalActivationSection({
         <>
           <RecordSummary>
             <RecordFact label={copy.legalPolicy}>
-              {policy.id} · {policy.digest} · {policy.activatedBy}
+              {policy.id}, {policy.digest}, {policy.activatedBy}
             </RecordFact>
             <RecordFact label={copy.accountingProfile}>
-              {accountingProfile.id} · {accountingProfile.digest} · {accountingProfile.activatedBy}
+              {accountingProfile.id}, {accountingProfile.digest}, {accountingProfile.activatedBy}
             </RecordFact>
           </RecordSummary>
           {policy.activatedBy === accountingProfile.activatedBy ? (
@@ -1076,7 +1076,7 @@ function LegalArtifactSection(props: {
         <>
           <RecordSummary>
             <RecordFact label={props.copy.pdfCapture}>
-              {props.pdf.capture.id} · {props.pdf.capture.digest}
+              {props.pdf.capture.id}, {props.pdf.capture.digest}
             </RecordFact>
             <RecordFact label={props.copy.artifactHash}>
               {props.pdf.artifact?.sha256 ?? props.copy.notSealed}
@@ -1156,7 +1156,7 @@ function LegalDeliveryItem({
   value: typeof LegalDelivery.LegalDeliveryView.Type;
 }) {
   return (
-    <Details title={`${copy.deliveryRequest} · ${value.request.id}`}>
+    <Details title={`${copy.deliveryRequest}, ${value.request.id}`}>
       <RecordSummary>
         <RecordFact label={copy.deliveryStatus}>{value.status}</RecordFact>
         <RecordFact label={copy.sendAuthorized}>
@@ -1168,7 +1168,7 @@ function LegalDeliveryItem({
         <RecordFact label={copy.deliveredState}>{copy.no}</RecordFact>
       </RecordSummary>
       <Text>
-        {value.request.input.channel} · {value.request.input.destination}
+        {value.request.input.channel}, {value.request.input.destination}
       </Text>
       {value.attempts.length ? (
         <DataTable
@@ -1185,7 +1185,7 @@ function LegalDeliveryItem({
           rows={value.attempts.map(({ attempt, reconciliation }) => ({
             id: attempt.id,
             cells: [
-              `${attempt.ordinal} · ${attempt.id}`,
+              `${attempt.ordinal}, ${attempt.id}`,
               attempt.providerRequestId,
               attempt.status,
               String(attempt.externalTrafficProven),
@@ -1289,7 +1289,7 @@ function IssuePreparation(
   const accounts =
     setup.data?.accounts
       .filter((account) => account.active)
-      .map((account) => ({ value: account.id, label: `${account.code} · ${account.name}` })) ?? [];
+      .map((account) => ({ value: account.id, label: `${account.code}, ${account.name}` })) ?? [];
 
   return (
     <RecordSplit
@@ -1583,7 +1583,7 @@ function IssueContents(
                       (entry) => entry.id === line.accountId,
                     );
 
-                    return account ? `${account.code} · ${account.name}` : line.accountId;
+                    return account ? `${account.code}, ${account.name}` : line.accountId;
                   })(),
                   formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),
                   formatMinorAmount(line.creditMinor, draft.content.currencyScale, locale),
@@ -1594,7 +1594,7 @@ function IssueContents(
           )}
         />
         <Text>
-          {copy.legal}: {plan.legalBlockers.join(" · ")}
+          {copy.legal}: {plan.legalBlockers.join(", ")}
         </Text>
         <Text tone="muted">{copy.rules}</Text>
         <DataTable

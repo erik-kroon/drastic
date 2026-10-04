@@ -86,7 +86,7 @@ export function CapacityReports({
             required
             options={setup.accounts.map((account) => ({
               value: account.id,
-              label: `${account.code} · ${account.name} · ${account.id}`,
+              label: `${account.code}, ${account.name}, ${account.id}`,
             }))}
           />
           <Box display="grid" columns={1} columnsAtSm={2} gap="md">
@@ -211,7 +211,7 @@ function CapacityReport({
             {copy.reportId}: {view.report.id}
           </Text>
           <Text>
-            {view.report.accountId} · {view.report.currency} / {view.report.currencyScale} ·{" "}
+            {view.report.accountId}, {view.report.currency} / {view.report.currencyScale},{" "}
             {view.report.startsOn} – {view.report.endsOn}
           </Text>
           <Text>{statuses[view.report.status]}</Text>
@@ -247,7 +247,7 @@ function CapacityReport({
             rows={view.report.sourceRows.map((row) => ({
               id: `${row.statementId}/${row.rowOrdinal}`,
               cells: [
-                `${row.statementId}/${row.rowOrdinal} · ${row.date}`,
+                `${row.statementId}/${row.rowOrdinal}, ${row.date}`,
                 row.amountMinor,
                 row.allocatedMinor,
                 row.remainingMinor,
@@ -266,7 +266,7 @@ function CapacityReport({
             rows={view.report.ledgerLines.map((line) => ({
               id: `${line.voucherId}/${line.lineId}`,
               cells: [
-                `${line.voucherId}/${line.lineId} · ${line.date}`,
+                `${line.voucherId}/${line.lineId}, ${line.date}`,
                 line.amountMinor,
                 line.allocatedMinor,
                 line.remainingMinor,
@@ -293,7 +293,7 @@ function CapacityReport({
             }))}
           />
           <Text>
-            {copy.receipt}: {view.report.receipt.key} · {view.report.receipt.actorId}
+            {copy.receipt}: {view.report.receipt.key}, {view.report.receipt.actorId}
           </Text>
           <details>
             <summary>{copy.details}</summary>

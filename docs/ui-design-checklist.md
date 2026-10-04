@@ -53,7 +53,7 @@ No Paper frame was changed or reinspected by this documentation adoption. Narrow
 - [x] **P011 — Create a client company** — Accounted reference: `/companies/new-client`. Static, 2026-10-03: client form (V10) on page 11 ([ledger](design/2026-10-03-full-ui-completion.md)). Desktop static; runtime unverified.
 - [x] **P012 — Company identity and accounting setup** — Accounted reference: `/onboarding`. Static, 2026-10-03: setup step 2 with fiscal year, chart of accounts, VAT period and method; VAT choices marked unverified (U14). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 - [x] **P013 — Choose opening balances and historical bookkeeping** — Accounted reference: `/onboarding/books`. Static, 2026-10-03: setup step 3, start from zero, import opening balances from a SIE file, or import earlier bookkeeping; nothing is booked before review (U15). The opening-balance review itself is F042. [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
-- [x] **P014 — Choose assistance and review policy during setup** — Accounted reference: `/onboarding/agent`. Static, 2026-10-03: setup step 4 with assistant permissions that match the assistant policy page and approval, posting and payment fixed to a person (U16). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
+- [x] **P014 — Choose assistance and review policy during setup** — Accounted reference: `/onboarding/agent`. Superseded 2026-10-04: U16 is archived because assistant autonomy is not asked before first use; responsibilities are set in U41 and detailed policy lives in settings (T11). Earlier static, 2026-10-03: setup step 4 with assistant permissions that match the assistant policy page and approval, posting and payment fixed to a person (U16). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 - [x] **P015 — Enter a clearly labelled demo workspace** — Accounted reference: `/sandbox`. Static, 2026-10-03: a clearly labelled demo company with what is real (nothing) and what is never sent (U29). Scope question: the demo workspace is derived from Accounted and not owned by an OpenERP plan, so this is a proposal pending owner confirmation. [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 - [x] **P016 — Guided demo journey** — Accounted reference: `/sandbox/journey`. Static, 2026-10-03: guided walkthrough inside the shell with a persistent demo banner, the demo company name in the switcher, step state and a reset (U30). Same scope question as P015. [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 
@@ -400,3 +400,20 @@ The owner approved the current L to W screens and the component board as the pro
 ## Correction pass 2026-10-04 (static design coverage only)
 
 This pass changed no tick states. It applied the shared system v2 (see `design/2026-10-04-correction-spec.md`), the canonical fixture, the component board K23, the stress frames K24 and K25, and the current-screen index (`design/current-screen-index.md`). F002 stays deferred. Open items: `design/unresolved-design-list.md`.
+
+## Onboarding journey 2026-10-04 (static design coverage only)
+
+Frames U32 to U46 on Paper page 10, specified in [the onboarding spec](design/2026-10-04-onboarding-spec.md). Each tick is static desktop design with example data; nothing is implemented or runtime-verified.
+
+- [x] **ON01 — Choose how to start** (U32).
+- [x] **ON02 — Company profile with source and status per fact** (U33).
+- [x] **ON03 — Capability support for this company** (U34), four states, no silent fallback.
+- [x] **ON04 — Setup workspace with go-live blockers** (U35), no percent complete.
+- [x] **ON05 — Source inventory** (U36).
+- [x] **ON06 — Import review and mapping exception** (U37, U38).
+- [x] **ON07 — Opening balances with provenance** (U39).
+- [x] **ON08 — Verify the books, Book Zero** (U40), one blocking control with an explicit named acceptance path.
+- [x] **ON09 — Responsibilities** (U41).
+- [x] **ON10 — Cutover readiness, final delta import and confirmation** (U42, U43, U44).
+- [x] **ON11 — Activation record and first live period** (U45, U46).
+- [ ] **ON12 — Open product questions** for the onboarding frames (delta-import row decision, open invoices at the control point, whether an accepted limitation passes a control) are logged in the correction log and unresolved.

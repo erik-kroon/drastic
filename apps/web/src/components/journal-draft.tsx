@@ -255,7 +255,7 @@ function JournalForm(props: {
             required
             options={setup.periods.map((period) => ({
               value: period.id,
-              label: `${period.startsOn} – ${period.endsOn}${period.locked ? ` · ${copy.journal_locked}` : ""}`,
+              label: `${period.startsOn} – ${period.endsOn}${period.locked ? `, ${copy.journal_locked}` : ""}`,
               disabled: period.locked,
             }))}
           />
@@ -298,7 +298,7 @@ function JournalForm(props: {
               required
               options={setup.accounts.map((account) => ({
                 value: account.id,
-                label: `${account.code} · ${account.name}`,
+                label: `${account.code}, ${account.name}`,
                 disabled: !account.active,
               }))}
             />

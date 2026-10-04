@@ -165,7 +165,7 @@ export function RegisterReports(
             id: report.id,
             cells: [
               <RecordOpen key="open" onClick={() => setSelected(report.id)}>
-                {copy.registerReports} · {report.asOfDate}
+                {copy.registerReports}, {report.asOfDate}
               </RecordOpen>,
               report.asOfDate,
               new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
@@ -307,7 +307,7 @@ function ReportContents({
         rows={report.controls.map((control) => ({
           id: control.accountId,
           cells: [
-            `${control.code} · ${control.name}`,
+            `${control.code}, ${control.name}`,
             copy[control.direction],
             amount(control.outstandingMinor),
             control.cancelledMinor === undefined ? "—" : amount(control.cancelledMinor),
@@ -365,7 +365,7 @@ function ReportContents({
               amount(invoice.outstandingMinor),
               invoice.cancelledMinor === undefined ? "—" : amount(invoice.cancelledMinor),
               invoice.cancellation
-                ? `${invoice.cancellation.id} · ${invoice.cancellation.postingDate} · ${invoice.cancellation.reversalVoucherId}`
+                ? `${invoice.cancellation.id}, ${invoice.cancellation.postingDate}, ${invoice.cancellation.reversalVoucherId}`
                 : "—",
             ],
           }))}

@@ -149,7 +149,7 @@ export function InvoiceRegistration(
           { value: "", label: labels.chooseAPostedLine },
           ...candidates.map(({ voucher, line }) => ({
             value: `${voucher.id}:${line.lineId}`,
-            label: `${voucher.action.series}${voucher.number} · ${line.description} · ${scale === undefined ? "—" : formatMinorAmount(props.direction === "customer" ? line.debitMinor : line.creditMinor, scale, props.locale)} ${props.book.currency}`,
+            label: `${voucher.action.series}${voucher.number}, ${line.description}, ${scale === undefined ? "—" : formatMinorAmount(props.direction === "customer" ? line.debitMinor : line.creditMinor, scale, props.locale)} ${props.book.currency}`,
           })),
         ]}
       />

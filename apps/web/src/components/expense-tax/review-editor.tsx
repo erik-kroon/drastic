@@ -94,8 +94,8 @@ export function ExpenseReviewForm(
               {source.current.facts.currency ?? "—"}
               {scale === null
                 ? sv
-                  ? " · Valutans decimaler måste fastställas först."
-                  : " · Establish the currency scale in the source first."
+                  ? ", Valutans decimaler måste fastställas först."
+                  : ", Establish the currency scale in the source first."
                 : ""}
             </PageCaption>
             <Box display="grid" columns={3} gap="md">
@@ -259,7 +259,7 @@ function ReviewDecisions(props: {
               { value: "", label: sv ? "Inte fastställd" : "Not established" },
               {
                 value: "synthetic",
-                label: sv ? "Demonstration · utgiftsmoms" : "Demonstration · expense tax",
+                label: sv ? "Demonstration, utgiftsmoms" : "Demonstration, expense tax",
               },
             ]}
           />

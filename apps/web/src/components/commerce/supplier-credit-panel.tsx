@@ -71,7 +71,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
       <AccountingStatus locale={props.locale} pending={history.isPending} error={history.error} />
       {history.data?.items.map((item) => (
         <RecordOpen key={item.id} onClick={() => setReviewId(item.reviewId)}>
-          {sv ? "Kredit" : "Credit"} {item.supplierCreditNumber} ·{" "}
+          {sv ? "Kredit" : "Credit"} {item.supplierCreditNumber},{" "}
           {formatMinorAmount(item.amountMinor, invoice.currencyScale, props.locale)}{" "}
           {invoice.currency}
         </RecordOpen>
@@ -118,7 +118,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
             onSuccess={(result) => setReviewId(result.id)}
           >
             <Text>
-              {invoice.documentNumber} ·{" "}
+              {invoice.documentNumber},{" "}
               {formatMinorAmount(invoice.amountMinor, invoice.currencyScale, props.locale)}{" "}
               {invoice.currency}
             </Text>
@@ -231,7 +231,7 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
                   return {
                     id: `${group.id}:${line.lineId}`,
                     cells: [
-                      account ? `${account.code} · ${account.name}` : line.accountId,
+                      account ? `${account.code}, ${account.name}` : line.accountId,
                       formatMinorAmount(line.debitMinor, props.invoice.currencyScale, props.locale),
                       formatMinorAmount(
                         line.creditMinor,

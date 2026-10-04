@@ -155,7 +155,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
       action={
         account ? (
           <PageCaption>
-            {account.name} · {account.code}
+            {account.name}, {account.code}
           </PageCaption>
         ) : undefined
       }
@@ -224,7 +224,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
           ) : null}
           <BankInset>
             <Disclosure
-              label={`${sv ? "Period och bankkonto" : "Period and bank account"} · ${from} – ${to}`}
+              label={`${sv ? "Period och bankkonto" : "Period and bank account"}, ${from} – ${to}`}
             >
               <BankScopeToolbar
                 sv={sv}
@@ -317,7 +317,7 @@ function BankAccountList(props: BankPresentation & { from: string; to: string })
                 <Box>
                   <Link href={href({ from, to, account: item.id })}>{item.name}</Link>
                   <PageCaption>
-                    {item.code} · {data.currency}
+                    {item.code}, {data.currency}
                   </PageCaption>
                 </Box>
               </Box>,
@@ -383,14 +383,14 @@ function AccountActivity(props: ActivityProps) {
           },
           {
             label: account.statementDate
-              ? `${sv ? "Banksaldo" : "Statement balance"} · ${date(account.statementDate)}`
+              ? `${sv ? "Banksaldo" : "Statement balance"}, ${date(account.statementDate)}`
               : sv
                 ? "Kontoutdrag saknas"
                 : "No statement",
             amount: money(account.statementBalanceMinor),
           },
           {
-            label: `${sv ? "Skillnad vid periodens slut" : "Difference at period end"} · ${date(to)}`,
+            label: `${sv ? "Skillnad vid periodens slut" : "Difference at period end"}, ${date(to)}`,
             amount: money(account.differenceMinor),
             warning: account.differenceMinor !== null && account.differenceMinor !== "0",
           },
@@ -411,7 +411,7 @@ function AccountActivity(props: ActivityProps) {
                 <Box>
                   <Text>{review.reason}</Text>
                   <PageCaption>
-                    {date(review.createdAt)} ·{" "}
+                    {date(review.createdAt)},{" "}
                     {review.completed
                       ? sv
                         ? "Genomförd"
@@ -541,7 +541,7 @@ function AccountTransactions(props: ActivityProps) {
                   caption={
                     row.remainingMinor === "0"
                       ? undefined
-                      : `${row.allocatedMinor !== "0" ? (sv ? "Delvis matchad" : "Partly matched") : sv ? "Att matcha" : "To match"} · ${money(row.remainingMinor)} ${sv ? "kvar" : "remaining"}`
+                      : `${row.allocatedMinor !== "0" ? (sv ? "Delvis matchad" : "Partly matched") : sv ? "Att matcha" : "To match"}, ${money(row.remainingMinor)} ${sv ? "kvar" : "remaining"}`
                   }
                   href={
                     row.statementId && row.rowOrdinal !== null
@@ -633,7 +633,7 @@ function BankScopeToolbar(props: {
           title={account?.name ?? (sv ? "Dina bankkonton" : "Your bank accounts")}
           subtitle={
             account
-              ? `${account.code} · ${props.currency}`
+              ? `${account.code}, ${props.currency}`
               : sv
                 ? "Se vilka konton som behöver stämmas av och fortsätt där arbetet väntar."
                 : "See which accounts need attention and continue reconciling."
@@ -723,7 +723,7 @@ function AccountReport(props: {
     >
       <Box display="grid" gap="lg">
         <PageCaption>
-          {props.account.name} · {props.from}–{props.to}
+          {props.account.name}, {props.from}–{props.to}
         </PageCaption>
         <Box>
           <Button

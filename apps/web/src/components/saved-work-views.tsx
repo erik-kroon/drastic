@@ -55,7 +55,7 @@ export function SavedWorkViews(props: {
                 { value: "", label: sv ? "Aktuella filter" : "Current filters" },
                 ...views.map((view) => ({
                   value: view.id,
-                  label: `${view.name}${view.visibility === "team" ? " · Team" : ""}`,
+                  label: `${view.name}${view.visibility === "team" ? ", Team" : ""}`,
                 })),
               ]}
             />

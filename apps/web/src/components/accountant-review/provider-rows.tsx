@@ -36,17 +36,17 @@ export function ReviewProviderRows({
                 minWidth="zero"
               >
                 <Heading>
-                  {row.source.ownerName} · {row.source.sourceKey}
+                  {row.source.ownerName}, {row.source.sourceKey}
                 </Heading>
                 <Text>
-                  {row.source.id} · {row.source.occurredOn} · {row.source.dataNature}
+                  {row.source.id}, {row.source.occurredOn}, {row.source.dataNature}
                 </Text>
                 <Text>
-                  {row.revision.classification} / {row.revision.origin} · {copy.reviewState}:{" "}
+                  {row.revision.classification} / {row.revision.origin}, {copy.reviewState}:{" "}
                   {row.review?.id ?? copy.unknownValue}
                 </Text>
                 <Text>
-                  {copy.originalAmount}: {row.source.amountMinor} {row.source.currency} ·{" "}
+                  {copy.originalAmount}: {row.source.amountMinor} {row.source.currency},{" "}
                   {copy.scale} {row.source.currencyScale}
                 </Text>
                 {row.disposition === "excluded_after_end" ? <Text>{copy.outsideOwner}</Text> : null}
@@ -74,11 +74,11 @@ export function ReviewProviderRows({
             .map((row) => (
               <Box key={row.owner.id} display="grid" gap="lg" minWidth="zero">
                 <Heading>
-                  {row.owner.displayName} · {row.owner.id}
+                  {row.owner.displayName}, {row.owner.id}
                 </Heading>
                 <Text>{copy.openingStatus}</Text>
                 <Text>
-                  {row.startsOn} – {row.endsOn} · {row.currency} · {copy.scale} {row.currencyScale}
+                  {row.startsOn} – {row.endsOn}, {row.currency}, {copy.scale} {row.currencyScale}
                 </Text>
                 <Text>
                   {copy.unresolvedOwner}: {row.unlinkedRecordCount}
@@ -163,14 +163,14 @@ export function ReviewProviderRows({
               >
                 <Heading>{row.source.sourceKey}</Heading>
                 <Text>
-                  {row.source.sourceId} · {row.source.facts.recordClass}
+                  {row.source.sourceId}, {row.source.facts.recordClass}
                 </Text>
                 <Text>{row.source.facts.description}</Text>
                 <Text>
                   {copy.refs}: {row.source.facts.evidenceId}
                 </Text>
                 <Text>
-                  {copy.reviewState}: {row.review?.id ?? copy.unknownValue} · {row.assessmentMode}
+                  {copy.reviewState}: {row.review?.id ?? copy.unknownValue}, {row.assessmentMode}
                 </Text>
                 <DataTable
                   title={copy.expense_tax}

@@ -84,7 +84,7 @@ export function JournalCorrection(props: {
             required
             options={props.periods.map((period) => ({
               value: period.id,
-              label: `${period.startsOn} – ${period.endsOn}${period.locked ? ` · ${copy.journal_locked}` : ""}`,
+              label: `${period.startsOn} – ${period.endsOn}${period.locked ? `, ${copy.journal_locked}` : ""}`,
               disabled: period.locked,
             }))}
           />

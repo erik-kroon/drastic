@@ -113,11 +113,11 @@ const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    fontSize: tokens.fontSizeXs,
+    fontSize: tokens.fontSizeControl,
     fontWeight: tokens.fontWeightMedium,
-    lineHeight: tokens.lineHeight20Px,
+    lineHeight: tokens.lineHeight16Px,
     minHeight: 32,
-    borderRadius: tokens.radiusMd,
+    borderRadius: tokens.radiusControl,
     paddingInline: 12,
     color: tokens.primaryForeground,
     backgroundColor: { default: tokens.primary, ":hover": tokens.primaryHoverBackground },
@@ -323,7 +323,6 @@ export function RecordOpen({ children, ...props }: ComponentProps<"button">) {
   return (
     <button {...props} type="button" {...stylex.props(styles.record, styles.openRecord)}>
       {children}
-      <ChevronRight size={14} aria-hidden="true" />
     </button>
   );
 }

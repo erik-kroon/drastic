@@ -5,6 +5,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { WorkReviewAction } from "@open-erp/ui/components/work-controls";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { ReviewEntry } from "./review-entry";
@@ -256,18 +257,17 @@ function RecoveryDetail(props: {
           </Box>
           <Box display="flex" flexWrap="wrap" gap="md">
             {book.role === "operator" && current.availableApproval === null ? (
-              <Button
-                size="xl"
+              <WorkReviewAction
                 disabled={!actionable || current.availableApproval !== null}
                 onClick={() => approve.mutate()}
               >
                 {copy.saveApprove}
-              </Button>
+              </WorkReviewAction>
             ) : null}
             {current.availableApproval ? (
-              <Button size="xl" disabled={!actionable} onClick={() => execute.mutate()}>
+              <WorkReviewAction disabled={!actionable} onClick={() => execute.mutate()}>
                 {copy.saveExecute}
-              </Button>
+              </WorkReviewAction>
             ) : null}
           </Box>
           {book.role === "operator" && current.availableApproval ? (
@@ -379,10 +379,10 @@ function RecoveryReceipt(props: {
       </Link>
       <Disclosure title={copy.receipt}>
         <Text tone="muted">
-          {receipt.id} · {receipt.committedAt}
+          {receipt.id}, {receipt.committedAt}
         </Text>
         <Text tone="muted">
-          {copy.voucher}: {receipt.voucherId} · {receipt.voucherNumber}
+          {copy.voucher}: {receipt.voucherId}, {receipt.voucherNumber}
         </Text>
         <Text tone="muted">
           {copy.sequence}: {receipt.sequence}

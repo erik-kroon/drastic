@@ -193,12 +193,12 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
               {item.status ?? "upcoming"}
             </Text>
             <Text>
-              {item.source_reference} · {item.source_revision}
+              {item.source_reference}, {item.source_revision}
             </Text>
             <Text>
               {sv ? "Grund" : "Basis"}:{" "}
               {item.statutory_basis
-                ? `${item.statutory_basis.jurisdiction} · ${item.statutory_basis.family} · ${item.statutory_basis.ruleReference}@${item.statutory_basis.ruleVersion} · ${item.statutory_basis.calendarReference} · ${item.statutory_basis.basisDueAt}`
+                ? `${item.statutory_basis.jurisdiction}, ${item.statutory_basis.family}, ${item.statutory_basis.ruleReference}@${item.statutory_basis.ruleVersion}, ${item.statutory_basis.calendarReference}, ${item.statutory_basis.basisDueAt}`
                 : sv
                   ? "Saknar granskad grund"
                   : "No reviewed statutory basis recorded"}
@@ -232,7 +232,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
             </Text>
             {item.amends_obligation_id && (
               <Text>
-                {sv ? "Ändrar" : "Amends"}: {item.amends_obligation_id} ·{" "}
+                {sv ? "Ändrar" : "Amends"}: {item.amends_obligation_id},{" "}
                 {item.amended_outcome_reference ?? (sv ? "inget utfall" : "no outcome")} (
                 {sv ? "notis" : "notice"} {item.amendment_notice_id})
               </Text>
@@ -277,7 +277,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
                         ? "Påminnelse avfärdad"
                         : "Reminder dismissed"
                       : `${sv ? "Utfall" : "Outcome"}: ${event.outcomeKind} — ${event.reference}`}{" "}
-                    · {new Date(event.recordedAt).toLocaleString(locale)} · {event.actorId}
+                    , {new Date(event.recordedAt).toLocaleString(locale)}, {event.actorId}
                   </Text>
                 ))
               )}

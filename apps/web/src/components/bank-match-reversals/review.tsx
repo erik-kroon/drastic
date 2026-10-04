@@ -175,14 +175,14 @@ export function BankUnmatchReview({
                     id: "source",
                     cells: [
                       copy.source,
-                      `${capacity.leg.statementId} / ${capacity.leg.rowOrdinal} · ${capacity.observedOn}`,
+                      `${capacity.leg.statementId} / ${capacity.leg.rowOrdinal}, ${capacity.observedOn}`,
                     ],
                   },
                   {
                     id: "line",
                     cells: [
                       copy.line,
-                      `${capacity.leg.voucherId} / ${capacity.leg.lineId} · ${capacity.postedOn}`,
+                      `${capacity.leg.voucherId} / ${capacity.leg.lineId}, ${capacity.postedOn}`,
                     ],
                   },
                   { id: "amount", cells: [copy.amount, amount(capacity.leg.amountMinor)] },
@@ -214,7 +214,7 @@ export function BankUnmatchReview({
           {receipt ? (
             <>
               <Text>
-                {copy.receipt}: {receipt.receipt.key} · {receipt.receipt.actorId} ·{" "}
+                {copy.receipt}: {receipt.receipt.key}, {receipt.receipt.actorId},{" "}
                 {receipt.executedAt}
               </Text>
               <Text>
@@ -256,7 +256,7 @@ export function BankUnmatchReview({
               {view.approval ? (
                 <>
                   <Text>
-                    {copy.expires}: {view.approval.expiresAt} · {view.approval.actorId}
+                    {copy.expires}: {view.approval.expiresAt}, {view.approval.actorId}
                   </Text>
                   <Box>
                     <Button
@@ -448,14 +448,14 @@ function RequestRecovery(props: {
       <Text>{props.request}</Text>
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
-          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} ·{" "}
+          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"},{" "}
           {props.label}
         </Button>
         <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
           {props.locale === "sv"
             ? "Kasta anrop och återförsöksnyckel"
             : "Discard request and retry key"}{" "}
-          · {props.label}
+          , {props.label}
         </Button>
       </Box>
     </Box>

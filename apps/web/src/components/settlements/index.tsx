@@ -116,13 +116,13 @@ function AllocationForm(props: {
     .filter((account) => account.active || account.id === seed?.accountId)
     .map((account) => ({
       value: account.id,
-      label: `${account.code} · ${account.name} · ${account.id}`,
+      label: `${account.code}, ${account.name}, ${account.id}`,
     }));
 
   if (seed && !accounts.some((account) => account.value === seed.accountId)) {
     accounts.push({
       value: seed.accountId,
-      label: `${seed.accountId} · ${candidateCopy.unavailableAccount}`,
+      label: `${seed.accountId}, ${candidateCopy.unavailableAccount}`,
     });
   }
 
@@ -167,8 +167,8 @@ function AllocationForm(props: {
           {candidate ? (
             <Box display="grid" gap="sm" minWidth="zero">
               <Text>
-                {candidateCopy.queuedTitle}: {candidate.accountId} · {candidate.statementId} /{" "}
-                {candidate.rowOrdinal} ·{" "}
+                {candidateCopy.queuedTitle}: {candidate.accountId}, {candidate.statementId} /{" "}
+                {candidate.rowOrdinal},{" "}
                 {candidate.aggregateLegs
                   ? `${candidate.aggregateLegs.length} ${locale === "sv" ? "bokförda rader" : "posted lines"}`
                   : `${candidate.voucherId} / ${candidate.lineId}`}
@@ -188,7 +188,7 @@ function AllocationForm(props: {
           {seed ? (
             <>
               <Text>
-                {candidateCopy.seededTitle}: {seed.statementId} / {seed.rowOrdinal} ·{" "}
+                {candidateCopy.seededTitle}: {seed.statementId} / {seed.rowOrdinal},{" "}
                 {seed.aggregateLegs
                   ? `${seed.aggregateLegs.length} ${locale === "sv" ? "bokförda rader" : "posted lines"}`
                   : `${seed.voucherId} / ${seed.lineId}`}

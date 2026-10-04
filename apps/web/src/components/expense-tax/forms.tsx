@@ -177,7 +177,7 @@ export function TaxSourceForm(
           </>
         ) : (
           <Text>
-            {current.sourceKey} · {current.facts.recordClass}
+            {current.sourceKey}, {current.facts.recordClass}
           </Text>
         )}
         <InputField

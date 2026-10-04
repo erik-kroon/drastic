@@ -17,7 +17,7 @@ import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
-import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
+import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostedRecords, PostedRecord } from "@/components/posted-records";
@@ -73,10 +73,37 @@ function Books() {
     <>
       <WorkspaceHeader
         title={copy.bookkeeping}
+        navigation={
+          <RegisterNavigation
+            label={copy.bookkeeping}
+            options={[
+              {
+                label: copy.vouchers,
+                href: workReturnHref(base, "vouchers", work),
+                active: view !== "accounts",
+              },
+              {
+                label: copy.chart,
+                href: workReturnHref(base, "accounts", work),
+                active: view === "accounts",
+              },
+              {
+                label: locale === "sv" ? "Periodiseringar och tillgångar" : "Deferrals and assets",
+                href: `${workspacePath(book)}/reports?view=subledgers`,
+                active: false,
+              },
+              {
+                label: locale === "sv" ? "Åtgärder" : "Actions",
+                href: `${workspacePath(book)}/history`,
+                active: false,
+              },
+            ]}
+          />
+        }
         action={
           <Box display="flex" flexWrap="wrap" alignItems="center" gap="md">
             <WorkReturnAction work={work} />
-            <PageAction href={workReturnHref(base, "journal", work)}>
+            <PageAction compact href={workReturnHref(base, "journal", work)}>
               <Plus size={14} aria-hidden="true" />
               {copy.newEntry}
             </PageAction>
@@ -84,14 +111,6 @@ function Books() {
         }
       />
       <PageContent>
-        <PageTabs label={copy.bookkeeping}>
-          <PageTab href={workReturnHref(base, "vouchers", work)} active={view !== "accounts"}>
-            {copy.vouchers}
-          </PageTab>
-          <PageTab href={workReturnHref(base, "accounts", work)} active={view === "accounts"}>
-            {copy.chart}
-          </PageTab>
-        </PageTabs>
         {view !== "accounts" ? (
           <PostedRecords
             book={book}

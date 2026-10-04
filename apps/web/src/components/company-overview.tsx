@@ -1,13 +1,10 @@
+import { OverviewLayout } from "@open-erp/ui/components/overview-layout";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Upload } from "lucide-react";
 import { DeadlineObligations } from "./deadline-obligations";
 import { RuleImpactPanel } from "./rule-impact-panel";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
-import {
-  PageContent,
-  WorkspaceWelcome,
-  TaskColumns,
-  PageAction,
-} from "@open-erp/ui/components/accounting-page";
+import { PageContent, PageAction } from "@open-erp/ui/components/accounting-page";
 import { useCompanyWork } from "@/lib/company-work";
 import {
   CompanyPosition,
@@ -33,23 +30,28 @@ export function CompanyOverview() {
         }
       />
       <PageContent>
-        <WorkspaceWelcome
-          title={work.book.name}
-          context={
-            sv
-              ? "Ditt bolag, arbetet som väntar och vad som behöver följas upp."
-              : "Your company, the work ahead and what needs following up."
+        <OverviewLayout
+          context={`${work.book.name}, ${work.from} – ${work.to}`}
+          main={
+            <>
+              <CompanyPosition work={work} />
+              <CompanyBankAccounts work={work} />
+              <CompanyOpenInvoices work={work} />
+            </>
+          }
+          aside={
+            <>
+              <CompanyAttention work={work} />
+              <ResumeInvoices work={work} />
+              <Disclosure title={sv ? "Tidsfrister" : "Deadlines"}>
+                <DeadlineObligations book={work.book} locale={work.locale} />
+              </Disclosure>
+              <Disclosure title={sv ? "Regeländringar" : "Rule changes"}>
+                <RuleImpactPanel book={work.book} locale={work.locale} />
+              </Disclosure>
+            </>
           }
         />
-        <CompanyPosition work={work} />
-        <TaskColumns>
-          <CompanyAttention work={work} />
-          <ResumeInvoices work={work} />
-        </TaskColumns>
-        <CompanyBankAccounts work={work} />
-        <CompanyOpenInvoices work={work} />
-        <DeadlineObligations book={work.book} locale={work.locale} />
-        <RuleImpactPanel book={work.book} locale={work.locale} />
       </PageContent>
     </>
   );

@@ -326,13 +326,13 @@ function DimensionEntries(props: {
             (revision) =>
               `${revision.revision}: ${revision.name} (${revision.effectiveFrom}–${revision.effectiveTo ?? (sv ? "t.o.m." : "open")}${revision.archived ? (sv ? ", arkiverad" : ", archived") : ""})`,
           )
-          .join(" · ");
+          .join(", ");
 
         return (
           <Box key={entry.code} display="grid" gap="sm">
             <Text>
               {entry.code} — {entry.name}
-              {entry.archived ? (sv ? " (arkiverad)" : " (archived)") : ""} · revision{" "}
+              {entry.archived ? (sv ? " (arkiverad)" : " (archived)") : ""}, revision{" "}
               {entry.revision}
             </Text>
             <Text>
@@ -372,13 +372,13 @@ function DimensionEntries(props: {
                   (revision) =>
                     `${revision.revision}: ${revision.name} (${revision.effectiveFrom}–${revision.effectiveTo ?? (sv ? "t.o.m." : "open")}${revision.archived ? (sv ? ", arkiverat" : ", archived") : ""})`,
                 )
-                .join(" · ");
+                .join(", ");
 
               return (
                 <Box key={option.code} display="grid" gap="sm">
                   <Text>
                     {option.code} — {option.name}
-                    {option.archived ? (sv ? " (arkiverat)" : " (archived)") : ""} · revision{" "}
+                    {option.archived ? (sv ? " (arkiverat)" : " (archived)") : ""}, revision{" "}
                     {option.revision}
                   </Text>
                   <Text>

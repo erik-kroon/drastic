@@ -46,28 +46,7 @@ export function AccountingAccess({
     setAccessBlocked(false);
   }
 
-  if (books.data && !accessBlocked && !accessDenied)
-    return (
-      <>
-        {books.isError ? (
-          <Box display="grid" gap="md" padding="lg">
-            <AccountingStatus locale={locale} pending={books.isFetching} error={books.error} />
-            <Box>
-              <Button
-                variant="outline"
-                disabled={books.isFetching}
-                onClick={() => {
-                  void books.refetch();
-                }}
-              >
-                {copy.journal_retry}
-              </Button>
-            </Box>
-          </Box>
-        ) : null}
-        {children(books.data)}
-      </>
-    );
+  if (books.data && !accessBlocked && !accessDenied && !books.isError) return children(books.data);
 
   return (
     <AccessPage>
@@ -76,6 +55,7 @@ export function AccountingAccess({
         <Button
           size="xl"
           variant="outline"
+          disabled={books.isFetching}
           onClick={() => {
             void books.refetch();
           }}

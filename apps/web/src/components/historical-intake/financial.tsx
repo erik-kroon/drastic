@@ -146,7 +146,7 @@ export function FinancialImport({
             <summary>{sv ? "Bokföringskvitton" : "Posting receipts"}</summary>
             {run.items.map((item) => (
               <Text key={item.ordinal}>
-                {item.sourceReference} → {item.ledgerReceipt.voucherNumber} ·{" "}
+                {item.sourceReference} → {item.ledgerReceipt.voucherNumber},{" "}
                 {item.ledgerReceipt.committedAt}
               </Text>
             ))}

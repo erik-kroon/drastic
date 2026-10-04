@@ -250,7 +250,7 @@ function SupplierDraftResults(
         cells: [
           <RecordOpen key="open" onClick={() => props.onOpen(record.id)}>
             {record.supplierName}
-            {record.supplierDocumentNumber ? ` · ${record.supplierDocumentNumber}` : ""}
+            {record.supplierDocumentNumber ? `, ${record.supplierDocumentNumber}` : ""}
           </RecordOpen>,
           record.title,
           new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
@@ -367,7 +367,7 @@ function SupplierDraftRecord(
     <>
       <RecordHeading
         title={record.content.title}
-        subtitle={`${record.content.supplier.legalName} · ${record.content.supplierDocumentNumber ?? (sv ? "Fakturanummer saknas" : "Invoice number missing")}`}
+        subtitle={`${record.content.supplier.legalName}, ${record.content.supplierDocumentNumber ?? (sv ? "Fakturanummer saknas" : "Invoice number missing")}`}
         action={
           current && !accepted ? (
             <Button disabled={props.book.role !== "operator"} onClick={() => props.onEdit(record)}>
@@ -655,12 +655,12 @@ function SupplierDraftHistory(
       {history.isSuccess
         ? history.data.items.map((item) => (
             <RecordOpen key={item.revision} onClick={() => props.onSelect(item.revision)}>
-              {sv ? "Version" : "Version"} {item.revision} ·{" "}
+              {sv ? "Version" : "Version"} {item.revision},{" "}
               {new Intl.DateTimeFormat(props.locale, {
                 dateStyle: "medium",
                 timeStyle: "short",
               }).format(new Date(item.createdAt))}
-              {item.revision === props.selected ? (sv ? " · Visas" : " · Viewing") : ""}
+              {item.revision === props.selected ? (sv ? ", Visas" : ", Viewing") : ""}
             </RecordOpen>
           ))
         : null}

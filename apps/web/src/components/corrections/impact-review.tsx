@@ -33,10 +33,10 @@ export function CorrectionImpactDetails({
         {copy.impactDigest}: {impact.digest}
       </Text>
       <Text>
-        {impact.createdAt} · {impact.createdBy}
+        {impact.createdAt}, {impact.createdBy}
       </Text>
       <Text>
-        {copy.date}: {basis.intent.postingDate} · {basis.intent.accountingPeriodId}
+        {copy.date}: {basis.intent.postingDate}, {basis.intent.accountingPeriodId}
       </Text>
       <Text>
         {copy.rationale}: {basis.intent.rationale}
@@ -78,7 +78,7 @@ export function CorrectionImpactDetails({
       {basis.resources.map((resource, index) => (
         <Box key={`${resource.kind}/${resource.id}/${index}`} display="grid" gap="sm">
           <Text>
-            {resource.kind} · {resource.id}
+            {resource.kind}, {resource.id}
           </Text>
           <Text>{resource.detail}</Text>
           {resource.dependencyDigest ? (
@@ -145,7 +145,7 @@ export function CorrectionChainView({
       {chain.data ? (
         <>
           <Text>
-            {copy.originalId}: {chain.data.rootVoucherId} · {chain.data.sequence}
+            {copy.originalId}: {chain.data.rootVoucherId}, {chain.data.sequence}
           </Text>
           <DataTable
             title={copy.chainBalances}
@@ -169,7 +169,7 @@ export function CorrectionChainView({
           {chain.data.vouchers.map((voucher) => (
             <details key={voucher.id}>
               <summary>
-                {voucher.action.postingPurpose} · {voucher.number} · {voucher.action.postingDate} ·{" "}
+                {voucher.action.postingPurpose}, {voucher.number}, {voucher.action.postingDate},{" "}
                 {voucher.id}
               </summary>
               <Box paddingBlock="lg">

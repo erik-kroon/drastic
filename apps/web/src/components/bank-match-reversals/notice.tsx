@@ -20,7 +20,7 @@ export function BankAllocationUnmatchNotice({
         {copy.reason}: {unmatch.reason}
       </Text>
       <Text>
-        {copy.planId}: {unmatch.planId} · {unmatch.executedAt}
+        {copy.planId}: {unmatch.planId}, {unmatch.executedAt}
       </Text>
     </Box>
   );

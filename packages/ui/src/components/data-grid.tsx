@@ -65,12 +65,12 @@ const styles = stylex.create({
     overflowWrap: "anywhere",
   },
   stackedDetail: { "@container (max-width: 36rem)": { display: "block" } },
-  header: { backgroundColor: tokens.background, position: "sticky", top: 0, zIndex: 1 },
+  header: { backgroundColor: tokens.sidebar, position: "sticky", top: 0, zIndex: 1 },
   headerCell: {
-    fontSize: tokens.fontSizeCompact,
-    fontWeight: tokens.fontWeightMedium,
-    letterSpacing: tokens.trackingCaps,
-    textTransform: "uppercase",
+    height: 30,
+    paddingBlock: tokens.space1,
+    fontSize: tokens.fontSizeXs,
+    fontWeight: tokens.fontWeightSemibold,
     color: tokens.mutedForeground,
   },
   cell: {
@@ -78,19 +78,25 @@ const styles = stylex.create({
     borderBottomColor: tokens.border,
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
-    paddingBlock: 11,
+    height: 40,
+    paddingBlock: tokens.space1,
     paddingInlineEnd: tokens.space4,
-    ":first-child": { paddingInlineStart: tokens.space1 },
+    ":first-child": { paddingInlineStart: tokens.space5 },
     overflowWrap: "anywhere",
-    verticalAlign: "top",
+    verticalAlign: "middle",
   },
-  row: { ":hover": { backgroundColor: tokens.mutedAlpha30 } },
+  row: { ":hover": { backgroundColor: tokens.sidebar } },
   contentColumn: {
     width: 1,
     whiteSpace: "nowrap",
     "@container (max-width: 36rem)": { width: "auto", whiteSpace: "normal" },
   },
   fillColumn: { width: "100%" },
+  fixedColumn: (width: number | undefined) => ({
+    width,
+    minWidth: width,
+    "@container (max-width: 36rem)": { width: "auto", minWidth: 0 },
+  }),
   numeric: { textAlign: "end", fontVariantNumeric: "tabular-nums" },
 });
 
@@ -99,7 +105,7 @@ export interface DataGridColumn<Row> {
   label: string;
   cell: (row: Row) => ReactNode;
   numeric?: boolean;
-  width?: "content" | "fill";
+  width?: "content" | "fill" | number;
 }
 
 /** Read-only adaptation of the 2.0 grid. The caller owns server filters and cursor pagination. */
@@ -173,6 +179,12 @@ export function DataGrid<Row extends object>({
                     styles.headerCell,
                     columns[index]?.width === "content" && styles.contentColumn,
                     columns[index]?.width === "fill" && styles.fillColumn,
+                    typeof columns[index]?.width === "number" &&
+                      styles.fixedColumn(
+                        typeof columns[index]?.width === "number"
+                          ? columns[index]?.width
+                          : undefined,
+                      ),
                     columns[index]?.numeric && styles.numeric,
                   )}
                 >
@@ -200,6 +212,12 @@ export function DataGrid<Row extends object>({
                         styles.cell,
                         columns[index]?.width === "content" && styles.contentColumn,
                         columns[index]?.width === "fill" && styles.fillColumn,
+                        typeof columns[index]?.width === "number" &&
+                          styles.fixedColumn(
+                            typeof columns[index]?.width === "number"
+                              ? columns[index]?.width
+                              : undefined,
+                          ),
                         columns[index]?.numeric && styles.numeric,
                         narrow === "stack" && styles.stackedCell,
                       )}
@@ -210,7 +228,7 @@ export function DataGrid<Row extends object>({
                         </span>
                       )}
                       <div {...stylex.props(styles.value)}>
-                        <table.FlexRender cell={cell} />
+                        {columns[index]?.cell(row.original)}
                       </div>
                     </td>
                   ))}

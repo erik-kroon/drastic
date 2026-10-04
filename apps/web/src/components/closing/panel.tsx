@@ -195,7 +195,7 @@ export function PeriodClosing(props: {
       {basis ? (
         <>
           <Text>
-            {basis.startsOn} – {basis.endsOn} · {basis.locked ? copy.locked : copy.open}
+            {basis.startsOn} – {basis.endsOn}, {basis.locked ? copy.locked : copy.open}
           </Text>
           {!props.customerView ? <ClosingFacts basis={basis} locale={locale} /> : null}
           {book.role === "operator" && !props.customerView ? (

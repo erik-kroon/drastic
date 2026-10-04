@@ -227,7 +227,7 @@ export function BankImport({
             {copy.bank_statement_id}: {imported.data.statement.id}
           </Text>
           <Text>
-            {copy.bank_receipt}: {imported.data.receipt.key} · {imported.data.receipt.operation} ·{" "}
+            {copy.bank_receipt}: {imported.data.receipt.key}, {imported.data.receipt.operation},{" "}
             {imported.data.receipt.actorId}
           </Text>
           <Box>

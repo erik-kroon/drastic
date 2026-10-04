@@ -186,12 +186,12 @@ export function AllocationReleaseStatus(
                   {copy.plan}: {plan.id}
                 </Button>
                 <Text>
-                  {plan.reason} · {plan.createdAt}
+                  {plan.reason}, {plan.createdAt}
                 </Text>
               </Box>
             ) : (
               <Text key={plan.id}>
-                {plan.id} · {plan.reason}
+                {plan.id}, {plan.reason}
               </Text>
             ),
           )}

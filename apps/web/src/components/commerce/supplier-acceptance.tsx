@@ -158,9 +158,9 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
             <Box display="grid" gap="sm">
               {history.data.items.map((item) => (
                 <RecordOpen key={item.id} onClick={() => setReviewId(item.id)}>
-                  {sv ? "Granskning" : "Review"} {item.ordinal} ·{" "}
+                  {sv ? "Granskning" : "Review"} {item.ordinal},{" "}
                   {sv ? "utkastversion" : "draft revision"} {item.draftRevision}
-                  {item.acceptanceId ? (sv ? " · Bokförd" : " · Posted") : ""}
+                  {item.acceptanceId ? (sv ? ", Bokförd" : ", Posted") : ""}
                 </RecordOpen>
               ))}
             </Box>
@@ -235,7 +235,7 @@ function SupplierAcceptancePreparation(
       .filter((account) => account.active)
       .map((account) => ({
         value: account.id,
-        label: `${account.code} · ${account.name}`,
+        label: `${account.code}, ${account.name}`,
       })) ?? [];
 
   const payable = setup.data?.accounts.find((account) => account.active && account.code === "2440");
@@ -280,8 +280,8 @@ function SupplierAcceptancePreparation(
           {suggestedAccount ? (
             <PageCaption>
               {sv
-                ? `Förslag från tidigare bokförd faktura: ${suggestedAccount.code} · ${suggestedAccount.name}, ${suggestion?.vatRatePercent} % moms. Välj konto och kontrollera varje rad.`
-                : `Previous posting suggests ${suggestedAccount.code} · ${suggestedAccount.name} and ${suggestion?.vatRatePercent}% VAT. Select an account and check each line.`}
+                ? `Förslag från tidigare bokförd faktura: ${suggestedAccount.code}, ${suggestedAccount.name}, ${suggestion?.vatRatePercent} % moms. Välj konto och kontrollera varje rad.`
+                : `Previous posting suggests ${suggestedAccount.code}, ${suggestedAccount.name} and ${suggestion?.vatRatePercent}% VAT. Select an account and check each line.`}
             </PageCaption>
           ) : null}
           {props.draft.content.lines.map((line, index) => {
@@ -291,11 +291,11 @@ function SupplierAcceptancePreparation(
             return (
               <Box key={line.id} display="grid" gap="sm">
                 <Text>
-                  {index + 1}. {line.description} · {sv ? "exkl. moms" : "before VAT"}{" "}
+                  {index + 1}. {line.description}, {sv ? "exkl. moms" : "before VAT"}{" "}
                   {net
                     ? formatMinorAmount(net, props.draft.content.currencyScale, props.locale)
                     : "—"}{" "}
-                  · {sv ? "moms" : "VAT"}{" "}
+                  , {sv ? "moms" : "VAT"}{" "}
                   {line.taxMinor
                     ? formatMinorAmount(
                         line.taxMinor,
@@ -313,7 +313,7 @@ function SupplierAcceptancePreparation(
                     { value: "", label: "—" },
                     ...expenseAccounts.map((account) => ({
                       value: account.id,
-                      label: `${account.code} · ${account.name}`,
+                      label: `${account.code}, ${account.name}`,
                     })),
                   ]}
                   required
@@ -430,7 +430,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                   return {
                     id: `${group.id}:${line.lineId}`,
                     cells: [
-                      account ? `${account.code} · ${account.name}` : line.accountId,
+                      account ? `${account.code}, ${account.name}` : line.accountId,
                       formatMinorAmount(
                         line.debitMinor,
                         view.plan.draftSnapshot.content.currencyScale,
@@ -700,7 +700,7 @@ function SupplierReviewedLines(props: {
           id: assignment.lineId,
           cells: [
             line?.description ?? assignment.lineId,
-            account ? `${account.code} · ${account.name}` : assignment.expenseAccountId,
+            account ? `${account.code}, ${account.name}` : assignment.expenseAccountId,
             ratePercent(assignment.treatment.rate),
             deductionLabel(assignment.treatment.basis, sv),
             recognized === undefined

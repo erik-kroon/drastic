@@ -2,7 +2,7 @@ import type { Locale } from "@/paraglide/runtime";
 
 const en = {
   title: "Saved document",
-  boundary: "Demo document · HTML · English · Not sent",
+  boundary: "Demo document, HTML, English, Not sent",
   historyMeaning:
     "This file preserves the invoice as issued. Later payments, cancellations and company changes do not change its contents.",
   prepare: "Create invoice file",
@@ -27,7 +27,7 @@ const en = {
 
 const sv: typeof en = {
   title: "Sparat dokument",
-  boundary: "Demodokument · HTML · Engelska · Inte skickat",
+  boundary: "Demodokument, HTML, Engelska, Inte skickat",
   historyMeaning:
     "Filen bevarar fakturan som den utfärdades. Senare betalningar, makuleringar och företagsändringar ändrar inte innehållet.",
   prepare: "Skapa fakturafil",

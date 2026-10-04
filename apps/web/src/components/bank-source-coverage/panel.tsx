@@ -180,10 +180,10 @@ function Panel({ book, locale }: Props) {
         {saved.data?.items.map((report) => (
           <Box key={report.id} display="grid" gap="sm" minWidth="zero">
             <Text>
-              {report.startsOn} — {report.endsOn} · {report.createdAt}
+              {report.startsOn} — {report.endsOn}, {report.createdAt}
             </Text>
             <Text>
-              {copy.sequence}: {report.sequence} · {report.hasReviewGaps ? copy.gaps : copy.noGaps}
+              {copy.sequence}: {report.sequence}, {report.hasReviewGaps ? copy.gaps : copy.noGaps}
             </Text>
             <Box>
               <Button type="button" variant="outline" onClick={() => setId(report.id)}>

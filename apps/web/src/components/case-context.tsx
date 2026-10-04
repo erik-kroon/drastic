@@ -129,8 +129,8 @@ export function CaseContextPanel(props: {
       {first ? (
         <>
           <Text tone="muted">
-            {copy.case_snapshot_id}: {first.snapshot.id} · {copy.report_sequence}:{" "}
-            {first.snapshot.sequence} · {first.snapshot.capturedAt}
+            {copy.case_snapshot_id}: {first.snapshot.id}, {copy.report_sequence}:{" "}
+            {first.snapshot.sequence}, {first.snapshot.capturedAt}
           </Text>
           <CaseFacts
             item={first.case}
@@ -166,8 +166,8 @@ export function CaseContextPanel(props: {
           ) : null}
           <Heading>{copy.case_history}</Heading>
           <Text role="status">
-            {copy.case_history_loaded}: {history.length} · {copy.case_history_total}:{" "}
-            {first.history.total} · {copy.case_history_remaining}:{" "}
+            {copy.case_history_loaded}: {history.length}, {copy.case_history_total}:{" "}
+            {first.history.total}, {copy.case_history_remaining}:{" "}
             {context.data?.pages.at(-1)?.history.remaining}
           </Text>
           {detail === "summary" ? (
@@ -193,9 +193,9 @@ export function CaseContextPanel(props: {
                 cells: [
                   plan.changeSetId,
                   plan.state === "posted" ? copy.case_posted : copy.case_proposed,
-                  `${plan.postingDate} · ${plan.createdAt}`,
-                  `${plan.accountingPeriodId} · ${plan.fiscalYearId}`,
-                  `${plan.postingPurpose} · ${plan.currency} · ${copy.journal_line}: ${plan.lineCount}`,
+                  `${plan.postingDate}, ${plan.createdAt}`,
+                  `${plan.accountingPeriodId}, ${plan.fiscalYearId}`,
+                  `${plan.postingPurpose}, ${plan.currency}, ${copy.journal_line}: ${plan.lineCount}`,
                   plan.debitMinor,
                   plan.creditMinor,
                   plan.planDigest,
@@ -260,12 +260,12 @@ function CaseFacts({
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>
-        {copy.case_event}: {item.eventKey} · {copy.case_state}: {state[item.state]}
+        {copy.case_event}: {item.eventKey}, {copy.case_state}: {state[item.state]}
       </Text>
       <Heading>{copy.case_facts}</Heading>
       <Text>{copy.case_gross}</Text>
       <Text>
-        {copy.journal_debit}: {item.financialState.postedDebitMinor} · {copy.journal_credit}:{" "}
+        {copy.journal_debit}: {item.financialState.postedDebitMinor}, {copy.journal_credit}:{" "}
         {item.financialState.postedCreditMinor}
       </Text>
       <Text>{copy.case_no_remaining}</Text>
@@ -305,7 +305,7 @@ function CaseFacts({
       </Text>
       {item.latestPlanCorrectionBundle ? (
         <Text tone="muted">
-          {copy.case_latest_plan_bundle}: {item.latestPlanCorrectionBundle.bundleId} ·{" "}
+          {copy.case_latest_plan_bundle}: {item.latestPlanCorrectionBundle.bundleId},{" "}
           {item.latestPlanCorrectionBundle.role}
         </Text>
       ) : null}
@@ -341,10 +341,10 @@ function CaseFacts({
               rows={item.vouchers.map((voucher) => ({
                 id: voucher.voucherId,
                 cells: [
-                  `${voucher.voucherId} · ${voucher.number}`,
+                  `${voucher.voucherId}, ${voucher.number}`,
                   voucher.sequence,
                   voucher.postingPurpose,
-                  `${voucher.receipt.id} · ${voucher.receipt.changeSetId} · ${voucher.receipt.committedAt}`,
+                  `${voucher.receipt.id}, ${voucher.receipt.changeSetId}, ${voucher.receipt.committedAt}`,
                   voucher.receipt.planDigest,
                 ],
               }))}
@@ -381,12 +381,12 @@ function CaseSource({
         <Text>{copy.case_untrusted}</Text>
       </Box>
       <Text>
-        {evidence.reference.title} · {evidence.reference.origin} · {evidence.reference.mediaType}
+        {evidence.reference.title}, {evidence.reference.origin}, {evidence.reference.mediaType}
       </Text>
       <Text>{contentState[evidence.contentState]}</Text>
       <Text>
-        {copy.case_total_characters}: {evidence.totalCharacters} · {copy.case_returned_characters}:{" "}
-        {evidence.returnedCharacters} · {copy.case_remaining_characters}:{" "}
+        {copy.case_total_characters}: {evidence.totalCharacters}, {copy.case_returned_characters}:{" "}
+        {evidence.returnedCharacters}, {copy.case_remaining_characters}:{" "}
         {evidence.remainingCharacters}
       </Text>
       {evidence.content !== null ? (

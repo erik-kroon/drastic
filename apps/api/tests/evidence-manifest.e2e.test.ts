@@ -37,6 +37,7 @@ test("the real Worker run binds tracked and untracked source bytes in its manife
     "apps/api/src/application/capabilities/agent-policy.ts",
     "packages/contracts/src/reconciliation.ts",
     "bun.lock",
+    "patches/effect-mq@0.7.0.patch",
   ]) {
     const retained = manifest.sourceFiles.find((file) => file.path === path);
 

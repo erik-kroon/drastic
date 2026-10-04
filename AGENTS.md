@@ -58,6 +58,17 @@ A `packages/domain` leaf that no application owner consumes is dead code. Delive
 - Existing Paper screens are drafts to reconsider, not approved templates. Do not mass-produce frames, force each task into one generic layout, or mark a checklist item complete merely because a frame exists.
 - Preserve accounting truth, sourced facts and explicit product boundaries. A planned design is not evidence of an implemented operation or an actual external result.
 
+### Design-to-code parity
+
+The current Paper baseline is `verification/paper/baseline/` (exported 1440 by 900 frames, one per surface) with the shared system and fixture in `verification/paper/baseline/2026-10-04-correction-spec.md` and the surface map in `verification/paper/baseline/current-screen-index.md`. Older exports in `docs/design/implementation/` are historical. Scope is desktop only; narrow widths are out of scope.
+
+- Read the real values: call Paper `get_jsx` and `get_computed_styles` for the frame's node, never estimate from a screenshot. Build or adjust shared components (sidebar, tabs, table row, buttons, fields) from the component board K23 first, then compose screens from them.
+- Use only copy, tabs, columns and states that exist in the frame. Do not add tabs, columns, helper text or data the frame does not show. Hide engineering vocabulary (revision, digest, frozen, checksum, receipt ids) unless the frame shows it.
+- No middle dot (·) in product copy. Join values with a comma, a slash or separate elements.
+- Selection follows the frame: sidebar items use a plain filled row with no accent bar; register rows use the 3 px left accent. Do not reuse one selection style for the other.
+- Use tokens from `packages/ui`; do not add ad hoc colors, sizes or fonts.
+- A screen is done only when `node verification/paper/parity.mjs <session-file>` passes for its manifest entry in `verification/paper/parity-manifest.json`. Add the entry with the screen. The run writes `actual`, `diff` and `report.json` under `test-results/paper/parity/`; keep the diff image as the artifact. A passing build or lint does not establish parity.
+
 ## Quality rules
 
 - Keep anti-slop Oxlint rules enabled as errors.

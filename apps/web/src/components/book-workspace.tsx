@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { BookOpen, CheckSquare, Building2, Settings } from "lucide-react";
+import { BookOpen, CheckSquare, Building2 } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectControl } from "@open-erp/ui/components/select";
 import { ChoiceField } from "@open-erp/ui/components/choice-field";
@@ -15,6 +15,7 @@ import {
   WorkspaceMobileNavigation,
 } from "@open-erp/ui/components/workspace";
 import { BookSearch } from "@/components/book-search";
+import { NavIcon } from "@open-erp/ui/components/nav-icon";
 import { BookNavigation } from "@/components/book-navigation";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
@@ -156,7 +157,7 @@ export function BookWorkspace({
       footer={
         <>
           <WorkspaceNavLink href={`${base}/settings`} active={pathname === `${base}/settings`}>
-            <Settings size={16} strokeWidth={1.5} aria-hidden="true" />
+            <NavIcon name="settings" />
             {labels.settings}
           </WorkspaceNavLink>
           {account}
@@ -205,6 +206,7 @@ export function BookWorkspace({
         <Button
           size="xl"
           variant="outline"
+          disabled={setup.isFetching}
           onClick={() => {
             void setup.refetch();
           }}
@@ -212,7 +214,7 @@ export function BookWorkspace({
           {copy.journal_retry}
         </Button>
       ) : null}
-      {setup.data && !scopeBlocked && !scopeUnavailable ? (
+      {setup.data && !setup.isError && !scopeBlocked && !scopeUnavailable ? (
         <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
       ) : null}
     </Workspace>

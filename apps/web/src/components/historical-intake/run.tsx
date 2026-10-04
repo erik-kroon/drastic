@@ -217,16 +217,16 @@ function AdmissionStatus({
           </Text>
           {admission.payments.map((payment) => (
             <Text key={payment.sourceIdentity}>
-              {payment.sourceIdentity} · {payment.sourceAccount} · {payment.amountMinor}{" "}
-              {payment.currency} {sv ? "i minsta valutaenhet" : "minor units"} ·{" "}
-              {payment.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")} · {payment.basis}
+              {payment.sourceIdentity}, {payment.sourceAccount}, {payment.amountMinor}{" "}
+              {payment.currency} {sv ? "i minsta valutaenhet" : "minor units"},{" "}
+              {payment.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")}, {payment.basis}
             </Text>
           ))}
           {admission.matches.map((match) => (
             <Text key={match.sourceIdentity}>
-              {match.sourceIdentity} · {match.paymentIdentity} → {match.itemIdentity} ·{" "}
-              {match.amountMinor} {sv ? "i minsta valutaenhet" : "minor units"} ·{" "}
-              {match.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")} · {match.basis}
+              {match.sourceIdentity}, {match.paymentIdentity} → {match.itemIdentity},{" "}
+              {match.amountMinor} {sv ? "i minsta valutaenhet" : "minor units"},{" "}
+              {match.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")}, {match.basis}
             </Text>
           ))}
           {[
@@ -245,8 +245,8 @@ function AdmissionStatus({
               </Text>
               {items.map((control) => (
                 <Text key={`${control.sourceAccount}-${control.currency}`}>
-                  {control.sourceAccount} · {control.currency} · {control.independentTotalMinor}{" "}
-                  {sv ? "i minsta valutaenhet" : "minor units"} · {control.basis}
+                  {control.sourceAccount}, {control.currency}, {control.independentTotalMinor}{" "}
+                  {sv ? "i minsta valutaenhet" : "minor units"}, {control.basis}
                 </Text>
               ))}
             </Box>

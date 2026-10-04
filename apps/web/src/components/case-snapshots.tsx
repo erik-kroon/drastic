@@ -152,7 +152,7 @@ function CaptureCases({
         <Box role="status" display="grid" gap="md">
           <Text>{copy.case_captured}</Text>
           <Text>
-            {copy.case_snapshot_id}: {capture.data.id} · {copy.report_sequence}:{" "}
+            {copy.case_snapshot_id}: {capture.data.id}, {copy.report_sequence}:{" "}
             {capture.data.sequence}
           </Text>
           <Box>
@@ -242,7 +242,7 @@ function CapturedCases({
         <>
           <SnapshotFacts snapshot={first.snapshot} locale={locale} />
           <Text role="status">
-            {copy.case_loaded}: {loaded.length} / {first.snapshot.totals.cases} ·{" "}
+            {copy.case_loaded}: {loaded.length} / {first.snapshot.totals.cases},{" "}
             {copy.case_remaining}: {cases.data?.pages.at(-1)?.remaining}
           </Text>
           <DataTable
@@ -329,13 +329,13 @@ function SnapshotFacts({
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
-        {copy.case_snapshot_id}: {snapshot.id} · {copy.report_sequence}: {snapshot.sequence}
+        {copy.case_snapshot_id}: {snapshot.id}, {copy.report_sequence}: {snapshot.sequence}
       </Text>
       <Text tone="muted">
         {copy.case_captured_at}: {snapshot.capturedAt} / {snapshot.preparedBy}
       </Text>
       <Text tone="muted">
-        {copy.journal_profile}: {snapshot.profile} · {snapshot.profileVersion} · writer_epoch:{" "}
+        {copy.journal_profile}: {snapshot.profile}, {snapshot.profileVersion}, writer_epoch:{" "}
         {snapshot.writerEpoch}
       </Text>
       {snapshot.selectedCaseId ? (

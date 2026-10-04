@@ -68,8 +68,8 @@ export function InvoiceDraftDocument({
 }
 
 const english = {
-  draftPreview: "Draft · Not issued",
-  issuedPreview: "Issued demo · Not sent",
+  draftPreview: "Draft, Not issued",
+  issuedPreview: "Issued demo, Not sent",
   from: "From",
   billTo: "Bill to",
   plannedIssueDate: "Planned issue date",
@@ -86,8 +86,8 @@ const english = {
 };
 
 const swedish: typeof english = {
-  draftPreview: "Utkast · Inte utfärdad",
-  issuedPreview: "Utfärdad demo · Inte skickad",
+  draftPreview: "Utkast, Inte utfärdad",
+  issuedPreview: "Utfärdad demo, Inte skickad",
   from: "Från",
   billTo: "Faktureras till",
   plannedIssueDate: "Planerat fakturadatum",

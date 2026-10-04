@@ -250,7 +250,7 @@ function FactDetail({
                   variant={revision === fact.id ? "secondary" : "outline"}
                   onClick={() => setRevision(revision === fact.id ? null : fact.id)}
                 >
-                  {locale === "sv" ? "Version" : "Revision"} {fact.revision} ·{" "}
+                  {locale === "sv" ? "Version" : "Revision"} {fact.revision},{" "}
                   {new Date(fact.recordedAt).toLocaleDateString(locale)}
                 </Button>
               ))}

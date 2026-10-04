@@ -233,7 +233,7 @@ function MergedFieldCard(props: {
   onResolved: (value: string) => void;
 }) {
   const name = `field-${props.merged.lineOrdinal}-${props.merged.fieldKey}`;
-  const label = `${fieldName(props.merged.fieldKey, props.locale)} · ${props.text.line} ${props.merged.lineOrdinal}`;
+  const label = `${fieldName(props.merged.fieldKey, props.locale)}, ${props.text.line} ${props.merged.lineOrdinal}`;
 
   return (
     <Box
@@ -272,7 +272,7 @@ function MergedFieldCard(props: {
         {props.text.locator}:{" "}
         {props.merged.evidenceLocators.length === 0
           ? "—"
-          : props.merged.evidenceLocators.map(locatorText).join(" · ")}
+          : props.merged.evidenceLocators.map(locatorText).join(", ")}
       </Text>
       <Box display="flex" flexWrap="wrap" gap="lg">
         {props.merged.state === "proposed_change" ? (
@@ -358,8 +358,8 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{text.review}</Heading>
       <Text>
-        {text.state}: {text.draftState[preparation.draft.state]} ·{" "}
-        {preparation.draft.revision ?? "—"} · {text.attemptResult[preparation.attempt.result]} ·{" "}
+        {text.state}: {text.draftState[preparation.draft.state]},{" "}
+        {preparation.draft.revision ?? "—"}, {text.attemptResult[preparation.attempt.result]},{" "}
         {preparation.attempt.engineRelease}
       </Text>
       {preparation.draft.state === "accepted" ? <Text>{text.accepted}</Text> : null}
@@ -379,13 +379,13 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
               minWidth="zero"
             >
               <Text>
-                {line.candidateLineId} · {text.fieldState[line.state]} · {line.detail || "—"}
+                {line.candidateLineId}, {text.fieldState[line.state]}, {line.detail || "—"}
               </Text>
               <Text>
                 {text.locator}:{" "}
                 {line.sourceLocators.length === 0
                   ? "—"
-                  : line.sourceLocators.map(locatorText).join(" · ")}
+                  : line.sourceLocators.map(locatorText).join(", ")}
               </Text>
               <Box as="label" display="grid" gap="sm" minWidth="zero">
                 {text.map}
@@ -453,7 +453,7 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
           <Heading>{text.discrepancies}</Heading>
           {preparation.discrepancies.map((item, index) => (
             <Text key={index}>
-              {item.code} · {item.lineOrdinal} · {item.fieldKey} {item.detail}
+              {item.code}, {item.lineOrdinal}, {item.fieldKey} {item.detail}
             </Text>
           ))}
         </Box>
@@ -477,7 +477,7 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
           <Heading>{text.blockers}</Heading>
           {preparation.proposedBlockers.map((blocker, index) => (
             <Text key={index}>
-              {blocker.code} · {blocker.lineId ?? "—"}
+              {blocker.code}, {blocker.lineId ?? "—"}
             </Text>
           ))}
         </Box>
@@ -525,7 +525,7 @@ function ExtractionAttempts(props: CommerceProps & { state: State }) {
         <Text>
           {locale === "sv" ? "Lästa sidor" : "Pages read"}:{" "}
           {extraction.attempt.document.readPages.join(", ")} /{" "}
-          {extraction.attempt.document.physicalPages} ·{" "}
+          {extraction.attempt.document.physicalPages},{" "}
           {extraction.attempt.document.coverage === "complete"
             ? locale === "sv"
               ? "Alla sidor"
@@ -549,7 +549,7 @@ function ExtractionAttempts(props: CommerceProps & { state: State }) {
             extraction.currencyScale,
             locale,
           )}{" "}
-          · {field.sourceLocators.map(locatorText).join(" · ")}
+          , {field.sourceLocators.map(locatorText).join(", ")}
         </Text>
       ))}
       {extraction.attempt.diagnostics.length > 0 ? (
@@ -557,14 +557,14 @@ function ExtractionAttempts(props: CommerceProps & { state: State }) {
           <Heading>{text.diagnostics}</Heading>
           {extraction.attempt.diagnostics.map((item, index) => (
             <Text key={index}>
-              {item.code} · {item.lineOrdinal} · {item.fieldKey} {item.detail}
+              {item.code}, {item.lineOrdinal}, {item.fieldKey} {item.detail}
             </Text>
           ))}
         </Box>
       ) : null}
       {extraction.attempt.candidateLines.map((line) => (
         <Text key={line.candidateLineId}>
-          {line.candidateLineId} · {line.sourceLocators.map(locatorText).join(" · ") || "—"}
+          {line.candidateLineId}, {line.sourceLocators.map(locatorText).join(", ") || "—"}
         </Text>
       ))}
     </Box>
@@ -644,8 +644,8 @@ export function SupplierExtraction(
             {text.engine}:{" "}
             {document
               ? locale === "sv"
-                ? "PDF och bild · alla sidor"
-                : "PDF and image · all pages"
+                ? "PDF och bild, alla sidor"
+                : "PDF and image, all pages"
               : text.engineValue}
           </Text>
           {document ? (
@@ -673,7 +673,7 @@ export function SupplierExtraction(
         <Box display="grid" gap="sm" minWidth="zero">
           {state.data.requests.map((request) => (
             <Text key={request.id}>
-              {request.generation} · {text.requestState[request.state]} · {request.requestedAt}
+              {request.generation}, {text.requestState[request.state]}, {request.requestedAt}
             </Text>
           ))}
         </Box>

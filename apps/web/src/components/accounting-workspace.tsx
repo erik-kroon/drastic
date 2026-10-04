@@ -121,8 +121,7 @@ export function AccountingWorkspace({
       <Box display="grid" gap="sm">
         <Heading>{book.name}</Heading>
         <Text tone="muted">
-          {copy.journal_role}: {book.role} · {copy.journal_profile}: {book.profile} ·{" "}
-          {book.currency}
+          {copy.journal_role}: {book.role}, {copy.journal_profile}: {book.profile}, {book.currency}
         </Text>
       </Box>
       <WorkspaceSections
@@ -161,7 +160,7 @@ export function AccountingWorkspace({
                 rows={setup.data.accounts.map((account) => ({
                   id: account.id,
                   cells: [
-                    `${account.code} · ${account.id}`,
+                    `${account.code}, ${account.id}`,
                     account.name,
                     account.active ? copy.journal_active : copy.journal_inactive,
                   ],

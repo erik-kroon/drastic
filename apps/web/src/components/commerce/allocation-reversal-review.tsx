@@ -70,7 +70,7 @@ export function CommerceAllocationReversalReview(props: ReviewProps) {
       ) : null}
       <RecordHeading
         title={
-          props.context ? `${copy.title} · ${props.context.invoice.documentNumber}` : copy.title
+          props.context ? `${copy.title}, ${props.context.invoice.documentNumber}` : copy.title
         }
         subtitle={props.context?.invoice.counterpartyName}
         action={
@@ -305,7 +305,7 @@ function UndoActions(
           {view.approvals.map((entry) => (
             <Box key={entry.approval.id} display="grid" gap="md">
               <Text tone="muted">
-                {entry.revocation ? copy.revoked : copy.approved} ·{" "}
+                {entry.revocation ? copy.revoked : copy.approved},{" "}
                 {new Intl.DateTimeFormat(locale, {
                   dateStyle: "medium",
                   timeStyle: "short",

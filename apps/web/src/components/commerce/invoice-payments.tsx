@@ -116,7 +116,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
         </Button>
       </Box>
       <RecordHeading
-        title={`${copy.title} · ${invoice.documentNumber}`}
+        title={`${copy.title}, ${invoice.documentNumber}`}
         subtitle={invoice.counterpartyName}
         action={
           <Button
@@ -302,10 +302,10 @@ function PrepareInvoicePayment(
       }}
     >
       {candidate ? (
-        <RecordSection key={paymentKey} title={`${copy.match} · ${candidate.voucherLabel}`}>
+        <RecordSection key={paymentKey} title={`${copy.match}, ${candidate.voucherLabel}`}>
           <Text>{candidate.sourceTitle}</Text>
           <Text tone="muted">
-            {candidate.payment.postingDate} · {copy.remaining}:{" "}
+            {candidate.payment.postingDate}, {copy.remaining}:{" "}
             {formatMinorAmount(candidate.payment.remainingMinor, invoice.currencyScale, locale)}{" "}
             {invoice.currency}
           </Text>

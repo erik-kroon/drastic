@@ -3,26 +3,22 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Sales from "@open-erp/contracts/sales-register";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import * as Drafts from "@open-erp/contracts/invoice-drafts";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectControl } from "@open-erp/ui/components/select";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
-import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
-import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
-import {
-  PageContent,
-  PageCaption,
-  PageEmpty,
-  RegisterSearch,
-} from "@open-erp/ui/components/accounting-page";
+import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
   RegisterWorkspace,
-  RegisterNavigation,
+  RegisterFilter,
   RegisterGroup,
   RegisterRow,
   RegisterDetailHeading,
   RegisterDetailActions,
+  RegisterDetailLink,
+  RegisterDetailLinks,
+  RegisterDetailLines,
   type RegisterStatus,
 } from "@open-erp/ui/components/register-workspace";
 import { PageAction } from "@open-erp/ui/components/accounting-page";
@@ -37,7 +33,9 @@ import { InvoiceDraftIssueOverlay } from "./invoice-draft-issue-overlay";
 import { NewInvoiceDraft } from "./invoice-drafts";
 import { InvoiceIssuance } from "./invoice-issuance";
 import { Invoices } from "./invoices";
-import { Counterparties, counterpartyRegisterOptions } from "./counterparties";
+import { counterpartyRegisterOptions } from "./counterparties";
+import { SalesNavigation } from "./sales-navigation";
+import { CounterpartyRegister } from "./counterparty-register";
 
 export type SalesSearch = typeof Sales.SalesQuery.Type & {
   view?: string;
@@ -87,10 +85,6 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const sort = search.sort ?? "newest";
   const pageNumber = Number(search.page ?? "1");
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [searchText, setSearchText] = useState({ applied: search.q ?? "", text: search.q ?? "" });
-
-  if (searchText.applied !== (search.q ?? ""))
-    setSearchText({ applied: search.q ?? "", text: search.q ?? "" });
   const query = new URLSearchParams({ status, sort, page: String(pageNumber), q: search.q ?? "" });
 
   const registerOptions = salesRegisterOptions(book, query);
@@ -194,8 +188,6 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     })}`;
   };
 
-  const tabHref = (view: string) => `${base}${defaultStringifySearch({ ...registerSearch, view })}`;
-
   const statuses: Array<{ value: typeof Sales.SalesStatus.Type; label: string }> = [
     { value: "all", label: labels.all },
     { value: "draft", label: labels.drafts },
@@ -206,60 +198,40 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   ];
 
   const rowStatus = (row: typeof Sales.SalesRow.Type) => {
+    if (row.overdue && row.dueOn) return `${labels.overdueSince} ${shortDate(row.dueOn, locale)}`;
+
     if (row.overdue) return labels.overdueInvoice;
 
     if (row.status === "cancelled") return labels.cancelledInvoice;
 
-    if (row.status === "draft") return row.needsDetails ? labels.needsDetails : labels.draft;
+    if (row.status === "draft") return row.needsDetails ? labels.needsDetails : labels.notIssued;
+
+    if (row.status === "open" && row.dueOn)
+      return `${labels.dueOn} ${shortDate(row.dueOn, locale)}`;
 
     return labels[row.status];
   };
 
-  const tabs = [
-    {
-      label: labels.invoices,
-      href: `${base}${defaultStringifySearch({ ...registerSearch, view: undefined })}`,
-      active: !contacts,
-      preload: preloadInvoices,
-    },
-    {
-      label: labels.customers,
-      href: tabHref("parties"),
-      active: contacts,
-      preload: preloadCustomers,
-    },
-    { label: labels.articleCatalog, href: tabHref("articles"), active: false },
-    { label: sv ? "Offerter" : "Quotes", href: tabHref("orders"), active: false },
-    { label: sv ? "Krav" : "Collections", href: tabHref("collections"), active: false },
-  ];
+  const navigation = (
+    <SalesNavigation
+      view={contacts ? "parties" : undefined}
+      search={registerSearch}
+      preloadInvoices={preloadInvoices}
+      preloadCustomers={preloadCustomers}
+    />
+  );
 
   if (contacts)
     return (
-      <>
-        <WorkspaceHeader title={labels.invoicing} />
-        <PageContent>
-          <PageTabs label={labels.invoicing}>
-            {tabs.map((tab) => (
-              <PageTab
-                key={tab.href}
-                href={tab.href}
-                active={tab.active}
-                onPointerEnter={tab.preload}
-                onFocus={tab.preload}
-              >
-                {tab.label}
-              </PageTab>
-            ))}
-          </PageTabs>
-          <Counterparties
-            defaultRole="customer"
-            book={book}
-            locale={locale}
-            recordId={search.record ?? ""}
-            onOpen={(id) => change({ ...search, view: "parties", record: id || undefined })}
-          />
-        </PageContent>
-      </>
+      <CounterpartyRegister
+        book={book}
+        locale={locale}
+        role="customer"
+        title={labels.invoicing}
+        navigation={navigation}
+        recordId={search.record}
+        onOpen={(id) => change({ ...search, view: "parties", record: id || undefined })}
+      />
     );
 
   const data = register.isError ? undefined : register.data;
@@ -267,8 +239,9 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   return (
     <>
       <RegisterWorkspace
+        detailSize="invoice"
         title={labels.invoicing}
-        tabs={<RegisterNavigation label={labels.invoicing} options={tabs} />}
+        tabs={navigation}
         action={
           <Box display="flex" gap="sm" alignItems="center">
             <WorkReturnAction work={work} />
@@ -282,86 +255,24 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
           </Box>
         }
         filters={
-          <Box
-            as="form"
-            display="flex"
-            gap="sm"
-            alignItems="center"
-            flexWrap="wrap"
-            ref={(node) => {
-              if (node && !search.record) focusRegister();
-            }}
-            onSubmit={(event) => {
-              event.preventDefault();
-              change({ ...search, q: searchText.text.trim() || undefined, page: undefined });
-            }}
-          >
-            <SelectControl
-              size="compact"
-              aria-label={labels.status}
-              value={status}
-              options={statuses.map((item) => ({
-                value: item.value,
-                label: `${item.label}${data ? ` ${data.counts[item.value]}` : ""}`,
-              }))}
-              onValueChange={(value) => {
-                const selectedStatus = statuses.find((item) => item.value === value);
+          <RegisterFilter
+            label={labels.status}
+            value={status}
+            options={statuses}
+            onValueChange={(value) => {
+              const selectedStatus = statuses.find((item) => item.value === value);
 
-                if (selectedStatus)
-                  change({
-                    ...search,
-                    status: selectedStatus.value,
-                    page: undefined,
-                    record: undefined,
-                  });
-              }}
-            />
-            <SelectControl
-              size="compact"
-              aria-label={labels.sort}
-              value={sort}
-              options={[
-                { value: "newest", label: labels.newest },
-                { value: "oldest", label: labels.oldest },
-                { value: "customer", label: labels.customer },
-                { value: "due", label: labels.dueDate },
-              ]}
-              onValueChange={(value) => {
-                if (
-                  value === "newest" ||
-                  value === "oldest" ||
-                  value === "customer" ||
-                  value === "due"
-                )
-                  change({ ...search, sort: value, page: undefined });
-              }}
-            />
-            <RegisterSearch
-              compact
-              aria-label={labels.search}
-              placeholder={labels.search}
-              value={searchText.text}
-              onChange={(event) => setSearchText({ ...searchText, text: event.target.value })}
-              maxLength={200}
-            />
-            <Button type="submit" variant="ghost" size="sm">
-              <Search size={14} />
-              {labels.searchAction}
-            </Button>
-            {search.q ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchText({ applied: "", text: "" });
-                  change({ ...search, q: undefined, page: undefined });
-                }}
-              >
-                {labels.clear}
-              </Button>
-            ) : null}
-          </Box>
+              if (selectedStatus)
+                change({
+                  ...search,
+                  status: selectedStatus.value,
+                  page: undefined,
+                  record: undefined,
+                });
+            }}
+          />
         }
+        summary={receivables(data, book.currency, labels.openReceivables, locale)}
         detail={
           <SalesPreview
             data={data}
@@ -369,6 +280,9 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             locale={locale}
             rowStatus={rowStatus}
             rowUrl={rowUrl}
+            paymentsUrl={(row) =>
+              `${base}${defaultStringifySearch({ record: row.id, kind: "invoice", stage: "payments" })}`
+            }
             onOpen={(id) => {
               opener.current = { base, id };
             }}
@@ -405,7 +319,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             />
           </Box>
         ) : null}
-        {data ? (
+        {data && (pageNumber > 1 || data.total > data.pageSize) ? (
           <Box padding="lg">
             <SalesPagination
               data={data}
@@ -431,13 +345,21 @@ function SalesRows(props: {
 }) {
   const { data, selectedId, locale, rowStatus } = props;
   const labels = locale === "sv" ? swedish : english;
-  const groups = [...new Set(data?.items.map((item) => salesGroup(item)) ?? [])];
-  const selected = data?.items.find((item) => item.id === selectedId) ?? data?.items[0];
+  const present = new Set(data?.items.map((item) => salesGroup(item)));
+
+  const groups = (["overdue", "open", "drafts", "settled", "cancelled"] as const).filter((group) =>
+    present.has(group),
+  );
+
+  const selected = data?.items.find((item) => item.id === selectedId) ?? nextInvoice(data?.items);
 
   return (
     <>
       {groups.map((group) => {
-        const items = data?.items.filter((row) => salesGroup(row) === group) ?? [];
+        const items = (data?.items.filter((row) => salesGroup(row) === group) ?? []).sort(
+          (left, right) =>
+            group === "open" ? (left.dueOn ?? "").localeCompare(right.dueOn ?? "") : 0,
+        );
 
         return (
           <Box key={group}>
@@ -446,7 +368,7 @@ function SalesRows(props: {
               <RegisterRow
                 key={row.id}
                 id={row.id}
-                prefix={row.number ?? undefined}
+                prefix={row.number ?? (row.kind === "draft" ? labels.draft : undefined)}
                 title={row.customer}
                 status={salesSymbol(row)}
                 state={rowStatus(row)}
@@ -462,6 +384,25 @@ function SalesRows(props: {
   );
 }
 
+// The sum is shown only when the page holds every open row, so it never understates a total.
+function receivables(
+  data: typeof Sales.SalesPage.Type | undefined,
+  currency: string,
+  label: string,
+  locale: "en" | "sv",
+) {
+  if (!data || data.items.length !== data.total) return undefined;
+
+  const open = data.items.filter(
+    (row) => row.kind === "invoice" && row.currency === currency && row.outstandingMinor !== null,
+  );
+
+  const total = open.reduce((sum, row) => sum + BigInt(row.outstandingMinor ?? "0"), 0n);
+  const scale = open[0]?.currencyScale ?? 2;
+
+  return `${label} ${formatMinorAmount(total.toString(), scale, locale)}`;
+}
+
 function salesAmount(row: typeof Sales.SalesRow.Type, locale: "en" | "sv") {
   return row.amountMinor === null
     ? "—"
@@ -474,12 +415,12 @@ function SalesPreview(props: {
   locale: "en" | "sv";
   rowStatus: (row: typeof Sales.SalesRow.Type) => string;
   rowUrl: (row: typeof Sales.SalesRow.Type) => string;
+  paymentsUrl: (row: typeof Sales.SalesRow.Type) => string;
   onOpen: (id: string) => void;
 }) {
   const { data, selectedId, locale, rowStatus } = props;
   const sv = locale === "sv";
-  const labels = sv ? swedish : english;
-  const selected = data?.items.find((item) => item.id === selectedId) ?? data?.items[0];
+  const selected = data?.items.find((item) => item.id === selectedId) ?? nextInvoice(data?.items);
 
   if (!selected)
     return (
@@ -488,33 +429,133 @@ function SalesPreview(props: {
       </PageCaption>
     );
 
+  const payable =
+    selected.kind === "invoice" &&
+    (selected.status === "open" || selected.status === "partially_allocated");
+
   return (
     <>
       <RegisterDetailHeading
         title={selected.customer}
         amount={salesAmount(selected, locale)}
-        caption={selected.number ?? selected.title}
+        caption={previewCaption(selected, locale)}
+        note={previewNote(selected, data?.asOf, rowStatus(selected), locale)}
       />
-      <PageCaption>
-        {rowStatus(selected)} · {selected.currency}
-      </PageCaption>
-      <PageCaption>
-        {labels.date}: {selected.date.slice(0, 10)}
-        {selected.dueOn ? ` · ${labels.dueDate}: ${selected.dueOn}` : ""}
-      </PageCaption>
-      {selected.outstandingMinor !== null ? (
-        <PageCaption>
-          {formatMinorAmount(selected.outstandingMinor, selected.currencyScale, locale)}{" "}
-          {selected.currency} {labels.remaining}
-        </PageCaption>
-      ) : null}
+      {selected.draftId ? <DraftPreviewLines id={selected.draftId} locale={locale} /> : null}
       <RegisterDetailActions>
-        <PageAction href={props.rowUrl(selected)} onClick={() => props.onOpen(selected.id)}>
-          {sv ? "Öppna faktura" : "Open invoice"}
-        </PageAction>
+        {payable ? (
+          <PageAction href={props.paymentsUrl(selected)}>
+            {sv ? "Registrera betalning" : "Register payment"}
+          </PageAction>
+        ) : null}
+        <RegisterDetailLinks>
+          <RegisterDetailLink
+            href={props.rowUrl(selected)}
+            onClick={() => props.onOpen(selected.id)}
+          >
+            {sv ? "Öppna faktura" : "Open invoice"}
+          </RegisterDetailLink>
+        </RegisterDetailLinks>
       </RegisterDetailActions>
     </>
   );
+}
+
+function shortDate(value: string, locale: "en" | "sv") {
+  return new Date(`${value.slice(0, 10)}T00:00:00Z`)
+    .toLocaleDateString(locale === "sv" ? "sv-SE" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    })
+    .replace(".", "");
+}
+
+function previewCaption(row: typeof Sales.SalesRow.Type, locale: "en" | "sv") {
+  const number = row.number ?? row.title;
+
+  if (row.kind === "draft") return number;
+
+  return `${number}, ${locale === "sv" ? "utfärdad" : "issued"} ${shortDate(row.date, locale)}`;
+}
+
+function previewNote(
+  row: typeof Sales.SalesRow.Type,
+  asOf: string | undefined,
+  status: string,
+  locale: "en" | "sv",
+) {
+  if (
+    !row.dueOn ||
+    !asOf ||
+    (!row.overdue && row.status !== "open" && row.status !== "partially_allocated")
+  )
+    return status;
+
+  const days = Math.round(
+    (Date.parse(`${row.dueOn}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000,
+  );
+
+  const date = shortDate(row.dueOn, locale);
+
+  if (locale === "sv")
+    return row.overdue
+      ? `Förföll ${date}, ${-days} dagar sedan`
+      : `Förfaller ${date}, ${days} dagar kvar`;
+
+  return row.overdue ? `Overdue since ${date}, ${-days} days` : `Due ${date}, ${days} days left`;
+}
+
+function DraftPreviewLines({ id, locale }: { id: string; locale: "en" | "sv" }) {
+  const { book } = useBookWorkspace();
+
+  const view = useQuery({
+    queryKey: [...commerceKey(book), "invoice-draft", id, ""],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}`,
+        Drafts.InvoiceDraftView,
+        { signal },
+      );
+
+      checkScope(book, result.record.scope);
+
+      if (result.record.id !== id) throw new Error("Invoice draft identity mismatch");
+
+      return result;
+    },
+    retry: false,
+  });
+
+  if (!view.data || view.isError)
+    return <AccountingStatus pending={view.isPending} error={view.error} locale={locale} />;
+  const { record } = view.data;
+  const amount = (minor: string) => formatMinorAmount(minor, record.content.currencyScale, locale);
+
+  const lines = record.calculatedLines.map((line) => ({
+    id: line.id,
+    description:
+      record.content.lines.find((source) => source.id === line.id)?.description ?? line.id,
+    amount: amount(line.netMinor),
+  }));
+
+  if (record.totals.taxMinor !== null)
+    lines.push({
+      id: "tax-total",
+      description: locale === "sv" ? "Moms" : "VAT",
+      amount: amount(record.totals.taxMinor),
+    });
+
+  return <RegisterDetailLines title={locale === "sv" ? "Rader" : "Lines"} lines={lines} />;
+}
+
+// Without a choice, preview the sent invoice that falls due first, then the overdue one.
+function nextInvoice(items: readonly (typeof Sales.SalesRow.Type)[] | undefined) {
+  const sent = items
+    ?.filter((row) => salesGroup(row) === "open")
+    .sort((left, right) => (left.dueOn ?? "").localeCompare(right.dueOn ?? ""));
+
+  return sent?.[0] ?? items?.find((row) => row.overdue) ?? items?.[0];
 }
 
 function salesGroup(
@@ -532,13 +573,15 @@ function salesGroup(
 }
 
 function salesSymbol(row: typeof Sales.SalesRow.Type): RegisterStatus {
-  if (row.overdue || row.needsDetails || row.status === "blocked") return "warning";
+  if (row.overdue) return "overdue";
+
+  if (row.needsDetails || row.status === "blocked") return "warning";
 
   if (row.status === "allocated") return "completed";
 
   if (row.status === "draft") return "draft";
 
-  return "open";
+  return row.status === "cancelled" ? "open" : "pending";
 }
 
 function SalesPagination(props: {
@@ -560,7 +603,7 @@ function SalesPagination(props: {
         {data.items.length > 0 && pages > 1 ? `${first}–${last} ${labels.of} ` : ""}
         {data.total}{" "}
         {(data.total === 1 ? labels.invoice : labels.invoices).toLocaleLowerCase(locale)}
-        {props.searching ? ` · ${labels.matchingSearch}` : ""}
+        {props.searching ? `, ${labels.matchingSearch}` : ""}
       </PageCaption>
       {page <= pages && (page > 1 || pages > 1) ? (
         <Box display="flex" gap="sm" alignItems="center">
@@ -705,14 +748,17 @@ const english = {
   all: "All",
   drafts: "Drafts",
   draft: "Draft",
-  open: "Outstanding",
+  notIssued: "Not issued",
+  overdueSince: "Overdue since",
+  dueOn: "Due",
+  open: "Sent",
   overdue: "Overdue",
   overdueInvoice: "Overdue",
-  settled: "Settled",
+  settled: "Paid",
   cancelled: "Cancelled",
   cancelledInvoice: "Cancelled",
-  partially_allocated: "Partly settled",
-  allocated: "Settled",
+  partially_allocated: "Partly paid",
+  allocated: "Paid",
   blocked: "Needs review",
   needsDetails: "Needs details",
   sort: "Sort invoices",
@@ -730,6 +776,7 @@ const english = {
   firstPage: "Go to first page",
   amount: "Amount",
   status: "Status",
+  openReceivables: "Open receivables",
   search: "Search customer, invoice or description…",
   searchAction: "Search",
   clear: "Clear",
@@ -755,14 +802,17 @@ const swedish: typeof english = {
   all: "Alla",
   drafts: "Utkast",
   draft: "Utkast",
-  open: "Utestående",
+  notIssued: "Ej utfärdad",
+  overdueSince: "Förföll",
+  dueOn: "Förfaller",
+  open: "Skickade",
   overdue: "Förfallna",
   overdueInvoice: "Förfallen",
-  settled: "Reglerade",
+  settled: "Betalda",
   cancelled: "Makulerade",
   cancelledInvoice: "Makulerad",
-  partially_allocated: "Delvis reglerad",
-  allocated: "Reglerad",
+  partially_allocated: "Delvis betald",
+  allocated: "Betald",
   blocked: "Behöver granskas",
   needsDetails: "Behöver kompletteras",
   sort: "Sortera fakturor",
@@ -780,6 +830,7 @@ const swedish: typeof english = {
   firstPage: "Gå till första sidan",
   amount: "Belopp",
   status: "Status",
+  openReceivables: "Öppna fordringar",
   search: "Sök kund, faktura eller beskrivning…",
   searchAction: "Sök",
   clear: "Rensa",

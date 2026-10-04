@@ -256,7 +256,7 @@ function SupplierEditorForm(
             />
           </Box>
         </RecordColumns>
-        <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"} · ${currency}`}>
+        <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"}, ${currency}`}>
           <InvoiceEditorLines
             locale={props.locale}
             currency={currency}
@@ -479,7 +479,7 @@ function ReadingSuggestions(
                       ? locator
                       : `${sv ? "Sida" : "Page"} ${locator.page}: “${locator.quote}”`,
                   )
-                  .join(" · ")}
+                  .join(", ")}
               </Text>
               <Button
                 type="button"
@@ -538,7 +538,7 @@ function SupplierInvoiceFields(
           />
           <InputField
             name="sourceTotal"
-            label={`${sv ? "Total enligt fakturan" : "Total on invoice"} · ${currency}`}
+            label={`${sv ? "Total enligt fakturan" : "Total on invoice"}, ${currency}`}
             inputMode="decimal"
             value={props.headers.sourceTotal}
             onChange={(event) => props.onHeader("sourceTotal", event.target.value)}

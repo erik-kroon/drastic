@@ -196,6 +196,7 @@ test("P05 Documents searches owner metadata, preserves cursor and opens exact ow
         failedResponses.push({ path: new URL(response.url()).pathname, status: response.status() });
     });
     await page.goto(`${workspace}/purchases?view=documents`);
+    await page.getByText("Filename, source and period", { exact: true }).click();
     await page
       .getByLabel("Filename or supplier", { exact: true })
       .fill("Architecture review supplier");
@@ -322,6 +323,7 @@ test("P05 Documents searches owner metadata, preserves cursor and opens exact ow
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
       .toBe(selected.occurrence.filename);
+    await page.getByText("Filename, source and period", { exact: true }).click();
     await page.getByLabel("Document from", { exact: true }).fill("2026-09-23");
     await page.getByRole("button", { name: "Search archive", exact: true }).click();
     await page.getByRole("heading", { name: "No matching documents", exact: true }).waitFor();
@@ -347,6 +349,8 @@ test("P05 Documents searches owner metadata, preserves cursor and opens exact ow
     await page.getByRole("button", { name: "All documents", exact: true }).click();
     await page.setViewportSize({ width: 320, height: 800 });
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.getByText("Filename, source and period", { exact: true }).focus();
+    await page.keyboard.press("Enter");
     await page.getByLabel("Filename or supplier", { exact: true }).focus();
     await page.keyboard.type("Architecture review supplier");
     await page.getByRole("button", { name: "Search archive", exact: true }).focus();

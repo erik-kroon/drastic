@@ -288,7 +288,7 @@ export function readFeedInventory(
               'providerVerification', b.body->>'providerVerification',
               'receivedAt', b.body->>'receivedAt', 'receivedBy', b.body->>'receivedBy') as body
             from (
-              select id, body from openerp.bank_connector_batches
+              select book_id, id, body from openerp.bank_connector_batches
               where book_id = c.book_id and consent_id = c.id
               order by body->>'receivedAt' desc, id desc
               limit 20
@@ -306,7 +306,7 @@ export function readFeedInventory(
           'sourceAccountId', f.source_account_id, 'accountId', f.account_id,
           'active', exists (select 1 from openerp.accounts a
             where a.book_id = f.book_id and a.id = f.account_id and a.active)),
-        'readAt', ${readAt},
+        'readAt', ${readAt}::text,
         'cursorSnapshot', jsonb_build_object('cursor', coalesce(f.cursor, ''),
           'retainedPageCount', f.retained_page_count,
           'retainedPageStartCursor', f.retained_page_start_cursor,

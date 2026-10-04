@@ -11,7 +11,9 @@ import type { CommerceProps } from "@/components/commerce/shared";
 import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { workspacePath } from "@/lib/book-context";
 
-export function OriginalDocument(props: CommerceProps & { id: string; sha256?: string }) {
+export function OriginalDocument(
+  props: CommerceProps & { id: string; sha256?: string; compact?: boolean },
+) {
   const work = useWorkReturn();
   const query = useQuery(sourceDocumentOptions(props.book, props.id));
   const source = query.data;
@@ -19,7 +21,7 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
   const sv = props.locale === "sv";
 
   return (
-    <Box display="grid" gap="lg" minWidth="zero">
+    <Box display="grid" gap={props.compact ? "sm" : "lg"} minWidth="zero">
       <AccountingStatus
         locale={props.locale}
         pending={query.isPending}
@@ -48,34 +50,39 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
       {source && !query.isError && !mismatch ? (
         <>
           <DocumentPreview
+            compact={props.compact}
             content={source.contentBase64}
             mediaType={source.occurrence.mediaType}
             filename={source.occurrence.filename}
           />
-          <Box>
-            <Button
-              variant="outline"
-              onClick={() =>
-                downloadIntake(
-                  new Blob(
-                    [Uint8Array.from(atob(source.contentBase64), (char) => char.charCodeAt(0))],
-                    { type: source.occurrence.mediaType },
-                  ),
-                  source.occurrence.filename,
-                )
-              }
-            >
-              <Download size={14} strokeWidth={1.5} />
-              {sv ? "Ladda ned original" : "Download original"}
-            </Button>
-          </Box>
+          {!props.compact ? (
+            <Box>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  downloadIntake(
+                    new Blob(
+                      [Uint8Array.from(atob(source.contentBase64), (char) => char.charCodeAt(0))],
+                      { type: source.occurrence.mediaType },
+                    ),
+                    source.occurrence.filename,
+                  )
+                }
+              >
+                <Download size={14} strokeWidth={1.5} />
+                {sv ? "Ladda ned original" : "Download original"}
+              </Button>
+            </Box>
+          ) : null}
           <PageCaption>{source.occurrence.filename}</PageCaption>
-          <PageAction
-            quiet
-            href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "documents", work)}&record=${encodeURIComponent(source.occurrence.id)}`}
-          >
-            {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
-          </PageAction>
+          {!props.compact ? (
+            <PageAction
+              quiet
+              href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "documents", work)}&record=${encodeURIComponent(source.occurrence.id)}`}
+            >
+              {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
+            </PageAction>
+          ) : null}
         </>
       ) : null}
     </Box>

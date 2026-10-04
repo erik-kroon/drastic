@@ -31,7 +31,7 @@ export function CompanyPosition({ work }: { work: CompanyWork }) {
 
   return (
     <RecordSummary>
-      <RecordFact label={sv ? "Bokfört på bankkonton" : "Bank accounts · ledger balance"}>
+      <RecordFact label={sv ? "Bokfört på bankkonton" : "Bank accounts, ledger balance"}>
         {balance !== null && bank.isSuccess
           ? money(balance, bank.data.currencyScale, bank.data.currency, locale)
           : "—"}
@@ -202,7 +202,7 @@ function AttentionRow({
       href={attentionPath(work.book, item, search)}
       icon={<Icon size={16} strokeWidth={1.5} />}
       title={item.title}
-      detail={`${attentionCopy(work.locale)[item.reason]} · ${date(item.updatedAt, work.locale)}`}
+      detail={`${attentionCopy(work.locale)[item.reason]}, ${date(item.updatedAt, work.locale)}`}
       value={
         item.amountMinor !== null && item.currencyScale !== null
           ? money(item.amountMinor, item.currencyScale, item.currency ?? "", work.locale)
@@ -277,7 +277,7 @@ export function CompanyBankAccounts({ work }: { work: CompanyWork }) {
               href={accountHref(work, account.id)}
               icon={<Landmark size={16} strokeWidth={1.5} />}
               title={account.name}
-              detail={`${account.code} · ${sv ? "Bokfört till" : "Posted through"} ${date(work.to, locale)}`}
+              detail={`${account.code}, ${sv ? "Bokfört till" : "Posted through"} ${date(work.to, locale)}`}
               value={money(
                 account.ledgerBalanceMinor,
                 bank.data.currencyScale,

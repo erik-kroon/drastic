@@ -119,7 +119,7 @@ export function RateForm(
           />
         ) : (
           <Text>
-            {current.sourceKey} · {current.digest}
+            {current.sourceKey}, {current.digest}
           </Text>
         )}
         <InputField
@@ -295,11 +295,11 @@ export function ConversionForm(
       }}
     >
       <Text>
-        {copy.selected}: {rate.observationId} · {rate.revision} · {rate.digest}
+        {copy.selected}: {rate.observationId}, {rate.revision}, {rate.digest}
       </Text>
       <Text>
-        {rate.terms.fromCurrency} → {rate.terms.toCurrency} · {rate.terms.rateNumerator}/
-        {rate.terms.rateDenominator} · {rate.terms.effectiveOn}
+        {rate.terms.fromCurrency} → {rate.terms.toCurrency}, {rate.terms.rateNumerator}/
+        {rate.terms.rateDenominator}, {rate.terms.effectiveOn}
       </Text>
       <Text>{copy.roundingHelp}</Text>
       <Text>{copy.retry}</Text>

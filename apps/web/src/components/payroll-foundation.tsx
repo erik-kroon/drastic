@@ -432,11 +432,11 @@ function PayrollHistoryPanel(props: {
                   : sv
                     ? "Historisk revision"
                     : "Historical revision"}{" "}
-                · {item.kind} · {item.effectiveOn} · {item.id} · {item.createdAt}
+                , {item.kind}, {item.effectiveOn}, {item.id}, {item.createdAt}
               </Text>
               <Text>
-                {sv ? "Underlag" : "Evidence"}: {item.evidenceId} ·{" "}
-                {sv ? "Skapad av" : "Created by"}: {item.createdBy}
+                {sv ? "Underlag" : "Evidence"}: {item.evidenceId}, {sv ? "Skapad av" : "Created by"}
+                : {item.createdBy}
               </Text>
               {item.supersedes ? (
                 <Text>

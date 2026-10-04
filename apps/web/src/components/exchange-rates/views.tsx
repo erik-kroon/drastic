@@ -120,7 +120,7 @@ export function RateInspector(
                 disabled={conversionRate !== null || !canStart}
                 onClick={() => setConversionRate((selected) => selected ?? rate)}
               >
-                {copy.select} · {rate.revision}
+                {copy.select}, {rate.revision}
               </Button>
             </Box>
           ))}
@@ -243,15 +243,14 @@ function RateDetails({
   return (
     <Box display="grid" gap="sm" minWidth="zero">
       <Text>
-        {rate.sourceKey} · {copy.revision}: {rate.revision} · {rate.createdAt} ·{" "}
-        {rate.receipt.actorId}
+        {rate.sourceKey}, {copy.revision}: {rate.revision}, {rate.createdAt}, {rate.receipt.actorId}
       </Text>
       <Text>
-        {rate.terms.fromCurrency} → {rate.terms.toCurrency} · {rate.terms.rateNumerator}/
+        {rate.terms.fromCurrency} → {rate.terms.toCurrency}, {rate.terms.rateNumerator}/
         {rate.terms.rateDenominator}
       </Text>
       <Text>
-        {copy.effectiveOn}: {rate.terms.effectiveOn} · {copy.retrievedOn}: {rate.terms.retrievedOn}
+        {copy.effectiveOn}: {rate.terms.effectiveOn}, {copy.retrievedOn}: {rate.terms.retrievedOn}
       </Text>
       <Text>
         {copy.digest}: {rate.digest}
@@ -404,11 +403,11 @@ function ConversionDetails({
       ) : null}
       <Text>{copy.warning}</Text>
       <Text>
-        {review.createdAt} · {review.receipt.actorId} · {review.digest}
+        {review.createdAt}, {review.receipt.actorId}, {review.digest}
       </Text>
       <Text>
-        {copy.amount}: {review.input.originalMinor} {review.input.fromCurrency} · {copy.sourceScale}
-        : {review.input.sourceScale}
+        {copy.amount}: {review.input.originalMinor} {review.input.fromCurrency}, {copy.sourceScale}:{" "}
+        {review.input.sourceScale}
       </Text>
       <Text>
         {copy.conversionDate}: {review.input.conversionDate}
@@ -430,11 +429,11 @@ function ConversionDetails({
         {copy.exact}: {calculation.exactNumerator}/{calculation.exactDenominator}
       </Text>
       <Text>
-        {copy.quotient}: {calculation.quotientMinor} · {copy.remainder}:{" "}
+        {copy.quotient}: {calculation.quotientMinor}, {copy.remainder}:{" "}
         {calculation.remainderNumerator}
       </Text>
       <Text>
-        {copy.rounded}: {calculation.roundedMinor} {review.bookBasis.currency} ·{" "}
+        {copy.rounded}: {calculation.roundedMinor} {review.bookBasis.currency},{" "}
         {review.bookBasis.currencyScale}
       </Text>
       <Text>
@@ -499,13 +498,13 @@ function WithdrawalDetails({
   return (
     <Box display="grid" gap="sm" minWidth="zero">
       <Text>
-        {copy.withdraw}: {withdrawal.id} · {withdrawal.createdAt} · {withdrawal.receipt.actorId}
+        {copy.withdraw}: {withdrawal.id}, {withdrawal.createdAt}, {withdrawal.receipt.actorId}
       </Text>
       <Text>
-        {withdrawal.observationId} · {withdrawal.revisionDigest}
+        {withdrawal.observationId}, {withdrawal.revisionDigest}
       </Text>
       <Text>
-        {withdrawal.input.rationale} · {withdrawal.digest}
+        {withdrawal.input.rationale}, {withdrawal.digest}
       </Text>
       <EvidenceInspector
         book={book}

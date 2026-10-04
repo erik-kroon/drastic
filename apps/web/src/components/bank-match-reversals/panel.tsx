@@ -222,7 +222,7 @@ export function BankMatchReversals({
           {saved.data?.items.map((item) => (
             <Box key={item.id} display="grid" gap="sm" minWidth="zero">
               <Text>
-                {item.reason} · {item.createdAt}
+                {item.reason}, {item.createdAt}
               </Text>
               <Text>
                 {copy.planId}: {item.id}

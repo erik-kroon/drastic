@@ -37,7 +37,7 @@ export function ScheduleForm(props: {
     { value: "", label: labels.chooseAccount },
     ...setup.accounts.map((account) => ({
       value: account.id,
-      label: `${account.code} · ${account.name}`,
+      label: `${account.code}, ${account.name}`,
       disabled: !account.active,
     })),
   ];
@@ -140,14 +140,14 @@ export function ScheduleForm(props: {
           <RecordSection title={labels.amounts}>
             <Box display="grid" columns={2} gap="lg">
               <InputField
-                label={`${labels.cost} · ${book.currency}`}
+                label={`${labels.cost}, ${book.currency}`}
                 name="costMinor"
                 inputMode="decimal"
                 required
                 defaultValue={terms ? minorToDecimal(terms.costMinor, scale) : ""}
               />
               <InputField
-                label={`${labels.residual} · ${book.currency}`}
+                label={`${labels.residual}, ${book.currency}`}
                 name="residualMinor"
                 inputMode="decimal"
                 required

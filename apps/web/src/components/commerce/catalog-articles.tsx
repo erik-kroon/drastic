@@ -1,18 +1,18 @@
-import { useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Option from "effect/Option";
 import * as Legal from "@open-erp/contracts/legal-sales-policy";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Catalog from "@open-erp/contracts/catalog";
-import { Plus } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
-import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { mutationOptions, readAccounting } from "@/lib/accounting-api";
 import {
@@ -72,11 +72,14 @@ function minor(value: string, scale: number) {
   return decimalToMinor(normalized, scale) ?? "invalid";
 }
 
-export function CatalogArticles(props: CommerceProps) {
+export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }) {
   const { book, locale } = props;
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const client = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const newArticleButton = useRef<HTMLButtonElement>(null);
+  const openerCode = useRef<string | null>(null);
   const [form, setForm] = useState<ArticleForm>(emptyForm);
   const [keys] = useState(() => new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
@@ -134,25 +137,27 @@ export function CatalogArticles(props: CommerceProps) {
   const scale = metadata.data?.currencyScale;
 
   return (
-    <Box display="grid" gap="xl" minWidth="zero">
-      <RecordHeading
-        title={labels.title}
-        subtitle={labels.subtitle}
-        action={
-          <Button
-            type="button"
-            disabled={book.role !== "operator" || save.isPending}
-            onClick={() => {
-              setForm(emptyForm());
-              setInvalid(false);
-              setSaved(false);
-            }}
-          >
-            <Plus size={14} />
-            {labels.newArticle}
-          </Button>
-        }
-      />
+    <RegisterWorkspace
+      title={labels.sales}
+      tabs={props.navigation}
+      action={
+        <Button
+          type="button"
+          size="sm"
+          ref={newArticleButton}
+          disabled={book.role !== "operator" || save.isPending}
+          onClick={() => {
+            openerCode.current = null;
+            setEditing(true);
+            setForm(emptyForm());
+            setInvalid(false);
+            setSaved(false);
+          }}
+        >
+          {labels.newArticle}
+        </Button>
+      }
+    >
       <AccountingStatus locale={locale} pending={articles.isPending} error={articles.error} />
       {articles.isSuccess ? (
         items.length ? (
@@ -160,35 +165,36 @@ export function CatalogArticles(props: CommerceProps) {
             title={labels.currentRevisions}
             narrow="stack"
             columns={[
-              { id: "code", label: labels.code },
-              { id: "description", label: labels.description },
-              { id: "unit", label: labels.unit },
-              { id: "price", label: labels.unitPrice, numeric: true },
-              { id: "tax", label: labels.taxTreatment },
-              { id: "revision", label: labels.revision, numeric: true },
+              { id: "description", label: labels.article, width: "fill" },
+              { id: "unit", label: labels.unit, width: 90 },
+              { id: "tax", label: labels.vat, width: 80, numeric: true },
+              { id: "price", label: labels.price, numeric: true, width: 120 },
             ]}
             rows={items.map((article) => ({
               id: article.code,
               cells: [
                 <RecordOpen
-                  key="code"
+                  key="description"
+                  data-article-code={article.code}
+                  aria-label={`${article.description}, ${article.code}`}
                   onClick={() => {
                     if (scale !== undefined) {
+                      openerCode.current = article.code;
+                      setEditing(true);
                       setForm(articleForm(article, scale));
                       setInvalid(false);
                       setSaved(false);
                     }
                   }}
                 >
-                  {article.code}
+                  {article.description}
+                  {article.status === "archived" ? (sv ? ", Arkiverad" : ", Archived") : ""}
                 </RecordOpen>,
-                `${article.description}${article.status === "archived" ? (sv ? " · Arkiverad" : " · Archived") : ""}`,
                 article.unit,
+                article.taxDescription ?? "—",
                 scale === undefined || article.unitPriceMinor === null
                   ? "—"
-                  : `${formatMinorAmount(article.unitPriceMinor, scale, locale)} ${book.currency}`,
-                article.taxDescription ?? "—",
-                article.revision,
+                  : formatMinorAmount(article.unitPriceMinor, scale, locale),
               ],
             }))}
           />
@@ -210,12 +216,25 @@ export function CatalogArticles(props: CommerceProps) {
       ) : null}
       {scale === undefined ? (
         <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
-      ) : (
-        <RecordSection title={form.expectedRevision ? labels.updateArticle : labels.createArticle}>
+      ) : editing ? (
+        <FormDialog
+          size="register"
+          title={form.expectedRevision ? labels.updateArticle : labels.newArticle}
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => setEditing(false)}
+          onEscape={() => setEditing(false)}
+          finalFocus={() => {
+            const button = Array.from(
+              document.querySelectorAll<HTMLButtonElement>("button[data-article-code]"),
+            ).find((element) => element.dataset.articleCode === openerCode.current);
+
+            return button ?? newArticleButton.current;
+          }}
+        >
           <Box
             as="form"
             display="grid"
-            gap="lg"
+            gap="md"
             onSubmit={(event) => {
               event.preventDefault();
 
@@ -239,19 +258,20 @@ export function CatalogArticles(props: CommerceProps) {
               as="fieldset"
               disabled={book.role !== "operator" || save.isPending}
               display="grid"
-              gap="lg"
+              gap="md"
               minWidth="zero"
               borderWidth="none"
               margin="none"
               padding="none"
             >
-              <Box display="grid" columnsAtSm={2} gap="lg">
+              <Box display="grid" columnsAtSm={2} gap="md">
                 <InputField
+                  compact
                   label={labels.code}
                   value={form.code}
                   required
                   maxLength={64}
-                  pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+                  pattern={"[A-Za-z0-9][A-Za-z0-9._\\-]*"}
                   disabled={form.expectedRevision > 0}
                   onChange={(event) => {
                     setSaved(false);
@@ -259,6 +279,7 @@ export function CatalogArticles(props: CommerceProps) {
                   }}
                 />
                 <InputField
+                  compact
                   label={labels.unit}
                   value={form.unit}
                   required
@@ -270,6 +291,7 @@ export function CatalogArticles(props: CommerceProps) {
                 />
               </Box>
               <InputField
+                compact
                 label={labels.description}
                 value={form.description}
                 required
@@ -281,6 +303,7 @@ export function CatalogArticles(props: CommerceProps) {
               />
               <Box display="grid" columnsAtSm={2} gap="lg">
                 <InputField
+                  compact
                   label={`${labels.unitPrice} (${book.currency})`}
                   value={form.unitPrice}
                   inputMode="decimal"
@@ -291,6 +314,7 @@ export function CatalogArticles(props: CommerceProps) {
                   }}
                 />
                 <InputField
+                  compact
                   label={`${labels.taxTreatment} (${sv ? "valfritt" : "optional"})`}
                   value={form.taxDescription}
                   maxLength={200}
@@ -307,13 +331,14 @@ export function CatalogArticles(props: CommerceProps) {
                 error={policies.error}
               />
               <SelectField
+                compact
                 label={sv ? "Granskad momsprofil" : "Reviewed tax profile"}
                 value={form.treatment.kind === "legal_sales_policy" ? form.treatment.id : ""}
                 options={[
                   { value: "", label: sv ? "Ej fastställd" : "Unresolved" },
                   ...(policies.data?.items.map((policy) => ({
                     value: policy.id,
-                    label: `${policy.candidate.input.sellerIdentity.legalName} · ${policy.candidate.input.vatTreatment}`,
+                    label: `${policy.candidate.input.sellerIdentity.legalName}, ${policy.candidate.input.vatTreatment}`,
                   })) ?? []),
                 ]}
                 onValueChange={(id) => {
@@ -327,6 +352,7 @@ export function CatalogArticles(props: CommerceProps) {
                 }}
               />
               <SelectField
+                compact
                 label={sv ? "Artikelstatus" : "Article status"}
                 value={form.status}
                 options={[
@@ -352,13 +378,17 @@ export function CatalogArticles(props: CommerceProps) {
             {saved ? <Text role="status">{labels.saved}</Text> : null}
             <PageCaption>{labels.revisionNote}</PageCaption>
           </Box>
-        </RecordSection>
-      )}
-    </Box>
+        </FormDialog>
+      ) : null}
+    </RegisterWorkspace>
   );
 }
 
 const english = {
+  sales: "Sales",
+  article: "Article",
+  vat: "VAT",
+  price: "Price",
   title: "Article catalog",
   subtitle: "Save the current defaults copied into new and edited invoice drafts.",
   newArticle: "New article",
@@ -384,6 +414,10 @@ const english = {
 };
 
 const swedish: typeof english = {
+  sales: "Försäljning",
+  article: "Artikel",
+  vat: "Moms",
+  price: "Pris",
   title: "Artikelkatalog",
   subtitle: "Spara aktuella standardvärden som kopieras till nya och redigerade fakturautkast.",
   newArticle: "Ny artikel",

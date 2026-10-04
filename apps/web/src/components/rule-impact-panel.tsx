@@ -59,7 +59,7 @@ export function RuleImpactPanel(props: { book: typeof Accounting.Book.Type; loca
         {notices.data?.map((notice) => (
           <Box key={notice.id} display="grid" gap="xs">
             <Text>
-              {notice.oldReleaseId} → {notice.newReleaseId} · {notice.changeKind} ·{" "}
+              {notice.oldReleaseId} → {notice.newReleaseId}, {notice.changeKind},{" "}
               {notice.effectiveFrom} → {notice.effectiveTo ?? "—"}
             </Text>
             <Text>
@@ -80,7 +80,7 @@ export function RuleImpactPanel(props: { book: typeof Accounting.Book.Type; loca
         {snapshotId === "" &&
           snapshots.data?.map((row) => (
             <Button key={row.id} type="button" onClick={() => setSnapshotId(row.id)}>
-              {row.id} · {row.noticeId} · {row.decidedTargets}/{row.totalTargets}{" "}
+              {row.id}, {row.noticeId}, {row.decidedTargets}/{row.totalTargets}{" "}
               {sv ? "beslutade" : "decided"}
             </Button>
           ))}
@@ -92,11 +92,11 @@ export function RuleImpactPanel(props: { book: typeof Accounting.Book.Type; loca
             {snapshot.data?.targets.map((target) => (
               <Box key={`${target.targetKind}:${target.targetId}`} display="grid" gap="xs">
                 <Text>
-                  {target.targetKind} · {target.targetId} · {target.family} ·{" "}
+                  {target.targetKind}, {target.targetId}, {target.family},{" "}
                   {target.periodStartsOn ?? "—"} → {target.periodEndsOn ?? "—"}
                 </Text>
                 <Text>
-                  {sv ? "Påverkan" : "Impact"}: {target.impactKind} · {sv ? "tillstånd" : "state"}:{" "}
+                  {sv ? "Påverkan" : "Impact"}: {target.impactKind}, {sv ? "tillstånd" : "state"}:{" "}
                   {target.executionState}
                 </Text>
                 <Text>

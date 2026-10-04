@@ -219,7 +219,7 @@ function ActualPreparation({ onOpen }: { onOpen: (id: string) => void }) {
                   { value: "", label: "—" },
                   ...setup.accounts.map((account) => ({
                     value: account.id,
-                    label: `${account.code} · ${account.name}`,
+                    label: `${account.code}, ${account.name}`,
                   })),
                 ]}
               />
@@ -264,7 +264,7 @@ function ActualPreparation({ onOpen }: { onOpen: (id: string) => void }) {
               />
               <InputField
                 name={`evidence-${family}`}
-                label={`${sv ? se : en} · ${sv ? "underlags-ID" : "evidence ID"}`}
+                label={`${sv ? se : en}, ${sv ? "underlags-ID" : "evidence ID"}`}
               />
             </Box>
           ))}
@@ -339,8 +339,8 @@ function ActualResult({ view }: { view: typeof Vat.ActualVatReturnView.Type }) {
         title={`${saved.input.startsOn} – ${saved.input.endsOn}`}
         subtitle={
           sv
-            ? "Sparad momsberäkning · inte inskickad · inte betald"
-            : "Saved VAT calculation · not submitted · not paid"
+            ? "Sparad momsberäkning, inte inskickad, inte betald"
+            : "Saved VAT calculation, not submitted, not paid"
         }
         action={null}
       />
@@ -455,13 +455,13 @@ function ActualResult({ view }: { view: typeof Vat.ActualVatReturnView.Type }) {
         />
         {result.timingBridge.map((item) => (
           <Text key={`${item.factId}:${item.reason}`}>
-            {item.factId} · {item.taxPointOn} · {item.componentPostingDates.join(", ")}
+            {item.factId}, {item.taxPointOn}, {item.componentPostingDates.join(", ")}
           </Text>
         ))}
       </Disclosure>
       {result.blockers.length || currentness.staleReasons.length ? (
         <Disclosure title={sv ? "Sparade kontrollorsaker" : "Retained check reasons"}>
-          <Text>{[...result.blockers, ...currentness.staleReasons].join(" · ")}</Text>
+          <Text>{[...result.blockers, ...currentness.staleReasons].join(", ")}</Text>
         </Disclosure>
       ) : null}
     </>
@@ -549,7 +549,7 @@ function ActualControls({ saved }: { saved: typeof Vat.ActualVatReturn.Type }) {
   const accountName = (id: string) => {
     const account = setup.accounts.find((item) => item.id === id);
 
-    return account ? `${account.code} · ${account.name}` : id;
+    return account ? `${account.code}, ${account.name}` : id;
   };
 
   const voucher = (id: string) =>
@@ -585,7 +585,7 @@ function ActualControls({ saved }: { saved: typeof Vat.ActualVatReturn.Type }) {
             gap="md"
           >
             <Text>
-              {accountName(control.accountId)} · {row.postingDate} · {money(row.signedMinor)} ·{" "}
+              {accountName(control.accountId)}, {row.postingDate}, {money(row.signedMinor)},{" "}
               {row.state === "missing"
                 ? sv
                   ? "Saknad rad"

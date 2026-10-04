@@ -29,6 +29,26 @@ const styles = stylex.create({
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)", maxHeight: "95dvh", padding: 16 },
   },
   compact: { width: "min(560px, calc(100vw - 48px))" },
+  register: {
+    width: "min(520px, calc(100vw - 48px))",
+    insetBlockStart: 90,
+    insetInlineStart: "calc(50% + 112px)",
+    transform: "translateX(-50%)",
+    borderRadius: tokens.radiusSurface,
+    maxHeight: "calc(100dvh - 114px)",
+    "@media (max-width: 767px)": {
+      width: "calc(100vw - 20px)",
+      insetInlineStart: "50%",
+      insetBlockStart: 16,
+      maxHeight: "calc(100dvh - 32px)",
+    },
+  },
+  registerHeader: { marginBlockEnd: tokens.space4 },
+  registerTitle: {
+    fontSize: tokens.fontSizeBase,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight20Px,
+  },
   fullscreen: {
     insetBlockStart: 0,
     insetInlineStart: 0,
@@ -91,14 +111,16 @@ export function FormDialog({
   closeLabel,
   onClose,
   onEscape,
+  finalFocus,
   children,
   size = "wide",
 }: {
-  size?: "compact" | "invoice" | "wide" | "fullscreen";
+  size?: "compact" | "register" | "invoice" | "wide" | "fullscreen";
   title: string;
   closeLabel: string;
   onClose: () => void;
   onEscape?: () => void;
+  finalFocus?: Dialog.Popup.Props["finalFocus"];
   children: ReactNode;
 }) {
   return (
@@ -119,16 +141,28 @@ export function FormDialog({
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
         <Dialog.Popup
+          finalFocus={finalFocus}
           {...stylex.props(
             styles.popup,
             size === "compact" && styles.compact,
+            size === "register" && styles.register,
             size === "invoice" && styles.invoice,
             size === "fullscreen" && styles.fullscreen,
           )}
         >
-          <div {...stylex.props(styles.header, size === "fullscreen" && styles.fullscreenHeader)}>
+          <div
+            {...stylex.props(
+              styles.header,
+              size === "fullscreen" && styles.fullscreenHeader,
+              size === "register" && styles.registerHeader,
+            )}
+          >
             <Dialog.Title
-              {...stylex.props(styles.title, size === "fullscreen" && styles.fullscreenTitle)}
+              {...stylex.props(
+                styles.title,
+                size === "fullscreen" && styles.fullscreenTitle,
+                size === "register" && styles.registerTitle,
+              )}
             >
               {title}
             </Dialog.Title>
