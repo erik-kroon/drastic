@@ -11,7 +11,7 @@ OpenERP turns retained evidence into reviewed accounting decisions, approved pos
 | Need | Start here |
 | --- | --- |
 | Find unmerged or uncommitted work | [Local/origin work audit](work-audit.md) |
-| Find the next work item or check completion | [Work status and backlog](work-status.md) |
+| Find the next work item or check completion | [Work status and backlog](work-status.md), [completion reconciliation](plans/README.md#completion-reconciliation) |
 | Understand the product and supported boundaries | [Product](product.md), [frontend](frontend.md), [compliance](compliance.md), [design coverage](design-coverage.md) |
 | Implement an accounting packet | [Area contracts and delivery order](plans/README.md) |
 | Resolve a company fact, rule, provider or operational gate | [Open decisions](open-decisions.md) |
