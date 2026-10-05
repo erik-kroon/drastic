@@ -8,6 +8,8 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SealedAction } from "@/components/journal-review";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { workspacePath } from "@/lib/book-context";
+import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
 
@@ -112,6 +114,7 @@ export function CorrectionChainView({
   id: string;
 }) {
   const copy = correctionCopy(locale);
+  const work = useWorkReturn();
 
   const chain = useQuery({
     queryKey: [...bookKey(book), "correction-chain", id],
@@ -188,9 +191,7 @@ export function CorrectionChainView({
                 {copy.receipt}: {receipt.id}
               </Text>
               <a
-                href={`${bookPath(book)}/correction-bundles/${receipt.bundleId}`}
-                target="_blank"
-                rel="noreferrer"
+                href={`${workReturnHref(`${workspacePath(book)}/tools`, "corrections", work)}&bundle=${encodeURIComponent(receipt.bundleId)}`}
               >
                 {receipt.bundleId}
               </a>

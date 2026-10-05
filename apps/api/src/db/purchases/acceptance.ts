@@ -348,3 +348,19 @@ export function readDatabaseTime(transaction: Transaction) {
     "objects",
   );
 }
+
+export function readApprovalActorName(
+  transaction: Transaction,
+  bookId: string,
+  approvalId: string,
+) {
+  return transaction.execute<{ readonly name: string }>(
+    sql`
+      select actor.name
+      from openerp.supplier_acceptance_approvals approval
+      join openerp.actors actor on actor.id = approval.actor_id
+      where approval.book_id = ${bookId} and approval.id = ${approvalId}
+    `,
+    "objects",
+  );
+}

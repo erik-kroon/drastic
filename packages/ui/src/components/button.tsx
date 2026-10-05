@@ -68,6 +68,7 @@ const styles = stylex.create({
     color: tokens.mutedForeground,
     pointerEvents: "none",
   },
+  fullWidth: { width: "100%", minHeight: tokens.controlHeight },
   invalid: {
     borderColor: tokens.controlInvalidBorder,
     boxShadow: tokens.controlInvalidShadow,
@@ -172,6 +173,7 @@ const sizeStyles = {
 } as const;
 
 type ButtonProps = WithStyleX<ButtonPrimitive.Props> & {
+  fullWidth?: boolean;
   static?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -234,6 +236,7 @@ function Button({
   size = "default",
   styleX,
   withArrow = false,
+  fullWidth = false,
   static: staticFeedback = false,
   ...props
 }: ButtonProps) {
@@ -252,6 +255,7 @@ function Button({
           state.disabled && styles.disabled,
           props["aria-invalid"] === true && styles.invalid,
           styleX,
+          fullWidth && styles.fullWidth,
         ],
         className,
       )}

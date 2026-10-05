@@ -17,7 +17,7 @@ const styles = stylex.create({
   },
   main: { minWidth: 0 },
   wide: {
-    gridTemplateColumns: "minmax(0, 1fr) 420px",
+    gridTemplateColumns: "minmax(0, 1fr) 419px",
     "@container (max-width: 60rem)": { gridTemplateColumns: "minmax(0, 1fr)" },
   },
   invoice: {
@@ -139,7 +139,7 @@ const styles = stylex.create({
     boxShadow: tokens.selectionIndicator,
     borderBlockEndColor: tokens.border,
   },
-  selectedTitle: { fontWeight: tokens.fontWeightMedium },
+  selectedTitle: { fontWeight: tokens.fontWeightNormal },
   symbol: {
     display: "flex",
     alignItems: "center",
@@ -166,7 +166,7 @@ const styles = stylex.create({
     color: tokens.mutedForeground,
     "@container (max-width: 40rem)": { display: "none" },
   },
-  amount: { width: 100, flexShrink: 0, textAlign: "end", fontVariantNumeric: "tabular-nums" },
+  amount: { width: 100, flexShrink: 0, textAlign: "end" },
   compactState: { width: 130, paddingInlineStart: 0 },
   detail: {
     display: "flex",

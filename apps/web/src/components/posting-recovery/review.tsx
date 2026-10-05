@@ -20,6 +20,7 @@ import { Link } from "@open-erp/ui/components/link";
 import { reviewPath, workspacePath } from "@/lib/book-context";
 import { decodeWorkReturn, workReturnHref } from "@/lib/work-return";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { Alert, AlertDescription, AlertTitle } from "@open-erp/ui/components/alert";
 
 export function PostingRecoveryReview(props: {
   book: typeof Accounting.Book.Type;
@@ -50,6 +51,16 @@ export function PostingRecoveryReview(props: {
         throw new Error("Response scope mismatch");
 
       return result;
+    },
+    refetchInterval: (query) => {
+      const current = query.state.data;
+
+      if (!current?.availableApproval) return false;
+
+      return Math.max(
+        1000,
+        Date.parse(current.availableApproval.expiresAt) - Date.parse(current.checkedAt) + 20,
+      );
     },
     retry: false,
   });
@@ -217,6 +228,7 @@ function RecoveryDetail(props: {
   const busy = props.refreshing || approve.isPending || execute.isPending || revoke.isPending;
   const unposted = current.summary.postingStatus === "unposted_at_check";
   const actionable = unposted && current.validation.status === "current" && reviewed && !busy;
+  const approvalState = current.approvalObservation.state;
 
   const approval = (
     <>
@@ -226,6 +238,25 @@ function RecoveryDetail(props: {
             <Text role="alert">
               {copy.blocked} {current.validation.blocker.message}
             </Text>
+          ) : null}
+          {approvalState === "expired" ||
+          approvalState === "revoked" ||
+          approvalState === "authority_lost" ? (
+            <Alert variant="warning">
+              <AlertTitle>{copy[approvalState]}</AlertTitle>
+              <AlertDescription>
+                <Text>{copy.unposted_at_check}</Text>
+                {current.approvalObservation.approval ? (
+                  <Text>
+                    {copy.expires}:{" "}
+                    {new Intl.DateTimeFormat(locale, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    }).format(new Date(current.approvalObservation.approval.expiresAt))}
+                  </Text>
+                ) : null}
+              </AlertDescription>
+            </Alert>
           ) : null}
           <Heading>{current.availableApproval ? copy.saveExecute : copy.saveApprove}</Heading>
           <Text tone="muted">{copy.approvalHelp}</Text>
@@ -258,13 +289,16 @@ function RecoveryDetail(props: {
                 disabled={!actionable || current.availableApproval !== null}
                 onClick={() => approve.mutate()}
               >
-                {copy.saveApprove}
+                {approvalState === "expired" ? copy.approveAgain : copy.saveApprove}
               </WorkReviewAction>
             ) : null}
             {current.availableApproval ? (
               <WorkReviewAction disabled={!actionable} onClick={() => execute.mutate()}>
                 {copy.saveExecute}
               </WorkReviewAction>
+            ) : null}
+            {approvalState === "expired" ? (
+              <WorkReviewAction disabled>{copy.saveExecute}</WorkReviewAction>
             ) : null}
           </Box>
           {book.role === "operator" && current.availableApproval ? (
@@ -406,6 +440,25 @@ function RecoveryReceipt(props: {
         <Text tone="muted">
           {copy.digest}: {receipt.planDigest}
         </Text>
+        <DataTable
+          title={copy.approvalState}
+          narrow="stack"
+          columns={[
+            { id: "actor", label: copy.actor },
+            { id: "operation", label: copy.operation },
+            { id: "recorded", label: copy.recorded },
+          ]}
+          rows={current.approvalConsumptions.flatMap((consumption) =>
+            [consumption.approverBasis, consumption.executorBasis].map((basis, index) => ({
+              id: `${consumption.approvalId}/${consumption.groupId}/${index}`,
+              cells: [
+                basis.actorId,
+                `${basis.permission} (${basis.policy}, v${basis.version})`,
+                basis.checkedAt,
+              ],
+            })),
+          )}
+        />
       </Disclosure>
     </WorkflowSurface>
   );

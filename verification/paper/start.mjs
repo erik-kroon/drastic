@@ -62,6 +62,14 @@ const peppolSeed = peppolHook === "1" ? await import("./seed-peppol.mjs") : unde
 
 const processorHook = process.env.PAPER_PROCESSORS;
 
+const supplierExpiryHook = process.env.PAPER_SUPPLIER_EXPIRY;
+
+if (supplierExpiryHook !== undefined && supplierExpiryHook !== "0" && supplierExpiryHook !== "1")
+  throw new Error("PAPER_SUPPLIER_EXPIRY must be 0 or 1");
+
+const supplierExpirySeed =
+  supplierExpiryHook === "1" ? await import("./seed-supplier-expiry.mjs") : undefined;
+
 if (processorHook !== undefined && processorHook !== "0" && processorHook !== "1")
   throw new Error("PAPER_PROCESSORS must be 0 or 1");
 
@@ -294,6 +302,8 @@ try {
   if (historicalAdoptionSeed)
     fixture.accounts.push(...historicalAdoptionSeed.historicalAdoptionAccounts);
 
+  if (supplierExpirySeed) fixture.accounts.push(...supplierExpirySeed.supplierExpiryAccounts);
+
   if (onboardingHook === "1")
     fixture.accounts.push(
       { id: "account_receivable", code: "1510", name: "Synthetic customer receivables" },
@@ -385,6 +395,19 @@ try {
   });
 
   const listening = await worker.listen();
+
+  if (supplierExpirySeed)
+    console.log(
+      JSON.stringify(
+        await supplierExpirySeed.seedSupplierExpiry({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
 
   if (payrollSeed) {
     const payroll = await payrollSeed.seedPayroll({

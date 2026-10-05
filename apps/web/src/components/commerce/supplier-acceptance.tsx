@@ -17,6 +17,11 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
+import {
+  SupplierApprovalExpiry,
+  isSupplierApprovalExpired,
+  supplierApprovalRefetchInterval,
+} from "./supplier-approval-expiry";
 
 type Draft = typeof Drafts.SupplierInvoiceDraftRevision.Type;
 
@@ -366,8 +371,9 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
     retry: false,
   });
 
-  const review = useQuery({
+  const review = useQuery<typeof Acceptance.SupplierAcceptanceView.Type>({
     queryKey: [...commerceKey(props.book), "supplier-acceptance-review", props.id],
+    refetchInterval: (query) => supplierApprovalRefetchInterval(query.state.data),
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
@@ -392,6 +398,20 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
   });
 
   const view = review.isError ? undefined : review.data;
+
+  if (view && isSupplierApprovalExpired(view)) {
+    return (
+      <SupplierApprovalExpiry
+        {...props}
+        view={view}
+        heading
+        ready={review.isFetchedAfterMount && review.fetchStatus === "idle"}
+        onRenewed={() => {
+          void review.refetch();
+        }}
+      />
+    );
+  }
 
   return (
     <Box display="grid" gap="lg">

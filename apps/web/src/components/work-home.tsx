@@ -4,10 +4,7 @@ import type * as Workspace from "@open-erp/contracts/workspace";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectControl } from "@open-erp/ui/components/select";
 import {
-  WorkFilter,
-  WorkSort,
   WorkHeaderAction,
   WorkSource,
   WorkPreviewActions,
@@ -23,7 +20,13 @@ import {
   type RegisterStatus,
 } from "@open-erp/ui/components/register-workspace";
 import { useCompanyWork, type CompanyWork } from "@/lib/company-work";
-import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/attention";
+import {
+  attentionQueryOptions,
+  attentionPath,
+  attentionCopy,
+  attentionState,
+  expiredSupplierApproval,
+} from "@/lib/attention";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
@@ -39,9 +42,9 @@ export function WorkHome() {
   const copy = attentionCopy(locale);
   const [status, setStatus] = useState<"open" | "completed" | "watch">("open");
 
-  const [kind, setKind] = useState<typeof Workspace.WorkKind.Type | "all">("all");
+  const kind = "all";
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [sort, setSort] = useState<"oldest" | "newest">("oldest");
+  const sort = "oldest";
 
   const filters: WorkReturn = {
     status: status === "watch" ? "open" : status,
@@ -77,7 +80,10 @@ export function WorkHome() {
               value: "open",
               label: `${sv ? "Väntar på dig" : "Waiting for you"}${page ? ` ${page.counts.open}` : ""}`,
             },
-            { value: "watch", label: sv ? "Bevakas" : "Watching" },
+            {
+              value: "watch",
+              label: `${sv ? "Bevakas" : "Watching"}${work.sales.data ? ` ${work.sales.data.counts.overdue}` : ""}`,
+            },
             { value: "completed", label: sv ? "Klart" : "Completed" },
           ]}
           onChange={(value) => {
@@ -93,55 +99,9 @@ export function WorkHome() {
           {sv ? "Granska alla" : "Review all"}
         </WorkHeaderAction>
       }
-      filters={
-        <WorkToolbar
-          locale={locale}
-          kind={kind}
-          onKindChange={(value) => {
-            setKind(value);
-            setSelectedKey(null);
-          }}
-        />
-      }
-      summary={
-        <WorkOrdering
-          locale={locale}
-          status={status}
-          sort={sort}
-          onSortChange={(value) => {
-            setSort(value);
-            setSelectedKey(null);
-          }}
-        />
-      }
       detail={
         selected ? (
-          <>
-            <RegisterDetailHeading
-              title={selected.title}
-              amount={selected.amount === "—" ? undefined : selected.amount}
-              caption={selected.state}
-            />
-            {selected.caption ? <PageCaption>{selected.caption}</PageCaption> : null}
-            {selected.documentId ? (
-              <WorkSource>
-                <OriginalDocument
-                  compact
-                  key={selected.documentId}
-                  book={book}
-                  locale={locale}
-                  id={selected.documentId}
-                />
-              </WorkSource>
-            ) : null}
-            <WorkProposalPreview work={work} page={page} selected={selected} />
-            <WorkPreviewActions
-              href={selected.href}
-              label={selected.action}
-              secondaryHref={workQueueHref(base, filters)}
-              secondaryLabel={sv ? "Visa i arbetslistan" : "Show in work queue"}
-            />
-          </>
+          <WorkHomeDetail work={work} page={page} selected={selected} filters={filters} />
         ) : (
           <PageCaption>
             {sv ? "Välj en rad för att se nästa steg." : "Select a row to see the next step."}
@@ -209,6 +169,62 @@ export function WorkHome() {
   );
 }
 
+function WorkHomeDetail({
+  work,
+  page,
+  selected,
+  filters,
+}: {
+  work: CompanyWork;
+  page: typeof Workspace.AttentionPage.Type | undefined;
+  selected: ReturnType<typeof homeRows>[number];
+  filters: WorkReturn;
+}) {
+  const heading = (
+    <>
+      <RegisterDetailHeading
+        title={selected.title}
+        amount={selected.amount === "—" ? undefined : selected.amount}
+        caption={selected.state}
+      />
+      {selected.caption ? <PageCaption>{selected.caption}</PageCaption> : null}
+    </>
+  );
+
+  const actions = (
+    <WorkPreviewActions
+      href={selected.href}
+      label={selected.action}
+      secondaryHref={workQueueHref(work.base, filters)}
+      secondaryLabel={work.locale === "sv" ? "Visa i arbetslistan" : "Show in work queue"}
+    />
+  );
+
+  const item = page?.items.find((candidate) => candidate.key === selected.key);
+
+  if (item?.supplierReview)
+    return <WorkSupplierPreview key={item.key} item={item} heading={heading} actions={actions} />;
+
+  return (
+    <>
+      {heading}
+      {selected.documentId ? (
+        <WorkSource>
+          <OriginalDocument
+            compact
+            key={selected.documentId}
+            book={work.book}
+            locale={work.locale}
+            id={selected.documentId}
+          />
+        </WorkSource>
+      ) : null}
+      <WorkProposalPreview work={work} page={page} selected={selected} />
+      {actions}
+    </>
+  );
+}
+
 function WorkProposalPreview({
   work,
   page,
@@ -222,7 +238,7 @@ function WorkProposalPreview({
 
   if (item?.kind === "journal") return <JournalPreview work={work} item={item} />;
 
-  return item?.supplierReview ? <WorkSupplierPreview item={item} /> : null;
+  return null;
 }
 
 function JournalPreview({
@@ -317,9 +333,16 @@ function HomeBankStatus({
 function rowStatus(item: typeof Workspace.AttentionItem.Type): RegisterStatus {
   if (item.state === "completed") return "completed";
 
+  if (expiredSupplierApproval(item) !== null) return "warning";
+
   if (item.reason === "document_reading_failed") return "warning";
 
-  if (item.reason === "invoice_draft" || item.reason === "supplier_draft") return "draft";
+  if (
+    item.reason === "invoice_draft" ||
+    item.reason === "supplier_draft" ||
+    item.reason === "document_review"
+  )
+    return "draft";
 
   return "pending";
 }
@@ -366,7 +389,7 @@ function homeRows(
           key: item.key,
           group: attentionGroup(item, locale),
           title: item.title,
-          state: copy[item.reason],
+          state: attentionState(item, locale),
           status: rowStatus(item),
           amount: amount(item),
           caption: [item.currency, item.date].filter(Boolean).join(", "),
@@ -395,36 +418,6 @@ function homeRows(
   return rows;
 }
 
-function WorkToolbar(props: {
-  locale: CompanyWork["locale"];
-  kind: typeof Workspace.WorkKind.Type | "all";
-  onKindChange: (value: typeof Workspace.WorkKind.Type | "all") => void;
-}) {
-  const { locale, kind } = props;
-  const sv = locale === "sv";
-  const copy = attentionCopy(locale);
-  const kinds = ["supplier", "document", "journal", "expense", "invoice", "recurring"] as const;
-
-  return (
-    <>
-      <WorkFilter label={kind === "all" ? "+ Filter" : copy[kind]}>
-        <SelectControl
-          size="compact"
-          aria-label={copy.type}
-          value={kind}
-          options={[
-            { value: "all", label: sv ? "Alla typer" : "All types" },
-            ...kinds.map((value) => ({ value, label: copy[value] })),
-          ]}
-          onValueChange={(value) =>
-            props.onKindChange(kinds.find((item) => item === value) ?? "all")
-          }
-        />
-      </WorkFilter>
-    </>
-  );
-}
-
 function attentionGroup(item: typeof Workspace.AttentionItem.Type, locale: CompanyWork["locale"]) {
   const reviewReasons: readonly (typeof Workspace.AttentionItem.Type)["reason"][] = [
     "journal_review",
@@ -439,33 +432,4 @@ function attentionGroup(item: typeof Workspace.AttentionItem.Type, locale: Compa
     return locale === "sv" ? "Granska och godkänn" : "Review and approve";
 
   return attentionCopy(locale)[item.kind];
-}
-
-function WorkOrdering(props: {
-  locale: CompanyWork["locale"];
-  status: "open" | "completed" | "watch";
-  sort: "oldest" | "newest";
-  onSortChange: (value: "oldest" | "newest") => void;
-}) {
-  const { locale, status, sort } = props;
-  const sv = locale === "sv";
-
-  return (
-    <WorkSort
-      label={sv ? "Sortera:" : "Sort:"}
-      value={status === "watch" ? "due" : sort}
-      disabled={status === "watch"}
-      options={
-        status === "watch"
-          ? [{ value: "due", label: sv ? "Förfallodatum" : "Due date" }]
-          : [
-              { value: "oldest", label: sv ? "Äldst först" : "Oldest first" },
-              { value: "newest", label: sv ? "Nyast först" : "Newest first" },
-            ]
-      }
-      onChange={(value) => {
-        if (value === "oldest" || value === "newest") props.onSortChange(value);
-      }}
-    />
-  );
 }

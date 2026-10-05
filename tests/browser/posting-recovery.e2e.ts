@@ -104,8 +104,9 @@ test("saved posting survives a lost execution response and reload with one durab
   await app.open(`${workspace}/work?kind=journal&status=all`);
   await screen.getByRole("button", "Återställ en begäran", { exact: true }).click();
   await expect(screen.getByRole("heading", "Återuppta sparat arbete")).toBeVisible();
+  await expect(screen.getByRole("button", "Granska sparad begäran").first()).toBeVisible();
   await agent.assert(
-    "The saved-work recovery section is open and shows an unattempted saved request that can be inspected. Return the configured JSON judgment.",
+    "The saved-work recovery section is open and offers Granska sparad begäran for a retained request. Its unknown-outcome message does not claim failure or posting. Return the configured JSON judgment.",
   );
   await expect(screen.getByRole("heading", "Återuppta sparat arbete")).toBeVisible();
   await screen.getByRole("button", "Granska sparad begäran").first().click();

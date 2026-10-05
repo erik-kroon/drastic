@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
+import { SupplierApprovalObservation } from "./supplier-acceptance";
 
 export const WorkQuery = Schema.Struct({
   period: Schema.optional(Accounting.Identifier),
@@ -136,7 +137,14 @@ export const AttentionItem = Schema.Struct({
   recurringAgreementId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   supplierReview: Schema.optional(
     Schema.NullOr(
-      Schema.Struct({ draftId: Accounting.Identifier, reviewId: Accounting.Identifier }),
+      Schema.Struct({
+        draftId: Accounting.Identifier,
+        reviewId: Accounting.Identifier,
+        digest: Accounting.Digest,
+        approvalObservation: SupplierApprovalObservation,
+        approvalExpiresAt: Schema.NullOr(Schema.String),
+        dependenciesCurrent: Schema.Boolean,
+      }),
     ),
   ),
   key: Schema.String,

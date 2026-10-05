@@ -15,6 +15,7 @@ import {
 import * as Db from "../db/workspace";
 import * as PostingDb from "../db/posting";
 import type { Transaction } from "../db/transaction";
+import { getSupplierAcceptanceReviewInTransaction } from "./purchases/acceptance";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -511,7 +512,7 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
   token: string,
   command: { scope: Scope } & typeof Workspace.AttentionQuery.Type,
 ) {
-  return yield* withBook(token, command.scope, false, function* (transaction) {
+  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireWorkspaceAccess(transaction, []);
     const kind = command.kind ?? "all";
     const status = command.status ?? "open";
@@ -570,6 +571,29 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
     if (!counts) return yield* failure("InternalError");
     const page = rows.slice(0, 50);
 
+    const supplierReviews = yield* Effect.forEach(page, (row) =>
+      Effect.gen(function* () {
+        if (!row.supplierReviewId || !row.supplierDraftId) return null;
+
+        const view = yield* getSupplierAcceptanceReviewInTransaction(transaction, principal, {
+          scope: command.scope,
+          reviewId: row.supplierReviewId,
+        });
+
+        if (view.plan.input.draftId !== row.supplierDraftId || view.plan.postingPlan.id !== row.id)
+          return yield* failure("InternalError");
+
+        return {
+          draftId: row.supplierDraftId,
+          reviewId: row.supplierReviewId,
+          digest: view.plan.digest,
+          approvalObservation: view.approvalObservation,
+          approvalExpiresAt: view.approval?.expiresAt ?? null,
+          dependenciesCurrent: view.dependenciesCurrent,
+        };
+      }),
+    );
+
     return yield* decode(AttentionPageSchema, {
       scope: command.scope,
       checkedAt: yield* isoNow(transaction),
@@ -578,12 +602,9 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       filters: { kind, period, status, sort, q: search },
       counts: { open: counts.open, completed: counts.completed },
       total: counts.total,
-      items: page.map((row) => ({
+      items: page.map((row, index) => ({
         recurringAgreementId: row.recurringAgreementId,
-        supplierReview:
-          row.supplierReviewId && row.supplierDraftId
-            ? { draftId: row.supplierDraftId, reviewId: row.supplierReviewId }
-            : null,
+        supplierReview: supplierReviews[index] ?? null,
         key: row.key,
         assignment:
           row.assignmentKind === null

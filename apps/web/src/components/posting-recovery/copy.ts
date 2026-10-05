@@ -32,6 +32,7 @@ const english = {
   saveEvidence: "Save source & continue",
   savePrepare: "Review entry",
   saveApprove: "Approve proposal",
+  approveAgain: "Approve again",
   saveExecute: "Post entry",
   outcome: "Saved command outcome",
 
@@ -127,6 +128,7 @@ const swedish: typeof english = {
   saveEvidence: "Spara underlag och fortsätt",
   savePrepare: "Granska kontering",
   saveApprove: "Godkänn förslag",
+  approveAgain: "Godkänn igen",
   saveExecute: "Bokför posten",
   outcome: "Sparat kommandoutfall",
 

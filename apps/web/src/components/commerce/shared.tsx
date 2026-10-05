@@ -174,6 +174,7 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     compact?: boolean;
+    fullWidthSubmit?: boolean;
     variant?: "default" | "outline";
     recoveryId?: string;
     allowed?: boolean;
@@ -298,6 +299,7 @@ export function CommandForm<
             type="submit"
             size={props.compact ? "default" : "xl"}
             variant={props.variant}
+            fullWidth={props.fullWidthSubmit}
             disabled={props.canSubmit === false}
           >
             {command.isPending ? (locale === "sv" ? "Sparar…" : "Saving…") : props.label}

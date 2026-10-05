@@ -85,7 +85,15 @@ export function readBundleForVoucher(
         eq(correctionBundles.originalVoucherId, voucherId),
       ),
     )
-    .orderBy(desc(correctionBundles.createdAt), desc(correctionBundles.id))
+    .orderBy(
+      desc(sql`exists (
+        select 1 from ${correctionBundleReceipts}
+        where ${correctionBundleReceipts.bookId} = ${correctionBundles.bookId}
+          and ${correctionBundleReceipts.bundleId} = ${correctionBundles.id}
+      )`),
+      desc(correctionBundles.createdAt),
+      desc(correctionBundles.id),
+    )
     .limit(1);
 }
 

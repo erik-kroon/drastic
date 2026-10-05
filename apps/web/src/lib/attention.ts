@@ -26,8 +26,27 @@ export function attentionQueryOptions(book: typeof Accounting.Book.Type, filters
   for (const [key, value] of Object.entries(attentionServerSearch(filters)))
     if (value !== undefined && value !== "") search.set(key, value);
 
-  return queryOptions({
+  return queryOptions<typeof Workspace.AttentionPage.Type>({
     queryKey: [...bookKey(book), "attention", search.toString()],
+    refetchInterval: (query) => {
+      const intervals = query.state.data?.items.flatMap((item) => {
+        const review = item.supplierReview;
+
+        if (review?.approvalObservation.state !== "available" || review.approvalExpiresAt === null)
+          return [];
+
+        return [
+          Math.max(
+            1000,
+            Date.parse(review.approvalExpiresAt) -
+              Date.parse(review.approvalObservation.observedAt) +
+              20,
+          ),
+        ];
+      });
+
+      return intervals?.length ? Math.min(...intervals) : false;
+    },
     queryFn: async ({ signal }) => {
       const page = await readAccounting(
         `${bookPath(book)}/attention?${search}`,
@@ -86,6 +105,32 @@ export function attentionWork(filters: WorkReturn): WorkReturn {
 
 export function attentionCopy(locale: Locale) {
   return locale === "sv" ? swedish : english;
+}
+
+export function expiredSupplierApproval(item: typeof Workspace.AttentionItem.Type) {
+  const review = item.supplierReview;
+
+  return review?.approvalObservation.state === "expired" &&
+    review.approvalObservation.proposalMatches &&
+    review.dependenciesCurrent
+    ? review.approvalExpiresAt
+    : null;
+}
+
+export function attentionState(item: typeof Workspace.AttentionItem.Type, locale: Locale) {
+  const expiry = expiredSupplierApproval(item);
+
+  if (expiry !== null) {
+    const time = new Intl.DateTimeFormat(locale === "sv" ? "sv-SE" : "en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Stockholm",
+    }).format(new Date(expiry));
+
+    return `${locale === "sv" ? "Gick ut" : "Expired"} ${time}`;
+  }
+
+  return attentionCopy(locale)[item.reason];
 }
 
 const english = {

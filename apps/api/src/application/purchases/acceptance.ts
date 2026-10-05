@@ -1,3 +1,5 @@
+import { collectPostingPrincipalBasis } from "../posting-authority";
+import * as PostingDb from "../../db/posting";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
@@ -7,7 +9,6 @@ import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
   digest,
-  approveChangeInTransaction,
   executeChangeInTransaction,
   isoNow,
   newId,
@@ -491,7 +492,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
           accountingPeriodId: command.input.accountingPeriodId,
           postingDate: Shared.textField(content, "documentDate") ?? "",
           series: command.input.series,
-          description: `${swedish ? "Supplier invoice: " : "Synthetic supplier invoice: "}${Shared.textField(content, "title") ?? ""}`,
+          description: Shared.textField(content, "title") ?? "",
           rationale: command.input.reason,
           taxAssessment: "not_applicable",
           lines: posting.lines.map((line) => ({
@@ -771,6 +772,12 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
         actorId: principal.actorId,
         ordinal,
         expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+        ),
         createdAt: yield* isoNow(transaction),
         receipt: Shared.receipt(
           command.idempotencyKey,
@@ -964,12 +971,17 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
 
       const identity = yield* requireRecognitionIdentity(transaction, scope, review);
 
-      const kernel = yield* approveChangeInTransaction(transaction, principal, {
-        scope,
+      const kernel = (yield* PostingDb.insertApproval(transaction, {
+        bookId: scope.bookId,
+        id: approval.id,
         changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("supplier_approve"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest },
-      });
+        digest: review.postingPlan.planDigest,
+        actorId: approval.actorId,
+        expiresAt: approval.expiresAt,
+        authorityBasis: yield* Shared.toJsonObject(approval.body.authorityBasis),
+      }))[0];
+
+      if (kernel === undefined) return yield* failure("InternalError");
 
       const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
         scope,
@@ -1073,55 +1085,84 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
   );
 });
 
+export const getSupplierAcceptanceReviewInTransaction = Effect.fn(
+  "purchases.acceptance.getInTransaction",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: { readonly scope: Scope; readonly reviewId: string },
+) {
+  yield* Shared.requireTables(transaction, acceptanceTables);
+  yield* Shared.requireColumns(transaction, Shared.accountColumns);
+
+  const book = (yield* Shared.PurchaseDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
+  if (!book) return yield* failure("Forbidden");
+  const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
+
+  const approval = (yield* AcceptanceDb.readApproval(
+    transaction,
+    command.scope.bookId,
+    command.reviewId,
+  ))[0];
+
+  const acceptance = (yield* AcceptanceDb.readAcceptanceByReview(
+    transaction,
+    command.scope.bookId,
+    command.reviewId,
+  ))[0];
+
+  const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
+  const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
+
+  if (now === undefined) return yield* failure("InternalError");
+
+  const proposalMatches = approval?.digest === Shared.textField(review.body, "digest");
+  const expired = approval !== undefined && Date.parse(approval.expiresAt) <= Date.parse(now);
+
+  const actorName = approval
+    ? ((yield* AcceptanceDb.readApprovalActorName(
+        transaction,
+        command.scope.bookId,
+        approval.id,
+      ))[0]?.name ?? null)
+    : null;
+
+  const approvalObservation: typeof Acceptance.SupplierApprovalObservation.Type = approval
+    ? {
+        state: acceptance ? "consumed" : expired ? "expired" : "available",
+        observedAt: now,
+        callerMatches: approval.actorId === principal.actorId,
+        proposalMatches,
+        actorName,
+      }
+    : { state: "prepared", observedAt: now };
+
+  const usable =
+    approval !== undefined &&
+    approval.actorId === principal.actorId &&
+    proposalMatches &&
+    Date.parse(approval.expiresAt) > Date.parse(now) &&
+    acceptance === undefined &&
+    blockers.length === 0;
+
+  return yield* Shared.decode(ViewSchema, {
+    plan: yield* Shared.decode(ReviewSchema, review.body),
+    approval: approval ? yield* Shared.decode(ApprovalSchema, approval.body) : null,
+    acceptance: acceptance ? acceptance.body : null,
+    blockers,
+    dependenciesCurrent: blockers.length === 0,
+    approvalUsable: usable,
+    approvalObservation,
+  });
+});
+
 export const getSupplierAcceptanceReview = Effect.fn("purchases.acceptance.get")(function* (
   token: string,
   command: { readonly scope: Scope; readonly reviewId: string },
 ) {
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, acceptanceTables);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
-      const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
-
-      const approval = (yield* AcceptanceDb.readApproval(
-        transaction,
-        command.scope.bookId,
-        command.reviewId,
-      ))[0];
-
-      const acceptance = (yield* AcceptanceDb.readAcceptanceByReview(
-        transaction,
-        command.scope.bookId,
-        command.reviewId,
-      ))[0];
-
-      const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
-      const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now ?? "";
-
-      const usable =
-        approval !== undefined &&
-        approval.actorId === principal.actorId &&
-        Date.parse(approval.expiresAt) > Date.parse(now) &&
-        acceptance === undefined &&
-        blockers.length === 0;
-
-      return yield* Shared.decode(ViewSchema, {
-        plan: yield* Shared.decode(ReviewSchema, review.body),
-        approval: approval ? yield* Shared.decode(ApprovalSchema, approval.body) : null,
-        acceptance: acceptance ? acceptance.body : null,
-        blockers,
-        dependenciesCurrent: blockers.length === 0,
-        approvalUsable: usable,
-      });
-    }),
+    getSupplierAcceptanceReviewInTransaction(transaction, principal, command),
   );
 });
 

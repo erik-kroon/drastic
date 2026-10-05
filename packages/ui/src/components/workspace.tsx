@@ -71,7 +71,6 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeCompact,
     fontWeight: tokens.fontWeightSemibold,
     lineHeight: tokens.lineHeight14Px,
-    letterSpacing: tokens.trackingGroup,
     textTransform: "uppercase",
     paddingInline: tokens.space2,
     paddingBlockStart: tokens.space3,

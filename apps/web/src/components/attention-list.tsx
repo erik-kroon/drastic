@@ -16,6 +16,7 @@ import {
   attentionPath,
   attentionWork,
   attentionCopy,
+  attentionState,
 } from "@/lib/attention";
 
 export function AttentionList(props: {
@@ -81,7 +82,7 @@ export function AttentionList(props: {
                     new Date(item.updatedAt),
                   ),
                   <Badge key="status" variant={item.state === "open" ? "warning" : "secondary"}>
-                    {copy[item.reason]}
+                    {attentionState(item, locale)}
                   </Badge>,
                   item.amountMinor !== null && item.currencyScale !== null
                     ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`

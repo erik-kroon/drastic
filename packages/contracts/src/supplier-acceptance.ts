@@ -137,6 +137,20 @@ export const SupplierAcceptanceReceipt = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const SupplierApprovalObservation = Schema.Union([
+  Schema.Struct({
+    state: Schema.Literal("prepared"),
+    observedAt: Schema.String,
+  }),
+  Schema.Struct({
+    state: Schema.Literals(["available", "expired", "consumed"]),
+    observedAt: Schema.String,
+    callerMatches: Schema.Boolean,
+    proposalMatches: Schema.Boolean,
+    actorName: Schema.NullOr(Schema.String),
+  }),
+]);
+
 export const SupplierAcceptanceView = Schema.Struct({
   plan: SupplierAcceptanceReview,
   approval: Schema.NullOr(SupplierAcceptanceApproval),
@@ -144,6 +158,7 @@ export const SupplierAcceptanceView = Schema.Struct({
   blockers: Schema.Array(Schema.String),
   dependenciesCurrent: Schema.Boolean,
   approvalUsable: Schema.Boolean,
+  approvalObservation: SupplierApprovalObservation,
 });
 
 export const SupplierAcceptanceHistory = Schema.Struct({
