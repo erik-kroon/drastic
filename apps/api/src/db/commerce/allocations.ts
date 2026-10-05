@@ -204,7 +204,9 @@ export function readPaymentCapacity(
         exists (
           select from openerp.commerce_invoices i
           where i.book_id = l.book_id and i.recognition_voucher_id = v.id and i.recognition_line_id = l.id
-        ) as recognition,
+        ) or exists (select from openerp.invoice_recognition_replacements t
+          where t.book_id=l.book_id and ((t.replacement_voucher_id=v.id and t.replacement_line_id=l.id)
+            or (t.reversal_voucher_id=v.id and t.reversal_line_id=l.id))) as recognition,
         exists (
           select from openerp.tax_account_match_capacity c
           where c.book_id = l.book_id and c.voucher_id = v.id and c.line_id = l.id
@@ -249,6 +251,10 @@ export function readAffectedPeriods(
             join openerp.commerce_allocation_legs l
               on l.book_id = i.book_id and l.invoice_id = i.id
             where l.book_id = ${bookId} and l.receipt_id = ${receiptId}
+            union
+            select t.replacement_voucher_id from openerp.invoice_recognition_replacements t
+            join openerp.commerce_allocation_legs l on(l.book_id,l.invoice_id)=(t.book_id,t.invoice_id)
+            where l.book_id=${bookId} and l.receipt_id=${receiptId}
           )
         )
       )
@@ -951,6 +957,9 @@ function eligiblePaymentCandidate(
         select from openerp.commerce_invoices i where i.book_id = l.book_id
           and i.recognition_voucher_id = v.id and i.recognition_line_id = l.id
       )
+      and not exists (select from openerp.invoice_recognition_replacements t
+        where t.book_id=l.book_id and ((t.replacement_voucher_id=v.id and t.replacement_line_id=l.id)
+          or (t.reversal_voucher_id=v.id and t.reversal_line_id=l.id)))
       and not exists (
         select from openerp.tax_account_match_capacity t
         where t.book_id = l.book_id and t.voucher_id = v.id and t.line_id = l.id

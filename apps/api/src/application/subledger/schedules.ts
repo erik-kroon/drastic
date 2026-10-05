@@ -9,6 +9,7 @@ import * as Schema from "effect/Schema";
 import * as Db from "../../db/posting";
 import * as ValuationsDb from "../../db/subledger/valuations";
 import * as SchedulesDb from "../../db/subledger/schedules";
+import * as OccurrenceCorrections from "../../db/subledger/occurrence-corrections";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
@@ -202,7 +203,24 @@ export function readOccurrenceStates(
 
       if (occurrence === undefined) return yield* failure("InternalError");
 
-      const state =
+      const correctionRows = yield* OccurrenceCorrections.readHistory(
+        transaction,
+        scope.bookId,
+        revision.scheduleId,
+        occurrence.ordinal,
+        through,
+      );
+
+      if (correctionRows.length > 200) return yield* failure("UnsupportedProfile");
+
+      const corrections = yield* Effect.forEach(correctionRows, (retained) =>
+        decode(Subledgers.OccurrenceCorrectionSummary, retained.body),
+      );
+
+      const currentCorrection =
+        correctionRows.at(-1)?.current === true ? corrections.at(-1) : undefined;
+
+      let state =
         row.voucherId !== null && row.linked === false
           ? ("conflicted" as const)
           : row.reversalVoucherId !== null
@@ -212,6 +230,8 @@ export function readOccurrenceStates(
               : row.changeSetId !== null
                 ? ("prepared" as const)
                 : ("unprepared" as const);
+
+      if (state !== "conflicted" && currentCorrection) state = "posted";
 
       states.push({
         ordinal: occurrence.ordinal,
@@ -223,6 +243,8 @@ export function readOccurrenceStates(
         planDigest: row.planDigest,
         voucherId: row.voucherId,
         reversalVoucherId: row.reversalVoucherId,
+        effectiveVoucherId: currentCorrection?.replacementVoucherId ?? row.voucherId,
+        corrections,
         state,
       });
     }

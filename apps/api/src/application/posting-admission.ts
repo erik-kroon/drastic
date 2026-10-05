@@ -19,6 +19,8 @@ import * as Acceptance from "../db/purchases/acceptance";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
 import { isoNow } from "./posting";
+import { admitInvoiceRecognitionChild } from "./commerce/recognition-replacements";
+import { admitScheduleCorrectionChild } from "./subledger/occurrence-corrections";
 import { readPostingBasis } from "./subledger/schedules";
 import { ownerRequireReady, validateOwnerLine } from "./subledger/owners";
 import { decode, objectField, textField, type JsonObject, type Scope } from "./commerce/support";
@@ -29,6 +31,8 @@ export type PostingOwner = {
   readonly kind:
     | "invoice_issue"
     | "invoice_cancellation"
+    | "invoice_recognition_replacement"
+    | "schedule_occurrence_correction"
     | "legal_issue"
     | "legal_credit"
     | "supplier_settlement"
@@ -341,7 +345,24 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
       ? objectField(retained.body, "originalSnapshot")
       : null;
 
+  const recognition =
+    owner?.kind === "invoice_recognition_replacement"
+      ? yield* admitInvoiceRecognitionChild(tx, scope, owner.id, changeId, action)
+      : null;
+
+  const scheduleCorrection =
+    owner?.kind === "schedule_occurrence_correction"
+      ? yield* admitScheduleCorrectionChild(tx, scope, owner.id, changeId, action)
+      : null;
+
   for (const source of ownership) {
+    if (
+      recognition?.sourceOwners.some(
+        (retainedOwner) => retainedOwner.kind === source.kind && retainedOwner.id === source.id,
+      )
+    )
+      continue;
+
     if (source.kind === "invoice_issue" && owner?.kind === "invoice_cancellation") continue;
 
     // A credit must cite its own original issue. This exception binds the exact
@@ -356,8 +377,10 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
     if (source.kind !== owner?.kind) return yield* failure("ApprovalRequired");
   }
 
-  if (ownership.length && owner?.kind !== "invoice_cancellation")
+  if (ownership.length && owner?.kind !== "invoice_cancellation" && recognition === null)
     yield* admitSealedOwner(retained, changeId, action);
+
+  if (scheduleCorrection && ownership.length > 0) return yield* failure("UnsupportedProfile");
 });
 
 function sourceEvidenceIds(action: JsonObject) {
@@ -520,6 +543,16 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
   const original = textField(action, "correctsVoucherId");
   const assetResources = yield* assetCorrectionResources(tx, scope, changeId, action, owner);
 
+  const recognition =
+    owner?.kind === "invoice_recognition_replacement"
+      ? yield* admitInvoiceRecognitionChild(tx, scope, owner.id, changeId, action)
+      : null;
+
+  const scheduleCorrection =
+    owner?.kind === "schedule_occurrence_correction"
+      ? yield* admitScheduleCorrectionChild(tx, scope, owner.id, changeId, action)
+      : null;
+
   if (original) {
     const protectedRows = yield* Db.readProtectedCorrections(tx, scope.bookId, original);
 
@@ -548,6 +581,18 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
               (resource.kind === "bank_allocation" && resource.id === assetResources.bankPlanId))
           ) &&
           !(owner?.kind === "invoice_cancellation" && resource.kind === "invoice") &&
+          !(
+            recognition &&
+            resource.kind === "invoice" &&
+            resource.id === recognition.invoiceId &&
+            original === recognition.predecessorVoucherId
+          ) &&
+          !(
+            scheduleCorrection &&
+            resource.kind === "schedule" &&
+            resource.id === scheduleCorrection.scheduleId &&
+            resource.scheduleOccurrence?.ordinal === scheduleCorrection.ordinal
+          ) &&
           !(
             exactCancellation &&
             cancellation !== undefined &&

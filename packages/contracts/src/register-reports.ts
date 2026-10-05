@@ -39,6 +39,8 @@ export const RegisterInvoice = Schema.Struct({
   controlAccountId: Accounting.Identifier,
   evidence: Commerce.EvidenceReference,
   recognition: Schema.NullOr(Commerce.Recognition),
+  effectiveRecognition: Schema.optional(Schema.NullOr(Commerce.Recognition)),
+  recognitionHistory: Schema.optional(Schema.Array(Commerce.RecognitionReplacementSummary)),
   revision: Commerce.InvoiceRevision,
   allocatedMinor: Accounting.AggregateMinorUnits,
   // Invoice outstanding remains commercial debt. Added fields are optional only

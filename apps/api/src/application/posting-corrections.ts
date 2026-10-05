@@ -22,6 +22,16 @@ import {
 import * as Db from "../db/posting";
 import * as CorrectionDb from "../db/posting-corrections";
 import { databaseFailure, type Transaction } from "../db/transaction";
+import * as RecognitionDb from "../db/commerce/recognition-replacements";
+import {
+  invoiceRecognitionContribution,
+  retainInvoiceRecognitionReplacement,
+} from "./commerce/recognition-replacements";
+import * as ScheduleCorrectionDb from "../db/subledger/occurrence-corrections";
+import {
+  scheduleOccurrenceContribution,
+  retainScheduleOccurrenceCorrection,
+} from "./subledger/occurrence-corrections";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -94,10 +104,6 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
-    // NEXT-14. The original dimension assignments are resolved and sealed before
-    // the proposal is hashed. The reversal repeats the corrected voucher's
-    // retained bytes; the replacement keeps the unaffected assignments the
-    // reviewer carried over and requires the changed ones explicitly.
     const assigned = yield* resolveAssignmentsInTransaction(transaction, scope, action);
 
     const accountRows = yield* Db.readAccounts(
@@ -252,10 +258,74 @@ function netChange(transaction: Transaction, scope: Scope, voucherId: string, in
   });
 }
 
+function representRegisterResource(
+  resource: typeof Corrections.CorrectionImpactResource.Type,
+  contribution: typeof Corrections.RegisterContribution.Type | undefined,
+) {
+  if (
+    contribution?.kind === "invoice_recognition_replacement_v1" &&
+    resource.kind === "invoice" &&
+    resource.id === contribution.invoiceId
+  ) {
+    return {
+      ...resource,
+      blocks: false,
+      dependencyDigest: contribution.basisDigest,
+      detail:
+        "The invoice owner retains recognition history and preserves gross, control, tax, allocations and residual for this expense reclassification.",
+    };
+  }
+
+  if (
+    contribution?.kind === "schedule_occurrence_replacement_v1" &&
+    resource.kind === "schedule" &&
+    resource.id === contribution.scheduleId &&
+    resource.scheduleOccurrence?.ordinal === contribution.ordinal
+  ) {
+    return {
+      ...resource,
+      blocks: false,
+      dependencyDigest: contribution.basisDigest,
+      detail:
+        "The schedule owner retains this ordinal, inverse and replacement, and the explicit remaining-plan decision.",
+    };
+  }
+
+  return resource;
+}
+
 function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, input: Intent) {
   return Effect.gen(function* () {
     const original = yield* readVoucher(transaction, scope, voucherId);
     const chain = yield* correctionChain(transaction, scope, voucherId);
+
+    const invoiceContribution = yield* invoiceRecognitionContribution(
+      transaction,
+      scope,
+      original,
+      input.replacement,
+    ).pipe(
+      Effect.mapError(databaseFailure),
+      Effect.catchIf(
+        (error) => error.code === "UnsupportedProfile",
+        () => Effect.void,
+      ),
+    );
+
+    const scheduleContribution = yield* scheduleOccurrenceContribution(
+      transaction,
+      scope,
+      original,
+      input,
+    ).pipe(
+      Effect.mapError(databaseFailure),
+      Effect.catchIf(
+        (error) => error.code === "UnsupportedProfile",
+        () => Effect.void,
+      ),
+    );
+
+    const registerContribution = invoiceContribution || scheduleContribution || undefined;
 
     const resourceRows = yield* CorrectionDb.readImpactResources(
       transaction,
@@ -266,8 +336,12 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
 
     if (resourceRows.length > 1000) return yield* failure("UnsupportedProfile");
 
-    const resources = yield* Effect.forEach(resourceRows, (row) =>
+    const representedResources = yield* Effect.forEach(resourceRows, (row) =>
       decode(Corrections.CorrectionImpactResource, row.resource),
+    );
+
+    const resources = representedResources.map((resource) =>
+      representRegisterResource(resource, registerContribution),
     );
 
     const blockers: Array<Blocker> = resources
@@ -379,7 +453,7 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
       years: yearList,
     });
 
-    return {
+    const basis: ImpactBasis = {
       intent: input,
       chain,
       resources,
@@ -392,7 +466,11 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
         "Only native synthetic manual journal economics are supported. Company date policy, tax, payroll, funding classification and statutory filing effects are not established.",
         "Only registered relationships are visible. Missing company evidence, liabilities or sources are not inferred absent. No report, match, invoice, schedule or closed period is rewritten.",
       ],
-    } satisfies ImpactBasis;
+    };
+
+    if (registerContribution) Object.assign(basis, { registerContribution });
+
+    return basis;
   });
 }
 
@@ -514,6 +592,9 @@ export const getCorrectionImpact = Effect.fn("posting.getCorrectionImpact")(func
         impact,
         snapshotCurrent: currentDigest === storedBasisDigest,
         executable: false,
+        currentBasis: current,
+        currentDigest,
+        storedBasisDigest,
       } satisfies typeof Corrections.CorrectionImpactView.Type;
     }),
   );
@@ -655,6 +736,12 @@ function readBundleState(
         return yield* failure("StaleDependency");
       }
 
+      if (
+        (yield* digest({ contribution: current.registerContribution ?? null })) !==
+        (yield* digest({ contribution: bundle.registerContribution ?? null }))
+      )
+        return yield* failure("StaleDependency");
+
       const blocker = current.blockers[0];
 
       if (blocker) return yield* failure(blocker.code);
@@ -744,6 +831,9 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           rationale: command.input.rationale,
           replacement: command.input.replacement,
         } satisfies Intent;
+
+        if (command.input.scheduleDecision)
+          Object.assign(intent, { scheduleDecision: command.input.scheduleDecision });
 
         const current = yield* impactBasis(transaction, command.scope, command.voucherId, intent);
 
@@ -847,6 +937,9 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           createdAt: yield* isoNow(transaction),
         };
 
+        if (current.registerContribution)
+          Object.assign(bodyWithoutDigest, { registerContribution: current.registerContribution });
+
         const bundleDigest = yield* digest(bodyWithoutDigest);
 
         const bundle = yield* decode(Corrections.CorrectionBundle, {
@@ -863,6 +956,26 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           body: bundle,
           digest: bundleDigest,
         });
+
+        if (bundle.registerContribution?.kind === "invoice_recognition_replacement_v1")
+          yield* RecognitionDb.insertOwner(
+            transaction,
+            command.scope.bookId,
+            bundle.id,
+            bundle.registerContribution.invoiceId,
+            bundle.registerContribution.predecessorVoucherId,
+            bundle.registerContribution,
+          );
+
+        if (bundle.registerContribution?.kind === "schedule_occurrence_replacement_v1")
+          yield* ScheduleCorrectionDb.insertOwner(transaction, {
+            bookId: command.scope.bookId,
+            bundleId: bundle.id,
+            scheduleId: bundle.registerContribution.scheduleId,
+            ordinal: bundle.registerContribution.ordinal,
+            predecessor: bundle.registerContribution.predecessorVoucherId,
+            body: bundle.registerContribution,
+          });
         yield* saveCommand(
           transaction,
           command.scope,
@@ -1227,6 +1340,15 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           return yield* failure("ApprovalRequired");
         }
 
+        const ownerKinds = {
+          invoice_recognition_replacement_v1: "invoice_recognition_replacement",
+          schedule_occurrence_replacement_v1: "schedule_occurrence_correction",
+        } as const;
+
+        const owner = bundle.registerContribution
+          ? { kind: ownerKinds[bundle.registerContribution.kind], id: bundle.id }
+          : undefined;
+
         const reversal = yield* executeChangeInTransaction(transaction, principal, {
           scope: command.scope,
           changeSetId: bundle.reversal.id,
@@ -1237,6 +1359,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
             approvalId: approvalRow.reversalApprovalId,
           },
           allowCorrectionChild: true,
+          owner,
         });
 
         const replacement = yield* executeChangeInTransaction(transaction, principal, {
@@ -1249,6 +1372,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
             approvalId: approvalRow.replacementApprovalId,
           },
           allowCorrectionChild: true,
+          owner,
         });
 
         const result = yield* decode(BundleReceipt, {
@@ -1271,6 +1395,8 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           replacementReceiptId: replacement.id,
           body: result,
         });
+        yield* retainInvoiceRecognitionReplacement(transaction, command.scope, bundle, result);
+        yield* retainScheduleOccurrenceCorrection(transaction, command.scope, bundle, result);
         yield* saveCommand(
           transaction,
           command.scope,

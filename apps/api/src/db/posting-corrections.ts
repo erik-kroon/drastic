@@ -418,7 +418,9 @@ export function readImpactResources(
         'path', '/commerce/invoices/' || source.id, 'blocks', true
       )
       from openerp.commerce_invoices source
-      where source.book_id = ${bookId} and source.recognition_voucher_id = ${voucherId}
+      where source.book_id = ${bookId} and (source.recognition_voucher_id = ${voucherId}
+        or exists(select from openerp.invoice_recognition_replacements t
+          where t.book_id=source.book_id and t.invoice_id=source.id and t.replacement_voucher_id=${voucherId}))
       union all
       select jsonb_build_object(
         'kind', 'payment_allocation', 'id', source.receipt_id,
@@ -444,7 +446,8 @@ export function readImpactResources(
       select distinct jsonb_build_object(
         'kind', 'schedule', 'id', source.schedule_id,
         'detail', 'Represented schedule occurrence ' || source.ordinal::text || '. Posted-occurrence compensation is unavailable.',
-        'path', '/schedules/' || source.schedule_id, 'blocks', true
+        'path', '/schedules/' || source.schedule_id, 'blocks', true,
+        'scheduleOccurrence', jsonb_build_object('ordinal',source.ordinal,'changeSetId',source.change_set_id)
       )
       from openerp.subledger_preparations source
       join openerp.change_sets plan on plan.book_id = source.book_id and plan.id = source.change_set_id
@@ -452,6 +455,14 @@ export function readImpactResources(
       where source.book_id = ${bookId}
         and (source.change_set_id = voucher.change_set_id
           or plan.plan->'groups'->0->'actions'->0->>'eventId' = voucher.event_id)
+      union all
+      select jsonb_build_object('kind','schedule','id',t.schedule_id,
+        'detail','A retained occurrence replacement owns this voucher. Use the same occurrence correction owner.',
+        'path','/schedules/'||t.schedule_id,'blocks',true,
+        'scheduleOccurrence',jsonb_build_object('ordinal',t.ordinal,'changeSetId',v.change_set_id))
+      from openerp.schedule_occurrence_corrections t
+      join openerp.vouchers v on(v.book_id,v.id)=(t.book_id,t.replacement_voucher_id)
+      where t.book_id=${bookId} and t.replacement_voucher_id=${voucherId}
       union all
       select jsonb_build_object(
         'kind', 'report', 'id', source.id,

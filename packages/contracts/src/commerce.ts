@@ -88,6 +88,14 @@ export const Recognition = Schema.Struct({
   postingDate: Accounting.AccountingDate,
 });
 
+export const RecognitionReplacementSummary = Schema.Struct({
+  bundleId: Accounting.Identifier,
+  predecessorVoucherId: Accounting.Identifier,
+  reversalVoucherId: Accounting.Identifier,
+  replacementVoucherId: Accounting.Identifier,
+  postingDate: Accounting.AccountingDate,
+});
+
 export const InvoiceRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -132,6 +140,8 @@ export const Invoice = Schema.Struct({
   controlAccountId: Accounting.Identifier,
   evidence: EvidenceReference,
   recognition: Schema.NullOr(Recognition),
+  effectiveRecognition: Schema.optional(Schema.NullOr(Recognition)),
+  recognitionHistory: Schema.optional(Schema.Array(RecognitionReplacementSummary)),
   // Frozen source and method basis is decoded by CashMethod.CashInvoiceBasis.
   cashMethod: Schema.optional(Schema.JsonObject),
   supplierAcceptanceDigest: Schema.optional(Accounting.Digest),

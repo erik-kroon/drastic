@@ -589,6 +589,18 @@ export function readRevisionAt(
         where e.book_id=${bookId} and e.schedule_id=${scheduleId} and e.posting_date<=${asOfDate}::date
         union
         select r.revision
+        from openerp.schedule_occurrence_corrections c
+        join openerp.schedule_occurrence_correction_owners o
+          on (o.book_id,o.bundle_id)=(c.book_id,c.bundle_id)
+        join openerp.vouchers v
+          on (v.book_id,v.id)=(c.book_id,c.replacement_voucher_id)
+        join openerp.subledger_schedule_revisions r
+          on (r.book_id,r.schedule_id)=(c.book_id,c.schedule_id)
+          and r.body->>'digest'=o.body->>'scheduleDigest'
+        where c.book_id=${bookId} and c.schedule_id=${scheduleId}
+          and v.posting_date<=${asOfDate}::date
+        union
+        select r.revision
         from openerp.subledger_disposals d
         join openerp.subledger_schedule_revisions r
           on r.book_id = d.book_id and r.schedule_id = d.schedule_id

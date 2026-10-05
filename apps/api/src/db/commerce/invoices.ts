@@ -1,6 +1,11 @@
 import { inArray, sql, type SQL } from "drizzle-orm";
 import type { Transaction } from "../transaction";
 import type { JsonObject } from "./access";
+import {
+  effectiveRecognition,
+  recognitionHistory,
+  ownedRecognition,
+} from "./recognition-replacements";
 
 export const commerceInvoiceTables = [
   "commerce_invoices",
@@ -14,6 +19,7 @@ export const commerceInvoiceTables = [
   "execution_receipts",
   "collection_disputes",
   "collection_events",
+  "invoice_recognition_replacements",
 ] as const;
 
 export type LiveInvoiceRow = {
@@ -53,7 +59,7 @@ function voucherCurrent(voucher: SQL) {
 }
 
 function recognitionAccounted(voucher: SQL) {
-  return sql`(${voucherCurrent(voucher)} or exists (
+  return sql`(${ownedRecognition(sql`i`, voucher, null, null)} or exists (
     select from openerp.invoice_cancellations c
       join openerp.vouchers v on v.book_id = c.book_id and v.id = c.reversal_voucher_id
       join openerp.execution_receipts e on e.book_id = c.book_id and e.id = c.posting_receipt_id
@@ -145,6 +151,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
     from (
       select base.body || jsonb_build_object(
           'currentRevision', base.revision,
+          'effectiveRecognition', base.effective_recognition,
+          'recognitionHistory', base.recognition_history,
           'allocationVersion', (base.allocation_count + base.credit_count)::text,
           'creditedMinor', base.credited::text, 'creditCount', base.credit_count::text,
           'cancelledMinor', base.cancelled::text,
@@ -173,6 +181,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
         ) as body
       from (
         select i.body, i.amount_minor, i.recognition_voucher_id,
+          ${effectiveRecognition(sql`i`, null, null)} as effective_recognition,
+          ${recognitionHistory(sql`i`, null, null)} as recognition_history,
           (select r.body from openerp.commerce_invoice_revisions r
             where r.book_id = i.book_id and r.invoice_id = i.id and r.revision = i.current_revision
           ) as revision,

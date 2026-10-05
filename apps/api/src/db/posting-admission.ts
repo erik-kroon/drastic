@@ -271,6 +271,7 @@ export function readLineOwners(tx: Transaction, book: string, voucher: string, l
     select 'commerce' as owner from openerp.commerce_historical_settlements where book_id=${book} and payment_voucher_id=${voucher} and payment_line_id=${line}
     union all select 'owner' as owner from openerp.owner_effects where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'commerce' from openerp.commerce_invoices where book_id=${book} and recognition_voucher_id=${voucher} and recognition_line_id=${line}
+    union all select 'commerce' from openerp.invoice_recognition_replacements where book_id=${book} and ((replacement_voucher_id=${voucher} and replacement_line_id=${line}) or (reversal_voucher_id=${voucher} and reversal_line_id=${line}))
     union all select 'commerce' from openerp.commerce_active_allocation_legs where book_id=${book} and payment_voucher_id=${voucher} and payment_line_id=${line}
     union all select 'bank' from openerp.bank_foreign_cash_book_consumptions where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'bank' from openerp.bank_active_matches where book_id=${book} and voucher_id=${voucher} and line_id=${line}

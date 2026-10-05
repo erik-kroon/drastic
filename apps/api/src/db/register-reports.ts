@@ -2,6 +2,11 @@ import { sql } from "drizzle-orm";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 import { ownerDischargeSummary } from "./commerce/invoices";
+import {
+  effectiveRecognition,
+  recognitionHistory,
+  ownedRecognition,
+} from "./commerce/recognition-replacements";
 
 type JsonObject = Schema.JsonObject;
 
@@ -15,6 +20,7 @@ export const registerTables = [
   "commerce_allocation_receipts",
   "commerce_allocation_reversals",
   "invoice_cancellations",
+  "invoice_recognition_replacements",
   "supplier_credits",
   "owner_operation_receipts",
   "invoice_drafts",
@@ -75,7 +81,9 @@ const invoiceCutoff = (bookId: string, asOf: string, sequence: string) => sql`
 // The recognition voucher of a selected invoice stays accounted when it is
 // either the current posting or a reversal retained by its own invoice
 // cancellation. Anything else is a damaged register link.
-const recognitionAccounted = (bookId: string) => sql`
+const recognitionAccounted = (bookId: string, asOf: string, sequence: string) => sql`
+  exists (select from openerp.commerce_invoices i where i.book_id=${bookId}
+    and i.recognition_voucher_id=recognition and ${ownedRecognition(sql`i`, sql`recognition`, asOf, sequence)}) or
   exists (
     select 1 from openerp.vouchers v
     where v.book_id = ${bookId} and v.id = recognition
@@ -164,7 +172,7 @@ export function countInvalidRecognitions(
       )
       select count(*)::text as invalid
       from selection
-      where not (${recognitionAccounted(bookId)})
+      where not (${recognitionAccounted(bookId, asOf, sequence)})
         or line_account is distinct from control
         or body->>'currency' is distinct from ${currency}
         or (direction = 'customer' and (debit_minor <> amount_minor or credit_minor <> 0))
@@ -278,6 +286,8 @@ export function readInvoices(
         'documentNumber', i.document_number, 'issuedOn', i.issued_on::text,
         'amountMinor', i.amount_minor::text, 'controlAccountId', i.control_account_id,
         'evidence', i.body->'evidence', 'recognition', i.body->'recognition',
+        'effectiveRecognition', ${effectiveRecognition(sql`i`, asOf, sequence)},
+        'recognitionHistory', ${recognitionHistory(sql`i`, asOf, sequence)},
          'revision', r.body, 'allocatedMinor', (paid.amount + owner_discharges.total)::text,
         'cancelledMinor', case when cancel.id is null then '0' else i.amount_minor::text end,
         'creditedMinor', (credit.amount + cash_credit.gross)::text,
@@ -365,24 +375,24 @@ export function readLines(
         'sequence', v.sequence::text, 'ordinal', l.ordinal,
         'postingDate', v.posting_date::text, 'debitMinor', l.debit_minor::text,
         'creditMinor', l.credit_minor::text,
-          'invoiceId', coalesce(invoice.value->>'id', cancelled.value->>'id', credit.invoice_id, owner_discharge.invoice_id, cash.invoice_id, cash_credit.invoice_id),
+          'invoiceId', coalesce(invoice.value->>'id', recognition_transition.invoice_id, cancelled.value->>'id', credit.invoice_id, owner_discharge.invoice_id, cash.invoice_id, cash_credit.invoice_id),
          'allocatedMinor', (paid.amount + coalesce(owner_discharge.amount_minor, 0))::text,
           'cancellationId', cancelled.value->'cancellation'->>'id', 'creditId', coalesce(credit.id, cash_credit.id),
          'ownerDischargeId', owner_discharge.id,
         'registerContributionKind', case
-           when invoice.value is not null then 'recognition'
+           when invoice.value is not null or recognition_transition.invoice_id is not null then 'recognition'
            when cash.amount > 0 then 'recognition'
           when cancelled.value is not null then 'cancellation'
             when credit.id is not null or cash_credit.id is not null then 'credit'
            when owner_discharge.id is not null then 'owner_discharge'
           when paid.amount > 0 then 'allocation' else 'unexplained' end,
-         'registerEffectMinor', (coalesce((invoice.value->>'amountMinor')::numeric, 0) + cash.amount
+         'registerEffectMinor', (coalesce((invoice.value->>'amountMinor')::numeric, 0) + coalesce(recognition_transition.amount,0) + cash.amount
           - coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
             - coalesce(credit.amount_minor, 0) - cash_credit.amount - paid.amount - coalesce(owner_discharge.amount_minor, 0))::text,
         'unexplainedMinor', ((case when c.direction = 'customer'
             then l.debit_minor - l.credit_minor else l.credit_minor - l.debit_minor end)
            - coalesce((invoice.value->>'amountMinor')::numeric, 0)
-           - cash.amount
+           - coalesce(recognition_transition.amount,0) - cash.amount
           + coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
             + coalesce(credit.amount_minor, 0) + cash_credit.amount + paid.amount + coalesce(owner_discharge.amount_minor, 0))::text
       ) order by v.sequence, l.ordinal), '[]'::jsonb) as value
@@ -394,6 +404,13 @@ export function readLines(
         select i as value from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->'recognition'->>'voucherId' = v.id and i->'recognition'->>'lineId' = l.id
        ) invoice on true
+       left join lateral (
+         select t.invoice_id, case when v.id=t.reversal_voucher_id then -i.amount_minor else i.amount_minor end as amount
+         from openerp.invoice_recognition_replacements t
+         join openerp.commerce_invoices i on(i.book_id,i.id)=(t.book_id,t.invoice_id)
+         where t.book_id=v.book_id and ((t.reversal_voucher_id=v.id and t.reversal_line_id=l.id)
+           or (t.replacement_voucher_id=v.id and t.replacement_line_id=l.id))
+       ) recognition_transition on true
        cross join lateral (
          select case when coalesce(sum(cr.recognized_gross_minor::numeric), 0) > 0 then
            coalesce((select case when c.direction = 'supplier'

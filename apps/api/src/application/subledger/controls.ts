@@ -532,6 +532,37 @@ function scheduleOccurrenceEffects(schedule: CapturedSchedule) {
         expectedMinor: amountMinor,
       });
     }
+
+    const corrections = occurrence.corrections;
+
+    if (Array.isArray(corrections)) {
+      for (const correction of corrections) {
+        if (!isJsonObject(correction)) continue;
+
+        const reversalId = textField(correction, "reversalVoucherId");
+        const replacementId = textField(correction, "replacementVoucherId");
+
+        if (reversalId !== undefined)
+          effects.push({
+            scheduleId: schedule.revision.scheduleId,
+            kind: "occurrence_reversal",
+            voucherId: reversalId,
+            ordinal: 2,
+            accountId,
+            expectedMinor: amountMinor,
+          });
+
+        if (replacementId !== undefined)
+          effects.push({
+            scheduleId: schedule.revision.scheduleId,
+            kind: "occurrence",
+            voucherId: replacementId,
+            ordinal: 2,
+            accountId,
+            expectedMinor: -amountMinor,
+          });
+      }
+    }
   }
 
   return effects;

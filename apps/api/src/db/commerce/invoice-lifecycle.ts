@@ -704,7 +704,9 @@ export function readRegisterIdentity(
             and i.document_number = ${documentNumber})
           or (i.recognition_voucher_id = ${voucherId} and i.recognition_line_id = ${lineId})
         )
-      ) or exists (
+      ) or exists (select from openerp.invoice_recognition_replacements t
+        where t.book_id = ${bookId} and ((t.replacement_voucher_id=${voucherId} and t.replacement_line_id=${lineId})
+          or (t.reversal_voucher_id=${voucherId} and t.reversal_line_id=${lineId}))) or exists (
         select from openerp.commerce_allocation_legs l
         where l.book_id = ${bookId} and l.payment_voucher_id = ${voucherId} and l.payment_line_id = ${lineId}
       ) as present

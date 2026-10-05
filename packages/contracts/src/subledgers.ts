@@ -204,12 +204,26 @@ export const ScheduleRevision = Schema.Struct({
   }),
 );
 
+export const OccurrenceCorrectionSummary = Schema.Struct({
+  bundleId: Accounting.Identifier,
+  predecessorVoucherId: Accounting.Identifier,
+  reversalVoucherId: Accounting.Identifier,
+  replacementVoucherId: Accounting.Identifier,
+  postingDate: Accounting.AccountingDate,
+  remainingPlanDecision: Schema.Struct({
+    kind: Schema.Literal("preserve_remaining_plan"),
+    rationale: Accounting.Description,
+  }),
+});
+
 export const OccurrenceState = Schema.Struct({
   ...ScheduleOccurrence.fields,
   changeSetId: Schema.NullOr(Accounting.Identifier),
   planDigest: Schema.NullOr(Accounting.Digest),
   voucherId: Schema.NullOr(Accounting.Identifier),
   reversalVoucherId: Schema.NullOr(Accounting.Identifier),
+  effectiveVoucherId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
+  corrections: Schema.optional(Schema.Array(OccurrenceCorrectionSummary)),
   state: Schema.Literals(["unprepared", "prepared", "posted", "reversed", "conflicted"]),
 });
 

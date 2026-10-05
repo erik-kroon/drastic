@@ -4,8 +4,8 @@ import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import { evidence, fixture, key, post, type BookFixture } from "./fixtures";
 
-export async function supplierFixture() {
-  const book = await fixture();
+export async function supplierFixture(extraAccounts: Parameters<typeof fixture>[0] = []) {
+  const book = await fixture(extraAccounts);
   const source = await evidence(book);
 
   const supplier = await post(
@@ -81,6 +81,7 @@ export function createDraft(book: BookFixture, content: typeof Drafts.SupplierDr
 export async function acceptDraft(
   book: BookFixture,
   draft: typeof Drafts.SupplierInvoiceDraftRevision.Type,
+  debitAccountId = "account_bank",
 ) {
   const review = await post(
     book,
@@ -91,7 +92,7 @@ export async function acceptDraft(
       expectedRevision: draft.revision,
       expectedDigest: draft.digest,
       controlAccountId: "account_clearing",
-      debitAccountId: "account_bank",
+      debitAccountId,
       accountingPeriodId: "period_2026",
       series: "A",
       reason: "Synthetic review regression",

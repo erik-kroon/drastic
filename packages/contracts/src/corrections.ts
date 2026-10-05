@@ -3,11 +3,17 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
+export const ScheduleRemainingPlanDecision = Schema.Struct({
+  kind: Schema.Literal("preserve_remaining_plan"),
+  rationale: Accounting.Description,
+});
+
 export const CorrectionIntent = Schema.Struct({
   datePolicy: Schema.Literal("explicit_open_period"),
   accountingPeriodId: Accounting.Identifier,
   postingDate: Accounting.AccountingDate,
   rationale: Accounting.Description,
+  scheduleDecision: Schema.optional(ScheduleRemainingPlanDecision),
   replacement: Schema.Struct({
     description: Accounting.Description,
     // NEXT-14. A replacement keeps the unaffected original assignments of the
@@ -24,6 +30,45 @@ export const ImpactReference = Schema.Struct({
   id: Accounting.Identifier,
   digest: Accounting.Digest,
 });
+
+export const InvoiceRecognitionContribution = Schema.Struct({
+  kind: Schema.Literal("invoice_recognition_replacement_v1"),
+  invoiceId: Accounting.Identifier,
+  documentNumber: Schema.String,
+  counterpartyName: Schema.String,
+  originalRecognitionVoucherId: Accounting.Identifier,
+  predecessorVoucherId: Accounting.Identifier,
+  controlAccountId: Accounting.Identifier,
+  amountMinor: Accounting.MinorUnits,
+  allocatedMinor: Accounting.MinorUnits,
+  outstandingMinor: Accounting.MinorUnits,
+  invoiceRevision: Accounting.MinorUnits,
+  allocationVersion: Accounting.MinorUnits,
+  beforeExpense: Schema.Array(Accounting.AssignableLine),
+  afterExpense: Schema.Array(Accounting.AssignableLine),
+  sourceOwners: Schema.Array(Schema.Struct({ kind: Schema.String, id: Accounting.Identifier })),
+  basisDigest: Accounting.Digest,
+});
+
+export const ScheduleOccurrenceContribution = Schema.Struct({
+  kind: Schema.Literal("schedule_occurrence_replacement_v1"),
+  scheduleId: Accounting.Identifier,
+  scheduleName: Schema.String,
+  ordinal: Schema.Int,
+  eventKey: Schema.String,
+  originalVoucherId: Accounting.Identifier,
+  predecessorVoucherId: Accounting.Identifier,
+  scheduleDigest: Accounting.Digest,
+  amountMinor: Accounting.MinorUnits,
+  remainingMinor: Accounting.MinorUnits,
+  remainingPlanDecision: ScheduleRemainingPlanDecision,
+  basisDigest: Accounting.Digest,
+});
+
+export const RegisterContribution = Schema.Union([
+  InvoiceRecognitionContribution,
+  ScheduleOccurrenceContribution,
+]);
 
 export const PrepareCorrectionBundle = Schema.Struct({
   ...CorrectionIntent.fields,
@@ -43,6 +88,7 @@ export const CorrectionBundle = Schema.Struct({
   createdBy: Accounting.Identifier,
   bundleDigest: Accounting.Digest,
   impactReview: Schema.optional(ImpactReference),
+  registerContribution: Schema.optional(RegisterContribution),
 });
 
 export const ApproveCorrectionBundle = Schema.Struct({
@@ -126,6 +172,12 @@ export const CorrectionImpactResource = Schema.Struct({
       usable: Schema.Boolean,
     }),
   ),
+  scheduleOccurrence: Schema.optional(
+    Schema.Struct({
+      ordinal: Schema.Int,
+      changeSetId: Accounting.Identifier,
+    }),
+  ),
 });
 
 export const CorrectionBlocker = Schema.Struct({
@@ -144,6 +196,7 @@ export const CorrectionImpactBasis = Schema.Struct({
   ),
   executable: Schema.Literal(false),
   limitations: Schema.Array(Schema.String),
+  registerContribution: Schema.optional(RegisterContribution),
 });
 
 export const CorrectionImpact = Schema.Struct({
@@ -160,6 +213,9 @@ export const CorrectionImpactView = Schema.Struct({
   impact: CorrectionImpact,
   snapshotCurrent: Schema.Boolean,
   executable: Schema.Literal(false),
+  currentBasis: Schema.optional(CorrectionImpactBasis),
+  currentDigest: Schema.optional(Accounting.Digest),
+  storedBasisDigest: Schema.optional(Accounting.Digest),
 });
 
 export const CorrectionBundlePage = Schema.Struct({
