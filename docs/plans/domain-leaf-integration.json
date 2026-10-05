@@ -101,7 +101,7 @@
       "consumers": [
         "apps/api/src/application/commerce/reminders.ts"
       ],
-      "note": "Existing exact-message owner composes sealed first-dispatch policy. New messages bind retained dispute and resolution history; changes after approval refuse. Same-identity recovery, human approval, cancellation, local fixture transport and durable inventory are verified by the public reminder E2E suite. Local synthetic proof only; external delivery remains separately qualified. Evidence docs/plans/evidence/domain-owner-completion/reminder-green/."
+      "note": "Exact-message owner composes sealed first-dispatch policy, retains immutable changed-payment refusal and human replacement/cancellation, and recovers admitted identities before fresh source checks. Stable14-case public synthetic API and V5/V4 fenced recovery passed. M60 Luna and whole-frame Paper1.24% passed. Fresh adapted historical-fixture assertions pass but concurrent source changes prevent fixed-revision qualification; whole-tree checks remain open. Local synthetic proof only; external delivery separately qualified. Evidence docs/plans/evidence/domain-frontend-reminders/validation/README.md."
     },
     {
       "leaf": "customer-credits",
