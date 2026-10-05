@@ -28,6 +28,22 @@ const manifest = JSON.parse(
   ),
 );
 
+if (
+  !Number.isFinite(manifest.pixelTolerance) ||
+  manifest.pixelTolerance < 0 ||
+  manifest.pixelTolerance > 255 ||
+  !Number.isInteger(manifest.viewport?.width) ||
+  !Number.isInteger(manifest.viewport?.height) ||
+  manifest.viewport.width <= 0 ||
+  manifest.viewport.height <= 0 ||
+  !Array.isArray(manifest.entries) ||
+  manifest.entries.some(
+    (entry) =>
+      !Number.isFinite(entry.maxDiffRatio) || entry.maxDiffRatio < 0 || entry.maxDiffRatio > 1,
+  )
+)
+  throw new Error("Parity requires a valid viewport, pixel tolerance and per-screen diff bound");
+
 const only = process.argv[3];
 
 const out = resolve(process.env.PARITY_OUT ?? join(root, "test-results/paper/parity"));
