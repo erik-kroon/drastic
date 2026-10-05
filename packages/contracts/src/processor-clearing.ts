@@ -148,6 +148,7 @@ export const Fetch = Schema.Struct({
   openingMinor: SignedMinorUnits,
   closingMinor: SignedMinorUnits,
   providerComplete: Schema.Boolean,
+  membershipComplete: Schema.optional(Schema.Boolean),
   observations: Schema.Array(Observation),
   digest: Accounting.Digest,
 });
@@ -260,6 +261,79 @@ export const Execution = Schema.Struct({
   cashEffects: Schema.Array(CashEffect),
 });
 
+export const ReturnReview = Approve;
+
+export const ReviewReturn = Schema.Struct({
+  id: Accounting.Identifier,
+  reviewId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  actorId: Accounting.Identifier,
+  createdAt: Schema.String,
+});
+
+export const DirectoryQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
+export const AccountPage = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(Account),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const ReviewPage = Schema.Struct({
+  scope: Accounting.Scope,
+  accountId: Accounting.Identifier,
+  items: Schema.Array(Review),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const ReceiptBankRow = Schema.Struct({
+  ...BankObservation.fields,
+  accountId: Accounting.Identifier,
+  providerId: Schema.NullOr(ProviderId),
+  sourceBankAccountId: ProviderId,
+  observedOn: Accounting.AccountingDate,
+  description: Schema.String,
+  amountMinor: SignedMinorUnits,
+});
+
+export const BankCandidateQuery = Schema.Struct({
+  afterStatementId: Schema.optional(Accounting.Identifier),
+  afterRowOrdinal: Schema.optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
+});
+
+export const BankCandidatePage = Schema.Struct({
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  items: Schema.Array(Schema.Struct({ row: ReceiptBankRow, available: Schema.Boolean })),
+  next: Schema.NullOr(BankObservation),
+});
+
+export const PayoutMember = Schema.Struct({
+  observation: Observation,
+  review: Review,
+  execution: Execution,
+  invoiceDocumentNumber: Schema.NullOr(Schema.String),
+});
+
+export const PayoutReviewView = Schema.Struct({
+  book: Schema.Struct({ currency: CurrencyCode, scale: CurrencyScale }),
+  review: Review,
+  account: Account,
+  payout: Observation,
+  postedPayout: Schema.Struct({ review: Review, execution: Execution }),
+  members: Schema.Array(PayoutMember),
+  bank: ReceiptBankRow,
+  bankAvailable: Schema.Boolean,
+  preparerName: Schema.NullOr(Schema.String),
+  approvals: Schema.Array(Approval),
+  returned: Schema.NullOr(ReviewReturn),
+  execution: Schema.NullOr(Execution),
+  processorLedgerMinor: SignedMinorUnits,
+  transitLedgerMinor: SignedMinorUnits,
+  payoutNativeMinor: SignedMinorUnits,
+  payoutCarryingMinor: SignedMinorUnits,
+});
+
 export const Reconciliation = Schema.Struct({
   accountId: Accounting.Identifier,
   fetchId: Accounting.Identifier,
@@ -303,6 +377,32 @@ const mutation = { headers: Accounting.IdempotencyHeaders, error: accountingErro
 export const ProcessorClearingApi = HttpApiGroup.make("processorClearing")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("listProcessorAccounts", `${path}/accounts`, {
+      params: Accounting.Scope,
+      query: DirectoryQuery,
+      error: accountingErrors,
+      success: AccountPage,
+    }),
+    HttpApiEndpoint.get("listProcessorReviews", `${path}/accounts/:id/reviews`, {
+      ...identified,
+      query: DirectoryQuery,
+      success: ReviewPage,
+    }),
+    HttpApiEndpoint.get("getProcessorPayoutReview", `${path}/reviews/:id/payout`, {
+      ...identified,
+      success: PayoutReviewView,
+    }),
+    HttpApiEndpoint.get("listProcessorBankCandidates", `${path}/reviews/:id/bank-candidates`, {
+      ...identified,
+      query: BankCandidateQuery,
+      success: BankCandidatePage,
+    }),
+    HttpApiEndpoint.post("returnProcessorReview", `${path}/reviews/:id/returns`, {
+      ...identified,
+      ...mutation,
+      payload: ReturnReview,
+      success: ReviewReturn,
+    }),
     HttpApiEndpoint.post("registerProcessorNativeCredit", `${path}/native-credit-origins`, {
       ...mutation,
       params: Accounting.Scope,

@@ -10,6 +10,36 @@ export const ProcessorClearingHandlers = HttpApiBuilder.group(
   "processorClearing",
   (handlers) =>
     handlers
+      .handle("listProcessorAccounts", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.listProcessorAccounts(token, scopeFromPath(params), query),
+        ),
+      )
+      .handle("listProcessorReviews", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.listProcessorReviews(token, scopeFromPath(params), params.id, query),
+        ),
+      )
+      .handle("getProcessorPayoutReview", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.getProcessorPayoutReview(token, scopeFromPath(params), params.id),
+        ),
+      )
+      .handle("listProcessorBankCandidates", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.listProcessorBankCandidates(token, scopeFromPath(params), params.id, query),
+        ),
+      )
+      .handle("returnProcessorReview", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.returnProcessorReview(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            reviewId: params.id,
+            input: payload,
+          }),
+        ),
+      )
       .handle("registerProcessorNativeCredit", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           Owner.registerProcessorNativeCredit(token, {

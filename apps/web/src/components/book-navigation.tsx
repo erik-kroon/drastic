@@ -82,7 +82,11 @@ export function BookNavigation(props: {
           href={`${base}/accounts`}
           active={pathname === `${base}/accounts`}
           selection={
-            new URLSearchParams(props.search).get("view") === "foreign-cash" ? "neutral" : undefined
+            ["foreign-cash", "processors"].includes(
+              new URLSearchParams(props.search).get("view") ?? "",
+            )
+              ? "neutral"
+              : undefined
           }
           onPointerEnter={preloadAccounts}
           onFocus={preloadAccounts}

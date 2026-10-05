@@ -53,6 +53,13 @@ if (foreignCashHook !== undefined && foreignCashHook !== "0" && foreignCashHook 
 const foreignCashSeed =
   foreignCashHook === "1" ? await import("./seed-foreign-cash.mjs") : undefined;
 
+const processorHook = process.env.PAPER_PROCESSORS;
+
+if (processorHook !== undefined && processorHook !== "0" && processorHook !== "1")
+  throw new Error("PAPER_PROCESSORS must be 0 or 1");
+
+const processorSeed = processorHook === "1" ? await import("./seed-processors.mjs") : undefined;
+
 const historicalAdoptionHook = process.env.PAPER_HISTORICAL_ADOPTION;
 
 if (
@@ -119,6 +126,8 @@ const url = `http://127.0.0.1:${webPort}`;
 
 let worker;
 
+let processorFixture;
+
 let webLog = "";
 
 let postgresStarted = false;
@@ -139,6 +148,7 @@ async function cleanup() {
     } finally {
       try {
         await worker?.close();
+        await processorFixture?.close();
       } finally {
         try {
           if (postgresStarted)
@@ -259,6 +269,11 @@ try {
 
   if (loanSeed) fixture.accounts.push(...loanSeed.loanAccounts);
 
+  if (processorSeed) {
+    fixture.accounts.push(...processorSeed.processorAccounts);
+    fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
+  }
+
   if (foreignCashSeed) {
     fixture.accounts.push(...foreignCashSeed.foreignCashAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -289,17 +304,42 @@ try {
       OPENERP_PASSWORD: loginPassword,
     },
   });
+
+  if (processorSeed) {
+    const bundledFixture = join(scratch, "processor-fixture.mjs");
+    await run(
+      "bun",
+      [
+        "build",
+        "apps/api/tests/support/processor-fixture.ts",
+        "--target=node",
+        `--outfile=${bundledFixture}`,
+      ],
+      { cwd: root },
+    );
+    processorFixture = await (await import(bundledFixture)).startProcessorFixture();
+  }
+
+  const workerSecrets = {
+    DATABASE_URL: runtimeUrl,
+    BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+    BETTER_AUTH_URL: url,
+  };
+
+  if (processorFixture)
+    Object.assign(workerSecrets, {
+      OPENERP_PROCESSOR_FEED: "local-fixture",
+      OPENERP_PROCESSOR_ENDPOINT: processorFixture.url,
+      OPENERP_PROCESSOR_SECRET: processorFixture.secret,
+    });
+
   worker = createTestHarness({
     root: api,
     workers: [
       {
         configPath: "wrangler.jsonc",
         env: "e2e",
-        secrets: {
-          DATABASE_URL: runtimeUrl,
-          BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
-          BETTER_AUTH_URL: url,
-        },
+        secrets: workerSecrets,
       },
     ],
   });
@@ -317,6 +357,20 @@ try {
 
     console.log(JSON.stringify(payroll));
   }
+
+  if (processorSeed)
+    console.log(
+      JSON.stringify(
+        await processorSeed.seedProcessors({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+          processorFixture,
+        }),
+      ),
+    );
 
   if (foreignCashSeed)
     console.log(

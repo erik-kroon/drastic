@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
 import { BankAccountWorkspace } from "@/components/bank-account-workspace";
+import { ProcessorWorkspace } from "@/components/processor-workspace";
 import { ForeignCashWorkspace } from "@/components/foreign-cash-workspace";
 import { BankOwnerQuery, OwnerReturnSearch } from "@/lib/work-return";
 
@@ -18,6 +19,9 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts
 
 function Page() {
   const search = Route.useSearch();
+
+  if (search.view === "processors")
+    return <ProcessorWorkspace accountId={search.account} reviewId={search.record} />;
 
   if (search.view === "foreign-cash")
     return (

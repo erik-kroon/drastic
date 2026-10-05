@@ -208,6 +208,7 @@ export const tokens = stylex.defineConsts({
   setupIncumbentBackground: "#f1f3f7",
   setupBannerBorder: "#d8e3f7",
   rowDivider: "var(--row-divider)",
+  processorWaitingBackground: "#fff1d6",
   loanWarningBackground: "#fff5dd",
   loanWarningBorder: "#e8d3a0",
   radiusHistoricalStep: "12px",

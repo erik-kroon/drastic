@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
@@ -173,6 +174,7 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     compact?: boolean;
+    variant?: "default" | "outline";
     recoveryId?: string;
     allowed?: boolean;
     canSubmit?: boolean;
@@ -262,7 +264,7 @@ export function CommandForm<
           props.input(new FormData(event.currentTarget)),
         );
 
-        if (parsed._tag === "None") {
+        if (Option.isNone(parsed)) {
           setInvalid(true);
 
           return;
@@ -295,6 +297,7 @@ export function CommandForm<
           <Button
             type="submit"
             size={props.compact ? "default" : "xl"}
+            variant={props.variant}
             disabled={props.canSubmit === false}
           >
             {command.isPending ? (locale === "sv" ? "Sparar…" : "Saving…") : props.label}

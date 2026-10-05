@@ -209,9 +209,14 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
             />
           ) : null}
           {data && !search.account ? (
-            <PageAction quiet href={`${base}?view=foreign-cash`}>
-              Valutakonton
-            </PageAction>
+            <>
+              <PageAction quiet href={`${base}?view=foreign-cash`}>
+                Valutakonton
+              </PageAction>
+              <PageAction quiet href={`${base}?view=processors`}>
+                Betalförmedlare
+              </PageAction>
+            </>
           ) : null}
           {data && account ? (
             <AccountActivity

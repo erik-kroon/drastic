@@ -863,6 +863,26 @@ function payoutBasis(tx: Transaction, scope: Scope, account: Account, observatio
   });
 }
 
+function requireUnclaimedReceipt(
+  tx: Transaction,
+  scope: Scope,
+  input: Extract<typeof Contracts.Prepare.Type, { kind: "bank_receipt" }>,
+  bank: { readonly statementId: string; readonly rowOrdinal: number },
+) {
+  return Effect.gen(function* () {
+    if (input.adoptedVoucherId) return;
+
+    const capacity = (yield* CashDb.readNativeSourceCapacity(
+      tx,
+      scope.bookId,
+      bank.statementId,
+      bank.rowOrdinal,
+    ))[0];
+
+    if (capacity?.consumed !== false) return yield* failure("StaleDependency");
+  });
+}
+
 function compileBankReceipt(
   tx: Transaction,
   scope: Scope,
@@ -899,6 +919,8 @@ function compileBankReceipt(
 
     if ((yield* Db.readBankClaim(tx, scope.bookId, bank.statementId, bank.rowOrdinal)).length > 0)
       return yield* failure("IdempotencyConflict");
+
+    yield* requireUnclaimedReceipt(tx, scope, input, bank);
 
     const revisions = yield* CashDb.readNativeSourceRevisions(
       tx,

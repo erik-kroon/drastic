@@ -403,6 +403,7 @@ export const fetchProcessorObservations = Effect.fn("processor.fetch")(function*
       openingMinor: control.openingMinor,
       closingMinor: control.closingMinor,
       providerComplete: control.complete && command.input.view === "balance",
+      membershipComplete: control.complete && command.input.view === "automatic_payout",
       observations,
     };
 

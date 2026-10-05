@@ -13,6 +13,7 @@ import * as Processor from "@open-erp/contracts/processor-clearing";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import {
+  createSession,
   database,
   decoded,
   environment,
@@ -59,7 +60,7 @@ async function setup(
     await admin.end();
   }
 
-  const reviewer = { ...book, actorId: second.actorId, token: second.token };
+  const reviewer = { ...book, actorId: second.actorId, token: (await createSession(second)).token };
   const source = await evidence(book);
 
   const recognition = await post(
@@ -2427,4 +2428,179 @@ test("expired processor approval and revoked human authority cannot execute then
 
   expect(settled.outstandingMinor).toBe("0");
   await saveEvidence("processor-expired-revoked-human-approval", book);
+});
+
+test("processor payout read retains both steps and a returned review cannot approve or spend transit", async () => {
+  const { book, reviewer, source, invoice, account } = await setup();
+  await seed(account, [charge(), payout()]);
+  const fetched = await fetchObservations(book, account.id);
+  const chargeObservation = fetched.observations.find((item) => item.type === "charge");
+  const payoutObservation = fetched.observations.find((item) => item.type === "payout");
+
+  if (!chargeObservation || !payoutObservation) throw new Error("Missing synthetic observations");
+  await commit(book, reviewer, {
+    ...reviewBasis(account.id, source.id),
+    kind: "observation",
+    observationId: chargeObservation.id,
+    invoiceId: invoice.id,
+  });
+
+  const paid = await commit(book, reviewer, {
+    ...reviewBasis(account.id, source.id),
+    kind: "observation",
+    observationId: payoutObservation.id,
+  });
+
+  const imported = await statement(book, source.id);
+
+  const input: typeof Processor.Prepare.Type = {
+    ...reviewBasis(account.id, source.id),
+    date: "2026-01-18",
+    kind: "bank_receipt",
+    payoutObservationId: payoutObservation.id,
+    bankObservation: { statementId: imported.statement.id, rowOrdinal: 1 },
+  };
+
+  const review = await post(book, "/banking/processors/reviews", input, Processor.Review);
+  const base = `/banking/processors/reviews/${review.id}`;
+  const missing = await request(book, `${base}/payout`);
+  expect(missing.status).toBe(422);
+  expect((await missing.json()).code).toBe("MissingEvidence");
+  await fetchObservations(book, account.id, "automatic_payout");
+  const view = await decoded(await request(book, `${base}/payout`), Processor.PayoutReviewView);
+  expect(view.postedPayout.execution.voucherId).toBe(paid.execution.voucherId);
+  expect(view.members.map((item) => [item.observation.id, item.invoiceDocumentNumber])).toEqual([
+    [chargeObservation.id, "PROCESSOR-125000"],
+  ]);
+  expect([view.processorLedgerMinor, view.transitLedgerMinor, view.payoutNativeMinor]).toEqual([
+    "0",
+    "122000",
+    "122000",
+  ]);
+  expect(view.bankAvailable).toBe(true);
+
+  const candidates = await decoded(
+    await request(book, `${base}/bank-candidates`),
+    Processor.BankCandidatePage,
+  );
+
+  expect(
+    candidates.items.map((item) => [item.row.statementId, item.row.rowOrdinal, item.available]),
+  ).toEqual([[imported.statement.id, 1, true]]);
+  expect((await request(book, `${base}/bank-candidates?afterRowOrdinal=1`)).status).toBe(422);
+
+  const directory = await decoded(
+    await request(book, "/banking/processors/accounts"),
+    Processor.AccountPage,
+  );
+
+  expect(directory.items.map((item) => item.id)).toEqual([account.id]);
+
+  const reviews = await decoded(
+    await request(book, `/banking/processors/accounts/${account.id}/reviews`),
+    Processor.ReviewPage,
+  );
+
+  expect(reviews.items.map((item) => item.id)).toContain(review.id);
+  const outsider = await fixture();
+  expect((await request(outsider, `${base}/payout`)).status).toBe(404);
+  expect((await request(outsider, `/banking/processors/accounts?after=${account.id}`)).status).toBe(
+    404,
+  );
+
+  const forbidden = await request(book, `${base}/approvals`, {
+    method: "POST",
+    body: JSON.stringify({ version: 1, digest: review.digest }),
+  });
+
+  expect(forbidden.status).toBe(403);
+
+  const approval = await post(
+    reviewer,
+    `${base}/approvals`,
+    { version: 1, digest: review.digest },
+    Processor.Approval,
+  );
+
+  const returned = await post(
+    reviewer,
+    `${base}/returns`,
+    { version: 1, digest: review.digest },
+    Processor.ReviewReturn,
+  );
+
+  const repeatReturn = await post(
+    reviewer,
+    `${base}/returns`,
+    { version: 1, digest: review.digest },
+    Processor.ReviewReturn,
+  );
+
+  expect(repeatReturn.id).toBe(returned.id);
+
+  const rejectedApproval = await request(reviewer, `${base}/approvals`, {
+    method: "POST",
+    body: JSON.stringify({ version: 1, digest: review.digest }),
+  });
+
+  expect((await rejectedApproval.json()).code).toBe("StaleDependency");
+
+  const rejectedExecution = await request(book, `${base}/execute`, {
+    method: "POST",
+    body: JSON.stringify({ version: 1, digest: review.digest, approvalId: approval.id }),
+  });
+
+  expect((await rejectedExecution.json()).code).toBe("StaleDependency");
+  const reloaded = await decoded(await request(book, `${base}/payout`), Processor.PayoutReviewView);
+  expect(reloaded.returned?.id).toBe(returned.id);
+  expect(reloaded.execution).toBeNull();
+  expect([reloaded.transitLedgerMinor, reloaded.payoutNativeMinor, reloaded.bankAvailable]).toEqual(
+    ["122000", "122000", true],
+  );
+  const fresh = await post(book, "/banking/processors/reviews", input, Processor.Review);
+  expect(fresh.id).not.toBe(review.id);
+
+  const oldApproval = await request(book, `/banking/processors/reviews/${fresh.id}/execute`, {
+    method: "POST",
+    body: JSON.stringify({ version: 1, digest: fresh.digest, approvalId: approval.id }),
+  });
+
+  expect((await oldApproval.json()).code).toBe("ApprovalRequired");
+
+  const freshApproval = await post(
+    reviewer,
+    `/banking/processors/reviews/${fresh.id}/approvals`,
+    { version: 1, digest: fresh.digest },
+    Processor.Approval,
+  );
+
+  const executed = await post(
+    book,
+    `/banking/processors/reviews/${fresh.id}/execute`,
+    { version: 1, digest: fresh.digest, approvalId: freshApproval.id },
+    Processor.Execution,
+  );
+
+  const final = await decoded(
+    await request(book, `/banking/processors/reviews/${fresh.id}/payout`),
+    Processor.PayoutReviewView,
+  );
+
+  expect(final.execution?.voucherId).toBe(executed.voucherId);
+  expect(final.postedPayout.execution.voucherId).toBe(paid.execution.voucherId);
+  expect([
+    final.processorLedgerMinor,
+    final.transitLedgerMinor,
+    final.payoutNativeMinor,
+    final.bankAvailable,
+  ]).toEqual(["0", "0", "0", false]);
+
+  const afterPostReturn = await request(
+    reviewer,
+    `/banking/processors/reviews/${fresh.id}/returns`,
+    { method: "POST", body: JSON.stringify({ version: 1, digest: fresh.digest }) },
+  );
+
+  expect((await afterPostReturn.json()).code).toBe("AlreadyPosted");
+  await saveEvidence("processor-two-step-return-and-fresh-human-match", book);
 });
