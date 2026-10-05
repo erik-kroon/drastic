@@ -75,9 +75,67 @@ export async function rawVoucherRows(book: BookFixture) {
   }
 }
 
+export async function retainedPostingCounts(book: BookFixture) {
+  const db = await database();
+
+  try {
+    const result = await db.query<{ groupReceipts: number; consumptions: number }>(
+      `select
+        (select count(*)::int from openerp.posting_group_receipts where book_id=$1) as "groupReceipts",
+        (select count(*)::int from openerp.approval_consumptions where book_id=$1) as consumptions`,
+      [book.bookId],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) throw new Error("Missing retained posting counts");
+
+    return row;
+  } finally {
+    await db.end();
+  }
+}
+
+export async function retainedPostingLinks(book: BookFixture, commandKey: string) {
+  const db = await database();
+
+  try {
+    return (
+      await db.query(
+        `select cr.key, cr.operation, cr.actor_id as "commandActorId", cr.result as "commandResult",
+        er.body as "executionReceipt", er.approval_id as "approvalId",
+        gr.group_id as "groupId", gr.plan_digest as "planDigest", gr.body as "groupReceipt",
+        ac.approver_id as "approverId", ac.consumed_by_id as "executorId",
+        ac.receipt_id as "consumptionReceiptId", v.id as "voucherId", v.period_id as "periodId",
+        v.posting_date::text as "postingDate", v.sequence::text as sequence,
+        a.digest as "approvalDigest", p.digest as "storedPlanDigest", o.payload as "outboxPayload"
+       from openerp.command_receipts cr
+       join openerp.execution_receipts er on er.book_id=cr.book_id and er.id=cr.result->>'id'
+       join openerp.posting_group_receipts gr on gr.book_id=er.book_id and gr.id=er.id
+         and gr.change_set_id=er.change_set_id
+       join openerp.approval_consumptions ac on ac.book_id=gr.book_id and ac.receipt_id=gr.id
+         and ac.group_id=gr.group_id and ac.change_set_id=gr.change_set_id
+       join openerp.approvals a on a.book_id=ac.book_id and a.id=ac.approval_id
+         and a.id=er.approval_id and a.change_set_id=er.change_set_id
+       join openerp.change_sets p on p.book_id=er.book_id and p.id=er.change_set_id
+         and p.digest=gr.plan_digest and p.digest=ac.plan_digest
+       join openerp.vouchers v on v.book_id=er.book_id and v.id=er.voucher_id
+         and v.change_set_id=er.change_set_id
+       join openerp.outbox o on o.book_id=er.book_id and o.receipt_id=er.id
+       where cr.book_id=$1 and cr.key=$2`,
+        [book.bookId, commandKey],
+      )
+    ).rows;
+  } finally {
+    await db.end();
+  }
+}
+
 export const faultTables = [
   "journal_lines",
   "execution_receipts",
+  "posting_group_receipts",
+  "approval_consumptions",
   "outbox",
   "command_receipts",
 ] as const;

@@ -641,7 +641,11 @@ function admitBookDirectoryActor(transaction: Transaction, token: string) {
 
     if (credential) return credential.actorId;
 
-    return (yield* admitHumanActor(transaction, token)).actorId;
+    return (yield* admitHumanActor(transaction, token).pipe(
+      Effect.catchTag("AccountingError", (error) =>
+        error.code === "Forbidden" ? failure("Unauthorized") : Effect.fail(error),
+      ),
+    )).actorId;
   });
 }
 

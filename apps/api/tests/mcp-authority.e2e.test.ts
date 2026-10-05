@@ -3,17 +3,21 @@ import { join } from "node:path";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Recovery from "@open-erp/contracts/posting-recovery";
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { capabilityAgentPolicy } from "../src/application/capabilities/agent-policy";
 import {
   approve,
   database,
+  emptyPosting,
   environment,
   execution,
   fixture,
   key,
+  ledger,
   persisted,
   prepare,
+  request,
 } from "./support/fixtures";
 
 const Rpc = Schema.Struct({
@@ -24,7 +28,9 @@ const Rpc = Schema.Struct({
     Schema.Struct({
       code: Schema.Int,
       message: Schema.String,
-      data: Schema.optional(Schema.Struct({ code: Accounting.FailureCode })),
+      data: Schema.optional(
+        Schema.Struct({ code: Accounting.FailureCode, recovery: Accounting.RecoveryClass }),
+      ),
     }),
   ),
 });
@@ -127,7 +133,7 @@ test("MCP withholds human authority and preserves scoped approved execution and 
       expect(response.error).toEqual({
         code: -32602,
         message: "Unknown tool.",
-        data: { code: "InvalidRequest" },
+        data: { code: "InvalidRequest", recovery: "permanent" },
       });
     }
   }
@@ -232,12 +238,11 @@ test("MCP withholds human authority and preserves scoped approved execution and 
         input: execution(next, nextApproval),
       },
     },
-    403,
+    401,
   );
 
-  // MCP's credential check rejects this request before it dispatches a tool.
   expect(revoked.error?.code).toBe(-32001);
-  expect(revoked.error?.data?.code).toBe("Forbidden");
+  expect(revoked.error?.data?.code).toBe("Unauthorized");
   expect(await persisted(book)).toEqual(beforeRevocation);
 
   const recovered = Schema.decodeUnknownSync(ReceiptResult)(
@@ -271,3 +276,233 @@ test("MCP withholds human authority and preserves scoped approved execution and 
     ),
   );
 }, 60000);
+
+test.each(["expired", "revoked", "unknown"])(
+  "%s posting credentials have the same REST and MCP refusal without effects",
+  async (state) => {
+    const book = await fixture();
+    const plan = await prepare(book);
+    const approval = await approve(book, plan);
+    const before = await persisted(book);
+    const token = state === "unknown" ? key().repeat(2) : book.agentToken;
+    const scope = { entityId: book.entityId, bookId: book.bookId };
+    const input = execution(plan, approval);
+    const commandKey = key();
+
+    if (state !== "unknown") {
+      const admin = await database();
+
+      try {
+        if (state === "expired")
+          await admin.query(
+            "UPDATE openerp.credentials SET expires_at = clock_timestamp() - interval '1 second' WHERE actor_id = $1",
+            [book.agentId],
+          );
+        else
+          await admin.query(
+            "UPDATE openerp.credentials SET revoked_at = clock_timestamp() WHERE actor_id = $1",
+            [book.agentId],
+          );
+      } finally {
+        await admin.end();
+      }
+    }
+
+    const response = await request(book, `/change-sets/${plan.id}/execute`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "idempotency-key": commandKey },
+      body: JSON.stringify(input),
+    });
+
+    expect(response.status).toBe(401);
+
+    const rest = await response.json();
+
+    expect(rest).toMatchObject({ code: "Unauthorized", recovery: "permanent" });
+
+    const mcp = await rpc(
+      token,
+      "tools/call",
+      {
+        name: "changes_execute",
+        arguments: { scope, changeSetId: plan.id, idempotencyKey: commandKey, input },
+      },
+      401,
+    );
+
+    expect(mcp.error?.code).toBe(-32001);
+    expect(mcp.error?.data).toMatchObject({ code: rest.code, recovery: rest.recovery });
+    expect(await persisted(book)).toEqual(before);
+    await writeFile(
+      join(environment().artifacts, `mcp-posting-${state}-credential-parity.json`),
+      JSON.stringify(
+        { state, scope, commandKey, rest, mcp, before, after: await persisted(book) },
+        null,
+        2,
+      ),
+    );
+  },
+);
+
+test.each([
+  ["stale_dependency", "StaleDependency", 409],
+  ["expired_approval", "ApprovalRequired", 403],
+] satisfies [string, typeof Accounting.FailureCode.Type, number][])(
+  "%s execution has the same REST and MCP refusal without effects",
+  async (state, code, status) => {
+    const book = await fixture();
+    const plan = await prepare(book);
+    const approval = await approve(book, plan);
+    const scope = { entityId: book.entityId, bookId: book.bookId };
+    const input = execution(plan, approval);
+    const commandKey = key();
+    const before = await persisted(book);
+    const ledgerBefore = await ledger(book);
+    const admin = await database();
+
+    expect(before).toEqual(emptyPosting);
+
+    try {
+      if (state === "stale_dependency") {
+        const changed = await admin.query(
+          "UPDATE openerp.accounts SET version = version + 1 WHERE book_id = $1 AND id = 'account_bank'",
+          [book.bookId],
+        );
+
+        expect(changed.rowCount).toBe(1);
+      } else {
+        await admin.query("ALTER TABLE openerp.approvals DISABLE TRIGGER ALL");
+
+        try {
+          const changed = await admin.query(
+            "UPDATE openerp.approvals SET expires_at = clock_timestamp() - interval '1 second' WHERE book_id = $1 AND id = $2",
+            [book.bookId, approval.id],
+          );
+
+          expect(changed.rowCount).toBe(1);
+        } finally {
+          await admin.query("ALTER TABLE openerp.approvals ENABLE TRIGGER ALL");
+        }
+      }
+    } finally {
+      await admin.end();
+    }
+
+    const response = await request(book, `/change-sets/${plan.id}/execute`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${book.agentToken}`, "idempotency-key": commandKey },
+      body: JSON.stringify(input),
+    });
+
+    expect(response.status).toBe(status);
+
+    const rest = Schema.decodeUnknownSync(Accounting.AccountingError)(await response.json());
+
+    expect(rest).toMatchObject({ code, recovery: "permanent" });
+    expect(await persisted(book)).toEqual(before);
+    expect(await ledger(book)).toEqual(ledgerBefore);
+
+    const mcp = await rpc(book.agentToken, "tools/call", {
+      name: "changes_execute",
+      arguments: { scope, changeSetId: plan.id, idempotencyKey: commandKey, input },
+    });
+
+    const refused = Schema.decodeUnknownSync(ToolFailure)(mcp.result);
+    const text = refused.content[0]?.text;
+
+    if (!text) throw new Error("A refused execution must report its typed error.");
+
+    const mcpFailure = Schema.decodeSync(
+      Schema.fromJsonString(
+        Schema.Struct({
+          code: Accounting.FailureCode,
+          message: Schema.String,
+          recovery: Accounting.RecoveryClass,
+        }),
+      ),
+    )(text);
+
+    const after = await persisted(book);
+    const ledgerAfter = await ledger(book);
+
+    expect(mcpFailure).toEqual({ code: rest.code, message: rest.message, recovery: rest.recovery });
+    expect(after).toEqual(before);
+    expect(ledgerAfter).toEqual(ledgerBefore);
+    await writeFile(
+      join(environment().artifacts, `mcp-posting-${state}-parity.json`),
+      JSON.stringify(
+        {
+          state,
+          scope,
+          commandKey,
+          plan,
+          approval,
+          rest,
+          mcp,
+          before,
+          after,
+          ledgerBefore,
+          ledgerAfter,
+        },
+        null,
+        2,
+      ),
+    );
+  },
+);
+
+test("unknown posting key has the same timed REST and MCP absence without effects", async () => {
+  const book = await fixture();
+  const scope = { entityId: book.entityId, bookId: book.bookId };
+  const originalKey = key();
+  const before = await persisted(book);
+  const ledgerBefore = await ledger(book);
+  const response = await request(book, `/posting-requests/${originalKey}`);
+
+  expect(response.status).toBe(200);
+
+  const rest = Schema.decodeUnknownSync(Recovery.RecoveredPostingRequest)(await response.json());
+
+  const mcp = await rpc(book.token, "tools/call", {
+    name: "posting_recover_request",
+    arguments: { scope, key: originalKey },
+  });
+
+  const recovered = Schema.decodeUnknownSync(
+    Schema.Struct({
+      isError: Schema.Literal(false),
+      structuredContent: Schema.Struct({ result: Recovery.RecoveredPostingRequest }),
+    }),
+  )(mcp.result).structuredContent.result;
+
+  const expected = {
+    scope,
+    key: originalKey,
+    state: "not_observed",
+    operation: null,
+    actorId: null,
+    requestDigest: null,
+    result: null,
+    recordedAt: null,
+    sameActor: null,
+  };
+
+  const after = await persisted(book);
+  const ledgerAfter = await ledger(book);
+
+  expect(rest).toMatchObject(expected);
+  expect(recovered).toMatchObject(expected);
+  expect(Number.isFinite(Date.parse(rest.checkedAt))).toBe(true);
+  expect(Number.isFinite(Date.parse(recovered.checkedAt))).toBe(true);
+  expect(before).toEqual(emptyPosting);
+  expect(after).toEqual(before);
+  expect(ledgerAfter).toEqual(ledgerBefore);
+  await writeFile(
+    join(environment().artifacts, "mcp-posting-unknown-key-parity.json"),
+    JSON.stringify(
+      { scope, originalKey, rest, mcp, before, after, ledgerBefore, ledgerAfter },
+      null,
+      2,
+    ),
+  );
+});

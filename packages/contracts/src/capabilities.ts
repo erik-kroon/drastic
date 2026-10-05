@@ -534,7 +534,7 @@ export const Capabilities = {
   },
   receipts_get: {
     description:
-      "Recover a committed execution receipt by its idempotency key after an uncertain response.",
+      "Recover a committed execution receipt by its original idempotency key after an uncertain response. NotFound is not proof that an in-flight command cannot commit. Use posting_recover_request for a timed committed or not_observed result; retain the original key.",
     input: Schema.Struct({
       ...scoped,
       key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
