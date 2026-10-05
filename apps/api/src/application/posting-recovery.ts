@@ -793,7 +793,9 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
                         transaction,
                         command.scope.bookId,
                         request.approvalActorId ?? "",
-                      )).length === 0
+                      )).length === 0 ||
+                      (yield* Db.readActorAdmission(transaction, request.approvalActorId ?? ""))[0]
+                        ?.enabled === false
                     ? "authority_lost"
                     : "unconsumed_at_check";
           }
