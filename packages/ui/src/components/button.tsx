@@ -11,6 +11,7 @@ type ButtonVariant =
   | "secondary"
   | "ghost"
   | "destructive"
+  | "destructive-outline"
   | "link"
   | "unstyled";
 
@@ -74,6 +75,7 @@ const styles = stylex.create({
     boxShadow: tokens.controlInvalidShadow,
   },
   defaultVariant: {
+    borderWidth: 0,
     backgroundColor: {
       default: tokens.primary,
       ":hover": tokens.primaryHoverBackground,
@@ -81,6 +83,7 @@ const styles = stylex.create({
     color: tokens.primaryForeground,
   },
   outline: {
+    fontWeight: tokens.fontWeightNormal,
     backgroundColor: {
       default: tokens.card,
       ":hover": tokens.outlineHoverBackground,
@@ -97,6 +100,8 @@ const styles = stylex.create({
     color: tokens.secondaryForeground,
   },
   ghost: {
+    borderWidth: 0,
+    fontWeight: tokens.fontWeightNormal,
     backgroundColor: {
       default: "transparent",
       ":hover": tokens.ghostHoverBackground,
@@ -106,6 +111,7 @@ const styles = stylex.create({
     color: { default: tokens.foreground, ":hover": tokens.foreground },
   },
   destructive: {
+    borderWidth: 0,
     backgroundColor: {
       default: tokens.destructive,
       ":hover": tokens.destructiveSolidHoverBackground,
@@ -115,6 +121,12 @@ const styles = stylex.create({
       borderColor: tokens.destructiveAlpha40,
       boxShadow: tokens.destructiveFocusShadow,
     },
+  },
+  destructiveOutline: {
+    backgroundColor: { default: tokens.card, ":hover": tokens.destructiveBackground },
+    borderColor: tokens.errorBorder,
+    color: tokens.destructive,
+    fontWeight: tokens.fontWeightNormal,
   },
   link: {
     backgroundColor: "transparent",
@@ -127,6 +139,7 @@ const styles = stylex.create({
     paddingBlock: tokens.space1,
     paddingInline: tokens.space3,
   },
+  defaultGhostSize: { paddingInline: tokens.space2_5 },
   xs: { gap: tokens.space1, height: tokens.controlHeightXs, paddingInline: tokens.space2 },
   sm: { gap: tokens.space1, height: tokens.controlHeightSm, paddingInline: tokens.space3 },
   lg: { gap: tokens.space1_5, height: tokens.controlHeightLg, paddingInline: tokens.space2_5 },
@@ -156,6 +169,7 @@ const variantStyles = {
   secondary: styles.secondary,
   ghost: styles.ghost,
   destructive: styles.destructive,
+  "destructive-outline": styles.destructiveOutline,
   link: styles.link,
   unstyled: undefined,
 } as const;
@@ -252,6 +266,7 @@ function Button({
             styles.pressable,
           variantStyles[variant],
           variant !== "unstyled" && sizeStyles[size],
+          variant === "ghost" && size === "default" && styles.defaultGhostSize,
           state.disabled && styles.disabled,
           props["aria-invalid"] === true && styles.invalid,
           styleX,

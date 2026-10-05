@@ -12,23 +12,24 @@ const styles = stylex.create({
     },
     borderColor: {
       default: tokens.input,
-      ":focus-visible": tokens.borderActive,
+      ":focus-visible": tokens.primary,
       "[aria-invalid='true']": tokens.controlInvalidBorder,
     },
     borderRadius: tokens.radiusControl,
     borderStyle: "solid",
     borderWidth: 1,
-    boxShadow: {
-      default: "none",
-      ":focus-visible": tokens.controlFocusShadow,
-      "[aria-invalid='true']": tokens.controlInvalidShadow,
-    },
+    boxShadow: "none",
     color: tokens.foreground,
     cursor: { default: "auto", ":disabled": "not-allowed" },
     fontSize: { default: tokens.fontSizeBase, "@media (min-width: 768px)": tokens.fontSizeControl },
     height: tokens.controlHeight,
     minWidth: 0,
-    ":disabled": { backgroundColor: tokens.sidebar, color: tokens.captionForeground },
+    ":disabled": {
+      backgroundColor: tokens.sidebar,
+      borderColor: tokens.controlDisabledBackground,
+      color: tokens.captionForeground,
+    },
+    ":focus-visible": { borderWidth: 2, paddingInline: 9 },
     outline: "none",
     paddingBlock: tokens.space1,
     paddingInline: tokens.space2_5,
@@ -48,6 +49,7 @@ const styles = stylex.create({
     },
     "@media (prefers-reduced-motion: reduce)": { transitionProperty: "none" },
   },
+  readOnly: { backgroundColor: tokens.sidebar, borderWidth: 0 },
 });
 
 type InputProps = WithStyleX<React.ComponentProps<"input">>;
@@ -57,7 +59,7 @@ function Input({ className, styleX, type, ...props }: InputProps) {
     <InputPrimitive
       type={type}
       data-slot="input"
-      {...stylexProps([styles.root, styleX], className)}
+      {...stylexProps([styles.root, props.readOnly && styles.readOnly, styleX], className)}
       {...props}
     />
   );

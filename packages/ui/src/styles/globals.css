@@ -54,7 +54,7 @@
   --secondary-foreground: var(--neutral-950);
   --muted: oklch(0.9307 0.0121 247.957);
   --muted-foreground: #475569;
-  --caption-foreground: #64748b;
+  --caption-foreground: #5c6c80;
   --accent: color-mix(in srgb, var(--accent-color) 12%, var(--card));
   --accent-foreground: var(--neutral-950);
   --destructive: #b4232a;

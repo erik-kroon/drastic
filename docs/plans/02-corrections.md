@@ -95,3 +95,16 @@ actions. The retained [synthetic browser proof](evidence/correction-child-review
 covers both child entries, incorrect revision refusal, lost-response recovery and exact
 replay. This resolves that handoff gap, without claiming the new Q45–Q47 presentation or
 register-compensation acceptance.
+
+### Native register correction acceptance — 2026-10-05
+
+The invoice recognition and ordinary schedule occurrence owners now contribute typed,
+server-derived effects sealed in the correction bundle digest and committed in its
+transaction. Invoice expense reclassification retains issued content, original recognition,
+allocation residual and payment capacity. Ordinary occurrence compensation retains its
+ordinal and history and requires an explicit preserved remaining plan. Effective invoice
+recognition and schedule controls reconcile at their stored posting cutoff. Seven
+[synthetic native journeys](evidence/correction-registers-20261005/README.md) prove exact
+replay, concurrent alternatives, late-fault rollback and ownership integrity. Commercial,
+tax/control, amount-changing plan, payroll, disposal and filed-report treatments remain
+owned workflows outside these bounded generic correction permissions.

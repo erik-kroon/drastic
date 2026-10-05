@@ -1,0 +1,397 @@
+(
+    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSize: '12px', fontSynthesis: 'none', height: '1080px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', WebkitFontSmoothing: 'antialiased', width: '1440px' }}>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '28px', paddingBlock: '28px', paddingInline: '40px' }}>
+        <div style={{ boxSizing: 'border-box' }}>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '20px', fontWeight: 600, lineHeight: '24px' }}>
+            Komponenter, version 2
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', marginTop: '4px' }}>
+            Gäller hela specifikationen. Ingen text är ljusare än #64748B. Statisk design, inte verifierad i körning.
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', display: 'flex', gap: '48px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '10px', width: '600px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              HIERARKI
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>
+              Sidtitel, 16 px 600
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+              Sektionsrubrik i meningsfall, 14 px 600
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              Brödtext 13 px, sekundär text #475569, bildtext #64748B (lägsta tillåtna)
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              GRUPPETIKETT, ENDAST FÖR RIKTIGA GRUPPER
+            </div>
+            <div style={{ alignItems: 'end', boxSizing: 'border-box', display: 'flex', gap: '32px', marginTop: '6px' }}>
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '32px', fontWeight: 600, lineHeight: '40px' }}>
+                  54 608,00
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                  Nyckeltal stort, 32 px
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '20px', fontWeight: 600, lineHeight: '24px' }}>
+                  191 200,00
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                  Medel, 20 px
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+                  38 990,00
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                  Litet, 14 px
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexBasis: '0%', flexDirection: 'column', flexGrow: '1', gap: '10px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              SEMANTISK FÄRG
+            </div>
+            <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ backgroundColor: '#EEF3FC', borderColor: '#D8E3F7', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#2448A5', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Information: neutral eller blå. Vanliga ändringar och förklaringar.
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#FFF7E6', borderColor: '#F0D9A8', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Kräver åtgärd: gul. Något väntar på dig.
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#FDECEC', borderColor: '#F3C5C7', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#B4232A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Fel: spärrad eller misslyckad. Orsak och nästa steg står här.
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#EAF5F1', borderColor: '#CFE6DE', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#1E6256', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Klart: grön. Bara för slutförda saker.
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '18px' }}>
+              Negativa belopp är svarta med minustecken. Röd används för förfallet, spärrat och fel. Status bärs alltid av ord eller form, aldrig bara färg.
+            </div>
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', display: 'flex', gap: '48px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '10px', width: '600px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              KNAPPAR OCH LÄNKAR
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Primär
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Sekundär
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#EEF1F5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '10px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Ghost, hovrad
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', borderColor: '#F3C5C7', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#B4232A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Ta bort
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#B4232A', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Bekräfta borttagning
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+              <div style={{ alignItems: 'center', backgroundColor: '#E6EAF0', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Spara ändringar
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Inaktiv primär knapp, orsaken står bredvid: ingenting är ändrat.
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              Länk för navigation: Öppna fakturan. Handling som ändrar något är alltid en knapp, aldrig en länk.
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexBasis: '0%', flexDirection: 'column', flexGrow: '1', gap: '8px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              FÄLT
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '110px' }}>
+                Redigerbart
+              </div>
+              <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', paddingInline: '10px', width: '200px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  30 dagar
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '110px' }}>
+                Fokus
+              </div>
+              <div style={{ alignItems: 'center', borderColor: '#2448A5', borderRadius: '6px', borderStyle: 'solid', borderWidth: '2px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', paddingInline: '9px', width: '200px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  30 dagar
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '110px' }}>
+                Skrivskyddat
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', paddingInline: '10px', width: '200px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Från kunden
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '110px' }}>
+                Inaktivt
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', paddingInline: '10px', width: '200px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#5C6C80', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Välj kund först
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '110px' }}>
+                Redigera på plats
+              </div>
+              <div style={{ borderBottomColor: '#94A3B8', borderBottomStyle: 'dashed', borderBottomWidth: '1px', boxSizing: 'border-box', paddingBottom: '1px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  3 okt 2026
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'start', boxSizing: 'border-box', display: 'flex', gap: '12px' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingTop: '6px', width: '110px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Fel
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ alignItems: 'center', borderColor: '#B4232A', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '32px', paddingInline: '10px', width: '200px' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                    abc
+                  </div>
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#B4232A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px', marginTop: '2px' }}>
+                  Fel: ange ett belopp i siffror.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', display: 'flex', gap: '48px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '10px', width: '600px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              VAL
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px' }}>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+                <div style={{ borderColor: '#D3D8DF', borderRadius: '3px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', flexShrink: '0', height: '16px', width: '16px' }} />
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Av
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+                <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '3px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '16px', justifyContent: 'center', width: '16px' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 700, lineHeight: '16px' }}>
+                    ✓
+                  </div>
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Markerad
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+                <div style={{ backgroundColor: '#2448A5', borderRadius: '10px', boxSizing: 'border-box', flexShrink: '0', height: '20px', position: 'relative', width: '36px' }}>
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', boxSizing: 'border-box', height: '16px', position: 'absolute', right: '2px', top: '2px', width: '16px' }} />
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  På
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+                <div style={{ backgroundColor: '#D3D8DF', borderRadius: '10px', boxSizing: 'border-box', flexShrink: '0', height: '20px', position: 'relative', width: '36px' }}>
+                  <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', boxSizing: 'border-box', height: '16px', left: '2px', position: 'absolute', top: '2px', width: '16px' }} />
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Av
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', display: 'flex', gap: '10px' }}>
+              <div style={{ alignItems: 'start', borderColor: '#2448A5', borderRadius: '8px', borderStyle: 'solid', borderWidth: '2px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '10px', paddingBlock: '10px', paddingInline: '12px', width: '280px' }}>
+                <div style={{ borderColor: '#2448A5', borderRadius: '8px', borderStyle: 'solid', borderWidth: '5px', boxSizing: 'border-box', flexShrink: '0', height: '16px', marginTop: '2px', width: '16px' }} />
+                <div style={{ boxSizing: 'border-box' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>
+                    Behåll 45 dagar
+                  </div>
+                  <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                    Det du skrev in.
+                  </div>
+                </div>
+              </div>
+              <div style={{ alignItems: 'start', borderColor: '#D3D8DF', borderRadius: '8px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '10px', paddingBlock: '10px', paddingInline: '12px', width: '280px' }}>
+                <div style={{ borderColor: '#D3D8DF', borderRadius: '8px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', flexShrink: '0', height: '16px', marginTop: '2px', width: '16px' }} />
+                <div style={{ boxSizing: 'border-box' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>
+                    Använd kundens 30 dagar
+                  </div>
+                  <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                    Från kundregistret.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+              Valt beslutskort: 2 px blå kant och fylld radio. Inställningar som ändras direkt använder reglage. Oföränderliga regler visas som skrivskyddade rader med texten Kan inte ändras.
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexBasis: '0%', flexDirection: 'column', flexGrow: '1', gap: '8px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              URVAL, HOVER OCH FOKUS
+            </div>
+            <div style={{ borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', overflow: 'clip' }}>
+              <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '34px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Normal rad
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '34px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Hovrad rad, bara ljus fyllnad
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#EEF3FC', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderLeftColor: '#2448A5', borderLeftStyle: 'solid', borderLeftWidth: '3px', boxSizing: 'border-box', display: 'flex', height: '34px', paddingInline: '9px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Vald rad, vänsterkant och fetare text
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '34px', paddingInline: '12px' }}>
+                <div style={{ borderRadius: '2px', boxSizing: 'border-box', outline: '2px solid #2448A5', outlineOffset: '2px', paddingInline: '6px' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                    Fokus: ram runt kontrollen, ingen fyllnad
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', display: 'flex', gap: '48px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '10px', width: '600px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              STATUSMARKÖRER OCH MÖNSTER
+            </div>
+            <div style={{ boxSizing: 'border-box', display: 'flex', flexWrap: 'wrap', gap: '18px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ○ Utkast
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#2448A5', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ◐ Väntar på granskning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ! Kräver åtgärd
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#B4232A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ✕ Spärrad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#1E6256', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ✓ Klart
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                ? Okänt utfall
+              </div>
+            </div>
+            <div style={{ backgroundColor: '#FFF7E6', borderColor: '#F0D9A8', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Okänt utfall. Det går inte att säga om det skickades. Skicka inte igen innan utredningen är registrerad.
+              </div>
+            </div>
+            <div style={{ backgroundColor: '#FDECEC', borderColor: '#F3C5C7', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '8px', paddingInline: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#B4232A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Fel: sparningen misslyckades. Inget är ändrat. Försök igen.
+              </div>
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexBasis: '0%', flexDirection: 'column', flexGrow: '1', gap: '8px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', lineHeight: '14px' }}>
+              NAVIGATION
+            </div>
+            <div style={{ borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '24px', height: '36px' }}>
+              <div style={{ alignContent: 'center', boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                Fakturor
+              </div>
+              <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Offerter och order
+                </div>
+              </div>
+              <div style={{ alignContent: 'center', boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                Kunder
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Rapporter
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#5C6C80', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                /
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Kassaflöde
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#5C6C80', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                /
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>
+                Underlag
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '2px', width: '200px' }}>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', paddingInline: '10px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Företag
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', backgroundColor: '#EEF3FC', borderLeftColor: '#2448A5', borderLeftStyle: 'solid', borderLeftWidth: '3px', borderRadius: '4px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', paddingInline: '7px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Integrationer
+                </div>
+              </div>
+              <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', paddingInline: '10px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Säkerhetskopior
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+              Överlägg och dialoger lägger en 22 % mörk skärm över den synliga sidan bakom, aldrig över en tom yta.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )

@@ -3,6 +3,8 @@ import * as stylex from "@stylexjs/stylex";
 import { Circle, CircleCheck } from "lucide-react";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { Link } from "@open-erp/ui/components/link";
+import { stylexProps, type WithStyleX } from "@open-erp/ui/lib/stylex";
+import { Heading } from "@open-erp/ui/components/typography";
 
 const styles = stylex.create({
   workspace: {
@@ -48,9 +50,6 @@ const styles = stylex.create({
   workHeading: { gap: tokens.space4_5 },
   workTabs: { gap: tokens.space4 },
   title: {
-    fontSize: tokens.fontSizeBase,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: tokens.lineHeight20Px,
     marginBlockEnd: 1,
   },
   action: { display: "flex", marginBlockEnd: 1 },
@@ -139,7 +138,25 @@ const styles = stylex.create({
     boxShadow: tokens.selectionIndicator,
     borderBlockEndColor: tokens.border,
   },
+  compactRow: {
+    minHeight: 34,
+    paddingInline: tokens.space3,
+    borderBlockEndColor: tokens.ghostHoverBackground,
+  },
+  compactSelectedRow: { borderBlockEndColor: tokens.ghostHoverBackground },
+  inlineRowControl: {
+    width: "auto",
+    minHeight: 0,
+    paddingBlockStart: 0,
+    paddingBlockEnd: 0,
+    paddingInline: tokens.space1_5,
+    borderWidth: 0,
+    borderBlockEndWidth: 0,
+    borderRadius: tokens.radiusDetail,
+    ":focus-visible": { outline: "2px solid var(--primary)", outlineOffset: 2, boxShadow: "none" },
+  },
   selectedTitle: { fontWeight: tokens.fontWeightNormal },
+  compactSelectedTitle: { fontWeight: tokens.fontWeightMedium },
   symbol: {
     display: "flex",
     alignItems: "center",
@@ -301,6 +318,28 @@ const styles = stylex.create({
       backgroundColor: tokens.primary,
     },
   },
+  compactNavigation: {
+    alignItems: "stretch",
+    flexWrap: "nowrap",
+    gap: tokens.space6,
+    height: 36,
+    borderBlockEndWidth: 1,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.border,
+  },
+  compactTab: {
+    display: "flex",
+    alignItems: "center",
+    minHeight: 0,
+    paddingBlockStart: 0,
+    paddingBlockEnd: 0,
+  },
+  compactActiveTab: {
+    borderBlockEndWidth: 2,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.primary,
+    "::after": { display: "none" },
+  },
 });
 
 export type RegisterStatus = "open" | "pending" | "warning" | "overdue" | "completed" | "draft";
@@ -410,7 +449,9 @@ export function RegisterWorkspace({
       <section {...stylex.props(styles.main)}>
         <header {...stylex.props(styles.header)}>
           <div {...stylex.props(styles.heading, headingSpacing === "work" && styles.workHeading)}>
-            <h1 {...stylex.props(styles.title)}>{title}</h1>
+            <Heading level={1} size="page" styleX={styles.title}>
+              {title}
+            </Heading>
             {tabs}
           </div>
           {action ? <div {...stylex.props(styles.action)}>{action}</div> : null}
@@ -469,6 +510,39 @@ export function RegisterGroup({ title, count }: { title: string; count?: number 
   );
 }
 
+export function RegisterRowSurface({
+  selected = false,
+  density = "register",
+  presentation = "row",
+  styleX,
+  className,
+  ...props
+}: WithStyleX<ComponentProps<"button">> & {
+  selected?: boolean;
+  density?: "register" | "compact";
+  presentation?: "row" | "inline";
+}) {
+  return (
+    <button
+      {...props}
+      type="button"
+      aria-pressed={presentation === "row" ? selected : undefined}
+      {...stylexProps(
+        [
+          styles.row,
+          density === "compact" && styles.compactRow,
+          selected && styles.selected,
+          selected && density === "compact" && styles.compactSelectedRow,
+          selected && density === "compact" && styles.compactSelectedTitle,
+          presentation === "inline" && styles.inlineRowControl,
+          styleX,
+        ],
+        className,
+      )}
+    />
+  );
+}
+
 export function RegisterRow({
   id,
   prefix,
@@ -491,13 +565,7 @@ export function RegisterRow({
   stateSize?: "standard" | "compact";
 }) {
   return (
-    <button
-      type="button"
-      data-sales-id={id}
-      aria-pressed={selected}
-      onClick={onSelect}
-      {...stylex.props(styles.row, selected && styles.selected)}
-    >
+    <RegisterRowSurface data-sales-id={id} selected={selected} onClick={onSelect}>
       <span
         {...stylex.props(
           styles.symbol,
@@ -523,19 +591,24 @@ export function RegisterRow({
         {state}
       </span>
       <span {...stylex.props(styles.amount)}>{amount}</span>
-    </button>
+    </RegisterRowSurface>
   );
 }
 
 export function RegisterNavigation({
   label,
   options,
+  density = "register",
 }: {
   label: string;
   options: readonly { label: string; href: string; active: boolean; preload?: () => void }[];
+  density?: "register" | "compact";
 }) {
   return (
-    <nav aria-label={label} {...stylex.props(styles.tabs)}>
+    <nav
+      aria-label={label}
+      {...stylex.props(styles.tabs, density === "compact" && styles.compactNavigation)}
+    >
       {options.map((option) => (
         <Link
           key={option.href}
@@ -543,7 +616,12 @@ export function RegisterNavigation({
           aria-current={option.active ? "page" : undefined}
           onPointerEnter={option.preload}
           onFocus={option.preload}
-          {...stylex.props(styles.tab, option.active && styles.activeTab)}
+          {...stylex.props(
+            styles.tab,
+            option.active && styles.activeTab,
+            density === "compact" && styles.compactTab,
+            density === "compact" && option.active && styles.compactActiveTab,
+          )}
         >
           {option.label}
         </Link>

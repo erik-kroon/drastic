@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@open-erp/ui/components/link";
+import { Heading } from "@open-erp/ui/components/typography";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
@@ -28,9 +29,6 @@ const styles = stylex.create({
     },
   },
   title: {
-    fontSize: tokens.fontSizeBase,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: tokens.lineHeight20Px,
     paddingInline: tokens.space2_5,
     marginBlockEnd: tokens.space5,
   },
@@ -59,6 +57,7 @@ const styles = stylex.create({
     color: tokens.foreground,
     fontWeight: tokens.fontWeightMedium,
     boxShadow: tokens.selectionIndicator,
+    borderRadius: tokens.radiusSmallControl,
   },
   main: { minWidth: 0 },
   heading: {
@@ -69,8 +68,6 @@ const styles = stylex.create({
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
-    fontSize: tokens.fontSizeSm,
-    fontWeight: tokens.fontWeightSemibold,
   },
   content: {
     display: "grid",
@@ -80,6 +77,19 @@ const styles = stylex.create({
     minWidth: 0,
   },
 });
+
+export function SettingsNavigationItem({
+  active = false,
+  ...props
+}: Omit<ComponentProps<typeof Link>, "className" | "style"> & { active?: boolean }) {
+  return (
+    <Link
+      {...props}
+      aria-current={active ? "page" : undefined}
+      {...stylex.props(styles.link, active && styles.active)}
+    />
+  );
+}
 
 export function SettingsWorkspace(props: {
   title: string;
@@ -91,22 +101,21 @@ export function SettingsWorkspace(props: {
   return (
     <div {...stylex.props(styles.workspace)}>
       <nav aria-label={props.navigationLabel} {...stylex.props(styles.navigation)}>
-        <h1 {...stylex.props(styles.title)}>{props.title}</h1>
+        <Heading level={1} size="page" styleX={styles.title}>
+          {props.title}
+        </Heading>
         <div {...stylex.props(styles.links)}>
           {props.items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={item.active ? "page" : undefined}
-              {...stylex.props(styles.link, item.active && styles.active)}
-            >
+            <SettingsNavigationItem key={item.href} href={item.href} active={item.active}>
               {item.label}
-            </Link>
+            </SettingsNavigationItem>
           ))}
         </div>
       </nav>
       <section {...stylex.props(styles.main)}>
-        <h2 {...stylex.props(styles.heading)}>{props.section}</h2>
+        <Heading size="section" styleX={styles.heading}>
+          {props.section}
+        </Heading>
         <div {...stylex.props(styles.content)}>{props.children}</div>
       </section>
     </div>
