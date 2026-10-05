@@ -29,7 +29,8 @@ import { accountingCopy } from "@/lib/accounting-copy";
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts", "assets"])),
   record: Schema.optional(Schema.String),
-  assetAction: Schema.optional(Schema.Literal("disposal")),
+  assetPlan: Schema.optional(Schema.Boolean),
+  assetAction: Schema.optional(Schema.Literals(["disposal", "reversal"])),
   assetReview: Schema.optional(Identifier),
   work: WorkReturnSearch,
   returnTo: OwnerReturnSearch,
@@ -73,7 +74,14 @@ function Books() {
   };
 
   if (view === "assets")
-    return <BookAssets recordId={record} action={query.assetAction} reviewId={query.assetReview} />;
+    return (
+      <BookAssets
+        recordId={record}
+        action={query.assetAction}
+        reviewId={query.assetReview}
+        plan={query.assetPlan === true}
+      />
+    );
 
   const navigation = (
     <RegisterNavigation

@@ -289,6 +289,50 @@ test("economic reversal uses retained counterfactual cap and atomic current auth
   expect(result.event.magnitudeMinor).toBe("150000");
   expect(result.event.netImpairmentMinor).toBe("150000");
 
+  const retained = await decoded(
+    await request(book, `/subledger-controls/valuations/${result.review.id}`),
+    Controls.AssetValuationView,
+  );
+
+  expect(retained.event).toEqual(result.event);
+  expect(retained.approvals.find((approval) => approval.id === result.event.approvalId)).toEqual(
+    result.approval,
+  );
+  expect(
+    retained.participants.some((person) => person.actorId === result.review.receipt.actorId),
+  ).toBe(true);
+
+  const directory = await decoded(
+    await request(book, `/subledger-controls/valuations/for-schedule/${schedule.scheduleId}`),
+    Controls.AssetValuationReviewList,
+  );
+
+  expect(directory.items).toEqual([result.review]);
+  const otherBook = await fixture();
+
+  await failure(
+    await request(otherBook, `/subledger-controls/valuations/${result.review.id}`),
+    404,
+    "NotFound",
+  );
+  await failure(
+    await request(otherBook, `/subledger-controls/valuations/for-schedule/${schedule.scheduleId}`),
+    404,
+    "NotFound",
+  );
+
+  const postedVoucher = await decoded(
+    await request(book, `/vouchers/${result.event.postingReceipt.voucherId}`),
+    Accounting.Voucher,
+  );
+
+  expect(
+    postedVoucher.action.lines.map((line) => [line.accountId, line.debitMinor, line.creditMinor]),
+  ).toEqual([
+    ["asset_impairment", "150000", "0"],
+    ["asset_income", "0", "150000"],
+  ]);
+
   const view = await decoded(
     await request(book, `/schedules/${schedule.scheduleId}`),
     Subledgers.ScheduleView,
@@ -373,7 +417,22 @@ test("economic reversal uses retained counterfactual cap and atomic current auth
   );
   await writeFile(
     join(environment().artifacts, "asset-valuation-reversal.json"),
-    JSON.stringify({ input, result, view, control, beforeClosing, closing, impact }, null, 2),
+    JSON.stringify(
+      {
+        input,
+        result,
+        retained,
+        directory,
+        postedVoucher,
+        view,
+        control,
+        beforeClosing,
+        closing,
+        impact,
+      },
+      null,
+      2,
+    ),
   );
 });
 

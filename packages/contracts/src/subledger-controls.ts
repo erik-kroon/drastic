@@ -455,6 +455,18 @@ export const AssetValuationView = Schema.Struct({
   review: AssetValuationReview,
   approvals: Schema.Array(AssetValuationApproval),
   event: Schema.NullOr(importedAssetValuationEvent),
+  participants: Schema.Array(
+    Schema.Struct({
+      actorId: Accounting.Identifier,
+      name: Schema.NullOr(Accounting.Description),
+    }),
+  ),
+});
+
+export const AssetValuationReviewList = Schema.Struct({
+  scope: Accounting.Scope,
+  scheduleId: Accounting.Identifier,
+  items: Schema.Array(AssetValuationReview),
 });
 
 const path = "/v1/entities/:entityId/books/:bookId/subledger-controls";
@@ -481,6 +493,10 @@ export const SubledgerControlsApi = HttpApiGroup.make("subledgerControls").add(
     headers: Accounting.IdempotencyHeaders,
     payload: ExecuteAssetValuation.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: importedAssetValuationEvent,
+  }),
+  HttpApiEndpoint.get("listAssetValuations", `${path}/valuations/for-schedule/:id`, {
+    ...identified,
+    success: AssetValuationReviewList,
   }),
   HttpApiEndpoint.get("getAssetValuation", `${path}/valuations/:id`, {
     ...identified,

@@ -27,6 +27,7 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 import { subledgerCopy } from "./copy";
 import { ScheduleForm } from "./schedule-form";
+import { AssetValuationDirectory } from "./valuation-directory";
 import { AssetDisposalDirectory } from "./disposal-directory";
 
 type Props = {
@@ -345,7 +346,14 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
           <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
           <AssetImpairmentPanel book={book} setup={setup} locale={locale} schedule={view} />
           {view.current.terms.kind === "asset" ? (
-            <AssetDisposalDirectory book={book} locale={locale} schedule={view} />
+            <>
+              <AssetDisposalDirectory book={book} locale={locale} schedule={view} />
+              <AssetValuationDirectory
+                book={book}
+                locale={locale}
+                scheduleId={view.current.scheduleId}
+              />
+            </>
           ) : null}
           {view.impairments.length ? (
             <DataTable

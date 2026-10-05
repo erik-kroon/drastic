@@ -40,6 +40,11 @@ export const SubledgerControlsHandlers = HttpApiBuilder.group(
           }),
         ),
       )
+      .handle("listAssetValuations", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Valuations.list(token, { scope: scopeFromPath(params), id: params.id }),
+        ),
+      )
       .handle("getAssetValuation", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
           Valuations.get(token, { scope: scopeFromPath(params), id: params.id }),

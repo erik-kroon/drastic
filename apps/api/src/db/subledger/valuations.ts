@@ -90,3 +90,10 @@ export function retire(
     "objects",
   );
 }
+
+export function participants(tx: Transaction, actorIds: readonly string[]) {
+  return tx.execute<{ readonly actorId: string; readonly name: string }>(
+    sql`select id as "actorId", name from openerp.actors where id in (select jsonb_array_elements_text(${JSON.stringify(actorIds)}::jsonb)) order by id`,
+    "objects",
+  );
+}

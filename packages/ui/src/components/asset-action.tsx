@@ -20,6 +20,45 @@ const assetActionStyles = stylex.create({
       maxWidth: "calc(100% + 32px)",
     },
   },
+  success: {
+    backgroundColor: tokens.registerSuccessBackground,
+    color: tokens.registerSuccess,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.registerSuccessBorder,
+    borderRadius: tokens.radiusStatusBadge,
+    paddingBlock: 2,
+    paddingInline: 8,
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+  },
+  metadata: {
+    marginBlock: 0,
+    marginBlockStart: 4,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight18Px,
+    color: tokens.mutedForeground,
+  },
+  metrics: { display: "flex", flexWrap: "wrap", gap: 48, marginBlockStart: 16 },
+  metricLabel: {
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+    color: tokens.captionForeground,
+  },
+  metricValue: {
+    fontSize: tokens.fontSize2xl,
+    lineHeight: tokens.lineHeight30Px,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  mutedMetric: { color: tokens.captionForeground },
+  journalRow: {
+    height: 32,
+    borderBlockEndWidth: 1,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.border,
+  },
+  journalLabel: { paddingInlineStart: 8, textAlign: "left" },
+  journalCredit: { paddingInlineEnd: 8 },
   breadcrumbs: {
     display: "flex",
     flexWrap: "wrap",
@@ -149,6 +188,7 @@ export function AssetActionLayout(props: {
   assetName: string;
   backHref: string;
   synthetic?: boolean;
+  posted?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -166,6 +206,7 @@ export function AssetActionLayout(props: {
       </nav>
       <div {...stylex.props(assetActionStyles.titleRow)}>
         <h1 {...stylex.props(assetActionStyles.title)}>{props.title}</h1>
+        {props.posted ? <span {...stylex.props(assetActionStyles.success)}>Bokförd</span> : null}
         {props.synthetic ? (
           <span {...stylex.props(assetActionStyles.example)}>Exempeldata</span>
         ) : null}
@@ -304,5 +345,83 @@ export function AssetRevenueAcknowledgment(props: {
       />{" "}
       Jag förstår att intäkten på fakturan omförs. Ingen ny kundfordran, bank eller moms bokförs.
     </label>
+  );
+}
+
+export function AssetActionMetadata({ children }: { children: ReactNode }) {
+  return <p {...stylex.props(assetActionStyles.metadata)}>{children}</p>;
+}
+
+export function AssetActionMetrics({
+  items,
+}: {
+  items: readonly { label: string; value: string; muted?: boolean }[];
+}) {
+  return (
+    <div {...stylex.props(assetActionStyles.metrics)}>
+      {items.map((item) => (
+        <div key={item.label}>
+          <div {...stylex.props(assetActionStyles.metricLabel)}>{item.label}</div>
+          <div
+            {...stylex.props(
+              assetActionStyles.metricValue,
+              item.muted && assetActionStyles.mutedMetric,
+            )}
+          >
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AssetPostedJournal({
+  rows,
+  debit,
+  credit,
+}: {
+  rows: readonly { id: string; label: string; debit: string; credit: string }[];
+  debit: string;
+  credit: string;
+}) {
+  return (
+    <table {...stylex.props(assetActionStyles.table)}>
+      <thead {...stylex.props(assetActionStyles.tableHead)}>
+        <tr>
+          <th {...stylex.props(assetActionStyles.headerCell, assetActionStyles.journalLabel)}>
+            Konto
+          </th>
+          <th {...stylex.props(assetActionStyles.headerCell, assetActionStyles.amount)}>Debet</th>
+          <th
+            {...stylex.props(
+              assetActionStyles.headerCell,
+              assetActionStyles.amount,
+              assetActionStyles.journalCredit,
+            )}
+          >
+            Kredit
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.id} {...stylex.props(assetActionStyles.journalRow)}>
+            <td {...stylex.props(assetActionStyles.journalLabel)}>{row.label}</td>
+            <td {...stylex.props(assetActionStyles.amount)}>{row.debit}</td>
+            <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>
+              {row.credit}
+            </td>
+          </tr>
+        ))}
+        <tr {...stylex.props(assetActionStyles.journalRow, assetActionStyles.emphasis)}>
+          <td {...stylex.props(assetActionStyles.journalLabel)}>Summa</td>
+          <td {...stylex.props(assetActionStyles.amount)}>{debit}</td>
+          <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>
+            {credit}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }

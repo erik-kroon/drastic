@@ -6,6 +6,8 @@ export const assetAccounts = [
   { id: "account_ar", code: "1510", name: "Kundfordringar" },
   { id: "account_revenue", code: "3001", name: "Försäljning" },
   { id: "account_vat", code: "2611", name: "Utgående moms" },
+  { id: "asset_impairment", code: "1228", name: "Ackumulerade nedskrivningar" },
+  { id: "asset_reversal", code: "3985", name: "Återföring av nedskrivningar" },
   { id: "asset_gross", code: "1220", name: "Inventarier" },
   { id: "asset_ordinary", code: "1229", name: "Ackumulerade avskrivningar" },
   { id: "asset_expense", code: "7830", name: "Avskrivningar" },
@@ -32,20 +34,20 @@ export async function assetClients(config) {
 
   await admin.connect();
 
-  async function human(actorId) {
+  async function human(actorId, name = "Synthetic asset reviewer") {
     const token = randomBytes(32).toString("hex");
 
-    await admin.query(
-      `insert into openerp.actors(id,name) values ($1,'Synthetic asset reviewer') on conflict do nothing`,
-      [actorId],
-    );
+    await admin.query(`insert into openerp.actors(id,name) values ($1,$2) on conflict do nothing`, [
+      actorId,
+      name,
+    ]);
     await admin.query(
       `insert into openerp.memberships(book_id,actor_id,role) values ($1,$2,'operator') on conflict do nothing`,
       [fixture.book.id, actorId],
     );
     await admin.query(
-      `insert into openerp_auth."user"(id,name,email) values ($1,'Synthetic asset reviewer',$2) on conflict do nothing`,
-      [actorId, `${actorId}@example.test`],
+      `insert into openerp_auth."user"(id,name,email) values ($1,$2,$3) on conflict do nothing`,
+      [actorId, name, `${actorId}@example.test`],
     );
     await admin.query(
       `insert into openerp.identity_admissions(actor_id,provider_id,subject,enabled) values ($1,'e2e-current-session',$1,true) on conflict (actor_id) do update set enabled=true`,
@@ -60,9 +62,9 @@ export async function assetClients(config) {
   }
 
   try {
-    const author = await human(fixture.actor.id);
+    const author = await human(fixture.actor.id, "Elin Sund");
 
-    const reviewer = await human("paper_asset_reviewer");
+    const reviewer = await human("paper_asset_reviewer", "Sara Lind");
 
     const activator = await human("paper_asset_activator");
 

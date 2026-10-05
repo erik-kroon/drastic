@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { seedValuation } from "./seed-valuation.mjs";
 import { assetClients, issueAssetInvoice } from "./asset-fixture-clients.mjs";
 
 export { assetAccounts } from "./asset-fixture-clients.mjs";
@@ -151,6 +152,8 @@ export async function seedAssets(config) {
     join(config.artifacts, "asset-source-fixture.json"),
     JSON.stringify(result, null, 2),
   );
+
+  await seedValuation(config, clients);
 
   return result;
 }

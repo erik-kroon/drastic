@@ -422,15 +422,62 @@ export const get = Effect.fn("subledger.getValuation")(function* (
     const row = (yield* Db.readReview(tx, command.scope.bookId, command.id))[0];
 
     if (!row) return yield* failure("NotFound");
+
     const review = yield* decode(Controls.AssetValuationReview, row.body);
+
+    const approvals = yield* Effect.forEach(
+      yield* Db.approvals(tx, command.scope.bookId, command.id),
+      (row) => decode(Controls.AssetValuationApproval, row.body),
+    );
+
+    const eventRow = (yield* Db.events(tx, command.scope.bookId, review.input.scheduleId)).find(
+      (row) => row.body.reviewId === command.id,
+    );
+
+    const event = eventRow ? yield* decode(Subledgers.AssetValuationEvent, eventRow.body) : null;
+
+    const approval = event ? approvals.find((value) => value.id === event.approvalId) : undefined;
+
+    if (event && !approval) return yield* failure("InternalError");
+
+    const actorIds = [
+      ...new Set([
+        review.receipt.actorId,
+        ...(approval ? [approval.actorId] : []),
+        ...(event ? [event.receipt.actorId] : []),
+      ]),
+    ];
+
+    const names = yield* Db.participants(tx, actorIds);
 
     return yield* decode(Controls.AssetValuationView, {
       review,
-      approvals: (yield* Db.approvals(tx, command.scope.bookId, command.id)).map((row) => row.body),
-      event:
-        (yield* Db.events(tx, command.scope.bookId, review.input.scheduleId)).find(
-          (row) => row.body.reviewId === command.id,
-        )?.body ?? null,
+      approvals,
+      event,
+      participants: actorIds.map((actorId) => ({
+        actorId,
+        name: names.find((row) => row.actorId === actorId)?.name ?? null,
+      })),
+    });
+  });
+});
+
+export const list = Effect.fn("subledger.listValuations")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly id: string },
+) {
+  return yield* withBook(token, command.scope, true, function* (tx) {
+    if (!(yield* Schedules.readCurrentRevision(tx, command.scope.bookId, command.id))[0])
+      return yield* failure("NotFound");
+
+    const rows = yield* Db.reviews(tx, command.scope.bookId, command.id);
+
+    if (rows.length > 20) return yield* failure("UnsupportedProfile");
+
+    return yield* decode(Controls.AssetValuationReviewList, {
+      scope: command.scope,
+      scheduleId: command.id,
+      items: rows.map((row) => row.body),
     });
   });
 });
