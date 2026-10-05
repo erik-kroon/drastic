@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
+import type * as Extraction from "@open-erp/contracts/supplier-extraction";
+import type { PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
@@ -74,6 +76,8 @@ function SupplierInboxEntry(props: {
 }) {
   const sv = props.commerceProps.locale === "sv";
   const extractionKeys = useRef(new Map<string, string>());
+  const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
+  const [quote, setQuote] = useState<typeof Extraction.DocumentSourceLocator.Type>();
 
   return (
     <Box display="grid" gap="lg" minWidth="zero">
@@ -102,6 +106,9 @@ function SupplierInboxEntry(props: {
         {...props.commerceProps}
         id={props.entry.occurrence.occurrence.id}
         sha256={props.entry.occurrence.occurrence.sha256}
+        view={view}
+        onViewChange={setView}
+        quote={quote}
       />
       <Text>
         {sv
@@ -132,6 +139,10 @@ function SupplierInboxEntry(props: {
         originalBytes={props.entry.occurrence.occurrence.byteLength}
         mediaType={props.entry.occurrence.occurrence.mediaType}
         onRefresh={props.onRefresh}
+        onQuote={(selected) => {
+          setQuote(selected);
+          setView((current) => ({ ...current, page: selected.page }));
+        }}
       />
       {!props.entry.draftId && props.commerceProps.book.role === "operator" ? (
         <>
@@ -339,7 +350,7 @@ export function SupplierInbox(
         <SupplierInboxEntry
           // A per-occurrence instance: switching must not carry one occurrence's
           // review state or its idempotency keys into the next.
-          key={id}
+          key={`${props.book.entityId}/${props.book.id}/${id}/${entry.occurrence.occurrence.sha256}`}
           entry={entry}
           commerceProps={props}
           id={id}

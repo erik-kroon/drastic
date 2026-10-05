@@ -131,8 +131,25 @@ function mergeCopy(locale: Locale) {
   };
 }
 
-function locatorText(locator: typeof Extraction.SourceLocator.Type) {
-  return typeof locator === "string" ? locator : `${locator.page}: “${locator.quote}”`;
+export function SourceLocators(props: {
+  locators: ReadonlyArray<typeof Extraction.SourceLocator.Type>;
+  locale: Locale;
+  onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
+}) {
+  return (
+    <Box display="flex" flexWrap="wrap" alignItems="center" gap="sm">
+      {props.locators.length === 0 ? <Text>—</Text> : null}
+      {props.locators.map((locator, index) =>
+        typeof locator === "string" ? (
+          <Text key={index}>{locator}</Text>
+        ) : (
+          <Button key={index} type="button" variant="ghost" onClick={() => props.onQuote(locator)}>
+            {props.locale === "sv" ? "Sida" : "Page"} {locator.page}: “{locator.quote}”
+          </Button>
+        ),
+      )}
+    </Box>
+  );
 }
 
 const fieldNames = {
@@ -231,6 +248,7 @@ function MergedFieldCard(props: {
   resolved: string;
   onChoice: (choice: Choice) => void;
   onResolved: (value: string) => void;
+  onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
 }) {
   const name = `field-${props.merged.lineOrdinal}-${props.merged.fieldKey}`;
   const label = `${fieldName(props.merged.fieldKey, props.locale)}, ${props.text.line} ${props.merged.lineOrdinal}`;
@@ -268,12 +286,12 @@ function MergedFieldCard(props: {
           </Text>
         ))}
       </Box>
-      <Text>
-        {props.text.locator}:{" "}
-        {props.merged.evidenceLocators.length === 0
-          ? "—"
-          : props.merged.evidenceLocators.map(locatorText).join(", ")}
-      </Text>
+      <Text>{props.text.locator}:</Text>
+      <SourceLocators
+        locators={props.merged.evidenceLocators}
+        locale={props.locale}
+        onQuote={props.onQuote}
+      />
       <Box display="flex" flexWrap="wrap" gap="lg">
         {props.merged.state === "proposed_change" ? (
           <Box as="label" display="flex" alignItems="center" gap="md">
@@ -325,7 +343,12 @@ function MergedFieldCard(props: {
   );
 }
 
-function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
+function ExtractionMerge(
+  props: CommerceProps & {
+    preparation: Preparation;
+    onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
+  },
+) {
   const { book, locale, preparation } = props;
   const text = mergeCopy(locale);
 
@@ -381,12 +404,12 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
               <Text>
                 {line.candidateLineId}, {text.fieldState[line.state]}, {line.detail || "—"}
               </Text>
-              <Text>
-                {text.locator}:{" "}
-                {line.sourceLocators.length === 0
-                  ? "—"
-                  : line.sourceLocators.map(locatorText).join(", ")}
-              </Text>
+              <Text>{text.locator}:</Text>
+              <SourceLocators
+                locators={line.sourceLocators}
+                locale={locale}
+                onQuote={props.onQuote}
+              />
               <Box as="label" display="grid" gap="sm" minWidth="zero">
                 {text.map}
                 <select
@@ -443,6 +466,7 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
                 resolved={resolved[key] ?? ""}
                 onChoice={(choice) => setChoices((current) => ({ ...current, [key]: choice }))}
                 onResolved={(value) => setResolved((current) => ({ ...current, [key]: value }))}
+                onQuote={props.onQuote}
               />
             );
           })}
@@ -511,7 +535,12 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
   );
 }
 
-function ExtractionAttempts(props: CommerceProps & { state: State }) {
+function ExtractionAttempts(
+  props: CommerceProps & {
+    state: State;
+    onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
+  },
+) {
   const { locale, state: extraction } = props;
   const text = copy(locale);
 
@@ -540,17 +569,19 @@ function ExtractionAttempts(props: CommerceProps & { state: State }) {
         </Text>
       ) : null}
       {extraction.attempt.fields.map((field) => (
-        <Text key={field.fieldKey}>
-          {fieldName(field.fieldKey, locale)}:{" "}
-          {valueText(
-            field.proposedValue,
-            field.fieldKey,
-            props.book,
-            extraction.currencyScale,
-            locale,
-          )}{" "}
-          , {field.sourceLocators.map(locatorText).join(", ")}
-        </Text>
+        <Box key={field.fieldKey} display="grid" gap="sm">
+          <Text>
+            {fieldName(field.fieldKey, locale)}:{" "}
+            {valueText(
+              field.proposedValue,
+              field.fieldKey,
+              props.book,
+              extraction.currencyScale,
+              locale,
+            )}{" "}
+          </Text>
+          <SourceLocators locators={field.sourceLocators} locale={locale} onQuote={props.onQuote} />
+        </Box>
       ))}
       {extraction.attempt.diagnostics.length > 0 ? (
         <Box display="grid" gap="sm" minWidth="zero">
@@ -563,9 +594,10 @@ function ExtractionAttempts(props: CommerceProps & { state: State }) {
         </Box>
       ) : null}
       {extraction.attempt.candidateLines.map((line) => (
-        <Text key={line.candidateLineId}>
-          {line.candidateLineId}, {line.sourceLocators.map(locatorText).join(", ") || "—"}
-        </Text>
+        <Box key={line.candidateLineId} display="grid" gap="sm">
+          <Text>{line.candidateLineId}</Text>
+          <SourceLocators locators={line.sourceLocators} locale={locale} onQuote={props.onQuote} />
+        </Box>
       ))}
     </Box>
   );
@@ -577,6 +609,7 @@ export function SupplierExtraction(
     originalBytes: number;
     mediaType: string;
     onRefresh: () => void;
+    onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
   },
 ) {
   const { book, locale, occurrenceId } = props;
@@ -681,7 +714,14 @@ export function SupplierExtraction(
         <Text>{text.none}</Text>
       )}
       <AccountingStatus locale={locale} pending={state.isPending} error={state.error} />
-      {state.data ? <ExtractionAttempts book={book} locale={locale} state={state.data} /> : null}
+      {state.data ? (
+        <ExtractionAttempts
+          book={book}
+          locale={locale}
+          state={state.data}
+          onQuote={props.onQuote}
+        />
+      ) : null}
       {current?.state === "ready" && book.role === "operator" ? (
         <CommandForm
           book={book}
@@ -726,7 +766,9 @@ export function SupplierExtraction(
           />
         </Box>
       ) : null}
-      {review ? <ExtractionMerge book={book} locale={locale} preparation={review} /> : null}
+      {review ? (
+        <ExtractionMerge book={book} locale={locale} preparation={review} onQuote={props.onQuote} />
+      ) : null}
     </Box>
   );
 }

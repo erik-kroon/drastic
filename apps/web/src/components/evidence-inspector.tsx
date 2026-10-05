@@ -7,6 +7,7 @@ import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Label } from "@open-erp/ui/components/label";
 import { Text } from "@open-erp/ui/components/typography";
 import { OriginalDocument } from "@/components/original-document";
+import type { PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { enteredExpenseSource } from "@/lib/source-documents";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -19,6 +20,9 @@ export function EvidenceInspector(props: {
   locale: Locale;
   expanded?: boolean;
   compact?: boolean;
+  view?: PdfView;
+  onViewChange?: (view: PdfView) => void;
+  quote?: { page: number; quote: string };
 }) {
   const { book, reference, locale } = props;
   const copy = accountingCopy(locale);
@@ -27,7 +31,7 @@ export function EvidenceInspector(props: {
   const contentId = `${panelId}-content`;
 
   const evidence = useQuery({
-    queryKey: [...bookKey(book), "evidence", reference.evidenceId],
+    queryKey: [...bookKey(book), "evidence", reference.evidenceId, reference.sha256],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${bookPath(book)}/evidence/${encodeURIComponent(reference.evidenceId)}`,
@@ -121,6 +125,9 @@ export function EvidenceInspector(props: {
                 locale={locale}
                 id={original.occurrenceId}
                 sha256={original.sha256}
+                view={props.view}
+                onViewChange={props.onViewChange}
+                quote={props.quote}
               />
             ) : null}
             {props.compact ? (

@@ -14,6 +14,8 @@ import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { AccountingStatus } from "@/components/accounting-status";
 import { OriginalDocument } from "@/components/original-document";
+import type { PdfView } from "@open-erp/ui/components/pdf-viewer";
+import { SourceLocators } from "./supplier-extraction";
 import { sourceDocumentOptions } from "@/lib/source-documents";
 import { readAccounting } from "@/lib/accounting-api";
 import {
@@ -129,6 +131,7 @@ function SupplierEditorForm(
 
   const [draftKey] = useState(() => `supplier_${crypto.randomUUID().replaceAll("-", "")}`);
   const { source, original } = useSupplierSource(props.book, props.documentId);
+  const originalSelection = useOriginalSelection(props.book, props.documentId, original, baseline);
   const inbox = useSupplierInboxReview(props.book, props.inboxId);
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const reviewAttemptId = selectedAttemptId ?? inboxReviewAttempt(props.inboxId, inbox.data);
@@ -236,10 +239,12 @@ function SupplierEditorForm(
             baseline={baseline}
             source={source}
             original={original}
+            {...originalSelection}
           />
           <Box display="grid" gap="lg">
             <NewInvoiceSuggestions
               {...props}
+              onQuote={originalSelection.onQuote}
               onUse={(name, value, attemptId) => {
                 setHeaders((current) => ({ ...current, [name]: value }));
                 setSelectedAttemptId(attemptId);
@@ -320,6 +325,32 @@ function useSupplierSource(book: CommerceProps["book"], documentId: string) {
   return { source, original };
 }
 
+function useOriginalSelection(
+  book: CommerceProps["book"],
+  documentId: string,
+  original: ReturnType<typeof useSupplierSource>["original"],
+  baseline: Draft | undefined,
+) {
+  const identity = `${book.entityId}/${book.id}/${original?.id ?? baseline?.sourceEvidence.evidenceId ?? documentId}/${original?.sha256 ?? baseline?.sourceEvidence.sha256 ?? ""}`;
+
+  const [selection, setSelection] = useState<{
+    identity: string;
+    view: PdfView;
+    quote?: typeof Extraction.DocumentSourceLocator.Type;
+  }>({ identity, view: { page: 1, zoom: 100 } });
+
+  const view = selection.identity === identity ? selection.view : { page: 1, zoom: 100 };
+  const quote = selection.identity === identity ? selection.quote : undefined;
+
+  return {
+    view,
+    quote,
+    onViewChange: (next: PdfView) => setSelection({ identity, view: next, quote }),
+    onQuote: (next: typeof Extraction.DocumentSourceLocator.Type) =>
+      setSelection({ identity, view: { ...view, page: next.page }, quote: next }),
+  };
+}
+
 function SupplierOriginalDocument(
   props: CommerceProps & {
     baseline?: Draft;
@@ -329,6 +360,9 @@ function SupplierOriginalDocument(
     documentId: string;
     onChangeDocument: () => void;
     onSelectDocument: (id: string) => void;
+    view: PdfView;
+    quote?: typeof Extraction.DocumentSourceLocator.Type;
+    onViewChange: (view: PdfView) => void;
   },
 ) {
   const sv = props.locale === "sv";
@@ -392,12 +426,14 @@ type InvoiceHeaders = {
 function NewInvoiceSuggestions(
   props: CommerceProps & {
     inboxId?: string;
+    documentId: string;
     baseline?: Draft;
     scale: number;
     onUse: (name: keyof InvoiceHeaders, value: string, attemptId: string) => void;
+    onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
   },
 ) {
-  return props.inboxId && !props.baseline ? (
+  return props.inboxId && props.inboxId === props.documentId && !props.baseline ? (
     <ReadingSuggestions {...props} inboxId={props.inboxId} />
   ) : null;
 }
@@ -407,6 +443,7 @@ function ReadingSuggestions(
     inboxId: string;
     scale: number;
     onUse: (name: keyof InvoiceHeaders, value: string, attemptId: string) => void;
+    onQuote: (quote: typeof Extraction.DocumentSourceLocator.Type) => void;
   },
 ) {
   const sv = props.locale === "sv";
@@ -472,15 +509,11 @@ function ReadingSuggestions(
                 {name.label}: {value}
                 {field.fieldKey === "sourceTotalMinor" ? ` ${props.book.currency}` : ""}
               </Text>
-              <Text>
-                {field.sourceLocators
-                  .map((locator) =>
-                    typeof locator === "string"
-                      ? locator
-                      : `${sv ? "Sida" : "Page"} ${locator.page}: “${locator.quote}”`,
-                  )
-                  .join(", ")}
-              </Text>
+              <SourceLocators
+                locators={field.sourceLocators}
+                locale={props.locale}
+                onQuote={props.onQuote}
+              />
               <Button
                 type="button"
                 variant="outline"

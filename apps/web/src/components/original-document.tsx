@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import { Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { PdfThumbnail } from "@open-erp/ui/components/pdf-thumbnail";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
+import { PdfViewer, type PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { downloadIntake } from "@/components/source-intake/download";
@@ -13,7 +16,15 @@ import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { workspacePath } from "@/lib/book-context";
 
 export function OriginalDocument(
-  props: CommerceProps & { id: string; sha256?: string; compact?: boolean; archive?: boolean },
+  props: CommerceProps & {
+    id: string;
+    sha256?: string;
+    compact?: boolean;
+    archive?: boolean;
+    view?: PdfView;
+    onViewChange?: (view: PdfView) => void;
+    quote?: { page: number; quote: string };
+  },
 ) {
   const work = useWorkReturn();
   const query = useQuery(sourceDocumentOptions(props.book, props.id));
@@ -57,6 +68,15 @@ export function OriginalDocument(
               filename={source.occurrence.filename}
               locale={props.locale}
             />
+          ) : source.occurrence.mediaType === "application/pdf" ? (
+            <OriginalPdf
+              key={`${props.book.entityId}/${props.book.id}/${props.id}/${source.occurrence.sha256}`}
+              content={source.contentBase64}
+              filename={source.occurrence.filename}
+              locale={props.locale}
+              view={props.view}
+              onViewChange={props.onViewChange}
+            />
           ) : (
             <DocumentPreview
               compact={props.compact}
@@ -86,6 +106,11 @@ export function OriginalDocument(
             </Box>
           ) : null}
           {!props.archive ? <PageCaption>{source.occurrence.filename}</PageCaption> : null}
+          {props.quote && props.quote.page === props.view?.page ? (
+            <PageCaption>
+              {sv ? "Sida" : "Page"} {props.quote.page}: “{props.quote.quote}”
+            </PageCaption>
+          ) : null}
           {!props.compact ? (
             <PageAction
               quiet
@@ -97,5 +122,26 @@ export function OriginalDocument(
         </>
       ) : null}
     </Box>
+  );
+}
+
+function OriginalPdf(props: {
+  content: string;
+  filename: string;
+  locale: "sv" | "en";
+  view?: PdfView;
+  onViewChange?: (view: PdfView) => void;
+}) {
+  const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
+
+  return (
+    <PdfViewer
+      workerUrl={workerUrl}
+      content={props.content}
+      filename={props.filename}
+      locale={props.locale}
+      view={props.view ?? view}
+      onViewChange={props.onViewChange ?? setView}
+    />
   );
 }
