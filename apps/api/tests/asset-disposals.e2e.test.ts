@@ -690,6 +690,23 @@ test("legal invoice proceeds reclassify exact original revenue without another c
   };
 
   const review = await post(state.book, "/asset-disposals/prepare", input, Disposals.Review);
+  const directoryPath = `/asset-disposals/for-schedule/${state.input.scheduleId}`;
+
+  const directory = await decoded(
+    await request(state.browser, directoryPath),
+    Disposals.ReviewPage,
+  );
+
+  expect(directory.scheduleId).toBe(state.input.scheduleId);
+  expect(directory.items.map((item) => item.id)).toContain(review.id);
+  expect(directory.next).toBeNull();
+  await failure(await request(otherBook, directoryPath), 404, "NotFound");
+  await failure(
+    await request(state.browser, `${directoryPath}?after=missing_review`),
+    404,
+    "NotFound",
+  );
+
   expect(review.domainPlan.profitMinor).toBe("-50000");
   expect(review.domainPlan.newCashReceivableOrVatFacts).toBe(false);
   expect(review.domainPlan.saleTaxFacts).toEqual([]);

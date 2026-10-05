@@ -179,6 +179,13 @@ export const InvoiceSource = Schema.Struct({
   ),
 });
 
+export const ReviewPage = Schema.Struct({
+  scope: Accounting.Scope,
+  scheduleId: Accounting.Identifier,
+  items: Schema.Array(Review),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/asset-disposals";
 
 const scoped = { params: Accounting.Scope, error: accountingErrors };
@@ -188,6 +195,11 @@ const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const AssetDisposalsApi = HttpApiGroup.make("assetDisposals")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("listAssetProceedsDisposals", `${path}/for-schedule/:id`, {
+      ...identified,
+      query: Schema.Struct({ after: Schema.optional(Accounting.Identifier) }),
+      success: ReviewPage,
+    }),
     HttpApiEndpoint.get("getAssetDisposalInvoiceSource", `${path}/invoice-sources/:id`, {
       ...identified,
       success: InvoiceSource,

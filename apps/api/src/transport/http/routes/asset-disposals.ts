@@ -7,6 +7,11 @@ import { scopeFromPath } from "../scope";
 
 export const AssetDisposalHandlers = HttpApiBuilder.group(Api, "assetDisposals", (handlers) =>
   handlers
+    .handle("listAssetProceedsDisposals", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.list(token, { scope: scopeFromPath(params), id: params.id, after: query.after }),
+      ),
+    )
     .handle("getAssetDisposalInvoiceSource", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         Owner.invoiceSource(token, { scope: scopeFromPath(params), id: params.id }),

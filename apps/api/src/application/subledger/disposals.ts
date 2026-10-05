@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Db from "../../db/subledger/disposals";
 import * as Ledger from "../../db/posting";
 import * as Invoices from "../../db/commerce/ar-legal";
+import * as Schedules from "../../db/subledger/schedules";
 import * as VatDb from "../../db/vat/returns";
 import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
@@ -38,6 +39,37 @@ type PrepareCommand = {
   readonly idempotencyKey: string;
   readonly input: typeof Contracts.Prepare.Type;
 };
+
+export const list = Effect.fn("subledger.listProceedsDisposals")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly id: string; readonly after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    const { scope, id, after } = command;
+
+    if (!(yield* Schedules.readCurrentRevision(tx, scope.bookId, id))[0])
+      return yield* failure("NotFound");
+
+    if (after) {
+      const anchor = (yield* Db.readReview(tx, scope.bookId, after))[0];
+
+      if (!anchor) return yield* failure("NotFound");
+
+      const review = yield* decode(Contracts.Review, anchor.body);
+
+      if (review.assetBasis.schedule.scheduleId !== id) return yield* failure("NotFound");
+    }
+
+    const rows = yield* Db.reviewsForSchedule(tx, scope.bookId, id, after);
+
+    return yield* decode(Contracts.ReviewPage, {
+      scope,
+      scheduleId: id,
+      items: rows.slice(0, 20).map((row) => row.body),
+      next: rows.length > 20 ? (rows[19]?.id ?? null) : null,
+    });
+  });
+});
 
 export const invoiceSource = Effect.fn("subledger.getDisposalInvoiceSource")(function* (
   token: string,

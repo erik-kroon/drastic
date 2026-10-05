@@ -5,6 +5,18 @@ import type { Transaction } from "../transaction";
 
 type BodyRow = { readonly id: string; readonly body: Schema.JsonObject };
 
+export function reviewsForSchedule(
+  tx: Transaction,
+  book: string,
+  schedule: string,
+  after?: string,
+) {
+  return tx.execute<BodyRow>(
+    sql`select id,body from openerp.asset_proceeds_reviews where book_id=${book} and schedule_id=${schedule} and (${after ?? null}::text is null or id collate "C">${after ?? null}::text collate "C") order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
 export function readReview(tx: Transaction, book: string, id: string) {
   return tx.execute<BodyRow>(
     sql`select id,body from openerp.asset_proceeds_reviews where book_id=${book} and id=${id}`,
