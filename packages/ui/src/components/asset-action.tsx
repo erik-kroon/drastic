@@ -211,16 +211,21 @@ const assetActionStyles = stylex.create({
 export function RetainedActionLayout(props: {
   title: string;
   trail: readonly { label: string; href?: string }[];
+  breadcrumbLabel?: string;
   draft?: boolean;
   synthetic?: boolean;
   posted?: boolean;
   waiting?: boolean;
+  waitingLabel?: string;
   blocked?: string;
   children: ReactNode;
 }) {
   return (
     <section {...stylex.props(assetActionStyles.page)}>
-      <nav aria-label="Bokföring" {...stylex.props(assetActionStyles.breadcrumbs)}>
+      <nav
+        aria-label={props.breadcrumbLabel ?? "Bokföring"}
+        {...stylex.props(assetActionStyles.breadcrumbs)}
+      >
         {props.trail.map((crumb, index) => (
           <Fragment key={`${index}-${crumb.label}`}>
             {index ? <span>/</span> : null}
@@ -243,7 +248,9 @@ export function RetainedActionLayout(props: {
           <span {...stylex.props(assetActionStyles.blocked)}>{props.blocked}</span>
         ) : null}
         {props.waiting ? (
-          <span {...stylex.props(assetActionStyles.waiting)}>Väntar på godkännande</span>
+          <span {...stylex.props(assetActionStyles.waiting)}>
+            {props.waitingLabel ?? "Väntar på godkännande"}
+          </span>
         ) : null}
         {props.posted ? <span {...stylex.props(assetActionStyles.success)}>Bokförd</span> : null}
         {props.synthetic ? (
