@@ -664,6 +664,21 @@ test("legal invoice proceeds reclassify exact original revenue without another c
 
   if (!state.legal) throw new Error("The invoice case requires retained legal issue authority.");
 
+  const sourcePath = `/asset-disposals/invoice-sources/${state.legal.original.id}`;
+
+  const freeSource = await decoded(
+    await request(state.browser, sourcePath),
+    Disposals.InvoiceSource,
+  );
+
+  expect(freeSource.issue.id).toBe(state.legal.original.id);
+  expect(freeSource.issue.lines[0]?.netMinor).toBe("450000");
+  expect(freeSource.blocked).toBe(false);
+  expect(freeSource.claims).toEqual([]);
+
+  const otherBook = await fixture();
+  await failure(await request(otherBook, sourcePath), 404, "NotFound");
+
   const input = {
     ...state.input,
     proceeds: {
@@ -708,6 +723,23 @@ test("legal invoice proceeds reclassify exact original revenue without another c
 
   expect(effect.vatFact).toBeNull();
   expect(effect.bankAllocation).toBeNull();
+
+  const claimedSource = await decoded(
+    await request(state.browser, sourcePath),
+    Disposals.InvoiceSource,
+  );
+
+  expect(claimedSource.claims).toEqual([
+    {
+      lineId: "asset_sale_line",
+      effectId: effect.id,
+      reviewId: review.id,
+      scheduleId: state.input.scheduleId,
+      assetName: review.assetBasis.schedule.terms.name,
+      series: "A",
+      postingReceipt: effect.postingReceipt,
+    },
+  ]);
   const admin = await database();
 
   try {
@@ -728,7 +760,13 @@ test("legal invoice proceeds reclassify exact original revenue without another c
     );
 
     expect(revenue.rows[0]?.net).toBe("0");
-    await retain("asset-disposal-invoice", { review, effect, rows: rows.rows });
+    await retain("asset-disposal-invoice", {
+      freeSource,
+      claimedSource,
+      review,
+      effect,
+      rows: rows.rows,
+    });
   } finally {
     await admin.end();
   }

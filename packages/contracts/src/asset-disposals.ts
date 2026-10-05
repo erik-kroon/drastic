@@ -162,6 +162,23 @@ export const View = Schema.Struct({
   effect: Schema.NullOr(DisposalEffect),
 });
 
+export const InvoiceSource = Schema.Struct({
+  scope: Accounting.Scope,
+  issue: Ar.ArLegalIssueReceipt,
+  blocked: Schema.Boolean,
+  claims: Schema.Array(
+    Schema.Struct({
+      lineId: Accounting.Identifier,
+      effectId: Accounting.Identifier,
+      reviewId: Accounting.Identifier,
+      scheduleId: Accounting.Identifier,
+      assetName: Accounting.Description,
+      series: Schema.String,
+      postingReceipt: Accounting.ExecutionReceipt,
+    }),
+  ),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/asset-disposals";
 
 const scoped = { params: Accounting.Scope, error: accountingErrors };
@@ -171,6 +188,10 @@ const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const AssetDisposalsApi = HttpApiGroup.make("assetDisposals")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("getAssetDisposalInvoiceSource", `${path}/invoice-sources/:id`, {
+      ...identified,
+      success: InvoiceSource,
+    }),
     HttpApiEndpoint.post("prepareAssetProceedsDisposal", `${path}/prepare`, {
       ...scoped,
       headers: Accounting.IdempotencyHeaders,

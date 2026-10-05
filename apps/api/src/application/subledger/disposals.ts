@@ -1,10 +1,12 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Contracts from "@open-erp/contracts/asset-disposals";
 import * as Subledgers from "@open-erp/contracts/subledgers";
+import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import * as Effect from "effect/Effect";
 import * as Db from "../../db/subledger/disposals";
 import * as Ledger from "../../db/posting";
+import * as Invoices from "../../db/commerce/ar-legal";
 import * as VatDb from "../../db/vat/returns";
 import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
@@ -36,6 +38,59 @@ type PrepareCommand = {
   readonly idempotencyKey: string;
   readonly input: typeof Contracts.Prepare.Type;
 };
+
+export const invoiceSource = Effect.fn("subledger.getDisposalInvoiceSource")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly id: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    const { scope, id } = command;
+    const row = (yield* Invoices.readArLegalIssueById(tx, scope.bookId, id))[0];
+
+    if (!row) return yield* failure("NotFound");
+
+    const issue = yield* decode(Ar.ArLegalIssueReceipt, row.body);
+
+    const claims = yield* Effect.forEach(issue.lines, (line) =>
+      Effect.gen(function* () {
+        const used = yield* Db.usedProceeds(tx, scope.bookId, `invoice:${issue.id}:${line.id}`);
+
+        if (used.length > 1) return yield* failure("InternalError");
+        const effectRow = used[0];
+
+        if (!effectRow) return null;
+        const effect = yield* decode(Contracts.DisposalEffect, effectRow.body);
+        const reviewRow = (yield* Db.readReview(tx, scope.bookId, effect.reviewId))[0];
+
+        if (!reviewRow) return yield* failure("InternalError");
+        const review = yield* decode(Contracts.Review, reviewRow.body);
+
+        return {
+          lineId: line.id,
+          effectId: effect.id,
+          reviewId: effect.reviewId,
+          scheduleId: effect.scheduleId,
+          assetName: review.assetBasis.schedule.terms.name,
+          series: review.input.series,
+          postingReceipt: effect.postingReceipt,
+        };
+      }),
+    );
+
+    return yield* decode(Contracts.InvoiceSource, {
+      scope,
+      issue,
+      blocked:
+        (yield* Db.invoiceBlocked(
+          tx,
+          scope.bookId,
+          issue.registerInvoiceId,
+          issue.postingReceipt.voucherId,
+        ))[0]?.blocked === true,
+      claims: claims.filter((claim) => claim !== null),
+    });
+  });
+});
 
 type ReviewCommand = {
   readonly scope: Scope;
