@@ -219,6 +219,54 @@ async function scenario(
   return decoded(response, Forecast);
 }
 
+test("Cash history discovers immutable scoped records across bounded continuation pages", async () => {
+  const context = await cashBasisWorld();
+  const basis = await post(context.book, "/cash-bases", context.input, Cash.CashBasis);
+  const retained = [];
+
+  for (let index = 0; index < 51; index++) retained.push(await scenario(context, basis, 30, "0"));
+
+  const before = await request(context.book, `/cash-forecasts/${retained[0]!.id}/export`);
+  const original = await before.text();
+
+  const first = await decoded(
+    await request(context.book, "/cash-forecasts"),
+    Cash.CashForecastPage,
+  );
+
+  expect(first.items).toHaveLength(50);
+  expect(first.total).toBe(51);
+  expect(first.next).not.toBeNull();
+
+  const second = await decoded(
+    await request(context.book, `/cash-forecasts?after=${first.next}`),
+    Cash.CashForecastPage,
+  );
+
+  expect(second.items).toHaveLength(1);
+  expect(second.next).toBeNull();
+  expect(second.total).toBe(51);
+  expect([...first.items, ...second.items].map((item) => item.id).sort()).toEqual(
+    retained.map((item) => item.id).sort(),
+  );
+  const bases = await decoded(await request(context.book, "/cash-bases"), Cash.CashBasisPage);
+  expect(bases.items.map((item) => item.id)).toEqual([basis.id]);
+  expect(bases.total).toBe(1);
+  expect(bases.items[0]?.openingMinor).toBe("150000");
+  const other = await fixture();
+  const empty = await decoded(await request(other, "/cash-forecasts"), Cash.CashForecastPage);
+  expect(empty).toEqual({ items: [], next: null, total: 0 });
+  await failure(await request(other, `/cash-forecasts?after=${first.next}`), 404, "NotFound");
+  await failure(await request(context.book, "/cash-bases?after=missing_basis"), 404, "NotFound");
+  expect(
+    await (await request(context.book, `/cash-forecasts/${retained[0]!.id}/export`)).text(),
+  ).toBe(original);
+  await writeFile(
+    join(environment().artifacts, "cash-history-pagination.json"),
+    JSON.stringify({ first, second, bases, empty, immutableExportUnchanged: true }, null, 2),
+  );
+}, 180000);
+
 test("P11 saves literal exact balances and immutable known-items exports from native retained obligations", async () => {
   const context = await cashBasisWorld();
 

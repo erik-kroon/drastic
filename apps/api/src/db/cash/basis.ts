@@ -31,3 +31,26 @@ export function readBasis(transaction: Transaction, bookId: string, id: string) 
     "objects",
   );
 }
+
+export function listBases(transaction: Transaction, bookId: string, after: string) {
+  return transaction.execute<{ readonly body: Schema.JsonObject }>(
+    sql`
+      select jsonb_build_object(
+        'id', id, 'asOf', body->>'asOf', 'recordedCutoff', body->>'recordedCutoff',
+        'openingStatus', body->'opening'->>'status', 'openingMinor', body->'opening'->'totalMinor',
+        'digest', body->>'digest', 'label', body->>'label', 'companyCoverage', body->>'companyCoverage'
+      ) as body
+      from openerp.cash_bases
+      where book_id = ${bookId} and id collate "C" > ${after} collate "C"
+      order by id collate "C" limit 51
+    `,
+    "objects",
+  );
+}
+
+export function countBases(transaction: Transaction, bookId: string) {
+  return transaction.execute<{ readonly total: number }>(
+    sql`select count(*)::integer as total from openerp.cash_bases where book_id = ${bookId}`,
+    "objects",
+  );
+}

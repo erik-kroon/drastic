@@ -215,11 +215,66 @@ export const CashForecastView = Schema.Struct({
   artifact: CashBasisView.fields.artifact,
 });
 
+export const CashHistoryQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
+export const CashBasisSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  asOf: Accounting.CalendarDate,
+  recordedCutoff: Schema.String,
+  openingStatus: CashForecastSnapshot.fields.quality.fields.opening,
+  openingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
+  digest: Accounting.Digest,
+  label: CashBasis.fields.label,
+  companyCoverage: CashBasis.fields.companyCoverage,
+});
+
+export const CashForecastSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  basisId: Accounting.Identifier,
+  asOf: Accounting.CalendarDate,
+  createdAt: Schema.String,
+  horizonDays: Forecast.ForecastHorizon,
+  endsOn: Accounting.CalendarDate,
+  resultStatus: Schema.Literals(["available", "unavailable"]),
+  closingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
+  digest: Accounting.Digest,
+  label: CashForecastSnapshot.fields.label,
+  companyCoverage: CashForecastSnapshot.fields.companyCoverage,
+});
+
+export const CashBasisPage = Schema.Struct({
+  items: Schema.Array(CashBasisSummary).check(Schema.isMaxLength(50)),
+  next: Schema.NullOr(Accounting.Identifier),
+  total: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+});
+
+export const CashForecastPage = Schema.Struct({
+  items: Schema.Array(CashForecastSummary).check(Schema.isMaxLength(50)),
+  next: Schema.NullOr(Accounting.Identifier),
+  total: CashBasisPage.fields.total,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/cash-bases";
 
 export const CashForecastApi = HttpApiGroup.make("cashForecast")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get(
+      "listCashForecasts",
+      "/v1/entities/:entityId/books/:bookId/cash-forecasts",
+      {
+        params: Accounting.Scope,
+        query: CashHistoryQuery,
+        success: CashForecastPage,
+        error: accountingErrors,
+      },
+    ),
+    HttpApiEndpoint.get("listCashBases", path, {
+      params: Accounting.Scope,
+      query: CashHistoryQuery,
+      success: CashBasisPage,
+      error: accountingErrors,
+    }),
     HttpApiEndpoint.post(
       "captureCashForecast",
       "/v1/entities/:entityId/books/:bookId/cash-forecasts",
@@ -269,6 +324,20 @@ export const CashForecastApi = HttpApiGroup.make("cashForecast")
   );
 
 export const CashForecastCapabilities = {
+  cash_list_forecasts: {
+    description:
+      "Discover scoped immutable known-items forecast summaries with bounded continuation. Freshness is checked by the selected forecast read, never inferred from history.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...CashHistoryQuery.fields }),
+    output: CashForecastPage,
+    readOnly: true,
+  },
+  cash_list_bases: {
+    description:
+      "Discover scoped immutable known-items cash basis summaries with bounded continuation. Retains unavailable opening and incomplete company coverage.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...CashHistoryQuery.fields }),
+    output: CashBasisPage,
+    readOnly: true,
+  },
   cash_capture_forecast: {
     description:
       "Save an immutable exact known-items forecast from a current retained cash basis and reviewed date assumptions. Never posts or executes payments. Coverage remains incomplete.",

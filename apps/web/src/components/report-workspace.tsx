@@ -68,6 +68,12 @@ export function ReportLibrary() {
       title: labels.financialStatements,
       items: [
         {
+          view: "cash_forecast",
+          title: sv ? "Kassaflöde" : "Cash forecast",
+          detail: sv ? "Prognos, inte utlovat belopp" : "Forecast, not a promised amount",
+          icon: FileSpreadsheet,
+        },
+        {
           view: "profit_and_loss",
           title: labels.profitAndLoss,
           detail: labels.syntheticMappedIncomeStatement,

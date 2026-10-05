@@ -31,3 +31,27 @@ export function readForecast(transaction: Transaction, bookId: string, id: strin
     "objects",
   );
 }
+
+export function listForecasts(transaction: Transaction, bookId: string, after: string) {
+  return transaction.execute<{ readonly body: Schema.JsonObject }>(
+    sql`
+      select jsonb_build_object(
+        'id', id, 'basisId', basis_id, 'asOf', body->>'asOf', 'createdAt', body->>'createdAt',
+        'horizonDays', body->'horizonDays', 'endsOn', body->>'endsOn',
+        'resultStatus', body->'result'->>'status', 'closingMinor', body->'result'->'closingMinor',
+        'digest', body->>'digest', 'label', body->>'label', 'companyCoverage', body->>'companyCoverage'
+      ) as body
+      from openerp.cash_forecasts
+      where book_id = ${bookId} and id collate "C" > ${after} collate "C"
+      order by id collate "C" limit 51
+    `,
+    "objects",
+  );
+}
+
+export function countForecasts(transaction: Transaction, bookId: string) {
+  return transaction.execute<{ readonly total: number }>(
+    sql`select count(*)::integer as total from openerp.cash_forecasts where book_id = ${bookId}`,
+    "objects",
+  );
+}

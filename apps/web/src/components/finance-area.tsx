@@ -84,6 +84,12 @@ const ReportLibrary = lazy(() =>
   import("@/components/report-workspace").then((module) => ({ default: module.ReportLibrary })),
 );
 
+const CashForecastWorkspace = lazy(() =>
+  import("@/components/cash-forecast/workspace").then((module) => ({
+    default: module.CashForecastWorkspace,
+  })),
+);
+
 const TrialBalanceWorkspace = lazy(() =>
   import("@/components/report-workspace").then((module) => ({
     default: module.TrialBalanceWorkspace,
@@ -459,6 +465,9 @@ function OwnedFinanceArea(props: {
             />
           ) : null}
           {selected === "library" ? <ReportLibrary /> : null}
+          {selected === "cash_forecast" ? (
+            <CashForecastWorkspace recordId={record} onOpen={onOpen} />
+          ) : null}
           {isTrialBalanceMode(selected) ? (
             <TrialBalanceWorkspace
               mode={selected}
@@ -603,7 +612,7 @@ function primaryFinanceTabs(area: string, tabs: readonly { key: string }[]) {
   if (area === "purchases") return ["register", "parties", "expenses", "supplier-payment-files"];
 
   if (area === "reports")
-    return ["library", "profit_and_loss", "balance_sheet", "ledger", "register", "cash_flow"];
+    return ["library", "profit_and_loss", "balance_sheet", "ledger", "register", "cash_forecast"];
 
   return tabs.map((tab) => tab.key);
 }
@@ -645,7 +654,8 @@ function areaTabs(
       { key: "balance_sheet", label: sv ? "Balans" : "Balance sheet" },
       { key: "ledger", label: copy.ledger },
       { key: "register", label: sv ? "Fakturaregister" : "Invoice register" },
-      { key: "cash_flow", label: sv ? "Kassaflöde" : "Cash flow" },
+      { key: "cash_flow", label: sv ? "Kassaflödesanalys" : "Cash flow statement" },
+      { key: "cash_forecast", label: sv ? "Kassaflöde" : "Cash forecast" },
       { key: "trial", label: sv ? "Saldobalans" : "Trial balance" },
       { key: "subledgers", label: sv ? "Tillgångskontroller" : "Asset controls" },
       { key: "exchange-rates", label: sv ? "Valutakurser" : "Exchange rates" },

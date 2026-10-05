@@ -1,6 +1,7 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cash from "@open-erp/contracts/cash-forecast";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import * as BankDb from "../../db/banking/shared";
 import * as BasisDb from "../../db/cash/basis";
 import * as FxDb from "../../db/commerce/fx";
@@ -498,6 +499,45 @@ export const getCashBasis = Effect.fn("cash.basis.get")(function* (
       if (!book) return yield* failure("Forbidden");
 
       return yield* readCashBasisInTransaction(transaction, command.scope, book, command.id);
+    }),
+  );
+});
+
+export const listCashBases = Effect.fn("cash.basis.list")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly after?: string },
+) {
+  return yield* Bank.withBook(token, command.scope, false, "share", (transaction) =>
+    Effect.gen(function* () {
+      yield* requireTableAccess(transaction, ["cash_bases"], false);
+      const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
+      if (!book) return yield* failure("Forbidden");
+
+      const after = command.after ?? "";
+
+      if (after !== "" && !Schema.is(Accounting.Identifier)(after))
+        return yield* failure("InvalidJournal");
+
+      if (
+        after !== "" &&
+        (yield* BasisDb.readBasis(transaction, command.scope.bookId, after)).length === 0
+      )
+        return yield* failure("NotFound");
+
+      const rows = yield* BasisDb.listBases(transaction, command.scope.bookId, after);
+
+      const items = yield* Effect.forEach(rows.slice(0, 50), (row) =>
+        Bank.decode(Cash.CashBasisSummary, row.body),
+      );
+
+      const total = (yield* BasisDb.countBases(transaction, command.scope.bookId))[0]!.total;
+
+      return yield* Bank.decode(Cash.CashBasisPage, {
+        items,
+        next: rows.length > 50 ? items.at(-1)!.id : null,
+        total,
+      });
     }),
   );
 });
