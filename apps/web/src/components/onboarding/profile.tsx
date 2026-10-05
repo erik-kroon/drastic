@@ -1,5 +1,6 @@
 import { personName, type Lifecycle } from "./lifecycle";
 import * as Predicate from "effect/Predicate";
+import * as Match from "effect/Match";
 import { SetupBlock, SetupText, setupLayoutStyles } from "@open-erp/ui/components/setup-parts";
 import { useRef, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +35,9 @@ import { PendingRead, type OpenOnboardingView } from "./shared";
 type Fact = (typeof Profiles.CompanyFactPage.Type.items)[number];
 
 const labels = {
+  organization_number: "Organisationsnummer",
+  jurisdiction: "Land",
+  vat_registration: "Momsregistrering",
   legal_form: "Företagsform",
   fiscal_year: "Räkenskapsår",
   accounting_method: "Redovisningsmetod",
@@ -46,6 +50,9 @@ const labels = {
 type VisibleFact = keyof typeof labels;
 
 const kinds: VisibleFact[] = [
+  "organization_number",
+  "jurisdiction",
+  "vat_registration",
   "legal_form",
   "fiscal_year",
   "accounting_method",
@@ -56,6 +63,9 @@ const kinds: VisibleFact[] = [
 ];
 
 const values = {
+  SE: "Sverige",
+  registered: "Registrerad",
+  not_registered: "Inte registrerad",
   aktiebolag: "Aktiebolag",
   enskild_firma: "Enskild firma",
   accrual: "Fakturametoden",
@@ -78,6 +88,9 @@ export function factText(fact: Fact | undefined) {
     return values[
       Schema.decodeUnknownSync(
         Schema.Literals([
+          "SE",
+          "registered",
+          "not_registered",
           "aktiebolag",
           "enskild_firma",
           "accrual",
@@ -438,6 +451,12 @@ function FactEditor({
   const uncertain = isUncertainWriteError(save.error);
 
   const options = {
+    organization_number: null,
+    jurisdiction: [{ value: "SE", label: "Sverige" }],
+    vat_registration: [
+      { value: "registered", label: "Registrerad" },
+      { value: "not_registered", label: "Inte registrerad" },
+    ],
     legal_form: [
       { value: "aktiebolag", label: "Aktiebolag" },
       { value: "enskild_firma", label: "Enskild firma" },
@@ -485,7 +504,14 @@ function FactEditor({
 
           save.mutate({
             factKind: kind,
-            value: { state: "known", value: kind === "fiscal_year" ? { startsOn, endsOn } : value },
+            value: {
+              state: "known",
+              value: Match.value(kind).pipe(
+                Match.when("fiscal_year", () => ({ startsOn, endsOn })),
+                Match.when("organization_number", () => value.replace(/-/g, "")),
+                Match.orElse(() => value),
+              ),
+            },
             effectiveFrom: from,
             effectiveTo: saved?.revision.effectiveTo ?? null,
             supersedesId: saved?.revision.id ?? null,
@@ -531,6 +557,7 @@ function FactEditor({
             compact
             label={labels[kind]}
             required
+            pattern={kind === "organization_number" ? "[0-9]{6}-?[0-9]{4}" : undefined}
             value={value}
             disabled={save.isPending || uncertain}
             onChange={(event) => setValue(event.currentTarget.value)}
