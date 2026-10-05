@@ -6,7 +6,7 @@ import { join } from "node:path";
 import * as Schema from "effect/Schema";
 import { captureWorkInventory } from "../scripts/operations/durable-work";
 import { tableFingerprints } from "../scripts/operations/snapshot";
-import { expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Catalog from "@open-erp/contracts/catalog";
@@ -724,73 +724,197 @@ test("unknown commit recovery and pruned queue history retain one economic occur
   }
 });
 
-test("scoped agreement pages and scanner continuation cover 1000 agreements without an implicit 240 cycle horizon", async () => {
-  const context = await legalFixture();
+describe("recurring agreement scanner scale", () => {
+  let startedAt = 0;
+  let context: Context;
+  let admin: Awaited<ReturnType<typeof database>>;
+  let preparation: ReturnType<typeof runner> | undefined;
   const agreements: Array<string> = [];
+  const pages: Array<string> = [];
+  let agreementCreateMs = 0;
+  let enrollmentMs = 0;
+  let fixtureElapsedMs = 0;
+  let runnerStartedAt: number | null = null;
+  let drafted = 0;
 
-  for (let index = 0; index < 1000; index++) {
-    const recurring = await agreement(context, `P08 bounded agreement ${index}`, "2026-09-01");
-    await enroll(context, recurring.path, "1");
-    agreements.push(recurring.record.id);
+  const samples: Array<{
+    stage: "fixture" | "provisioning" | "listing" | "runner";
+    elapsedMs: number;
+    stageElapsedMs: number;
+    agreements: number;
+    listed: number;
+    drafted: number;
+    databaseCounts: { agreements: number; schedules: number; jobs: number; drafted: number } | null;
+  }> = [];
+
+  async function recordProgress(
+    stage: "fixture" | "provisioning" | "listing" | "runner",
+    stageStartedAt: number,
+    databaseCounts: {
+      agreements: number;
+      schedules: number;
+      jobs: number;
+      drafted: number;
+    } | null = null,
+  ) {
+    const now = globalThis.performance.now();
+    samples.push({
+      stage,
+      elapsedMs: now - startedAt,
+      stageElapsedMs: now - stageStartedAt,
+      agreements: agreements.length,
+      listed: pages.length,
+      drafted,
+      databaseCounts,
+    });
+
+    if (samples.length > 64) samples.splice(2, 1);
+
+    await writeFile(
+      join(environment().artifacts, "recurring-scale-progress.json"),
+      JSON.stringify(
+        {
+          fixtureElapsedMs,
+          agreementCreateMs,
+          enrollmentMs,
+          setupElapsedMs: (runnerStartedAt ?? now) - startedAt,
+          runnerElapsedMs: runnerStartedAt === null ? null : now - runnerStartedAt,
+          samples,
+        },
+        null,
+        2,
+      ),
+    );
   }
 
-  const pages: Array<string> = [];
-  let cursor: string | null = null;
-
-  do {
-    const page: typeof AgreementPage.Type = await decoded(
-      await request(
-        context.author,
-        `/commerce/recurring-invoices${cursor === null ? "" : `?after=${encodeURIComponent(cursor)}`}`,
-      ),
-      AgreementPage,
+  async function readCounts() {
+    const result = await admin.query<{
+      agreements: number;
+      schedules: number;
+      jobs: number;
+      drafted: number;
+    }>(
+      `SELECT
+      (SELECT count(*)::int FROM openerp.recurring_invoice_agreements WHERE book_id=$1) AS agreements,
+      (SELECT count(*)::int FROM openerp.recurring_invoice_draft_schedules WHERE book_id=$1) AS schedules,
+      (SELECT count(*)::int FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1) AS jobs,
+      (SELECT count(*)::int FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1 AND state='drafted') AS drafted`,
+      [context.book.bookId],
     );
 
-    pages.push(...page.items.map((item) => item.id));
-    cursor = page.continuation;
-  } while (cursor !== null);
+    const counts = result.rows[0];
 
-  expect(agreements.every((id) => pages.includes(id))).toBe(true);
-  const admin = await database();
+    if (!counts) throw new Error("Missing recurring scale counts");
 
-  const scanClock = await admin.query<{ instant: string }>(
-    "SELECT (extract(epoch FROM clock_timestamp())*1000)::text AS instant",
-  );
+    return counts;
+  }
 
-  const scanStart = scanClock.rows[0]?.instant;
+  beforeAll(async () => {
+    startedAt = globalThis.performance.now();
+    await recordProgress("fixture", startedAt);
+    context = await legalFixture();
+    fixtureElapsedMs = globalThis.performance.now() - startedAt;
+    await recordProgress("fixture", startedAt);
+    admin = await database();
 
-  if (scanStart === undefined) throw new Error("Missing database scan clock");
-  const start = performance.now();
-  const process = runner(context);
+    const provisionStartedAt = globalThis.performance.now();
+    await recordProgress("provisioning", provisionStartedAt, await readCounts());
 
-  try {
-    const deadline = Date.now() + 90000;
-    let count = 0;
+    for (let index = 0; index < 1000; index++) {
+      const agreementStartedAt = globalThis.performance.now();
+      const recurring = await agreement(context, `P08 bounded agreement ${index}`, "2026-09-01");
+      agreementCreateMs += globalThis.performance.now() - agreementStartedAt;
+      const enrollmentStartedAt = globalThis.performance.now();
+      await enroll(context, recurring.path, "1");
+      enrollmentMs += globalThis.performance.now() - enrollmentStartedAt;
+      agreements.push(recurring.record.id);
 
-    while (count < 1000 && Date.now() < deadline) {
-      const observed = await admin.query<{ count: number }>(
-        "SELECT count(*)::int AS count FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1 AND state='drafted'",
-        [context.book.bookId],
-      );
-
-      count = observed.rows[0]?.count ?? 0;
-
-      if (count < 1000) await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+      if (agreements.length % 50 === 0) {
+        await recordProgress("provisioning", provisionStartedAt, await readCounts());
+      }
     }
 
-    expect(count).toBe(1000);
+    const listStartedAt = globalThis.performance.now();
+    let cursor: string | null = null;
+    await recordProgress("listing", listStartedAt, await readCounts());
 
-    const performance = await admin.query<{
-      p50: number;
-      p95: number;
-      queueP50: number;
-      queueP95: number;
-      scanDuration: number;
-      admissionSpan: number;
-      examined: number;
-      drafts: number;
-    }>(
-      `
+    do {
+      const page: typeof AgreementPage.Type = await decoded(
+        await request(
+          context.author,
+          `/commerce/recurring-invoices${cursor === null ? "" : `?after=${encodeURIComponent(cursor)}`}`,
+        ),
+        AgreementPage,
+      );
+
+      pages.push(...page.items.map((item) => item.id));
+      cursor = page.continuation;
+      await recordProgress("listing", listStartedAt, await readCounts());
+    } while (cursor !== null);
+
+    expect(agreements.every((id) => pages.includes(id))).toBe(true);
+  }, 180000);
+
+  afterAll(async () => {
+    try {
+      if (preparation !== undefined) await stop(preparation.child);
+    } finally {
+      if (admin !== undefined) await admin.end();
+    }
+  });
+
+  test("scoped agreement pages and scanner continuation cover 1000 agreements", async () => {
+    const scanClock = await admin.query<{ instant: string }>(
+      "SELECT (extract(epoch FROM clock_timestamp())*1000)::text AS instant",
+    );
+
+    const scanStart = scanClock.rows[0]?.instant;
+
+    if (scanStart === undefined) throw new Error("Missing database scan clock");
+    const start = globalThis.performance.now();
+    runnerStartedAt = start;
+    preparation = runner(context);
+    await recordProgress("runner", start, await readCounts());
+    let lastProgressAt = start;
+    let lastProgressCount = 0;
+
+    try {
+      const deadline = Date.now() + 90000;
+      let count = 0;
+
+      while (count < 1000 && Date.now() < deadline) {
+        const observed = await admin.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1 AND state='drafted'",
+          [context.book.bookId],
+        );
+
+        count = observed.rows[0]?.count ?? 0;
+        drafted = count;
+        const now = globalThis.performance.now();
+
+        if (count >= lastProgressCount + 100 || now - lastProgressAt >= 10000) {
+          await recordProgress("runner", start, await readCounts());
+          lastProgressAt = now;
+          lastProgressCount = count;
+        }
+
+        if (count < 1000) await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+      }
+
+      await recordProgress("runner", start, await readCounts());
+      expect(count).toBe(1000);
+
+      const performance = await admin.query<{
+        p50: number;
+        p95: number;
+        queueP50: number;
+        queueP95: number;
+        scanDuration: number;
+        admissionSpan: number;
+        examined: number;
+        drafts: number;
+      }>(
+        `
       SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM j.settled_at-q.processed_at)*1000) AS p50,
         percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM j.settled_at-q.processed_at)*1000) AS p95,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM q.processed_at-j.created_at)*1000) AS "queueP50",
@@ -802,38 +926,44 @@ test("scoped agreement pages and scanner continuation cover 1000 agreements with
       FROM openerp.recurring_invoice_draft_jobs j JOIN public.effect_mq_jobs q
         ON q.id='recurring-invoice-draft/'||j.book_id||'/'||j.id||'/'||j.generation::text
       WHERE j.book_id=$1 AND j.state='drafted'`,
-      [context.book.bookId, scanStart],
-    );
+        [context.book.bookId, scanStart],
+      );
 
-    expect(performance.rows[0]?.drafts).toBe(1000);
-    expect(performance.rows[0]?.examined).toBe(1000);
-    expect(performance.rows[0]?.p95).toBeLessThanOrEqual(3000);
-    expect(performance.rows[0]?.admissionSpan).toBeGreaterThan(0);
-    await writeFile(
-      join(environment().artifacts, "performance.json"),
-      JSON.stringify(
-        {
-          agreements: 1000,
-          elapsedMs: globalThis.performance.now() - start,
-          claimedToDraftP50Ms: performance.rows[0]?.p50,
-          claimedToDraftP95Ms: performance.rows[0]?.p95,
-          queueWaitP50Ms: performance.rows[0]?.queueP50,
-          queueWaitP95Ms: performance.rows[0]?.queueP95,
-          dueScanMs: performance.rows[0]?.scanDuration,
-          admissionSpanMs: performance.rows[0]?.admissionSpan,
-          examined: performance.rows[0]?.examined,
-          drafts: performance.rows[0]?.drafts,
-          pages: pages.length,
-        },
-        null,
-        2,
-      ),
-    );
-  } finally {
-    await stop(process.child);
-    await admin.end();
-  }
-}, 180000);
+      expect(performance.rows[0]?.drafts).toBe(1000);
+      expect(performance.rows[0]?.examined).toBe(1000);
+      expect(performance.rows[0]?.p95).toBeLessThanOrEqual(3000);
+      expect(performance.rows[0]?.admissionSpan).toBeGreaterThan(0);
+      await writeFile(
+        join(environment().artifacts, "performance.json"),
+        JSON.stringify(
+          {
+            agreements: 1000,
+            elapsedMs: globalThis.performance.now() - start,
+            claimedToDraftP50Ms: performance.rows[0]?.p50,
+            claimedToDraftP95Ms: performance.rows[0]?.p95,
+            queueWaitP50Ms: performance.rows[0]?.queueP50,
+            queueWaitP95Ms: performance.rows[0]?.queueP95,
+            dueScanMs: performance.rows[0]?.scanDuration,
+            admissionSpanMs: performance.rows[0]?.admissionSpan,
+            examined: performance.rows[0]?.examined,
+            drafts: performance.rows[0]?.drafts,
+            pages: pages.length,
+          },
+          null,
+          2,
+        ),
+      );
+    } finally {
+      if (preparation !== undefined) {
+        await stop(preparation.child);
+        await writeFile(
+          join(environment().artifacts, "recurring-scale-runner.log"),
+          preparation.log(),
+        );
+      }
+    }
+  }, 180000);
+});
 
 test("commercial drafts remain admissible after 200 retained records", async () => {
   const context = await legalFixture();
