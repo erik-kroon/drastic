@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Identifier, Digest } from "@open-erp/contracts/accounting";
+import { SavedRequestKey } from "@open-erp/contracts/posting-recovery";
 import {
   WorkReturnSearch,
   decodeWorkReturn,
@@ -29,6 +30,7 @@ import { accountingCopy } from "@/lib/accounting-copy";
 
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts", "assets"])),
+  savedRequest: Schema.optional(SavedRequestKey),
   record: Schema.optional(Schema.String),
   loan: Schema.optional(Identifier),
   loanReview: Schema.optional(Identifier),
@@ -278,7 +280,13 @@ function Books() {
                 </Text>
               ))}
               {setup.blockers.length === 0 ? (
-                <PostingDraft book={book} setup={setup} locale={locale} onPrepared={onPrepared} />
+                <PostingDraft
+                  book={book}
+                  setup={setup}
+                  locale={locale}
+                  onPrepared={onPrepared}
+                  resumeRequestKey={query.savedRequest}
+                />
               ) : null}
             </Box>
           </FormDialog>

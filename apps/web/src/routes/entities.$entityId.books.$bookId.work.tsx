@@ -10,8 +10,8 @@ import { PageAction, PageContent, RegisterChoices } from "@open-erp/ui/component
 import { frontendCopy } from "@/lib/frontend-copy";
 import { Text } from "@open-erp/ui/components/typography";
 import { WorkspaceHeader, WorkspaceToolbar } from "@open-erp/ui/components/workspace";
-import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
-import { PostingRecoveryPanel } from "@/components/posting-recovery/panel";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
+import { WorkRecovery } from "@/components/posting-recovery/work-recovery";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { SavedWorkViews } from "@/components/saved-work-views";
 import { AttentionList } from "@/components/attention-list";
@@ -177,16 +177,7 @@ function Work() {
         <Disclosure title={copy.workspace_recovery}>
           <Box paddingBlock="lg" display="grid" gap="lg">
             <Text tone="muted">{copy.workspace_recovery_help}</Text>
-            <PostingRecoveryPanel
-              book={book}
-              locale={locale}
-              onPrepared={(id) => {
-                void navigate({
-                  to: reviewPath(book, id),
-                  search: filters,
-                });
-              }}
-            />
+            <WorkRecovery filters={filters} />
           </Box>
         </Disclosure>
       </PageContent>

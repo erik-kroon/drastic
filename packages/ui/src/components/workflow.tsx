@@ -134,7 +134,11 @@ const styles = stylex.create({
     "::marker": { color: tokens.mutedForeground },
   },
   details: { paddingBlockStart: tokens.space4, color: tokens.foreground },
-  compactDisclosure: { paddingBlock: 0, borderBlockStartWidth: 0, fontSize: tokens.fontSizeControl },
+  compactDisclosure: {
+    paddingBlock: 0,
+    borderBlockStartWidth: 0,
+    fontSize: tokens.fontSizeControl,
+  },
   compactSummary: { minHeight: tokens.controlHeightSm },
   note: {
     display: "grid",
@@ -273,8 +277,13 @@ export function Disclosure({
   compact?: boolean;
 }) {
   return (
-    <details open={defaultOpen} {...stylex.props(styles.disclosure, compact && styles.compactDisclosure)}>
-      <summary {...stylex.props(styles.summary, compact && styles.compactSummary)}>{title}</summary>
+    <details
+      open={defaultOpen}
+      {...stylex.props(styles.disclosure, compact && styles.compactDisclosure)}
+    >
+      <summary role="button" {...stylex.props(styles.summary, compact && styles.compactSummary)}>
+        {title}
+      </summary>
       <div {...stylex.props(styles.details)}>{children}</div>
     </details>
   );

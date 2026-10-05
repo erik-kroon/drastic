@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Recovery from "@open-erp/contracts/posting-recovery";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -20,24 +22,88 @@ import {
   SavedPostingRequestsPanel,
   useSavedPostingRequests,
 } from "./saved-requests";
-import { sendSavedPostingCommand } from "./request";
+import { readSavedPostingRequest, sendSavedPostingCommand } from "./request";
 import { postingCopy } from "./copy";
 import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import { bookKey } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
-export function PostingDraft({
-  book,
-  setup,
-  locale,
-  onPrepared,
-}: {
+type PostingDraftProps = {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
   onPrepared: (id: string) => void;
-}) {
+  resumeRequestKey?: typeof Recovery.SavedRequestKey.Type;
+};
+
+export function PostingDraft(props: PostingDraftProps) {
+  const requestKey = props.resumeRequestKey;
+
+  const saved = useQuery({
+    queryKey: [...bookKey(props.book), "posting-saved", requestKey],
+    queryFn: ({ signal }) => readSavedPostingRequest(props.book, requestKey ?? "", signal),
+    enabled: requestKey !== undefined,
+    retry: false,
+  });
+
+  if (!requestKey) return <PostingDraftForm {...props} />;
+
+  if (saved.data) {
+    const outcome = saved.data.outcome;
+
+    if (
+      saved.data.command.operation === "create_evidence" &&
+      outcome?.state === "committed" &&
+      Schema.is(Accounting.Evidence)(outcome.result)
+    )
+      return (
+        <>
+          <AccountingStatus locale={props.locale} error={saved.error} />
+          {saved.isError ? (
+            <Button
+              variant="outline"
+              disabled={saved.isFetching}
+              onClick={() => void saved.refetch()}
+            >
+              {postingCopy(props.locale).refresh}
+            </Button>
+          ) : null}
+          <PostingDraftForm
+            key={requestKey}
+            {...props}
+            initialEvidence={outcome.result}
+            readUnavailable={saved.isError}
+          />
+        </>
+      );
+  }
+
+  return (
+    <Box display="grid" gap="md">
+      <AccountingStatus locale={props.locale} pending={saved.isPending} error={saved.error} />
+      {!saved.isPending ? <Text role="alert">{postingCopy(props.locale).unknown}</Text> : null}
+      <Button
+        variant="outline"
+        disabled={saved.isFetching}
+        onClick={() => {
+          void saved.refetch();
+        }}
+      >
+        {postingCopy(props.locale).refresh}
+      </Button>
+    </Box>
+  );
+}
+
+function PostingDraftForm(
+  props: PostingDraftProps & {
+    initialEvidence?: typeof Accounting.Evidence.Type;
+    readUnavailable?: boolean;
+  },
+) {
+  const { book, setup, locale, onPrepared } = props;
+
   const copy = accountingCopy(locale);
   const evidenceForm = useRef<HTMLFormElement>(null);
   const [inputError, setInputError] = useState("");
@@ -46,7 +112,7 @@ export function PostingDraft({
   const client = useQueryClient();
 
   const [retainedEvidence, setRetainedEvidence] = useState<typeof Accounting.Evidence.Type | null>(
-    null,
+    props.initialEvidence ?? null,
   );
 
   const evidence = useMutation({
@@ -92,7 +158,7 @@ export function PostingDraft({
                 mediaType: "text/plain",
               });
 
-              if (decoded._tag === "None") {
+              if (Option.isNone(decoded)) {
                 setInputError(copy.journal_invalid);
 
                 return;
@@ -214,6 +280,7 @@ export function PostingDraft({
               evidenceId={retainedEvidence.id}
               locale={locale}
               onPrepared={onPrepared}
+              readUnavailable={props.readUnavailable ?? false}
             />
           </WorkflowSurface>
         ) : null}
@@ -237,6 +304,7 @@ function JournalForm(props: {
   evidenceId: string;
   locale: Locale;
   onPrepared: (id: string) => void;
+  readUnavailable: boolean;
 }) {
   const { book, setup, locale, onPrepared } = props;
   const copy = accountingCopy(locale);
@@ -298,6 +366,8 @@ function JournalForm(props: {
   });
 
   function submit(form: HTMLFormElement) {
+    if (props.readUnavailable) return;
+
     if (scale === undefined || !amountsValid) {
       setInputError(copy.workspace_amount_invalid);
 
@@ -324,7 +394,7 @@ function JournalForm(props: {
       })),
     });
 
-    if (decoded._tag === "None") {
+    if (Option.isNone(decoded)) {
       setInputError(copy.journal_invalid);
 
       return;
@@ -378,6 +448,7 @@ function JournalForm(props: {
       <Box
         as="fieldset"
         disabled={
+          props.readUnavailable ||
           scale === undefined ||
           metadata.isError ||
           prepare.isPending ||

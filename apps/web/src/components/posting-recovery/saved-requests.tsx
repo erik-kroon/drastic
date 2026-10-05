@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Schema from "effect/Schema";
+import * as Match from "effect/Match";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Heading, Text } from "@open-erp/ui/components/typography";
@@ -85,7 +86,7 @@ export function SavedPostingRequestsPanel(props: {
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
   onPrepared: (id: string) => void;
-  onEvidence: (evidence: typeof Accounting.Evidence.Type) => void;
+  onEvidence: (evidence: typeof Accounting.Evidence.Type, requestKey: string) => void;
 }) {
   const { book, locale } = props;
   const copy = postingCopy(locale);
@@ -131,11 +132,12 @@ export function SavedPostingRequestsPanel(props: {
                 {copy.requestKey}: {item.key}
               </Text>
               <Text>
-                {item.state === "unknown"
-                  ? copy.savedUnknown
-                  : item.state === "committed"
-                    ? copy.savedCommitted
-                    : copy.savedRefused}
+                {Match.value(item.state).pipe(
+                  Match.when("unknown", () => copy.savedUnknown),
+                  Match.when("committed", () => copy.savedCommitted),
+                  Match.when("refused", () => copy.savedRefused),
+                  Match.exhaustive,
+                )}
               </Text>
               <Box>
                 <Button size="xl" variant="outline" onClick={() => setSelected(item.key)}>
@@ -172,7 +174,7 @@ type SavedDetailProps = {
   onSelected: (key: string) => void;
   accounts: typeof Accounting.BookSetup.Type.accounts;
   onPrepared: (id: string) => void;
-  onEvidence: (evidence: typeof Accounting.Evidence.Type) => void;
+  onEvidence: (evidence: typeof Accounting.Evidence.Type, requestKey: string) => void;
 };
 
 function SavedRequestDetail(props: SavedDetailProps) {
@@ -420,7 +422,7 @@ function SavedRequestResult(props: {
   saved: typeof Recovery.SavedPostingRequest.Type;
   locale: Locale;
   onPrepared: (id: string) => void;
-  onEvidence: (evidence: typeof Accounting.Evidence.Type) => void;
+  onEvidence: (evidence: typeof Accounting.Evidence.Type, requestKey: string) => void;
 }) {
   const copy = postingCopy(props.locale);
 
@@ -442,7 +444,7 @@ function SavedRequestResult(props: {
   if (props.saved.command.operation === "create_evidence" && Schema.is(Accounting.Evidence)(result))
     return (
       <Box>
-        <Button size="xl" onClick={() => props.onEvidence(result)}>
+        <Button size="xl" onClick={() => props.onEvidence(result, props.saved.request.key)}>
           {copy.resumeEvidence}
         </Button>
       </Box>
