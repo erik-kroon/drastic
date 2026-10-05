@@ -34,6 +34,7 @@ async function correctionFixture(
   const book = await fixture([
     { id: "account_replacement", code: "1931", name: "Synthetic replacement" },
   ]);
+
   const original = await execute(book, await prepare(book));
 
   if (options.inactiveOriginal === true) {
@@ -703,6 +704,7 @@ test.each(["expired", "revoked"] as const)(
     expect(await rawVoucherRows(book)).toEqual(beforeRows);
     expect(await retainedPostingCounts(book)).toEqual(beforeRetained);
     expect(await freshCommandCount(book, commandKey)).toBe(0);
+
     const view = await decoded(
       await request(book, `/correction-bundles/${bundle.id}`),
       Corrections.CorrectionBundleView,
@@ -725,10 +727,12 @@ test("inactive original account reverses exactly into an active replacement", as
     inactiveOriginal: true,
     replacementAccountId: "account_replacement",
   });
+
   const originalBefore = await decoded(
     await request(book, `/vouchers/${original.voucherId}`),
     Accounting.Voucher,
   );
+
   const receipt = await post(
     book,
     `/correction-bundles/${bundle.id}/execute`,
@@ -739,6 +743,7 @@ test("inactive original account reverses exactly into an active replacement", as
     },
     Corrections.CorrectionBundleReceipt,
   );
+
   const after = await ledger(book);
 
   expect(after.accounts.find((item) => item.accountId === "account_bank")?.balanceMinor).toBe("0");
@@ -787,6 +792,7 @@ test("inactive replacement account refuses the whole correction without financia
 
 test("a standalone reversal winning first blocks an existing correction bundle", async () => {
   const { book, original, bundle, approval } = await correctionFixture();
+
   const reversal = await post(
     book,
     `/vouchers/${original.voucherId}/correction-proposals`,
@@ -814,6 +820,7 @@ test("a standalone reversal winning first blocks an existing correction bundle",
     "StaleDependency",
   );
   expect(await persisted(book)).toEqual(before);
+
   const view = await decoded(
     await request(book, `/correction-bundles/${bundle.id}`),
     Corrections.CorrectionBundleView,
@@ -825,10 +832,12 @@ test("a standalone reversal winning first blocks an existing correction bundle",
 
 test("registered invoice recognition names its owner and blocks generic correction", async () => {
   const { book, original, intent } = await correctionFixture();
+
   const voucher = await decoded(
     await request(book, `/vouchers/${original.voucherId}`),
     Accounting.Voucher,
   );
+
   const line = voucher.action.lines.find((item) => item.accountId === "account_clearing");
   const source = voucher.action.evidenceRefs[0];
 
@@ -848,6 +857,7 @@ test("registered invoice recognition names its owner and blocks generic correcti
     },
     Commerce.CounterpartyRevision,
   );
+
   const invoice = await post(
     book,
     "/commerce/invoices",
@@ -869,7 +879,9 @@ test("registered invoice recognition names its owner and blocks generic correcti
     },
     Commerce.Invoice,
   );
+
   const before = await persisted(book);
+
   const impact = await post(
     book,
     `/vouchers/${original.voucherId}/correction-impact-reviews`,

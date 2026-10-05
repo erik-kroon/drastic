@@ -1052,6 +1052,16 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
 
       yield* readSupplierPostingReservation(transaction, command);
 
+      if (
+        (yield* CorrectionDb.readBundleByChangeSet(
+          transaction,
+          command.scope.bookId,
+          command.changeSetId,
+        )).length > 0
+      ) {
+        return yield* failure("UnsupportedProfile");
+      }
+
       const request = yield* replay(
         transaction,
         command.scope,
