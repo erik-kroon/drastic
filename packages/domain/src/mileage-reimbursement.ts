@@ -1,7 +1,7 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { AccountingDate, Description, Digest, Identifier } from "./values";
-import { MinorUnits } from "./money";
+import { MinorUnits, SignedMinorUnits } from "./money";
 
 // Pure mileage math for one trip claim.
 // NEXT-34 leaf: distance-based reimbursement with a distinct entitlement,
@@ -290,8 +290,8 @@ export const TripCorrection = Schema.Union([
     kind: Schema.Literal("consumed_delta"),
     correctionId: Identifier,
     originalAwardId: Identifier,
-    exemptDeltaMinor: MinorUnits,
-    taxableDeltaMinor: MinorUnits,
+    exemptDeltaMinor: SignedMinorUnits,
+    taxableDeltaMinor: SignedMinorUnits,
     recoveryBasis: Identifier,
   }),
 ]);
@@ -303,8 +303,19 @@ export type TripCorrection = typeof TripCorrection.Type;
 // carries the original reference and a lawful recovery basis, never an
 // unexplained negative net salary.
 export function correctTripAward(input: TripCorrectionInput): Checked<TripCorrection> {
-  if (input.revisedTrip.id !== input.plan.tripRevisionId) {
-    return fail("StaleTripBasis", "The correction names a different trip than the award.");
+  if (
+    input.revisedTrip.id === input.plan.tripRevisionId ||
+    input.revisedTrip.previousRevision !== input.plan.tripRevisionId
+  ) {
+    return fail("StaleTripBasis", "The correction needs a new revision of the awarded trip.");
+  }
+
+  if (!input.revisedTrip.routeReviewed) {
+    return fail("IncompleteTripFacts", "The revised route needs review before correction.");
+  }
+
+  if (input.release.releaseId !== input.plan.ruleReleaseId) {
+    return fail("StaleTripBasis", "The correction needs the awarded rule release.");
   }
 
   const split = calculateMileage({ trip: input.revisedTrip, release: input.release });
