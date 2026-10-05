@@ -3,7 +3,7 @@
 ## Work
 - Use Linear MCP to track work in the existing OpenERP project.
 - Make one issue for each result that can be finished and checked.
-- Add source links, done checks, and an owner or blocker to each issue. Issues may be short; keep detailed requirements in their existing repo documents.
+- Add source links, done checks, and an owner or blocker to every issue, including deferred work already tracked. Issues may be short; keep detailed requirements in their existing repo documents. Resolve source links to tracked files available in a fresh checkout; local ignored execution files are not sufficient.
 - When asked to finish a feature or domain, follow `docs/plans/README.md#completion-reconciliation` before editing or closing work. Follow each issue's source links, reconcile requirements with its real application owner and dated proof, and retain every unresolved acceptance obligation.
 - Do not ticket finished or deferred work. Do not make one issue per register row.
 - Before code changes, read `docs/README.md` and `docs/open-decisions.md`. For `NEXT-nn`, also read its dossier and spec.
