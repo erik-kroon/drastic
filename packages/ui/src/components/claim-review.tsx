@@ -42,10 +42,10 @@ const styles = stylex.create({
   },
   eligible: { color: tokens.successForeground },
   excluded: { color: tokens.historicalRefusalForeground },
-  group: { borderWidth: 0, padding: 0, margin: 0, minWidth: 0 },
+  group: { borderWidth: 0, padding: 0, margin: 0, marginBlockStart: 20, minWidth: 0 },
   legend: {
     padding: 0,
-    marginBlockStart: 20,
+    marginBlockStart: 0,
     marginBlockEnd: 6,
     fontSize: tokens.fontSizeXs,
     fontWeight: tokens.fontWeightSemibold,
@@ -181,6 +181,8 @@ export function ClaimRoutes(props: {
                 type="radio"
                 name={name}
                 value={choice.value}
+                aria-labelledby={`${name}-${choice.value}-label`}
+                aria-describedby={choice.detail ? `${name}-${choice.value}-detail` : undefined}
                 checked={choice.value === props.value}
                 onChange={() => props.onChange(choice.value)}
                 {...stylex.props(styles.radio, choice.value === props.value && styles.checkedRadio)}
@@ -190,8 +192,14 @@ export function ClaimRoutes(props: {
               ) : null}
             </span>
           </span>
-          <span {...stylex.props(styles.choiceLabel)}>{choice.label}</span>
-          {choice.detail ? <span {...stylex.props(styles.detail)}>{choice.detail}</span> : null}
+          <span id={`${name}-${choice.value}-label`} {...stylex.props(styles.choiceLabel)}>
+            {choice.label}
+          </span>
+          {choice.detail ? (
+            <span id={`${name}-${choice.value}-detail`} {...stylex.props(styles.detail)}>
+              {choice.detail}
+            </span>
+          ) : null}
         </label>
       ))}
     </fieldset>
