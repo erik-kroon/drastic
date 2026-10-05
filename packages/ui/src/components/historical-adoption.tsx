@@ -42,7 +42,7 @@ const styles = stylex.create({
     borderColor: tokens.historicalRefusalBorder,
     borderRadius: tokens.radiusControl,
     backgroundColor: tokens.destructiveBackground,
-    color: tokens.destructive,
+    color: tokens.historicalRefusalForeground,
     fontSize: tokens.fontSizeControl,
     lineHeight: tokens.lineHeight18Px,
   },
@@ -54,13 +54,14 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeight16Px,
   },
   head: {
-    height: 28,
+    height: 27,
     backgroundColor: tokens.sidebar,
     color: tokens.mutedForeground,
     borderBlockWidth: 1,
     borderBlockStyle: "solid",
     borderBlockColor: tokens.border,
     fontSize: tokens.fontSizeXs,
+    fontWeight: tokens.fontWeightSemibold,
   },
   cell: { padding: 0, fontWeight: "inherit" },
   label: { paddingInlineStart: 8, textAlign: "left" },
@@ -75,7 +76,8 @@ const styles = stylex.create({
   },
   changed: { backgroundColor: tokens.historicalChangedBackground },
   warning: { color: tokens.registerWarning, fontWeight: tokens.fontWeightSemibold },
-  error: { color: tokens.destructive, fontWeight: tokens.fontWeightSemibold },
+  unchanged: { color: tokens.captionForeground },
+  error: { color: tokens.historicalRefusalForeground, fontWeight: tokens.fontWeightSemibold },
   strong: { fontWeight: tokens.fontWeightSemibold },
   final: { borderBlockEndColor: tokens.border },
 });
@@ -160,7 +162,13 @@ export function HistoricalAdoptionTable(props: {
             <td {...stylex.props(styles.cell, styles.current, item.changed && styles.strong)}>
               {item.current}
             </td>
-            <td {...stylex.props(styles.cell, styles.state, item.changed && styles.warning)}>
+            <td
+              {...stylex.props(
+                styles.cell,
+                styles.state,
+                item.changed ? styles.warning : styles.unchanged,
+              )}
+            >
               {item.changed ? "Ändrad" : "Oförändrad"}
             </td>
           </tr>

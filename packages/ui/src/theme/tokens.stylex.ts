@@ -211,6 +211,7 @@ export const tokens = stylex.defineConsts({
   loanWarningBackground: "#fff5dd",
   loanWarningBorder: "#e8d3a0",
   radiusHistoricalStep: "12px",
+  historicalRefusalForeground: "#b4232a",
   historicalRefusalBorder: "#f3c5c7",
   historicalChangedBackground: "#fff9ea",
   registerWarning: "#8a5a00",

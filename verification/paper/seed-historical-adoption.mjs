@@ -16,6 +16,7 @@ export async function seedHistoricalAdoption(config) {
       "#FORMAT PC8",
       "#SIETYP 4",
       "#RAR 0 20260101 20261231",
+      '#PROSA "Synthetic residual inventory: Kundfaktura 2025-0114 20000.00; Kundfaktura 2025-0121 12500.00; Kundfaktura 2025-0127 9000.00"',
       "#IB 0 1510 42500.00",
       "#IB 0 2999 -42500.00",
       "#UB 0 1510 42600.00",
