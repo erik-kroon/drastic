@@ -402,16 +402,49 @@ export const RecoveryWorkInventoryV4 = Schema.Struct({
   ).check(Schema.isMaxLength(10000)),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 
+export const ReminderReviewWorkSummary = Schema.Struct({
+  ...ReminderWorkSummary.fields,
+  reminderRefusals: Count,
+  reminderResolutions: Count,
+});
+
+export const RecoveryWorkInventoryV5 = Schema.Struct({
+  ...RecoveryWorkInventoryV4.fields,
+  version: Schema.Literal(5),
+  summary: ReminderReviewWorkSummary,
+  reminderRefusals: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      messageId: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  reminderResolutions: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      messageId: Schema.String,
+      replacementMessageId: Schema.NullOr(Schema.String),
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const RecoveryWorkInventory = Schema.Union([
   RecoveryWorkInventoryV2,
   RecoveryWorkInventoryV3,
   RecoveryWorkInventoryV4,
+  RecoveryWorkInventoryV5,
 ]);
 
 export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
-  summary: Schema.Union([ReminderWorkSummary, RecurringWorkSummary, RecoveryWorkSummary]),
+  summary: Schema.Union([
+    ReminderReviewWorkSummary,
+    ReminderWorkSummary,
+    RecurringWorkSummary,
+    RecoveryWorkSummary,
+  ]),
   recoveryProcedurePath: Schema.NullOr(Schema.String),
 });
 

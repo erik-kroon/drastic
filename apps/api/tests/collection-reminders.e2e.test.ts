@@ -9,6 +9,7 @@ import * as Match from "effect/Match";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Collections from "@open-erp/contracts/collections";
 import { withWorkspaceBrowser } from "./support/workspace-browser";
 import { legalFixture } from "./support/legal-commerce";
 import { captureWorkInventory } from "../scripts/operations/durable-work";
@@ -72,6 +73,152 @@ const View = Schema.Struct({
 });
 
 const base = "/commerce/collections/reminders";
+
+test("M60 retains changed-payment refusal, cancellation and a separate current-balance proposal", async () => {
+  const context = await legalFixture();
+  const recipient = await reviewed(context);
+  const original = await prepare(context, recipient);
+  const approved = await approve(context, original);
+  const initialCheckKey = key();
+  const initialCheckInput = { messageDigest: original.digest };
+
+  const initialCheck = await decoded(
+    await request(context.author, `${base}/${original.id}/checks`, {
+      method: "POST",
+      headers: { "idempotency-key": initialCheckKey },
+      body: JSON.stringify(initialCheckInput),
+    }),
+    Collections.ReminderView,
+  );
+
+  expect(initialCheck.approvalUsable).toBe(true);
+  await settle(context, "4000");
+
+  const before = await decoded(
+    await request(context.author, `${base}/${original.id}`),
+    Collections.ReminderView,
+  );
+
+  expect(before.approval).toEqual(approved.approval);
+  expect(before.approvalUsable).toBe(false);
+  expect(before.current.outstandingMinor).toBe(
+    (BigInt(original.outstandingMinor) - 4000n).toString(),
+  );
+
+  const replayedCheck = await decoded(
+    await request(context.author, `${base}/${original.id}/checks`, {
+      method: "POST",
+      headers: { "idempotency-key": initialCheckKey },
+      body: JSON.stringify(initialCheckInput),
+    }),
+    Collections.ReminderView,
+  );
+
+  expect(replayedCheck.approvalUsable).toBe(false);
+  expect(replayedCheck.refusal).toBe(null);
+  await failure(
+    await request(context.author, `${base}/${original.id}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ messageDigest: original.digest, acknowledgeExactMessage: true }),
+    }),
+    409,
+    "StaleDependency",
+  );
+
+  const checked = await post(
+    context.author,
+    `${base}/${original.id}/checks`,
+    { messageDigest: original.digest },
+    Collections.ReminderView,
+  );
+
+  expect(checked.refusal?.current.outstandingMinor).toBe(before.current.outstandingMinor);
+  expect(checked.attempt).toBe(null);
+
+  const checkedAgain = await post(
+    context.author,
+    `${base}/${original.id}/checks`,
+    { messageDigest: original.digest },
+    Collections.ReminderView,
+  );
+
+  expect(checkedAgain.refusal).toEqual(checked.refusal);
+  const replacementKey = key();
+
+  const replacementInput = {
+    messageDigest: original.digest,
+    recipient: {
+      partyId: recipient.partyId,
+      revision: recipient.revision,
+      digest: recipient.digest,
+    },
+  };
+
+  const replacement = await decoded(
+    await request(context.author, `${base}/${original.id}/replacement`, {
+      method: "POST",
+      headers: { "idempotency-key": replacementKey },
+      body: JSON.stringify(replacementInput),
+    }),
+    Collections.ReminderReplacement,
+  );
+
+  const fresh = replacement.message;
+  expect(fresh.id).not.toBe(original.id);
+  expect(fresh.outstandingMinor).toBe(before.current.outstandingMinor);
+
+  const old = await decoded(
+    await request(context.author, `${base}/${original.id}`),
+    Collections.ReminderView,
+  );
+
+  expect(old.resolution).toEqual(replacement.resolution);
+  expect(old.refusal).toEqual(checked.refusal);
+
+  const repeated = await decoded(
+    await request(context.author, `${base}/${original.id}/replacement`, {
+      method: "POST",
+      headers: { "idempotency-key": replacementKey },
+      body: JSON.stringify(replacementInput),
+    }),
+    Collections.ReminderReplacement,
+  );
+
+  expect(repeated).toEqual(replacement);
+
+  const cancelled = await post(
+    context.author,
+    `${base}/${fresh.id}/cancel`,
+    { messageDigest: fresh.digest },
+    Collections.ReminderView,
+  );
+
+  expect(cancelled.cancellation?.messageDigest).toBe(fresh.digest);
+  expect(cancelled.message.digest).toBe(fresh.digest);
+  expect(cancelled.approval).toBe(null);
+  expect(cancelled.attempt).toBe(null);
+
+  const replay = await post(
+    context.author,
+    `${base}/${fresh.id}/cancel`,
+    { messageDigest: fresh.digest },
+    Collections.ReminderView,
+  );
+
+  expect(replay.cancellation).toEqual(cancelled.cancellation);
+
+  const history = await decoded(
+    await request(context.author, `${base}?invoiceId=${encodeURIComponent(original.invoiceId)}`),
+    Collections.ReminderHistoryPage,
+  );
+
+  expect(history.items.map((item) => item.id)).toContain(original.id);
+  expect(history.items.map((item) => item.id)).toContain(fresh.id);
+  await writeFile(
+    join(environment().artifacts, "reminder-m60-refusal-cancellation.json"),
+    JSON.stringify({ before, checked, cancelled, fresh, history }, null, 2),
+  );
+});
 
 type Context = Awaited<ReturnType<typeof legalFixture>>;
 
@@ -643,7 +790,15 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
       await admin.end();
     }
 
-    expect((await approve(context, message)).attempt?.id).toBe(delivered.attempt?.id);
+    await failure(
+      await request(context.author, `${base}/${message.id}/approvals`, {
+        method: "POST",
+        body: JSON.stringify({ messageDigest: message.digest, acknowledgeExactMessage: true }),
+      }),
+      403,
+      "ApprovalRequired",
+    );
+    expect((await read(context, message)).attempt?.id).toBe(delivered.attempt?.id);
     expect(transport.wires.length).toBe(1);
     await writeFile(
       join(environment().artifacts, "reminder-journey.json"),
@@ -1340,7 +1495,7 @@ test("recovery v4 binds all five reminder families and preserves complete older 
 
     if (!snapshot) throw new Error("Recovery snapshot missing");
     const tables = await tableFingerprints(admin);
-    const captured = await captureWorkInventory(admin, tables, snapshot);
+    const captured = await captureWorkInventory(admin, tables, snapshot, 4);
     await writeFile(
       join(environment().artifacts, "reminder-recovery-capture.json"),
       JSON.stringify(captured, null, 2),

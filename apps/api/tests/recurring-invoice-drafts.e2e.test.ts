@@ -1264,7 +1264,7 @@ test("durable work inventory binds recurring enrollment, examined cursor and act
     await stop(process.child);
     await admin.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     const tables = await tableFingerprints(admin);
-    const inventory = await captureWorkInventory(admin, tables, "synthetic-recurring-snapshot");
+    const inventory = await captureWorkInventory(admin, tables, "synthetic-recurring-snapshot", 4);
 
     const body = Schema.decodeUnknownSync(
       Schema.Struct({

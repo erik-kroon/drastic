@@ -151,6 +151,91 @@ export const PrepareReminder = Schema.Struct({
   recipient: ReminderRecipientReference,
 });
 
+export const ReminderSettlement = Schema.Struct({
+  receiptId: Accounting.Identifier,
+  receiptDigest: Accounting.Digest,
+  planId: Accounting.Identifier,
+  amountMinor: Accounting.AggregateMinorUnits,
+  committedAt: Schema.String,
+  voucherId: Accounting.Identifier,
+  lineId: Accounting.Identifier,
+});
+
+export const ReminderCurrentBasis = Schema.Struct({
+  checkedAt: Schema.String,
+  outstandingMinor: Schema.NullOr(Accounting.AggregateMinorUnits),
+  invoiceDigest: Schema.NullOr(Accounting.Digest),
+  issueDigest: Schema.NullOr(Accounting.Digest),
+  invoiceStatus: Schema.NullOr(Schema.String),
+  customerName: Schema.String,
+  recipient: Schema.NullOr(
+    Schema.Struct({
+      ...ReminderRecipientReference.fields,
+      destination: Schema.String,
+    }),
+  ),
+  disputeBasisDigest: Accounting.Digest,
+  holdReminders: Schema.Boolean,
+  openDisputes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  settlements: Schema.Array(ReminderSettlement).check(Schema.isMaxLength(1000)),
+});
+
+export const ReminderBlocker = Schema.Literals([
+  "amount_changed",
+  "source_changed",
+  "source_unavailable",
+  "recipient_changed",
+  "dispute_changed",
+  "dispute_hold",
+  "settled",
+  "approval_required",
+  "approval_expired",
+  "authority_unavailable",
+  "refused",
+  "cancelled",
+  "replaced",
+  "already_admitted",
+  "ambiguous_attempt",
+  "delivery_exhausted",
+]);
+
+export const ReminderRefusal = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  messageId: Accounting.Identifier,
+  messageDigest: Accounting.Digest,
+  approvalDigest: Accounting.Digest,
+  current: ReminderCurrentBasis,
+  reasons: Schema.Array(ReminderBlocker).check(Schema.isMinLength(1)),
+  admission: Schema.Literal("not_admitted"),
+  digest: Accounting.Digest,
+});
+
+const resolutionFields = {
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  messageId: Accounting.Identifier,
+  messageDigest: Accounting.Digest,
+  actorId: Accounting.Identifier,
+  decidedAt: Schema.String,
+  digest: Accounting.Digest,
+};
+
+export const ReminderCancellation = Schema.Struct({
+  ...resolutionFields,
+  kind: Schema.Literal("cancelled"),
+});
+
+export const ReminderResolution = Schema.Union([
+  ReminderCancellation,
+  Schema.Struct({
+    ...resolutionFields,
+    kind: Schema.Literal("replaced"),
+    replacementMessageId: Accounting.Identifier,
+    replacementMessageDigest: Accounting.Digest,
+  }),
+]);
+
 export const ReminderMessage = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -180,7 +265,32 @@ export const ReminderMessage = Schema.Struct({
   interestMinor: Schema.Literal("0"),
   bankCoverage: Schema.Literal("not_qualified"),
   provider: Schema.Literal("local-fixture-v1"),
+  reviewBasis: Schema.optional(ReminderCurrentBasis),
   digest: Accounting.Digest,
+});
+
+export const ReplaceReminder = Schema.Struct({
+  messageDigest: Accounting.Digest,
+  recipient: ReminderRecipientReference,
+});
+
+export const ReminderReplacement = Schema.Struct({
+  message: ReminderMessage,
+  resolution: ReminderResolution,
+});
+
+export const ReminderHistoryPage = Schema.Struct({
+  scope: Accounting.Scope,
+  invoiceId: Accounting.Identifier,
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      issueId: Accounting.Identifier,
+      invoiceNumber: Schema.String,
+      preparedAt: Schema.String,
+    }),
+  ),
+  next: Schema.NullOr(Accounting.Identifier),
 });
 
 export const ApproveReminder = Schema.Struct({
@@ -225,6 +335,13 @@ export const ReminderObservation = Schema.Struct({
 
 export const ReminderView = Schema.Struct({
   message: ReminderMessage,
+  current: ReminderCurrentBasis,
+  approvalUsable: Schema.Boolean,
+  approvalBlockers: Schema.Array(ReminderBlocker),
+  refusal: Schema.NullOr(ReminderRefusal),
+  resolution: Schema.NullOr(ReminderResolution),
+  cancellation: Schema.NullOr(ReminderCancellation),
+  replacementAllowed: Schema.Boolean,
   approval: Schema.NullOr(ReminderApproval),
   attempt: Schema.NullOr(ReminderAttempt),
   observations: Schema.Array(ReminderObservation),
@@ -311,6 +428,35 @@ const mutation = {
 };
 
 export const CollectionsApi = HttpApiGroup.make("collections")
+  .add(
+    HttpApiEndpoint.get("reminderHistory", `${base}/reminders`, {
+      params: Accounting.Scope,
+      query: Schema.Struct({
+        invoiceId: Accounting.Identifier,
+        after: Schema.optional(Accounting.Identifier),
+      }),
+      success: ReminderHistoryPage,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("checkReminder", `${base}/reminders/:id/checks`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: ReminderCommand,
+      success: ReminderView,
+      error: accountingErrors,
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
+  )
+  .add(
+    HttpApiEndpoint.post("replaceReminder", `${base}/reminders/:id/replacement`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: ReplaceReminder,
+      success: ReminderReplacement,
+      error: accountingErrors,
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
+  )
   .add(
     HttpApiEndpoint.post("prepareReminder", `${base}/reminders`, {
       ...mutation,

@@ -60,6 +60,13 @@ if (peppolHook !== undefined && peppolHook !== "0" && peppolHook !== "1")
 
 const peppolSeed = peppolHook === "1" ? await import("./seed-peppol.mjs") : undefined;
 
+const reminderHook = process.env.PAPER_REMINDERS;
+
+if (reminderHook !== undefined && reminderHook !== "0" && reminderHook !== "1")
+  throw new Error("PAPER_REMINDERS must be 0 or 1");
+
+const reminderSeed = reminderHook === "1" ? await import("./seed-reminders.mjs") : undefined;
+
 const processorHook = process.env.PAPER_PROCESSORS;
 
 const supplierExpiryHook = process.env.PAPER_SUPPLIER_EXPIRY;
@@ -289,6 +296,8 @@ try {
 
   if (peppolSeed) fixture.accounts.push(...peppolSeed.peppolAccounts);
 
+  if (reminderSeed) fixture.accounts.push(...reminderSeed.reminderAccounts);
+
   if (processorSeed) {
     fixture.accounts.push(...processorSeed.processorAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -425,6 +434,19 @@ try {
     console.log(
       JSON.stringify(
         await peppolSeed.seedPeppol({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
+
+  if (reminderSeed)
+    console.log(
+      JSON.stringify(
+        await reminderSeed.seedReminders({
           apiUrl: listening.url.origin,
           adminUrl,
           accessToken,

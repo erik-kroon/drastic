@@ -87,8 +87,8 @@ export function ReminderReview({
     },
   });
 
-  const currentMessage = retained.data?.message ?? message;
-  const view = retained.data;
+  const currentMessage = retained.isError ? null : (retained.data?.message ?? message);
+  const view = retained.isError ? undefined : retained.data;
   const destination = recipient.data;
 
   const ready =
@@ -178,7 +178,7 @@ export function ReminderReview({
   );
 }
 
-function ReminderPreview({
+export function ReminderPreview({
   book,
   locale,
   message,
@@ -253,6 +253,7 @@ function ReminderPreview({
         </Text>
       ) : null}
       {view?.reason ? <Text>{view.reason}</Text> : null}
+      <ReminderApprovalCheck book={book} locale={locale} message={message} view={view} />
       {view?.status === "prepared" || !view ? (
         <CommandForm
           book={book}
@@ -272,18 +273,7 @@ function ReminderPreview({
           })}
         />
       ) : null}
-      {view?.status === "approved" ? (
-        <CommandForm
-          book={book}
-          locale={locale}
-          path={`${base}/${message.id}/cancel`}
-          schema={Collections.ReminderCommand}
-          output={Collections.ReminderView}
-          allowed={book.role === "operator"}
-          label={sv ? "Avbryt före leveransförsök" : "Cancel before dispatch admission"}
-          input={() => ({ messageDigest: message.digest })}
-        />
-      ) : null}
+      <ReminderCancellation book={book} locale={locale} message={message} view={view} />
       {view?.attempt && ["provider_accepted", "outcome_unknown", "failed"].includes(view.status) ? (
         <CommandForm
           book={book}
@@ -297,5 +287,58 @@ function ReminderPreview({
         />
       ) : null}
     </Box>
+  );
+}
+
+function ReminderApprovalCheck({
+  book,
+  locale,
+  message,
+  view,
+}: CommerceProps & {
+  message: typeof Collections.ReminderMessage.Type;
+  view: typeof Collections.ReminderView.Type | undefined;
+}) {
+  if (!view?.approval || view.approvalUsable || view.attempt || view.resolution) return null;
+
+  return (
+    <CommandForm
+      book={book}
+      locale={locale}
+      path={`${commercePath(book)}/collections/reminders/${message.id}/checks`}
+      schema={Collections.ReminderCommand}
+      output={Collections.ReminderView}
+      label={
+        locale === "sv"
+          ? "Kontrollera godkännandet mot aktuella uppgifter"
+          : "Check approval against current facts"
+      }
+      input={() => ({ messageDigest: message.digest })}
+    />
+  );
+}
+
+function ReminderCancellation({
+  book,
+  locale,
+  message,
+  view,
+}: CommerceProps & {
+  message: typeof Collections.ReminderMessage.Type;
+  view: typeof Collections.ReminderView.Type | undefined;
+}) {
+  if (!view || view.attempt || view.resolution || view.status === "cancelled") return null;
+
+  return (
+    <CommandForm
+      book={book}
+      locale={locale}
+      path={`${commercePath(book)}/collections/reminders/${message.id}/cancel`}
+      schema={Collections.ReminderCommand}
+      output={Collections.ReminderView}
+      allowed={book.role === "operator"}
+      label={locale === "sv" ? "Avbryt före leveransförsök" : "Cancel before dispatch admission"}
+      input={() => ({ messageDigest: message.digest })}
+    />
   );
 }

@@ -1,6 +1,7 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Collections from "@open-erp/contracts/collections";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
+import * as Crm from "@open-erp/contracts/crm-master";
 import { checkSealedDispatchBasis } from "@open-erp/domain/collection-reminders";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -9,15 +10,16 @@ import * as ReminderDb from "../../db/commerce/reminders";
 import * as DocumentDb from "../../db/commerce/documents";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import * as CollectionDb from "../../db/commerce/collections";
+import * as AllocationDb from "../../db/commerce/allocations";
 import { requireHumanSession } from "../../db/human-actor";
 import { admitPrincipal, recheckPrincipal } from "../../db/identity";
 import { databaseFailure, withTransaction, type Transaction } from "../../db/transaction";
 import { RequestEnvironment } from "../../runtime/environment";
 import { failure } from "../failures";
 import { digest } from "../json";
-import { newId } from "../posting";
+import { newId, replay, saveCommand } from "../posting";
 import { admitRunnerActor } from "../preparation-jobs";
-import { resolveReviewedRecipient } from "./customer-invoice-defaults";
+import { resolveReviewedRecipient, readCustomerRecord } from "./customer-invoice-defaults";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 
 const approvalLifetimeMs = 15 * 60 * 1000;
@@ -25,6 +27,10 @@ const approvalLifetimeMs = 15 * 60 * 1000;
 type Message = typeof Collections.ReminderMessage.Type;
 
 type Attempt = typeof Collections.ReminderAttempt.Type;
+
+type CurrentBasis = typeof Collections.ReminderCurrentBasis.Type;
+
+type Blocker = typeof Collections.ReminderBlocker.Type;
 
 type Command = {
   readonly scope: Scope;
@@ -55,6 +61,223 @@ function sealed(value: unknown) {
     const body = yield* toJsonObject(value);
 
     return { ...body, digest: yield* digest(body) };
+  });
+}
+
+function inspectCurrent(
+  tx: Transaction,
+  scope: Scope,
+  reference: {
+    readonly issueId: string;
+    readonly invoiceId: string;
+    readonly recipient: { readonly partyId: string };
+  },
+) {
+  return Effect.gen(function* () {
+    const issueRow = (yield* DocumentDb.readLegalIssue(tx, scope.bookId, reference.issueId))[0];
+    const issue = issueRow ? yield* decode(Ar.ArLegalIssueReceipt, issueRow.body) : null;
+    const invoice = (yield* InvoiceDb.readLiveInvoice(tx, scope.bookId, reference.invoiceId))[0];
+
+    const disputes = yield* CollectionDb.readReminderDisputeBasis(
+      tx,
+      scope.bookId,
+      reference.invoiceId,
+    );
+
+    const settlements = yield* AllocationDb.readReminderSettlements(
+      tx,
+      scope.bookId,
+      reference.invoiceId,
+    );
+
+    if (disputes.length > 1000 || settlements.length > 1000)
+      return yield* failure("UnsupportedProfile");
+
+    const recipient = yield* readCustomerRecord(
+      tx,
+      scope,
+      reference.recipient.partyId,
+      "recipient",
+    ).pipe(
+      Effect.flatMap((body) => decode(Crm.ReviewedCustomerRecipient, body)),
+      Effect.flatMap((record) => resolveReviewedRecipient(tx, scope, record, "payment_reminder")),
+      Effect.mapError(databaseFailure),
+      Effect.catchIf(
+        (error) => error.code === "NotFound" || error.code === "StaleDependency",
+        () => Effect.succeed(null),
+      ),
+    );
+
+    const resolved = new Set(
+      disputes.filter((row) => row.kind === "resolution").map((row) => row.body.disputeId),
+    );
+
+    return yield* decode(
+      Collections.ReminderCurrentBasis,
+      yield* toJsonObject({
+        checkedAt: yield* retainedNow(tx),
+        outstandingMinor: invoice?.outstandingMinor ?? null,
+        invoiceDigest: invoice ? yield* digest(invoice.body) : null,
+        issueDigest: issue?.digest ?? null,
+        invoiceStatus: invoice?.status ?? null,
+        customerName: issue?.draftSnapshot.content.customer.legalName ?? "",
+        recipient: recipient
+          ? {
+              partyId: recipient.partyId,
+              revision: recipient.revision,
+              digest: recipient.digest,
+              destination: recipient.destination,
+            }
+          : null,
+        disputeBasisDigest: yield* digest(disputes),
+        holdReminders:
+          (yield* CollectionDb.readOpenReminderHold(tx, scope.bookId, reference.invoiceId))[0]
+            ?.present === true,
+        openDisputes: disputes.filter((row) => row.kind === "dispute" && !resolved.has(row.id))
+          .length,
+        settlements,
+      }),
+    );
+  });
+}
+
+function sourceBlockers(message: Message, current: CurrentBasis): Blocker[] {
+  const reasons: Blocker[] = [];
+
+  if (
+    current.outstandingMinor === null ||
+    current.issueDigest === null ||
+    current.invoiceDigest === null
+  )
+    reasons.push("source_unavailable");
+  else {
+    if (BigInt(current.outstandingMinor) <= 0n) reasons.push("settled");
+
+    if (current.outstandingMinor !== message.outstandingMinor) reasons.push("amount_changed");
+
+    if (
+      current.invoiceDigest !== message.invoiceDigest ||
+      current.issueDigest !== message.issueDigest ||
+      current.invoiceStatus === "blocked" ||
+      current.invoiceStatus === "cancelled"
+    )
+      reasons.push("source_changed");
+  }
+
+  if (
+    !current.recipient ||
+    current.recipient.revision !== message.recipient.revision ||
+    current.recipient.digest !== message.recipient.digest ||
+    current.recipient.destination !== message.recipient.destination
+  )
+    reasons.push("recipient_changed");
+
+  if (current.disputeBasisDigest !== message.disputeBasisDigest) reasons.push("dispute_changed");
+
+  if (current.holdReminders) reasons.push("dispute_hold");
+
+  return reasons;
+}
+
+function assessReminder(tx: Transaction, scope: Scope, message: Message) {
+  return Effect.gen(function* () {
+    const current = yield* inspectCurrent(tx, scope, message);
+    const approvalRow = (yield* ReminderDb.readApproval(tx, scope.bookId, message.id))[0];
+
+    const approval = approvalRow
+      ? yield* decode(Collections.ReminderApproval, approvalRow.body)
+      : null;
+
+    const refusalRow = (yield* ReminderDb.readRefusal(tx, scope.bookId, message.id))[0];
+    const resolutionRow = (yield* ReminderDb.readResolution(tx, scope.bookId, message.id))[0];
+    const attempt = (yield* ReminderDb.readAttempt(tx, scope.bookId, message.id))[0];
+    const outbox = (yield* ReminderDb.readOutbox(tx, scope.bookId, message.id))[0];
+    const refusal = refusalRow ? yield* decode(Collections.ReminderRefusal, refusalRow.body) : null;
+
+    const resolution = resolutionRow
+      ? yield* decode(Collections.ReminderResolution, resolutionRow.body)
+      : null;
+
+    const ambiguous =
+      (yield* ReminderDb.readAmbiguousAttempt(tx, scope.bookId, message.invoiceId, message.id))[0]
+        ?.present === true;
+
+    const blockers = sourceBlockers(message, current);
+
+    if (!approval) blockers.push("approval_required");
+    else {
+      if (Date.parse(approval.expiresAt) <= Date.parse(current.checkedAt))
+        blockers.push("approval_expired");
+
+      if (approval.messageDigest !== message.digest) blockers.push("source_changed");
+
+      if (
+        approvalRow &&
+        (yield* ReminderDb.readApproverAuthority(tx, scope.bookId, approvalRow))[0]?.present !==
+          true
+      )
+        blockers.push("authority_unavailable");
+    }
+
+    if (refusal || outbox?.state === "refused") blockers.push("refused");
+
+    if (resolution) blockers.push(resolution.kind);
+    else if (outbox?.state === "cancelled") blockers.push("cancelled");
+
+    if (attempt) blockers.push("already_admitted");
+
+    if (ambiguous) blockers.push("ambiguous_attempt");
+
+    const replacementAllowed =
+      !attempt &&
+      !resolution &&
+      outbox?.state !== "cancelled" &&
+      !ambiguous &&
+      current.outstandingMinor !== null &&
+      BigInt(current.outstandingMinor) > 0n &&
+      current.invoiceStatus !== "blocked" &&
+      current.invoiceStatus !== "cancelled" &&
+      !current.holdReminders &&
+      current.recipient !== null;
+
+    return { current, approval, refusal, resolution, blockers, replacementAllowed };
+  });
+}
+
+function retainRefusal(
+  tx: Transaction,
+  scope: Scope,
+  message: Message,
+  reasons: readonly Blocker[],
+  current: CurrentBasis,
+) {
+  return Effect.gen(function* () {
+    const previous = (yield* ReminderDb.readRefusal(tx, scope.bookId, message.id))[0];
+
+    if (previous) return yield* decode(Collections.ReminderRefusal, previous.body);
+
+    if ((yield* ReminderDb.readAttempt(tx, scope.bookId, message.id))[0])
+      return yield* failure("StaleDependency");
+    const approvalRow = (yield* ReminderDb.readApproval(tx, scope.bookId, message.id))[0];
+
+    if (!approvalRow) return yield* failure("ApprovalRequired");
+    const approval = yield* decode(Collections.ReminderApproval, approvalRow.body);
+
+    const body = yield* sealed({
+      id: newId("reminder_refusal"),
+      scope,
+      messageId: message.id,
+      messageDigest: message.digest,
+      approvalDigest: approval.digest,
+      current,
+      reasons,
+      admission: "not_admitted",
+    });
+
+    const result = yield* decode(Collections.ReminderRefusal, body);
+    yield* ReminderDb.insertRefusal(tx, scope.bookId, message.id, body);
+
+    return result;
   });
 }
 
@@ -125,6 +348,91 @@ function htmlEscape(text: string) {
     .replaceAll("'", "&#39;");
 }
 
+function prepareWithin(
+  tx: Transaction,
+  actorId: string,
+  command: {
+    readonly scope: Scope;
+    readonly idempotencyKey: string;
+    readonly input: typeof Collections.PrepareReminder.Type;
+  },
+  requestDigest: string,
+) {
+  return Effect.gen(function* () {
+    const basis = yield* source(tx, command.scope, command.input.issueId, command.input.recipient);
+
+    if (
+      (yield* ReminderDb.readAmbiguousAttempt(tx, command.scope.bookId, basis.invoice.id, ""))[0]
+        ?.present
+    )
+      return yield* failure("StaleDependency");
+
+    const reviewBasis = yield* inspectCurrent(tx, command.scope, {
+      issueId: basis.issue.id,
+      invoiceId: basis.invoice.id,
+      recipient: command.input.recipient,
+    });
+
+    const preparedAt = reviewBasis.checkedAt;
+    const dueOn = basis.issue.draftSnapshot.content.dueDate;
+
+    if (dueOn === null || dueOn > Accounting.swedishBusinessDate(new Date(preparedAt)))
+      return yield* failure("InvalidJournal");
+    const outstandingMinor = basis.invoice.outstandingMinor;
+
+    if (outstandingMinor === null) return yield* failure("StaleDependency");
+    const minor = BigInt(outstandingMinor);
+    const amount = `${minor / 100n}.${(minor % 100n).toString().padStart(2, "0")} SEK`;
+    const number = basis.issue.legalDocumentNumber;
+    const subject = `Payment reminder for invoice ${number}`;
+    const plainText = `Payment reminder\nInvoice: ${number}\nDue date: ${dueOn}\nOutstanding as of ${preparedAt}: ${amount}\nNo reminder fee or interest is included.\nIf you have already paid, please contact us so we can review the payment.`;
+    const html = `<h1>Payment reminder</h1><p>Invoice: ${htmlEscape(number)}</p><p>Due date: ${htmlEscape(dueOn)}</p><p>Outstanding as of ${htmlEscape(preparedAt)}: ${htmlEscape(amount)}</p><p>No reminder fee or interest is included.</p><p>If you have already paid, please contact us so we can review the payment.</p>`;
+
+    const body = yield* sealed({
+      id: newId("reminder"),
+      scope: command.scope,
+      issueId: basis.issue.id,
+      issueDigest: basis.issue.digest,
+      invoiceId: basis.invoice.id,
+      invoiceNumber: number,
+      invoiceDigest: basis.invoiceDigest,
+      disputeBasisDigest: basis.disputeBasisDigest,
+      outstandingMinor,
+      currency: "SEK",
+      currencyScale: 2,
+      dueOn,
+      recipient: {
+        ...command.input.recipient,
+        channel: "email",
+        destination: basis.destination.destination,
+      },
+      preparedAt,
+      preparedBy: actorId,
+      subject,
+      plainText,
+      html,
+      encoding: "UTF-8",
+      attachments: [],
+      feeMinor: "0",
+      interestMinor: "0",
+      bankCoverage: "not_qualified",
+      provider: "local-fixture-v1",
+      reviewBasis,
+    });
+
+    const result = yield* decode(Collections.ReminderMessage, body);
+    yield* ReminderDb.insertMessage(tx, {
+      bookId: command.scope.bookId,
+      id: result.id,
+      prepareKey: command.idempotencyKey,
+      requestDigest,
+      body,
+    });
+
+    return result;
+  });
+}
+
 export const prepareReminder = Effect.fn("commerce.reminders.prepare")(function* (
   token: string,
   command: {
@@ -158,69 +466,7 @@ export const prepareReminder = Effect.fn("commerce.reminders.prepare")(function*
         return yield* decode(Collections.ReminderMessage, previous.body);
       }
 
-      const basis = yield* source(
-        tx,
-        command.scope,
-        command.input.issueId,
-        command.input.recipient,
-      );
-
-      const preparedAt = yield* retainedNow(tx);
-      const dueOn = basis.issue.draftSnapshot.content.dueDate;
-
-      if (dueOn === null || dueOn > Accounting.swedishBusinessDate(new Date(preparedAt)))
-        return yield* failure("InvalidJournal");
-      const outstandingMinor = basis.invoice.outstandingMinor;
-
-      if (outstandingMinor === null) return yield* failure("StaleDependency");
-      const minor = BigInt(outstandingMinor);
-      const amount = `${minor / 100n}.${(minor % 100n).toString().padStart(2, "0")} SEK`;
-      const number = basis.issue.legalDocumentNumber;
-      const subject = `Payment reminder for invoice ${number}`;
-      const plainText = `Payment reminder\nInvoice: ${number}\nDue date: ${dueOn}\nOutstanding as of ${preparedAt}: ${amount}\nNo reminder fee or interest is included.\nIf you have already paid, please contact us so we can review the payment.`;
-      const html = `<h1>Payment reminder</h1><p>Invoice: ${htmlEscape(number)}</p><p>Due date: ${htmlEscape(dueOn)}</p><p>Outstanding as of ${htmlEscape(preparedAt)}: ${htmlEscape(amount)}</p><p>No reminder fee or interest is included.</p><p>If you have already paid, please contact us so we can review the payment.</p>`;
-
-      const body = yield* sealed({
-        id: newId("reminder"),
-        scope: command.scope,
-        issueId: basis.issue.id,
-        issueDigest: basis.issue.digest,
-        invoiceId: basis.invoice.id,
-        invoiceNumber: number,
-        invoiceDigest: basis.invoiceDigest,
-        disputeBasisDigest: basis.disputeBasisDigest,
-        outstandingMinor,
-        currency: "SEK",
-        currencyScale: 2,
-        dueOn,
-        recipient: {
-          ...command.input.recipient,
-          channel: "email",
-          destination: basis.destination.destination,
-        },
-        preparedAt,
-        preparedBy: principal.actorId,
-        subject,
-        plainText,
-        html,
-        encoding: "UTF-8",
-        attachments: [],
-        feeMinor: "0",
-        interestMinor: "0",
-        bankCoverage: "not_qualified",
-        provider: "local-fixture-v1",
-      });
-
-      const result = yield* decode(Collections.ReminderMessage, body);
-      yield* ReminderDb.insertMessage(tx, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        prepareKey: command.idempotencyKey,
-        requestDigest,
-        body,
-      });
-
-      return result;
+      return yield* prepareWithin(tx, principal.actorId, command, requestDigest);
     },
     "update",
   );
@@ -254,23 +500,26 @@ function view(tx: Transaction, scope: Scope, id: string) {
       : [];
 
     if (observations.length > 1000) return yield* failure("UnsupportedProfile");
-    const current = (yield* InvoiceDb.readLiveInvoice(tx, scope.bookId, message.invoiceId))[0];
-
-    const held =
-      (yield* CollectionDb.readOpenReminderHold(tx, scope.bookId, message.invoiceId))[0]
-        ?.present === true;
+    const assessed = yield* assessReminder(tx, scope, message);
 
     return yield* decode(Collections.ReminderView, {
       message,
+      current: assessed.current,
+      approvalUsable: assessed.blockers.length === 0,
+      approvalBlockers: assessed.blockers,
+      refusal: assessed.refusal,
+      resolution: assessed.resolution,
+      cancellation: assessed.resolution?.kind === "cancelled" ? assessed.resolution : null,
+      replacementAllowed: assessed.replacementAllowed,
       approval: approvalRow ? yield* decode(Collections.ReminderApproval, approvalRow.body) : null,
       attempt: attemptRow ? yield* decode(Collections.ReminderAttempt, attemptRow.body) : null,
       observations: observations.map((observation) => observation.body),
-      status: outbox?.state ?? "prepared",
+      status: assessed.resolution ? "cancelled" : (outbox?.state ?? "prepared"),
       reason: outbox?.reason ?? null,
       delivered: observations.some((observation) => observation.body.kind === "delivered"),
-      currentOutstandingMinor: current?.outstandingMinor ?? null,
-      currentHoldReminders: held,
-      currentSettlementCheckedAt: yield* retainedNow(tx),
+      currentOutstandingMinor: assessed.current.outstandingMinor,
+      currentHoldReminders: assessed.current.holdReminders,
+      currentSettlementCheckedAt: assessed.current.checkedAt,
       liveProviderEnabled: false,
     });
   });
@@ -301,7 +550,22 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
       const message = yield* checkedMessage(tx, command);
       const previous = (yield* ReminderDb.readApproval(tx, command.scope.bookId, command.id))[0];
 
-      if (previous) return yield* view(tx, command.scope, command.id);
+      const assessment = yield* assessReminder(tx, command.scope, message);
+
+      if (previous) {
+        if (
+          assessment.blockers.includes("authority_unavailable") ||
+          assessment.blockers.includes("approval_expired")
+        )
+          return yield* failure("ApprovalRequired");
+
+        if (assessment.blockers.length > 0) return yield* failure("StaleDependency");
+
+        return yield* view(tx, command.scope, command.id);
+      }
+
+      if (assessment.blockers.some((reason) => reason !== "approval_required"))
+        return yield* failure("StaleDependency");
 
       if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
       const current = yield* source(tx, command.scope, message.issueId, message.recipient);
@@ -338,9 +602,27 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
   );
 });
 
+function retireOutbox(tx: Transaction, scope: Scope, messageId: string, reason: string) {
+  return Effect.gen(function* () {
+    const outbox = (yield* ReminderDb.readOutbox(tx, scope.bookId, messageId))[0];
+
+    if (outbox)
+      yield* ReminderDb.advanceOutbox(
+        tx,
+        scope.bookId,
+        messageId,
+        "cancelled",
+        reason,
+        yield* retainedNow(tx),
+        outbox.checkpoint,
+        1,
+      );
+  });
+}
+
 export const cancelReminder = Effect.fn("commerce.reminders.cancel")(function* (
   token: string,
-  command: Command,
+  command: Command & { readonly idempotencyKey: string },
 ) {
   return yield* withBook(
     token,
@@ -348,28 +630,293 @@ export const cancelReminder = Effect.fn("commerce.reminders.cancel")(function* (
     true,
     function* (tx, principal) {
       yield* requireHumanSession(principal);
-      yield* checkedMessage(tx, command);
-      const outbox = (yield* ReminderDb.readOutbox(tx, command.scope.bookId, command.id))[0];
-      const attempt = (yield* ReminderDb.readAttempt(tx, command.scope.bookId, command.id))[0];
+      yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
+      const message = yield* checkedMessage(tx, command);
 
-      if (!outbox) return yield* failure("ApprovalRequired");
-
-      if (attempt) return yield* failure("StaleDependency");
-      yield* ReminderDb.advanceOutbox(
+      const request = yield* replay(
         tx,
-        command.scope.bookId,
-        command.id,
-        "cancelled",
-        "Cancelled before dispatch admission.",
-        yield* retainedNow(tx),
-        outbox.checkpoint,
-        1,
+        command.scope,
+        command.idempotencyKey,
+        "reminder_cancel",
+        principal.actorId,
+        yield* toJsonObject(command),
+        Collections.ReminderCancellation,
+      );
+
+      if (request.previous) return yield* view(tx, command.scope, command.id);
+
+      if ((yield* ReminderDb.readAttempt(tx, command.scope.bookId, command.id))[0])
+        return yield* failure("StaleDependency");
+      const previous = (yield* ReminderDb.readResolution(tx, command.scope.bookId, command.id))[0];
+      const prior = previous ? yield* decode(Collections.ReminderResolution, previous.body) : null;
+
+      if (prior?.kind === "replaced") return yield* failure("StaleDependency");
+
+      const body = prior
+        ? yield* toJsonObject(prior)
+        : yield* sealed({
+            id: newId("reminder_resolution"),
+            scope: command.scope,
+            messageId: message.id,
+            messageDigest: message.digest,
+            actorId: principal.actorId,
+            decidedAt: yield* retainedNow(tx),
+            kind: "cancelled",
+          });
+
+      const result = yield* decode(Collections.ReminderCancellation, body);
+
+      if (!prior)
+        yield* ReminderDb.insertResolution(
+          tx,
+          command.scope.bookId,
+          command.id,
+          principal.actorId,
+          null,
+          body,
+        );
+      yield* retireOutbox(tx, command.scope, command.id, "Cancelled before dispatch admission.");
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "reminder_cancel",
+        principal.actorId,
+        yield* toJsonObject(result),
       );
 
       return yield* view(tx, command.scope, command.id);
     },
     "update",
   );
+});
+
+export const checkReminder = Effect.fn("commerce.reminders.check")(function* (
+  token: string,
+  command: Command & { readonly idempotencyKey: string },
+) {
+  return yield* withBook(
+    token,
+    command.scope,
+    false,
+    function* (tx, principal) {
+      yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
+      const message = yield* checkedMessage(tx, command);
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        "reminder_check",
+        principal.actorId,
+        yield* toJsonObject(command),
+        Collections.ReminderView,
+      );
+
+      if (request.previous) return yield* view(tx, command.scope, command.id);
+      const attempt = (yield* ReminderDb.readAttempt(tx, command.scope.bookId, command.id))[0];
+      const assessment = yield* assessReminder(tx, command.scope, message);
+
+      if (
+        !attempt &&
+        assessment.approval &&
+        !assessment.resolution &&
+        !assessment.refusal &&
+        assessment.blockers.length > 0
+      ) {
+        yield* retainRefusal(tx, command.scope, message, assessment.blockers, assessment.current);
+        const outbox = (yield* ReminderDb.readOutbox(tx, command.scope.bookId, command.id))[0];
+
+        if (outbox)
+          yield* ReminderDb.advanceOutbox(
+            tx,
+            command.scope.bookId,
+            command.id,
+            "refused",
+            "StaleDependency",
+            assessment.current.checkedAt,
+            outbox.checkpoint,
+            outbox.cancelVersion,
+          );
+      }
+
+      const result = yield* view(tx, command.scope, command.id);
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "reminder_check",
+        principal.actorId,
+        yield* toJsonObject(result),
+      );
+
+      return result;
+    },
+    "update",
+  );
+});
+
+export const replaceReminder = Effect.fn("commerce.reminders.replace")(function* (
+  token: string,
+  command: Command & {
+    readonly idempotencyKey: string;
+    readonly input: typeof Collections.ReplaceReminder.Type;
+  },
+) {
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (tx, principal) {
+      yield* requireHumanSession(principal);
+      yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
+      const message = yield* checkedMessage(tx, command);
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        "reminder_replace",
+        principal.actorId,
+        yield* toJsonObject(command),
+        Collections.ReminderReplacement,
+      );
+
+      if (request.previous) return request.previous;
+
+      if ((yield* ReminderDb.readAttempt(tx, command.scope.bookId, command.id))[0])
+        return yield* failure("StaleDependency");
+      const previous = (yield* ReminderDb.readResolution(tx, command.scope.bookId, command.id))[0];
+
+      const resolution = previous
+        ? yield* decode(Collections.ReminderResolution, previous.body)
+        : null;
+
+      if (resolution?.kind === "cancelled") return yield* failure("StaleDependency");
+      let result: typeof Collections.ReminderReplacement.Type;
+
+      if (resolution?.kind === "replaced") {
+        const row = (yield* ReminderDb.readMessage(
+          tx,
+          command.scope.bookId,
+          resolution.replacementMessageId,
+        ))[0];
+
+        if (!row) return yield* failure("InternalError");
+        const child = yield* decode(Collections.ReminderMessage, row.body);
+        const recipient = command.input.recipient;
+
+        if (
+          child.recipient.partyId !== recipient.partyId ||
+          child.recipient.revision !== recipient.revision ||
+          child.recipient.digest !== recipient.digest
+        )
+          return yield* failure("IdempotencyConflict");
+        result = { message: child, resolution };
+      } else {
+        const assessment = yield* assessReminder(tx, command.scope, message);
+
+        if (!assessment.replacementAllowed) return yield* failure("StaleDependency");
+
+        if (assessment.approval && assessment.blockers.length > 0)
+          yield* retainRefusal(tx, command.scope, message, assessment.blockers, assessment.current);
+
+        const child = yield* prepareWithin(
+          tx,
+          principal.actorId,
+          {
+            scope: command.scope,
+            idempotencyKey: `replacement_${request.expected}`,
+            input: { issueId: message.issueId, recipient: command.input.recipient },
+          },
+          request.expected,
+        );
+
+        const body = yield* sealed({
+          id: newId("reminder_resolution"),
+          scope: command.scope,
+          messageId: message.id,
+          messageDigest: message.digest,
+          actorId: principal.actorId,
+          decidedAt: yield* retainedNow(tx),
+          kind: "replaced",
+          replacementMessageId: child.id,
+          replacementMessageDigest: child.digest,
+        });
+
+        const retained = yield* decode(Collections.ReminderResolution, body);
+        yield* ReminderDb.insertResolution(
+          tx,
+          command.scope.bookId,
+          message.id,
+          principal.actorId,
+          child.id,
+          body,
+        );
+        yield* retireOutbox(
+          tx,
+          command.scope,
+          message.id,
+          "Replaced by a separately reviewed reminder.",
+        );
+        result = { message: child, resolution: retained };
+      }
+
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "reminder_replace",
+        principal.actorId,
+        yield* toJsonObject(result),
+      );
+
+      return result;
+    },
+    "update",
+  );
+});
+
+export const listReminders = Effect.fn("commerce.reminders.list")(function* (
+  token: string,
+  input: { readonly scope: Scope; readonly invoiceId: string; readonly after?: string },
+) {
+  return yield* withBook(token, input.scope, false, function* (tx) {
+    if (!(yield* InvoiceDb.readLiveInvoice(tx, input.scope.bookId, input.invoiceId))[0])
+      return yield* failure("NotFound");
+
+    if (input.after) {
+      const anchor = (yield* ReminderDb.readMessage(tx, input.scope.bookId, input.after))[0];
+
+      if (!anchor || anchor.body.invoiceId !== input.invoiceId) return yield* failure("NotFound");
+    }
+
+    const rows = yield* ReminderDb.readInvoiceMessages(
+      tx,
+      input.scope.bookId,
+      input.invoiceId,
+      input.after ?? "",
+    );
+
+    const messages = yield* Effect.forEach(rows.slice(0, 20), (row) =>
+      decode(Collections.ReminderMessage, row.body),
+    );
+
+    return yield* decode(Collections.ReminderHistoryPage, {
+      scope: input.scope,
+      invoiceId: input.invoiceId,
+      items: messages.map((message) => ({
+        id: message.id,
+        issueId: message.issueId,
+        invoiceNumber: message.invoiceNumber,
+        preparedAt: message.preparedAt,
+      })),
+      next: rows.length > 20 ? (messages.at(-1)?.id ?? null) : null,
+    });
+  });
 });
 
 export const reconcileReminder = Effect.fn("commerce.reminders.reconcile")(function* (
@@ -514,56 +1061,39 @@ function admitDispatch(token: string, payload: Payload) {
           message,
           attempt: yield* decode(Collections.ReminderAttempt, previous.body),
         } satisfies Admission;
-      const now = yield* retainedNow(tx);
+      const assessed = yield* assessReminder(tx, payload.scope, message);
+      const now = assessed.current.checkedAt;
+      const reasons = [...assessed.blockers];
 
-      const refusal =
-        denied ?? (Date.parse(approval.expiresAt) <= Date.parse(now) ? "ApprovalRequired" : null);
+      if (denied && !reasons.includes("authority_unavailable"))
+        reasons.push("authority_unavailable");
 
-      if (refusal !== null) {
-        yield* ReminderDb.advanceOutbox(
-          tx,
-          payload.scope.bookId,
-          payload.messageId,
-          "refused",
-          refusal,
-          now,
-          outbox.checkpoint,
-          outbox.cancelVersion,
-        );
+      if (outbox.cancelVersion !== 0 && !reasons.includes("cancelled")) reasons.push("cancelled");
 
-        return { action: "skip" } satisfies Admission;
-      }
-
-      const checked = yield* source(tx, payload.scope, message.issueId, message.recipient).pipe(
-        Effect.map((current) => ({
-          residualMinor: current.outstandingMinor,
-          sourceCurrent:
-            current.invoiceDigest === message.invoiceDigest &&
-            current.issue.digest === message.issueDigest &&
-            current.disputeBasisDigest === message.disputeBasisDigest,
-        })),
-        Effect.mapError(databaseFailure),
-        Effect.catchIf(
-          (error) => error.code === "StaleDependency" || error.code === "NotFound",
-          () => Effect.succeed(null),
-        ),
-      );
-
-      const admission = checkSealedDispatchBasis({
+      const gate = checkSealedDispatchBasis({
         messageDigest: message.digest,
         approvedDigest: approval.messageDigest,
         approvedResidualMinor: message.outstandingMinor,
-        current: checked,
+        current:
+          assessed.current.outstandingMinor === null
+            ? null
+            : {
+                residualMinor: assessed.current.outstandingMinor,
+                sourceCurrent: sourceBlockers(message, assessed.current).length === 0,
+              },
         cancelled: outbox.cancelVersion !== 0,
       });
 
-      if (Result.isFailure(admission)) {
+      if (Result.isFailure(gate) && reasons.length === 0) reasons.push("source_changed");
+
+      if (reasons.length > 0) {
+        yield* retainRefusal(tx, payload.scope, message, reasons, assessed.current);
         yield* ReminderDb.advanceOutbox(
           tx,
           payload.scope.bookId,
           payload.messageId,
           "refused",
-          "StaleDependency",
+          denied ?? (reasons.includes("approval_expired") ? "ApprovalRequired" : "StaleDependency"),
           now,
           outbox.checkpoint,
           outbox.cancelVersion,
@@ -756,6 +1286,15 @@ export const stopReminderDelivery = Effect.fn("commerce.reminders.stopDelivery")
         payload.scope.bookId,
         payload.messageId,
       ))[0];
+
+      if (!attempt) {
+        const row = (yield* ReminderDb.readMessage(tx, payload.scope.bookId, payload.messageId))[0];
+
+        if (!row) return yield* failure("NotFound");
+        const message = yield* decode(Collections.ReminderMessage, row.body);
+        const current = yield* inspectCurrent(tx, payload.scope, message);
+        yield* retainRefusal(tx, payload.scope, message, ["delivery_exhausted"], current);
+      }
 
       yield* ReminderDb.advanceOutbox(
         tx,

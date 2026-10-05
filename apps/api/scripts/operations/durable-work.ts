@@ -7,8 +7,11 @@ import {
   BackupManifest,
   BookBoundary,
   RecoveryWorkInventory,
+  RecoveryWorkInventoryV2,
   RecoveryWorkInventoryV3,
   RecoveryWorkInventoryV4,
+  RecoveryWorkInventoryV5,
+  ReminderReviewWorkSummary,
   ReminderWorkSummary,
   RecurringWorkSummary,
   RecoveryWorkSummary,
@@ -18,11 +21,12 @@ import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 import { requireFencedBackupBoundary } from "./snapshot";
 
-export const workInventoryPath = "durable-work-v4.json";
+export const workInventoryPath = "durable-work-v5.json";
 
 export const workInventoryPaths = [
   "durable-work-v2.json",
   "durable-work-v3.json",
+  "durable-work-v4.json",
   workInventoryPath,
 ];
 
@@ -49,7 +53,14 @@ const reminderWorkTables = [
   "reminder_observations",
 ];
 
-const workTables = [...legacyWorkTables, ...recurringWorkTables, ...reminderWorkTables];
+const reminderReviewTables = ["reminder_refusals", "reminder_resolutions"];
+
+const workTables = [
+  ...legacyWorkTables,
+  ...recurringWorkTables,
+  ...reminderWorkTables,
+  ...reminderReviewTables,
+];
 
 function workSummary(
   inventory: Pick<typeof RecoveryWorkInventory.Type, "outbox" | "runs" | "jobs" | "savedRequests">,
@@ -131,6 +142,27 @@ function reminderSummary(
   });
 }
 
+function reminderReviewSummary(
+  inventory: Omit<
+    typeof RecoveryWorkInventoryV5.Type,
+    | "summary"
+    | "version"
+    | "queue"
+    | "kind"
+    | "snapshot"
+    | "books"
+    | "providerAttemptHistory"
+    | "remoteWorkflowState"
+    | "resumptionAuthority"
+  >,
+) {
+  return Schema.decodeSync(ReminderReviewWorkSummary)({
+    ...reminderSummary(inventory),
+    reminderRefusals: String(inventory.reminderRefusals.length),
+    reminderResolutions: String(inventory.reminderResolutions.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -141,6 +173,7 @@ function validateInventory(
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
   const summary = Match.value(inventory).pipe(
+    Match.when({ version: 5 }, reminderReviewSummary),
     Match.when({ version: 4 }, reminderSummary),
     Match.when({ version: 3 }, recurringSummary),
     Match.orElse(workSummary),
@@ -247,7 +280,7 @@ function validateInventory(
     }
   }
 
-  if (inventory.version === 4) {
+  if (inventory.version === 4 || inventory.version === 5) {
     const families = [
       inventory.reminderMessages,
       inventory.reminderApprovals.map((row) => ({ bookId: row.bookId, id: row.messageId })),
@@ -315,6 +348,58 @@ function validateInventory(
       refuse("Reminder attempts contain duplicate external identities.");
   }
 
+  if (inventory.version === 5) {
+    const families = [inventory.reminderRefusals, inventory.reminderResolutions];
+
+    const messages = new Set(
+      inventory.reminderMessages.map((row) => JSON.stringify([row.bookId, row.id])),
+    );
+
+    const approvals = new Set(
+      inventory.reminderApprovals.map((row) => JSON.stringify([row.bookId, row.messageId])),
+    );
+
+    for (const [index, family] of families.entries()) {
+      const table = tables.find(
+        (row) => row.schema === "openerp" && row.table === reminderReviewTables[index],
+      );
+
+      if (!table || BigInt(table.rows) !== BigInt(family.length))
+        refuse("Reminder terminal decisions differ from complete snapshot counts.");
+      uniqueScopedIds(family.map((row) => ({ bookId: row.bookId, id: row.messageId })));
+
+      if (
+        family.some(
+          (row) =>
+            !bookIds.has(row.bookId) || !messages.has(JSON.stringify([row.bookId, row.messageId])),
+        )
+      )
+        refuse("Reminder terminal decision has no represented scoped message.");
+    }
+
+    if (
+      inventory.reminderRefusals.some(
+        (row) => !approvals.has(JSON.stringify([row.bookId, row.messageId])),
+      )
+    )
+      refuse("Reminder refusal has no scoped retained approval.");
+
+    if (
+      inventory.reminderResolutions.some(
+        (row) =>
+          row.replacementMessageId !== null &&
+          (!messages.has(JSON.stringify([row.bookId, row.replacementMessageId])) ||
+            row.replacementMessageId === row.messageId),
+      )
+    )
+      refuse("Reminder replacement has no distinct scoped retained message.");
+    uniqueScopedIds(
+      inventory.reminderResolutions
+        .filter((row) => row.replacementMessageId !== null)
+        .map((row) => ({ bookId: row.bookId, id: row.replacementMessageId ?? "" })),
+    );
+  }
+
   const runIds = new Set(inventory.runs.map((run) => JSON.stringify([run.bookId, run.id])));
 
   if (inventory.jobs.some((job) => !runIds.has(JSON.stringify([job.bookId, job.runId]))))
@@ -324,14 +409,97 @@ function validateInventory(
     refuse("A preparation cursor exceeds its retained input selection.");
 }
 
+async function captureRecurringFamilies(client: Client) {
+  const recurringSchedules = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'agreementId',agreement_id,'enabled',enabled,'generation',generation::text,
+    'firstAutomaticCycle',first_automatic_cycle::text,'nextCycleOrdinal',next_cycle_ordinal::text,
+    'requestedBy',requested_by,'timeZone',time_zone,'duePolicy',due_policy) AS body
+    FROM openerp.recurring_invoice_draft_schedules ORDER BY book_id COLLATE "C",agreement_id COLLATE "C"`);
+
+  const recurringEvents = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'agreementId',agreement_id,'generation',generation::text,
+    'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.recurring_invoice_draft_schedule_events ORDER BY book_id COLLATE "C",agreement_id COLLATE "C",generation`);
+
+  const recurringJobs = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'agreementId',agreement_id,'cycleOrdinal',cycle_ordinal::text,
+    'generation',generation::text,'scheduleGeneration',schedule_generation::text,'requestedBy',requested_by,'executorId',executor_id,
+    'admittedSha256',encode(sha256(convert_to(admitted::text,'UTF8')),'hex'),'state',state,'reason',reason,'draftId',draft_id,
+    'dispatchedAt',to_char(dispatched_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+    'settledAt',to_char(settled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
+    FROM openerp.recurring_invoice_draft_jobs ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
+  return {
+    recurringSchedules: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringSchedules)(
+      recurringSchedules.rows.map((row) => row.body),
+    ),
+    recurringEvents: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringEvents)(
+      recurringEvents.rows.map((row) => row.body),
+    ),
+    recurringJobs: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringJobs)(
+      recurringJobs.rows.map((row) => row.body),
+    ),
+  };
+}
+
+async function captureReminderFamilies(client: Client) {
+  const reminderMessages = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_messages ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
+  const reminderApprovals = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'messageId',message_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_approvals ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+  const reminderAttempts = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'messageId',message_id,'externalIdentity',external_identity,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_attempts ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
+  const reminderOutbox = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'messageId',message_id,'state',state,'checkpoint',checkpoint,'cancelVersion',cancel_version,'reason',reason,
+    'checkedAt',to_char(checked_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
+    FROM openerp.reminder_outbox ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+  const reminderObservations = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'attemptId',attempt_id,'observationId',observation_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_observations ORDER BY book_id COLLATE "C",attempt_id COLLATE "C",observation_id COLLATE "C"`);
+
+  return {
+    reminderMessages: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderMessages)(
+      reminderMessages.rows.map((row) => row.body),
+    ),
+    reminderApprovals: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderApprovals)(
+      reminderApprovals.rows.map((row) => row.body),
+    ),
+    reminderAttempts: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderAttempts)(
+      reminderAttempts.rows.map((row) => row.body),
+    ),
+    reminderOutbox: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderOutbox)(
+      reminderOutbox.rows.map((row) => row.body),
+    ),
+    reminderObservations: Schema.decodeUnknownSync(
+      RecoveryWorkInventoryV4.fields.reminderObservations,
+    )(reminderObservations.rows.map((row) => row.body)),
+  };
+}
+
 // The caller owns the same repeatable-read snapshot as the dump and table fingerprints.
 export async function captureWorkInventory(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
   snapshot: string,
+  version: 2 | 3 | 4 | 5 = 5,
 ) {
+  const requiredTables = [...legacyWorkTables];
+
+  if (version >= 3) requiredTables.push(...recurringWorkTables);
+
+  if (version >= 4) requiredTables.push(...reminderWorkTables);
+
+  if (version === 5) requiredTables.push(...reminderReviewTables);
+
   for (const name of [
-    ...workTables,
+    ...requiredTables,
     "preparation_run_audit",
     "posting_request_outcomes",
     "command_receipts",
@@ -380,71 +548,7 @@ export async function captureWorkInventory(
     'id',id,'authority',authority,'writerEpoch',writer_epoch::text,'committedSequence',committed_sequence::text) AS body
     FROM openerp.books ORDER BY id COLLATE "C"`);
 
-  const recurringSchedules = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'agreementId',agreement_id,'enabled',enabled,'generation',generation::text,
-    'firstAutomaticCycle',first_automatic_cycle::text,'nextCycleOrdinal',next_cycle_ordinal::text,
-    'requestedBy',requested_by,'timeZone',time_zone,'duePolicy',due_policy) AS body
-    FROM openerp.recurring_invoice_draft_schedules ORDER BY book_id COLLATE "C",agreement_id COLLATE "C"`);
-
-  const recurringEvents = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'agreementId',agreement_id,'generation',generation::text,
-    'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
-    FROM openerp.recurring_invoice_draft_schedule_events ORDER BY book_id COLLATE "C",agreement_id COLLATE "C",generation`);
-
-  const recurringJobs = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'id',id,'agreementId',agreement_id,'cycleOrdinal',cycle_ordinal::text,
-    'generation',generation::text,'scheduleGeneration',schedule_generation::text,'requestedBy',requested_by,'executorId',executor_id,
-    'admittedSha256',encode(sha256(convert_to(admitted::text,'UTF8')),'hex'),'state',state,'reason',reason,'draftId',draft_id,
-    'dispatchedAt',to_char(dispatched_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
-    'settledAt',to_char(settled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
-    FROM openerp.recurring_invoice_draft_jobs ORDER BY book_id COLLATE "C",id COLLATE "C"`);
-
-  const reminderMessages = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'id',id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
-    FROM openerp.reminder_messages ORDER BY book_id COLLATE "C",id COLLATE "C"`);
-
-  const reminderApprovals = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'messageId',message_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
-    FROM openerp.reminder_approvals ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
-
-  const reminderAttempts = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'id',id,'messageId',message_id,'externalIdentity',external_identity,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
-    FROM openerp.reminder_attempts ORDER BY book_id COLLATE "C",id COLLATE "C"`);
-
-  const reminderOutbox = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'messageId',message_id,'state',state,'checkpoint',checkpoint,'cancelVersion',cancel_version,'reason',reason,
-    'checkedAt',to_char(checked_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
-    FROM openerp.reminder_outbox ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
-
-  const reminderObservations = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
-    'bookId',book_id,'attemptId',attempt_id,'observationId',observation_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
-    FROM openerp.reminder_observations ORDER BY book_id COLLATE "C",attempt_id COLLATE "C",observation_id COLLATE "C"`);
-
   const families = {
-    reminderMessages: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderMessages)(
-      reminderMessages.rows.map((row) => row.body),
-    ),
-    reminderApprovals: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderApprovals)(
-      reminderApprovals.rows.map((row) => row.body),
-    ),
-    reminderAttempts: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderAttempts)(
-      reminderAttempts.rows.map((row) => row.body),
-    ),
-    reminderOutbox: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderOutbox)(
-      reminderOutbox.rows.map((row) => row.body),
-    ),
-    reminderObservations: Schema.decodeUnknownSync(
-      RecoveryWorkInventoryV4.fields.reminderObservations,
-    )(reminderObservations.rows.map((row) => row.body)),
-    recurringSchedules: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringSchedules)(
-      recurringSchedules.rows.map((row) => row.body),
-    ),
-    recurringEvents: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringEvents)(
-      recurringEvents.rows.map((row) => row.body),
-    ),
-    recurringJobs: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringJobs)(
-      recurringJobs.rows.map((row) => row.body),
-    ),
     outbox: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.outbox)(
       outbox.rows.map((row) => row.body),
     ),
@@ -459,23 +563,82 @@ export async function captureWorkInventory(
     ),
   };
 
-  const inventory = Schema.decodeSync(RecoveryWorkInventoryV4)({
-    version: 4,
+  const common = {
     queue: {
       tables: tables.filter(
         (table) => table.schema === "public" && queueTables.includes(table.table),
       ),
       sequences: await readQueueSequences(client),
     },
-    kind: "openerp-durable-work-inventory",
+    kind: "openerp-durable-work-inventory" as const,
     snapshot,
     books: books.rows.map((row) => Schema.decodeUnknownSync(BookBoundary)(row.body)),
-    ...families,
-    summary: reminderSummary(families),
-    providerAttemptHistory: "payment-reminder-attempts-retained",
-    remoteWorkflowState: "not-inspected",
-    resumptionAuthority: "not-granted",
-  });
+    remoteWorkflowState: "not-inspected" as const,
+    resumptionAuthority: "not-granted" as const,
+  };
+
+  let inventory: typeof RecoveryWorkInventory.Type;
+
+  if (version === 2) {
+    inventory = Schema.decodeSync(RecoveryWorkInventoryV2)({
+      ...common,
+      ...families,
+      version: 2,
+      summary: workSummary(families),
+      providerAttemptHistory: "not-recorded-by-current-schema",
+    });
+  } else {
+    const recurring = { ...families, ...(await captureRecurringFamilies(client)) };
+
+    if (version === 3) {
+      inventory = Schema.decodeSync(RecoveryWorkInventoryV3)({
+        ...common,
+        ...recurring,
+        version: 3,
+        summary: recurringSummary(recurring),
+        providerAttemptHistory: "not-recorded-by-current-schema",
+      });
+    } else {
+      const reminders = { ...recurring, ...(await captureReminderFamilies(client)) };
+
+      if (version === 4) {
+        inventory = Schema.decodeSync(RecoveryWorkInventoryV4)({
+          ...common,
+          ...reminders,
+          version: 4,
+          summary: reminderSummary(reminders),
+          providerAttemptHistory: "payment-reminder-attempts-retained",
+        });
+      } else {
+        const refusals = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+          'bookId',book_id,'messageId',message_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+          FROM openerp.reminder_refusals ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+        const resolutions = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+          'bookId',book_id,'messageId',message_id,'replacementMessageId',replacement_message_id,
+          'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+          FROM openerp.reminder_resolutions ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+        const reviewed = {
+          ...reminders,
+          reminderRefusals: Schema.decodeUnknownSync(
+            RecoveryWorkInventoryV5.fields.reminderRefusals,
+          )(refusals.rows.map((row) => row.body)),
+          reminderResolutions: Schema.decodeUnknownSync(
+            RecoveryWorkInventoryV5.fields.reminderResolutions,
+          )(resolutions.rows.map((row) => row.body)),
+        };
+
+        inventory = Schema.decodeSync(RecoveryWorkInventoryV5)({
+          ...common,
+          ...reviewed,
+          version: 5,
+          summary: reminderReviewSummary(reviewed),
+          providerAttemptHistory: "payment-reminder-attempts-retained",
+        });
+      }
+    }
+  }
 
   validateInventory(inventory, tables);
 

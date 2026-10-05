@@ -539,7 +539,13 @@ export async function restore(
       if (sourceWork) {
         stage = "durable-work-reconstruction";
         workVerification = "failed";
-        const restoredWork = await captureWorkInventory(restored, actual, manifest.snapshot);
+
+        const restoredWork = await captureWorkInventory(
+          restored,
+          actual,
+          manifest.snapshot,
+          sourceWork.version,
+        );
 
         if (!isDeepStrictEqual(restoredWork, sourceWork))
           refuse(

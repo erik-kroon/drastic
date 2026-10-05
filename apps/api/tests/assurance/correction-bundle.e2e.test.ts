@@ -1,3 +1,6 @@
+import * as Commerce from "@open-erp/contracts/commerce";
+import * as Accounting from "@open-erp/contracts/accounting";
+import * as Recovery from "@open-erp/contracts/posting-recovery";
 import { expect, test } from "vitest";
 import * as Corrections from "@open-erp/contracts/corrections";
 import * as Reports from "@open-erp/contracts/reports";
@@ -20,13 +23,31 @@ import {
   freshCommandCount,
   injectScopedInsertFault,
   rawVoucherRows,
+  retainedPostingCounts,
   saveSanitizedJourney,
   waitForBlockedExecutors,
 } from "./database-support";
 
-async function correctionFixture() {
-  const book = await fixture();
+async function correctionFixture(
+  options: { inactiveOriginal?: boolean; replacementAccountId?: string } = {},
+) {
+  const book = await fixture([
+    { id: "account_replacement", code: "1931", name: "Synthetic replacement" },
+  ]);
   const original = await execute(book, await prepare(book));
+
+  if (options.inactiveOriginal === true) {
+    const admin = await database();
+
+    try {
+      await admin.query(
+        "update openerp.accounts set active=false where book_id=$1 and id='account_bank'",
+        [book.bookId],
+      );
+    } finally {
+      await admin.end();
+    }
+  }
 
   const intent = {
     datePolicy: "explicit_open_period" as const,
@@ -37,7 +58,7 @@ async function correctionFixture() {
       description: "Correct synthetic transfer",
       lines: [
         {
-          accountId: "account_bank",
+          accountId: options.replacementAccountId ?? "account_bank",
           debitMinor: "7000",
           creditMinor: "0",
           description: "Corrected bank debit",
@@ -99,12 +120,45 @@ test("a late correction-bundle fault rolls back both children and exact retry re
 
   const before = await persisted(book);
   const beforeRows = await rawVoucherRows(book);
+  const beforeRetained = await retainedPostingCounts(book);
+
+  const admin = await database();
+  let childApprovals: Array<{ id: string; changeSetId: string }>;
+
+  try {
+    childApprovals = (
+      await admin.query<{ id: string; changeSetId: string }>(
+        `select id, change_set_id as "changeSetId" from openerp.approvals where book_id=$1 and change_set_id=any($2::text[])`,
+        [book.bookId, [bundle.reversal.id, bundle.replacement.id]],
+      )
+    ).rows;
+  } finally {
+    await admin.end();
+  }
+
+  expect(childApprovals).toHaveLength(2);
 
   for (const child of [bundle.reversal, bundle.replacement]) {
+    const childApproval = childApprovals.find((item) => item.changeSetId === child.id);
+
+    if (childApproval === undefined) throw new Error("Missing retained constituent approval");
+
+    await failure(
+      await request(book, `/change-sets/${child.id}/approvals`, {
+        method: "POST",
+        body: JSON.stringify({ version: 1, planDigest: child.planDigest }),
+      }),
+      422,
+      "UnsupportedProfile",
+    );
     await failure(
       await request(book, `/change-sets/${child.id}/execute`, {
         method: "POST",
-        body: JSON.stringify({ version: 1, planDigest: child.planDigest, approvalId: approval.id }),
+        body: JSON.stringify({
+          version: 1,
+          planDigest: child.planDigest,
+          approvalId: childApproval.id,
+        }),
       }),
       422,
       "UnsupportedProfile",
@@ -133,6 +187,7 @@ test("a late correction-bundle fault rolls back both children and exact retry re
     expect(response.status, await response.text()).toBe(500);
     expect(await persisted(book)).toEqual(before);
     expect(await rawVoucherRows(book)).toEqual(beforeRows);
+    expect(await retainedPostingCounts(book)).toEqual(beforeRetained);
     expect(await freshCommandCount(book, commandKey)).toBe(0);
     expect(
       (
@@ -153,6 +208,7 @@ test("a late correction-bundle fault rolls back both children and exact retry re
 
   expect(receipt.originalVoucherId).toBe(original.voucherId);
   expect(await persisted(book)).toEqual(correctedPosting);
+  expect(await retainedPostingCounts(book)).toEqual({ groupReceipts: 3, consumptions: 3 });
   expect(await freshCommandCount(book, commandKey)).toBe(1);
   expect(
     await decoded(
@@ -161,6 +217,7 @@ test("a late correction-bundle fault rolls back both children and exact retry re
     ),
   ).toEqual(receipt);
   expect(await persisted(book)).toEqual(correctedPosting);
+  expect(await retainedPostingCounts(book)).toEqual({ groupReceipts: 3, consumptions: 3 });
   const rows = await rawVoucherRows(book);
 
   const balance = rows
@@ -567,5 +624,287 @@ test("new related report stales correction review and fresh correction preserves
     currentReport,
     currentLines,
     persisted: await persisted(book),
+  });
+});
+
+test.each(["expired", "revoked"] as const)(
+  "replacement %s authority rolls back both correction constituents",
+  async (state) => {
+    const { book, bundle, approval } = await correctionFixture();
+    const before = await persisted(book);
+    const beforeRows = await rawVoucherRows(book);
+    const beforeRetained = await retainedPostingCounts(book);
+    const admin = await database();
+    let replacementApprovalId: string;
+
+    try {
+      const row = (
+        await admin.query<{ id: string }>(
+          "select id from openerp.approvals where book_id=$1 and change_set_id=$2",
+          [book.bookId, bundle.replacement.id],
+        )
+      ).rows[0];
+
+      if (row === undefined) throw new Error("Missing replacement authority");
+      replacementApprovalId = row.id;
+
+      if (state === "expired") {
+        await admin.query("alter table openerp.approvals disable trigger all");
+
+        try {
+          await admin.query(
+            "update openerp.approvals set expires_at=clock_timestamp()-interval '1 second' where book_id=$1 and id=$2",
+            [book.bookId, replacementApprovalId],
+          );
+        } finally {
+          await admin.query("alter table openerp.approvals enable trigger all");
+        }
+      }
+    } finally {
+      await admin.end();
+    }
+
+    if (state === "revoked") {
+      const saved = await post(
+        book,
+        "/saved-posting-authority-requests",
+        {
+          operation: "revoke_approval",
+          id: replacementApprovalId,
+          input: { reason: "Synthetic replacement review withdrawn" },
+        },
+        Recovery.SavedPostingRequest,
+      );
+
+      await post(
+        book,
+        `/saved-posting-authority-requests/${saved.request.key}/run`,
+        {},
+        Recovery.SavedPostingRequest,
+      );
+    }
+
+    const commandKey = key();
+
+    await failure(
+      await request(book, `/correction-bundles/${bundle.id}/execute`, {
+        method: "POST",
+        headers: { "idempotency-key": commandKey },
+        body: JSON.stringify({
+          version: 1,
+          bundleDigest: bundle.bundleDigest,
+          approvalId: approval.id,
+        }),
+      }),
+      403,
+      "ApprovalRequired",
+    );
+    expect(await persisted(book)).toEqual(before);
+    expect(await rawVoucherRows(book)).toEqual(beforeRows);
+    expect(await retainedPostingCounts(book)).toEqual(beforeRetained);
+    expect(await freshCommandCount(book, commandKey)).toBe(0);
+    const view = await decoded(
+      await request(book, `/correction-bundles/${bundle.id}`),
+      Corrections.CorrectionBundleView,
+    );
+
+    expect(view.receipt).toBeNull();
+    await saveSanitizedJourney(`correction-replacement-${state}`, {
+      state,
+      before,
+      beforeRows,
+      beforeRetained,
+      view,
+      after: await persisted(book),
+    });
+  },
+);
+
+test("inactive original account reverses exactly into an active replacement", async () => {
+  const { book, original, bundle, approval } = await correctionFixture({
+    inactiveOriginal: true,
+    replacementAccountId: "account_replacement",
+  });
+  const originalBefore = await decoded(
+    await request(book, `/vouchers/${original.voucherId}`),
+    Accounting.Voucher,
+  );
+  const receipt = await post(
+    book,
+    `/correction-bundles/${bundle.id}/execute`,
+    {
+      version: 1,
+      bundleDigest: bundle.bundleDigest,
+      approvalId: approval.id,
+    },
+    Corrections.CorrectionBundleReceipt,
+  );
+  const after = await ledger(book);
+
+  expect(after.accounts.find((item) => item.accountId === "account_bank")?.balanceMinor).toBe("0");
+  expect(
+    after.accounts.find((item) => item.accountId === "account_replacement")?.balanceMinor,
+  ).toBe("7000");
+  expect(
+    await decoded(await request(book, `/vouchers/${original.voucherId}`), Accounting.Voucher),
+  ).toEqual(originalBefore);
+  await saveSanitizedJourney("correction-inactive-original", { originalBefore, receipt, after });
+});
+
+test("inactive replacement account refuses the whole correction without financial effects", async () => {
+  const { book, bundle, approval } = await correctionFixture();
+  const before = await persisted(book);
+  const beforeRetained = await retainedPostingCounts(book);
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "update openerp.accounts set active=false where book_id=$1 and id='account_bank'",
+      [book.bookId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  const response = await request(book, `/correction-bundles/${bundle.id}/execute`, {
+    method: "POST",
+    body: JSON.stringify({
+      version: 1,
+      bundleDigest: bundle.bundleDigest,
+      approvalId: approval.id,
+    }),
+  });
+
+  await failure(response, 409, "StaleDependency");
+  expect(await persisted(book)).toEqual(before);
+  expect(await retainedPostingCounts(book)).toEqual(beforeRetained);
+  await saveSanitizedJourney("correction-inactive-replacement", {
+    before,
+    beforeRetained,
+    after: await persisted(book),
+  });
+});
+
+test("a standalone reversal winning first blocks an existing correction bundle", async () => {
+  const { book, original, bundle, approval } = await correctionFixture();
+  const reversal = await post(
+    book,
+    `/vouchers/${original.voucherId}/correction-proposals`,
+    {
+      accountingPeriodId: "period_2026",
+      postingDate: "2026-09-23",
+      rationale: "Explicit standalone reversal wins",
+    },
+    Accounting.ChangeSet,
+  );
+
+  await execute(book, reversal);
+  const before = await persisted(book);
+
+  await failure(
+    await request(book, `/correction-bundles/${bundle.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({
+        version: 1,
+        bundleDigest: bundle.bundleDigest,
+        approvalId: approval.id,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await persisted(book)).toEqual(before);
+  const view = await decoded(
+    await request(book, `/correction-bundles/${bundle.id}`),
+    Corrections.CorrectionBundleView,
+  );
+
+  expect(view.receipt).toBeNull();
+  await saveSanitizedJourney("correction-standalone-winner", { original, reversal, before, view });
+});
+
+test("registered invoice recognition names its owner and blocks generic correction", async () => {
+  const { book, original, intent } = await correctionFixture();
+  const voucher = await decoded(
+    await request(book, `/vouchers/${original.voucherId}`),
+    Accounting.Voucher,
+  );
+  const line = voucher.action.lines.find((item) => item.accountId === "account_clearing");
+  const source = voucher.action.evidenceRefs[0];
+
+  if (line === undefined || source === undefined)
+    throw new Error("Missing exact recognition source");
+
+  const party = await post(
+    book,
+    "/commerce/counterparties",
+    {
+      kind: "synthetic_counterparty_v1",
+      externalKey: key(),
+      role: "supplier",
+      displayName: "Synthetic correction supplier",
+      evidenceId: source.evidenceId,
+      reason: "Synthetic register boundary",
+    },
+    Commerce.CounterpartyRevision,
+  );
+  const invoice = await post(
+    book,
+    "/commerce/invoices",
+    {
+      kind: "synthetic_invoice_v1",
+      direction: "supplier",
+      counterpartyId: party.id,
+      counterpartyRevision: party.revision,
+      documentNumber: "SYN-COR-125",
+      issuedOn: "2026-09-22",
+      dueOn: "2026-10-22",
+      currency: "SEK",
+      amountMinor: "12500",
+      controlAccountId: "account_clearing",
+      recognitionVoucherId: original.voucherId,
+      recognitionLineId: line.lineId,
+      evidenceId: source.evidenceId,
+      description: "Synthetic registered liability",
+    },
+    Commerce.Invoice,
+  );
+  const before = await persisted(book);
+  const impact = await post(
+    book,
+    `/vouchers/${original.voucherId}/correction-impact-reviews`,
+    intent,
+    Corrections.CorrectionImpact,
+  );
+
+  expect(impact.basis.resources).toContainEqual({
+    kind: "invoice",
+    id: invoice.id,
+    detail: `Registered invoice recognition, line ${line.lineId}. Use the commerce owner; generic release is unavailable.`,
+    path: `/commerce/invoices/${invoice.id}`,
+    blocks: true,
+  });
+  expect(impact.basis.blockers).toContainEqual({
+    code: "UnsupportedProfile",
+    message: `Registered invoice recognition, line ${line.lineId}. Use the commerce owner; generic release is unavailable.`,
+  });
+  await failure(
+    await request(book, `/vouchers/${original.voucherId}/correction-bundles`, {
+      method: "POST",
+      body: JSON.stringify({ ...intent, impactReview: { id: impact.id, digest: impact.digest } }),
+    }),
+    422,
+    "UnsupportedProfile",
+  );
+  expect(await persisted(book)).toEqual(before);
+  expect(
+    await decoded(await request(book, `/vouchers/${original.voucherId}`), Accounting.Voucher),
+  ).toEqual(voucher);
+  await saveSanitizedJourney("correction-register-owner-refusal", {
+    invoice,
+    impact,
+    original: voucher,
+    before,
+    after: await persisted(book),
   });
 });

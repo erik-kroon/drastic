@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { Transaction } from "../transaction";
+import type * as Schema from "effect/Schema";
 import {
   reminderMessages,
   reminderApprovals,
@@ -14,7 +15,96 @@ export const reminderTables = [
   "reminder_attempts",
   "reminder_outbox",
   "reminder_observations",
+  "reminder_refusals",
+  "reminder_resolutions",
 ] as const;
+
+export function readRefusal(tx: Transaction, bookId: string, messageId: string) {
+  return tx.execute<{ readonly body: Schema.JsonObject }>(
+    sql`select body from openerp.reminder_refusals where book_id=${bookId} and message_id=${messageId}`,
+    "objects",
+  );
+}
+
+export function readResolution(tx: Transaction, bookId: string, messageId: string) {
+  return tx.execute<{ readonly body: Schema.JsonObject }>(
+    sql`select body from openerp.reminder_resolutions where book_id=${bookId} and message_id=${messageId}`,
+    "objects",
+  );
+}
+
+export function insertRefusal(
+  tx: Transaction,
+  bookId: string,
+  messageId: string,
+  body: Schema.JsonObject,
+) {
+  return tx.execute(
+    sql`insert into openerp.reminder_refusals(book_id,message_id,body)
+    values(${bookId},${messageId},${JSON.stringify(body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertResolution(
+  tx: Transaction,
+  bookId: string,
+  messageId: string,
+  actorId: string,
+  replacementId: string | null,
+  body: Schema.JsonObject,
+) {
+  return tx.execute(
+    sql`insert into openerp.reminder_resolutions(book_id,message_id,actor_id,replacement_message_id,body)
+    values(${bookId},${messageId},${actorId},${replacementId},${JSON.stringify(body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readInvoiceMessages(
+  tx: Transaction,
+  bookId: string,
+  invoiceId: string,
+  after: string,
+) {
+  return tx.execute<{ readonly id: string; readonly body: Schema.JsonObject }>(
+    sql`
+    select id,body from openerp.reminder_messages where book_id=${bookId}
+    and body->>'invoiceId'=${invoiceId} and id collate "C" > ${after}
+    order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function readAmbiguousAttempt(
+  tx: Transaction,
+  bookId: string,
+  invoiceId: string,
+  exceptId: string,
+) {
+  return tx.execute<{ readonly present: boolean }>(
+    sql`select exists (
+    select from openerp.reminder_messages m join openerp.reminder_attempts a
+      on a.book_id=m.book_id and a.message_id=m.id
+    join openerp.reminder_outbox o on o.book_id=m.book_id and o.message_id=m.id
+    where m.book_id=${bookId} and m.body->>'invoiceId'=${invoiceId} and m.id<>${exceptId}
+      and o.state in ('admitted','reconciling','outcome_unknown')
+  ) as present`,
+    "objects",
+  );
+}
+
+export function readApproverAuthority(tx: Transaction, bookId: string, row: ApprovalRow) {
+  return tx.execute<{ readonly present: boolean }>(
+    sql`select exists (
+    select from openerp_auth.session s join openerp.memberships m on m.actor_id=s.user_id
+    left join openerp.identity_admissions i on i.actor_id=s.user_id
+    where s.id=${row.sessionId} and s.user_id=${row.actorId} and s.expires_at>clock_timestamp()
+      and m.book_id=${bookId} and m.role='operator' and coalesce(i.enabled,true)
+  ) as present`,
+    "objects",
+  );
+}
 
 export type OutboxState = typeof reminderOutbox.$inferSelect.state;
 

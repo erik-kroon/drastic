@@ -9,6 +9,35 @@ import * as Reminders from "../../../application/commerce/reminders";
 
 export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (handlers) =>
   handlers
+    .handle("reminderHistory", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.listReminders(token, {
+          scope: scopeFromPath(params),
+          invoiceId: query.invoiceId,
+          after: query.after ?? "",
+        }),
+      ),
+    )
+    .handle("checkReminder", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.checkReminder(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("replaceReminder", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.replaceReminder(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("prepareReminder", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Reminders.prepareReminder(token, {
@@ -32,11 +61,12 @@ export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (han
         }),
       ),
     )
-    .handle("cancelReminder", ({ params, payload }) =>
+    .handle("cancelReminder", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Reminders.cancelReminder(token, {
           scope: scopeFromPath(params),
           id: params.id,
+          idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
       ),

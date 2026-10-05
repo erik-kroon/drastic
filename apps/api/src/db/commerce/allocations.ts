@@ -1029,6 +1029,32 @@ export type AllocationHistoryRow = {
   readonly receiptId: string | null;
 };
 
+export function readReminderSettlements(
+  transaction: Transaction,
+  bookId: string,
+  invoiceId: string,
+) {
+  return transaction.execute<{
+    readonly receiptId: string;
+    readonly receiptDigest: string;
+    readonly planId: string;
+    readonly amountMinor: string;
+    readonly committedAt: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+  }>(
+    sql`select r.id as "receiptId", openerp.digest(r.body) as "receiptDigest", r.plan_id as "planId",
+    l.amount_minor::text as "amountMinor", r.body->>'committedAt' as "committedAt",
+    l.payment_voucher_id as "voucherId", l.payment_line_id as "lineId"
+    from openerp.commerce_allocation_receipts r join openerp.commerce_allocation_legs l
+      on l.book_id=r.book_id and l.receipt_id=r.id
+    where r.book_id=${bookId} and l.invoice_id=${invoiceId}
+      and not exists (select from openerp.commerce_allocation_reversals v where v.book_id=r.book_id and v.receipt_id=r.id)
+    order by r.body->>'committedAt',r.id collate "C",l.ordinal limit 1001`,
+    "objects",
+  );
+}
+
 function invoiceAllocationHistoryEntry(bookId: string, invoiceId: string) {
   return sql`
     select p.id as "planId", p.body->>'createdAt' as "createdAt",

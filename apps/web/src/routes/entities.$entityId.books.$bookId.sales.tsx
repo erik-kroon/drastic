@@ -7,6 +7,7 @@ import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { PeppolReviewWorkspace } from "@/components/commerce/peppol-review";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
+import { ReminderRetainedWorkspace } from "@/components/commerce/reminder-retained-review";
 import { SalesOrders } from "@/components/commerce/sales-orders";
 import { SalesNavigation } from "@/components/commerce/sales-navigation";
 import { CatalogArticles } from "@/components/commerce/catalog-articles";
@@ -71,6 +72,9 @@ function Page() {
   if (search.view === "orders") return <OrdersPage />;
 
   if (search.view === "articles") return <CatalogPage />;
+
+  if (search.view === "collections" && search.reminder)
+    return <ReminderRetainedWorkspace id={search.reminder} />;
 
   if (search.view === "collections") return <CollectionsPage />;
 

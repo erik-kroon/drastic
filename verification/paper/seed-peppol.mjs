@@ -2,14 +2,19 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { assetClients } from "./asset-fixture-clients.mjs";
+
 export const peppolAccounts = [
- { id: "account_ar", code: "1510", name: "Kundfordringar" },
- { id: "account_revenue", code: "3001", name: "Försäljning" },
- { id: "account_vat", code: "2611", name: "Utgående moms" },
+  { id: "account_ar", code: "1510", name: "Kundfordringar" },
+  { id: "account_revenue", code: "3001", name: "Försäljning" },
+  { id: "account_vat", code: "2611", name: "Utgående moms" },
 ];
+
 const key = () => randomUUID();
-async function issuePeppolInvoice(clients, fixture) {
-  const { author, reviewer, activator, post, source, today } = clients;
+
+export async function issuePeppolInvoice(clients, fixture, options = {}) {
+  const { author, reviewer, activator, post } = clients;
+  const source = clients.source;
+  const today = clients.today;
   const ref = { evidenceId: source.id, sha256: source.sha256 };
 
   const seller = {
@@ -78,7 +83,7 @@ async function issuePeppolInvoice(clients, fixture) {
     kind: "synthetic_counterparty_v1",
     externalKey: key(),
     role: "customer",
-    displayName: "Skogsbruk Nord AB",
+    displayName: options.customerName ?? "Skogsbruk Nord AB",
     evidenceId: source.id,
     reason: "Synthetic fixture",
   });
@@ -113,22 +118,22 @@ async function issuePeppolInvoice(clients, fixture) {
       paymentTerms: "Synthetic only; no payment requested",
       buyerReference: null,
       orderReference: null,
-      sourceTotalMinor: "12500",
+      sourceTotalMinor: options.grossMinor ?? "12500",
       lines: [
-            {
-              id: "line_1",
-              description: "Synthetic service",
-              quantity: "1",
-              unitPriceMinor: "10000",
-              baseMinor: "10000",
-              discountMinor: "0",
-              chargeMinor: "0",
-              taxMinor: "2500",
-              taxDescription: "se-domestic-standard-25-v1",
-              taxEvidenceId: source.id,
-              sourceGrossMinor: "12500",
-            },
-          ],
+        {
+          id: "line_1",
+          description: "Synthetic service",
+          quantity: "1",
+          unitPriceMinor: options.baseMinor ?? "10000",
+          baseMinor: options.baseMinor ?? "10000",
+          discountMinor: "0",
+          chargeMinor: "0",
+          taxMinor: options.taxMinor ?? "2500",
+          taxDescription: "se-domestic-standard-25-v1",
+          taxEvidenceId: source.id,
+          sourceGrossMinor: options.grossMinor ?? "12500",
+        },
+      ],
     },
   });
 
@@ -169,17 +174,65 @@ async function issuePeppolInvoice(clients, fixture) {
 
 export async function seedPeppol(config) {
   const clients = await assetClients(config);
+
   const issue = await issuePeppolInvoice(clients, config.fixture);
   const document = { kind: "invoice", id: issue.id };
-  const common = { document, schemeId: "0007", providerAccount: "synthetic-ap-v1", active: true,
-    evidenceId: clients.source.id, acknowledgeSyntheticAccessPoint: true };
-  const sender = await clients.post(clients.author, "/commerce/peppol/bindings", { ...common, role: "sender", participantId: "5560000001", buyerReference: null, paymentAccountReference: "1234567" });
-  const recipient = await clients.post(clients.author, "/commerce/peppol/bindings", { ...common, role: "recipient", participantId: "5560000019", buyerReference: null, paymentAccountReference: null });
-  const review = await clients.post(clients.reviewer, "/commerce/peppol/reviews", { document, senderBindingId: sender.id, recipientBindingId: recipient.id });
-  if (review.outcome !== "blocked" || review.validation.outcome !== "ValidationFailed" || !JSON.stringify(review.validation).includes("PEPPOL-EN16931-R003")) throw new Error("M59 needs actual pinned R003 refusal");
-  const result = { issueId: issue.id, reviewId: review.id, legalNumber: issue.legalDocumentNumber,
-    documentDigest: issue.digest, reviewDigest: review.digest, senderBindingId: sender.id, recipientBindingId: recipient.id,
-    route: `/entities/${config.fixture.entity.id}/books/${config.fixture.book.id}/sales?view=peppol&record=${issue.id}&review=${review.id}` };
+
+  const common = {
+    document,
+    schemeId: "0007",
+    providerAccount: "synthetic-ap-v1",
+    active: true,
+    evidenceId: clients.source.id,
+
+    acknowledgeSyntheticAccessPoint: true,
+  };
+
+  const sender = await clients.post(clients.author, "/commerce/peppol/bindings", {
+    ...common,
+    role: "sender",
+    participantId: "5560000001",
+    buyerReference: null,
+
+    paymentAccountReference: "1234567",
+  });
+
+  const recipient = await clients.post(clients.author, "/commerce/peppol/bindings", {
+    ...common,
+    role: "recipient",
+    participantId: "5560000019",
+    buyerReference: null,
+
+    paymentAccountReference: null,
+  });
+
+  const review = await clients.post(clients.reviewer, "/commerce/peppol/reviews", {
+    document,
+    senderBindingId: sender.id,
+
+    recipientBindingId: recipient.id,
+  });
+
+  if (
+    review.outcome !== "blocked" ||
+    review.validation.outcome !== "ValidationFailed" ||
+    !JSON.stringify(review.validation).includes("PEPPOL-EN16931-R003")
+  )
+    throw new Error("M59 needs actual pinned R003 refusal");
+
+  const result = {
+    issueId: issue.id,
+    reviewId: review.id,
+    legalNumber: issue.legalDocumentNumber,
+    documentDigest: issue.digest,
+    reviewDigest: review.digest,
+    senderBindingId: sender.id,
+    recipientBindingId: recipient.id,
+
+    route: `/entities/${config.fixture.entity.id}/books/${config.fixture.book.id}/sales?view=peppol&record=${issue.id}&review=${review.id}`,
+  };
+
   await writeFile(join(config.artifacts, "peppol-fixture.json"), JSON.stringify(result, null, 2));
+
   return result;
 }
