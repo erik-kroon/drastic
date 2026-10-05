@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "capabilities": [
     {
       "name": "accountant_review_artifact",
@@ -2966,6 +2966,39 @@
       ]
     },
     {
+      "name": "payroll_approve_claim_payment_file",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_approve_claim_settlement",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_approve_employee_claim",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
       "name": "payroll_approve_input",
       "readOnly": false,
       "agentCallable": false,
@@ -3049,6 +3082,17 @@
       ]
     },
     {
+      "name": "payroll_get_employee_claim",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
       "name": "payroll_get_input",
       "readOnly": true,
       "agentCallable": true,
@@ -3126,6 +3170,17 @@
       ]
     },
     {
+      "name": "payroll_list_employee_claims",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
       "name": "payroll_list_runs",
       "readOnly": true,
       "agentCallable": true,
@@ -3146,6 +3201,28 @@
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-calculations.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_claim_payment_file",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_claim_settlement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
       ]
     },
     {
@@ -3209,6 +3286,17 @@
       ]
     },
     {
+      "name": "payroll_propose_employee_payee",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
       "name": "payroll_record_adjustment_basis",
       "readOnly": false,
       "agentCallable": false,
@@ -3218,6 +3306,28 @@
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-settlements.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_request_claim_completion",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_review_employee_claim",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
       ]
     },
     {
@@ -3233,6 +3343,28 @@
       ]
     },
     {
+      "name": "payroll_revise_employee_claim",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_submit_employee_claim",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
       "name": "payroll_submit_input",
       "readOnly": false,
       "agentCallable": true,
@@ -3242,6 +3374,17 @@
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-inputs.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_verify_employee_payee",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/employee-claims.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/employee-claims.ts"
       ]
     },
     {
