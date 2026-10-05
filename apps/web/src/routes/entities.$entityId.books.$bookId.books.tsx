@@ -22,6 +22,7 @@ import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostedRecord } from "@/components/posted-records";
 import { VoucherWorkspace } from "@/components/voucher-workspace";
 import { ChartOfAccounts } from "@/components/account-register";
+import { TreasuryLoanWorkspace } from "@/components/treasury-loan-workspace";
 import { BookAssets } from "@/components/subledgers/book-assets";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -29,6 +30,9 @@ import { accountingCopy } from "@/lib/accounting-copy";
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts", "assets"])),
   record: Schema.optional(Schema.String),
+  loan: Schema.optional(Identifier),
+  loanReview: Schema.optional(Identifier),
+  loanApproval: Schema.optional(Schema.Boolean),
   assetPlan: Schema.optional(Schema.Boolean),
   assetAction: Schema.optional(Schema.Literals(["disposal", "reversal"])),
   assetReview: Schema.optional(Identifier),
@@ -72,6 +76,15 @@ function Books() {
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: query.returnTo } });
   };
+
+  if (view === "accounts" && query.loan)
+    return (
+      <TreasuryLoanWorkspace
+        loanId={query.loan}
+        reviewId={query.loanReview}
+        approval={query.loanApproval}
+      />
+    );
 
   if (view === "assets")
     return (

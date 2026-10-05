@@ -21,6 +21,7 @@ export function BookNavigation(props: {
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
   const documents = new URLSearchParams(props.search).get("view") === "documents";
   const bookkeeping = pathname === `${base}/books`;
+  const loan = bookkeeping && new URLSearchParams(props.search).has("loan");
   const assets = bookkeeping && new URLSearchParams(props.search).get("view") === "assets";
 
   const waiting = useQuery({
@@ -110,7 +111,7 @@ export function BookNavigation(props: {
         <WorkspaceNavLink
           href={`${base}/books`}
           active={bookkeeping}
-          selection={assets ? "neutral" : undefined}
+          selection={assets || loan ? "neutral" : undefined}
         >
           <NavIcon name="bookkeeping" />
           {copy.bookkeeping}

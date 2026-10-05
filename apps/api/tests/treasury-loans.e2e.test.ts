@@ -1049,6 +1049,9 @@ test("backdated evidenced rates post only the cumulative interest difference", a
   );
   const review = await post(book, `${loanRoot}/${loan.id}/reviews`, input, Loans.LoanReview);
 
+  expect(review.calculation).toMatchObject({
+    exactTotal: { numerator: "3750000", denominator: "73" },
+  });
   expect(review.calculation?.targetMinor).toBe("51370");
   expect(review.calculation?.deltaMinor).toBe("2055");
   expect(review.calculation?.priorEffectiveMinor).toBe("49315");
@@ -1110,6 +1113,51 @@ test("backdated evidenced rates post only the cumulative interest difference", a
   const correctedEvent = await executeReview(book, corrected, await loanApproval(book, corrected));
 
   expect(correctedEvent.interestMinor).toBe(corrected.calculation?.deltaMinor);
+  const paidMinor = corrected.calculation?.targetMinor;
+
+  expect(paidMinor).toBe("45616");
+  const cash = await bankSource(book, "-45616", "2026-10-01");
+
+  const payment = await post(
+    book,
+    `${loanRoot}/${loan.id}/reviews`,
+    {
+      kind: "repayment",
+      statementId: cash.statement.statement.id,
+      rowOrdinal: 1,
+      bankAccountId: "account_bank",
+      principalPartMinor: "0",
+      interestPartMinor: "45616",
+      feePartMinor: "0",
+      feeEvidenceId: null,
+      evidenceId: cash.source.id,
+      accountingPeriodId: "period_2026",
+      postingDate: "2026-10-01",
+      series: "A",
+      reason: "Synthetic settlement of all recognized interest",
+    },
+    Loans.LoanReview,
+  );
+
+  await executeReview(book, payment, await loanApproval(book, payment));
+  await rate(book, loan, agreement.id, "2026-09-18", "1");
+  const beforeFloorRefusal = await ledgerState(book);
+
+  await failure(
+    await request(book, `${loanRoot}/${loan.id}/reviews`, {
+      method: "POST",
+      body: JSON.stringify({ ...input, correctionReason: "Would undercut already paid interest" }),
+    }),
+    422,
+    "InvalidJournal",
+  );
+  expect(await ledgerState(book)).toEqual(beforeFloorRefusal);
+  expect((await loanView(book, loan)).balance).toMatchObject({
+    accruedInterestMinor: "45616",
+    paidInterestMinor: "45616",
+    interestRemainingMinor: "0",
+  });
+
   await writeFile(
     join(environment().artifacts, "treasury-backdated-recalculation.json"),
     JSON.stringify({ original, review, event, corrected, correctedEvent }, null, 2),

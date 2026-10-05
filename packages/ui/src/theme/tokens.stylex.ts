@@ -208,6 +208,8 @@ export const tokens = stylex.defineConsts({
   setupIncumbentBackground: "#f1f3f7",
   setupBannerBorder: "#d8e3f7",
   rowDivider: "var(--row-divider)",
+  loanWarningBackground: "#fff5dd",
+  loanWarningBorder: "#e8d3a0",
   registerWarning: "#8a5a00",
   radiusStatusBadge: "0.625rem",
   registerSuccessBackground: "#eaf5f1",

@@ -151,6 +151,12 @@ export const InterestCalculation = Schema.Struct({
   targetMinor: SignedMinorUnits,
   deltaMinor: SignedMinorUnits,
   priorEffectiveMinor: SignedMinorUnits,
+  exactTotal: Schema.optional(
+    Schema.Struct({
+      numerator: SignedMinorUnits,
+      denominator: Schema.String.check(Schema.isPattern(/^[1-9][0-9]*$/)),
+    }),
+  ),
   segments: Schema.Array(AccrualWitnessSegment),
 });
 
@@ -260,6 +266,7 @@ export function calculateInterest(input: AccrualInput): Checked<InterestCalculat
     targetMinor: amount(rounded),
     deltaMinor: amount(delta),
     priorEffectiveMinor: input.priorEffectiveMinor,
+    exactTotal: { numerator: numerator.toString(), denominator: denominator.toString() },
     segments: witness,
   });
 }

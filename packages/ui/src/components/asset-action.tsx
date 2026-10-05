@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { Fragment, useId, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { Link } from "@open-erp/ui/components/link";
@@ -183,6 +183,45 @@ const assetActionStyles = stylex.create({
   radioInput: { accentColor: tokens.primary, margin: 0, verticalAlign: "middle" },
 });
 
+export function RetainedActionLayout(props: {
+  title: string;
+  trail: readonly { label: string; href?: string }[];
+  draft?: boolean;
+  synthetic?: boolean;
+  posted?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section {...stylex.props(assetActionStyles.page)}>
+      <nav aria-label="Bokföring" {...stylex.props(assetActionStyles.breadcrumbs)}>
+        {props.trail.map((crumb, index) => (
+          <Fragment key={`${index}-${crumb.label}`}>
+            {index ? <span>/</span> : null}
+            {crumb.href ? (
+              <Link href={crumb.href} {...stylex.props(assetActionStyles.breadcrumbLink)}>
+                {crumb.label}
+              </Link>
+            ) : (
+              <span>{crumb.label}</span>
+            )}
+          </Fragment>
+        ))}
+      </nav>
+      <div {...stylex.props(assetActionStyles.titleRow)}>
+        <h1 {...stylex.props(assetActionStyles.title)}>{props.title}</h1>
+        {props.draft ? (
+          <span {...stylex.props(assetActionStyles.example)}>Förslag, ej bokfört</span>
+        ) : null}
+        {props.posted ? <span {...stylex.props(assetActionStyles.success)}>Bokförd</span> : null}
+        {props.synthetic ? (
+          <span {...stylex.props(assetActionStyles.example)}>Exempeldata</span>
+        ) : null}
+      </div>
+      {props.children}
+    </section>
+  );
+}
+
 export function AssetActionLayout(props: {
   title: string;
   assetName: string;
@@ -192,27 +231,18 @@ export function AssetActionLayout(props: {
   children: ReactNode;
 }) {
   return (
-    <section {...stylex.props(assetActionStyles.page)}>
-      <nav aria-label="Bokföring" {...stylex.props(assetActionStyles.breadcrumbs)}>
-        <Link href={props.backHref} {...stylex.props(assetActionStyles.breadcrumbLink)}>
-          Bokföring
-        </Link>
-        <span>/</span>
-        <Link href={props.backHref} {...stylex.props(assetActionStyles.breadcrumbLink)}>
-          Tillgångar
-        </Link>
-        <span>/</span>
-        <span>{props.assetName}</span>
-      </nav>
-      <div {...stylex.props(assetActionStyles.titleRow)}>
-        <h1 {...stylex.props(assetActionStyles.title)}>{props.title}</h1>
-        {props.posted ? <span {...stylex.props(assetActionStyles.success)}>Bokförd</span> : null}
-        {props.synthetic ? (
-          <span {...stylex.props(assetActionStyles.example)}>Exempeldata</span>
-        ) : null}
-      </div>
+    <RetainedActionLayout
+      title={props.title}
+      synthetic={props.synthetic}
+      posted={props.posted}
+      trail={[
+        { label: "Bokföring", href: props.backHref },
+        { label: "Tillgångar", href: props.backHref },
+        { label: props.assetName },
+      ]}
+    >
       {props.children}
-    </section>
+    </RetainedActionLayout>
   );
 }
 
@@ -380,10 +410,12 @@ export function AssetPostedJournal({
   rows,
   debit,
   credit,
+  total = true,
 }: {
   rows: readonly { id: string; label: string; debit: string; credit: string }[];
   debit: string;
   credit: string;
+  total?: boolean;
 }) {
   return (
     <table {...stylex.props(assetActionStyles.table)}>
@@ -414,13 +446,15 @@ export function AssetPostedJournal({
             </td>
           </tr>
         ))}
-        <tr {...stylex.props(assetActionStyles.journalRow, assetActionStyles.emphasis)}>
-          <td {...stylex.props(assetActionStyles.journalLabel)}>Summa</td>
-          <td {...stylex.props(assetActionStyles.amount)}>{debit}</td>
-          <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>
-            {credit}
-          </td>
-        </tr>
+        {total ? (
+          <tr {...stylex.props(assetActionStyles.journalRow, assetActionStyles.emphasis)}>
+            <td {...stylex.props(assetActionStyles.journalLabel)}>Summa</td>
+            <td {...stylex.props(assetActionStyles.amount)}>{debit}</td>
+            <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>
+              {credit}
+            </td>
+          </tr>
+        ) : null}
       </tbody>
     </table>
   );

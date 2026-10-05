@@ -1,3 +1,4 @@
+import { TreasuryLoanDirectory } from "./treasury-loan-directory";
 import { useState } from "react";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -73,6 +74,7 @@ export function ChartOfAccounts() {
       ) : (
         <PageEmpty title={locale === "sv" ? "Inga matchande konton" : "No matching accounts"} />
       )}
+      <TreasuryLoanDirectory />
     </Box>
   );
 }
