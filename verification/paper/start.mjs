@@ -67,6 +67,13 @@ if (reminderHook !== undefined && reminderHook !== "0" && reminderHook !== "1")
 
 const reminderSeed = reminderHook === "1" ? await import("./seed-reminders.mjs") : undefined;
 
+const claimsHook = process.env.PAPER_CLAIMS;
+
+if (claimsHook !== undefined && claimsHook !== "0" && claimsHook !== "1")
+  throw new Error("PAPER_CLAIMS must be 0 or 1");
+
+const claimsSeed = claimsHook === "1" ? await import("./seed-claims.mjs") : undefined;
+
 const processorHook = process.env.PAPER_PROCESSORS;
 
 const supplierExpiryHook = process.env.PAPER_SUPPLIER_EXPIRY;
@@ -298,6 +305,8 @@ try {
 
   if (reminderSeed) fixture.accounts.push(...reminderSeed.reminderAccounts);
 
+  if (claimsSeed) fixture.accounts.push(...claimsSeed.claimAccounts);
+
   if (processorSeed) {
     fixture.accounts.push(...processorSeed.processorAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -447,6 +456,19 @@ try {
     console.log(
       JSON.stringify(
         await reminderSeed.seedReminders({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
+
+  if (claimsSeed)
+    console.log(
+      JSON.stringify(
+        await claimsSeed.seedClaims({
           apiUrl: listening.url.origin,
           adminUrl,
           accessToken,
