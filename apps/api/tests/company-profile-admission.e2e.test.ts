@@ -46,7 +46,7 @@ async function prepared() {
 
   const release = {
     id: "company_activation_synthetic_v1",
-    jurisdiction: "QZ",
+    jurisdiction: "QY",
     family: "posting_eligibility",
     version: 1,
     checksum: `sha256:${"a".repeat(64)}`,
@@ -62,7 +62,7 @@ async function prepared() {
     rounding: { mode: "half_up", scale: 2 },
     validFrom: "2026-01-01",
     validTo: "2026-12-31",
-    sourceManifest: "Synthetic QZ jurisdiction fixture; no company or statutory claim",
+    sourceManifest: "Synthetic QY jurisdiction fixture; no company or statutory claim",
     qualificationStatus: "reviewed",
     recordClasses: ["synthetic"],
   };
@@ -73,7 +73,7 @@ async function prepared() {
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QZ','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QY','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
       [release.id, release.checksum, release],
     );
   } finally {
@@ -83,7 +83,7 @@ async function prepared() {
   const facts: Array<typeof Profiles.FactRevision.Type> = [];
 
   for (const declaration of [
-    { factKind: "jurisdiction", value: { state: "known", value: "QZ" } },
+    { factKind: "jurisdiction", value: { state: "known", value: "QY" } },
     { factKind: "accounting_method", value: { state: "known", value: "accrual" } },
   ]) {
     const fact = await post(
