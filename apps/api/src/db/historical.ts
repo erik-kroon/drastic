@@ -72,7 +72,7 @@ export function readBalances(tx: Transaction, book: string, through: string, inc
 
 export function readRun(tx: Transaction, book: string, id: string) {
   return tx.execute<RunRow>(
-    sql`select id,source_run_id as "sourceRunId",fiscal_year_id as "fiscalYearId",source_plan_digest as "planDigest",next_ordinal as "nextOrdinal",fence::text,status,lease_until::text as "leaseUntil" from openerp.sie_financial_runs where book_id=${book} and id=${id}`,
+    sql`select id,source_run_id as "sourceRunId",fiscal_year_id as "fiscalYearId",source_plan_digest as "planDigest",next_ordinal as "nextOrdinal",fence::text,status,lease_until::text as "leaseUntil",partition_id as "partitionId",year_ordinal as "yearOrdinal" from openerp.sie_financial_runs where book_id=${book} and id=${id}`,
     "objects",
   );
 }
@@ -86,14 +86,14 @@ export function readRunForSource(tx: Transaction, book: string, source: string) 
 
 export function insertRun(tx: Transaction, book: string, run: RunRow) {
   return tx.execute(
-    sql`insert into openerp.sie_financial_runs(book_id,id,source_run_id,fiscal_year_id,source_plan_digest,next_ordinal,fence,status,lease_until) values(${book},${run.id},${run.sourceRunId},${run.fiscalYearId},${run.planDigest},${run.nextOrdinal},${run.fence}::bigint,${run.status},${run.leaseUntil}::timestamptz)`,
+    sql`insert into openerp.sie_financial_runs(book_id,id,source_run_id,fiscal_year_id,source_plan_digest,next_ordinal,fence,status,lease_until,partition_id,year_ordinal) values(${book},${run.id},${run.sourceRunId},${run.fiscalYearId},${run.planDigest},${run.nextOrdinal},${run.fence}::bigint,${run.status},${run.leaseUntil}::timestamptz,${run.partitionId ?? null},${run.yearOrdinal ?? 0})`,
     "objects",
   );
 }
 
 export function updateRun(tx: Transaction, book: string, run: RunRow) {
   return tx.execute(
-    sql`update openerp.sie_financial_runs set next_ordinal=${run.nextOrdinal},fence=${run.fence}::bigint,status=${run.status},lease_until=${run.leaseUntil}::timestamptz where book_id=${book} and id=${run.id}`,
+    sql`update openerp.sie_financial_runs set fiscal_year_id=${run.fiscalYearId},year_ordinal=${run.yearOrdinal ?? 0},next_ordinal=${run.nextOrdinal},fence=${run.fence}::bigint,status=${run.status},lease_until=${run.leaseUntil}::timestamptz where book_id=${book} and id=${run.id}`,
     "objects",
   );
 }

@@ -1,3 +1,4 @@
+import * as AssetDisposals from "@open-erp/contracts/asset-disposals";
 import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Controls from "@open-erp/contracts/subledger-controls";
@@ -425,7 +426,7 @@ function captureSchedules(
   return Effect.gen(function* () {
     const inventory = yield* SchedulesDb.readScheduleInventory(transaction, scope.bookId);
     const bases = yield* SchedulesDb.listBookBases(transaction, scope.bookId);
-    const disposals = yield* SchedulesDb.listBookDisposals(transaction, scope.bookId);
+    const disposals = yield* SchedulesDb.listBookDisposals(transaction, scope.bookId, asOfDate);
     const impairments = yield* SchedulesDb.listBookImpairments(transaction, scope.bookId);
     const basisBySchedule = new Map(bases.map((basis) => [basis.scheduleId, basis]));
 
@@ -598,24 +599,28 @@ function disposalEffects(
       ))[0];
 
       if (receipt === undefined || review === undefined) continue;
-      const groups = objectField(review.body, "postingPlan").groups;
-      const firstGroup = Array.isArray(groups) ? groups[0] : undefined;
 
-      const actions =
-        isJsonObject(firstGroup) && Array.isArray(firstGroup.actions) ? firstGroup.actions : [];
+      const retained = yield* decode(
+        Schema.Union([Controls.AssetDisposalReview, AssetDisposals.Review]),
+        review.body,
+      );
 
-      const firstAction = actions[0];
+      const basis = "assetBasis" in retained ? retained.assetBasis : retained.basis;
 
-      const lines =
-        isJsonObject(firstAction) && Array.isArray(firstAction.lines) ? firstAction.lines : [];
+      const eligible = new Set([
+        ...basis.carryingBasis.lines
+          .filter((line) => BigInt(line.debitMinor) > 0n)
+          .map((line) => line.accountId),
+        basis.schedule.terms.creditAccountId,
+        basis.impairmentAccountId,
+      ]);
 
-      const lossAccountId = textField(objectField(review.body, "input"), "lossAccountId");
+      const lines = retained.postingPlan.groups[0]?.actions[0]?.lines ?? [];
 
       for (const [index, line] of lines.entries()) {
-        if (!isJsonObject(line)) continue;
-        const accountId = textField(line, "accountId");
+        const accountId = line.accountId;
 
-        if (accountId === undefined || accountId === lossAccountId) continue;
+        if (!eligible.has(accountId)) continue;
         effects.push({
           scheduleId: disposal.scheduleId,
           kind: "disposal_release",
@@ -672,7 +677,7 @@ function buildExpectedEffects(
         transaction,
         scope,
         asOfDate,
-        yield* SchedulesDb.listBookDisposals(transaction, scope.bookId),
+        yield* SchedulesDb.listBookDisposals(transaction, scope.bookId, asOfDate),
       )),
     );
 

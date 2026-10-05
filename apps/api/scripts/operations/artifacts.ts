@@ -195,6 +195,28 @@ export async function captureRelease(sourceRoot: string, destination: string) {
   await writePrivate(join(destination, "release.json"), JSON.stringify(manifest, null, 2) + "\n");
 }
 
+export async function verifySourceRelease(
+  sourceRoot: string,
+  manifest: typeof ReleaseManifest.Type,
+) {
+  const names = [...releaseFiles];
+
+  for (const directory of releaseDirectories)
+    names.push(...(await sourceFiles(sourceRoot, directory)));
+
+  if (
+    JSON.stringify(names.sort()) !== JSON.stringify(manifest.files.map((file) => file.path).sort())
+  )
+    refuse("StaleEvidence: Release source membership changed after capture.");
+
+  for (const file of manifest.files) {
+    const actual = await fingerprint(artifactPath(sourceRoot, file.path), false);
+
+    if (actual.sha256 !== file.sha256 || actual.bytes !== file.bytes)
+      refuse("StaleEvidence: Release source bytes changed after capture.");
+  }
+}
+
 export async function inspectRelease(root: string) {
   await privatePath(root, true);
   await privatePath(join(root, "release.json"), false);

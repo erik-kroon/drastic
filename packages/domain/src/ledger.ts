@@ -185,11 +185,26 @@ export const ResultTransferPostingAction = Schema.Struct({
   }),
 });
 
+export const AssetProceedsPostingAction = Schema.Struct({
+  ...PostingAction.fields,
+  correctsVoucherId: Schema.Null,
+  postingPurpose: Schema.Literal("asset_proceeds_disposal_v1"),
+  taxAssessment: Schema.Literals(["synthetic_asset_proceeds_25_v1", "not_applicable"]),
+  assetProceeds: Schema.Struct({
+    reviewId: Identifier,
+    mode: Schema.Literals(["unposted_cash_sale", "existing_legal_invoice"]),
+    netMinor: MinorUnits,
+    vatMinor: MinorUnits,
+    correctionOf: Schema.Null,
+  }),
+});
+
 export const VoucherPostingAction = Schema.Union([
   SyntheticVoucherAction,
   LegalArPostingAction,
   LegalCustomerCreditPostingAction,
   ResultTransferPostingAction,
+  AssetProceedsPostingAction,
 ]);
 
 export const ChangeSet = Schema.Struct({

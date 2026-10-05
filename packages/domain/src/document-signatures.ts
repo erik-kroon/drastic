@@ -95,6 +95,7 @@ export type SignatureIntent = typeof SignatureIntent.Type;
 export const PrepareIntentInput = Schema.Struct({
   intentId: Identifier,
   manifest: SignatureManifest,
+  manifestDigest: Digest,
   contentImmutable: Schema.Boolean,
   requiredValidationDone: Schema.Boolean,
   expectedSigner: Identifier,
@@ -102,7 +103,11 @@ export const PrepareIntentInput = Schema.Struct({
   displayAgreesWithManifest: Schema.Boolean,
   consentTextHash: Digest,
   providerEnvironment: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
-  signingProfile: Schema.Literals(["qualified_signature", "authentication_only"]),
+  signingProfile: Schema.Literals([
+    "qualified_signature",
+    "synthetic_signature",
+    "authentication_only",
+  ]),
   requestDigest: Digest,
 });
 
@@ -134,7 +139,7 @@ export function prepareSignatureIntent(input: PrepareIntentInput): Checked<Signa
     );
   }
 
-  if (input.signingProfile !== "qualified_signature") {
+  if (input.signingProfile === "authentication_only") {
     return fail(
       "AuthenticationOnlyProfile",
       "An authentication-only login is not document signature evidence.",
@@ -144,7 +149,7 @@ export function prepareSignatureIntent(input: PrepareIntentInput): Checked<Signa
   return Result.succeed({
     intentId: input.intentId,
     manifestId: input.manifest.manifestId,
-    manifestDigest: input.manifest.artifactDigest,
+    manifestDigest: input.manifestDigest,
     expectedSigner: input.expectedSigner,
     purpose: input.manifest.purpose,
     consentTextHash: input.consentTextHash,
@@ -169,6 +174,8 @@ export type ProviderCompletion = typeof ProviderCompletion.Type;
 export const SignatureEvidence = Schema.Struct({
   evidenceId: Identifier,
   intentId: Identifier,
+  manifestId: Identifier,
+  manifestDigest: Digest,
   providerOrderRef: Identifier,
   signedPayloadDigest: Digest,
   actualSigner: Identifier,
@@ -195,12 +202,6 @@ export type CompleteSignatureInput = typeof CompleteSignatureInput.Type;
 // is recorded independently from current usage eligibility, so a later
 // revocation retires future use while history stands.
 export function completeSignature(input: CompleteSignatureInput): Checked<SignatureEvidence> {
-  for (const evidence of input.retainedEvidence) {
-    if (evidence.providerOrderRef === input.completion.orderRef) {
-      return Result.succeed(evidence);
-    }
-  }
-
   if (input.completion.orderRef !== input.completion.expectedOrderRef) {
     return fail("OrderRefMismatch", "The returned order does not match the original attempt.");
   }
@@ -221,9 +222,27 @@ export function completeSignature(input: CompleteSignatureInput): Checked<Signat
     return fail("SignerMismatch", "The actual signer is not the intended permitted signer.");
   }
 
+  for (const evidence of input.retainedEvidence) {
+    if (evidence.providerOrderRef !== input.completion.orderRef) continue;
+
+    if (
+      evidence.intentId !== input.intent.intentId ||
+      evidence.manifestId !== input.intent.manifestId ||
+      evidence.manifestDigest !== input.intent.manifestDigest ||
+      evidence.purpose !== input.intent.purpose ||
+      evidence.actualSigner !== input.intent.expectedSigner
+    ) {
+      return fail("DuplicateEvidence", "Retained order evidence belongs to another exact intent.");
+    }
+
+    return Result.succeed(evidence);
+  }
+
   return Result.succeed({
     evidenceId: input.evidenceId,
     intentId: input.intent.intentId,
+    manifestId: input.intent.manifestId,
+    manifestDigest: input.intent.manifestDigest,
     providerOrderRef: input.completion.orderRef,
     signedPayloadDigest: input.completion.signedDigest,
     actualSigner: input.completion.actualSigner,
@@ -235,6 +254,7 @@ export function completeSignature(input: CompleteSignatureInput): Checked<Signat
 
 export const SignerSetInput = Schema.Struct({
   manifest: SignatureManifest,
+  manifestDigest: Digest,
   evidence: Schema.Array(SignatureEvidence),
 });
 
@@ -250,7 +270,13 @@ export function assertSignerSetComplete(
   const covered = new Set<string>();
 
   for (const evidence of input.evidence) {
-    if (evidence.technicalResult !== "valid") continue;
+    if (evidence.technicalResult !== "valid" || evidence.usageEligibility !== "eligible") continue;
+
+    if (
+      evidence.manifestId !== input.manifest.manifestId ||
+      evidence.manifestDigest !== input.manifestDigest
+    )
+      continue;
 
     if (evidence.purpose !== input.manifest.purpose) continue;
 

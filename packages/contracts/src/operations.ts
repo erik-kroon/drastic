@@ -108,6 +108,15 @@ export const RoleInventory = Schema.Struct({
   ),
 });
 
+export const ApplicationSequence = Schema.Struct({
+  schema: Schema.Literal("openerp"),
+  name: Schema.String,
+  table: Schema.String,
+  column: Schema.Literal("ordinal"),
+  lastValue: Count,
+  isCalled: Schema.Boolean,
+});
+
 export const DatabaseInventory = Schema.Struct({
   owner: Schema.String,
   encoding: Schema.String,
@@ -118,6 +127,7 @@ export const DatabaseInventory = Schema.Struct({
   extensions: Schema.Array(Schema.Struct({ name: Schema.String, version: Schema.String })),
   migrations: Schema.Array(Schema.Struct({ name: Schema.String, sha256: Digest })),
   roles: Schema.Array(RoleInventory),
+  applicationSequences: Schema.optional(Schema.Array(ApplicationSequence)),
 });
 
 export const RetainedObjectReference = Schema.Struct({

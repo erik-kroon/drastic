@@ -36,7 +36,7 @@ export async function readQueueSequences(client: Client) {
 
   const count = await client.query<{ count: string }>(`
     SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE c.relkind='S' AND n.nspname !~ '^pg_' AND n.nspname<>'information_schema'`);
+    WHERE c.relkind='S' AND n.nspname='public'`);
 
   if (count.rows[0]?.count !== "2" || !isDeepStrictEqual(sequences.rows, sequenceOwners))
     refuse("Recovery supports only the two owned, noncycling effect-mq sequences.");

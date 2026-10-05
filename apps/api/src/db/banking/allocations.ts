@@ -1,3 +1,4 @@
+import type * as Settlement from "@open-erp/contracts/settlements";
 import { sql, type SQL } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
 import type { Transaction } from "../transaction";
@@ -248,6 +249,46 @@ export function readReversedAllocation(transaction: Transaction, bookId: string,
 export function readDatabaseTime(transaction: Transaction) {
   return transaction.execute<DatabaseTimeRow>(
     sql`select clock_timestamp()::text as now`,
+    "objects",
+  );
+}
+
+export function readAssetApprovalAuthority(
+  transaction: Transaction,
+  bookId: string,
+  reviewId: string,
+  approvalId: string,
+) {
+  return transaction.execute<{
+    readonly authorized: boolean;
+    readonly review: JsonObject;
+    readonly approval: JsonObject;
+  }>(
+    sql`select r.body as review,a.body as approval,(a.expires_at>clock_timestamp() and exists(select from openerp.approvals p where p.book_id=a.book_id and p.id=a.body->'postingApproval'->>'id' and p.change_set_id=r.change_set_id and p.digest=r.body->'postingPlan'->>'planDigest' and p.actor_id=a.actor_id and p.expires_at>clock_timestamp() and p.consumed_at is not null and not exists(select from openerp.posting_approval_revocations revoked where revoked.book_id=p.book_id and revoked.approval_id=p.id)) and exists(select from openerp.memberships m where m.book_id=a.book_id and m.actor_id=a.actor_id and m.role='operator') and exists(select from openerp.identity_admissions i where i.actor_id=a.actor_id and i.enabled)) as authorized from openerp.asset_proceeds_approvals a join openerp.asset_proceeds_reviews r on(r.book_id,r.id)=(a.book_id,a.review_id) where a.book_id=${bookId} and a.id=${approvalId} and a.review_id=${reviewId}`,
+    "objects",
+  );
+}
+
+export function insertOwnedAllocationApproval(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly ownerReviewId: string;
+    readonly ownerApprovalId: string;
+    readonly approval: typeof Settlement.BankAllocationApproval.Type;
+  },
+) {
+  const a = row.approval;
+
+  return transaction.execute(
+    sql`insert into openerp.bank_allocation_approvals(book_id,id,plan_id,actor_id,expires_at,owner_kind,owner_review_id,owner_approval_id,body) values(${row.bookId},${a.id},${a.planId},${a.actorId},${a.expiresAt}::timestamptz,'asset_proceeds_disposal',${row.ownerReviewId},${row.ownerApprovalId},${JSON.stringify({ ...a, delegatedOwner: { kind: "asset_proceeds_disposal", reviewId: row.ownerReviewId, approvalId: row.ownerApprovalId } })}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readOwnedAllocationPlan(transaction: Transaction, bookId: string, planId: string) {
+  return transaction.execute<{ readonly present: boolean }>(
+    sql`select exists(select from openerp.bank_allocation_approvals where book_id=${bookId} and plan_id=${planId} and owner_kind is not null) as present`,
     "objects",
   );
 }

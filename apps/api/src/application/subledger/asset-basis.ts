@@ -100,6 +100,7 @@ export const captureAssetBasis = Effect.fn("subledger.captureAssetBasis")(functi
   tx: Transaction,
   scope: Scope,
   input: AssetCaptureInput,
+  allowDisposedId?: string,
 ) {
   const book = yield* readBook(tx, scope);
 
@@ -114,8 +115,9 @@ export const captureAssetBasis = Effect.fn("subledger.captureAssetBasis")(functi
   if (!row || schedule.terms.kind !== "asset") return yield* failure("UnsupportedProfile");
   const basis = yield* decode(Controls.SubledgerBasis, row.body);
 
-  if ((yield* Schedules.readDisposal(tx, scope.bookId, input.scheduleId)).length)
-    return yield* failure("AlreadyPosted");
+  const disposal = (yield* Schedules.readDisposal(tx, scope.bookId, input.scheduleId))[0];
+
+  if (disposal && disposal.body.id !== allowDisposedId) return yield* failure("AlreadyPosted");
 
   if (
     schedule.digest !== input.expectedDigest ||
@@ -244,8 +246,9 @@ export const disposalBasis = Effect.fn("subledger.disposalBasis")(function* (
   tx: Transaction,
   scope: Scope,
   input: DisposalInput,
+  allowDisposedId?: string,
 ) {
-  const state = yield* captureAssetBasis(tx, scope, input);
+  const state = yield* captureAssetBasis(tx, scope, input, allowDisposedId);
   const basis = state.basis;
   const schedule = state.schedule;
 

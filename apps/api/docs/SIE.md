@@ -59,7 +59,7 @@ The v3 profile emits `#OIB` and `#OUB` for each balance-sheet account/object pai
 
 Opening contributions use exactly one basis: prior native history, or the selected opening-set voucher. An opening-set voucher contributes once to opening balances and never to current movements. A date before that voucher refuses. Retained opening rows preserve their native identities, exact amounts and original assignment states; later backdated postings, catalogue edits or archives cannot change them. Objects used only in the opening remain declared.
 
-The independent parser recognizes object controls in `export_validation` mode. Its default historical-import mode still reports `unsupported_object_balances`: grammar recognition does not authorize a financial import that would drop those balances. Section 6 permits omission of `#PSALDO`; this profile does not emit period balances or prior-year record families.
+The independent parser recognizes object controls in `export_validation` mode. Its default historical-import mode reports `unsupported_object_balances`. Explicit `synthetic_sie4_partition_v1` capture permits the retained partition owner to validate complete object openings, movements and closings against actual native journal tags. This profile requires a retained synthetic occurrence and grants no external source qualification. See [historical import ownership](SIE-HISTORICAL-IMPORT.md#current-retained-partition-owner). Section 6 permits omission of `#PSALDO`; this profile does not emit period balances or prior-year record families.
 
 ### Refusals and bounds
 

@@ -1,3 +1,6 @@
+import { configuredDocumentDelivery } from "../src/adapters/documents/local-fixture";
+import { configuredPeppolAccessPoint } from "../src/adapters/peppol/local-fixture";
+import { configuredProcessorFeed } from "../src/adapters/processor/local-fixture";
 import { resolve, sep } from "node:path";
 import api from "../src/index";
 import { configuredDocumentReader } from "../src/runtime/document-reader";
@@ -45,6 +48,23 @@ if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
 const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
   DOCUMENT_READER: documentReader,
+  PEPPOL_EXCHANGE: configuredPeppolAccessPoint({
+    OPENERP_PEPPOL_EXCHANGE: process.env.OPENERP_PEPPOL_EXCHANGE,
+    OPENERP_PEPPOL_ENDPOINT: process.env.OPENERP_PEPPOL_ENDPOINT,
+    OPENERP_PEPPOL_SECRET: process.env.OPENERP_PEPPOL_SECRET,
+  }),
+  DOCUMENT_DELIVERY: configuredDocumentDelivery({
+    OPENERP_DOCUMENT_DELIVERY: process.env.OPENERP_DOCUMENT_DELIVERY,
+    OPENERP_DOCUMENT_ENDPOINT: process.env.OPENERP_DOCUMENT_ENDPOINT,
+    OPENERP_DOCUMENT_SECRET: process.env.OPENERP_DOCUMENT_SECRET,
+    OPENERP_DOCUMENT_PUBLIC_KEY: process.env.OPENERP_DOCUMENT_PUBLIC_KEY,
+    OPENERP_DOCUMENT_KEY_ID: process.env.OPENERP_DOCUMENT_KEY_ID,
+  }),
+  PROCESSOR_FEED: configuredProcessorFeed({
+    OPENERP_PROCESSOR_FEED: process.env.OPENERP_PROCESSOR_FEED,
+    OPENERP_PROCESSOR_ENDPOINT: process.env.OPENERP_PROCESSOR_ENDPOINT,
+    OPENERP_PROCESSOR_SECRET: process.env.OPENERP_PROCESSOR_SECRET,
+  }),
   OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,

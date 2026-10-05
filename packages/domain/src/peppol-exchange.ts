@@ -3,15 +3,6 @@ import * as Schema from "effect/Schema";
 import { Description, Digest, Identifier } from "./values";
 import { MinorUnits } from "./money";
 
-// Pure Peppol-exchange math for one selected access point.
-// NEXT-46 leaf: BIS amount reconciliation, outbound dispatch identity and
-// inbound envelope handling. No network code, no validator, no credential:
-// the concrete adapter owns send/status/inbound-proof, the application
-// owns sealed dispatch and receipt retention, and validation runs outside
-// every financial transaction. A syntactically valid document with the
-// wrong party, amount or original-invoice reference never sends. Delivery
-// never posts, pays or accepts an invoice on its own.
-
 export const ExchangeFailureCode = Schema.Literals([
   "UnsupportedDocumentType",
   "UnmappedParticipant",
@@ -92,13 +83,6 @@ export const ReconcileInput = Schema.Struct({
 
 export type ReconcileInput = typeof ReconcileInput.Type;
 
-// Reconciles the retained semantic totals against BIS arithmetic: the
-// exclusive amount is the line nets less allowances plus charges, tax is
-// the sum of line tax amounts, and payable carries prepaid and rounding.
-// Every amount must match the issued document exactly; a credit keeps its
-// own structure and original-invoice reference and is never a negated
-// invoice. The leaf never changes a legally issued total to please a
-// validator.
 export function reconcileBisTotals(input: ReconcileInput): Checked<BisTotals> {
   const document = input.document;
 
@@ -134,14 +118,13 @@ export function reconcileBisTotals(input: ReconcileInput): Checked<BisTotals> {
 
     const rate = BigInt(line.taxRateNumerator);
     const denominator = BigInt(line.taxRateDenominator);
-    const expected = (BigInt(line.netMinor) * rate) / denominator;
+    const product = BigInt(line.netMinor) * rate;
+    const quotient = product / denominator;
+    const remainder = product % denominator;
+    const expected = quotient + (2n * remainder >= denominator ? 1n : 0n);
 
-    if (expected !== BigInt(line.taxAmountMinor) && rate !== 0n) {
-      const remainder = (BigInt(line.netMinor) * rate) % denominator;
-
-      if (remainder !== 0n) {
-        return fail("TaxMismatch", "A line tax amount disagrees with its category rate.");
-      }
+    if (expected !== BigInt(line.taxAmountMinor)) {
+      return fail("TaxMismatch", "A line tax amount disagrees with the selected half-up rate.");
     }
   }
 
@@ -207,11 +190,6 @@ export const AdmitDispatchInput = Schema.Struct({
 
 export type AdmitDispatchInput = typeof AdmitDispatchInput.Type;
 
-// Admits one stable dispatch attempt inside the owning transaction. A
-// syntactically valid artifact with the wrong buyer never sends; a lost
-// provider response recovers the retained attempt instead of issuing a
-// second legal document; transport acceptance never implies delivery or
-// payment.
 export function admitDispatch(input: AdmitDispatchInput): Checked<OutboundDispatch> {
   if (!input.validationAvailable) {
     return fail("ValidationUnavailable", "Unavailable validation is not a pass.");
@@ -230,6 +208,17 @@ export function admitDispatch(input: AdmitDispatchInput): Checked<OutboundDispat
 
   for (const attempt of input.retainedAttempts) {
     if (attempt.providerKey === input.providerKey) {
+      if (
+        attempt.documentId !== input.documentId ||
+        attempt.documentHash !== input.documentHash ||
+        attempt.recipientBinding !== input.recipientBinding
+      ) {
+        return fail(
+          "IntegrityIncident",
+          "The retained provider key belongs to another document, hash or recipient.",
+        );
+      }
+
       return Result.succeed(attempt);
     }
 
@@ -285,10 +274,6 @@ export const ReceiveEnvelopeInput = Schema.Struct({
 
 export type ReceiveEnvelopeInput = typeof ReceiveEnvelopeInput.Type;
 
-// Handles one inbound envelope. The transport key replays on identical
-// bytes; conflicting bytes under one key are an integrity incident; a new
-// message ID for the same invoice is a duplicate candidate, never another
-// expense. Nothing here accepts, pays or posts.
 export function receiveEnvelope(input: ReceiveEnvelopeInput): Checked<InboxOutcome> {
   if (!input.envelope.bisSupported) {
     return fail(

@@ -3,6 +3,7 @@ import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Effect from "effect/Effect";
 import * as Db from "../../db/historical";
 import * as Ledger from "../../db/posting";
+import { readPartition } from "./partitions";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope, type Principal } from "../commerce/support";
 import { failure } from "../failures";
@@ -26,6 +27,41 @@ import {
 } from "./historical-shared";
 
 type Selection = typeof Historical.SelectBasis.Type;
+
+const requireFullHistoryBasis = Effect.fn("historical.requireFullHistoryBasis")(function* (
+  tx: Transaction,
+  scope: Scope,
+  input: Selection,
+  plan: typeof import("@open-erp/contracts/sie-import").SiePlan.Type,
+  yearId: string,
+) {
+  const partition = input.partitionId
+    ? yield* readPartition(tx, scope, input.partitionId)
+    : undefined;
+
+  if (
+    partition &&
+    (partition.input.sourcePlanId !== plan.id ||
+      partition.input.sourcePlanDigest !== plan.digest ||
+      partition.years[0]?.fiscalYearId !== yearId)
+  )
+    return yield* failure("StaleDependency");
+
+  const expected = partition
+    ? new Map(partition.years[0]!.controls.map((row) => [row.accountId, BigInt(row.openingMinor)]))
+    : mappedControls(plan, "opening");
+
+  if (
+    input.changeSetId !== null ||
+    (!partition && new Set(plan.input.openingControls.map((c) => c.year)).size !== 1) ||
+    expected.size !== input.controls.length ||
+    !sameBalances(
+      expected,
+      new Map(input.controls.map((c) => [c.accountId, BigInt(c.signedMinor)])),
+    )
+  )
+    return yield* failure("InvalidJournal");
+});
 
 export const selectBasisInTransaction = Effect.fn("historical.selectBasisInTransaction")(function* (
   tx: Transaction,
@@ -62,18 +98,7 @@ export const selectBasisInTransaction = Effect.fn("historical.selectBasisInTrans
     return yield* failure("InvalidJournal");
 
   if (input.mode === "full_history") {
-    const expected = mappedControls(plan, "opening");
-
-    if (
-      input.changeSetId !== null ||
-      new Set(plan.input.openingControls.map((c) => c.year)).size !== 1 ||
-      expected.size !== input.controls.length ||
-      !sameBalances(
-        expected,
-        new Map(input.controls.map((c) => [c.accountId, BigInt(c.signedMinor)])),
-      )
-    )
-      return yield* failure("InvalidJournal");
+    yield* requireFullHistoryBasis(tx, scope, input, plan, year.id);
   } else {
     if (input.changeSetId === null || input.controls.every((c) => BigInt(c.signedMinor) <= 0n))
       return yield* failure("ApprovalRequired");

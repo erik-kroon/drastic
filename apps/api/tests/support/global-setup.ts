@@ -1,3 +1,6 @@
+import { startPeppolFixture } from "./peppol-fixture";
+import { releaseSha256 } from "@open-erp/contracts/peppol-exchange";
+import { startDocumentFixture } from "./document-fixture";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
@@ -8,6 +11,7 @@ import { promisify } from "node:util";
 import { Client } from "pg";
 import { createTestHarness } from "wrangler";
 import type { TestProject } from "vitest/node";
+import { startProcessorFixture } from "./processor-fixture";
 import type { E2EEnvironment } from "./environment";
 
 const run = promisify(execFile);
@@ -22,6 +26,7 @@ const sourceRoots = [
   "packages/domain",
   "jurisdictions/se",
   "packages/config",
+  "verification/peppol",
   "config",
   "patches",
   "package.json",
@@ -128,9 +133,38 @@ export default async function setup(project: TestProject) {
   const adminUrl = `postgresql://postgres:${password}@127.0.0.1:${port}/postgres`;
   const runtimeUrl = `postgresql://e2e_runtime:${password}@127.0.0.1:${port}/postgres`;
 
+  const processorFixture = await startProcessorFixture();
+  const documentFixture = await startDocumentFixture();
+
+  const peppolFixture = await startPeppolFixture({
+    python: process.env.PEPPOL_VALIDATOR_PYTHON ?? join(root, ".cache/peppol-validator/bin/python"),
+    validatorPath: join(root, "verification/peppol/validate.py"),
+    releaseSha256,
+  });
+
   const server = createTestHarness({
     root: join(root, "apps/api"),
-    workers: [{ configPath: "wrangler.jsonc", env: "e2e", secrets: { DATABASE_URL: runtimeUrl } }],
+    workers: [
+      {
+        configPath: "wrangler.jsonc",
+        env: "e2e",
+        secrets: {
+          DATABASE_URL: runtimeUrl,
+          OPENERP_PROCESSOR_FEED: "local-fixture",
+          OPENERP_PROCESSOR_ENDPOINT: processorFixture.url,
+          OPENERP_PROCESSOR_SECRET: processorFixture.secret,
+          OPENERP_DOCUMENT_DELIVERY: "local-fixture",
+          OPENERP_DOCUMENT_ENDPOINT: documentFixture.url,
+          OPENERP_DOCUMENT_SECRET: documentFixture.secret,
+          OPENERP_DOCUMENT_PUBLIC_KEY: documentFixture.publicKey,
+          OPENERP_DOCUMENT_KEY_ID: documentFixture.keyId,
+          OPENERP_PREPARATION_TOKEN: documentFixture.serviceToken,
+          OPENERP_PEPPOL_EXCHANGE: "local-fixture",
+          OPENERP_PEPPOL_ENDPOINT: peppolFixture.url,
+          OPENERP_PEPPOL_SECRET: peppolFixture.secret,
+        },
+      },
+    ],
   });
 
   let started = false;
@@ -188,6 +222,9 @@ export default async function setup(project: TestProject) {
         } finally {
           if (started)
             await run(join(pgBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"]);
+          await processorFixture.close();
+          await documentFixture.close();
+          await peppolFixture.close();
           await rm(scratch, { recursive: true, force: true });
         }
       }
@@ -242,6 +279,15 @@ export default async function setup(project: TestProject) {
 
     const environment: E2EEnvironment = {
       baseUrl: listening.url.origin,
+      processorFixtureUrl: processorFixture.url,
+      processorFixtureSecret: processorFixture.secret,
+      documentFixtureUrl: documentFixture.url,
+      documentFixtureSecret: documentFixture.secret,
+      documentFixtureServiceToken: documentFixture.serviceToken,
+      peppolFixtureUrl: peppolFixture.url,
+      peppolFixtureSecret: peppolFixture.secret,
+      peppolFixtureProviderAccount: peppolFixture.providerAccount,
+      peppolFixtureReleaseSha256: peppolFixture.releaseSha256,
       adminUrl,
       runtimeUrl,
       artifacts,

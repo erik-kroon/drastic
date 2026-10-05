@@ -14,6 +14,28 @@ type WriteClass =
 // A new write has no MCP exposure until its owner classifies it here. These classes
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
+  commerce_register_peppol_binding: "human_review",
+  commerce_prepare_peppol_artifact: "prepare",
+  commerce_approve_peppol_exchange: "human_review",
+  commerce_dispatch_peppol_exchange: "execute_approved",
+  commerce_collect_peppol_outcome: "record",
+  commerce_receive_peppol_envelope: "record",
+
+  banking_register_processor_native_credit: "human_review",
+  banking_register_processor_account: "administration",
+  banking_fetch_processor_observations: "record",
+  banking_prepare_processor_clearing: "prepare",
+  banking_approve_processor_clearing: "human_review",
+  banking_execute_processor_clearing: "execute_approved",
+
+  payroll_prepare_settlement: "prepare",
+  payroll_approve_settlement: "human_review",
+  payroll_execute_settlement: "execute_approved",
+  payroll_prepare_comparison: "prepare",
+  payroll_record_adjustment_basis: "human_review",
+  payroll_prepare_period: "prepare",
+  asset_disposals_prepare: "prepare",
+  asset_disposals_execute: "execute_approved",
   banking_prepare_foreign_cash: "prepare",
   banking_approve_foreign_cash: "human_review",
   banking_execute_foreign_cash: "execute_approved",

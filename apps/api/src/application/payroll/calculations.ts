@@ -4,6 +4,7 @@ import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import { equalJson } from "@open-erp/domain/canonicalization";
 import { failure } from "../failures";
 import { newId, replay, saveCommand, versionedDigest } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
@@ -23,6 +24,10 @@ import * as Db from "../../db/payroll/calculations";
 import type { Transaction } from "../../db/transaction";
 import { calculateRegularPayroll } from "./calculation-basis";
 import { captureInputs, appendInputComponents } from "./inputs";
+import {
+  captureAdjustmentInstructions,
+  appendAdjustmentInstructions,
+} from "./settlement-instructions";
 
 // A frozen regular-payroll calculation. It posts no journal, pays no salary,
 // makes no declaration and reserves no monthly contribution capacity; execution
@@ -241,6 +246,244 @@ const resolveEarningRevision = Effect.fn("payroll.earningRevision")(function* (
   return revision > maximumRevisions ? yield* failure("InvalidJournal") : revision;
 });
 
+const stripRetainedComponents = Effect.fn("payroll.stripRetainedComparisonComponents")(function* (
+  input: typeof Payroll.PreparePayRun.Type,
+  original: typeof Payroll.PayrollCalculationBasis.Type,
+) {
+  const ownedIds = new Set([
+    ...(original.payrollInputs ?? []).flatMap((row) => [
+      `${row.inputId}_gross`,
+      `${row.inputId}_reimbursement`,
+    ]),
+    ...(original.adjustmentInstructions ?? []).map((row) => row.id),
+  ]);
+
+  for (const kind of ["adjustments", "reimbursements"] as const) {
+    const submitted = input.work[kind].filter((row) => ownedIds.has(row.componentId));
+
+    for (const row of submitted) {
+      const retained = original.reviewedInput.work[kind].find(
+        (item) => item.componentId === row.componentId,
+      );
+
+      if (!equalJson(row, retained)) return yield* failure("StaleDependency");
+    }
+  }
+
+  return {
+    ...input,
+    work: {
+      ...input.work,
+      adjustments: input.work.adjustments.filter((row) => !ownedIds.has(row.componentId)),
+      reimbursements: input.work.reimbursements.filter((row) => !ownedIds.has(row.componentId)),
+    },
+  };
+});
+
+type CaptureMode =
+  | { readonly kind: "regular" }
+  | {
+      readonly kind: "paid_comparison";
+      readonly originalBasis: typeof Payroll.PayrollCalculationBasis.Type;
+    };
+
+const captureComponents = Effect.fn("payroll.captureCalculationComponents")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  submitted: typeof Payroll.PreparePayRun.Type,
+  mode: CaptureMode,
+) {
+  const payrollInputs =
+    mode.kind === "paid_comparison"
+      ? (mode.originalBasis.payrollInputs ?? [])
+      : yield* captureInputs(
+          transaction,
+          scope,
+          submitted.employment.employeeId,
+          submitted.work.earningsPeriod.startsOn.slice(0, 7),
+          submitted.inputIds ?? [],
+        );
+
+  const cleanInput =
+    mode.kind === "paid_comparison"
+      ? yield* stripRetainedComponents(submitted, mode.originalBasis)
+      : submitted;
+
+  const withInputs = yield* appendInputComponents(cleanInput, payrollInputs);
+
+  const adjustmentInstructions =
+    mode.kind === "paid_comparison"
+      ? (mode.originalBasis.adjustmentInstructions ?? [])
+      : yield* captureAdjustmentInstructions(
+          transaction,
+          scope,
+          submitted.employment.employeeId,
+          submitted.work.earningsPeriod.startsOn.slice(0, 7),
+          submitted.adjustmentIds ?? [],
+        );
+
+  const prepared = yield* appendAdjustmentInstructions(withInputs, adjustmentInstructions);
+
+  return { payrollInputs, adjustmentInstructions, prepared };
+});
+
+export const captureCalculationBasis = Effect.fn("payroll.captureCalculationBasis")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  submitted: typeof Payroll.PreparePayRun.Type,
+  mode: CaptureMode,
+) {
+  yield* requireTableGrants(transaction, false);
+
+  const { payrollInputs, adjustmentInstructions, prepared } = yield* captureComponents(
+    transaction,
+    scope,
+    submitted,
+    mode,
+  );
+
+  const employeeId = prepared.employment.employeeId;
+  const period = prepared.work.earningsPeriod;
+  const paymentOn = prepared.work.expectedPaymentOn;
+  const book = (yield* Ledger.readBook(transaction, scope))[0];
+
+  if (!book) return yield* failure("Forbidden");
+
+  const resolved = yield* resolveCompanyProfileInTransaction(
+    transaction,
+    scope,
+    prepared.recordClass,
+    profileDates(paymentOn),
+  );
+
+  const witness = resolved.families.find((entry) => entry.family === "payroll")?.witness;
+
+  if (!witness) return yield* failure("UnsupportedProfile");
+
+  const releaseRow = (yield* Db.readRuleRelease(transaction, witness.ruleReleaseId))[0];
+
+  if (!releaseRow || releaseRow.family !== "payroll") {
+    return yield* failure("UnsupportedProfile");
+  }
+
+  const outer = Option.getOrNull(Schema.decodeUnknownOption(Profiles.RuleRelease)(releaseRow.body));
+
+  if (outer === null) return yield* failure("UnsupportedProfile");
+
+  const release = outer.payroll ?? null;
+
+  if (release === null) return yield* failure("UnsupportedProfile");
+
+  if (releaseRow.checksum !== outer.checksum) return yield* failure("StaleDependency");
+
+  if (release.calculatorVersion !== Payroll.SupportedCalculatorVersion) {
+    return yield* failure("UnsupportedProfile");
+  }
+
+  const employment = (yield* Db.readRevisionHead(
+    transaction,
+    scope.bookId,
+    employeeId,
+    "employment",
+    period.startsOn,
+  ))[0];
+
+  const work = (yield* Db.readRevisionHead(
+    transaction,
+    scope.bookId,
+    employeeId,
+    "work",
+    period.startsOn,
+  ))[0];
+
+  const opening = (yield* Db.readRevisionHead(
+    transaction,
+    scope.bookId,
+    employeeId,
+    "opening",
+    period.startsOn,
+  ))[0];
+
+  if (!employment || !work || !opening) return yield* failure("NotFound");
+
+  if (
+    employment.id !== prepared.employment.effectiveRevision ||
+    work.id !== prepared.work.effectiveRevision
+  ) {
+    return yield* failure("StaleDependency");
+  }
+
+  for (const [kind, row] of [
+    ["employment", employment],
+    ["work", work],
+    ["opening", opening],
+  ] as const) {
+    const current = yield* Db.readCurrentRevisionAt(
+      transaction,
+      scope.bookId,
+      employeeId,
+      kind,
+      row.effectiveOn,
+      "update",
+    );
+
+    if (current[0]?.revisionId !== row.id) return yield* failure("StaleDependency");
+  }
+
+  const workBody = yield* decode(WorkBody, work.body);
+  const openingBody = yield* decode(OpeningBody, opening.body);
+
+  if (workBody.periodStart !== period.startsOn || workBody.periodEnd !== period.endsOn) {
+    return yield* failure("StaleDependency");
+  }
+
+  if (!isWholeCalendarMonth(period)) return yield* failure("UnsupportedProfile");
+
+  if (openingBody.asOf > period.startsOn) return yield* failure("UnsupportedProfile");
+
+  if (BigInt(openingBody.balanceMinor) < 0n) return yield* failure("InvalidJournal");
+
+  for (const reference of evidenceReferences(prepared)) {
+    yield* requireRetainedEvidence(transaction, scope.bookId, reference);
+  }
+
+  const membership = yield* ProfileDb.readFamilyMembership(transaction, scope.bookId, "payroll");
+
+  const basis = yield* decode(
+    Payroll.PayrollCalculationBasis,
+    yield* toJsonObject({
+      employeeId,
+      employmentRevisionId: employment.id,
+      workRevisionId: work.id,
+      openingRevisionId: opening.id,
+      openingBaseMinor: openingBody.balanceMinor,
+      openingObligationReference: openingBody.obligation,
+      earningsPeriod: period,
+      expectedPaymentOn: paymentOn,
+      currency: book.currency,
+      currencyScale: book.currencyScale,
+      ruleReleaseId: releaseRow.id,
+      ruleReleaseChecksum: releaseRow.checksum,
+      ruleReleaseVersion: releaseRow.version,
+      companyActivationId: witness.activationId,
+      familyMembershipEpoch: membership[0]?.membershipEpoch.toString() ?? null,
+      factRevisionIds: witness.factRevisionIds,
+      factReviewIds: witness.factReviewIds,
+      roleBindingIds: witness.roleBindingIds,
+      evidenceIds: [employment.evidenceId, work.evidenceId, opening.evidenceId],
+      calculatorVersion: release.calculatorVersion,
+      sourceCoverage: "complete",
+      payrollInputs,
+      adjustmentInstructions,
+      reviewedInput: prepared,
+    }),
+  );
+
+  const calculated = yield* calculateRegularPayroll(basis, release);
+
+  return { basis, calculated, releaseRow, release, prepared, employeeId, period, paymentOn };
+});
+
 export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: typeof Payroll.PreparePayRun.Type },
@@ -276,61 +519,12 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
 
       const submitted = yield* decode(Payroll.PreparePayRun, input);
 
-      const payrollInputs = yield* captureInputs(
-        transaction,
-        command.scope,
-        submitted.employment.employeeId,
-        submitted.work.earningsPeriod.startsOn.slice(0, 7),
-        submitted.inputIds ?? [],
-      );
+      const captured = yield* captureCalculationBasis(transaction, command.scope, submitted, {
+        kind: "regular",
+      });
 
-      const prepared = yield* appendInputComponents(submitted, payrollInputs);
-      const employeeId = prepared.employment.employeeId;
-      const period = prepared.work.earningsPeriod;
-      const paymentOn = prepared.work.expectedPaymentOn;
-      const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      const resolved = yield* resolveCompanyProfileInTransaction(
-        transaction,
-        command.scope,
-        prepared.recordClass,
-        profileDates(paymentOn),
-      );
-
-      const witness = resolved.families.find((entry) => entry.family === "payroll")?.witness;
-
-      // A missing, ambiguous, unreviewed or inapplicable release is refused. It
-      // is never replaced by a default rate, table or band.
-      if (!witness) return yield* failure("UnsupportedProfile");
-
-      const releaseRow = (yield* Db.readRuleRelease(transaction, witness.ruleReleaseId))[0];
-
-      if (!releaseRow || releaseRow.family !== "payroll") {
-        return yield* failure("UnsupportedProfile");
-      }
-
-      // The shared RuleRelease owns one nested payroll payload. Decoding the row as
-      // a payroll release would read the nested fields as if they were at the root,
-      // so the outer release is decoded under its own schema and its payroll
-      // section is selected. A release with no payroll payload is a precise
-      // unsupported profile, not a default schedule.
-      const outer = Option.getOrNull(
-        Schema.decodeUnknownOption(Profiles.RuleRelease)(releaseRow.body),
-      );
-
-      if (outer === null) return yield* failure("UnsupportedProfile");
-
-      const release = outer.payroll ?? null;
-
-      if (release === null) return yield* failure("UnsupportedProfile");
-
-      if (releaseRow.checksum !== outer.checksum) return yield* failure("StaleDependency");
-
-      if (release.calculatorVersion !== Payroll.SupportedCalculatorVersion) {
-        return yield* failure("UnsupportedProfile");
-      }
+      const { basis, calculated, releaseRow, release } = captured;
+      const { employeeId, period, paymentOn } = captured;
 
       const revision = yield* resolveEarningRevision(
         transaction,
@@ -338,116 +532,6 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         employeeId,
         period,
       );
-
-      const employment = (yield* Db.readRevisionHead(
-        transaction,
-        command.scope.bookId,
-        employeeId,
-        "employment",
-        period.startsOn,
-      ))[0];
-
-      const work = (yield* Db.readRevisionHead(
-        transaction,
-        command.scope.bookId,
-        employeeId,
-        "work",
-        period.startsOn,
-      ))[0];
-
-      const opening = (yield* Db.readRevisionHead(
-        transaction,
-        command.scope.bookId,
-        employeeId,
-        "opening",
-        period.startsOn,
-      ))[0];
-
-      if (!employment || !work || !opening) return yield* failure("NotFound");
-
-      if (
-        employment.id !== prepared.employment.effectiveRevision ||
-        work.id !== prepared.work.effectiveRevision
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      // A revision is a live fact only while the current pointer still names it.
-      for (const [kind, row] of [
-        ["employment", employment],
-        ["work", work],
-        ["opening", opening],
-      ] as const) {
-        const current = yield* Db.readCurrentRevisionAt(
-          transaction,
-          command.scope.bookId,
-          employeeId,
-          kind,
-          row.effectiveOn,
-          "update",
-        );
-
-        if (current[0]?.revisionId !== row.id) return yield* failure("StaleDependency");
-      }
-
-      const workBody = yield* decode(WorkBody, work.body);
-      const openingBody = yield* decode(OpeningBody, opening.body);
-
-      if (workBody.periodStart !== period.startsOn || workBody.periodEnd !== period.endsOn) {
-        return yield* failure("StaleDependency");
-      }
-
-      // A monthly pay event's earnings period is the whole calendar month. This
-      // calculator declares no proration and no reduced band for an irregular
-      // period, so a part-month interval is refused rather than paid a full
-      // monthly salary. A same-month interval is not thereby a full month.
-      if (!isWholeCalendarMonth(period)) return yield* failure("UnsupportedProfile");
-
-      if (openingBody.asOf > period.startsOn) return yield* failure("UnsupportedProfile");
-
-      if (BigInt(openingBody.balanceMinor) < 0n) return yield* failure("InvalidJournal");
-
-      for (const reference of evidenceReferences(prepared)) {
-        yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
-      }
-
-      const membership = yield* ProfileDb.readFamilyMembership(
-        transaction,
-        command.scope.bookId,
-        "payroll",
-      );
-
-      const basis = yield* decode(
-        Payroll.PayrollCalculationBasis,
-        yield* toJsonObject({
-          employeeId,
-          employmentRevisionId: employment.id,
-          workRevisionId: work.id,
-          openingRevisionId: opening.id,
-          openingBaseMinor: openingBody.balanceMinor,
-          openingObligationReference: openingBody.obligation,
-          earningsPeriod: period,
-          expectedPaymentOn: paymentOn,
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          ruleReleaseId: releaseRow.id,
-          ruleReleaseChecksum: releaseRow.checksum,
-          ruleReleaseVersion: releaseRow.version,
-          companyActivationId: witness.activationId,
-          familyMembershipEpoch: membership[0]?.membershipEpoch.toString() ?? null,
-          factRevisionIds: witness.factRevisionIds,
-          factReviewIds: witness.factReviewIds,
-          roleBindingIds: witness.roleBindingIds,
-          evidenceIds: [employment.evidenceId, work.evidenceId, opening.evidenceId],
-          calculatorVersion: release.calculatorVersion,
-          sourceCoverage: "complete",
-          payrollInputs,
-          reviewedInput: prepared,
-        }),
-      );
-
-      // Pure. No database access, no HTTP, no provider call, no human wait.
-      const calculated = yield* calculateRegularPayroll(basis, release);
 
       const calculationId = newId("paycalc");
       const planId = newId("payplan");

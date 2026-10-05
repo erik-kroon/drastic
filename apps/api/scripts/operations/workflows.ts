@@ -26,7 +26,7 @@ import {
 } from "./safety";
 import { readPreflight, tableFingerprints } from "./snapshot";
 import { copyArtifacts, filesIn, inspectRelease, readRecoveryPlan } from "./artifacts";
-import { databaseInventory, roleInventory } from "./inventory";
+import { databaseInventory, databaseInventoryMatches, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
 import { captureObjects, objectReferences, verifyObjectInventory } from "./objects";
 import {
@@ -35,6 +35,8 @@ import {
   workInventoryPath,
   workInventoryPaths,
 } from "./durable-work";
+import { readApplicationSequences } from "./application-sequences";
+import { verifyActualBackup } from "./rehearsal-backup";
 import { readQueueSequences } from "./queue";
 
 async function diagnostic(
@@ -177,6 +179,8 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     if (!isDeepStrictEqual(await readQueueSequences(client), work.queue.sequences))
       refuse("Queue sequence state changed during backup; stop queue writers and capture again.");
 
+    if (!isDeepStrictEqual(await readApplicationSequences(client), inventory.applicationSequences))
+      refuse("BackupIncomplete: Application ordinal sequences moved during backup capture.");
     await client.query("ROLLBACK");
     stage = "supplementary-and-release-copy";
     await copyArtifacts(plan.supplementaryDirectory, join(bundle, "supplementary"));
@@ -227,6 +231,11 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     await writePrivate(join(bundle, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
     const hash = await fingerprint(join(bundle, "manifest.json"));
     await writePrivate(join(bundle, "manifest.sha256"), hash.sha256 + "\n");
+    const certificate = await verifyActualBackup(bundle, manifest, hash.sha256);
+    await writePrivate(
+      join(diagnostics, "backup-verification.json"),
+      JSON.stringify(certificate, null, 2) + "\n",
+    );
     await diagnostic(
       diagnostics,
       stage,
@@ -276,7 +285,7 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
         !/^objects\/v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/.test(path),
     )
   )
-    refuse("Unexpected bundle file inventory.");
+    refuse("UnhandledFamily: Unexpected bundle file inventory.");
 
   const actualPaths = (await filesIn(bundle)).filter(
     (path) =>
@@ -358,6 +367,7 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
   }
 
   await inspectWorkInventory(bundle, manifest);
+  await verifyActualBackup(bundle, manifest, expectedDigest);
 
   return manifest;
 }
@@ -496,8 +506,10 @@ export async function restore(
         refuse("Restored table fingerprints differ.");
 
       if (
-        JSON.stringify(await databaseInventory(restored, manifest.release, true)) !==
-        JSON.stringify(manifest.inventory)
+        !databaseInventoryMatches(
+          await databaseInventory(restored, manifest.release, true),
+          manifest.inventory,
+        )
       )
         refuse("Restored schema/migration/environment inventory differs.");
       const objects = await objectReferences(restored, actual, Boolean(manifest.closure));

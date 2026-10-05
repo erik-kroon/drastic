@@ -48,7 +48,8 @@
     "test": "vp test run",
     "test:e2e": "vp test run",
     "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit",
-    "check:integration": "bun scripts/check-integration.ts"
+    "test:domain-owners": "vp test run apps/api/tests/collection-reminders.e2e.test.ts apps/api/tests/asset-valuations.e2e.test.ts apps/api/tests/asset-disposals.e2e.test.ts apps/api/tests/treasury-loans.e2e.test.ts apps/api/tests/foreign-cash.e2e.test.ts apps/api/tests/processor-clearing.e2e.test.ts apps/api/tests/payroll-inputs.e2e.test.ts apps/api/tests/payroll-runs.e2e.test.ts apps/api/tests/payroll-settlements.e2e.test.ts apps/api/tests/sie-historical-owners.e2e.test.ts apps/api/tests/document-signing-filing.e2e.test.ts apps/api/tests/peppol-exchange.e2e.test.ts",
+    "check:owners": "bun scripts/check-owners.ts"
   },
   "devDependencies": {
     "@effect/platform-bun": "4.0.0",

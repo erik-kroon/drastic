@@ -215,7 +215,7 @@ export function readNativeConsumption(
   rowOrdinal: number,
 ) {
   return transaction.execute<{ readonly body: JsonObject }>(
-    sql`select body from openerp.bank_foreign_cash_native_consumptions where book_id=${bookId} and statement_id=${statementId} and row_ordinal=${rowOrdinal}`,
+    sql`select body from openerp.bank_foreign_cash_native_consumptions where book_id=${bookId} and statement_id=${statementId} and row_ordinal=${rowOrdinal} union all select body from openerp.processor_bank_claims where book_id=${bookId} and statement_id=${statementId} and row_ordinal=${rowOrdinal}`,
     "objects",
   );
 }
@@ -340,7 +340,7 @@ export function readNativeStatementCoverage(
   statementId: string,
 ) {
   return transaction.execute<{ readonly complete: boolean }>(
-    sql`select not exists(select 1 from openerp.bank_observations o join openerp.bank_statements s on (s.book_id,s.id)=(o.book_id,o.statement_id) where o.book_id=${bookId} and o.statement_id=${statementId} and not exists(select 1 from openerp.bank_foreign_cash_native_consumptions c where (c.book_id,c.statement_id,c.row_ordinal,c.account_id,c.native_minor)=(o.book_id,o.statement_id,o.row_ordinal,s.account_id,o.amount_minor))) as complete`,
+    sql`select not exists(select 1 from openerp.bank_observations o join openerp.bank_statements s on (s.book_id,s.id)=(o.book_id,o.statement_id) where o.book_id=${bookId} and o.statement_id=${statementId} and not exists(select 1 from openerp.bank_foreign_cash_native_consumptions c where (c.book_id,c.statement_id,c.row_ordinal,c.account_id,c.native_minor)=(o.book_id,o.statement_id,o.row_ordinal,s.account_id,o.amount_minor)) and not exists(select 1 from openerp.processor_bank_claims c where (c.book_id,c.statement_id,c.row_ordinal,c.account_id,c.native_minor)=(o.book_id,o.statement_id,o.row_ordinal,s.account_id,o.amount_minor))) as complete`,
     "objects",
   );
 }

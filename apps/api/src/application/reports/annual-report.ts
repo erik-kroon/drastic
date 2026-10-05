@@ -24,7 +24,6 @@ import * as Db from "../../db/reports/annual-report";
 import * as StatementDb from "../../db/report-statements";
 import * as CloseDb from "../../db/closing/financial-close";
 import * as Ledger from "../../db/posting";
-import { insertOutbox } from "../../db/posting";
 import { readTableAccess } from "../../db/commerce/access";
 import type { Transaction } from "../../db/transaction";
 import {
@@ -654,17 +653,6 @@ export const finalizeAnnualReport = Effect.fn("reports.annual-report.finalize")(
       recordedAt: now,
     });
 
-    // The render intent commits with the final semantic approval; the
-    // artifact worker runs the pure assembly later through the same named
-    // render operation. No journal posts here.
-    yield* insertOutbox(transaction, {
-      bookId: command.scope.bookId,
-      id: newId("outbox"),
-      receiptId: final.id,
-      kind: "annual_report.render_requested.v1",
-      payload: yield* toJsonObject({ reportId: final.id, modelDigest: final.summary.modelDigest }),
-    });
-
     yield* saveCommand(
       transaction,
       command.scope,
@@ -884,7 +872,7 @@ export const renderReportArtifact = Effect.fn("reports.annual-report.render")(fu
 
     if (Result.isFailure(assembled)) return yield* refusalFor(assembled.failure);
 
-    const contentHash = yield* sha256Hex(assembled.success.xhtml);
+    const contentHash = `sha256:${yield* sha256Hex(assembled.success.xhtml)}`;
     const sizeBytes = new TextEncoder().encode(assembled.success.xhtml).length;
     const now = yield* isoNow(transaction);
     const artifactId = newId("annual_artifact");

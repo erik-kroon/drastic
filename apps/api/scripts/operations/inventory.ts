@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { Client } from "pg";
 import * as Schema from "effect/Schema";
 import {
@@ -6,6 +7,7 @@ import {
   RoleInventory,
 } from "../../../../packages/contracts/src/operations";
 import { refuse } from "./safety";
+import { readApplicationSequences } from "./application-sequences";
 import { readQueueSequences } from "./queue";
 
 export async function roleInventory(client: Client) {
@@ -168,5 +170,21 @@ export async function databaseInventory(
     extensions: extensions.rows,
     migrations: migrations.rows,
     roles: await roleInventory(client),
+    applicationSequences: await readApplicationSequences(client),
   });
+}
+
+export function databaseInventoryMatches(
+  actual: typeof DatabaseInventory.Type,
+  expected: typeof DatabaseInventory.Type,
+) {
+  if (expected.applicationSequences !== undefined) return isDeepStrictEqual(actual, expected);
+
+  if ((actual.applicationSequences?.length ?? 0) !== 0) return false;
+
+  const legacyActual = Object.fromEntries(
+    Object.entries(actual).filter(([key]) => key !== "applicationSequences"),
+  );
+
+  return isDeepStrictEqual(legacyActual, expected);
 }

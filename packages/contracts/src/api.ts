@@ -1,3 +1,11 @@
+import { DocumentSignaturesApi } from "./document-signatures";
+import { FilingLifecycleApi } from "./filing-lifecycle";
+import { PeppolExchangeApi } from "./peppol-exchange";
+import { HistoricalAdoptionsApi } from "./historical-adoptions";
+import { ProcessorClearingApi } from "./processor-clearing";
+import { SiePartitionsApi } from "./sie-partitions";
+import { PayrollSettlementApi } from "./payroll-settlements";
+import { AssetDisposalsApi } from "./asset-disposals";
 import { ForeignCashApi } from "./foreign-cash";
 import { PayrollInputApi } from "./payroll-inputs";
 import { LoanApi } from "./treasury-loans";
@@ -276,7 +284,15 @@ export class Api extends HttpApi.make("open-erp")
     PayrollCalculationApi,
     PayrollRunApi,
     ForeignCashApi,
+    ProcessorClearingApi,
+    SiePartitionsApi,
+    HistoricalAdoptionsApi,
+    DocumentSignaturesApi,
+    FilingLifecycleApi,
+    PeppolExchangeApi,
     PayrollInputApi,
+    AssetDisposalsApi,
+    PayrollSettlementApi,
     LoanApi,
     CorporateTaxApi,
     AnnualReportApi,

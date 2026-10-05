@@ -23,6 +23,7 @@ test-results
 *.tsbuildinfo
 # Scoped type-check configs written and removed by `bun run check:changed`.
 tsconfig.changed.json
+.tsconfig.changed-*.json
 apps/web/.tanstack/
 apps/api/.wrangler/
 apps/web/.wrangler/

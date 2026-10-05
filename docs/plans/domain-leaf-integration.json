@@ -1,5 +1,5 @@
 {
-  "$comment": "Integration declaration for every packages/domain leaf, enforced by `bun run check:integration` (scripts/check-integration.ts). A leaf with no consumer outside packages/domain is dead code. Wiring it is the goal; where wiring is genuinely blocked, this file records who is missing and what would unblock it. Do not delete a leaf to silence this file: wire it, or state the real reason.",
+  "$comment": "Verified application ownership declarations for all packages/domain leaves, enforced by bun run check:owners (scripts/check-owners.ts). Every leaf requires a real value-importing application consumer. Deferrals, test-only consumers and empty or ancestor paths are refused. Public API and connected rehearsal proofs are retained separately in docs/plans/evidence/domain-owner-completion. Do not delete a leaf or weaken the guard to silence missing ownership.",
   "leaves": [
     {
       "leaf": "commercial-invoice",
@@ -41,9 +41,10 @@
     },
     {
       "leaf": "asset-disposals",
-      "status": "deferred",
-      "reason": "Packet keeps schedule retirement and disposition persistence with the reserved asset owner; no asset register owner exists yet.",
-      "unblockedBy": "The asset register owner gains retained schedules, then a disposal application operation calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/subledger/disposal-basis.ts"
+      ]
     },
     {
       "leaf": "bank-source-revisions",
@@ -126,9 +127,11 @@
     },
     {
       "leaf": "document-signatures",
-      "status": "deferred",
-      "reason": "Packet keeps the provider protocol and receipts with the signing adapter owners; no adapter is selected.",
-      "unblockedBy": "A signing adapter is qualified, then its owner calls this leaf for intent freezing."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/documents/signatures.ts",
+        "packages/contracts/src/document-signatures.ts"
+      ]
     },
     {
       "leaf": "employee-claims",
@@ -155,9 +158,11 @@
     },
     {
       "leaf": "filing-lifecycle",
-      "status": "deferred",
-      "reason": "Packet keeps provider state and receipts with the external-delivery owners; filing is outside current authority.",
-      "unblockedBy": "Separate authority for an external filing provider, then a delivery owner calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/documents/filing.ts",
+        "packages/contracts/src/filing-lifecycle.ts"
+      ]
     },
     {
       "leaf": "financial-close",
@@ -190,9 +195,11 @@
     },
     {
       "leaf": "historical-adoptions",
-      "status": "deferred",
-      "reason": "Packet keeps persistence with the sie/historical and commerce settlement owners.",
-      "unblockedBy": "A settlement owner persists an adoption and calls this leaf for residual allocation."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/sie/adoptions.ts",
+        "apps/api/src/application/sie/adoption-basis.ts"
+      ]
     },
     {
       "leaf": "impairment-reversal",
@@ -241,9 +248,11 @@
     },
     {
       "leaf": "paid-payroll-recovery",
-      "status": "deferred",
-      "reason": "Packet keeps the payroll period handoff with the payroll owners.",
-      "unblockedBy": "A payroll owner settles a paid period and calls this leaf for recovery."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/settlement-basis.ts",
+        "apps/api/src/application/payroll/settlements.ts"
+      ]
     },
     {
       "leaf": "party-identity",
@@ -270,9 +279,12 @@
     },
     {
       "leaf": "peppol-exchange",
-      "status": "deferred",
-      "reason": "Packet keeps transport and persistence with the delivery owners; no access point is qualified.",
-      "unblockedBy": "An access point is qualified, then a delivery owner calls this leaf for dispatch admission."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/commerce/peppol-document.ts",
+        "apps/api/src/application/commerce/peppol-exchange.ts"
+      ],
+      "note": "Actual selected authenticated local access-point owner consumes this leaf. Source composition is implemented; public exchange proof and final checks remain pending. No real access-point qualification is claimed."
     },
     {
       "leaf": "period-work",
@@ -298,9 +310,12 @@
     },
     {
       "leaf": "processor-clearing",
-      "status": "deferred",
-      "reason": "Reviewed and repaired as a pure leaf. Packet keeps fetching, profiles and persistence with the treasury/banking owners, which are not built.",
-      "unblockedBy": "A treasury owner owns processor observations, then its application owner calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/banking/processor-effects.ts",
+        "apps/api/src/application/banking/processor-fetches.ts",
+        "apps/api/src/application/banking/processor-reconciliation.ts"
+      ]
     },
     {
       "leaf": "purchasing",
@@ -318,9 +333,12 @@
     },
     {
       "leaf": "rehearsal-verification",
-      "status": "deferred",
-      "reason": "Packet requires checkpoint capture, backup and restore under separate operations authority, which is not held here.",
-      "unblockedBy": "Operations authority for backup/restore, then an operations owner calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/scripts/operations/checkpoint.ts",
+        "apps/api/scripts/operations/rehearsal-backup.ts",
+        "apps/api/scripts/operations/rehearsal.ts"
+      ]
     },
     {
       "leaf": "service-purchases",
@@ -331,9 +349,10 @@
     },
     {
       "leaf": "sie-partitions",
-      "status": "deferred",
-      "reason": "Packet keeps the declaration and migration journey with the SIE owners.",
-      "unblockedBy": "A SIE owner declares a partition and calls this leaf for the comparison."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/sie/partitions.ts"
+      ]
     },
     {
       "leaf": "statements",

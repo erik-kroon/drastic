@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema";
 import { PayrollInputSnapshot } from "./payroll-inputs";
+import { AdjustmentSnapshot } from "./payroll-adjustments";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
@@ -333,6 +334,9 @@ export const WorkInput = Schema.Struct({
 });
 
 export const PreparePayRun = Schema.Struct({
+  adjustmentIds: Schema.optional(
+    Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
+  ),
   inputIds: Schema.optional(Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100))),
   recordClass: Schema.Literals(["actual_company", "synthetic"]),
   employment: EmploymentForCalculation,
@@ -377,6 +381,9 @@ export const PayrollBenefitBasis = Schema.Struct({
 // The exact retained basis. A later employee change does not rewrite it; a new
 // relevant dated input makes a new execution require a new calculation.
 export const PayrollCalculationBasis = Schema.Struct({
+  adjustmentInstructions: Schema.optional(
+    Schema.Array(AdjustmentSnapshot).check(Schema.isMaxLength(100)),
+  ),
   payrollInputs: Schema.optional(Schema.Array(PayrollInputSnapshot).check(Schema.isMaxLength(100))),
   employeeId: Accounting.Identifier,
   employmentRevisionId: Accounting.Identifier,

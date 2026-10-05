@@ -22,7 +22,7 @@
 - Keep anti-slop Oxlint rules enabled. Fix lint and TypeScript errors; do not suppress warnings or weaken checks.
 - Run `bun run check:changed` after each coherent code edit. Run `bun run check:changed:full` before handoff and after Promise or async changes.
 - Use synthetic test data. Do not use real company data, live providers, production systems, payments, deployments, or statutory submissions without task-specific authorization.
-- For each new `packages/domain` leaf, wire it to a real application owner or record the blocker in `docs/plans/domain-leaf-integration.json`. Run `bun run check:integration`.
+- For each new `packages/domain` leaf, wire it to a real application owner, retain public workflow evidence, and declare its consumer in `docs/plans/domain-leaf-integration.json`. Run `bun run check:owners`; deferrals cannot pass this guard.
 - If dependency manifests change, update `bun.lock` and verify with `bun install --frozen-lockfile`.
 
 ## Testing

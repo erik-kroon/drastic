@@ -2,17 +2,6 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { Description, Digest, Identifier } from "./values";
 
-// Pure rehearsal-verification math for one fixed-revision exercise.
-// NEXT-25 leaf: acceptance inventory, backup-manifest verification,
-// restore comparison and failure-exit discipline. This exercises no
-// database, runs no reset, dump, deployment, payment or filing: those
-// need separately confirmed disposal and operator authority, which this
-// leaf records as required witnesses rather than assuming. Passing
-// schemas or builds never substitute for the financial observation, and
-// an old passing fragment never merges into a claimed current run
-// without exercising its connections. The operations owner keeps the
-// actual checkpoint capture, backup orchestration and quarantine.
-
 export const RehearsalFailureCode = Schema.Literals([
   "BackupIncomplete",
   "MigrationDrift",
@@ -66,6 +55,7 @@ export type AcceptanceRow = typeof AcceptanceRow.Type;
 export const AcceptanceLedger = Schema.Struct({
   checkpointId: Identifier,
   repositoryCommit: Identifier,
+  sourceDigest: Digest,
   rows: Schema.Array(AcceptanceRow),
   waitingHandoffs: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32))),
 });
@@ -75,6 +65,7 @@ export type AcceptanceLedger = typeof AcceptanceLedger.Type;
 export const BuildLedgerInput = Schema.Struct({
   checkpointId: Identifier,
   repositoryCommit: Identifier,
+  sourceDigest: Digest,
   rows: Schema.Array(AcceptanceRow),
   requiredPackets: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32))),
   handoffs: Schema.Array(OwnerHandoff),
@@ -82,12 +73,17 @@ export const BuildLedgerInput = Schema.Struct({
 
 export type BuildLedgerInput = typeof BuildLedgerInput.Type;
 
-// Builds the applicable acceptance inventory. Unknown applicability
-// stays blocked, never assumed; a missing owner handoff waits at that
-// integration while disjoint approved work continues. Stale evidence
-// (a handoff whose source digest moved) refuses rather than merging an
-// old passing fragment into a current claim.
 export function buildAcceptanceLedger(input: BuildLedgerInput): Checked<AcceptanceLedger> {
+  if (new Set(input.handoffs.map((handoff) => handoff.packet)).size !== input.handoffs.length) {
+    return fail("StaleEvidence", "Duplicate owner handoffs cannot establish one checkpoint.");
+  }
+
+  for (const handoff of input.handoffs) {
+    if (handoff.sourceDigest !== input.sourceDigest) {
+      return fail("StaleEvidence", "Owner evidence belongs to a different captured source digest.");
+    }
+  }
+
   const provided = new Map(input.handoffs.map((handoff) => [handoff.packet, handoff]));
   const waiting: Array<string> = [];
 
@@ -104,6 +100,7 @@ export function buildAcceptanceLedger(input: BuildLedgerInput): Checked<Acceptan
   return Result.succeed({
     checkpointId: input.checkpointId,
     repositoryCommit: input.repositoryCommit,
+    sourceDigest: input.sourceDigest,
     rows: [...input.rows],
     waitingHandoffs: waiting,
   });
@@ -141,11 +138,6 @@ export const VerifyBackupInputWithDigest = Schema.Struct({
 
 export type VerifyBackupInputWithDigest = typeof VerifyBackupInputWithDigest.Type;
 
-// Verifies a backup manifest before any certificate exists: every
-// member hash and size verified from the same snapshot, no dangling
-// required references, and every inventory family handled. A missing
-// original object means an incomplete backup with no restore
-// certificate, never a partial pass.
 export function verifyBackupManifest(
   input: VerifyBackupInputWithDigest,
 ): Checked<BackupCertificate> {
@@ -181,16 +173,18 @@ export function verifyBackupManifest(
   });
 }
 
+const RestoreObservation = Schema.Union([Schema.Boolean, Schema.Literal("unavailable")]);
+
 export const RestoreComparison = Schema.Struct({
-  schemaHashesMatch: Schema.Boolean,
-  migrationHashesMatch: Schema.Boolean,
-  entityCountsMatch: Schema.Boolean,
-  ledgerBoundariesMatch: Schema.Boolean,
-  balancesMatch: Schema.Boolean,
-  receiptsMatch: Schema.Boolean,
-  objectHashesMatch: Schema.Boolean,
-  artifactBytesMatch: Schema.Boolean,
-  readsWithoutEffects: Schema.Boolean,
+  schemaHashesMatch: RestoreObservation,
+  migrationHashesMatch: RestoreObservation,
+  entityCountsMatch: RestoreObservation,
+  ledgerBoundariesMatch: RestoreObservation,
+  balancesMatch: RestoreObservation,
+  receiptsMatch: RestoreObservation,
+  objectHashesMatch: RestoreObservation,
+  artifactBytesMatch: RestoreObservation,
+  readsWithoutEffects: RestoreObservation,
 });
 
 export type RestoreComparison = typeof RestoreComparison.Type;
@@ -209,33 +203,36 @@ export const RestoreVerdict = Schema.Struct({
 
 export type RestoreVerdict = typeof RestoreVerdict.Type;
 
-// Compares a quarantined restore against its manifest field by field.
-// A control difference is retained as a failed assertion, never a
-// balancing plug; inspection reads must create no postings or effects,
-// or certification refuses.
 export function verifyRestore(comparison: RestoreComparison): Checked<RestoreVerdict> {
-  const assertions: Array<RestoreAssertion> = [
-    { check: "schema_hashes", outcome: comparison.schemaHashesMatch ? "passed" : "failed" },
-    { check: "migration_hashes", outcome: comparison.migrationHashesMatch ? "passed" : "failed" },
-    { check: "entity_counts", outcome: comparison.entityCountsMatch ? "passed" : "failed" },
-    { check: "ledger_boundaries", outcome: comparison.ledgerBoundariesMatch ? "passed" : "failed" },
-    { check: "balances", outcome: comparison.balancesMatch ? "passed" : "failed" },
-    { check: "receipts", outcome: comparison.receiptsMatch ? "passed" : "failed" },
-    { check: "object_hashes", outcome: comparison.objectHashesMatch ? "passed" : "failed" },
-    { check: "artifact_bytes", outcome: comparison.artifactBytesMatch ? "passed" : "failed" },
-  ];
+  const observations = [
+    ["schema_hashes", comparison.schemaHashesMatch],
+    ["migration_hashes", comparison.migrationHashesMatch],
+    ["entity_counts", comparison.entityCountsMatch],
+    ["ledger_boundaries", comparison.ledgerBoundariesMatch],
+    ["balances", comparison.balancesMatch],
+    ["receipts", comparison.receiptsMatch],
+    ["object_hashes", comparison.objectHashesMatch],
+    ["artifact_bytes", comparison.artifactBytesMatch],
+    ["reads_without_effects", comparison.readsWithoutEffects],
+  ] as const;
 
-  if (!comparison.readsWithoutEffects) {
+  const assertions: Array<RestoreAssertion> = observations.map(([check, observation]) => ({
+    check,
+    outcome: observation === "unavailable" ? "unavailable" : observation ? "passed" : "failed",
+  }));
+
+  if (comparison.readsWithoutEffects === false) {
     return fail("FenceViolation", "Inspection reads created postings or external effects.");
   }
 
-  const failed = assertions.some((assertion) => assertion.outcome === "failed");
-
-  if (failed) {
+  if (assertions.some((assertion) => assertion.outcome === "failed")) {
     return fail("ControlDifference", "A restored control differs; the difference is retained.");
   }
 
-  return Result.succeed({ assertions, restoreCertified: true });
+  return Result.succeed({
+    assertions,
+    restoreCertified: assertions.every((assertion) => assertion.outcome === "passed"),
+  });
 }
 
 export const DriftInput = Schema.Struct({
@@ -245,8 +242,6 @@ export const DriftInput = Schema.Struct({
 
 export type DriftInput = typeof DriftInput.Type;
 
-// Migration drift stops before the destination is modified and keeps
-// its diagnostic manifest.
 export function refuseDriftedRestore(input: DriftInput): Checked<typeof Digest.Type> {
   if (input.destinationManifestDigest !== input.backupManifestDigest) {
     return fail("MigrationDrift", "Migration drift stops the restore before any change.");
@@ -262,11 +257,12 @@ export const FenceProofInput = Schema.Struct({
 
 export type FenceProofInput = typeof FenceProofInput.Type;
 
-// A restored provider job that tries to dispatch must meet the
-// external fence denial, recorded as proof rather than an error to
-// retry around.
 export function checkDispatchFence(input: FenceProofInput): Checked<typeof Identifier.Type> {
-  if (input.dispatchAttempted && !input.fenceDenied) {
+  if (!input.dispatchAttempted) {
+    return fail("StaleEvidence", "No actual dispatch admission attempt was observed.");
+  }
+
+  if (!input.fenceDenied) {
     return fail("FenceViolation", "A restored job dispatched past its quarantine fence.");
   }
 

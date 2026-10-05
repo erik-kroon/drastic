@@ -76,7 +76,6 @@ export const SubmissionPrepareInput = Schema.Struct({
   copyEquivalent: Schema.Boolean,
   activeSubmissionStates: Schema.Array(SubmissionState),
   certifierEligible: Schema.Boolean,
-  humanAuthorized: Schema.Boolean,
   reportRevision: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
   copyArtifactHash: Digest,
   providerProfileVersion: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
@@ -140,10 +139,6 @@ export function prepareSubmission(
     );
   }
 
-  if (!input.humanAuthorized) {
-    return fail("MissingHumanAuthorization", "External submission needs human authorization.");
-  }
-
   return Result.succeed({
     intentId,
     obligationId: input.obligationId,
@@ -184,6 +179,9 @@ export function admitSubmission(input: AdmitInput): Checked<SubmissionAttempt> {
   );
 
   if (replayed !== undefined) {
+    if (replayed.requestHash !== input.requestHash)
+      return fail("StaleIntent", "The retained admission belongs to another exact request.");
+
     return Result.succeed(replayed);
   }
 
@@ -250,6 +248,8 @@ const allowedTransitions: TransitionTable = {
     provider_unknown: "outcome_unknown",
   },
   outcome_unknown: {
+    submitted: "submitted_pending",
+    copy_reference: "copy_uploaded",
     provider_received: "received",
     provider_rejected: "rejected",
     provider_registered: "registered_if_required",
@@ -283,6 +283,7 @@ export const AuthorityReceipt = Schema.Struct({
   entityId: Identifier,
   fiscalYearId: Identifier,
   artifactHash: Digest,
+  attemptId: Identifier,
   meansRegistered: Schema.Boolean,
 });
 
@@ -297,11 +298,13 @@ export function linkAuthorityReceipt(
   obligationFiscalYearId: string,
   receipt: AuthorityReceipt,
   registrationRequired: boolean,
+  expectedAttemptId: string,
 ): Checked<{ readonly state: SubmissionState; readonly quarantined: boolean }> {
   if (
     receipt.entityId !== obligationEntityId ||
     receipt.fiscalYearId !== obligationFiscalYearId ||
-    receipt.artifactHash !== intent.copyArtifactHash
+    receipt.artifactHash !== intent.copyArtifactHash ||
+    receipt.attemptId !== expectedAttemptId
   ) {
     return Result.succeed({ state: "needs_review", quarantined: true });
   }

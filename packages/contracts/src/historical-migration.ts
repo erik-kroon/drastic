@@ -24,6 +24,7 @@ const Receipt = Schema.Struct({
 });
 
 export const SelectBasis = Schema.Struct({
+  partitionId: Schema.optional(A.Identifier),
   fiscalYearId: Year,
   mode: Schema.Literals(["full_history", "opening_set"]),
   cutoverOn: A.AccountingDate,
@@ -71,6 +72,8 @@ export const RunStart = Schema.Struct({
   fence: Schema.String,
   status: Schema.Literals(["running", "paused", "posted"]),
   sourceYear: Schema.optional(Schema.String),
+  partitionId: Schema.optional(Schema.NullOr(A.Identifier)),
+  yearOrdinal: Schema.optional(Schema.Int),
 });
 
 const Posting = Schema.Struct({
@@ -284,7 +287,11 @@ export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
   .add(
     HttpApiEndpoint.post("startSieFinancialRun", `${base}/sie-runs/:id/financial-runs`, {
       ...mutation,
-      payload: Schema.Struct({ fiscalYearId: Year, planDigest: A.Digest }),
+      payload: Schema.Struct({
+        fiscalYearId: Year,
+        planDigest: A.Digest,
+        partitionId: Schema.optional(A.Identifier),
+      }),
       success: RunStart,
     }),
   )

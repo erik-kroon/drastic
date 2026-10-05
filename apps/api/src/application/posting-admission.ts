@@ -9,7 +9,10 @@ import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Db from "../db/posting-admission";
 import * as PayrollRuns from "../db/payroll/runs";
 import * as TreasuryLoans from "../db/treasury/loans";
+import * as PayrollSettlements from "../db/payroll/settlements";
 import * as PayrollInputs from "../db/payroll/inputs";
+import * as ProcessorDb from "../db/banking/processor-clearing";
+import * as AssetDisposals from "../db/subledger/disposals";
 import * as Impact from "../db/posting-corrections";
 import * as Schedules from "../db/subledger/schedules";
 import * as Acceptance from "../db/purchases/acceptance";
@@ -37,6 +40,7 @@ export type PostingOwner = {
     | "financial_close"
     | "vat_assessment"
     | "asset_disposal"
+    | "asset_proceeds_disposal"
     | "asset_impairment"
     | "asset_valuation"
     | "historical_import"
@@ -51,8 +55,11 @@ export type PostingOwner = {
     | "cash_credit"
     | "payroll_run"
     | "payroll_input"
+    | "payroll_payment"
+    | "payroll_recovery"
     | "foreign_cash"
-    | "treasury_loan";
+    | "treasury_loan"
+    | "processor";
   readonly id: string;
 };
 
@@ -84,6 +91,43 @@ function admitDeltaReservation(
     }
   });
 }
+
+const assetCorrectionResources = Effect.fn("posting.assetCorrectionResources")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  action: JsonObject,
+  owner?: PostingOwner,
+) {
+  if (owner?.kind !== "asset_proceeds_disposal") return null;
+
+  const row = (yield* AssetDisposals.readReview(tx, scope.bookId, owner.id))[0];
+
+  if (
+    !row ||
+    textField(objectField(row.body, "input"), "kind") !== "error_correction" ||
+    textField(objectField(row.body, "postingPlan"), "id") !== changeId
+  )
+    return null;
+
+  const originalId = textField(row.body, "correctionOf");
+
+  if (!originalId) return null;
+
+  const original = (yield* AssetDisposals.effect(tx, scope.bookId, originalId))[0];
+
+  if (
+    !original ||
+    textField(objectField(original.body, "postingReceipt"), "voucherId") !==
+      textField(action, "correctsVoucherId")
+  )
+    return yield* failure("StaleDependency");
+
+  return {
+    scheduleId: textField(original.body, "scheduleId"),
+    bankPlanId: textField(objectField(original.body, "bankAllocation"), "planId"),
+  };
+});
 
 export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   tx: Transaction,
@@ -125,9 +169,12 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   if (action.postingPurpose === "result_transfer_v1" && owner?.kind !== "financial_close")
     return yield* failure("UnsupportedProfile");
 
+  yield* admitProcessor(tx, scope, changeId, owner, action);
+  yield* admitAssetProceeds(tx, scope, changeId, owner, action);
   yield* admitPayrollRun(tx, scope, changeId, owner, action);
   yield* admitTreasuryLoan(tx, scope, changeId, owner, action);
   yield* admitPayrollInput(tx, scope, changeId, owner, action);
+  yield* admitPayrollSettlement(tx, scope, changeId, owner, action);
   yield* admitForeignCash(tx, scope, owner, action);
 
   yield* admitSupplierSettlement(tx, scope, changeId, eventId, action, owner);
@@ -429,6 +476,7 @@ const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(funct
     if (
       owner?.kind !== "historical_import" ||
       owner.id !== run.id ||
+      textField(run, "status") !== "running" ||
       !(Date.parse(textField(run, "leaseUntil") ?? "") > now)
     )
       return yield* failure("StaleDependency");
@@ -470,6 +518,7 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
       textField(action, "correctsVoucherId");
 
   const original = textField(action, "correctsVoucherId");
+  const assetResources = yield* assetCorrectionResources(tx, scope, changeId, action, owner);
 
   if (original) {
     const protectedRows = yield* Db.readProtectedCorrections(tx, scope.bookId, original);
@@ -479,7 +528,8 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
         (r) =>
           !(
             (owner?.kind === "commerce_fx" && r.kind === "fx_settlement") ||
-            (exactCancellation && r.kind === "supplier_settlement")
+            (exactCancellation && r.kind === "supplier_settlement") ||
+            (assetResources !== null && r.kind === "asset_proceeds_disposal")
           ),
       )
     )
@@ -492,6 +542,11 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
       impacts.some(
         ({ resource }) =>
           resource.blocks &&
+          !(
+            assetResources !== null &&
+            ((resource.kind === "schedule" && resource.id === assetResources.scheduleId) ||
+              (resource.kind === "bank_allocation" && resource.id === assetResources.bankPlanId))
+          ) &&
           !(owner?.kind === "invoice_cancellation" && resource.kind === "invoice") &&
           !(
             exactCancellation &&
@@ -698,8 +753,108 @@ export const admitForeignCash = Effect.fn("posting.admitForeignCash")(function* 
 
     if (
       (yield* Db.readForeignCashAccount(tx, scope.bookId, account)).length > 0 &&
-      owner?.kind !== "foreign_cash"
+      owner?.kind !== "foreign_cash" &&
+      owner?.kind !== "processor"
     )
       return yield* failure("ApprovalRequired");
   }
+});
+
+export const admitAssetProceeds = Effect.fn("posting.admitAssetProceeds")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const rows = yield* AssetDisposals.readReviewByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  );
+
+  const row = rows[0];
+
+  if (!row && owner?.kind !== "asset_proceeds_disposal") return;
+
+  if (rows.length !== 1 || !row || owner?.kind !== "asset_proceeds_disposal" || owner.id !== row.id)
+    return yield* failure("ApprovalRequired");
+
+  const plan = yield* decode(Accounting.ChangeSet, objectField(row.body, "postingPlan"));
+
+  if (plan.id !== changeId) return yield* failure("ApprovalRequired");
+
+  if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
+    return yield* failure("StaleDependency");
+});
+
+export const admitProcessor = Effect.fn("posting.admitProcessor")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const rows = yield* ProcessorDb.readReviewByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  );
+
+  const row = rows[0];
+
+  if (row || owner?.kind === "processor") {
+    if (rows.length !== 1 || !row || owner?.kind !== "processor" || owner.id !== row.id)
+      return yield* failure("ApprovalRequired");
+
+    if (action !== undefined && !equalJson(objectField(row.body, "postingAction"), action))
+      return yield* failure("StaleDependency");
+  }
+
+  if (action === undefined) return;
+
+  const posting = yield* decode(Accounting.VoucherPostingAction, action);
+
+  for (const line of posting.lines) {
+    const reserved = yield* ProcessorDb.readAccountForControl(tx, scope.bookId, line.accountId);
+
+    if (reserved.length > 0 && (!row || owner?.kind !== "processor"))
+      return yield* failure("ApprovalRequired");
+  }
+});
+
+export const admitPayrollSettlement = Effect.fn("posting.admitPayrollSettlement")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const rows = yield* PayrollSettlements.readReviewByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  );
+
+  const row = rows[0];
+
+  if (!row && owner?.kind !== "payroll_payment" && owner?.kind !== "payroll_recovery") return;
+
+  const expectedKind =
+    row && textField(objectField(row.body, "input"), "kind") === "gross_recovery"
+      ? "payroll_recovery"
+      : "payroll_payment";
+
+  if (rows.length !== 1 || !row || owner?.kind !== expectedKind || owner.id !== row.id)
+    return yield* failure("ApprovalRequired");
+
+  const plan = yield* decode(Accounting.ChangeSet, objectField(row.body, "postingPlan"));
+
+  if (plan.id !== changeId) return yield* failure("ApprovalRequired");
+
+  if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
+    return yield* failure("StaleDependency");
 });

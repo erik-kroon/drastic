@@ -233,6 +233,41 @@ export const prepareBankMatchReversal = Effect.fn("banking.reversal.prepare")(fu
   );
 });
 
+const admitAssetReversal = Effect.fn("banking.admitAssetReversal")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  planId: string,
+  ownerId?: string,
+) {
+  const assetCorrection = (yield* ReversalDb.readAssetCorrectionByReversal(
+    transaction,
+    scope.bookId,
+    planId,
+  ))[0];
+
+  if (assetCorrection && assetCorrection.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  const retainedReversal = (yield* ReversalDb.readReversalPlan(
+    transaction,
+    scope.bookId,
+    planId,
+  ))[0];
+
+  const retainedTarget =
+    retainedReversal &&
+    Shared.objectField(Shared.objectField(retainedReversal.body, "input"), "target");
+
+  const allocationId = retainedTarget && Shared.textField(retainedTarget, "allocationPlanId");
+
+  if (
+    allocationId &&
+    (yield* ReversalDb.readAssetAllocationOwner(transaction, scope.bookId, allocationId)).length >
+      0 &&
+    !assetCorrection
+  )
+    return yield* failure("ApprovalRequired");
+});
+
 export const prepareBankMatchReversalInTransaction = Effect.fn(
   "prepareBankMatchReversalInTransaction",
 )(function* (
@@ -244,7 +279,19 @@ export const prepareBankMatchReversalInTransaction = Effect.fn(
     readonly input: typeof Reversal.PrepareBankMatchReversal.Type;
   },
   ownerId?: string,
+  originalAssetDisposalId?: string,
 ) {
+  if (command.input.target.kind === "allocation") {
+    const assetOwner = (yield* ReversalDb.readAssetAllocationOwner(
+      transaction,
+      command.scope.bookId,
+      command.input.target.allocationPlanId,
+    ))[0];
+
+    if (assetOwner && (!ownerId || assetOwner.disposalId !== originalAssetDisposalId))
+      return yield* failure("ApprovalRequired");
+  }
+
   const ownedTarget = command.input.target;
 
   if (ownedTarget.kind === "exact_match") {
@@ -372,6 +419,8 @@ export const approveBankMatchReversalInTransaction = Effect.fn(
   ))[0];
 
   if (owned && owned.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  yield* admitAssetReversal(transaction, command.scope, command.planId, ownerId);
 
   yield* Shared.requireTables(transaction, reversalTables, [
     "bank_match_reversal_approvals",
@@ -578,6 +627,8 @@ export const executeBankMatchReversalInTransaction = Effect.fn(
   ))[0];
 
   if (owned && owned.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  yield* admitAssetReversal(transaction, command.scope, command.planId, ownerId);
 
   yield* Shared.requireTables(
     transaction,

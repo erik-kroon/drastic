@@ -1,9 +1,14 @@
 import * as Effect from "effect/Effect";
 import { OperationsFailure, refuse } from "./safety";
 import { backup, inspectBundleResult, preflight, restore } from "./workflows";
+import { verifyRehearsalBackup, restoreRehearsal } from "./rehearsal";
+import { captureCheckpoint } from "./checkpoint";
 import { captureRelease } from "./artifacts";
 
 const usage = `Local synthetic operations only. No production action exists.
+  rehearsal-verify <bundle> <manifest-sha256> <checkpoint.json> <checkpoint-sha256> <new-private-certificate.json>
+  rehearsal-restore <private-admin-target.json> <bundle> <manifest-sha256> <checkpoint.json> <checkpoint-sha256> <fresh-openerp_restore_name> <new-receipt-directory> --confirm-fresh-local-restore
+  rehearsal-checkpoint <private-checkpoint-input.json> <new-private-checkpoint-directory>
   preflight <private-target.json> <new-private-receipt.json>
   capture-release <explicit-source-root> <new-private-release-directory>
   backup <private-target.json> <new-bundle-directory> <private-recovery-plan.json> --confirm-local-backup
@@ -30,8 +35,35 @@ const command = Effect.tryPromise({
     const fourth = args[3];
     const fifth = args[4];
     const sixth = args[5];
+    const seventh = args[6];
+    const eighth = args[7];
 
-    if (action === "capture-release" && args.length === 2 && first && second) {
+    if (
+      action === "rehearsal-verify" &&
+      args.length === 5 &&
+      first &&
+      second &&
+      third &&
+      fourth &&
+      fifth
+    ) {
+      await verifyRehearsalBackup(first, second, third, fourth, fifth);
+    } else if (
+      action === "rehearsal-restore" &&
+      args.length === 8 &&
+      first &&
+      second &&
+      third &&
+      fourth &&
+      fifth &&
+      sixth &&
+      seventh &&
+      eighth === "--confirm-fresh-local-restore"
+    ) {
+      await restoreRehearsal(first, second, third, fourth, fifth, sixth, seventh);
+    } else if (action === "rehearsal-checkpoint" && args.length === 2 && first && second) {
+      await captureCheckpoint(first, second);
+    } else if (action === "capture-release" && args.length === 2 && first && second) {
       await captureRelease(first, second);
     } else if (action === "preflight" && args.length === 2 && first && second) {
       await preflight(first, second);

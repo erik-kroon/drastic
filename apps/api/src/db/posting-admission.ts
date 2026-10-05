@@ -85,7 +85,7 @@ export function readHistoricalPostingState(
   }>(
     sql`
     select (select to_jsonb(b) from openerp.historical_bases b where book_id=${book} and fiscal_year_id=${year}) as basis,
-      coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'leaseUntil',r.lease_until)) from openerp.sie_financial_runs r where book_id=${book} and status='running'),'[]') as runs,
+      coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'leaseUntil',r.lease_until,'status',r.status)) from openerp.sie_financial_runs r where book_id=${book} and status in('running','paused')),'[]') as runs,
       coalesce((select jsonb_agg(jsonb_build_object('runId',p.run_id,'ordinal',p.ordinal,'posted',exists(select from openerp.sie_financial_postings x where (x.book_id,x.run_id,x.ordinal)=(p.book_id,p.run_id,p.ordinal)))) from openerp.sie_financial_proposals p where book_id=${book} and change_set_id=${change}),'[]') as proposals,
       exists(select from openerp.superseded_historical_openings where book_id=${book} and change_set_id=${change}) as superseded`,
     "objects",
@@ -184,7 +184,8 @@ export function readOwnerAttachments(tx: Transaction, book: string, change: stri
 export function readProtectedCorrections(tx: Transaction, book: string, voucher: string) {
   return tx.execute<{ readonly kind: string }>(
     sql`
-    select 'payroll_input' as kind from openerp.payroll_input_executions where book_id=${book} and voucher_id=${voucher}
+    select 'payroll_settlement' as kind from openerp.payroll_settlement_executions where book_id=${book} and voucher_id=${voucher}
+ union all select 'payroll_input' as kind from openerp.payroll_input_executions where book_id=${book} and voucher_id=${voucher}
  union all select 'foreign_cash_opening' as kind from openerp.bank_foreign_cash_opening_lines where book_id=${book} and voucher_id=${voucher}
  union all select 'foreign_cash' as kind from openerp.bank_foreign_cash_effects where book_id=${book} and voucher_id=${voucher}
  union all select 'treasury_loan' as kind from openerp.treasury_loan_events where book_id=${book} and voucher_id=${voucher}
@@ -208,11 +209,16 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
     union all select 'fx_settlement' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher}
     union all select 'fx_correction' from openerp.commerce_fx_settlement_corrections c join openerp.execution_receipts e on(e.book_id,e.id)=(c.book_id,c.posting_receipt_id) where c.book_id=${book} and e.voucher_id=${voucher}
     union all select 'asset_impairment' from openerp.subledger_impairments where book_id=${book} and voucher_id=${voucher}
+    union all select 'historical_settlement' from openerp.commerce_historical_settlements where book_id=${book} and payment_voucher_id=${voucher}
+    union all select 'processor' from openerp.processor_executions where book_id=${book} and voucher_id=${voucher}
+    union all select 'processor_native_credit' from openerp.processor_native_credit_origins where book_id=${book} and source_voucher_id=${voucher}
+    union all select 'asset_proceeds_disposal' from openerp.asset_proceeds_effects where book_id=${book} and voucher_id=${voucher}
     union all select 'asset_valuation' from openerp.subledger_valuations where book_id=${book} and voucher_id=${voucher}
     union all select 'asset_basis' from openerp.subledger_bases b where b.book_id=${book} and b.voucher_id=${voucher} and (
       exists(select from openerp.subledger_impairments i where(i.book_id,i.schedule_id)=(b.book_id,b.schedule_id)) or
       exists(select from openerp.subledger_valuations i where(i.book_id,i.schedule_id)=(b.book_id,b.schedule_id)) or
-      exists(select from openerp.subledger_disposals d where(d.book_id,d.schedule_id)=(b.book_id,b.schedule_id)))
+      exists(select from openerp.subledger_disposals d where(d.book_id,d.schedule_id)=(b.book_id,b.schedule_id)) or
+      exists(select from openerp.asset_proceeds_effects d where(d.book_id,d.schedule_id)=(b.book_id,b.schedule_id)))
     union all select 'asset_history' from openerp.subledger_disposal_reviews r join openerp.subledger_disposals d on(d.book_id,d.review_id)=(r.book_id,r.id)
       where r.book_id=${book} and (r.body->'basis'->'carryingBasis'->'input'->>'voucherId'=${voucher} or exists(select from jsonb_array_elements(r.body->'basis'->'occurrences') o where ${voucher} in(o->>'voucherId',o->>'reversalVoucherId')))
     union all select 'impaired_schedule_history' from openerp.subledger_schedule_revisions r join openerp.events e on e.book_id=r.book_id and e.evidence_id=r.evidence_id
@@ -229,7 +235,9 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
 export function readAccountRoles(tx: Transaction, book: string, account: string) {
   return tx.execute<{ readonly role: string }>(
     sql`
-    select 'bank' as role from openerp.bank_sources where book_id=${book} and account_id=${account}
+    select 'payroll' as role from openerp.payroll_settlement_reviews where book_id=${book} and body->'input'->>'recoveryReceivableAccountId'=${account}
+    union all select 'processor' as role from openerp.processor_accounts where book_id=${book} and (processor_control_account_id=${account} or payout_transit_account_id=${account} or body->>'disputeReceivableAccountId'=${account})
+    union all select 'bank' as role from openerp.bank_sources where book_id=${book} and account_id=${account}
     union all select 'commerce' from openerp.commerce_control_accounts where book_id=${book} and account_id=${account}
     union all select 'owner' from openerp.owner_control_accounts where book_id=${book} and account_id=${account}
     union all select 'vat' from openerp.vat_control_account_roles where book_id=${book} and account_id=${account}
@@ -260,7 +268,8 @@ export function readVatAssessmentPosting(tx: Transaction, book: string, eventId:
 export function readLineOwners(tx: Transaction, book: string, voucher: string, line: string) {
   return tx.execute<{ readonly owner: string }>(
     sql`
-    select 'owner' as owner from openerp.owner_effects where book_id=${book} and voucher_id=${voucher} and line_id=${line}
+    select 'commerce' as owner from openerp.commerce_historical_settlements where book_id=${book} and payment_voucher_id=${voucher} and payment_line_id=${line}
+    union all select 'owner' as owner from openerp.owner_effects where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'commerce' from openerp.commerce_invoices where book_id=${book} and recognition_voucher_id=${voucher} and recognition_line_id=${line}
     union all select 'commerce' from openerp.commerce_active_allocation_legs where book_id=${book} and payment_voucher_id=${voucher} and payment_line_id=${line}
     union all select 'bank' from openerp.bank_foreign_cash_book_consumptions where book_id=${book} and voucher_id=${voucher} and line_id=${line}
@@ -420,6 +429,55 @@ export function readForeignCashBookClaim(
     select review_id as "reviewId",voucher_id as "voucherId",line_id as "lineId"
     from openerp.bank_foreign_cash_book_consumptions where book_id=${book}
       and statement_id=${statement} and row_ordinal=${ordinal}`,
+    "objects",
+  );
+}
+
+export function readAssetProceedsCashClaim(
+  tx: Transaction,
+  book: string,
+  statement: string,
+  ordinal: number,
+) {
+  return tx.execute<{
+    readonly reviewId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+  }>(
+    sql`select r.id as "reviewId", v.id as "voucherId", l.id as "lineId"
+      from openerp.asset_proceeds_reviews r
+      join openerp.vouchers v on(v.book_id,v.change_set_id)=(r.book_id,r.change_set_id)
+      join openerp.journal_lines l on(l.book_id,l.voucher_id)=(v.book_id,v.id)
+        and l.account_id=r.body->'proceeds'->>'accountId' and l.debit_minor>0
+      where r.book_id=${book} and r.body->'input'->>'kind'='disposal'
+        and r.body->'proceeds'->>'kind'='unposted_cash_sale'
+        and r.body->'proceeds'->>'statementId'=${statement}
+        and (r.body->'proceeds'->>'rowOrdinal')::integer=${ordinal}
+        and not exists(select from openerp.asset_proceeds_effects original
+          join openerp.asset_proceeds_effects correction on(correction.book_id,correction.correction_of)=(original.book_id,original.id)
+          where original.book_id=r.book_id and original.review_id=r.id)`,
+    "objects",
+  );
+}
+
+export function readPayrollSettlementCashClaim(
+  tx: Transaction,
+  book: string,
+  statement: string,
+  ordinal: number,
+) {
+  return tx.execute<{
+    readonly reviewId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+  }>(
+    sql`select r.id as "reviewId",v.id as "voucherId",l.id as "lineId"
+      from openerp.payroll_settlement_reviews r
+      join openerp.vouchers v on(v.book_id,v.change_set_id)=(r.book_id,r.change_set_id)
+      join openerp.journal_lines l on(l.book_id,l.voucher_id)=(v.book_id,v.id)
+        and l.account_id=r.body->'cash'->>'accountId'
+      where r.book_id=${book} and r.body->'cash'->>'statementId'=${statement}
+        and (r.body->'cash'->>'rowOrdinal')::integer=${ordinal}`,
     "objects",
   );
 }

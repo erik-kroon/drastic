@@ -209,14 +209,16 @@ export function readPaymentCapacity(
           select from openerp.tax_account_match_capacity c
           where c.book_id = l.book_id and c.voucher_id = v.id and c.line_id = l.id
         ) as reserved,
-        coalesce((
+        (coalesce((
           select sum(legs.amount_minor) from openerp.commerce_allocation_legs legs
           where legs.book_id = l.book_id and legs.payment_voucher_id = v.id and legs.payment_line_id = l.id
-        ), 0)::text as "allocatedMinor",
-        (
+        ), 0) + coalesce((select sum(h.amount_minor) from openerp.commerce_historical_settlements h
+          where h.book_id=l.book_id and h.payment_voucher_id=v.id and h.payment_line_id=l.id),0))::text as "allocatedMinor",
+        ((
           select count(*) from openerp.commerce_allocation_legs legs
           where legs.book_id = l.book_id and legs.payment_voucher_id = v.id and legs.payment_line_id = l.id
-        )::text as "capacityVersion"
+        ) + (select count(*) from openerp.commerce_historical_settlements h
+          where h.book_id=l.book_id and h.payment_voucher_id=v.id and h.payment_line_id=l.id))::text as "capacityVersion"
       from openerp.journal_lines l
       join openerp.vouchers v on v.book_id = l.book_id and v.id = l.voucher_id
       left join openerp.commerce_control_accounts c
@@ -1100,6 +1102,49 @@ export function readForecastPaymentLegs(transaction: Transaction, bookId: string
     )
     order by l.receipt_id collate "C", l.ordinal limit 10001
   `,
+    "objects",
+  );
+}
+
+export function insertProcessorAllocationApproval(
+  transaction: Transaction,
+  row: {
+    bookId: string;
+    id: string;
+    planId: string;
+    actorId: string;
+    digest: string;
+    expiresAt: string;
+    body: JsonObject;
+    ownerReviewId: string;
+    ownerApprovalId: string;
+  },
+) {
+  return transaction.execute(
+    sql`insert into openerp.commerce_allocation_approvals(book_id,id,plan_id,actor_id,digest,expires_at,body,owner_kind,owner_review_id,owner_approval_id)
+    values(${row.bookId},${row.id},${row.planId},${row.actorId},${row.digest},${row.expiresAt}::timestamptz,${JSON.stringify(row.body)}::jsonb,'processor',${row.ownerReviewId},${row.ownerApprovalId})`,
+    "objects",
+  );
+}
+
+export function readProcessorAllocationOwner(
+  transaction: Transaction,
+  bookId: string,
+  planId: string,
+) {
+  return transaction.execute<{ readonly ownerReviewId: string; readonly ownerApprovalId: string }>(
+    sql`select owner_review_id as "ownerReviewId",owner_approval_id as "ownerApprovalId" from openerp.commerce_allocation_approvals where book_id=${bookId} and plan_id=${planId} and owner_kind='processor'`,
+    "objects",
+  );
+}
+
+export function readProcessorAllocationByReceipt(
+  transaction: Transaction,
+  bookId: string,
+  receiptId: string,
+) {
+  return transaction.execute<{ readonly ownerReviewId: string }>(
+    sql`select a.owner_review_id as "ownerReviewId" from openerp.commerce_allocation_receipts r join openerp.commerce_allocation_approvals a on(a.book_id,a.id)=(r.book_id,r.approval_id) where r.book_id=${bookId} and r.id=${receiptId} and a.owner_kind='processor'`,
     "objects",
   );
 }

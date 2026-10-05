@@ -19,6 +19,10 @@ import {
 } from "../posting";
 import { compileRun, currentCalculation, requirePayrollAccess } from "./run-basis";
 import { reserveInputs, consumeInputs, reserveMonth } from "./inputs";
+import {
+  reserveAdjustmentInstructions,
+  consumeAdjustmentInstructions,
+} from "./settlement-instructions";
 
 export const checkedRun = Effect.fn("payroll.checkedRun")(function* (
   tx: Transaction,
@@ -223,6 +227,16 @@ export const approveRun = Effect.fn("payroll.approveRun")(function* (
         approval.id,
       );
 
+      yield* reserveAdjustmentInstructions(
+        tx,
+        command.scope,
+        run.id,
+        approval.id,
+        run.employees.flatMap(
+          (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
+        ),
+      );
+
       for (const employee of run.employees)
         yield* reserveMonth(
           tx,
@@ -380,6 +394,15 @@ export const executeRun = Effect.fn("payroll.executeRun")(function* (
         command.scope,
         run.id,
         run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+      );
+
+      yield* consumeAdjustmentInstructions(
+        tx,
+        command.scope,
+        run.id,
+        run.employees.flatMap(
+          (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
+        ),
       );
 
       for (const document of payslips) {

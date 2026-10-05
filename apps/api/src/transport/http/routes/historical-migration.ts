@@ -100,15 +100,23 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
         ),
       )
       .handle("startSieFinancialRun", ({ params, headers, payload }) =>
-        Effect.flatMap(authenticate, (token) =>
-          Historical.startFinancialRun(token, {
+        Effect.flatMap(authenticate, (token) => {
+          const command = {
             scope: scopeFromPath(params),
             idempotencyKey: headers["idempotency-key"],
             id: params.id,
             fiscalYearId: payload.fiscalYearId,
             planDigest: payload.planDigest,
-          }),
-        ),
+          };
+
+          if (payload.partitionId === undefined)
+            return Historical.startFinancialRun(token, command);
+
+          return Historical.startFinancialRun(token, {
+            ...command,
+            partitionId: payload.partitionId,
+          });
+        }),
       )
       .handle("getSieFinancialRun", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>

@@ -364,6 +364,10 @@ export function readDisposal(transaction: Transaction, bookId: string, scheduleI
       select d.body
       from openerp.subledger_disposals d
       where d.book_id = ${bookId} and d.schedule_id = ${scheduleId}
+      union all
+      select e.body->'asset' as body from openerp.asset_proceeds_effects e
+      where e.book_id=${bookId} and e.schedule_id=${scheduleId} and e.kind='disposal'
+        and not exists(select from openerp.asset_proceeds_effects c where c.book_id=e.book_id and c.correction_of=e.id)
     `,
     "objects",
   );
@@ -591,6 +595,10 @@ export function readRevisionAt(
           and r.body->>'digest' = d.body->>'scheduleDigest'
         where d.book_id = ${bookId} and d.schedule_id = ${scheduleId}
           and d.posting_date <= ${asOfDate}::date
+        union
+        select r.revision from openerp.asset_proceeds_effects e
+        join openerp.subledger_schedule_revisions r on r.book_id=e.book_id and r.schedule_id=e.schedule_id and r.body->>'digest'=e.body->'asset'->>'scheduleDigest'
+        where e.book_id=${bookId} and e.schedule_id=${scheduleId} and e.kind='disposal' and e.posting_date<=${asOfDate}::date
       )
       select r.revision, r.body
       from openerp.subledger_schedule_revisions r
@@ -613,14 +621,24 @@ export function listBookBases(transaction: Transaction, bookId: string) {
   );
 }
 
-export function listBookDisposals(transaction: Transaction, bookId: string) {
+export function listBookDisposals(
+  transaction: Transaction,
+  bookId: string,
+  asOfDate = "9999-12-31",
+) {
   return transaction.execute<BookDisposalRow>(
     sql`
+      select retained.* from (
       select d.schedule_id as "scheduleId", d.review_id as "reviewId",
         d.posting_date::text as "postingDate", d.posting_receipt_id as "postingReceiptId", d.body
       from openerp.subledger_disposals d
-      where d.book_id = ${bookId}
-      order by d.schedule_id collate "C"
+      where d.book_id = ${bookId} and d.posting_date<=${asOfDate}::date
+      union all
+      select e.schedule_id,e.review_id,e.posting_date::text,e.posting_receipt_id,e.body->'asset'
+      from openerp.asset_proceeds_effects e
+      where e.book_id=${bookId} and e.kind='disposal' and e.posting_date<=${asOfDate}::date
+        and not exists(select from openerp.asset_proceeds_effects c where c.book_id=e.book_id and c.correction_of=e.id and c.posting_date<=${asOfDate}::date)
+      ) retained order by retained."scheduleId" collate "C"
     `,
     "objects",
   );
@@ -679,6 +697,8 @@ export function readDisposalReviewBody(transaction: Transaction, bookId: string,
       select r.body
       from openerp.subledger_disposal_reviews r
       where r.book_id = ${bookId} and r.id = ${reviewId}
+      union all
+      select r.body from openerp.asset_proceeds_reviews r where r.book_id=${bookId} and r.id=${reviewId}
     `,
     "objects",
   );

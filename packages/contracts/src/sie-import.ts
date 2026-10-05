@@ -59,7 +59,7 @@ export const SiePreview = Schema.Struct({
   scope: A.Scope,
   occurrenceId: A.Identifier,
   ordinal: Schema.Int,
-  profile: Schema.Literal("sie4_source_v1"),
+  profile: Schema.Literals(["sie4_source_v1", "synthetic_sie4_partition_v1"]),
   encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]),
   sourceSha256: A.Digest,
   records: Schema.Array(Record),
@@ -206,7 +206,10 @@ export const SieImportApi = HttpApiGroup.make("sieImport")
   .add(
     HttpApiEndpoint.post("captureSieSource", `${base}/source-occurrences/:id/sie-previews`, {
       ...mutation,
-      payload: Schema.Struct({ encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]) }),
+      payload: Schema.Struct({
+        encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]),
+        profile: Schema.optional(Schema.Literal("synthetic_sie4_partition_v1")),
+      }),
       success: SiePreview,
     }),
   )

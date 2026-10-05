@@ -69,10 +69,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
         run: bun run check-types
-      - name: Check domain leaf integration declarations
+      - name: Check domain leaf application owners
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
-        run: bun run check:integration
+        run: bun run check:owners
 
   # The E2E suite is the only place the application is proven against a real
   # PostgreSQL: it applies every migration, provisions the restricted runtime
@@ -80,7 +80,7 @@ jobs:
   # server binaries because the harness runs initdb/pg_ctl itself.
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       PG_BINDIR: /usr/lib/postgresql/17/bin
 
@@ -95,6 +95,7 @@ jobs:
 
       - name: Install locked dependencies
         timeout-minutes: 5
+        id: install
         run: bun install --frozen-lockfile
 
       - name: Install PostgreSQL 17
@@ -134,6 +135,24 @@ jobs:
         timeout-minutes: 5
         run: bun run --cwd apps/api playwright install --with-deps chromium
 
+      - name: Verify ownership declaration admission
+        timeout-minutes: 2
+        env:
+          DOMAIN_OWNER_CHECK_ARTIFACTS: test-results/domain-owner-declarations
+        run: node verification/domain-owners/check.e2e.mjs
+
+      - name: Run domain owner public workflows
+        timeout-minutes: 20
+        env:
+          OPENERP_E2E_ARTIFACTS: test-results/domain-owners
+        run: bun run test:domain-owners
+
+      - name: Run checkpoint and restricted restore workflow
+        timeout-minutes: 10
+        env:
+          OPENERP_REHEARSAL_ARTIFACTS: test-results/domain-rehearsal
+        run: bun apps/api/scripts/operations/rehearsal-e2e.ts
+
       - name: Run scoped excellence qualification
         id: e2e
         timeout-minutes: 50
@@ -145,7 +164,7 @@ jobs:
       # The harness writes manifest.json (revision, worktree diff hash, lock hash,
       # per-migration SHA-256, postgres version) beside results.json and junit.xml.
       - name: Upload E2E evidence
-        if: ${{ always() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure' || steps.e2e.outcome == 'cancelled') }}
+        if: ${{ always() && steps.install.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: e2e-evidence
@@ -156,6 +175,9 @@ jobs:
             test-results/assurance/
             test-results/excellence-child-links/
             test-results/peppol-validation/
+            test-results/domain-owner-declarations/
+            test-results/domain-owners/
+            test-results/domain-rehearsal/
             test-results/ci/e2e.log
           if-no-files-found: error
           retention-days: 14

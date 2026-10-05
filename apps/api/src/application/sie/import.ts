@@ -1,6 +1,8 @@
+import { Buffer } from "node:buffer";
+import { getSourceOccurrence } from "../source-retention";
+import { parseSie } from "../sie-import-parser";
 import * as Sie from "@open-erp/contracts/sie-import";
 import * as Effect from "effect/Effect";
-import type * as Schema from "effect/Schema";
 import * as Db from "../../db/sie-import";
 import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
@@ -87,7 +89,12 @@ export const listSourcePreviews = Effect.fn("sie.listSourcePreviews")(function* 
 
 export const captureSource = Effect.fn("sie.captureSource")(function* (
   token: string,
-  command: Command & { readonly input: Schema.JsonObject },
+  command: Command & {
+    readonly input: {
+      encoding: "utf-8" | "windows-1252" | "ibm437";
+      profile: "sie4_source_v1" | "synthetic_sie4_partition_v1";
+    };
+  },
 ) {
   return yield* withBook(
     token,
@@ -113,7 +120,29 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
 
       if (!source) return yield* failure("NotFound");
 
-      if (source.sha256 !== input.sourceSha256) return yield* failure("StaleDependency");
+      if (
+        input.profile === "synthetic_sie4_partition_v1" &&
+        !source.sourceSystem.startsWith("synthetic_")
+      )
+        return yield* failure("UnsupportedProfile");
+      const retained = yield* getSourceOccurrence(token, { scope, occurrenceId: id });
+      const bytes = Buffer.from(retained.contentBase64, "base64");
+
+      if (bytes.length > 524288 || retained.occurrence.byteLength !== bytes.length)
+        return yield* failure("UnsupportedProfile");
+
+      const parsed = parseSie(
+        bytes,
+        input.encoding,
+        input.profile === "synthetic_sie4_partition_v1" ? "export_validation" : "historical_import",
+      );
+
+      if (
+        parsed.records.length > 4000 ||
+        parsed.vouchers.length > 500 ||
+        Buffer.byteLength(JSON.stringify(parsed)) > 1048576
+      )
+        return yield* failure("UnsupportedProfile");
       const history = yield* Db.listPreviews(transaction, scope.bookId, id);
 
       if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
@@ -121,7 +150,8 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
       if (history.length >= 50) return yield* failure("UnsupportedProfile");
       const previous = history[0] ? yield* decode(Sie.SiePreview, history[0].body) : undefined;
 
-      const body = Object.assign({}, input, {
+      const body = Object.assign({}, input, parsed, {
+        sourceSha256: source.sha256,
         id: newId("siepreview"),
         scope,
         occurrenceId: id,

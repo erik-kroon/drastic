@@ -1,3 +1,4 @@
+import * as ProcessorDb from "../../db/banking/processor-clearing";
 import * as SupplierSettlementDb from "../../db/purchases/supplier-settlements";
 import type { Principal } from "./support";
 import { admitLineOwner } from "../resource-admission";
@@ -476,6 +477,15 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
       )
         return yield* failure("ApprovalRequired");
 
+      if (
+        (yield* AllocationDb.readProcessorAllocationOwner(
+          transaction,
+          command.scope.bookId,
+          command.id,
+        )).length > 0
+      )
+        return yield* failure("ApprovalRequired");
+
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
       const request = yield* replay(
@@ -627,6 +637,15 @@ export const prepareAllocationReversalInTransaction = Effect.fn(
 
   if (owned && owned.id !== ownerId) return yield* failure("ApprovalRequired");
 
+  if (
+    (yield* AllocationDb.readProcessorAllocationByReceipt(
+      transaction,
+      command.scope.bookId,
+      command.input.receiptId,
+    )).length > 0
+  )
+    return yield* failure("ApprovalRequired");
+
   const request = yield* replay(
     transaction,
     command.scope,
@@ -722,6 +741,24 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
   },
 );
 
+const admitProcessorReversal = Effect.fn("commerce.admitProcessorReversal")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  planId: string,
+) {
+  const plan = (yield* AllocationDb.readReversalPlan(transaction, scope.bookId, planId))[0];
+
+  if (!plan) return;
+
+  const owner = (yield* AllocationDb.readProcessorAllocationByReceipt(
+    transaction,
+    scope.bookId,
+    plan.receiptId,
+  ))[0];
+
+  if (owner) return yield* failure("ApprovalRequired");
+});
+
 export const approveAllocationReversalInTransaction = Effect.fn(
   "approveAllocationReversalInTransaction",
 )(function* (
@@ -742,6 +779,8 @@ export const approveAllocationReversalInTransaction = Effect.fn(
   ))[0];
 
   if (owned && owned.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  yield* admitProcessorReversal(transaction, command.scope, command.id);
 
   const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
@@ -848,6 +887,8 @@ export const executeAllocationReversalInTransaction = Effect.fn(
   ))[0];
 
   if (owned && owned.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  yield* admitProcessorReversal(transaction, command.scope, command.id);
 
   const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
@@ -1316,7 +1357,7 @@ export const getPaymentCapacity = Effect.fn("commerce.allocation.capacity")(func
   });
 });
 
-function allocationSelection(
+export function allocationSelection(
   transaction: Transaction,
   scope: Scope,
   book: AllocationDb.BookAuthorityRow,
@@ -1508,6 +1549,15 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
       )
         return yield* failure("ApprovalRequired");
 
+      if (
+        (yield* ProcessorDb.readOwnedVoucher(
+          transaction,
+          command.scope.bookId,
+          command.input.voucherId,
+        )).length > 0
+      )
+        return yield* failure("ApprovalRequired");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1685,6 +1735,15 @@ export const applyAllocationInTransaction = Effect.fn("applyAllocationInTransact
   ))[0];
 
   if (child && child.id !== ownerId) return yield* failure("ApprovalRequired");
+
+  const processorOwner = (yield* AllocationDb.readProcessorAllocationOwner(
+    transaction,
+    command.scope.bookId,
+    command.id,
+  ))[0];
+
+  if (processorOwner && processorOwner.ownerReviewId !== ownerId)
+    return yield* failure("ApprovalRequired");
 
   const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 

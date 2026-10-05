@@ -4,19 +4,6 @@ import { Description, Digest, Identifier } from "./values";
 import { MinorUnits, SignedMinorUnits } from "./money";
 import { assertBalancedJournal, type PurchaseJournalLine } from "./purchasing";
 
-// Pure disposal-with-proceeds math for one asset and book currency.
-// NEXT-19 leaf: proceeds, tax and post-impairment disposal conservation.
-// The WIP-AST03-UI asset owner (impairment-aware ordinary recognition,
-// controls and disposal reads over 9150) is reserved and not released in
-// this checkout, so there is no second asset register here: the
-// impairment-aware disposition basis arrives as a reviewed exact input
-// captured through the released WIP owner, and schedule retirement,
-// disposition persistence and proceeds-right storage stay with that owner.
-//
-// No database and no runtime. P is the qualified NET proceeds, never gross
-// cash including VAT; V is the separately qualified output VAT. A bound
-// failure is an error rather than a partial disposal or an inferred rate.
-
 export const DisposalFailureCode = Schema.Literals([
   "StaleDispositionBasis",
   "NegativeCarrying",
@@ -53,9 +40,8 @@ function amount(value: bigint) {
   return value.toString();
 }
 
-// Impairment-aware disposition basis as captured by the reserved asset
-// owner: G gross cost, A imported ordinary accumulation plus later
-// effective ordinary recognition, I effective impairment. B = G-A-I.
+// G is gross cost. A includes imported accumulation and effective ordinary
+// recognition. I is effective impairment. Carrying B = G-A-I.
 export const DispositionBasis = Schema.Struct({
   assetId: Identifier,
   bookId: Identifier,
@@ -249,9 +235,6 @@ export function compileDisposal(input: DisposalInput): Checked<DisposalPlan> {
       input.proceeds.originalRevenueAccountId !== null &&
       input.proceeds.reclassificationSupported
     ) {
-      // Offsets the already-recognized revenue P exactly once, replacing
-      // its P&L effect with the disposal gain/loss below. The invoice's
-      // genuine sales and VAT facts are not reversed.
       addSigned(journal, {
         accountId: input.proceeds.originalRevenueAccountId,
         signedMinor: BigInt(input.proceeds.netMinor),
@@ -304,7 +287,7 @@ export function compileDisposal(input: DisposalInput): Checked<DisposalPlan> {
     });
   }
 
-  const finished = assertBalancedJournal(journal, 4);
+  const finished = assertBalancedJournal(journal, 2);
 
   if (Result.isFailure(finished)) return fail("UnbalancedJournal", finished.failure.message);
 

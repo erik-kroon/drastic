@@ -3,6 +3,10 @@ import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as PartitionContracts from "@open-erp/contracts/sie-partitions";
+import * as OriginalDimensions from "@open-erp/domain/dimensions";
+import * as PartitionDb from "../../db/sie-partitions";
+import { readPartition } from "./partitions";
 import * as Db from "../../db/historical";
 import * as OnboardingDb from "../../db/onboarding-imports";
 import { requireAcceptedOnboardingOpening } from "../onboarding-lifecycle";
@@ -30,9 +34,6 @@ import {
   type Command,
 } from "./historical-shared";
 import { minorUnits } from "./source-controls";
-import { linesFor } from "./source-lines";
-
-export { linesFor } from "./source-lines";
 
 type Voucher = (typeof Sie.SiePreview.Type.vouchers)[number];
 
@@ -77,6 +78,42 @@ function sourceDate(voucher: Voucher) {
   return Accounting.isCalendarDate(date) ? date : undefined;
 }
 
+export const linesFor = Effect.fn("historical.sourceLines")(function* (
+  plan: typeof Sie.SiePlan.Type,
+  voucher: Voucher,
+  partition?: typeof PartitionContracts.Partition.Type,
+) {
+  if (partition) {
+    const member = partition.vouchers.find((row) => row.ordinal === voucher.ordinal);
+
+    if (!member || member.sourceDigest !== (yield* digest(voucher)))
+      return yield* failure("StaleDependency");
+
+    return member.lines;
+  }
+
+  const lines: Array<(typeof Accounting.PrepareJournal.Type.lines)[number]> = [];
+
+  for (const item of voucher.transactions.filter((row) => row.kind === "TRANS")) {
+    const account = plan.input.mappings.find(
+      (row) => row.sourceAccount === item.account,
+    )?.accountId;
+
+    const amount = minorUnits(item.amount);
+
+    if (!account || amount === undefined || amount === 0n || item.dimensions !== "{}")
+      return yield* failure("InvalidJournal");
+    lines.push({
+      accountId: account,
+      debitMinor: (amount > 0n ? amount : 0n).toString(),
+      creditMinor: (amount < 0n ? -amount : 0n).toString(),
+      description: `SIE ${voucher.sourceReference}`,
+    });
+  }
+
+  return lines;
+});
+
 const viewRun = Effect.fn("historical.viewRun")(function* (
   tx: Transaction,
   scope: Scope,
@@ -104,12 +141,48 @@ const checkCursor = Effect.fn("historical.checkCursor")(function* (
     return yield* failure("StaleDependency");
 });
 
+const requirePartitionSource = Effect.fn("historical.requirePartitionSource")(function* (
+  partition: typeof PartitionContracts.Partition.Type,
+  plan: typeof Sie.SiePlan.Type,
+  vouchers: ReadonlyArray<Voucher>,
+  fiscalYearId: string,
+) {
+  if (
+    partition &&
+    (partition.input.sourcePlanId !== plan.id ||
+      partition.input.sourcePlanDigest !== plan.digest ||
+      partition.years[0]?.fiscalYearId !== fiscalYearId ||
+      partition.vouchers.length !== vouchers.length ||
+      partition.years.some((year) => year.voucherOrdinals.length === 0))
+  )
+    return yield* failure("StaleDependency");
+});
+
+const requireVoucherMembership = Effect.fn("historical.requireVoucherMembership")(function* (
+  plan: typeof Sie.SiePlan.Type,
+  vouchers: ReadonlyArray<Voucher>,
+  year: { startsOn: string; endsOn: string },
+  partition: typeof PartitionContracts.Partition.Type | undefined,
+) {
+  if (
+    vouchers.length !== plan.voucherCount ||
+    (!partition && new Set(vouchers.map((v) => v.sourceReference)).size !== vouchers.length) ||
+    vouchers.some(
+      (v, index) =>
+        v.ordinal !== index + 1 ||
+        !sourceDate(v) ||
+        (!partition && (sourceDate(v)! < year.startsOn || sourceDate(v)! > year.endsOn)),
+    )
+  )
+    return yield* failure("InvalidJournal");
+});
+
 export const startFinancialRunInTransaction = Effect.fn(
   "historical.startFinancialRunInTransaction",
 )(function* (
   tx: Transaction,
   principal: Principal,
-  command: Command & { fiscalYearId: string; planDigest: string },
+  command: Command & { fiscalYearId: string; planDigest: string; partitionId?: string },
 ) {
   const { scope, id, idempotencyKey } = command;
   const operation = "start_sie_financial_run";
@@ -119,6 +192,8 @@ export const startFinancialRunInTransaction = Effect.fn(
     fiscalYearId: command.fiscalYearId,
     planDigest: command.planDigest,
   };
+
+  if (command.partitionId) Object.assign(input, { partitionId: command.partitionId });
 
   const request = yield* replay(
     tx,
@@ -134,6 +209,12 @@ export const startFinancialRunInTransaction = Effect.fn(
   const { source, plan, vouchers } = yield* readSource(tx, scope, id);
 
   if (source.status !== "staged") return yield* failure("StaleDependency");
+
+  const partition = command.partitionId
+    ? yield* readPartition(tx, scope, command.partitionId)
+    : undefined;
+
+  if (partition) yield* requirePartitionSource(partition, plan, vouchers, command.fiscalYearId);
   const basis = yield* readBasis(tx, scope, command.fiscalYearId);
   const year = (yield* Ledger.readFiscalYear(tx, scope.bookId, command.fiscalYearId))[0];
 
@@ -148,29 +229,25 @@ export const startFinancialRunInTransaction = Effect.fn(
 
   if (
     (yield* Db.readRunForSource(tx, scope.bookId, id)).length ||
-    (yield* Db.readPostedDates(tx, scope.bookId)).some((row) => row.fiscalYearId === year.id)
+    (yield* Db.readPostedDates(tx, scope.bookId)).some((row) =>
+      partition
+        ? partition.years.some((mapped) => mapped.fiscalYearId === row.fiscalYearId)
+        : row.fiscalYearId === year.id,
+    )
   )
     return yield* failure("AlreadyPosted");
 
-  if (
-    vouchers.length !== plan.voucherCount ||
-    new Set(vouchers.map((v) => v.sourceReference)).size !== vouchers.length ||
-    vouchers.some(
-      (v, index) =>
-        v.ordinal !== index + 1 ||
-        !sourceDate(v) ||
-        sourceDate(v)! < year.startsOn ||
-        sourceDate(v)! > year.endsOn,
-    )
-  )
-    return yield* failure("InvalidJournal");
-  const sourceYears = [...new Set(plan.input.openingControls.map((c) => c.year))];
+  yield* requireVoucherMembership(plan, vouchers, year, partition);
 
-  if (sourceYears.length !== 1) return yield* failure("UnsupportedProfile");
+  const sourceYears = partition
+    ? partition.years.map((row) => row.sourceYear)
+    : [...new Set(plan.input.openingControls.map((c) => c.year))];
+
+  if (!partition && sourceYears.length !== 1) return yield* failure("UnsupportedProfile");
   const movements = new Map<string, bigint>();
 
   for (const voucher of vouchers) {
-    yield* linesFor(plan, voucher);
+    yield* linesFor(plan, voucher, partition);
 
     for (const item of voucher.transactions.filter((row) => row.kind === "TRANS")) {
       const amount = minorUnits(item.amount);
@@ -185,6 +262,7 @@ export const startFinancialRunInTransaction = Effect.fn(
   }
 
   if (
+    !partition &&
     plan.input.openingControls.some(
       (c) =>
         (movements.get(c.sourceAccount) ?? 0n) !==
@@ -196,7 +274,11 @@ export const startFinancialRunInTransaction = Effect.fn(
 
   if (
     !sameBalances(
-      mappedControls(plan, "opening"),
+      partition
+        ? new Map(
+            partition.years[0]!.controls.map((row) => [row.accountId, BigInt(row.openingMinor)]),
+          )
+        : mappedControls(plan, "opening"),
       new Map(prior.map((row) => [row.accountId, BigInt(row.amount)])),
     )
   )
@@ -204,6 +286,8 @@ export const startFinancialRunInTransaction = Effect.fn(
 
   const run: Db.RunRow = {
     id: newId("siefin"),
+    partitionId: partition?.id ?? null,
+    yearOrdinal: 0,
     sourceRunId: id,
     fiscalYearId: year.id,
     planDigest: plan.digest,
@@ -235,7 +319,7 @@ export const startFinancialRunInTransaction = Effect.fn(
 
 export const startFinancialRun = Effect.fn("historical.startFinancialRun")(function* (
   token: string,
-  command: Command & { fiscalYearId: string; planDigest: string },
+  command: Command & { fiscalYearId: string; planDigest: string; partitionId?: string },
 ) {
   return yield* withBook(
     token,
@@ -300,7 +384,7 @@ export const prepareFinancialVoucherInTransaction = Effect.fn(
 
   if (request.previous) return request.previous;
   const run = yield* readRun(tx, scope, id);
-  yield* checkCursor(tx, run, { ...input, ordinal: batchRange?.firstOrdinal ?? input.ordinal });
+  yield* checkCursor(tx, run, { ...input, ordinal: batchRange?.firstOrdinal ?? run.nextOrdinal });
 
   if (
     batchRange &&
@@ -310,10 +394,21 @@ export const prepareFinancialVoucherInTransaction = Effect.fn(
       input.ordinal >= batchRange.firstOrdinal + batchRange.count)
   )
     return yield* failure("InvalidJournal");
+
+  if (!batchRange && (input.ordinal < run.nextOrdinal || input.ordinal >= run.nextOrdinal + 20))
+    return yield* failure("StaleDependency");
+
   const { plan, vouchers } = yield* readSource(tx, scope, run.sourceRunId);
-  const voucher = vouchers.find((row) => row.ordinal === input.ordinal);
+
+  const partition = run.partitionId ? yield* readPartition(tx, scope, run.partitionId) : undefined;
+
+  const sourceOrdinal = partition?.vouchers[input.ordinal - 1]?.ordinal ?? input.ordinal;
+  const voucher = vouchers.find((row) => row.ordinal === sourceOrdinal);
 
   if (!voucher) return yield* failure("NotFound");
+
+  if (partition && partition.vouchers[input.ordinal - 1]?.sourceYearOrdinal !== run.yearOrdinal)
+    return yield* failure("InvalidJournal");
   const date = sourceDate(voucher);
   const period = (yield* Ledger.readPeriod(tx, scope.bookId, input.accountingPeriodId))[0];
 
@@ -343,24 +438,31 @@ export const prepareFinancialVoucherInTransaction = Effect.fn(
     },
   });
 
+  const journalInput: typeof Accounting.PrepareJournal.Type = {
+    kind: "manual_journal",
+    evidenceId: evidence.id,
+    eventKey: `sie_${run.sourceRunId}_${voucher.ordinal}`,
+    accountingPeriodId: period.id,
+    postingDate: date,
+    series: input.series,
+    description: `SIE ${voucher.sourceReference}`,
+    rationale: input.rationale,
+    taxAssessment: "not_applicable",
+    lines: yield* linesFor(plan, voucher, partition),
+  };
+
+  if (partition)
+    Object.assign(journalInput, {
+      dimensionPolicy: partition.vouchers[input.ordinal - 1]!.dimensionPolicy,
+    });
+
   const result = yield* prepareJournalInTransaction(tx, principal, {
     scope,
     idempotencyKey: `${idempotencyKey}_journal`,
-    input: {
-      kind: "manual_journal",
-      evidenceId: evidence.id,
-      eventKey: `sie_${run.sourceRunId}_${voucher.ordinal}`,
-      accountingPeriodId: period.id,
-      postingDate: date,
-      series: input.series,
-      description: `SIE ${voucher.sourceReference}`,
-      rationale: input.rationale,
-      taxAssessment: "not_applicable",
-      lines: yield* linesFor(plan, voucher),
-    },
+    input: journalInput,
   });
 
-  yield* Db.insertProposal(tx, scope.bookId, run.id, voucher.ordinal, result.id);
+  yield* Db.insertProposal(tx, scope.bookId, run.id, input.ordinal, result.id);
   yield* saveCommand(
     tx,
     scope,
@@ -387,6 +489,145 @@ export const prepareFinancialVoucher = Effect.fn("historical.prepareFinancialVou
     },
     "update",
   );
+});
+
+const comparePartitionObjects = Effect.fn("historical.comparePartitionObjects")(function* (
+  tx: Transaction,
+  scope: Scope,
+  year: typeof PartitionContracts.YearPartition.Type,
+) {
+  if (!year.objectControls.length) return [];
+  const actual = yield* PartitionDb.readObjectBalances(tx, scope.bookId, year.endsOn);
+
+  const expected = new Map(
+    year.objectControls.map((row) => [
+      `${row.accountId}/${row.dimensionCode}/${row.valueCode}`,
+      BigInt(row.closingMinor),
+    ]),
+  );
+
+  if (
+    !sameBalances(
+      expected,
+      new Map(
+        actual.map((row) => [
+          `${row.accountId}/${row.dimensionCode}/${row.valueCode}`,
+          BigInt(row.amount),
+        ]),
+      ),
+    )
+  )
+    return yield* failure("InvalidJournal");
+
+  return actual;
+});
+
+const finishPartitionYear = Effect.fn("historical.finishPartitionYear")(function* (
+  tx: Transaction,
+  scope: Scope,
+  run: Db.RunRow,
+  partition: typeof PartitionContracts.Partition.Type | undefined,
+  next: number,
+  voucherCount: number,
+) {
+  let yearOrdinal = run.yearOrdinal ?? 0;
+  let fiscalYearId = run.fiscalYearId;
+
+  if (
+    partition &&
+    (next > voucherCount || partition.vouchers[next - 1]?.sourceYearOrdinal !== yearOrdinal)
+  ) {
+    const year = partition.years[yearOrdinal];
+
+    if (!year) return yield* failure("InternalError");
+
+    const actual = new Map(
+      (yield* Db.readBalances(tx, scope.bookId, year.endsOn, true)).map((row) => [
+        row.accountId,
+        BigInt(row.amount),
+      ]),
+    );
+
+    const expected = new Map(year.controls.map((row) => [row.accountId, BigInt(row.closingMinor)]));
+
+    if (!sameBalances(expected, actual)) return yield* failure("InvalidJournal");
+    const actualObjects = yield* comparePartitionObjects(tx, scope, year);
+    const book = (yield* Ledger.readBook(tx, scope))[0];
+
+    if (!book) return yield* failure("InternalError");
+    yield* PartitionDb.insertYearComparison(
+      tx,
+      scope.bookId,
+      run.id,
+      yearOrdinal,
+      year.fiscalYearId,
+      book.committedSequence.toString(),
+      {
+        partitionId: partition.id,
+        partitionDigest: partition.digest,
+        controls: year.controls,
+        objectControls: year.objectControls,
+        actualObjects,
+        actual: Array.from(actual, ([accountId, amount]) => ({
+          accountId,
+          signedMinor: amount.toString(),
+        })),
+        balanced: true,
+      },
+    );
+
+    if (next <= voucherCount) {
+      yearOrdinal += 1;
+      const following = partition.years[yearOrdinal];
+
+      if (
+        !following ||
+        !sameBalances(
+          actual,
+          new Map(following.controls.map((row) => [row.accountId, BigInt(row.openingMinor)])),
+        )
+      )
+        return yield* failure("InvalidJournal");
+      fiscalYearId = following.fiscalYearId;
+    }
+  }
+
+  return { yearOrdinal, fiscalYearId };
+});
+
+const requireSourceJournal = Effect.fn("historical.requireSourceJournal")(function* (
+  change: typeof Accounting.ChangeSet.Type,
+  run: Db.RunRow,
+  voucher: Voucher,
+  expected: typeof Accounting.PrepareJournal.Type.lines,
+) {
+  const action = change.groups[0]?.actions[0];
+
+  if (
+    change.groups.length !== 1 ||
+    change.groups[0]?.actions.length !== 1 ||
+    !action ||
+    action.fiscalYearId !== run.fiscalYearId ||
+    action.postingDate !== sourceDate(voucher) ||
+    action.postingPurpose !== "adjustment" ||
+    action.occurrenceKey !== "manual_journal" ||
+    action.lines.length !== expected.length ||
+    expected.some((line, i) => {
+      const actual = action.lines[i];
+
+      return (
+        !actual ||
+        actual.accountId !== line.accountId ||
+        actual.debitMinor !== line.debitMinor ||
+        actual.creditMinor !== line.creditMinor ||
+        !OriginalDimensions.sameAssignmentSet(
+          actual.originalDimensions ?? [],
+          line.originalDimensions ?? [],
+        )
+      );
+    })
+  )
+    return yield* failure("InvalidJournal");
 });
 
 export const advanceFinancialRunInTransaction = Effect.fn(
@@ -436,40 +677,31 @@ export const advanceFinancialRunInTransaction = Effect.fn(
     run.nextOrdinal + input.items.length - 1 > plan.voucherCount
   )
     return yield* failure("InvalidJournal");
+
+  const partition = run.partitionId ? yield* readPartition(tx, scope, run.partitionId) : undefined;
+
+  if (
+    partition &&
+    partition.vouchers
+      .slice(run.nextOrdinal - 1, run.nextOrdinal - 1 + input.items.length)
+      .some((row) => row.sourceYearOrdinal !== (run.yearOrdinal ?? 0))
+  )
+    return yield* failure("InvalidJournal");
   const items: Array<(typeof Historical.Run.Type.items)[number]> = [];
 
   for (const [index, binding] of input.items.entries()) {
-    const voucher = vouchers.find((v) => v.ordinal === run.nextOrdinal + index);
+    const sourceOrdinal =
+      partition?.vouchers[run.nextOrdinal + index - 1]?.ordinal ?? run.nextOrdinal + index;
+
+    const voucher = vouchers.find((v) => v.ordinal === sourceOrdinal);
     const row = (yield* Ledger.readPlan(tx, scope.bookId, binding.changeSetId))[0];
 
     if (!voucher || !row) return yield* failure("StaleDependency");
     const change = yield* decode(Accounting.ChangeSet, row.plan);
 
     if (change.planDigest !== binding.planDigest) return yield* failure("StaleDependency");
-    const action = change.groups[0]?.actions[0];
-    const expected = yield* linesFor(plan, voucher);
-
-    if (
-      change.groups.length !== 1 ||
-      change.groups[0]?.actions.length !== 1 ||
-      !action ||
-      action.fiscalYearId !== run.fiscalYearId ||
-      action.postingDate !== sourceDate(voucher) ||
-      action.postingPurpose !== "adjustment" ||
-      action.occurrenceKey !== "manual_journal" ||
-      action.lines.length !== expected.length ||
-      expected.some((line, i) => {
-        const actual = action.lines[i];
-
-        return (
-          !actual ||
-          actual.accountId !== line.accountId ||
-          actual.debitMinor !== line.debitMinor ||
-          actual.creditMinor !== line.creditMinor
-        );
-      })
-    )
-      return yield* failure("InvalidJournal");
+    const expected = yield* linesFor(plan, voucher, partition);
+    yield* requireSourceJournal(change, run, voucher, expected);
 
     if (onboardingQualified) {
       const preparers = yield* OnboardingDb.readProposalPreparers(tx, scope.bookId, change.id);
@@ -488,8 +720,9 @@ export const advanceFinancialRunInTransaction = Effect.fn(
     });
 
     const item = {
-      ordinal: voucher.ordinal,
-      sourceReference: voucher.sourceReference,
+      ordinal: run.nextOrdinal + index,
+      sourceReference:
+        partition?.vouchers[run.nextOrdinal + index - 1]?.scopedIdentity ?? voucher.sourceReference,
       sourceDigest: yield* digest(voucher),
       ledgerReceipt: receipt,
     };
@@ -500,8 +733,19 @@ export const advanceFinancialRunInTransaction = Effect.fn(
 
   const next = run.nextOrdinal + items.length;
 
+  const { yearOrdinal, fiscalYearId } = yield* finishPartitionYear(
+    tx,
+    scope,
+    run,
+    partition,
+    next,
+    plan.voucherCount,
+  );
+
   const updated: Db.RunRow = {
     ...run,
+    fiscalYearId,
+    yearOrdinal,
     nextOrdinal: next,
     status: next > plan.voucherCount ? "posted" : "running",
     leaseUntil: lease(yield* isoNow(tx)),
@@ -615,7 +859,19 @@ export const compareSieClosing = Effect.fn("historical.compareSieClosing")(funct
     const book = (yield* Ledger.readBook(tx, command.scope))[0];
 
     if (!year || !book) return yield* failure("InternalError");
-    const expected = mappedControls(plan, "closing");
+
+    const partition = run.partitionId
+      ? yield* readPartition(tx, command.scope, run.partitionId)
+      : undefined;
+
+    const expected = partition
+      ? new Map(
+          partition.years[run.yearOrdinal ?? 0]!.controls.map((row) => [
+            row.accountId,
+            BigInt(row.closingMinor),
+          ]),
+        )
+      : mappedControls(plan, "closing");
 
     const actual = new Map(
       (yield* Db.readBalances(tx, command.scope.bookId, year.endsOn, true)).map((row) => [

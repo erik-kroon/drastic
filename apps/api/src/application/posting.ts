@@ -10,6 +10,9 @@ import {
   admitTreasuryLoan,
   admitPayrollInput,
   admitForeignCash,
+  admitAssetProceeds,
+  admitProcessor,
+  admitPayrollSettlement,
   admitScheduleEvent,
   type PostingOwner,
 } from "./posting-admission";
@@ -143,6 +146,10 @@ function readPlan(transaction: Transaction, scope: Scope, changeSetId: string) {
   );
 }
 
+function isAssetProceedsOwner(owner: PostingOwner | undefined) {
+  return owner?.kind === "asset_proceeds_disposal";
+}
+
 const admitRetainedPlanOwnership = Effect.fn("posting.admitRetainedPlanOwnership")(function* (
   transaction: Transaction,
   command: { scope: Scope; changeSetId: string; owner?: PostingOwner },
@@ -160,6 +167,21 @@ const admitRetainedPlanOwnership = Effect.fn("posting.admitRetainedPlanOwnership
         action,
       );
       yield* admitForeignCash(transaction, command.scope, command.owner, action);
+      yield* admitProcessor(transaction, command.scope, command.changeSetId, command.owner, action);
+      yield* admitAssetProceeds(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
+      yield* admitPayrollSettlement(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
       yield* admitTreasuryLoan(
         transaction,
         command.scope,
@@ -290,6 +312,7 @@ export function validateAction(
   action: Action,
   allowLegal = false,
   allowTransfer = false,
+  allowAsset = false,
 ) {
   return Effect.gen(function* () {
     const lines = validatePostingLines(action.lines);
@@ -345,7 +368,8 @@ export function validateAction(
     } else if (
       (action.postingPurpose !== "adjustment" &&
         !(allowLegal && legalPostingPurposes.includes(action.postingPurpose)) &&
-        !(allowTransfer && transferPostingPurposes.includes(action.postingPurpose))) ||
+        !(allowTransfer && transferPostingPurposes.includes(action.postingPurpose)) &&
+        !(allowAsset && action.postingPurpose === "asset_proceeds_disposal_v1")) ||
       action.correctsVoucherId !== null
     ) {
       return yield* failure("InvalidJournal");
@@ -359,6 +383,7 @@ export function validatePlan(
   plan: Plan,
   allowLegal = false,
   allowTransfer = false,
+  allowAsset = false,
 ) {
   return Effect.gen(function* () {
     const planWithoutDigest = Object.fromEntries(
@@ -414,7 +439,15 @@ export function validatePlan(
 
       for (const action of storedGroup.actions) {
         const decodedAction = yield* decode(ActionSchema, action);
-        yield* validateAction(transaction, scope, book, decodedAction, allowLegal, allowTransfer);
+        yield* validateAction(
+          transaction,
+          scope,
+          book,
+          decodedAction,
+          allowLegal,
+          allowTransfer,
+          allowAsset,
+        );
       }
     }
   });
@@ -1044,6 +1077,7 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         plan,
         command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
         command.owner?.kind === "financial_close",
+        isAssetProceedsOwner(command.owner),
       );
 
       if (command.owner !== undefined) {
@@ -1283,6 +1317,7 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       plan,
       command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
       command.owner?.kind === "financial_close",
+      isAssetProceedsOwner(command.owner),
     );
     yield* assertPlanUnposted(transaction, command.scope, plan);
     yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
@@ -1473,11 +1508,12 @@ export function sealActionInTransaction(
   action: Action,
   allowLegal = false,
   allowTransfer = false,
+  allowAsset = false,
 ) {
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
-    yield* validateAction(transaction, scope, book, action, allowLegal, allowTransfer);
+    yield* validateAction(transaction, scope, book, action, allowLegal, allowTransfer, allowAsset);
     // NEXT-14. The original dimension assignments are resolved and sealed here,
     // before the proposal is hashed, so every owner that seals a plan through
     // this path carries the same reviewed assignment set.

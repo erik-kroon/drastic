@@ -106,7 +106,15 @@
     "./onboarding-deltas": "./src/onboarding-deltas.ts",
     "./treasury-loans": "./src/treasury-loans.ts",
     "./foreign-cash": "./src/foreign-cash.ts",
-    "./payroll-inputs": "./src/payroll-inputs.ts"
+    "./payroll-inputs": "./src/payroll-inputs.ts",
+    "./asset-disposals": "./src/asset-disposals.ts",
+    "./payroll-settlements": "./src/payroll-settlements.ts",
+    "./processor-clearing": "./src/processor-clearing.ts",
+    "./sie-partitions": "./src/sie-partitions.ts",
+    "./historical-adoptions": "./src/historical-adoptions.ts",
+    "./document-signatures": "./src/document-signatures.ts",
+    "./filing-lifecycle": "./src/filing-lifecycle.ts",
+    "./peppol-exchange": "./src/peppol-exchange.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

@@ -482,6 +482,13 @@ export function readImpactResources(
       where d.book_id=${bookId} and (e.voucher_id=${voucherId} or r.body->'basis'->'carryingBasis'->'input'->>'voucherId'=${voucherId}
         or exists(select from jsonb_array_elements(r.body->'basis'->'occurrences') o where ${voucherId} in(o->>'voucherId',o->>'reversalVoucherId')))
       union all
+      select jsonb_build_object('kind','schedule','id',d.schedule_id,'detail','Asset proceeds own this voucher or its retained basis. Use the disposal correction workflow.',
+        'path','/schedules/'||d.schedule_id,'blocks',true,'dependencyDigest',d.body->>'digest')
+      from openerp.asset_proceeds_effects d join openerp.asset_proceeds_reviews r on(r.book_id,r.id)=(d.book_id,d.review_id)
+      where d.book_id=${bookId} and (d.voucher_id=${voucherId}
+        or r.body->'assetBasis'->'carryingBasis'->'input'->>'voucherId'=${voucherId}
+        or exists(select from jsonb_array_elements(r.body->'assetBasis'->'occurrences') o where ${voucherId} in(o->>'voucherId',o->>'reversalVoucherId')))
+      union all
       select jsonb_build_object('kind','schedule','id',i.schedule_id,'detail','An impairment owns this voucher or its carrying-basis history. Generic correction is unsupported.',
         'path','/schedules/'||i.schedule_id,'blocks',true,'dependencyDigest',i.body->>'digest')
       from openerp.subledger_impairments i where i.book_id=${bookId} and (i.voucher_id=${voucherId}

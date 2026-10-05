@@ -17,6 +17,8 @@ import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { failure } from "../failures";
 import { captureInputs } from "./inputs";
 
+import { captureAdjustmentInstructions } from "./settlement-instructions";
+
 export const requirePayrollAccess = Effect.fn("payroll.runAccess")(function* (
   tx: Transaction,
   scope: Scope,
@@ -89,6 +91,18 @@ export const currentCalculation = Effect.fn("payroll.currentRunCalculation")(fun
   );
 
   if (!equalJson(inputs, basis.payrollInputs ?? [])) return yield* failure("StaleDependency");
+
+  const adjustments = yield* captureAdjustmentInstructions(
+    tx,
+    scope,
+    retained.employeeId,
+    period.startsOn.slice(0, 7),
+    (basis.adjustmentInstructions ?? []).map((row) => row.id),
+    runId,
+  );
+
+  if (!equalJson(adjustments, basis.adjustmentInstructions ?? []))
+    return yield* failure("StaleDependency");
 
   if (
     (yield* RunDb.readReservedMonth(

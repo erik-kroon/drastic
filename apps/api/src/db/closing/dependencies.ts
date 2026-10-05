@@ -311,6 +311,13 @@ function scheduleRevisionAt(bookId: string, schedule: SQL, endsOn: string) {
               and disposed.body->>'digest' = disposal.body->>'scheduleDigest'
             where disposal.book_id = ${bookId} and disposal.schedule_id = ${schedule}
               and disposal.posting_date <= ${endsOn}::date
+          union
+          select disposed.revision from openerp.asset_proceeds_effects disposal
+            join openerp.subledger_schedule_revisions disposed
+              on disposed.book_id=disposal.book_id and disposed.schedule_id=disposal.schedule_id
+              and disposed.body->>'digest'=disposal.body->'asset'->>'scheduleDigest'
+            where disposal.book_id=${bookId} and disposal.schedule_id=${schedule}
+              and disposal.kind='disposal' and disposal.posting_date<=${endsOn}::date
         ) candidate))`;
 }
 
@@ -665,8 +672,16 @@ export function readSubledgerScheduleRevisions(
       cross join lateral (
         select ${scheduleRevisionAt(bookId, sql`s.id`, endsOn)} as body
       ) revision
-      left join openerp.subledger_disposals disposal
-        on disposal.book_id = s.book_id and disposal.schedule_id = s.id
+      left join lateral (
+        select d.body from openerp.subledger_disposals d
+          where d.book_id=s.book_id and d.schedule_id=s.id and d.posting_date<=${endsOn}::date
+        union all
+        select e.body->'asset' as body from openerp.asset_proceeds_effects e
+          where e.book_id=s.book_id and e.schedule_id=s.id and e.kind='disposal'
+            and e.posting_date<=${endsOn}::date
+            and not exists(select from openerp.asset_proceeds_effects c
+              where c.book_id=e.book_id and c.correction_of=e.id and c.posting_date<=${endsOn}::date)
+      ) disposal on true
       where s.book_id = ${bookId} and revision.body is not null
       order by s.id collate "C"
     `,
@@ -861,9 +876,10 @@ export function readSubledgerControlPreparations(transaction: Transaction, bookI
 export function readSubledgerControlDisposalDigests(transaction: Transaction, bookId: string) {
   return transaction.execute<{ readonly digest: string | null }>(
     sql`
-      select d.body->>'digest' as digest
-      from openerp.subledger_disposals d where d.book_id = ${bookId}
-      order by d.schedule_id collate "C"
+      select d.body->>'digest' as digest from (
+        select schedule_id,body from openerp.subledger_disposals where book_id=${bookId}
+        union all select schedule_id,body from openerp.asset_proceeds_effects where book_id=${bookId}
+      ) d order by d.schedule_id collate "C",d.body->>'id' collate "C"
     `,
     "objects",
   );

@@ -1,3 +1,9 @@
+import { documentSignatureCapabilities } from "./document-signatures";
+import { filingCapabilities } from "./filing-lifecycle";
+import { peppolExchangeCapabilities } from "./peppol-exchange";
+import { processorClearingCapabilities } from "./processor-clearing";
+import { payrollSettlementCapabilities } from "./payroll-settlements";
+import { assetDisposalCapabilities } from "./asset-disposals";
 import { foreignCashCapabilities } from "./foreign-cash";
 import { payrollInputCapabilities } from "./payroll-inputs";
 import { treasuryLoanCapabilities } from "./treasury-loans";
@@ -87,6 +93,12 @@ export const capabilities = {
   ...payrollRunCapabilities,
   ...foreignCashCapabilities,
   ...payrollInputCapabilities,
+  ...assetDisposalCapabilities,
+  ...payrollSettlementCapabilities,
+  ...processorClearingCapabilities,
+  ...documentSignatureCapabilities,
+  ...filingCapabilities,
+  ...peppolExchangeCapabilities,
   ...treasuryLoanCapabilities,
   ...dimensionCapabilities,
   ...corporateTaxCapabilities,

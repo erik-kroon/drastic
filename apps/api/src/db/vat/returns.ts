@@ -1117,3 +1117,14 @@ export function countReviewItems(transaction: Transaction, bookId: string) {
     "objects",
   );
 }
+
+export function readAssetProceedsFactOwner(
+  transaction: Transaction,
+  bookId: string,
+  factId: string,
+) {
+  return transaction.execute<{ readonly owned: boolean }>(
+    sql`select exists(select from openerp.asset_proceeds_effects where book_id=${bookId} and body->'vatFact'->>'factId'=${factId}) as owned`,
+    "objects",
+  );
+}

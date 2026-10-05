@@ -1,3 +1,6 @@
+import * as AssetDisposals from "@open-erp/contracts/asset-disposals";
+import * as LedgerDb from "../../db/posting";
+import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import { admitBankMatch } from "../resource-admission";
 import { readClaim } from "../../db/purchases/supplier-settlements";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -255,6 +258,9 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
           return yield* failure("ApprovalRequired");
       }
 
+      for (const leg of command.input.legs)
+        yield* admitBankMatch(transaction, command.scope.bookId, leg);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -337,6 +343,15 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         planId: command.planId,
         input: yield* Shared.toJsonObject(command.input),
       } satisfies JsonObject;
+
+      if (
+        (yield* AllocationDb.readOwnedAllocationPlan(
+          transaction,
+          command.scope.bookId,
+          command.planId,
+        ))[0]?.present
+      )
+        return yield* failure("ApprovalRequired");
 
       const request = yield* replay(
         transaction,
@@ -449,6 +464,15 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
       );
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
+      if (
+        (yield* AllocationDb.readOwnedAllocationPlan(
+          transaction,
+          command.scope.bookId,
+          command.planId,
+        ))[0]?.present
+      )
+        return yield* failure("ApprovalRequired");
 
       const request = yield* replay(
         transaction,
@@ -652,4 +676,205 @@ export const getBankAllocation = Effect.fn("banking.allocation.get")(function* (
       });
     }),
   );
+});
+
+export const applyOwnedBankAllocationInTransaction = Effect.fn(
+  "banking.allocation.applyOwnedAsset",
+)(function* (
+  transaction: Transaction,
+  principal: Shared.Principal,
+  command: {
+    readonly scope: Scope;
+    readonly ownerReviewId: string;
+    readonly ownerApprovalId: string;
+    readonly sourceWitness: typeof AssetDisposals.CashWitness.Type;
+    readonly leg: typeof Settlement.AllocationLeg.Type;
+  },
+) {
+  const { scope, ownerReviewId, ownerApprovalId, sourceWitness } = command;
+
+  const leg = command.leg;
+  const book = yield* lockBook(transaction, scope.bookId);
+  yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
+  const outer = (yield* AllocationDb.readAssetApprovalAuthority(
+    transaction,
+    scope.bookId,
+    ownerReviewId,
+    ownerApprovalId,
+  ))[0];
+
+  if (!outer?.authorized) return yield* failure("ApprovalRequired");
+  const review = yield* Shared.decode(AssetDisposals.Review, outer.review);
+  const approval = yield* Shared.decode(AssetDisposals.Approval, outer.approval);
+  const action = review.postingPlan.groups[0]?.actions[0];
+  const line = action?.lines.find((line) => line.lineId === leg.lineId);
+  const voucher = (yield* LedgerDb.readVoucher(transaction, scope.bookId, leg.voucherId))[0];
+
+  if (
+    review.input.kind !== "disposal" ||
+    review.proceeds.kind !== "unposted_cash_sale" ||
+    review.digest !== approval.reviewDigest ||
+    !action ||
+    !line ||
+    !voucher ||
+    voucher.changeSetId !== review.postingPlan.id ||
+    (yield* digest(voucher.action)) !== (yield* digest(action)) ||
+    line.accountId !== sourceWitness.accountId ||
+    line.debitMinor !== sourceWitness.grossMinor ||
+    line.creditMinor !== "0" ||
+    leg.amountMinor !== sourceWitness.grossMinor ||
+    leg.statementId !== sourceWitness.statementId ||
+    leg.rowOrdinal !== sourceWitness.rowOrdinal ||
+    (yield* digest(review.proceeds)) !== (yield* digest(sourceWitness))
+  )
+    return yield* failure("StaleDependency");
+
+  yield* admitBankMatch(transaction, scope.bookId, leg, ownerReviewId);
+
+  const request = yield* replay(
+    transaction,
+    scope,
+    `${ownerApprovalId}_bank`,
+    "apply_owned_asset_bank_allocation",
+    principal.actorId,
+    { ownerReviewId, ownerApprovalId, sourceWitness, leg },
+    ExecutionSchema,
+  );
+
+  if (request.previous) return request.previous;
+
+  const source = (yield* StatementDb.readObservation(
+    transaction,
+    scope.bookId,
+    leg.statementId,
+    leg.rowOrdinal,
+  ))[0];
+
+  const heads = yield* ForeignCashDb.readNativeSourceRevisions(
+    transaction,
+    scope.bookId,
+    leg.statementId,
+    leg.rowOrdinal,
+  );
+
+  const versions = (yield* BankDb.readVersions(
+    transaction,
+    scope.bookId,
+    sourceWitness.accountId,
+  ))[0]?.versions;
+
+  if (
+    !source ||
+    source.amountMinor !== sourceWitness.grossMinor ||
+    source.accountId !== sourceWitness.accountId ||
+    source.observedOn !== sourceWitness.observedOn ||
+    source.evidenceSha256 !== sourceWitness.evidence.sha256 ||
+    Shared.textField(versions, "sourceRevision") !== sourceWitness.sourceRevision ||
+    (yield* digest(heads)) !== sourceWitness.sourceHeadsDigest
+  )
+    return yield* failure("StaleDependency");
+
+  const input = {
+    accountId: sourceWitness.accountId,
+    reason: review.input.rationale,
+    ambiguityAcknowledged: true as const,
+    legs: [leg],
+  };
+
+  const snapshot = yield* allocationSnapshot(transaction, scope.bookId, input);
+
+  if (
+    snapshot.capacities.some(
+      (capacity) => capacity.sourceAllocatedMinor !== "0" || capacity.lineAllocatedMinor !== "0",
+    )
+  )
+    return yield* failure("AlreadyPosted");
+  const now = yield* isoNow(transaction);
+
+  const planBody = {
+    id: newId("bankplan"),
+    version: 1,
+    scope,
+    currency: book.currency,
+    currencyScale: book.currencyScale,
+    input,
+    snapshot,
+    createdBy: approval.actorId,
+    createdAt: now,
+    receipt: Shared.receipt(
+      `${ownerReviewId}_allocation`,
+      "owned_asset_bank_allocation",
+      principal.actorId,
+    ),
+  };
+
+  const plan = yield* Shared.decode(PlanSchema, { ...planBody, digest: yield* digest(planBody) });
+  yield* AllocationDb.insertAllocationPlan(transaction, {
+    bookId: scope.bookId,
+    id: plan.id,
+    accountId: input.accountId,
+    input,
+    body: plan,
+  });
+
+  const innerApproval = yield* Shared.decode(ApprovalSchema, {
+    id: newId("bankapproval"),
+    planId: plan.id,
+    digest: plan.digest,
+    version: 1,
+    actorId: approval.actorId,
+    expiresAt: approval.expiresAt,
+    receipt: Shared.receipt(
+      `${ownerApprovalId}_allocation`,
+      "delegated_asset_bank_allocation",
+      approval.actorId,
+    ),
+  });
+
+  yield* AllocationDb.insertOwnedAllocationApproval(transaction, {
+    bookId: scope.bookId,
+    ownerReviewId,
+    ownerApprovalId,
+    approval: innerApproval,
+  });
+  const legs = [{ ...leg, planId: plan.id, ordinal: 1 }];
+
+  const result = yield* Shared.decode(ExecutionSchema, {
+    planId: plan.id,
+    digest: plan.digest,
+    version: 1,
+    approvalId: innerApproval.id,
+    scope,
+    accountId: input.accountId,
+    currency: book.currency,
+    currencyScale: book.currencyScale,
+    legs,
+    executedAt: now,
+    receipt: Shared.receipt(
+      `${ownerApprovalId}_bank`,
+      "apply_owned_asset_bank_allocation",
+      principal.actorId,
+    ),
+  });
+
+  yield* AllocationDb.insertAllocationExecution(transaction, {
+    bookId: scope.bookId,
+    planId: plan.id,
+    approvalId: innerApproval.id,
+    body: result,
+  });
+  yield* AllocationDb.insertAllocationLegs(transaction, scope.bookId, plan.id, legs);
+  yield* BankDb.bumpSourceRevision(transaction, scope.bookId, input.accountId);
+  yield* saveCommand(
+    transaction,
+    scope,
+    `${ownerApprovalId}_bank`,
+    request.expected,
+    "apply_owned_asset_bank_allocation",
+    principal.actorId,
+    result,
+  );
+
+  return result;
 });

@@ -1,10 +1,21 @@
+import * as PayrollSettlementDb from "../db/payroll/settlements";
+import * as ProcessorDb from "../db/banking/processor-clearing";
 import * as SettlementDb from "../db/purchases/supplier-settlements";
 import * as Effect from "effect/Effect";
 import * as Db from "../db/posting-admission";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
 
-type Family = "bank" | "commerce" | "owner" | "vat" | "tax" | "subledger" | "treasury";
+type Family =
+  | "bank"
+  | "commerce"
+  | "owner"
+  | "vat"
+  | "tax"
+  | "subledger"
+  | "treasury"
+  | "payroll"
+  | "processor";
 
 export const admitAccountRole = Effect.fn("resources.admitAccountRole")(function* (
   tx: Transaction,
@@ -55,6 +66,65 @@ export const admitBankMatch = Effect.fn("resources.admitBankMatch")(function* (
     (foreignClaim.reviewId !== ownerId ||
       foreignClaim.voucherId !== leg.voucherId ||
       foreignClaim.lineId !== leg.lineId)
+  )
+    return yield* failure("ApprovalRequired");
+
+  const payrollReservations = yield* PayrollSettlementDb.readCashReservation(
+    tx,
+    book,
+    leg.statementId,
+    leg.rowOrdinal,
+  );
+
+  if (payrollReservations.some((reservation) => reservation.reviewId !== ownerId))
+    return yield* failure("ApprovalRequired");
+
+  const payrollClaims = yield* Db.readPayrollSettlementCashClaim(
+    tx,
+    book,
+    leg.statementId,
+    leg.rowOrdinal,
+  );
+
+  if (
+    payrollClaims.some(
+      (claim) =>
+        claim.reviewId !== ownerId ||
+        claim.voucherId !== leg.voucherId ||
+        claim.lineId !== leg.lineId,
+    )
+  )
+    return yield* failure("ApprovalRequired");
+
+  const processorClaim = (yield* ProcessorDb.readBankClaim(
+    tx,
+    book,
+    leg.statementId,
+    leg.rowOrdinal,
+  ))[0];
+
+  if (
+    processorClaim &&
+    (processorClaim.reviewId !== ownerId ||
+      processorClaim.voucherId !== leg.voucherId ||
+      processorClaim.lineId !== leg.lineId)
+  )
+    return yield* failure("ApprovalRequired");
+
+  const assetClaims = yield* Db.readAssetProceedsCashClaim(
+    tx,
+    book,
+    leg.statementId,
+    leg.rowOrdinal,
+  );
+
+  if (
+    assetClaims.some(
+      (claim) =>
+        claim.reviewId !== ownerId ||
+        claim.voucherId !== leg.voucherId ||
+        claim.lineId !== leg.lineId,
+    )
   )
     return yield* failure("ApprovalRequired");
 

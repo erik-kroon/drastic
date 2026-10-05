@@ -406,8 +406,24 @@ export function readOwnedTreasuryVoucherPresence(
     sql`
     select exists(select from jsonb_array_elements(${JSON.stringify(legs)}::jsonb) leg
       join (select voucher_id from openerp.treasury_loan_events where book_id=${bookId}
-        union all select voucher_id from openerp.bank_foreign_cash_book_consumptions where book_id=${bookId}) e
+        union all select voucher_id from openerp.bank_foreign_cash_book_consumptions where book_id=${bookId}
+        union all select voucher_id from openerp.processor_executions where book_id=${bookId}
+        union all select voucher_id from openerp.payroll_settlement_executions where book_id=${bookId}) e
         on e.voucher_id=leg->>'voucherId') as present`,
+    "objects",
+  );
+}
+
+export function readAssetAllocationOwner(tx: Transaction, book: string, allocation: string) {
+  return tx.execute<{ readonly disposalId: string }>(
+    sql`select id as "disposalId" from openerp.asset_proceeds_effects where book_id=${book} and kind='disposal' and body->'bankAllocation'->>'planId'=${allocation}`,
+    "objects",
+  );
+}
+
+export function readAssetCorrectionByReversal(tx: Transaction, book: string, reversal: string) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select id from openerp.asset_proceeds_reviews where book_id=${book} and body->'input'->>'kind'='error_correction' and body->'bankReversal'->>'id'=${reversal}`,
     "objects",
   );
 }

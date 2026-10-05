@@ -1,3 +1,4 @@
+import * as ProcessorDb from "../../db/banking/processor-clearing";
 import * as Contracts from "@open-erp/contracts/foreign-cash";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import * as Cash from "@open-erp/domain/foreign-cash";
@@ -54,7 +55,15 @@ export function readHolding(transaction: Transaction, scope: Scope, accountId: s
 
     if (!row) return yield* failure("NotFound");
     const opening = yield* decode(Contracts.Holding, row.body);
-    const effects = yield* CashDb.readEffects(transaction, scope.bookId, accountId);
+    const cashEffects = yield* CashDb.readEffects(transaction, scope.bookId, accountId);
+
+    const processorEffects = yield* ProcessorDb.readCashEffects(
+      transaction,
+      scope.bookId,
+      accountId,
+    );
+
+    const effects = [...cashEffects, ...processorEffects];
 
     const native = effects.reduce(
       (total, effect) => total + BigInt(effect.nativeDeltaMinor),

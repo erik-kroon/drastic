@@ -1,12 +1,8 @@
 import { scopeFromPath } from "../scope";
-import { Buffer } from "node:buffer";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
-import { getSourceOccurrence } from "../../../application/source-retention";
-import { parseSie } from "../../../application/sie-import-parser";
-import { failure } from "../../../application/failures";
 import * as Sie from "../../../application/sie/import";
 
 export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handlers) =>
@@ -18,36 +14,11 @@ export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handler
     )
     .handle("captureSieSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        Effect.gen(function* () {
-          const source = yield* getSourceOccurrence(token, {
-            scope: scopeFromPath(params),
-            occurrenceId: params.id,
-          });
-
-          const bytes = Buffer.from(source.contentBase64, "base64");
-
-          if (bytes.length > 524288 || source.occurrence.byteLength !== bytes.length)
-            return yield* failure("UnsupportedProfile");
-          const parsed = parseSie(bytes, payload.encoding);
-
-          if (
-            parsed.records.length > 4000 ||
-            parsed.vouchers.length > 500 ||
-            Buffer.byteLength(JSON.stringify(parsed)) > 1048576
-          )
-            return yield* failure("UnsupportedProfile");
-
-          return yield* Sie.captureSource(token, {
-            scope: scopeFromPath(params),
-            idempotencyKey: headers["idempotency-key"],
-            id: params.id,
-            input: {
-              ...parsed,
-              encoding: payload.encoding,
-              profile: "sie4_source_v1",
-              sourceSha256: source.occurrence.sha256,
-            },
-          });
+        Sie.captureSource(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          input: { encoding: payload.encoding, profile: payload.profile ?? "sie4_source_v1" },
         }),
       ),
     )

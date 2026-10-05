@@ -1,8 +1,30 @@
-# Synthetic SIE historical-source staging (IMP-01/02/03 bounded slice)
+# Synthetic SIE historical import and residual adoption
 
 ## Current ownership
 
-Application operations live in [application/sie/historical.ts](../src/application/sie/historical.ts), with shared dispatch in [capabilities](../src/application/capabilities/). Historical financial import operations still return unsupported placeholders; this note is not evidence of an implemented import path.
+Source staging, financial migration and pool admission live in [application/sie](../src/application/sie/historical.ts). Retained declarations are owned by [partitions.ts](../src/application/sie/partitions.ts), adoption by [adoptions.ts](../src/application/sie/adoptions.ts), and live historical settlement by [commerce/historical-settlements.ts](../src/application/commerce/historical-settlements.ts). Contracts and HTTP handlers expose scoped commands and reads. Financial writes use the shared approved posting transition. The local owner proof is [saved with repeatable receipts](../../../docs/plans/evidence/domain-owner-completion/sie-historical-green/README.md).
+
+## Current retained partition owner
+
+Capture remains bounded to the retained source and explicit encoding. The optional `synthetic_sie4_partition_v1` profile admits recognized object-control grammar only for a retained `synthetic_` occurrence. The default profile keeps object-balance diagnostics. The capture receipt hashes encoding and profile before parsing, so same-key replay returns its original interpretation and a changed profile refuses `IdempotencyConflict`.
+
+`POST /sie-partitions` freezes all source `#RAR` declarations, exact native fiscal dates, account mappings, scalar controls, dimension and object mappings, final voucher membership and correction-history digests. Only `synthetic_sie4_final_trans_v1` financial interpretation is admitted. Every mapped or referenced account must have explicit `#IB` and `#UB` plus matching independent controls in every year. Missing rows remain unknown and refuse. An aggregate balanced source cannot hide an omitted account.
+
+Source years are ordered by date and vouchers retain identities scoped by that order. Repeated A/1 in distinct years produces 0/A/1 and 1/A/1. The financial run retains one partition and one whole-source fence. Its current-year chunk contains at most 20 members. Proposals may be prepared for upcoming members within that year; execution starts exactly at the current cursor. All members, ledger receipts, approvals, cursor updates and final comparisons commit in one transaction. Pause fences every writer. Recovery reads the run and replays the same key after an unknown outcome.
+
+Before advancing a year, actual native account balances must match its complete retained closing controls. Source object controls require one explicit opening and closing for each mapped account/object pair, exact final movement and independent partition conservation for each dimension. Actual native journal tags must match those closings. The next year's openings must match the preceding closings. Advancing the year does not create an opening journal. The source fence releases only after the last year comparison commits.
+
+Original assignments retain dated native catalogue revisions and source aliases. DEP-A mapped to DEPT-A retains DEP-A as an alias. An identity mapping uses a null alias because the native code already preserves the source code. The native alias constraint stays enabled. `#RTRANS` and `#BTRANS` remain retained history and do not add financial movement. Native SIE4E export emits native object codes and exact OIB/OUB balances; retained source history remains available through the original and preview.
+
+## Current residual adoption owner
+
+`POST /historical-pools` reads an immutable admitted historical inventory and its actual selected financial basis. Full-history admission needs a completely posted source run and all retained year comparisons. Opening-set admission needs its posted opening and exact cutover. The complete source residual must equal the actual GL control position through cutover. One immutable pool owns a book/control account/direction; another date or source namespace cannot reuse that position.
+
+`POST /historical-adoption-plans` retains source lineage, evidenced residual, pool version and exact assignment. Browser-session approval and current operator membership are required. Execution serializes on the book, rechecks the pool and approval, and records provenance plus a live obligation without a journal, voucher number or GL delta. Known original and prior payment amounts must reconcile to the residual. Unknown amounts stay unknown. Existing native invoice positions refuse because there is no retained source-to-native identity bridge; amounts alone cannot authorize duplicate capacity.
+
+Historical obligation reads accept either the adoption ID or live obligation ID. The commerce settlement owner reads an actual posted control-account payment line after cutover and its canonical remaining capacity. It checks current period, account/line ownership, obligation version and payment capacity version before approval and execution. Retained settlement consumption participates in ordinary commerce capacity and protects consumed payments from correction. Settlement adds no journal because its payment was already posted. Concurrent plans cannot consume a line twice. Residual-only credit preparation refuses until original tax detail exists.
+
+The synthetic owner journey observes original 100000 less prior payments 60000 equals adopted 40000. Adoption changes GL by 0. New payment 10000 leaves live 30000 and settled 10000. Local API proof does not establish real provider qualification, destination acceptance, actual-company completeness or browser parity.
 
 ## Historical implementation notes
 

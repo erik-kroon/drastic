@@ -1,3 +1,12 @@
+import { configuredDocumentDelivery } from "./adapters/documents/local-fixture";
+import { DocumentSignatureHandlers } from "./transport/http/routes/document-signatures";
+import { FilingLifecycleHandlers } from "./transport/http/routes/filing-lifecycle";
+import { PeppolExchangeHandlers } from "./transport/http/routes/peppol-exchange";
+import { HistoricalAdoptionsHandlers } from "./transport/http/routes/historical-adoptions";
+import { ProcessorClearingHandlers } from "./transport/http/routes/processor-clearing";
+import { SiePartitionsHandlers } from "./transport/http/routes/sie-partitions";
+import { PayrollSettlementHandlers } from "./transport/http/routes/payroll-settlements";
+import { AssetDisposalHandlers } from "./transport/http/routes/asset-disposals";
 import { ForeignCashHandlers } from "./transport/http/routes/foreign-cash";
 import { PayrollInputHandlers } from "./transport/http/routes/payroll-inputs";
 import { TreasuryLoanHandlers } from "./transport/http/routes/treasury-loans";
@@ -220,7 +229,15 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PayrollCalculationHandlers,
     PayrollRunHandlers,
     ForeignCashHandlers,
+    ProcessorClearingHandlers,
+    SiePartitionsHandlers,
+    HistoricalAdoptionsHandlers,
+    DocumentSignatureHandlers,
+    FilingLifecycleHandlers,
+    PeppolExchangeHandlers,
     PayrollInputHandlers,
+    AssetDisposalHandlers,
+    PayrollSettlementHandlers,
     TreasuryLoanHandlers,
     DeadlineHandlers,
     RuleImpactHandlers,
@@ -326,12 +343,17 @@ export default {
                   Effect.gen(function* () {
                     const db = yield* Database;
 
+                    const documentDelivery = yield* Effect.try({
+                      try: () => bindings.DOCUMENT_DELIVERY ?? configuredDocumentDelivery(bindings),
+                      catch: () => failure("ConfigurationError"),
+                    });
+
                     return yield* Effect.tryPromise({
                       try: () =>
                         handler(
                           bounded,
                           Context.make(RequestEnvironment, {
-                            bindings,
+                            bindings: { ...bindings, DOCUMENT_DELIVERY: documentDelivery },
                             url: new URL(request.url),
                           }).pipe(
                             Context.add(Database, db),

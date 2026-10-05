@@ -1,3 +1,4 @@
+import * as ProcessorDb from "../../db/banking/processor-clearing";
 import { admitPosting, type PostingOwner } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as ForeignCashDb from "../../db/banking/foreign-cash";
@@ -411,6 +412,14 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
       itemId,
     );
 
+    const processorRows = yield* ProcessorDb.readObligationConsumptions(
+      transaction,
+      scope.bookId,
+      itemId,
+    );
+
+    const ownedConsumptions = [...foreignCashRows, ...processorRows];
+
     const correctionsBySettlement = new Map(correctionRows.map((row) => [row.settlementId, row]));
 
     const full = settlementRows.find((row) => row.profile === fullSettlementProfile);
@@ -427,13 +436,13 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
     const activeOriginal = settlementRows.reduce(
       (total, row) =>
         total + (correctionsBySettlement.has(row.id) ? 0n : BigInt(row.originalReleasedMinor)),
-      foreignCashRows.reduce((total, row) => total + BigInt(row.originalReleasedMinor), 0n),
+      ownedConsumptions.reduce((total, row) => total + BigInt(row.originalReleasedMinor), 0n),
     );
 
     const activeCarrying = settlementRows.reduce(
       (total, row) =>
         total + (correctionsBySettlement.has(row.id) ? 0n : BigInt(row.carryingReleasedMinor)),
-      foreignCashRows.reduce((total, row) => total + BigInt(row.carryingReleasedMinor), 0n),
+      ownedConsumptions.reduce((total, row) => total + BigInt(row.carryingReleasedMinor), 0n),
     );
 
     const initialOriginalValue = itemRow.body.initialOriginalMinor;
@@ -1095,6 +1104,15 @@ function correctionSnapshot(
     const settlementRow = settlementRows[0];
 
     if (!settlementRow) return yield* failure("NotFound");
+
+    if (
+      (yield* ProcessorDb.readObligationConsumptions(
+        transaction,
+        scope.bookId,
+        settlementRow.itemId,
+      )).length > 0
+    )
+      return yield* failure("UnsupportedProfile");
 
     if (
       (yield* ForeignCashDb.readObligationConsumptions(

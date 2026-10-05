@@ -458,6 +458,15 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
     true,
     (transaction, principal) =>
       Effect.gen(function* () {
+        if (
+          (yield* VatDb.readAssetProceedsFactOwner(
+            transaction,
+            command.scope.bookId,
+            command.id,
+          ))[0]?.owned
+        )
+          return yield* failure("UnsupportedProfile");
+
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
         const request = yield* replay(
@@ -764,6 +773,12 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
     true,
     (transaction, principal) =>
       Effect.gen(function* () {
+        if (
+          command.input.sourceKey.startsWith("cash_method_") ||
+          command.input.sourceKey.startsWith("asset_proceeds_")
+        )
+          return yield* failure("UnsupportedProfile");
+
         const payload = yield* toJsonObject(command.input);
 
         const request = yield* replay(
@@ -777,9 +792,6 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
         );
 
         if (request.previous) return request.previous;
-
-        if (command.input.sourceKey.startsWith("cash_method_"))
-          return yield* failure("UnsupportedProfile");
 
         if (
           command.input.voucherId !== null &&
