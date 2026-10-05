@@ -22,6 +22,7 @@ import {
 import * as Db from "../db/posting";
 import * as RecoveryDb from "../db/posting-recovery";
 import * as CorrectionDb from "../db/posting-corrections";
+import { readOnboardingResponsibility } from "./onboarding-policy";
 import { databaseFailure, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
@@ -637,6 +638,46 @@ function recoverySummary(
   });
 }
 
+function observeApprovalState(
+  transaction: Transaction,
+  scope: Scope,
+  approval: {
+    actorId: string;
+    expiresAt: string;
+    consumedAt: string | null;
+    revoked: boolean;
+    responsibilityRequired: boolean;
+  },
+  now: string,
+) {
+  return Effect.gen(function* () {
+    if (approval.consumedAt) return "consumed" as const;
+
+    if (approval.revoked) return "revoked" as const;
+
+    if (Date.parse(approval.expiresAt) <= Date.parse(now)) return "expired" as const;
+
+    const membership = yield* Db.readOperatorMembership(
+      transaction,
+      scope.bookId,
+      approval.actorId,
+    );
+
+    const admission = (yield* Db.readActorAdmission(transaction, approval.actorId))[0];
+
+    if (membership.length === 0 || admission?.enabled === false) return "authority_lost" as const;
+
+    if (approval.responsibilityRequired) {
+      const responsibility = yield* readOnboardingResponsibility(transaction, scope);
+
+      if (responsibility && responsibility.assignments.bookkeepingApproverId !== approval.actorId)
+        return "authority_lost" as const;
+    }
+
+    return "unconsumed_at_check" as const;
+  });
+}
+
 export const listPostingRecovery = Effect.fn("posting.listRecovery")(function* (
   token: string,
   command: { scope: Scope; after?: string },
@@ -724,24 +765,49 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
       const approvalRows = yield* Db.readApprovals(transaction, command.scope.bookId, plan.id);
       let availableApproval: typeof Accounting.Approval.Type | null = null;
 
+      let approvalObservation: typeof Recovery.ApprovalObservation.Type = {
+        state: "prepared",
+        approval: null,
+        basis: null,
+      };
+
       for (const approval of approvalRows) {
-        if (
-          approval.digest === plan.planDigest &&
-          approval.consumedAt === null &&
-          Date.parse(approval.expiresAt) > Date.parse(now.now) &&
-          (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
-            .length > 0 &&
-          (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled !== false &&
-          (yield* Db.readApprovalRevocation(transaction, command.scope.bookId, approval.id))
-            .length === 0
-        ) {
-          availableApproval = yield* decode(ApprovalSchema, {
-            id: approval.id,
-            changeSetId: approval.changeSetId,
-            planDigest: approval.digest,
-            actorId: approval.actorId,
-            expiresAt: approval.expiresAt,
-          });
+        if (approval.digest !== plan.planDigest) continue;
+
+        const basis = yield* decode(Recovery.PostingAuthorityBasis, approval.authorityBasis);
+
+        const state = yield* observeApprovalState(
+          transaction,
+          command.scope,
+          {
+            ...approval,
+            revoked:
+              (yield* Db.readApprovalRevocation(transaction, command.scope.bookId, approval.id))
+                .length > 0,
+            responsibilityRequired: basis.responsibilityRequired,
+          },
+          now.now,
+        );
+
+        const retained = yield* decode(ApprovalSchema, {
+          id: approval.id,
+          changeSetId: approval.changeSetId,
+          planDigest: approval.digest,
+          actorId: approval.actorId,
+          expiresAt: approval.expiresAt,
+        });
+
+        if (approvalObservation.state === "prepared")
+          approvalObservation = { state, approval: retained, basis };
+
+        if (summary.postingStatus === "posted" && state === "consumed") {
+          approvalObservation = { state, approval: retained, basis };
+          break;
+        }
+
+        if (summary.postingStatus === "unposted_at_check" && state === "unconsumed_at_check") {
+          availableApproval = retained;
+          approvalObservation = { state, approval: retained, basis };
           break;
         }
       }
@@ -754,6 +820,11 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
             command.after,
           ))[0]
         : undefined;
+
+      const approvalConsumptions = yield* Effect.forEach(
+        yield* RecoveryDb.readApprovalConsumptions(transaction, command.scope, plan.id),
+        (consumption) => decode(Recovery.ApprovalConsumptionEvidence, consumption),
+      );
 
       if (command.after && !requestAnchor) return yield* failure("NotFound");
 
@@ -782,22 +853,30 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
           let approvalState: RecoveryRequest["approvalState"] = null;
 
           if (operation === "approve_change") {
-            approvalState = request.approvalConsumedAt
-              ? "consumed"
-              : request.approvalRevoked
-                ? "revoked"
-                : request.approvalExpiresAt &&
-                    Date.parse(request.approvalExpiresAt) <= Date.parse(now.now)
-                  ? "expired"
-                  : (yield* Db.readOperatorMembership(
-                        transaction,
-                        command.scope.bookId,
-                        request.approvalActorId ?? "",
-                      )).length === 0 ||
-                      (yield* Db.readActorAdmission(transaction, request.approvalActorId ?? ""))[0]
-                        ?.enabled === false
-                    ? "authority_lost"
-                    : "unconsumed_at_check";
+            if (
+              !request.approvalActorId ||
+              !request.approvalExpiresAt ||
+              !request.approvalAuthorityBasis
+            )
+              return yield* failure("InternalError");
+
+            const basis = yield* decode(
+              Recovery.PostingAuthorityBasis,
+              request.approvalAuthorityBasis,
+            );
+
+            approvalState = yield* observeApprovalState(
+              transaction,
+              command.scope,
+              {
+                actorId: request.approvalActorId,
+                expiresAt: request.approvalExpiresAt,
+                consumedAt: request.approvalConsumedAt,
+                revoked: request.approvalRevoked,
+                responsibilityRequired: basis.responsibilityRequired,
+              },
+              now.now,
+            );
           }
 
           return {
@@ -823,6 +902,8 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
         plan,
         validation,
         availableApproval,
+        approvalObservation,
+        approvalConsumptions,
         requests,
         nextRequest: requestRows.length > 20 ? (requestPage.at(-1)?.key ?? null) : null,
       } satisfies typeof Recovery.PostingRecovery.Type;

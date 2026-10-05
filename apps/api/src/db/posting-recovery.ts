@@ -4,6 +4,7 @@ import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Schema from "effect/Schema";
 import {
   approvals,
+  approvalConsumptions,
   changeSets,
   commandReceipts,
   postingApprovalRevocations,
@@ -15,6 +16,30 @@ import type { Transaction } from "./transaction";
 type JsonObject = Schema.JsonObject;
 
 type SavedCommand = typeof Recovery.SavedPostingCommand.Type;
+
+export function readApprovalConsumptions(
+  transaction: Transaction,
+  scope: typeof Accounting.Scope.Type,
+  planId: string,
+) {
+  return transaction
+    .select({
+      approvalId: approvalConsumptions.approvalId,
+      groupId: approvalConsumptions.groupId,
+      receiptId: approvalConsumptions.receiptId,
+      consumedAt: approvalConsumptions.consumedAt,
+      approverBasis: approvalConsumptions.approverBasis,
+      executorBasis: approvalConsumptions.executorBasis,
+    })
+    .from(approvalConsumptions)
+    .where(
+      and(
+        eq(approvalConsumptions.bookId, scope.bookId),
+        eq(approvalConsumptions.changeSetId, planId),
+      ),
+    )
+    .orderBy(approvalConsumptions.consumedAt, approvalConsumptions.approvalId);
+}
 
 export type SavedRequestRow = {
   readonly bookId: string;
@@ -230,6 +255,7 @@ export function listRecoveryRequests(
       approvalConsumedAt: approvals.consumedAt,
       approvalExpiresAt: approvals.expiresAt,
       approvalActorId: approvals.actorId,
+      approvalAuthorityBasis: approvals.authorityBasis,
       approvalRevoked: sql<boolean>`exists (
         select 1 from openerp.posting_approval_revocations revocation
         where revocation.book_id = ${commandReceipts.bookId}

@@ -1,3 +1,4 @@
+import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Statements from "@open-erp/contracts/report-statements";
@@ -1351,6 +1352,18 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
           approverId: approval.actorId,
           consumedById: principal.actorId,
           consumedAt: committedAt,
+          approverBasis: yield* collectPostingActorBasis(
+            transaction,
+            command.scope,
+            approval.actorId,
+            "approve_change",
+          ),
+          executorBasis: yield* collectPostingPrincipalBasis(
+            transaction,
+            command.scope,
+            principal,
+            "execute_change",
+          ),
         });
 
         if (

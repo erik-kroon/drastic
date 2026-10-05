@@ -458,6 +458,7 @@ export function readApproval(
       actorId: approvals.actorId,
       expiresAt: approvals.expiresAt,
       consumedAt: approvals.consumedAt,
+      authorityBasis: approvals.authorityBasis,
     })
     .from(approvals)
     .where(and(eq(approvals.bookId, bookId), eq(approvals.id, approvalId)));
@@ -474,6 +475,7 @@ export function readApprovals(transaction: Transaction, bookId: string, changeSe
       actorId: approvals.actorId,
       expiresAt: approvals.expiresAt,
       consumedAt: approvals.consumedAt,
+      authorityBasis: approvals.authorityBasis,
     })
     .from(approvals)
     .where(and(eq(approvals.bookId, bookId), eq(approvals.changeSetId, changeSetId)))
@@ -490,6 +492,7 @@ export function insertApproval(
     digest: string;
     actorId: string;
     expiresAt: string;
+    authorityBasis: Schema.JsonObject;
   },
 ) {
   return transaction.insert(approvals).values([row]).returning({
@@ -499,6 +502,14 @@ export function insertApproval(
     actorId: approvals.actorId,
     expiresAt: approvals.expiresAt,
   });
+}
+
+export function readPostingMembership(transaction: Transaction, bookId: string, actorId: string) {
+  return transaction
+    .select({ role: memberships.role })
+    .from(memberships)
+    .where(and(eq(memberships.bookId, bookId), eq(memberships.actorId, actorId)))
+    .for("share");
 }
 
 export function readOperatorMembership(transaction: Transaction, bookId: string, actorId: string) {
@@ -517,7 +528,11 @@ export function readOperatorMembership(transaction: Transaction, bookId: string,
 
 export function readActorAdmission(transaction: Transaction, actorId: string) {
   return transaction
-    .select({ enabled: identityAdmissions.enabled })
+    .select({
+      enabled: identityAdmissions.enabled,
+      providerId: identityAdmissions.providerId,
+      subject: identityAdmissions.subject,
+    })
     .from(identityAdmissions)
     .where(eq(identityAdmissions.actorId, actorId))
     .for("share");
@@ -702,6 +717,8 @@ export function insertApprovalConsumption(
     approverId: string;
     consumedById: string;
     consumedAt: string;
+    approverBasis: Schema.JsonObject;
+    executorBasis: Schema.JsonObject;
   },
 ) {
   return transaction.insert(approvalConsumptions).values([row]);

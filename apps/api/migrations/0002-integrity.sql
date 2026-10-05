@@ -364,7 +364,8 @@ BEGIN
   IF TG_OP='DELETE' THEN
     PERFORM openerp.fail('Forbidden','Approval history is immutable. Revoke unused authority instead.');
   END IF;
-  IF (to_jsonb(NEW)-'consumed_at') IS DISTINCT FROM (to_jsonb(OLD)-'consumed_at')
+  -- Generated scope is computed after BEFORE triggers; its stored authority basis stays immutable.
+  IF (to_jsonb(NEW)-ARRAY['consumed_at','authority_entity_id']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['consumed_at','authority_entity_id'])
     OR (OLD.consumed_at IS NOT NULL AND NEW.consumed_at IS DISTINCT FROM OLD.consumed_at) THEN
     PERFORM openerp.fail('Forbidden','Approval identity and consumption are immutable.');
   END IF;
@@ -658,3 +659,100 @@ CREATE TRIGGER immutable_vat_reporting_obligation BEFORE DELETE OR UPDATE ON ope
 CREATE TRIGGER immutable_vat_return_draft BEFORE DELETE OR UPDATE ON openerp.vat_return_drafts FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER immutable_voucher BEFORE DELETE OR UPDATE ON openerp.vouchers FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE CONSTRAINT TRIGGER voucher_expected_line_count_voucher AFTER INSERT ON openerp.vouchers DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION openerp.voucher_expected_line_count();
+
+ALTER TABLE openerp.approvals ADD CONSTRAINT approvals_authority_basis_check CHECK (
+  coalesce(jsonb_typeof(authority_basis) = 'object'
+    AND authority_basis->>'version' = '1'
+    AND authority_basis->>'policy' = 'generic-posting-authority-v1'
+    AND authority_basis->'scope'->>'bookId' = book_id
+    AND authority_basis->>'actorId' = actor_id
+    AND authority_basis->>'permission' = 'approve_change'
+    AND authority_basis->>'checkedAt' <> ''
+    AND authority_basis->>'membershipRole' IN ('operator', 'agent')
+    AND authority_basis->'admission'->>'kind' IN ('provisioned', 'synthetic_without_admission')
+    AND authority_basis->'responsibility'->>'kind' IN ('configured', 'unconfigured')
+    AND authority_basis->'authentication'->>'kind' IN ('apiCredential', 'betterAuthSession')
+    AND authority_basis->'authentication'->>'expiresAt' <> '', false)
+);
+ALTER TABLE openerp.approval_consumptions ADD CONSTRAINT approval_consumptions_authority_basis_check CHECK (
+  coalesce(jsonb_typeof(approver_basis) = 'object'
+    AND jsonb_typeof(executor_basis) = 'object'
+    AND approver_basis->>'version' = '1' AND executor_basis->>'version' = '1'
+    AND approver_basis->>'policy' = 'generic-posting-authority-v1'
+    AND executor_basis->>'policy' = 'generic-posting-authority-v1'
+    AND approver_basis->'scope'->>'bookId' = book_id
+    AND executor_basis->'scope'->>'bookId' = book_id
+    AND approver_basis->>'actorId' = approver_id
+    AND executor_basis->>'actorId' = consumed_by_id
+    AND approver_basis->>'permission' = 'approve_change'
+    AND executor_basis->>'permission' = 'execute_change'
+    AND approver_basis->>'checkedAt' <> '' AND executor_basis->>'checkedAt' <> ''
+    AND approver_basis->>'membershipRole' IN ('operator', 'agent')
+    AND executor_basis->>'membershipRole' IN ('operator', 'agent')
+    AND approver_basis->'admission'->>'kind' IN ('provisioned', 'synthetic_without_admission')
+    AND executor_basis->'admission'->>'kind' IN ('provisioned', 'synthetic_without_admission')
+    AND approver_basis->'responsibility'->>'kind' IN ('configured', 'unconfigured')
+    AND executor_basis->'responsibility'->>'kind' IN ('configured', 'unconfigured')
+    AND executor_basis->'authentication'->>'kind' IN ('apiCredential', 'betterAuthSession')
+    AND executor_basis->'authentication'->>'expiresAt' <> '', false)
+);
+
+ALTER TABLE openerp.approvals ADD CONSTRAINT approvals_authority_structure_check CHECK (coalesce(jsonb_typeof(authority_basis->'scope') = 'object'
+    AND jsonb_typeof(authority_basis->'checkedAt') = 'string'
+    AND jsonb_typeof(authority_basis->'responsibilityRequired') = 'boolean'
+    AND (CASE authority_basis->'admission'->>'kind'
+      WHEN 'synthetic_without_admission' THEN authority_basis->'admission' = '{"kind":"synthetic_without_admission"}'::jsonb
+      WHEN 'provisioned' THEN jsonb_typeof(authority_basis->'admission'->'providerId') = 'string'
+        AND jsonb_typeof(authority_basis->'admission'->'subject') = 'string'
+        AND authority_basis->'admission'->'enabled' = 'true'::jsonb
+      ELSE false END)
+    AND (CASE authority_basis->'responsibility'->>'kind'
+      WHEN 'unconfigured' THEN authority_basis->'responsibility' = '{"kind":"unconfigured"}'::jsonb
+      WHEN 'configured' THEN jsonb_typeof(authority_basis->'responsibility'->'id') = 'string'
+        AND jsonb_typeof(authority_basis->'responsibility'->'revision') = 'number'
+        AND authority_basis->'responsibility'->>'revision' ~ '^[1-9][0-9]*$'
+        AND authority_basis->'responsibility'->>'role' = 'bookkeepingApproverId'
+        AND jsonb_typeof(authority_basis->'responsibility'->'actorId') = 'string'
+      ELSE false END) AND (CASE authority_basis->'authentication'->>'kind'
+      WHEN 'apiCredential' THEN authority_basis->'authentication'->>'credentialHash' ~ '^[a-f0-9]{64}$'
+      WHEN 'betterAuthSession' THEN jsonb_typeof(authority_basis->'authentication'->'sessionId') = 'string'
+        AND authority_basis->'authentication'->>'sessionId' <> ''
+      ELSE false END), false));
+
+ALTER TABLE openerp.approval_consumptions ADD CONSTRAINT approval_consumptions_authority_structure_check CHECK (coalesce(jsonb_typeof(approver_basis->'scope') = 'object'
+    AND jsonb_typeof(approver_basis->'checkedAt') = 'string'
+    AND jsonb_typeof(approver_basis->'responsibilityRequired') = 'boolean'
+    AND (CASE approver_basis->'admission'->>'kind'
+      WHEN 'synthetic_without_admission' THEN approver_basis->'admission' = '{"kind":"synthetic_without_admission"}'::jsonb
+      WHEN 'provisioned' THEN jsonb_typeof(approver_basis->'admission'->'providerId') = 'string'
+        AND jsonb_typeof(approver_basis->'admission'->'subject') = 'string'
+        AND approver_basis->'admission'->'enabled' = 'true'::jsonb
+      ELSE false END)
+    AND (CASE approver_basis->'responsibility'->>'kind'
+      WHEN 'unconfigured' THEN approver_basis->'responsibility' = '{"kind":"unconfigured"}'::jsonb
+      WHEN 'configured' THEN jsonb_typeof(approver_basis->'responsibility'->'id') = 'string'
+        AND jsonb_typeof(approver_basis->'responsibility'->'revision') = 'number'
+        AND approver_basis->'responsibility'->>'revision' ~ '^[1-9][0-9]*$'
+        AND approver_basis->'responsibility'->>'role' = 'bookkeepingApproverId'
+        AND jsonb_typeof(approver_basis->'responsibility'->'actorId') = 'string'
+      ELSE false END) AND jsonb_typeof(executor_basis->'scope') = 'object'
+    AND jsonb_typeof(executor_basis->'checkedAt') = 'string'
+    AND jsonb_typeof(executor_basis->'responsibilityRequired') = 'boolean'
+    AND (CASE executor_basis->'admission'->>'kind'
+      WHEN 'synthetic_without_admission' THEN executor_basis->'admission' = '{"kind":"synthetic_without_admission"}'::jsonb
+      WHEN 'provisioned' THEN jsonb_typeof(executor_basis->'admission'->'providerId') = 'string'
+        AND jsonb_typeof(executor_basis->'admission'->'subject') = 'string'
+        AND executor_basis->'admission'->'enabled' = 'true'::jsonb
+      ELSE false END)
+    AND (CASE executor_basis->'responsibility'->>'kind'
+      WHEN 'unconfigured' THEN executor_basis->'responsibility' = '{"kind":"unconfigured"}'::jsonb
+      WHEN 'configured' THEN jsonb_typeof(executor_basis->'responsibility'->'id') = 'string'
+        AND jsonb_typeof(executor_basis->'responsibility'->'revision') = 'number'
+        AND executor_basis->'responsibility'->>'revision' ~ '^[1-9][0-9]*$'
+        AND executor_basis->'responsibility'->>'role' = 'bookkeepingApproverId'
+        AND jsonb_typeof(executor_basis->'responsibility'->'actorId') = 'string'
+      ELSE false END) AND (CASE executor_basis->'authentication'->>'kind'
+      WHEN 'apiCredential' THEN executor_basis->'authentication'->>'credentialHash' ~ '^[a-f0-9]{64}$'
+      WHEN 'betterAuthSession' THEN jsonb_typeof(executor_basis->'authentication'->'sessionId') = 'string'
+        AND executor_basis->'authentication'->>'sessionId' <> ''
+      ELSE false END), false));

@@ -1,3 +1,4 @@
+import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import * as ProcessorDb from "../../db/banking/processor-clearing";
 import { admitPosting, type PostingOwner } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -1451,6 +1452,7 @@ export function postOwnedJournal(
       digest: planDigest,
       actorId: approval.actorId,
       expiresAt: approval.expiresAt,
+      authorityBasis: yield* toJsonObject(approval.body.authorityBasis),
     });
     yield* admitPosting(
       transaction,
@@ -1556,6 +1558,19 @@ export function postOwnedJournal(
       approverId: approval.actorId,
       consumedById: principal.actorId,
       consumedAt: recordedAt,
+      approverBasis: yield* collectPostingActorBasis(
+        transaction,
+        scope,
+        approval.actorId,
+        "approve_change",
+        "informational",
+      ),
+      executorBasis: yield* collectPostingPrincipalBasis(
+        transaction,
+        scope,
+        principal,
+        "execute_change",
+      ),
     });
     yield* Db.insertExecutionReceipt(transaction, {
       bookId: scope.bookId,
@@ -2628,6 +2643,13 @@ export const approveRecognition = Effect.fn("commerceFx.approveRecognition")(fun
 
       const body = {
         id: newId("fx_recognition_approval"),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
         scope: command.scope,
         kind: "recognition",
         reviewId: review.id,
@@ -2862,6 +2884,13 @@ function approveSettlementLike(
       id: approvalId,
       scope,
       kind,
+      authorityBasis: yield* collectPostingPrincipalBasis(
+        transaction,
+        scope,
+        principal,
+        "approve_change",
+        "informational",
+      ),
       reviewId: review.id,
       reviewDigest: review.digest,
       actorId: principal.actorId,
@@ -3397,6 +3426,13 @@ export const approveSettlementCorrection = Effect.fn("commerceFx.approveSettleme
           id: approvalId,
           scope: command.scope,
           kind: "correction",
+          authorityBasis: yield* collectPostingPrincipalBasis(
+            transaction,
+            command.scope,
+            principal,
+            "approve_change",
+            "informational",
+          ),
           reviewId: review.id,
           reviewDigest: review.digest,
           actorId: principal.actorId,

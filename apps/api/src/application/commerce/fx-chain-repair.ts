@@ -1,3 +1,4 @@
+import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as Contracts from "@open-erp/contracts/commerce-fx";
 import * as Chain from "@open-erp/domain/fx-chain-repair";
 import { roundRational } from "@open-erp/domain/purchasing";
@@ -529,7 +530,16 @@ export const approveFxChainRepair = Effect.fn("commerceFx.approveChainRepair")(f
       actorId: principal.actorId,
       digest: review.digest,
       expiresAt: approval.expiresAt,
-      body: yield* toJsonObject(approval),
+      body: {
+        ...(yield* toJsonObject(approval)),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
+      },
     });
 
     yield* saveCommand(

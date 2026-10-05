@@ -1,3 +1,4 @@
+import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Policy from "@open-erp/contracts/legal-sales-policy";
@@ -240,7 +241,18 @@ export const approveArLegalIssue = Effect.fn("commerce.legalIssue.approve")(func
         receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
       });
 
-      yield* Db.insertIssueApproval(tx, scope.bookId, result);
+      const retainedApproval = {
+        ...result,
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          tx,
+          scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
+      };
+
+      yield* Db.insertIssueApproval(tx, scope.bookId, retainedApproval);
       yield* saveCommand(
         tx,
         scope,
@@ -397,6 +409,7 @@ export const executeArLegalIssue = Effect.fn("commerce.legalIssue.execute")(func
         digest: plan.planDigest,
         actorId: approval.actorId,
         expiresAt: approval.expiresAt,
+        authorityBasis: yield* toJsonObject(row.body.authorityBasis),
       });
 
       const postingReceipt = yield* executeChangeInTransaction(tx, principal, {

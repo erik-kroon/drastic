@@ -40,6 +40,62 @@ export const RecoveryList = Schema.Struct({
   next: Schema.NullOr(Accounting.Identifier),
 });
 
+export const ApprovalState = Schema.Literals([
+  "consumed",
+  "revoked",
+  "expired",
+  "authority_lost",
+  "unconsumed_at_check",
+]);
+
+export const PostingAuthorityBasis = Schema.Struct({
+  version: Schema.Literal(1),
+  policy: Schema.Literal("generic-posting-authority-v1"),
+  scope: Accounting.Scope,
+  actorId: Accounting.Identifier,
+  permission: Schema.Literals(["approve_change", "execute_change"]),
+  membershipRole: Schema.Literals(["operator", "agent"]),
+  checkedAt: Schema.String,
+  responsibilityRequired: Schema.Boolean,
+  admission: Schema.Union([
+    Schema.Struct({ kind: Schema.Literal("synthetic_without_admission") }),
+    Schema.Struct({
+      kind: Schema.Literal("provisioned"),
+      providerId: Schema.String,
+      subject: Schema.String,
+      enabled: Schema.Literal(true),
+    }),
+  ]),
+  responsibility: Schema.Union([
+    Schema.Struct({ kind: Schema.Literal("unconfigured") }),
+    Schema.Struct({
+      kind: Schema.Literal("configured"),
+      id: Accounting.Identifier,
+      revision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+      role: Schema.Literal("bookkeepingApproverId"),
+      actorId: Accounting.Identifier,
+    }),
+  ]),
+});
+
+export const ApprovalObservation = Schema.Union([
+  Schema.Struct({ state: Schema.Literal("prepared"), approval: Schema.Null, basis: Schema.Null }),
+  Schema.Struct({
+    state: ApprovalState,
+    approval: Accounting.Approval,
+    basis: PostingAuthorityBasis,
+  }),
+]);
+
+export const ApprovalConsumptionEvidence = Schema.Struct({
+  approvalId: Accounting.Identifier,
+  groupId: Accounting.Identifier,
+  receiptId: Accounting.Identifier,
+  consumedAt: Schema.String,
+  approverBasis: PostingAuthorityBasis,
+  executorBasis: PostingAuthorityBasis,
+});
+
 export const RecoveryRequest = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   operation: PostingOperation,
@@ -48,9 +104,7 @@ export const RecoveryRequest = Schema.Struct({
   recordedAt: Schema.String,
   resultId: Schema.NullOr(Accounting.Identifier),
   planDigest: Schema.NullOr(Accounting.Digest),
-  approvalState: Schema.NullOr(
-    Schema.Literals(["consumed", "revoked", "expired", "authority_lost", "unconsumed_at_check"]),
-  ),
+  approvalState: Schema.NullOr(ApprovalState),
 });
 
 export const PostingRecovery = Schema.Struct({
@@ -62,6 +116,8 @@ export const PostingRecovery = Schema.Struct({
     blocker: Schema.NullOr(Schema.Struct({ code: Accounting.FailureCode, message: Schema.String })),
   }),
   availableApproval: Schema.NullOr(Accounting.Approval),
+  approvalObservation: ApprovalObservation,
+  approvalConsumptions: Schema.Array(ApprovalConsumptionEvidence),
   requests: Schema.Array(RecoveryRequest),
   nextRequest: Schema.NullOr(Accounting.IdempotencyHeaders.fields["idempotency-key"]),
 });

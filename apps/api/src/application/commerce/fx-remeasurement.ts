@@ -1,3 +1,4 @@
+import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as Contracts from "@open-erp/contracts/commerce-fx";
 import * as Remeasurement from "@open-erp/domain/fx-remeasurement";
 import { AccountingError, FailureCode } from "@open-erp/domain/errors";
@@ -497,7 +498,16 @@ export const approveFxRemeasurement = Effect.fn("commerceFx.approveRemeasurement
       actorId: principal.actorId,
       digest: review.digest,
       expiresAt: approval.expiresAt,
-      body: yield* toJsonObject(approval),
+      body: {
+        ...(yield* toJsonObject(approval)),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
+      },
     });
 
     yield* saveCommand(

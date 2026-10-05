@@ -206,14 +206,16 @@ function verifyAuthority(
         actorId: authority.actorId,
         kind: authority.kind,
         credentialHash: authority.credentialHash,
-      } satisfies VerifiedPrincipal;
+        expiresAt: authority.expiresAt,
+      } satisfies VerifiedPrincipal & { readonly expiresAt: string };
     }
 
     return {
       actorId: authority.actorId,
       kind: authority.kind,
       sessionId: authority.sessionId,
-    } satisfies VerifiedPrincipal;
+      expiresAt: authority.expiresAt,
+    } satisfies VerifiedPrincipal & { readonly expiresAt: string };
   });
 }
 

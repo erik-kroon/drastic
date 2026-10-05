@@ -5,6 +5,16 @@ import type { Transaction } from "../db/transaction";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
 
+export function readOnboardingResponsibility(tx: Transaction, scope: Scope) {
+  return Effect.gen(function* () {
+    const current = (yield* Db.readLatestResponsibility(tx, scope.bookId))[0];
+
+    return current === undefined
+      ? undefined
+      : yield* decode(O.OnboardingResponsibilities, current.body);
+  });
+}
+
 export function requireOnboardingResponsibility(
   tx: Transaction,
   scope: Scope,
@@ -12,14 +22,11 @@ export function requireOnboardingResponsibility(
   role: "preparerId" | "bookkeepingApproverId" | "paymentApproverId" | "vatResponsibleId",
 ) {
   return Effect.gen(function* () {
-    const policies = yield* Effect.forEach(
-      yield* Db.readRecords(tx, "responsibilities", scope.bookId),
-      (row) => decode(O.OnboardingResponsibilities, row.body),
-    );
-
-    const current = policies.sort((a, b) => b.revision - a.revision)[0];
+    const current = yield* readOnboardingResponsibility(tx, scope);
 
     if (current !== undefined && current.assignments[role] !== actorId)
       return yield* failure("Forbidden");
+
+    return current;
   });
 }

@@ -1,3 +1,4 @@
+import { collectPostingPrincipalBasis } from "./posting-authority";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
 import * as Effect from "effect/Effect";
@@ -1066,6 +1067,13 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           expiresAt,
         });
 
+        const authorityBasis = yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+        );
+
         const reversalApproval = yield* Db.insertApproval(transaction, {
           bookId: command.scope.bookId,
           id: newId("approval"),
@@ -1073,6 +1081,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           digest: bundle.reversal.planDigest,
           actorId: principal.actorId,
           expiresAt,
+          authorityBasis,
         });
 
         const replacementApproval = yield* Db.insertApproval(transaction, {
@@ -1082,6 +1091,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           digest: bundle.replacement.planDigest,
           actorId: principal.actorId,
           expiresAt,
+          authorityBasis,
         });
 
         const reversalApprovalId = reversalApproval[0]?.id;

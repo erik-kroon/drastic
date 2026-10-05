@@ -1,3 +1,4 @@
+import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as ProcessorDb from "../../db/banking/processor-clearing";
 import * as Contracts from "@open-erp/contracts/foreign-cash";
 import * as Rates from "@open-erp/contracts/exchange-rates";
@@ -957,7 +958,16 @@ export const approveForeignCash = Effect.fn("foreignCash.approve")(function* (
     yield* CashDb.insertApproval(transaction, {
       bookId: command.scope.bookId,
       ...approval,
-      body: yield* toJsonObject(approval),
+      body: {
+        ...(yield* toJsonObject(approval)),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
+      },
     });
     yield* saveCommand(
       transaction,
@@ -1151,7 +1161,7 @@ export const executeForeignCash = Effect.fn("foreignCash.execute")(function* (
         transaction,
         command.scope,
         principal,
-        { ...approval, bookId: command.scope.bookId, body: yield* toJsonObject(approval) },
+        { ...approval, bookId: command.scope.bookId, body: row.body },
         review.postingAction,
         { kind: "foreign_cash", id: review.id },
       );

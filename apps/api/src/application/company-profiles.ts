@@ -1,3 +1,4 @@
+import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Effect from "effect/Effect";
 import {
@@ -748,6 +749,13 @@ export const approveCompanyActivation = Effect.fn("companyProfiles.approveActiva
         digest: plan.digest,
         actorId: principal.actorId,
         expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          scope,
+          principal,
+          "approve_change",
+          "informational",
+        ),
       }).pipe(
         Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"))),
       );
@@ -956,6 +964,19 @@ export const executeCompanyActivation = Effect.fn("companyProfiles.executeActiva
         approverId: approval.actorId,
         consumedById: principal.actorId,
         consumedAt: committedAt,
+        approverBasis: yield* collectPostingActorBasis(
+          transaction,
+          scope,
+          approval.actorId,
+          "approve_change",
+          "informational",
+        ),
+        executorBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          scope,
+          principal,
+          "execute_change",
+        ),
       });
 
       if (

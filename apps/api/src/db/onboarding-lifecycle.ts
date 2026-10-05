@@ -39,6 +39,18 @@ export function readRecords(tx: Transaction, kind: RecordKind, bookId: string, i
     .limit(1001);
 }
 
+export function readLatestResponsibility(tx: Transaction, bookId: string) {
+  return tx
+    .select({ body: onboardingResponsibilities.body })
+    .from(onboardingResponsibilities)
+    .where(eq(onboardingResponsibilities.bookId, bookId))
+    .orderBy(
+      sql`(${onboardingResponsibilities.body}->>'revision')::bigint desc`,
+      onboardingResponsibilities.id,
+    )
+    .limit(1);
+}
+
 export function insertRecord(
   tx: Transaction,
   kind: RecordKind,

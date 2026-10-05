@@ -1,3 +1,4 @@
+import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import { admitPosting } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Vat from "@open-erp/contracts/vat-returns";
@@ -1663,6 +1664,13 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
             digest: plan.planDigest,
             actorId: principal.actorId,
             expiresAt: new Date(Date.parse(now.now) + approvalLifetimeMs).toISOString(),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
           }))[0];
 
           if (stored === undefined) return yield* failure("InternalError");
@@ -1900,6 +1908,19 @@ function commitReclassificationVoucher(
       approverId: approval.actorId,
       consumedById: principal.actorId,
       consumedAt: recordedAt,
+      approverBasis: yield* collectPostingActorBasis(
+        transaction,
+        scope,
+        approval.actorId,
+        "approve_change",
+        "informational",
+      ),
+      executorBasis: yield* collectPostingPrincipalBasis(
+        transaction,
+        scope,
+        principal,
+        "execute_change",
+      ),
     });
     const consumed = yield* Db.consumeApproval(transaction, scope.bookId, approval.id, recordedAt);
 

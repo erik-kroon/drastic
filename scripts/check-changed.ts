@@ -18,7 +18,7 @@ const invocationId = randomUUID();
 
 const temporaryConfigName = `.tsconfig.changed-${invocationId}.json`;
 
-const toolThreads = "2";
+const toolThreads = "1";
 
 const timeoutSeconds = Number(process.env.CHECK_CHANGED_TIMEOUT_SECONDS ?? "60");
 

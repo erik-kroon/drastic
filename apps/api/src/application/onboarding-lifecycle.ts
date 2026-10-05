@@ -102,8 +102,12 @@ export function currentOnboardingCase(tx: Transaction, scope: Scope) {
 }
 
 function currentPolicy(tx: Transaction, scope: Scope) {
-  return records(tx, scope, "responsibilities", O.OnboardingResponsibilities).pipe(
-    Effect.map((policies) => policies.sort((a, b) => b.revision - a.revision)[0] ?? null),
+  return Db.readLatestResponsibility(tx, scope.bookId).pipe(
+    Effect.flatMap((rows) =>
+      rows[0] === undefined
+        ? Effect.succeed(null)
+        : decode(O.OnboardingResponsibilities, rows[0].body),
+    ),
   );
 }
 

@@ -1,3 +1,4 @@
+import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import { requireOnboardingResponsibility } from "./onboarding-policy";
 import * as OnboardingCaseDb from "../db/onboarding";
 import * as OnboardingLifecycleDb from "../db/onboarding-lifecycle";
@@ -1104,6 +1105,12 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         digest: plan.planDigest,
         actorId: principal.actorId,
         expiresAt,
+        authorityBasis: yield* collectPostingPrincipalBasis(
+          transaction,
+          command.scope,
+          principal,
+          "approve_change",
+        ),
       }).pipe(
         Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"))),
       );
@@ -1448,6 +1455,18 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       approverId: approval.actorId,
       consumedById: principal.actorId,
       consumedAt: recordedAt,
+      approverBasis: yield* collectPostingActorBasis(
+        transaction,
+        command.scope,
+        approval.actorId,
+        "approve_change",
+      ),
+      executorBasis: yield* collectPostingPrincipalBasis(
+        transaction,
+        command.scope,
+        principal,
+        "execute_change",
+      ),
     });
 
     const consumed = yield* Db.consumeApproval(

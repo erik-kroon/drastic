@@ -156,6 +156,7 @@ export const onboardingFirstPeriodCompletions = openerp.table(
     body: jsonb().$type<Schema.JsonObject>().notNull(),
   },
 );
+
 export const credentials = openerp.table("credentials", {
   tokenHash: text("token_hash").primaryKey(),
   actorId: text("actor_id").notNull(),
@@ -407,6 +408,7 @@ export const approvals = openerp.table("approvals", {
   changeSetId: text("change_set_id").notNull(),
   digest: text().notNull(),
   actorId: text("actor_id").notNull(),
+  authorityBasis: jsonb("authority_basis").$type<Schema.JsonObject>().notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
   consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }),
 });
@@ -629,6 +631,8 @@ export const approvalConsumptions = openerp.table("approval_consumptions", {
   receiptId: text("receipt_id").notNull(),
   approverId: text("approver_id").notNull(),
   consumedById: text("consumed_by_id").notNull(),
+  approverBasis: jsonb("approver_basis").$type<Schema.JsonObject>().notNull(),
+  executorBasis: jsonb("executor_basis").$type<Schema.JsonObject>().notNull(),
   consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
