@@ -127,11 +127,13 @@ export function insertManifest(
  * read is only reachable by the runner actor and it is bounded rather than a
  * full sweep of the installation.
  */
-export function readRunnerBooks(transaction: Transaction) {
+export function readRunnerBooks(transaction: Transaction, actorId: string) {
   return transaction.execute<{ readonly id: string }>(
     sql`
        select distinct b.id
         from openerp.books b
+         join openerp.memberships membership on membership.book_id = b.id
+          and membership.actor_id = ${actorId} and membership.role = 'operator'
          join openerp.period_work_manifests m on m.book_id = b.id
          join openerp.period_work_children c on c.book_id = m.book_id and c.manifest_id = m.id
         where c.state in ('pending', 'waiting_predecessor')

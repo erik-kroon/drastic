@@ -1831,9 +1831,9 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
 
   return yield* withTransaction((transaction) =>
     Effect.gen(function* () {
-      yield* admitRunnerActor(transaction, token);
+      const actorId = yield* admitRunnerActor(transaction, token);
 
-      const books = yield* Db.readRunnerBooks(transaction);
+      const books = yield* Db.readRunnerBooks(transaction, actorId);
 
       const open: Array<{
         manifestId: string;
@@ -1882,17 +1882,14 @@ export const stopFailedPeriodWorkDelivery = Effect.fn("periodWork.stopFailedDeli
 
     if (!token) return yield* failure("Unavailable");
 
-    return yield* withTransaction((transaction) =>
-      Effect.gen(function* () {
-        yield* admitRunnerActor(transaction, token);
-
-        yield* Db.settleExhaustedPeriodWorkDelivery(
-          transaction,
-          payload.scope.bookId,
-          payload.manifestId,
-        );
-      }).pipe(Effect.mapError(databaseFailure)),
-    );
+    return yield* withBook(token, payload.scope, true, function* (transaction) {
+      yield* requireAccess(transaction, true);
+      yield* Db.settleExhaustedPeriodWorkDelivery(
+        transaction,
+        payload.scope.bookId,
+        payload.manifestId,
+      );
+    });
   },
 );
 

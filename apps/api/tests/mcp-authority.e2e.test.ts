@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
@@ -98,53 +98,53 @@ test("MCP withholds human authority and preserves scoped approved execution and 
     ...capabilityAgentPolicy(name, definition),
   }));
 
-  expect(inventory.filter((entry) => entry.classification === "unclassified")).toEqual([]);
+  const matrix = Schema.decodeSync(
+    Schema.fromJsonString(
+      Schema.Struct({
+        version: Schema.Literal(1),
+        capabilities: Schema.Array(
+          Schema.Struct({
+            name: Schema.String,
+            readOnly: Schema.Boolean,
+            classification: Schema.String,
+            exposed: Schema.Boolean,
+          }),
+        ),
+      }),
+    ),
+  )(
+    await readFile(
+      new URL("../../../docs/plans/permission-action-matrix.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  expect(inventory.toSorted((left, right) => left.name.localeCompare(right.name))).toEqual(
+    matrix.capabilities.toSorted((left, right) => left.name.localeCompare(right.name)),
+  );
   expect([...names].sort()).toEqual(
-    inventory
+    matrix.capabilities
       .filter((entry) => entry.exposed)
       .map((entry) => entry.name)
       .sort(),
   );
 
-  const humanOnly = [
-    "company_record_fact",
-    "company_review_fact",
-    "company_bind_role",
-    "company_prepare_activation",
-    "company_approve_activation",
-    "company_execute_activation",
-    "company_get_activation",
-    "period_work_approve_batch",
-    "period_work_execute_batch",
-    "firm_create",
-    "firm_save_client",
-    "firm_remove_client",
-    "firm_save_member",
-    "company_create",
-    "company_save_setup",
-    "workspace_assign_work",
-  ];
-
-  for (const name of humanOnly) {
-    expect(names).not.toContain(name);
+  for (const entry of matrix.capabilities) {
+    if (entry.exposed) {
+      expect(catalog.tools.find((tool) => tool.name === entry.name)?.annotations.readOnlyHint).toBe(
+        entry.readOnly,
+      );
+      continue;
+    }
 
     for (const token of [book.agentToken, book.token]) {
-      const response = await rpc(token, "tools/call", { name, arguments: {} });
+      const response = await rpc(token, "tools/call", { name: entry.name, arguments: {} });
       expect(response.error).toEqual({
         code: -32602,
         message: "Unknown tool.",
         data: { code: "InvalidRequest", recovery: "permanent" },
       });
     }
-  }
-
-  for (const name of [
-    "ledger_prepare_journal",
-    "changes_execute",
-    "bank_discover_match_candidates",
-    "receipts_get",
-  ]) {
-    expect(names).toContain(name);
   }
 
   const plan = await prepare(book);
@@ -262,7 +262,9 @@ test("MCP withholds human authority and preserves scoped approved execution and 
       {
         catalog,
         inventory,
-        hiddenNames: humanOnly,
+        hiddenNames: matrix.capabilities
+          .filter((entry) => !entry.exposed)
+          .map((entry) => entry.name),
         scope,
         committed,
         replayed,

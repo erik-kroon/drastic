@@ -10,6 +10,7 @@ import { expect, test } from "vitest";
 import * as Evaluations from "@open-erp/contracts/evaluations";
 import * as A from "@open-erp/contracts/accounting";
 import * as I from "@open-erp/contracts/source-intake";
+import * as PeriodWork from "@open-erp/contracts/period-work";
 import * as Schema from "effect/Schema";
 import {
   apiDirectory,
@@ -23,6 +24,12 @@ import {
   approve,
   key,
 } from "../../support/fixtures";
+import {
+  pendingManifest,
+  startRunner,
+  stopRunner,
+  type Runner,
+} from "../../support/preparation-runner";
 
 const run = promisify(execFile),
   hash = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
@@ -155,6 +162,8 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
   let sourceWorker: ReturnType<typeof createTestHarness> | undefined,
     destinationWorker: ReturnType<typeof createTestHarness> | undefined;
 
+  let preparationRunner: Runner | undefined;
+
   let parkedOld: Client | undefined, target: Client | undefined;
   let createdDatabase = false;
   const createdRoles: string[] = [];
@@ -271,6 +280,22 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
       Evaluations.EvaluationContract,
     );
 
+    const pendingWork = await pendingManifest(book);
+
+    const pendingProgress = await decoded(
+      await sourceCall(`/period-work/manifests/${pendingWork.manifest.id}/progress`),
+      PeriodWork.PeriodWorkRunProgress,
+    );
+
+    expect(pendingProgress.children).toEqual([
+      {
+        workIdentity: pendingWork.workIdentity,
+        state: "pending",
+        revision: "1",
+        cancelVersion: "0",
+      },
+    ]);
+
     const objects = await admin.query<{
       object_key: string;
       sha256: string;
@@ -368,6 +393,14 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     target = await connect(targetAdmin.toString());
     expect(await image(target, book.bookId)).toEqual(before!);
     await admin.query(`REVOKE CONNECT ON DATABASE ${dbName} FROM PUBLIC`);
+
+    const fencedAdmission = await admin.query<{ oldMayConnect: boolean; newMayConnect: boolean }>(
+      `select has_database_privilege($1, $3, 'CONNECT') as "oldMayConnect",
+        has_database_privilege($2, $3, 'CONNECT') as "newMayConnect"`,
+      [oldRole, newRole, dbName],
+    );
+
+    expect(fencedAdmission.rows).toEqual([{ oldMayConnect: false, newMayConnect: false }]);
     await admin.query(`GRANT CONNECT ON DATABASE ${dbName} TO ${newRole}`);
     // Stop the actual old deployment's login and terminate its already-open pooled connections.
     parkedOld = await connect(oldURL.toString());
@@ -417,6 +450,13 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     expect(before.evaluation_contracts?.count).toBe(1);
 
     expect(await image(target, book.bookId)).toEqual(before!);
+
+    const restoredPending = await decoded(
+      await targetCall(`/period-work/manifests/${pendingWork.manifest.id}/progress`),
+      PeriodWork.PeriodWorkRunProgress,
+    );
+
+    expect(restoredPending).toEqual(pendingProgress);
     const afterSource = await runHost(targetURL.toString(), restoredStore, "read", occurrence.id);
     expect(afterSource.ok).toBe(true);
     const restoredOriginal = Schema.decodeUnknownSync(I.SourceOccurrenceView)(afterSource.value);
@@ -499,6 +539,95 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
       jsonClosure: "matched",
     });
 
+    const restoredDb = target;
+    const originalWorkKey = `${book.bookId}/${pendingWork.manifest.id}/1`;
+    const queueId = `period-work/${originalWorkKey}`;
+    const ledgerBefore = await decoded(await targetCall("/ledger"), A.LedgerSnapshot);
+
+    const financialTables = [
+      "books",
+      "vouchers",
+      "journal_lines",
+      "execution_receipts",
+      "outbox",
+      "approvals",
+      "series_counters",
+    ] as const;
+
+    preparationRunner = startRunner(base.token, targetURL.toString());
+    await expect
+      .poll(
+        async () => {
+          const queued = await restoredDb.query<{
+            state: string;
+            attemptsMade: number;
+            stalledCount: number;
+          }>(
+            `select state, attempts_made as "attemptsMade", stalled_count as "stalledCount"
+              from public.effect_mq_jobs where id = $1`,
+            [queueId],
+          );
+
+          return queued.rows[0];
+        },
+        { timeout: 20000, interval: 100 },
+      )
+      .toEqual({ state: "completed", attemptsMade: 1, stalledCount: 0 });
+
+    const rediscovered = await decoded(
+      await targetCall(`/period-work/manifests/${pendingWork.manifest.id}/progress`),
+      PeriodWork.PeriodWorkRunProgress,
+    );
+
+    const ledgerAfter = await decoded(await targetCall("/ledger"), A.LedgerSnapshot);
+    const afterRediscovery = await image(restoredDb, book.bookId);
+
+    expect(rediscovered.children).toMatchObject([
+      {
+        workIdentity: pendingWork.workIdentity,
+        state: "needs_review",
+        revision: "2",
+        cancelVersion: "0",
+      },
+    ]);
+    expect(ledgerAfter).toEqual(ledgerBefore);
+
+    for (const table of financialTables) expect(afterRediscovery[table]).toEqual(before[table]);
+
+    await stopRunner(preparationRunner);
+    preparationRunner = undefined;
+    await writeFile(
+      join(env.artifacts, "period-work-native-restored-pending-rediscovery.json"),
+      JSON.stringify(
+        {
+          originalWorkKey,
+          queueId,
+          pendingProgress,
+          restoredPending,
+          rediscovered,
+          admission: {
+            publicConnectRevoked: true,
+            selectedOldRoleLoginRefused: true,
+            newFixtureRoleExplicitlyGranted: true,
+          },
+          financialBefore: Object.fromEntries(
+            financialTables.map((table) => [table, before[table]]),
+          ),
+          financialAfter: Object.fromEntries(
+            financialTables.map((table) => [table, afterRediscovery[table]]),
+          ),
+          ledgerBefore,
+          ledgerAfter,
+          limitations: [
+            "Explicit disposable fixture readmission does not authorize operations restore resumption",
+          ],
+        },
+        null,
+        2,
+      ),
+      { mode: 0o600 },
+    );
+
     await writeFile(
       join(env.artifacts, "evaluation-recovery-closure.json"),
       JSON.stringify({ beforeQualification, afterQualification, strictProbe }, null, 2),
@@ -543,6 +672,7 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     hasPrimaryFailure = true;
   } finally {
     for (const cleanup of [
+      () => (preparationRunner ? stopRunner(preparationRunner) : undefined),
       () => destinationWorker?.close(),
       () => sourceWorker?.close(),
       () => parkedOld?.end(),

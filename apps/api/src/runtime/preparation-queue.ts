@@ -38,7 +38,7 @@ export class PreparationQueue extends Job.make("preparation", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: preparationKey,
-  retryable: isTerminalDeliveryFailure,
+  retryable: (error) => !isTerminalDeliveryFailure(error),
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -85,7 +85,7 @@ export class PeriodWorkQueue extends Job.make("period-work", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: periodWorkKey,
-  retryable: isTerminalDeliveryFailure,
+  retryable: (error) => !isTerminalDeliveryFailure(error),
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}

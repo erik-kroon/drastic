@@ -1,0 +1,5004 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "name": "accountant_review_artifact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/accountant-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/review.ts"
+      ]
+    },
+    {
+      "name": "accountant_review_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/accountant-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/review.ts"
+      ]
+    },
+    {
+      "name": "accountant_review_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/accountant-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/review.ts"
+      ]
+    },
+    {
+      "name": "accountant_review_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/accountant-review.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/review.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "accountant_review_rows",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/accountant-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/review.ts"
+      ]
+    },
+    {
+      "name": "asset_disposals_execute",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/asset-disposals.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/asset-disposals.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "asset_disposals_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/asset-disposals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/asset-disposals.ts"
+      ]
+    },
+    {
+      "name": "asset_disposals_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/asset-disposals.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/asset-disposals.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_create_source_coverage",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-source-coverage.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_discover_match_candidates",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-match-candidates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_execute_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/settlements.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_execute_match_reversal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-match-reversals.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_get_allocation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_capacity_reconciliation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_inventory_signoff",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-inventory-signoffs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_match_reversal",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-match-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_reconciliation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_signoff",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-signoffs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_source_coverage",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-source-coverage.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_get_statement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_import_statement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_list_inventory_signoffs",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-inventory-signoffs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_list_match_reversals",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-match-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_list_signoffs",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-signoffs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_list_source_coverage",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-source-coverage.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts"
+      ]
+    },
+    {
+      "name": "bank_match_observation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_prepare_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_prepare_inventory_signoff",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-inventory-signoffs.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_prepare_match_reversal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-match-reversals.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_prepare_signoff",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-signoffs.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_reconcile",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "bank_reconcile_capacity",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/banking.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_approve_foreign_cash",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_approve_processor_clearing",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_execute_foreign_cash",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_execute_processor_clearing",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_fetch_processor_observations",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_get_foreign_cash_holding",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts"
+      ]
+    },
+    {
+      "name": "banking_get_foreign_cash_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts"
+      ]
+    },
+    {
+      "name": "banking_get_processor_account",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts"
+      ]
+    },
+    {
+      "name": "banking_get_processor_fetch",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts"
+      ]
+    },
+    {
+      "name": "banking_get_processor_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts"
+      ]
+    },
+    {
+      "name": "banking_prepare_foreign_cash",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_prepare_processor_clearing",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_read_provider_observation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-source-revisions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/bank-source-revisions.ts"
+      ]
+    },
+    {
+      "name": "banking_read_sync_window",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bank-sync-windows.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/bank-sync-windows.ts"
+      ]
+    },
+    {
+      "name": "banking_reconcile_foreign_cash",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/foreign-cash.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/foreign-cash.ts"
+      ]
+    },
+    {
+      "name": "banking_reconcile_processor_clearing",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts"
+      ]
+    },
+    {
+      "name": "banking_register_processor_account",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "banking_register_processor_native_credit",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/processor-clearing.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/processor-clearing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "book_get_setup",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "book_get_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "book_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "cases_get_context",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "cases_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "cases_prepare_snapshot",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cases.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "cases_resolve_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "cash_capture_basis",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "cash_capture_forecast",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "cash_get_basis",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts"
+      ]
+    },
+    {
+      "name": "cash_get_forecast",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts"
+      ]
+    },
+    {
+      "name": "cash_list_bases",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts"
+      ]
+    },
+    {
+      "name": "cash_list_forecasts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-forecast.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-forecast.ts"
+      ]
+    },
+    {
+      "name": "catalog_get_article",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/catalog.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "catalog_list_articles",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/catalog.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "changes_execute",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "changes_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "changes_validate",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "closing_financial_close_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/financial-close.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/financial-close.ts"
+      ]
+    },
+    {
+      "name": "closing_get_financial_close_certificate",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/financial-close.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/financial-close.ts"
+      ]
+    },
+    {
+      "name": "closing_get_financial_opening_set",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/financial-close.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/financial-close.ts"
+      ]
+    },
+    {
+      "name": "closing_get_financial_year_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/financial-close.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/financial-close.ts"
+      ]
+    },
+    {
+      "name": "collections_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/collections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/collections.ts"
+      ]
+    },
+    {
+      "name": "collections_prepare_reminder",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/collections.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/collections.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "collections_read_reminder",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/collections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/collections.ts"
+      ]
+    },
+    {
+      "name": "collections_statement_export",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/collections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/collections.ts"
+      ]
+    },
+    {
+      "name": "collections_worklist",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/collections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/collections.ts"
+      ]
+    },
+    {
+      "name": "commerce_apply_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_approve_peppol_exchange",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_ar_legal_issue_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/ar-legal-issue.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_collect_peppol_outcome",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_create_counterparty",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_create_invoice",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_create_register_report",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/register-reports.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_customer_credit_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_dispatch_peppol_exchange",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_execute_allocation_reversal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_allocation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_allocation_reversal",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_allocation_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_ar_legal_accounting_profile",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/ar-legal-issue.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_ar_legal_issue",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/ar-legal-issue.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_ar_legal_issue_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/ar-legal-issue.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_counterparty",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_customer_credit",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_customer_credit_artifact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_customer_credit_artifact_state",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_customer_credit_capacity",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_customer_credit_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_cancellation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-cancellations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_cancellation_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-cancellations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_delivery",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-delivery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_document",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-documents.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_draft",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_issue_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-issuance.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_pdf",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-pdf.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_invoice_policy_candidate",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-policy.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_legal_delivery",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-delivery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_legal_invoice_pdf",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-invoice-pdf.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_legal_sales_policy",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-sales-policy.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_payment_capacity",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_peppol_artifact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_peppol_attempt",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_peppol_binding",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_peppol_inbound",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_peppol_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_purchase_recognition",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-recognition.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/purchase-recognition.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_purchase_recognition_by_draft",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-recognition.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/purchase-recognition.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_recurring_agreement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_recurring_draft_scheduling",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_recurring_occurrence",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_register_allocation_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_register_report",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/register-reports.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_service_purchase_recognition",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/service-purchases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/service-purchases.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_service_purchase_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/service-purchases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/service-purchases.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_acceptance_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-acceptance.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_credit_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-credits.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_invoice_draft",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_payee",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-payment-batches.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_payment_batch",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-payment-batches.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_get_supplier_refund_position",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-refunds.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-refunds.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_delivery_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-delivery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_document_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-documents.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_draft_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_issue_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-issuance.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_payments",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_pdf_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-pdf.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_invoice_policy_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-policy.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_legal_delivery_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-delivery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_legal_invoice_pdf_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-invoice-pdf.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_legal_sales_policy_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/legal-sales-policy.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_allocation_reversals",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_counterparties",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_invoice_drafts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_invoices",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_peppol_reviews",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_recurring_agreements",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_recurring_occurrences",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_register_reports",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/register-reports.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_supplier_invoice_drafts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_list_supplier_payment_eligibility",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-payment-batches.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_plan_recurring_occurrences",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/recurring-invoices.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_prepare_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_prepare_allocation_reversal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce-allocation-reversals.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_prepare_invoice_document",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-documents.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_prepare_peppol_artifact",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_prepare_peppol_review",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_read_cash_method_line",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-method.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-method.ts"
+      ]
+    },
+    {
+      "name": "commerce_receive_peppol_envelope",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "record",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_register_peppol_binding",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_render_customer_credit_artifact",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/customer-credit-notes.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-legal.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_resume_invoice_document",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-documents.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_return_peppol_review",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/peppol-exchange.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/peppol-exchange.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_revise_counterparty",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_revise_invoice",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "commerce_sales_register",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_service_purchase_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/service-purchases.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/service-purchases.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_acceptance_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-acceptance.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_credit_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-credits.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_invoice_draft_duplicates",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_invoice_draft_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-invoice-drafts.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_invoice_duplicates",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/commerce.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "commerce_supplier_refund_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-refunds.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-refunds.ts"
+      ]
+    },
+    {
+      "name": "company_approve_activation",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_bind_role",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_create",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-setup.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_execute_activation",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "statutory_activation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_get_activation",
+      "readOnly": true,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "read",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts"
+      ]
+    },
+    {
+      "name": "company_get_profile",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts"
+      ]
+    },
+    {
+      "name": "company_get_setup",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-setup.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts"
+      ]
+    },
+    {
+      "name": "company_prepare_activation",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_record_fact",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_review_fact",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-profiles.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-profiles.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "company_save_setup",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-setup.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "corrections_chain",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_execute",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "corrections_for_voucher",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_get_impact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "corrections_recover_request",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "corrections_review_impact",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corrections.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "crm_directory",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/crm-master.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "crm_directory_export",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/crm-master.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "crm_get_invoice_defaults",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/crm-master.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "crm_get_reviewed_recipient",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/crm-master.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "deadlines_fulfillment_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/deadlines.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "deadlines_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/deadlines.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "dimensions_assignment_report",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/dimensions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/dimensions.ts"
+      ]
+    },
+    {
+      "name": "dimensions_classification_view",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/dimensions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/dimensions.ts"
+      ]
+    },
+    {
+      "name": "dimensions_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/dimensions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "dimensions_restatement_view",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/dimensions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/dimensions.ts"
+      ]
+    },
+    {
+      "name": "directory_read_balances",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/party-identity.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/party-identity.ts"
+      ]
+    },
+    {
+      "name": "documents_get_signature_intent",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/document-signatures.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/document-signatures.ts"
+      ]
+    },
+    {
+      "name": "documents_get_signature_manifest",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/document-signatures.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/document-signatures.ts"
+      ]
+    },
+    {
+      "name": "evaluation_capture_contract",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/evaluations.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/evaluations.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "evaluation_get_contract",
+      "readOnly": true,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/evaluations.ts",
+      "classification": "read",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/evaluations.ts"
+      ]
+    },
+    {
+      "name": "evidence_create",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "evidence_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_get_snapshot",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_get_source",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_inventory",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_list_snapshots",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_prepare_snapshot",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "expense_tax_record_source",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/expense-tax.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "filings_get_submission",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/filing-lifecycle.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/filing-lifecycle.ts"
+      ]
+    },
+    {
+      "name": "filings_submission_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/filing-lifecycle.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/filing-lifecycle.ts"
+      ]
+    },
+    {
+      "name": "firm_create",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "firm_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts"
+      ]
+    },
+    {
+      "name": "firm_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts"
+      ]
+    },
+    {
+      "name": "firm_remove_client",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "firm_save_client",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "firm_save_member",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "fx_capture_conversion",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/exchange-rates.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/fx.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "fx_get_conversion",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/exchange-rates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/fx.ts"
+      ]
+    },
+    {
+      "name": "fx_get_rate",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/exchange-rates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/fx.ts"
+      ]
+    },
+    {
+      "name": "fx_list_conversions",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/exchange-rates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/fx.ts"
+      ]
+    },
+    {
+      "name": "fx_list_rates",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/exchange-rates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/fx.ts"
+      ]
+    },
+    {
+      "name": "invoice_templates_apply",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-templates.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "invoice_templates_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-templates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "invoice_templates_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/invoice-templates.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "ledger_get_voucher",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "ledger_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "ledger_prepare_correction",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "ledger_prepare_journal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "ledger_snapshot",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "owners_apply_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_attach_posted_line",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_attach_proposal",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_create_owner",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_create_record",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_execute_operation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-operations.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_get_allocation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_get_control",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_get_operation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-operations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_get_owner",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_get_paid_purchase",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-operations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_get_record",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_list_owners",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_list_records",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_prepare_allocation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_prepare_control",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_prepare_operation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-operations.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "owners_record_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_recover_command",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "owners_revise_record",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/owner-register.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payments_check_bank_account",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payment-identifiers.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "payments_check_identifier",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payment-identifiers.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "payments_resolve_instruction",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payment-resolutions.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payment-resolutions.ts"
+      ]
+    },
+    {
+      "name": "payroll_approve_input",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_approve_run",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_approve_settlement",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_execute_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_execute_run",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_execute_settlement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_calculation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-calculations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-calculations.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_input",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_payslip",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_payslip_artifact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_period",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_run",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_settlement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts"
+      ]
+    },
+    {
+      "name": "payroll_list_calculations",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-calculations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-calculations.ts"
+      ]
+    },
+    {
+      "name": "payroll_list_runs",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_calculation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-calculations.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-calculations.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_comparison",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_input_payment",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_period",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_run",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-runs.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-runs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_settlement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_record_adjustment_basis",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_review_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_submit_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/payroll-inputs.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_advance",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_approve_batch",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_cancel",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_execute_batch",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "operator_execution",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_get_batch",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts"
+      ]
+    },
+    {
+      "name": "period_work_get_batch_result",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts"
+      ]
+    },
+    {
+      "name": "period_work_get_progress",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts"
+      ]
+    },
+    {
+      "name": "period_work_prepare_batch",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "period_work_prepare_manifest",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/period-work.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "periods_closing_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "periods_closing_readiness",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "periods_execute_closing",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "periods_get_closing_certificate",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "periods_get_closing_proposal",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "periods_list_closing_proposals",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "periods_prepare_closing",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/closing.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "posting_get_recovery",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "posting_get_saved_request",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "posting_list_recovery",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "posting_list_saved_requests",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "posting_recover_request",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "posting_run_request",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "posting_save_request",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/posting-recovery.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "purchases_execute_supplier_settlement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "purchases_execute_supplier_settlement_cancellation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "purchases_get_supplier_settlement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts"
+      ]
+    },
+    {
+      "name": "purchases_get_supplier_settlement_cancellation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts"
+      ]
+    },
+    {
+      "name": "purchases_get_supplier_settlement_receipt",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts"
+      ]
+    },
+    {
+      "name": "purchases_list_supplier_settlement_cancellation_approvals",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts"
+      ]
+    },
+    {
+      "name": "purchases_list_supplier_settlements",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts"
+      ]
+    },
+    {
+      "name": "purchases_prepare_supplier_settlement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "purchases_prepare_supplier_settlement_cancellation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-settlements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/supplier-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "receipts_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/ledger.ts"
+      ]
+    },
+    {
+      "name": "reports_annual_report_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/annual-report.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/annual-report.ts"
+      ]
+    },
+    {
+      "name": "reports_cash_flow_statement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/cash-flow.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/cash-flow.ts"
+      ]
+    },
+    {
+      "name": "reports_compare",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/reports.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_compare_statements",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/report-statements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/report-statements.ts"
+      ]
+    },
+    {
+      "name": "reports_explain",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_explain_statement_row",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/report-statements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/report-statements.ts"
+      ]
+    },
+    {
+      "name": "reports_general_ledger",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_get_annual_report",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/annual-report.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/annual-report.ts"
+      ]
+    },
+    {
+      "name": "reports_get_family",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/reports.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_get_statement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/report-statements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/report-statements.ts"
+      ]
+    },
+    {
+      "name": "reports_lines",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts"
+      ]
+    },
+    {
+      "name": "reports_list_statements",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/report-statements.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/report-statements.ts"
+      ]
+    },
+    {
+      "name": "reports_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "reports_prepare_family",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/reports.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/reports.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "reports_prepare_statement",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/report-statements.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/report-statements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "rules_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "rules_get_impact_snapshot",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/rule-impact.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "rules_get_simulation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "rules_list_change_notices",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/rule-impact.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "rules_list_impact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/rule-impact.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "rules_list_impact_decisions",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/rule-impact.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/closing.ts"
+      ]
+    },
+    {
+      "name": "rules_propose",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "rules_simulate",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "runs_advance",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "runs_create_preparation",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "runs_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "runs_get_background",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts"
+      ]
+    },
+    {
+      "name": "runs_start_background",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/capabilities.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "runs_stop_background",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/automation.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/runs-cases.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "schedules_create",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledgers.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "schedules_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledgers.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "schedules_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledgers.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "schedules_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledgers.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "schedules_revise",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledgers.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "sie4e_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie4e.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie4e.ts"
+      ]
+    },
+    {
+      "name": "sie4e_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie4e.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie4e.ts"
+      ]
+    },
+    {
+      "name": "sie4e_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie4e.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie4e.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "sie4e_resume",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie4e.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie4e.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "sie4e_rows",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie4e.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie4e.ts"
+      ]
+    },
+    {
+      "name": "sie_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie.ts"
+      ]
+    },
+    {
+      "name": "sie_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie.ts"
+      ]
+    },
+    {
+      "name": "sie_prepare",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "sie_resume",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/sie.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/sie.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "source_capture_review",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "source_export_archive",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_occurrence",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_occurrence_metadata",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_preview",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_purchase_links",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_review_artifact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_get_revision_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_list_occurrences",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_list_review_artifacts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_preview_csv",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "source_recover_retention",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "source_reparse_csv",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "source_retain",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "source_search_archive",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/source-intake.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/source-intake.ts"
+      ]
+    },
+    {
+      "name": "subledger_create_control",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledger-controls.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "subledger_get_basis",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledger-controls.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "subledger_get_control",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledger-controls.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "subledger_list_bases",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledger-controls.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "subledger_list_controls",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/subledger-controls.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/subledger-owners.ts"
+      ]
+    },
+    {
+      "name": "subledger_read_accrued_cost",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/prepayments.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/prepayments.ts"
+      ]
+    },
+    {
+      "name": "supplier_inbox_extraction_review_preparation",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-extraction.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "supplier_inbox_extraction_state",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-extraction.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "supplier_inbox_get",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-inbox.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "supplier_inbox_list",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/supplier-inbox.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/commerce-invoices.ts"
+      ]
+    },
+    {
+      "name": "tax_account_create_control",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "tax_account_get_control",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_get_event_classification",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_get_match",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_get_statement",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_list_controls",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_list_matches",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_list_statements",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_list_unclassified_events",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_account_preview_match",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/tax-account.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/tax-account.ts"
+      ]
+    },
+    {
+      "name": "tax_execute_effect",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "tax_get_bridge",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts"
+      ]
+    },
+    {
+      "name": "tax_get_declaration",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts"
+      ]
+    },
+    {
+      "name": "tax_list_bridges",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts"
+      ]
+    },
+    {
+      "name": "tax_list_declarations",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts"
+      ]
+    },
+    {
+      "name": "tax_list_effects",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts"
+      ]
+    },
+    {
+      "name": "tax_prepare_bridge",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "tax_prepare_declaration",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/corporate-tax.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/corporate-tax.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "treasury_adopt_loan",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "treasury_approve_loan_review",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "treasury_execute_loan_review",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "execute_approved",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "treasury_get_loan",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts"
+      ]
+    },
+    {
+      "name": "treasury_get_loan_review",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts"
+      ]
+    },
+    {
+      "name": "treasury_prepare_loan_review",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "treasury_record_loan_rate",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/treasury-loans.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/treasury-loans.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "vat_assessment_history",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-assessment.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat-assessment.ts"
+      ]
+    },
+    {
+      "name": "vat_get_assessment_status",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-assessment.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat-assessment.ts"
+      ]
+    },
+    {
+      "name": "vat_return_basis",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_compare_drafts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_get_actual",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_get_amendment",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_get_draft",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_get_fact",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_get_reclassification",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_list_actuals",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_list_amendments",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_list_drafts",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_list_reclassifications",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "vat_return_prepare_actual",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "vat_return_prepare_draft",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "vat_return_recover_reclassification",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/vat-returns.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/vat.ts"
+      ]
+    },
+    {
+      "name": "workspace_advance_context",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "workspace_agent_context",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_assign_work",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "workspace_attention",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_capture_context",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "workspace_context_delta",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_coordination",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_delete_view",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "workspace_get_context_page",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_list_work",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts"
+      ]
+    },
+    {
+      "name": "workspace_save_view",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/workspace.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/workspace.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    }
+  ]
+}

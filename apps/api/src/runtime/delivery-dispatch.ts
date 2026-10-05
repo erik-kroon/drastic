@@ -88,7 +88,7 @@ function deliveryDecision(record: QueueRecord | undefined, recorded: number) {
 
   if (record.state !== "failed") return "enqueue" as const;
 
-  if (record.attemptsMade < record.attemptsMax) return "enqueue" as const;
+  if (record.attemptsMade < record.attemptsMax) return "settle" as const;
 
   return recorded >= record.attemptsMax * (1 + rearmGenerations)
     ? ("settle" as const)
