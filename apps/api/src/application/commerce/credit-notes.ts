@@ -823,6 +823,8 @@ export const executeCustomerCredit = Effect.fn("commerce.customerCredit.execute"
         originalDocumentHash: original.digest,
         originalIssuedOn: original.issuedOn,
         originalCreditNoteReference: null,
+        buyerReference: original.draftSnapshot.content.buyerReference ?? null,
+        orderReference: original.draftSnapshot.content.orderReference ?? null,
         counterpartyId: original.draftSnapshot.content.counterpartyId,
         counterpartyRevision: original.draftSnapshot.content.counterpartyRevision,
         counterpartyName: original.draftSnapshot.content.customer.legalName,

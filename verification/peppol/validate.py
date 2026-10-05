@@ -14,9 +14,10 @@ ROOTS = {"{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice": "Inv
 
 
 class Refusal(Exception):
-    def __init__(self, outcome, diagnostics=None):
+    def __init__(self, outcome, diagnostics=None, proof=None):
         self.outcome = outcome
         self.diagnostics = diagnostics or []
+        self.proof = proof or {}
 
 
 def minor(value):
@@ -58,6 +59,13 @@ def validate(request):
     document_type = ROOTS.get(document.tag)
     if document_type is None:
         raise Refusal("UnsupportedDocumentType")
+    def text(path):
+        nodes = document.findall(path, NS)
+        if len(nodes) > 1:
+            raise Refusal("SemanticMismatch")
+        return nodes[0].text if nodes else None
+    observed = {"documentId": text("c:ID"), "documentType": document_type, "currency": text("c:DocumentCurrencyCode"), "sellerParticipant": text("a:AccountingSupplierParty/a:Party/c:EndpointID"), "buyerParticipant": text("a:AccountingCustomerParty/a:Party/c:EndpointID"), "exclusiveMinor": minor(text("a:LegalMonetaryTotal/c:TaxExclusiveAmount")), "taxMinor": minor(text("a:TaxTotal/c:TaxAmount")), "payableMinor": minor(text("a:LegalMonetaryTotal/c:PayableAmount")), "originalInvoiceRef": text("a:BillingReference/a:InvoiceDocumentReference/c:ID"), "buyerReference": text("c:BuyerReference"), "orderReference": text("a:OrderReference/c:ID")}
+    proof = {"releaseSha256": release_hash, "xmlSha256": hashlib.sha256(xml.encode("utf-8")).hexdigest(), "semantic": observed, "networkResolution": "disabled", "networkAccessPointQualification": "not-established"}
     reports = []
     with tempfile.TemporaryDirectory(prefix="openerp-bis-validation-") as scratch:
         source = Path(scratch) / "document.xml"
@@ -80,15 +88,9 @@ def validate(request):
                 failures = [{"id": node.get("id"), "flag": node.get("flag"), "location": node.get("location"), "text": " ".join(node.itertext()).strip()} for node in svrl.findall("{http://purl.oclc.org/dsdl/svrl}failed-assert")]
                 reports.append({"validator": name, "failedAssertions": failures, "svrl": report})
             if any(report["failedAssertions"] for report in reports):
-                raise Refusal("ValidationFailed", reports)
-    def text(path):
-        nodes = document.findall(path, NS)
-        if len(nodes) > 1:
-            raise Refusal("SemanticMismatch")
-        return nodes[0].text if nodes else None
-    observed = {"documentId": text("c:ID"), "documentType": document_type, "currency": text("c:DocumentCurrencyCode"), "sellerParticipant": text("a:AccountingSupplierParty/a:Party/c:EndpointID"), "buyerParticipant": text("a:AccountingCustomerParty/a:Party/c:EndpointID"), "exclusiveMinor": minor(text("a:LegalMonetaryTotal/c:TaxExclusiveAmount")), "taxMinor": minor(text("a:TaxTotal/c:TaxAmount")), "payableMinor": minor(text("a:LegalMonetaryTotal/c:PayableAmount")), "originalInvoiceRef": text("a:BillingReference/a:InvoiceDocumentReference/c:ID")}
+                raise Refusal("ValidationFailed", reports, proof)
     if observed != request["expected"]:
-        raise Refusal("SemanticMismatch", reports)
+        raise Refusal("SemanticMismatch", reports, proof)
     return {"outcome": "passed", "releaseSha256": release_hash, "xmlSha256": hashlib.sha256(xml.encode("utf-8")).hexdigest(), "semantic": observed, "diagnostics": reports, "networkResolution": "disabled", "networkAccessPointQualification": "not-established"}
 
 
@@ -96,7 +98,7 @@ try:
     request = json.loads(sys.stdin.read(2097153))
     receipt = validate(request)
 except Refusal as failure:
-    receipt = {"outcome": failure.outcome, "diagnostics": failure.diagnostics}
+    receipt = {"outcome": failure.outcome, "diagnostics": failure.diagnostics, **failure.proof}
 except Exception:
     receipt = {"outcome": "ValidationUnavailable", "diagnostics": []}
 print(json.dumps(receipt))

@@ -3,6 +3,22 @@ import { effectCapability } from "./shared";
 import * as Owner from "../commerce/peppol-exchange";
 
 export const peppolExchangeCapabilities = {
+  commerce_prepare_peppol_review: effectCapability(
+    Capabilities.commerce_prepare_peppol_review,
+    Owner.preparePeppolReview,
+  ),
+  commerce_get_peppol_review: effectCapability(
+    Capabilities.commerce_get_peppol_review,
+    (token, command) => Owner.getPeppolReview(token, command.scope, command.id),
+  ),
+  commerce_list_peppol_reviews: effectCapability(
+    Capabilities.commerce_list_peppol_reviews,
+    (token, command) => Owner.listPeppolReviews(token, command.scope, command.query),
+  ),
+  commerce_return_peppol_review: effectCapability(
+    Capabilities.commerce_return_peppol_review,
+    Owner.returnPeppolReview,
+  ),
   commerce_register_peppol_binding: effectCapability(
     Capabilities.commerce_register_peppol_binding,
     Owner.registerPeppolBinding,

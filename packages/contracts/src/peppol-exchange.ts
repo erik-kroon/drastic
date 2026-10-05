@@ -50,6 +50,8 @@ export const ExpectedSemantic = Schema.Struct({
   taxMinor: Accounting.MinorUnits,
   payableMinor: Accounting.MinorUnits,
   originalInvoiceRef: Schema.NullOr(Label),
+  buyerReference: Schema.optional(Schema.NullOr(Label)),
+  orderReference: Schema.optional(Schema.NullOr(Label)),
 });
 
 export const ValidationRequest = Schema.Struct({
@@ -82,7 +84,7 @@ export const Artifact = Schema.Struct({
   sender: Binding,
   recipient: Binding,
   expected: ExpectedSemantic,
-  rendererVersion: Schema.Literal("ubl21-se-domestic-25-v1"),
+  rendererVersion: Schema.Literals(["ubl21-se-domestic-25-v1", "ubl21-se-domestic-25-v2"]),
   xml: ValidationRequest.fields.xml,
   xmlSha256: Hash,
   validation: ValidationReport,
@@ -222,6 +224,123 @@ export const InboundReceipt = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+const ReviewParty = Schema.Struct({
+  legalName: Schema.String,
+  registrationId: Schema.NullOr(Schema.String),
+  taxId: Schema.NullOr(Schema.String),
+  address: Schema.NullOr(Schema.String),
+  countryCode: Schema.NullOr(Schema.String),
+});
+
+export const ReviewSource = Schema.Struct({
+  reference: DocumentReference,
+  digest: Accounting.Digest,
+  legalNumber: Label,
+  documentType: Schema.Literals(["Invoice", "CreditNote"]),
+  issuedOn: Accounting.AccountingDate,
+  dueOn: Schema.NullOr(Accounting.AccountingDate),
+  paymentTerms: Schema.NullOr(Schema.String),
+  buyerReference: Schema.NullOr(Label),
+  orderReference: Schema.NullOr(Label),
+  seller: ReviewParty,
+  buyer: ReviewParty,
+  counterpartyId: Accounting.Identifier,
+  currency: Schema.String,
+  scale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
+  lines: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      description: Schema.String,
+      quantity: Schema.String,
+      unitPriceMinor: Accounting.MinorUnits,
+      netMinor: Accounting.MinorUnits,
+      taxMinor: Accounting.MinorUnits,
+      vatTreatment: Schema.String,
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  netMinor: Accounting.MinorUnits,
+  taxMinor: Accounting.MinorUnits,
+  grossMinor: Accounting.MinorUnits,
+  originalNumber: Schema.NullOr(Label),
+  originalIssuedOn: Schema.NullOr(Accounting.AccountingDate),
+});
+
+const reviewFields = {
+  createdByName: Schema.String,
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  input: Prepare,
+  source: ReviewSource,
+  sender: Binding,
+  recipient: Binding,
+  rendererVersion: Schema.Literal("ubl21-se-domestic-25-v2"),
+  xml: ValidationRequest.fields.xml,
+  xmlSha256: Hash,
+  expected: ExpectedSemantic,
+  validation: ValidationReport,
+  createdBy: Accounting.Identifier,
+  createdAt: Schema.String,
+  digest: Accounting.Digest,
+};
+
+export const Review = Schema.Union([
+  Schema.Struct({
+    ...reviewFields,
+    outcome: Schema.Literal("ready"),
+    artifact: Schema.Struct({ id: Accounting.Identifier, digest: Accounting.Digest }),
+  }),
+  Schema.Struct({
+    ...reviewFields,
+    outcome: Schema.Literal("blocked"),
+    blockers: Schema.Array(
+      Schema.Literals([
+        "validation_failed",
+        "validation_unavailable",
+        "validation_integrity",
+        "dependencies_changed",
+      ]),
+    ).check(Schema.isMinLength(1), Schema.isMaxLength(4)),
+  }),
+]);
+
+export const ReviewReturn = Schema.Struct({
+  id: Accounting.Identifier,
+  reviewId: Accounting.Identifier,
+  reviewDigest: Accounting.Digest,
+  actorId: Accounting.Identifier,
+  createdAt: Schema.String,
+  digest: Accounting.Digest,
+});
+
+export const ReviewView = Schema.Struct({
+  review: Review,
+  returned: Schema.NullOr(ReviewReturn),
+  preparerName: Schema.String,
+  totalsMatch: Schema.Boolean,
+  sourceCurrent: Schema.Boolean,
+  partiesCurrent: Schema.Boolean,
+});
+
+export const ReviewQuery = Schema.Struct({
+  documentKind: DocumentReference.fields.kind,
+  documentId: Accounting.Identifier,
+  after: Schema.optional(Accounting.Identifier),
+});
+
+export const ReviewSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  document: DocumentReference,
+  legalNumber: Label,
+  customerName: Schema.String,
+  outcome: Schema.Literals(["ready", "blocked"]),
+  createdAt: Schema.String,
+});
+
+export const ReviewPage = Schema.Struct({
+  items: Schema.Array(ReviewSummary).check(Schema.isMaxLength(20)),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/peppol";
 
 const mutation = { headers: Accounting.IdempotencyHeaders, error: accountingErrors };
@@ -229,6 +348,29 @@ const mutation = { headers: Accounting.IdempotencyHeaders, error: accountingErro
 export const PeppolExchangeApi = HttpApiGroup.make("peppolExchange")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.post("preparePeppolReview", `${path}/reviews`, {
+      ...mutation,
+      params: Accounting.Scope,
+      payload: Prepare,
+      success: Review,
+    }),
+    HttpApiEndpoint.get("getPeppolReview", `${path}/reviews/:id`, {
+      params: Accounting.ChangePath,
+      error: accountingErrors,
+      success: ReviewView,
+    }),
+    HttpApiEndpoint.get("listPeppolReviews", `${path}/reviews`, {
+      params: Accounting.Scope,
+      query: ReviewQuery,
+      error: accountingErrors,
+      success: ReviewPage,
+    }),
+    HttpApiEndpoint.post("returnPeppolReview", `${path}/reviews/:id/returns`, {
+      ...mutation,
+      params: Accounting.ChangePath,
+      payload: Approve,
+      success: ReviewReturn,
+    }),
     HttpApiEndpoint.post("registerPeppolBinding", `${path}/bindings`, {
       ...mutation,
       params: Accounting.Scope,
@@ -290,6 +432,35 @@ export const PeppolExchangeApi = HttpApiGroup.make("peppolExchange")
 const command = { scope: Accounting.Scope, idempotencyKey: Accounting.Identifier };
 
 export const PeppolExchangeCapabilities = {
+  commerce_prepare_peppol_review: {
+    description:
+      "Retain a Peppol validation review, including blocked or unavailable checks, without delivery or financial effects.",
+    input: Schema.Struct({ ...command, input: Prepare }),
+    output: Review,
+    readOnly: false,
+  },
+  commerce_get_peppol_review: {
+    description:
+      "Read an exact retained Peppol check, current source/participant status and durable return.",
+    input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
+    output: ReviewView,
+    readOnly: true,
+  },
+  commerce_list_peppol_reviews: {
+    description:
+      "Discover retained Peppol checks for an exact issued invoice or credit with scoped keyset continuation.",
+    input: Schema.Struct({ scope: Accounting.Scope, query: ReviewQuery }),
+    output: ReviewPage,
+    readOnly: true,
+  },
+  commerce_return_peppol_review: {
+    description:
+      "Human return of an exact blocked Peppol review without changing the issued document or finance.",
+    input: Schema.Struct({ ...command, reviewId: Accounting.Identifier, input: Approve }),
+    output: ReviewReturn,
+    readOnly: false,
+    agentCallable: false,
+  },
   commerce_register_peppol_binding: {
     description:
       "Register a reviewed synthetic Peppol participant mapping from an issued financial snapshot.",

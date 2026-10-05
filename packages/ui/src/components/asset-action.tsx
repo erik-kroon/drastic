@@ -32,6 +32,18 @@ const assetActionStyles = stylex.create({
     fontSize: tokens.fontSizeXs,
     lineHeight: tokens.lineHeight16Px,
   },
+  blocked: {
+    backgroundColor: tokens.retainedRefusalBackground,
+    color: tokens.historicalRefusalForeground,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.historicalRefusalBorder,
+    borderRadius: tokens.radiusStatusBadge,
+    paddingBlock: 2,
+    paddingInline: 8,
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+  },
   waiting: {
     backgroundColor: tokens.processorWaitingBackground,
     color: tokens.registerWarning,
@@ -203,6 +215,7 @@ export function RetainedActionLayout(props: {
   synthetic?: boolean;
   posted?: boolean;
   waiting?: boolean;
+  blocked?: string;
   children: ReactNode;
 }) {
   return (
@@ -225,6 +238,9 @@ export function RetainedActionLayout(props: {
         <h1 {...stylex.props(assetActionStyles.title)}>{props.title}</h1>
         {props.draft ? (
           <span {...stylex.props(assetActionStyles.example)}>Förslag, ej bokfört</span>
+        ) : null}
+        {props.blocked ? (
+          <span {...stylex.props(assetActionStyles.blocked)}>{props.blocked}</span>
         ) : null}
         {props.waiting ? (
           <span {...stylex.props(assetActionStyles.waiting)}>Väntar på godkännande</span>

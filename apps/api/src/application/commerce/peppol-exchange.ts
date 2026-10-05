@@ -6,41 +6,19 @@ import * as Db from "../../db/commerce/peppol-exchange";
 import * as PostingDb from "../../db/posting";
 import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
-import { sourceDigest } from "../../adapters/storage/retained-objects";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { failure } from "../failures";
-import { bindingSubject, partyDigest, readPeppolDocument, renderPeppol } from "./peppol-document";
-import { accessPoint, readBinding, currentBinding } from "./peppol-context";
+import { bindingSubject, partyDigest, readPeppolDocument } from "./peppol-document";
+import { accessPoint, readBinding, capturePeppol } from "./peppol-context";
 
 export { receivePeppolEnvelope, getPeppolInbound } from "./peppol-inbound";
+
+import { preparePeppolReview } from "./peppol-reviews";
 
 type Command<A> = { readonly scope: Scope; readonly idempotencyKey: string; readonly input: A };
 
 type ArtifactCommand<A> = Command<A> & { readonly artifactId: string };
-
-function capture(tx: Transaction, scope: Scope, input: typeof Contracts.Prepare.Type) {
-  return Effect.gen(function* () {
-    const document = yield* readPeppolDocument(tx, scope, input.document);
-    const sender = yield* readBinding(tx, scope, input.senderBindingId);
-    const recipient = yield* readBinding(tx, scope, input.recipientBindingId);
-    yield* currentBinding(tx, scope, sender);
-    yield* currentBinding(tx, scope, recipient);
-
-    if (
-      sender.role !== "sender" ||
-      recipient.role !== "recipient" ||
-      sender.providerAccount !== recipient.providerAccount ||
-      sender.partyDigest !== (yield* partyDigest(document.seller)) ||
-      recipient.partyDigest !== (yield* partyDigest(document.buyer)) ||
-      sender.subjectKey !== (yield* bindingSubject(document, "sender")) ||
-      recipient.subjectKey !== (yield* bindingSubject(document, "recipient"))
-    )
-      return yield* failure("InvalidJournal");
-
-    return { document, sender, recipient };
-  });
-}
 
 export const registerPeppolBinding = Effect.fn("peppol.registerBinding")(function* (
   token: string,
@@ -67,7 +45,6 @@ export const registerPeppolBinding = Effect.fn("peppol.registerBinding")(functio
       party.countryCode !== "SE" ||
       party.registrationId?.replaceAll("-", "") !== command.input.participantId ||
       (command.input.role === "sender" && command.input.paymentAccountReference === null) ||
-      (command.input.role === "recipient" && command.input.buyerReference === null) ||
       (yield* PostingDb.readEvidence(tx, command.scope.bookId, command.input.evidenceId)).length ===
         0
     )
@@ -117,7 +94,33 @@ export const preparePeppolArtifact = Effect.fn("peppol.prepareArtifact")(functio
   token: string,
   command: Command<typeof Contracts.Prepare.Type>,
 ) {
-  const initial = yield* withBook(token, command.scope, false, function* (tx, principal) {
+  const previous = yield* withBook(token, command.scope, false, function* (tx, principal) {
+    return yield* replay(
+      tx,
+      command.scope,
+      command.idempotencyKey,
+      "peppol_prepare_artifact",
+      principal.actorId,
+      yield* toJsonObject(command),
+      Contracts.Artifact,
+    );
+  });
+
+  if (previous.previous) return previous.previous;
+
+  const reviewKey = `legacy_review_${(yield* digest(command.idempotencyKey)).slice(7)}`;
+  const review = yield* preparePeppolReview(token, { ...command, idempotencyKey: reviewKey });
+
+  if (review.outcome === "blocked")
+    return yield* failure(
+      review.blockers.includes("dependencies_changed")
+        ? "StaleDependency"
+        : review.blockers.includes("validation_unavailable")
+          ? "Unavailable"
+          : "InvalidJournal",
+    );
+
+  return yield* withBook(token, command.scope, false, function* (tx, principal) {
     const request = yield* replay(
       tx,
       command.scope,
@@ -128,117 +131,8 @@ export const preparePeppolArtifact = Effect.fn("peppol.prepareArtifact")(functio
       Contracts.Artifact,
     );
 
-    if (request.previous) return { kind: "replayed" as const, artifact: request.previous };
-    yield* requireTableAccess(tx, Db.tables, false);
-
-    return { kind: "captured" as const, basis: yield* capture(tx, command.scope, command.input) };
-  });
-
-  if (initial.kind === "replayed") return initial.artifact;
-
-  const rendered = yield* renderPeppol(
-    initial.basis.document,
-    initial.basis.sender,
-    initial.basis.recipient,
-  );
-
-  const hash = (yield* sourceDigest(new TextEncoder().encode(rendered.xml))).slice(7);
-
-  const candidate = (yield* digest({
-    input: command.input,
-    sourceDigest: initial.basis.document.digest,
-    sender: initial.basis.sender.digest,
-    recipient: initial.basis.recipient.digest,
-    release: Contracts.releaseSha256,
-    xmlSha256: hash,
-  })).slice(7);
-
-  const provider = yield* accessPoint();
-
-  const validation = yield* Effect.tryPromise({
-    try: () => provider.validate({ ...rendered, releaseSha256: Contracts.releaseSha256 }),
-    catch: () => failure("Unavailable"),
-  });
-
-  const retained = yield* withBook(token, command.scope, false, function* (tx, principal) {
-    const request = yield* replay(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_prepare_artifact",
-      principal.actorId,
-      yield* toJsonObject(command),
-      Contracts.Artifact,
-    );
-
-    if (request.previous) return { kind: "prepared" as const, artifact: request.previous };
-    yield* PostingDb.lockBookForUpdate(tx, command.scope);
-    yield* requireTableAccess(tx, Db.tables, true);
-    const current = yield* capture(tx, command.scope, command.input);
-
-    if ((yield* digest(current)) !== (yield* digest(initial.basis)))
-      return yield* failure("StaleDependency");
-    yield* Db.insertValidation(
-      tx,
-      command.scope.bookId,
-      newId("peppol_validation"),
-      candidate,
-      yield* toJsonObject({
-        xml: rendered.xml,
-        xmlSha256: hash,
-        sourceDigest: current.document.digest,
-        expected: rendered.expected,
-        validation,
-        createdAt: yield* isoNow(tx),
-      }),
-    );
-
-    if (validation.outcome !== "passed")
-      return {
-        kind: "refused" as const,
-        unavailable: validation.outcome === "ValidationUnavailable",
-      };
-
-    if (
-      validation.xmlSha256 !== hash ||
-      validation.releaseSha256 !== Contracts.releaseSha256 ||
-      validation.networkResolution !== "disabled" ||
-      validation.networkAccessPointQualification !== "not-established" ||
-      (yield* digest(validation.semantic ?? null)) !== (yield* digest(rendered.expected))
-    )
-      return { kind: "refused" as const, unavailable: false };
-    const id = `peppol_artifact_${candidate.slice(0, 40)}`;
-    const prior = (yield* Db.readArtifact(tx, command.scope.bookId, id))[0];
-
-    const body = {
-      id,
-      scope: command.scope,
-      input: command.input,
-      documentDigest: current.document.digest,
-      sender: current.sender,
-      recipient: current.recipient,
-      ...rendered,
-      rendererVersion: "ubl21-se-domestic-25-v1",
-      xmlSha256: hash,
-      validation,
-      createdBy: principal.actorId,
-      createdAt: yield* isoNow(tx),
-    };
-
-    const artifact = prior
-      ? yield* decode(Contracts.Artifact, prior.body)
-      : yield* decode(Contracts.Artifact, { ...body, digest: yield* digest(body) });
-
-    if (!prior)
-      yield* Db.insertArtifact(tx, command.scope.bookId, {
-        id,
-        kind: command.input.document.kind,
-        sourceId: command.input.document.id,
-        senderId: current.sender.id,
-        recipientId: current.recipient.id,
-        xmlSha256: hash,
-        body: yield* toJsonObject(artifact),
-      });
+    if (request.previous) return request.previous;
+    const artifact = yield* readArtifact(tx, command.scope, review.artifact.id);
     yield* saveCommand(
       tx,
       command.scope,
@@ -249,13 +143,8 @@ export const preparePeppolArtifact = Effect.fn("peppol.prepareArtifact")(functio
       yield* toJsonObject(artifact),
     );
 
-    return { kind: "prepared" as const, artifact };
+    return artifact;
   });
-
-  if (retained.kind === "refused")
-    return yield* failure(retained.unavailable ? "Unavailable" : "InvalidJournal");
-
-  return retained.artifact;
 });
 
 function readArtifact(tx: Transaction, scope: Scope, id: string) {
@@ -270,9 +159,13 @@ function readArtifact(tx: Transaction, scope: Scope, id: string) {
 
 function currentArtifact(tx: Transaction, scope: Scope, artifact: typeof Contracts.Artifact.Type) {
   return Effect.gen(function* () {
-    const current = yield* capture(tx, scope, artifact.input);
+    const current = yield* capturePeppol(tx, scope, artifact.input);
 
     if (
+      artifact.rendererVersion !== "ubl21-se-domestic-25-v2" ||
+      artifact.validation.outcome !== "passed" ||
+      artifact.expected.buyerReference !== current.document.buyerReference ||
+      artifact.expected.orderReference !== current.document.orderReference ||
       current.document.digest !== artifact.documentDigest ||
       current.sender.digest !== artifact.sender.digest ||
       current.recipient.digest !== artifact.recipient.digest
@@ -414,7 +307,6 @@ export const approvePeppolExchange = Effect.fn("peppol.approve")(function* (
       Contracts.Approval,
     );
 
-    if (request.previous) return request.previous;
     yield* PostingDb.lockBookForUpdate(tx, command.scope);
     const artifact = yield* readArtifact(tx, command.scope, command.artifactId);
 
@@ -422,6 +314,9 @@ export const approvePeppolExchange = Effect.fn("peppol.approve")(function* (
 
     if (artifact.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
     yield* currentArtifact(tx, command.scope, artifact);
+
+    if (request.previous)
+      return yield* currentApproval(tx, command.scope, artifact, request.previous.id);
     const now = yield* isoNow(tx);
 
     const approval = yield* decode(Contracts.Approval, {
@@ -764,3 +659,10 @@ export const getPeppolAttempt = Effect.fn("peppol.getAttempt")(function* (
     };
   });
 });
+
+export {
+  preparePeppolReview,
+  getPeppolReview,
+  listPeppolReviews,
+  returnPeppolReview,
+} from "./peppol-reviews";

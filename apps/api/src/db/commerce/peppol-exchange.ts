@@ -254,3 +254,76 @@ export function insertIncident(
     "objects",
   );
 }
+
+export function insertReview(
+  tx: Transaction,
+  book: string,
+  row: {
+    readonly id: string;
+    readonly candidate: string;
+    readonly kind: "invoice" | "credit";
+    readonly sourceId: string;
+    readonly senderId: string;
+    readonly recipientId: string;
+    readonly actorId: string;
+    readonly createdAt: string;
+    readonly body: Schema.JsonObject;
+  },
+) {
+  return tx.execute(
+    sql`insert into openerp.peppol_validation_runs(book_id,id,candidate_id,invoice_issue_id,credit_id,sender_binding_id,recipient_binding_id,created_by,created_at,body) values (${book},${row.id},${row.candidate},${row.kind === "invoice" ? row.sourceId : null},${row.kind === "credit" ? row.sourceId : null},${row.senderId},${row.recipientId},${row.actorId},${row.createdAt}::timestamptz,${JSON.stringify(row.body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readReview(tx: Transaction, book: string, id: string) {
+  return tx.execute<Body>(
+    sql`select body from openerp.peppol_validation_runs where book_id=${book} and id=${id} and (invoice_issue_id is not null or credit_id is not null)`,
+    "objects",
+  );
+}
+
+export function readReviewPage(
+  tx: Transaction,
+  book: string,
+  kind: "invoice" | "credit",
+  source: string,
+  after: string | null,
+) {
+  const sourceColumn = kind === "invoice" ? sql`invoice_issue_id` : sql`credit_id`;
+
+  return tx.execute<Body>(
+    sql`select body from openerp.peppol_validation_runs where book_id=${book} and ${sourceColumn}=${source} and (${after}::text is null or (created_at,id collate "C")>(select created_at,id collate "C" from openerp.peppol_validation_runs where book_id=${book} and ${sourceColumn}=${source} and id=${after})) order by created_at,id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function readReviewReturn(tx: Transaction, book: string, review: string) {
+  return tx.execute<Body>(
+    sql`select body from openerp.peppol_review_returns where book_id=${book} and review_id=${review}`,
+    "objects",
+  );
+}
+
+export function insertReviewReturn(
+  tx: Transaction,
+  book: string,
+  row: {
+    readonly id: string;
+    readonly reviewId: string;
+    readonly actorId: string;
+    readonly body: Schema.JsonObject;
+  },
+) {
+  return tx.execute(
+    sql`insert into openerp.peppol_review_returns(book_id,id,review_id,actor_id,body) values (${book},${row.id},${row.reviewId},${row.actorId},${JSON.stringify(row.body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readReviewPreparer(tx: Transaction, book: string, actor: string) {
+  return tx.execute<{ readonly name: string }>(
+    sql`select a.name from openerp.actors a join openerp.memberships m on m.actor_id=a.id where m.book_id=${book} and a.id=${actor}`,
+    "objects",
+  );
+}

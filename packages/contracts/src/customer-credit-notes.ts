@@ -239,6 +239,8 @@ export const CustomerCreditSemanticDocument = Schema.Struct({
   originalDocumentHash: Accounting.Digest,
   originalIssuedOn: Accounting.AccountingDate,
   originalCreditNoteReference: Schema.NullOr(legalNumber),
+  buyerReference: Schema.optional(Schema.NullOr(Schema.String)),
+  orderReference: Schema.optional(Schema.NullOr(Schema.String)),
   counterpartyId: Accounting.Identifier,
   counterpartyRevision: Commerce.Version,
   counterpartyName: Schema.String,

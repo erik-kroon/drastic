@@ -16,6 +16,8 @@ type WriteClass =
 const writeClasses = {
   commerce_register_peppol_binding: "human_review",
   commerce_prepare_peppol_artifact: "prepare",
+  commerce_prepare_peppol_review: "prepare",
+  commerce_return_peppol_review: "human_review",
   commerce_approve_peppol_exchange: "human_review",
   commerce_dispatch_peppol_exchange: "execute_approved",
   commerce_collect_peppol_outcome: "record",

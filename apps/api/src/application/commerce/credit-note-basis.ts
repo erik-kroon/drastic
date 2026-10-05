@@ -365,6 +365,8 @@ export type CreditDocumentInput = {
   readonly originalDocumentHash: string;
   readonly originalIssuedOn: string;
   readonly originalCreditNoteReference: string | null;
+  readonly buyerReference: string | null;
+  readonly orderReference: string | null;
   readonly counterpartyId: string;
   readonly counterpartyRevision: string;
   readonly counterpartyName: string;
@@ -407,6 +409,8 @@ export const freezeCreditDocument = Effect.fn("commerce.customerCredit.document"
     originalDocumentHash: input.originalDocumentHash,
     originalIssuedOn: input.originalIssuedOn,
     originalCreditNoteReference: input.originalCreditNoteReference,
+    buyerReference: input.buyerReference,
+    orderReference: input.orderReference,
     counterpartyId: input.counterpartyId,
     counterpartyRevision: input.counterpartyRevision,
     counterpartyName: input.counterpartyName,

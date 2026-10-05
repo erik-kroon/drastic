@@ -36,6 +36,14 @@ export function InvoiceDraftDocument({
             value: record.content.plannedIssueDate ?? "—",
           },
           { label: labels.dueDate, value: record.content.dueDate ?? "—" },
+          ...(record.content.buyerReference
+            ? [
+                {
+                  label: locale === "sv" ? "Kundens referens" : "Buyer reference",
+                  value: record.content.buyerReference,
+                },
+              ]
+            : []),
         ]}
         lines={record.content.lines.map((line) => ({
           id: line.id,

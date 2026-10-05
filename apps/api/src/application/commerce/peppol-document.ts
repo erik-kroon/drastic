@@ -27,6 +27,8 @@ export type PeppolDocument = {
   readonly issuedOn: string;
   readonly dueOn: string | null;
   readonly paymentTerms: string | null;
+  readonly buyerReference: string | null;
+  readonly orderReference: string | null;
   readonly seller: Party;
   readonly buyer: Party;
   readonly counterpartyId: string;
@@ -81,6 +83,8 @@ export function readPeppolDocument(
         issuedOn: issue.issuedOn,
         dueOn: issue.draftSnapshot.content.dueDate,
         paymentTerms: issue.draftSnapshot.content.paymentTerms,
+        buyerReference: issue.draftSnapshot.content.buyerReference ?? null,
+        orderReference: issue.draftSnapshot.content.orderReference ?? null,
         seller: issue.draftSnapshot.content.seller,
         buyer: issue.draftSnapshot.content.customer,
         counterpartyId: issue.draftSnapshot.content.counterpartyId,
@@ -126,6 +130,8 @@ export function readPeppolDocument(
       issuedOn: document.creditDate,
       dueOn: null,
       paymentTerms: original.draftSnapshot.content.paymentTerms,
+      buyerReference: document.buyerReference ?? null,
+      orderReference: document.orderReference ?? null,
       seller: document.seller,
       buyer: document.customer,
       counterpartyId: document.counterpartyId,
@@ -203,7 +209,6 @@ export function renderPeppol(
         (line) => line.quantity !== "1" || line.vatTreatment !== "se-domestic-standard-25-v1",
       ) ||
       sender.paymentAccountReference === null ||
-      recipient.buyerReference === null ||
       document.paymentTerms === null
     )
       return yield* failure("UnsupportedProfile");
@@ -250,6 +255,8 @@ export function renderPeppol(
       taxMinor: document.taxMinor,
       payableMinor: document.grossMinor,
       originalInvoiceRef: document.originalNumber,
+      buyerReference: document.buyerReference,
+      orderReference: document.orderReference,
     };
 
     const tag = document.documentType;
@@ -266,7 +273,7 @@ export function renderPeppol(
       )
       .join("");
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><${tag} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${tag}-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID><cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID><cbc:ID>${escape(document.legalNumber)}</cbc:ID><cbc:IssueDate>${document.issuedOn}</cbc:IssueDate>${tag === "Invoice" && document.dueOn !== null ? `<cbc:DueDate>${document.dueOn}</cbc:DueDate>` : ""}<cbc:${tag}TypeCode>${tag === "Invoice" ? "380" : "381"}</cbc:${tag}TypeCode><cbc:DocumentCurrencyCode>SEK</cbc:DocumentCurrencyCode><cbc:BuyerReference>${escape(recipient.buyerReference)}</cbc:BuyerReference>${document.originalNumber === null ? "" : `<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${escape(document.originalNumber)}</cbc:ID><cbc:IssueDate>${document.originalIssuedOn}</cbc:IssueDate></cac:InvoiceDocumentReference></cac:BillingReference>`}<cac:AccountingSupplierParty>${partyXml(document.seller, sender)}</cac:AccountingSupplierParty><cac:AccountingCustomerParty>${partyXml(document.buyer, recipient)}</cac:AccountingCustomerParty><cac:PaymentMeans><cbc:PaymentMeansCode>30</cbc:PaymentMeansCode><cbc:PaymentID>${escape(document.legalNumber)}</cbc:PaymentID><cac:PayeeFinancialAccount><cbc:ID>${sender.paymentAccountReference}</cbc:ID><cac:FinancialInstitutionBranch><cbc:ID>SE:BANKGIRO</cbc:ID></cac:FinancialInstitutionBranch></cac:PayeeFinancialAccount></cac:PaymentMeans><cac:PaymentTerms><cbc:Note>${escape(document.paymentTerms)}</cbc:Note></cac:PaymentTerms><cac:TaxTotal>${money("TaxAmount", document.taxMinor)}<cac:TaxSubtotal>${money("TaxableAmount", document.netMinor)}${money("TaxAmount", document.taxMinor)}<cac:TaxCategory>${category}</cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal>${money("LineExtensionAmount", document.netMinor)}${money("TaxExclusiveAmount", document.netMinor)}${money("TaxInclusiveAmount", document.grossMinor)}${money("PayableAmount", document.grossMinor)}</cac:LegalMonetaryTotal>${lines}</${tag}>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><${tag} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${tag}-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID><cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID><cbc:ID>${escape(document.legalNumber)}</cbc:ID><cbc:IssueDate>${document.issuedOn}</cbc:IssueDate>${tag === "Invoice" && document.dueOn !== null ? `<cbc:DueDate>${document.dueOn}</cbc:DueDate>` : ""}<cbc:${tag}TypeCode>${tag === "Invoice" ? "380" : "381"}</cbc:${tag}TypeCode><cbc:DocumentCurrencyCode>SEK</cbc:DocumentCurrencyCode>${document.buyerReference === null ? "" : `<cbc:BuyerReference>${escape(document.buyerReference)}</cbc:BuyerReference>`}${document.orderReference === null ? "" : `<cac:OrderReference><cbc:ID>${escape(document.orderReference)}</cbc:ID></cac:OrderReference>`}${document.originalNumber === null ? "" : `<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${escape(document.originalNumber)}</cbc:ID><cbc:IssueDate>${document.originalIssuedOn}</cbc:IssueDate></cac:InvoiceDocumentReference></cac:BillingReference>`}<cac:AccountingSupplierParty>${partyXml(document.seller, sender)}</cac:AccountingSupplierParty><cac:AccountingCustomerParty>${partyXml(document.buyer, recipient)}</cac:AccountingCustomerParty><cac:PaymentMeans><cbc:PaymentMeansCode>30</cbc:PaymentMeansCode><cbc:PaymentID>${escape(document.legalNumber)}</cbc:PaymentID><cac:PayeeFinancialAccount><cbc:ID>${sender.paymentAccountReference}</cbc:ID><cac:FinancialInstitutionBranch><cbc:ID>SE:BANKGIRO</cbc:ID></cac:FinancialInstitutionBranch></cac:PayeeFinancialAccount></cac:PaymentMeans><cac:PaymentTerms><cbc:Note>${escape(document.paymentTerms)}</cbc:Note></cac:PaymentTerms><cac:TaxTotal>${money("TaxAmount", document.taxMinor)}<cac:TaxSubtotal>${money("TaxableAmount", document.netMinor)}${money("TaxAmount", document.taxMinor)}<cac:TaxCategory>${category}</cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal>${money("LineExtensionAmount", document.netMinor)}${money("TaxExclusiveAmount", document.netMinor)}${money("TaxInclusiveAmount", document.grossMinor)}${money("PayableAmount", document.grossMinor)}</cac:LegalMonetaryTotal>${lines}</${tag}>`;
 
     if (new TextEncoder().encode(xml).length > 1048576) return yield* failure("UnsupportedProfile");
 

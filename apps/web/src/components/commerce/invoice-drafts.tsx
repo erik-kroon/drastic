@@ -64,7 +64,11 @@ type Draft = typeof Drafts.InvoiceDraftRevision.Type;
 type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode; contextual?: boolean };
 
 export function NewInvoiceDraft(
-  props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void; initialCustomer?: typeof Commerce.CounterpartyRevision.Type },
+  props: CommerceProps & {
+    onSaved: (id: string) => void;
+    onClose: () => void;
+    initialCustomer?: typeof Commerce.CounterpartyRevision.Type;
+  },
 ) {
   return (
     <InvoiceDraftSession {...props} onSaved={(record) => props.onSaved(record.id)}>
@@ -299,6 +303,8 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       dueDate: inputText(fields, "dueDate"),
       paymentTerms: inputText(fields, "terms"),
       note: inputText(fields, "note"),
+      buyerReference: inputText(fields, "buyerReference"),
+      orderReference: content?.orderReference ?? null,
       sourceTotalMinor: decimalField(fields, "sourceTotal", currencyScale, true),
       lines: lines.map((line) => {
         const catalogSelection = line.defaults?.catalogSelection;
@@ -350,6 +356,8 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
             dueDate: session.state.dueDateOrigin === "customer_default" ? null : next.dueDate,
             paymentTerms: next.paymentTerms,
             note: next.note,
+            buyerReference: next.buyerReference,
+            orderReference: next.orderReference,
             lines: next.lines.map((line) => {
               const compositionLine = {
                 id: line.id,
@@ -535,6 +543,17 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               locale={props.locale}
               footer={
                 <Box display="grid" gap="lg">
+                  <InputField
+                    name="buyerReference"
+                    label={sv ? "Kundens referens" : "Buyer reference"}
+                    maxLength={200}
+                    value={restoredField(session, "buyerReference", content?.buyerReference ?? "")}
+                    onChange={(event) =>
+                      session.update({
+                        fields: { ...session.state.fields, buyerReference: event.target.value },
+                      })
+                    }
+                  />
                   <InputField
                     name="note"
                     label={sv ? "Meddelande till kunden" : "Customer-facing note"}

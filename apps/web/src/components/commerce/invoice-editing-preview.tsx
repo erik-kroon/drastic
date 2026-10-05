@@ -97,6 +97,14 @@ function previewIdentity(props: {
       customer && customer.id === content?.counterpartyId ? (content.customer.address ?? "") : "",
     ),
     dates: [
+      ...(restoredField(session, "buyerReference", content?.buyerReference ?? "")
+        ? [
+            {
+              label: sv ? "Kundens referens" : "Buyer reference",
+              value: restoredField(session, "buyerReference", content?.buyerReference ?? ""),
+            },
+          ]
+        : []),
       {
         label: sv ? "Fakturadatum" : "Invoice date",
         value: restoredField(session, "issueDate", content?.plannedIssueDate ?? "—"),

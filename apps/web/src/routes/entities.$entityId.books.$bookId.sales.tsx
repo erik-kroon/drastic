@@ -5,6 +5,7 @@ import { RecurringDraftRecovery } from "@/components/commerce/recurring-draft-re
 import { RecurringRegister } from "@/components/commerce/recurring-register";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
+import { PeppolReviewWorkspace } from "@/components/commerce/peppol-review";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
 import { SalesNavigation } from "@/components/commerce/sales-navigation";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
       stage: Schema.optional(Schema.Literals(["review", "payments"])),
       review: Schema.optional(Schema.String),
+      credit: Schema.optional(Accounting.Identifier),
       allocation: Schema.optional(Schema.String),
       release: Schema.optional(Schema.String),
       paymentPage: Schema.optional(
@@ -54,6 +56,15 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
 
 function Page() {
   const search = Route.useSearch();
+
+  if (search.view === "peppol")
+    return (
+      <PeppolReviewWorkspace
+        issueId={search.record}
+        reviewId={search.review}
+        creditId={search.credit}
+      />
+    );
 
   if (search.view === "recurring") return <RecurringPage />;
 

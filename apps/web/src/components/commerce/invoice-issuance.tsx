@@ -8,6 +8,7 @@ import * as Issuance from "@open-erp/contracts/invoice-issuance";
 import * as LegalDelivery from "@open-erp/contracts/legal-delivery";
 import * as LegalInvoicePdf from "@open-erp/contracts/legal-invoice-pdf";
 import * as LegalSalesPolicy from "@open-erp/contracts/legal-sales-policy";
+import { Link } from "@open-erp/ui/components/link";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -464,6 +465,13 @@ export function LegalInvoiceInspector(
           boundaryBlockers={draftBoundaryBlockers}
           currentBlockers={issueReads.review.data?.blockers}
         />
+        {issueReads.issue ? (
+          <Link
+            href={`${workspacePath(book)}/sales?view=peppol&record=${encodeURIComponent(issueReads.issue.id)}`}
+          >
+            E-faktura
+          </Link>
+        ) : null}
         <LegalArtifactSection
           copy={copy}
           issue={issueReads.issue}
@@ -1103,7 +1111,9 @@ function LegalArtifactSection(props: {
   );
 }
 
-function downloadLegalPdf(verified: NonNullable<Awaited<ReturnType<typeof verifyLegalPdf>>>) {
+export function downloadLegalPdf(
+  verified: NonNullable<Awaited<ReturnType<typeof verifyLegalPdf>>>,
+) {
   const url = URL.createObjectURL(new Blob([verified.bytes], { type: "application/pdf" }));
   const link = document.createElement("a");
   link.href = url;
@@ -1219,7 +1229,7 @@ function LegalSnapshotSection(props: {
   );
 }
 
-async function verifyLegalPdf(
+export async function verifyLegalPdf(
   book: CommerceProps["book"],
   capture: typeof LegalInvoicePdf.LegalInvoicePdfCapture.Type,
   artifact: typeof LegalInvoicePdf.LegalInvoicePdfArtifact.Type,

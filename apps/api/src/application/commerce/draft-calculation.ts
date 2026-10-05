@@ -237,10 +237,12 @@ export function calculateDraft(
   commercial = false,
 ) {
   return Effect.gen(function* () {
-    yield* exactKeys(
-      yield* toJsonObject(content),
-      content.note === undefined ? contentFields : [...contentFields, "note"],
-    );
+    yield* exactKeys(yield* toJsonObject(content), [
+      ...contentFields,
+      ...["note", "buyerReference", "orderReference"].filter((field) =>
+        Object.hasOwn(content, field),
+      ),
+    ]);
     yield* exactKeys(yield* toJsonObject(content.seller), identityFields);
     yield* exactKeys(yield* toJsonObject(content.customer), identityFields);
 
@@ -573,6 +575,8 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
           ? snapshot.dueDate
           : input.dueDate,
       paymentTerms: input.paymentTerms ?? snapshot?.paymentTerms ?? null,
+      buyerReference: input.buyerReference ?? null,
+      orderReference: input.orderReference ?? null,
       currency: book.currency,
       currencyScale: book.currencyScale,
       sourceTotalMinor: null,

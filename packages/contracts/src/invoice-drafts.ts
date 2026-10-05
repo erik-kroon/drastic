@@ -58,6 +58,8 @@ export const DraftContent = Schema.Struct({
   dueDate: Schema.NullOr(Accounting.AccountingDate),
   paymentTerms: Schema.NullOr(Note),
   note: Schema.optional(Schema.NullOr(Note)),
+  buyerReference: Schema.optional(Schema.NullOr(Name)),
+  orderReference: Schema.optional(Schema.NullOr(Name)),
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
@@ -95,6 +97,8 @@ export const CommercialContent = Schema.Struct({
   dueDate: DraftContent.fields.dueDate,
   paymentTerms: DraftContent.fields.paymentTerms,
   note: DraftContent.fields.note,
+  buyerReference: DraftContent.fields.buyerReference,
+  orderReference: DraftContent.fields.orderReference,
   lines: Schema.Array(CommercialLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
 

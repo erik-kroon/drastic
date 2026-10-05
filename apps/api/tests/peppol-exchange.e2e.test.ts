@@ -1287,3 +1287,221 @@ test("Peppol operator API credential cannot create or replay a human delivery ap
   await assertTransportDidNotPost(context);
   await saveEvidence("peppol-human-session-before-replay", context.book);
 });
+
+async function retainedReview(
+  context: Context,
+  input: typeof Peppol.Prepare.Type,
+  commandKey: string,
+) {
+  return decoded(
+    await request(context.author, "/commerce/peppol/reviews", {
+      method: "POST",
+      headers: { "idempotency-key": commandKey },
+      body: JSON.stringify(input),
+    }),
+    Peppol.Review,
+  );
+}
+
+test("M59 missing issued reference is a discoverable immutable R003 review with no send authority", async () => {
+  const context = await peppolLegalFixture([], undefined, { buyerReference: null });
+  const selected = await bindings(context);
+
+  const input = {
+    document: { kind: "invoice" as const, id: context.original.id },
+    senderBindingId: selected.sender.id,
+    recipientBindingId: selected.recipient.id,
+  };
+
+  const commandKey = key();
+  const review = await retainedReview(context, input, commandKey);
+
+  expect(review.outcome).toBe("blocked");
+  expect(review.validation.outcome).toBe("ValidationFailed");
+  expect(review.source.buyerReference).toBeNull();
+  expect(review.recipient.buyerReference).toBe("SYNTHETIC-BUYER");
+  expect(review.xml).not.toContain("<cbc:BuyerReference>");
+  expect(review.xml).not.toContain("<cac:OrderReference>");
+  expect(JSON.stringify(review.validation.diagnostics)).toContain("PEPPOL-EN16931-R003");
+  expect(await retainedReview(context, input, commandKey)).toEqual(review);
+
+  const view = await decoded(
+    await request(context.book, `/commerce/peppol/reviews/${review.id}`),
+    Peppol.ReviewView,
+  );
+
+  expect(view).toMatchObject({
+    totalsMatch: true,
+    sourceCurrent: true,
+    partiesCurrent: true,
+    returned: null,
+  });
+  expect(view.review.source.digest).toBe(context.original.digest);
+  expect([
+    view.review.source.netMinor,
+    view.review.source.taxMinor,
+    view.review.source.grossMinor,
+  ]).toEqual(["10000", "2500", "12500"]);
+  const query = `documentKind=invoice&documentId=${context.original.id}`;
+
+  const page = await decoded(
+    await request(context.book, `/commerce/peppol/reviews?${query}`),
+    Peppol.ReviewPage,
+  );
+
+  expect(page.items.map((item) => item.id)).toEqual([review.id]);
+  await failure(
+    await request(context.author, `/commerce/peppol/artifacts/${review.id}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ digest: review.digest }),
+    }),
+    404,
+    "NotFound",
+  );
+  await failure(
+    await request(context.author, `/commerce/peppol/artifacts/${review.id}/dispatch`, {
+      method: "POST",
+      body: JSON.stringify({ digest: review.digest, approvalId: "absent_approval" }),
+    }),
+    404,
+    "NotFound",
+  );
+  const foreign = await fixture();
+
+  await failure(await request(foreign, `/commerce/peppol/reviews/${review.id}`), 404, "NotFound");
+  await failure(await request(foreign, `/commerce/peppol/reviews?${query}`), 404, "NotFound");
+  await failure(
+    await request(context.author, `/commerce/peppol/reviews/${review.id}/returns`, {
+      method: "POST",
+      body: JSON.stringify({ digest: review.digest }),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  await failure(
+    await request(context.book, `/commerce/peppol/reviews/${review.id}/returns`, {
+      method: "POST",
+      body: JSON.stringify({ digest: review.digest }),
+    }),
+    403,
+    "Forbidden",
+  );
+
+  const returned = await post(
+    context.reviewer,
+    `/commerce/peppol/reviews/${review.id}/returns`,
+    { digest: review.digest },
+    Peppol.ReviewReturn,
+  );
+
+  expect(
+    await post(
+      context.reviewer,
+      `/commerce/peppol/reviews/${review.id}/returns`,
+      { digest: review.digest },
+      Peppol.ReviewReturn,
+    ),
+  ).toEqual(returned);
+
+  const reloaded = await decoded(
+    await request(context.book, `/commerce/peppol/reviews/${review.id}`),
+    Peppol.ReviewView,
+  );
+
+  expect(reloaded.review).toEqual(review);
+  expect(reloaded.returned).toEqual(returned);
+  expect([
+    (await exchangeFacts(context)).artifacts,
+    (await exchangeFacts(context)).approvals,
+    (await exchangeFacts(context)).attempts,
+  ]).toEqual(["0", "0", "0"]);
+  await assertTransportDidNotPost(context);
+  await writeFile(
+    join(environment().artifacts, "peppol-m59-retained-r003-return.json"),
+    JSON.stringify({ review, view, page, returned, reloaded }, null, 2),
+  );
+});
+
+test("Peppol unavailable review replays its observation and a new check preserves the prior failure", async () => {
+  const context = await peppolLegalFixture();
+  const selected = await bindings(context);
+
+  const input = {
+    document: { kind: "invoice" as const, id: context.original.id },
+    senderBindingId: selected.sender.id,
+    recipientBindingId: selected.recipient.id,
+  };
+
+  const commandKey = key();
+  await control(context.original.legalDocumentNumber, { validatorFault: "absent_engine" });
+  const blocked = await retainedReview(context, input, commandKey);
+
+  expect(blocked.outcome).toBe("blocked");
+  expect(blocked.validation.outcome).toBe("ValidationUnavailable");
+  await control(context.original.legalDocumentNumber, {});
+  expect(await retainedReview(context, input, commandKey)).toEqual(blocked);
+  const ready = await post(context.author, "/commerce/peppol/reviews", input, Peppol.Review);
+
+  expect(ready.outcome).toBe("ready");
+  expect(ready.id).not.toBe(blocked.id);
+  expect(
+    (
+      await decoded(
+        await request(context.book, `/commerce/peppol/reviews/${blocked.id}`),
+        Peppol.ReviewView,
+      )
+    ).review,
+  ).toEqual(blocked);
+
+  const page = await decoded(
+    await request(
+      context.book,
+      `/commerce/peppol/reviews?documentKind=invoice&documentId=${context.original.id}`,
+    ),
+    Peppol.ReviewPage,
+  );
+
+  expect(page.items.map((item) => item.id)).toEqual([blocked.id, ready.id]);
+  expect((await exchangeFacts(context)).attempts).toBe("0");
+  await assertTransportDidNotPost(context);
+  await writeFile(
+    join(environment().artifacts, "peppol-retained-unavailable-new-check.json"),
+    JSON.stringify({ blocked, ready, page }, null, 2),
+  );
+});
+
+test("Peppol approval replay refuses a participant binding superseded after approval", async () => {
+  const context = await peppolLegalFixture();
+  const { artifact, recipient } = await prepare(context);
+  const approvalKey = key();
+  const path = `/commerce/peppol/artifacts/${artifact.id}/approvals`;
+
+  const command = {
+    method: "POST",
+    headers: { "idempotency-key": approvalKey },
+    body: JSON.stringify({ digest: artifact.digest }),
+  };
+
+  await decoded(await request(context.reviewer, path, command), Approval);
+  await post(
+    context.author,
+    "/commerce/peppol/bindings",
+    {
+      document: recipient.document,
+      role: recipient.role,
+      participantId: recipient.participantId,
+      schemeId: recipient.schemeId,
+      providerAccount: recipient.providerAccount,
+      active: true,
+      evidenceId: recipient.evidenceId,
+      buyerReference: "CURRENT-REPLACEMENT",
+      paymentAccountReference: null,
+      acknowledgeSyntheticAccessPoint: true,
+    },
+    Binding,
+  );
+  await failure(await request(context.reviewer, path, command), 409, "StaleDependency");
+  expect((await exchangeFacts(context)).attempts).toBe("0");
+  await assertTransportDidNotPost(context);
+  await saveEvidence("peppol-stale-approval-replay-refused", context.book);
+});

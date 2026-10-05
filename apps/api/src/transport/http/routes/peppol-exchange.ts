@@ -7,6 +7,35 @@ import { scopeFromPath } from "../scope";
 
 export const PeppolExchangeHandlers = HttpApiBuilder.group(Api, "peppolExchange", (handlers) =>
   handlers
+    .handle("preparePeppolReview", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.preparePeppolReview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getPeppolReview", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.getPeppolReview(token, scopeFromPath(params), params.id),
+      ),
+    )
+    .handle("listPeppolReviews", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.listPeppolReviews(token, scopeFromPath(params), query),
+      ),
+    )
+    .handle("returnPeppolReview", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.returnPeppolReview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          reviewId: params.id,
+          input: payload,
+        }),
+      ),
+    )
     .handle("registerPeppolBinding", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Owner.registerPeppolBinding(token, {

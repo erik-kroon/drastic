@@ -169,6 +169,12 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
           <Section spacing="sm">
             <Text weight="semibold">Betalningsvillkor</Text>
             <Text variant="sm">{required(content.paymentTerms, "payment terms")}</Text>
+            {content.buyerReference ? (
+              <Text variant="sm">Kundens referens: {content.buyerReference}</Text>
+            ) : null}
+            {content.orderReference ? (
+              <Text variant="sm">Beställningsreferens: {content.orderReference}</Text>
+            ) : null}
             {content.note ? <Text variant="sm">{content.note}</Text> : null}
             <Text variant="sm">Ange fakturanummer {number} vid betalning.</Text>
             <Text variant="xs" muted noMargin>

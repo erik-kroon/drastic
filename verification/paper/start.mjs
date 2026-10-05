@@ -53,6 +53,13 @@ if (foreignCashHook !== undefined && foreignCashHook !== "0" && foreignCashHook 
 const foreignCashSeed =
   foreignCashHook === "1" ? await import("./seed-foreign-cash.mjs") : undefined;
 
+const peppolHook = process.env.PAPER_PEPPOL;
+
+if (peppolHook !== undefined && peppolHook !== "0" && peppolHook !== "1")
+  throw new Error("PAPER_PEPPOL must be 0 or 1");
+
+const peppolSeed = peppolHook === "1" ? await import("./seed-peppol.mjs") : undefined;
+
 const processorHook = process.env.PAPER_PROCESSORS;
 
 if (processorHook !== undefined && processorHook !== "0" && processorHook !== "1")
@@ -128,6 +135,8 @@ let worker;
 
 let processorFixture;
 
+let peppolFixture;
+
 let webLog = "";
 
 let postgresStarted = false;
@@ -149,6 +158,7 @@ async function cleanup() {
       try {
         await worker?.close();
         await processorFixture?.close();
+        await peppolFixture?.close();
       } finally {
         try {
           if (postgresStarted)
@@ -269,6 +279,8 @@ try {
 
   if (loanSeed) fixture.accounts.push(...loanSeed.loanAccounts);
 
+  if (peppolSeed) fixture.accounts.push(...peppolSeed.peppolAccounts);
+
   if (processorSeed) {
     fixture.accounts.push(...processorSeed.processorAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -320,6 +332,27 @@ try {
     processorFixture = await (await import(bundledFixture)).startProcessorFixture();
   }
 
+  if (peppolSeed) {
+    const bundledFixture = join(scratch, "peppol-fixture.mjs");
+    await run(
+      "bun",
+      [
+        "build",
+        "apps/api/tests/support/peppol-fixture.ts",
+        "--target=node",
+        `--outfile=${bundledFixture}`,
+      ],
+      { cwd: root },
+    );
+    peppolFixture = await (
+      await import(bundledFixture)
+    ).startPeppolFixture({
+      python: join(root, ".cache/peppol-validator/bin/python"),
+      validatorPath: join(root, "verification/peppol/validate.py"),
+      releaseSha256: "b4a2bb071345361feaacc429cd70a1d82aa3a43c8746ba611ab8bf22f73c87be",
+    });
+  }
+
   const workerSecrets = {
     DATABASE_URL: runtimeUrl,
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
@@ -331,6 +364,13 @@ try {
       OPENERP_PROCESSOR_FEED: "local-fixture",
       OPENERP_PROCESSOR_ENDPOINT: processorFixture.url,
       OPENERP_PROCESSOR_SECRET: processorFixture.secret,
+    });
+
+  if (peppolFixture)
+    Object.assign(workerSecrets, {
+      OPENERP_PEPPOL_EXCHANGE: "local-fixture",
+      OPENERP_PEPPOL_ENDPOINT: peppolFixture.url,
+      OPENERP_PEPPOL_SECRET: peppolFixture.secret,
     });
 
   worker = createTestHarness({
@@ -357,6 +397,19 @@ try {
 
     console.log(JSON.stringify(payroll));
   }
+
+  if (peppolSeed)
+    console.log(
+      JSON.stringify(
+        await peppolSeed.seedPeppol({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
 
   if (processorSeed)
     console.log(

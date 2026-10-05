@@ -4,6 +4,7 @@ import * as Db from "../../db/commerce/peppol-exchange";
 import type { Transaction } from "../../db/transaction";
 import { RequestEnvironment } from "../../runtime/environment";
 import { configuredPeppolAccessPoint } from "../../adapters/peppol/local-fixture";
+import { readPeppolDocument, bindingSubject, partyDigest } from "./peppol-document";
 import { decode, type Scope } from "./support";
 import { failure } from "../failures";
 
@@ -47,5 +48,28 @@ export function currentBinding(
 
     if (!binding.active || !current || current.body.id !== binding.id)
       return yield* failure("StaleDependency");
+  });
+}
+
+export function capturePeppol(tx: Transaction, scope: Scope, input: typeof Contracts.Prepare.Type) {
+  return Effect.gen(function* () {
+    const document = yield* readPeppolDocument(tx, scope, input.document);
+    const sender = yield* readBinding(tx, scope, input.senderBindingId);
+    const recipient = yield* readBinding(tx, scope, input.recipientBindingId);
+    yield* currentBinding(tx, scope, sender);
+    yield* currentBinding(tx, scope, recipient);
+
+    if (
+      sender.role !== "sender" ||
+      recipient.role !== "recipient" ||
+      sender.providerAccount !== recipient.providerAccount ||
+      sender.partyDigest !== (yield* partyDigest(document.seller)) ||
+      recipient.partyDigest !== (yield* partyDigest(document.buyer)) ||
+      sender.subjectKey !== (yield* bindingSubject(document, "sender")) ||
+      recipient.subjectKey !== (yield* bindingSubject(document, "recipient"))
+    )
+      return yield* failure("InvalidJournal");
+
+    return { document, sender, recipient };
   });
 }

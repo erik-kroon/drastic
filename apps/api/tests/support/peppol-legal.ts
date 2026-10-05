@@ -11,6 +11,7 @@ export async function peppolLegalFixture(
     lines: ReadonlyArray<Omit<typeof Drafts.DraftLine.Type, "taxEvidenceId">>;
     sourceTotalMinor: string;
   },
+  references: { buyerReference?: string | null; orderReference?: string | null } = {},
 ) {
   const book = await fixture([
     { id: "account_ar", code: "1510", name: "Synthetic receivables" },
@@ -174,6 +175,9 @@ export async function peppolLegalFixture(
         supplyDate: today,
         dueDate: today,
         paymentTerms: "Synthetic only; no payment requested",
+        buyerReference:
+          references.buyerReference === undefined ? "SYNTHETIC-BUYER" : references.buyerReference,
+        orderReference: references.orderReference ?? null,
         sourceTotalMinor: invoice?.sourceTotalMinor ?? "12500",
         lines: invoice
           ? invoice.lines.map((line) => ({ ...line, taxEvidenceId: source.id }))
