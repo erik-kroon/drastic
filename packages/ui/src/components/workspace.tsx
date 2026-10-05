@@ -103,6 +103,9 @@ const styles = stylex.create({
     transitionDuration: tokens.durationQuick,
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
+  navNeutral: {
+    backgroundColor: { default: tokens.navigationSelected, ":hover": tokens.navigationSelected },
+  },
   navActive: {
     backgroundColor: { default: tokens.muted, ":hover": tokens.muted },
     color: { default: tokens.mutedForeground, ":hover": tokens.foreground },
@@ -614,14 +617,25 @@ export function WorkspaceNavLink({
   active = false,
   current = active,
   count,
+  selection,
   children,
   ...props
-}: ComponentProps<typeof Link> & { active?: boolean; current?: boolean; count?: number }) {
+}: ComponentProps<typeof Link> & {
+  active?: boolean;
+  current?: boolean;
+  count?: number;
+  selection?: "neutral";
+}) {
   return (
     <Link
       {...props}
       aria-current={current ? "page" : undefined}
-      {...stylex.props(styles.navItem, styles.navLink, active && styles.navActive)}
+      {...stylex.props(
+        styles.navItem,
+        styles.navLink,
+        active && styles.navActive,
+        active && selection === "neutral" && styles.navNeutral,
+      )}
     >
       {children}
       {count ? <span {...stylex.props(styles.navCount)}>{count}</span> : null}

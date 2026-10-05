@@ -41,6 +41,13 @@ const payrollHook = process.env.PAPER_PAYROLL;
 
 const onboardingHook = process.env.PAPER_ONBOARDING;
 
+const assetHook = process.env.PAPER_ASSETS;
+
+if (assetHook !== undefined && assetHook !== "0" && assetHook !== "1")
+  throw new Error("PAPER_ASSETS must be 0 or 1");
+
+const assetSeed = assetHook === "1" ? await import("./seed-assets.mjs") : undefined;
+
 if (onboardingHook !== undefined && onboardingHook !== "0" && onboardingHook !== "1")
   throw new Error("PAPER_ONBOARDING must be 0 or 1");
 
@@ -221,6 +228,8 @@ try {
 
   if (payrollSeed) fixture.accounts.push(...payrollSeed.payrollAccounts);
 
+  if (assetSeed) fixture.accounts.push(...assetSeed.assetAccounts);
+
   if (onboardingHook === "1")
     fixture.accounts.push(
       { id: "account_receivable", code: "1510", name: "Synthetic customer receivables" },
@@ -271,6 +280,19 @@ try {
 
     console.log(JSON.stringify(payroll));
   }
+
+  if (assetSeed)
+    console.log(
+      JSON.stringify(
+        await assetSeed.seedAssets({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
 
   web = spawn(
     "bun",

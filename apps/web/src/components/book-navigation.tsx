@@ -21,6 +21,7 @@ export function BookNavigation(props: {
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
   const documents = new URLSearchParams(props.search).get("view") === "documents";
   const bookkeeping = pathname === `${base}/books`;
+  const assets = bookkeeping && new URLSearchParams(props.search).get("view") === "assets";
 
   const waiting = useQuery({
     ...attentionQueryOptions(props.book, { status: "open" }),
@@ -106,7 +107,11 @@ export function BookNavigation(props: {
         </WorkspaceNavLink>
       </WorkspaceNavigation>
       <WorkspaceNavigation label={locale === "sv" ? "Redovisning" : "Accounting"}>
-        <WorkspaceNavLink href={`${base}/books`} active={bookkeeping}>
+        <WorkspaceNavLink
+          href={`${base}/books`}
+          active={bookkeeping}
+          selection={assets ? "neutral" : undefined}
+        >
           <NavIcon name="bookkeeping" />
           {copy.bookkeeping}
         </WorkspaceNavLink>

@@ -22,12 +22,15 @@ import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostedRecord } from "@/components/posted-records";
 import { VoucherWorkspace } from "@/components/voucher-workspace";
 import { ChartOfAccounts } from "@/components/account-register";
+import { BookAssets } from "@/components/subledgers/book-assets";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 const search = Schema.Struct({
-  view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
+  view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts", "assets"])),
   record: Schema.optional(Schema.String),
+  assetAction: Schema.optional(Schema.Literal("disposal")),
+  assetReview: Schema.optional(Identifier),
   work: WorkReturnSearch,
   returnTo: OwnerReturnSearch,
   returnPlan: Schema.optional(Identifier),
@@ -69,6 +72,9 @@ function Books() {
     void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: query.returnTo } });
   };
 
+  if (view === "assets")
+    return <BookAssets recordId={record} action={query.assetAction} reviewId={query.assetReview} />;
+
   const navigation = (
     <RegisterNavigation
       label={copy.bookkeeping}
@@ -90,7 +96,7 @@ function Books() {
         },
         {
           label: locale === "sv" ? "Tillgångar" : "Assets",
-          href: `${workspacePath(book)}/reports?view=subledgers`,
+          href: `${workspacePath(book)}/books?view=assets`,
           active: false,
         },
         {
