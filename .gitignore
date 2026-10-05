@@ -97,3 +97,6 @@ temp
 .wrangler/
 .dev.vars
 .design-system/paper-route-matrix.json
+
+# TesterArmy replay cache and transient runner output
+.e2e/

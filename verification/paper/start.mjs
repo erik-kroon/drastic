@@ -7,7 +7,6 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
-import { payrollAccounts, seedPayroll } from "./seed-payroll.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 
@@ -21,7 +20,7 @@ const { createTestHarness } = requireApi("wrangler");
 
 const run = promisify(execFile);
 
-const artifacts = join(root, "test-results/paper");
+const artifacts = resolve(root, process.env.PAPER_ARTIFACTS ?? "test-results/paper");
 
 await mkdir(artifacts, { recursive: true });
 
@@ -56,7 +55,19 @@ if (
 )
   throw new Error("PAPER_PORT must be an integer from 1024 through 65535");
 
+const payrollSeed = payrollHook === "1" ? await import("./seed-payroll.mjs") : undefined;
+
+const webSocket = createServer();
+
+webSocket.listen(webPort, "127.0.0.1");
+
+await once(webSocket, "listening");
+
+await new Promise((done, reject) => webSocket.close((error) => (error ? reject(error) : done())));
+
 const scratch = await mkdtemp(join(tmpdir(), "openerp-paper-"));
+
+console.log(JSON.stringify({ starting: true, scratch }));
 
 const pgData = join(scratch, "pgdata");
 
@@ -208,7 +219,7 @@ try {
   fixture.actor.name = "Elin Sund";
   fixture.actor.tokenExpiresAt = new Date(Date.now() + 86_400_000).toISOString();
 
-  if (payrollHook === "1") fixture.accounts.push(...payrollAccounts);
+  if (payrollSeed) fixture.accounts.push(...payrollSeed.payrollAccounts);
 
   if (onboardingHook === "1")
     fixture.accounts.push(
@@ -249,8 +260,8 @@ try {
 
   const listening = await worker.listen();
 
-  if (payrollHook === "1") {
-    const payroll = await seedPayroll({
+  if (payrollSeed) {
+    const payroll = await payrollSeed.seedPayroll({
       apiUrl: listening.url.origin,
       adminUrl,
       accessToken,

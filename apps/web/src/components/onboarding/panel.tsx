@@ -9,7 +9,8 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { OnboardingStart } from "./start";
-import { OnboardingProfile, OnboardingCompatibility } from "./profile";
+import { OnboardingProfile } from "./profile";
+import { OnboardingCompatibility } from "./compatibility";
 import { OnboardingWorkspace } from "./workspace";
 import { OnboardingSources } from "./sources";
 import { OnboardingImport, OnboardingMapping } from "./import";
@@ -100,7 +101,13 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
           <OnboardingProfile workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
         );
       case "compatibility":
-        return <OnboardingCompatibility workspace={workspace.data} open={open} />;
+        return (
+          <OnboardingCompatibility
+            workspace={workspace.data}
+            lifecycle={lifecycle.data}
+            open={open}
+          />
+        );
       case "workspace":
         return (
           <OnboardingWorkspace workspace={workspace.data} lifecycle={lifecycle.data} open={open} />

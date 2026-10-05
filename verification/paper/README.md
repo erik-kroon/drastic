@@ -5,6 +5,26 @@ Current onboarding desktop gate (2026-10-04): **U35–U46 pass 12/12 at the owne
 The manifest assigns separate disposable phases for received/pre-import sources, staged opening, posted verification, candidate delta, pre-final cutover and pending confirmations. The activated fixture owns U45/U46. Run `node verification/paper/parity.mjs <private-session-file>` with `PARITY_MANIFEST` naming a manifest containing the U35–U46 entries; linked private phase sessions must exist beneath that session directory. Do not use an empty or sparse book as evidence of full onboarding. The committed source seeding/handoff scripts retain actual source bytes and call native owners; credentials and private backups remain outside Git.
 
 
+## 2026-10-04 measurement scope
+
+The retained latest per-entry report is `test-results/paper/parity-2026-10-04-progress.json`: 27/27 below 5%, 13/27 below 2.5%, and 2/27 below 1%. These are separate disposable synthetic fixtures, not one combined runtime. The manifest has 27 checks over 26 distinct baseline frames; its sidebar check is a crop of M12. The 1% final gate and 24-channel tolerance are unchanged.
+
+`parity-2026-10-04-final-onboarding/` retains all 15 onboarding captures and diffs. U34 measures 1.85%; U42 measures 1.23%. Compatibility now uses the eight product capability rows, with actual profile qualification and reviewed applicability kept visible. Its explicitly illustrative unsupported row appears only on the demo path. Missing native VAT/statement qualification remains missing; this is not proof of a qualified external handoff. Cutover distinguishes accepted limitations from a clean verification result, highlights the final-delta step, and leaves backup/final-delta failures visible. Its confirmation button remains disabled until every displayed gate passes.
+
+The isolated acceptance fixture exercises real fact recording, independent review, synthetic posting-profile activation, retained zero controls, bank statement import, opening acceptance, a tax-statement limitation, and book-zero acceptance. It does not activate onboarding or accept a final delta without historical source effects. Repeat with a fresh launcher:
+
+```sh
+PAPER_ONBOARDING=1 node verification/paper/start.mjs
+PAPER_READINESS=1 node verification/paper/seed-onboarding-controls.mjs <private-session.json>
+PARITY_OUT=test-results/paper/parity-repeat node verification/paper/parity.mjs <private-session.json> U
+```
+
+Browser-session acceptance previously failed because the onboarding authority schema applied the accounting identifier grammar to Better Auth session IDs. The schema now retains a bounded opaque session ID; authorization still checks the real stored session. The retained seed receipt contains only redacted comparison and control identities.
+
+Full changed-file checks ran; type checks passed, while type-aware lint remains blocked by concurrent banking, FX and payroll edits. The log is retained beside the onboarding report. T3 returned an explicit unavailable-host error during the final interaction pass, so no new T3 interaction proof is claimed.
+
+The live Paper inventory is `paper-inventory-2026-10-04.json` in `test-results/paper/`: 337 artboards, including 328 product frames and nine system boards. `screen-coverage-audit-2026-10-04.json` retains the source route inventory and confirmed implementation gaps. Dialog/state frames do not each require a route. These inventories are distinct from measured parity and from a complete implementation audit.
+
 Empty-book onboarding verification fixture obligations, before implementation: admit additional synthetic receivable, payable and VAT accounts only through the launcher's bootstrap; reject an invalid fixture flag before starting processes; use private loopback sessions and real source-retention/control/snapshot owners; independently specify all comparison amounts as zero in a fresh empty book; refuse existing onboarding cases or posted vouchers; reject every failed request and any nonzero comparison; retain redacted identities and snapshot blockers. Missing tax evidence remains missing. Capturing a blocked snapshot must not approve opening balances, bypass verification, activate the company, or assert an external outcome.
 
 Onboarding profile fixture obligations, before implementation: use only the launcher's private local scratch database; refuse existing company facts rather than replace them; provision a separate synthetic preparer and use real local human sessions for fact recording and review; refuse any failed API read or write; preserve the rule that a person cannot review their own recorded fact; retain only redacted fact/source/review identities. Six supported company facts can be retained; a BAS chart release is not a supported company fact and must not be invented. This fixture does not activate a company, approve a posting, or assert any external outcome.

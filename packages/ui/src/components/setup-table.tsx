@@ -46,6 +46,15 @@ const styles = stylex.create({
   selected: { backgroundColor: tokens.registerSelected, boxShadow: tokens.selectionIndicator },
   warning: { backgroundColor: tokens.warning },
   blocked: { backgroundColor: tokens.destructiveBackground },
+  descriptionRow: {
+    height: "auto",
+    flexDirection: "column",
+    alignItems: "stretch",
+    paddingBlock: tokens.space2,
+    gap: tokens.space0_5,
+  },
+  cells: { display: "contents" },
+  descriptionCells: { display: "flex", alignItems: "center", height: tokens.controlHeightSm },
 });
 
 export function SetupTable({
@@ -64,6 +73,7 @@ export function SetupTable({
     cells: readonly ReactNode[];
     tone?: "selected" | "warning" | "blocked";
     group?: string;
+    description?: ReactNode;
   }[];
   density?: "standard" | "source" | "compact";
   layout?: "opening" | "delta";
@@ -103,6 +113,7 @@ export function SetupTable({
               aria-selected={row.tone === "selected" ? true : undefined}
               {...stylex.props(
                 styles.row,
+                row.description !== undefined && styles.descriptionRow,
                 layout === "opening" && styles.openingRow,
                 density === "source" && styles.sourceRow,
                 density === "compact" && styles.compactRow,
@@ -110,22 +121,33 @@ export function SetupTable({
                 row.tone === "selected" && styles.selected,
                 row.tone === "warning" && styles.warning,
                 row.tone === "blocked" && styles.blocked,
+                row.description !== undefined && styles.descriptionRow,
               )}
             >
-              {columns.map((column, index) => (
-                <div
-                  key={column.id}
-                  role="cell"
-                  {...stylex.props(
-                    styles.cell(column.width, column.numeric ?? false),
-                    !!layout && index === 0 && styles.firstOpeningCell,
-                    layout === "opening" && index === columns.length - 1 && styles.lastOpeningCell,
-                    layout === "delta" && index === columns.length - 1 && styles.deltaLastCell,
-                  )}
-                >
-                  {row.cells[index]}
-                </div>
-              ))}
+              <div
+                {...stylex.props(
+                  styles.cells,
+                  row.description !== undefined && styles.descriptionCells,
+                )}
+              >
+                {columns.map((column, index) => (
+                  <div
+                    key={column.id}
+                    role="cell"
+                    {...stylex.props(
+                      styles.cell(column.width, column.numeric ?? false),
+                      !!layout && index === 0 && styles.firstOpeningCell,
+                      layout === "opening" &&
+                        index === columns.length - 1 &&
+                        styles.lastOpeningCell,
+                      layout === "delta" && index === columns.length - 1 && styles.deltaLastCell,
+                    )}
+                  >
+                    {row.cells[index]}
+                  </div>
+                ))}
+              </div>
+              {row.description}
             </div>
           ),
         )}

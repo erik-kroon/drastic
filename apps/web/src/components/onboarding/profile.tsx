@@ -29,7 +29,7 @@ import {
   readAccounting,
 } from "@/lib/accounting-api";
 import { formatDate, formatMoment, useOnboardingCommand, useOnboardingFacts } from "./data";
-import { PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
+import { PendingRead, type OpenOnboardingView } from "./shared";
 
 type Fact = (typeof Profiles.CompanyFactPage.Type.items)[number];
 
@@ -569,84 +569,5 @@ function FactEditor({
         <AccountingStatus locale={locale} pending={save.isPending} error={save.error} write />
       </SetupBlock>
     </FormDialog>
-  );
-}
-
-export function OnboardingCompatibility({
-  workspace,
-  open,
-}: {
-  workspace: typeof Onboarding.OnboardingWorkspace.Type;
-  open: OpenOnboardingView;
-}) {
-  const { book } = useBookWorkspace();
-
-  const familyLabels = {
-    posting_eligibility: "Bokföring",
-    vat: "Moms",
-    payroll: "Löner",
-    statements: "Årsredovisning",
-    corporate_tax: "Inkomstdeklaration",
-  };
-
-  return (
-    <SetupPageContent styleX={setupLayoutStyles(["page"])}>
-      <SetupTitle>Vad OpenERP stöder för {book.name}</SetupTitle>
-      <SetupBlock layout={["section"]}>
-        <SetupTable
-          title="Kompatibilitet"
-          width={tokens.setupWorkspaceWidth}
-          columns={[
-            { id: "family", label: "Del", width: tokens.setupColumn260 },
-            { id: "state", label: "Status", width: tokens.setupColumn210 },
-            { id: "detail", label: "Det här gäller", width: tokens.setupColumn514 },
-          ]}
-          rows={workspace.qualification.map((item) => ({
-            id: item.family,
-            tone: (
-              {
-                needs_information: "warning",
-                not_supported: "blocked",
-                supported: undefined,
-                supported_with_handoff: undefined,
-              } as const
-            )[item.state],
-            cells: [
-              familyLabels[item.family],
-              <SetupText
-                key="status"
-                layout={[
-                  (
-                    {
-                      supported: "success",
-                      supported_with_handoff: "primary",
-                      not_supported: "blocked",
-                      needs_information: "warning",
-                    } as const
-                  )[item.state],
-                  "medium",
-                ]}
-              >
-                {
-                  {
-                    supported: "✓ Stöds",
-                    supported_with_handoff: "→ Stöds med överlämning",
-                    not_supported: "× Stöds inte",
-                    needs_information: "! Behöver uppgift",
-                  }[item.state]
-                }
-              </SetupText>,
-              <SetupText key="detail" layout={["secondary"]}>
-                {item.reason}
-              </SetupText>,
-            ],
-          }))}
-        />
-      </SetupBlock>
-      <SetupBlock layout={["section20"]}>
-        <SetupButton onClick={() => open("workspace")}>Öppna Setup</SetupButton>
-      </SetupBlock>
-      <SetupLink onClick={() => open("profile")}>Företagsprofil</SetupLink>
-    </SetupPageContent>
   );
 }

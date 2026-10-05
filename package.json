@@ -47,11 +47,16 @@
     "prepare": "effect-tsgo patch --typescript",
     "test": "vp test run",
     "test:e2e": "vp test run",
-    "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit",
     "test:domain-owners": "vp test run apps/api/tests/collection-reminders.e2e.test.ts apps/api/tests/asset-valuations.e2e.test.ts apps/api/tests/asset-disposals.e2e.test.ts apps/api/tests/treasury-loans.e2e.test.ts apps/api/tests/foreign-cash.e2e.test.ts apps/api/tests/processor-clearing.e2e.test.ts apps/api/tests/payroll-inputs.e2e.test.ts apps/api/tests/payroll-runs.e2e.test.ts apps/api/tests/payroll-settlements.e2e.test.ts apps/api/tests/sie-historical-owners.e2e.test.ts apps/api/tests/document-signing-filing.e2e.test.ts apps/api/tests/peppol-exchange.e2e.test.ts",
-    "check:owners": "bun scripts/check-owners.ts"
+    "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit",
+    "check:owners": "bun scripts/check-owners.ts",
+    "test:browser": "node verification/testerarmy/run.mjs",
+    "check:browser": "tsc --project tests/browser/tsconfig.json --noEmit",
+    "setup:browser": "node verification/testerarmy/setup.mjs"
   },
   "devDependencies": {
+    "@ai-sdk/openai-compatible": "3.0.62",
+    "@e2e-dev/web": "0.12.0",
     "@effect/platform-bun": "4.0.0",
     "@effect/platform-node-shared": "4.0.0",
     "@effect/tsgo": "0.41.0",
@@ -60,7 +65,9 @@
     "@stylexjs/eslint-plugin": "0.19.0",
     "@types/bun": "catalog:",
     "@types/node": "26.2.0",
+    "ai": "7.0.127",
     "alchemy": "2.0.0-beta.79",
+    "e2e": "0.17.0",
     "effect": "4.0.0",
     "oxfmt": "^0.64.0",
     "oxlint": "1.79.0",
