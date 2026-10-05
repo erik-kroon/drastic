@@ -44,6 +44,7 @@ export const AdoptionPlan = Schema.Struct({
   scope: A.Scope,
   input: PrepareAdoption,
   poolVersion: Schema.String,
+  capturedPool: Schema.optional(Pool),
   plan: Domain.HistoricalAdoptionPlan,
   digest: A.Digest,
   createdBy: A.Identifier,
@@ -96,6 +97,51 @@ export const PoolControl = Schema.Struct({
   version: Schema.String,
 });
 
+export const RereviewPool = Schema.Struct({
+  expectedPoolDigest: A.Digest,
+  admissionId: A.Identifier,
+  admissionDigest: A.Digest,
+  rationale: A.Description,
+});
+
+export const PoolRevision = Schema.Struct({
+  id: A.Identifier,
+  poolId: A.Identifier,
+  ordinal: Schema.Int,
+  input: RereviewPool,
+  pool: Pool,
+  digest: A.Digest,
+  createdBy: A.Identifier,
+  createdAt: Schema.String,
+});
+
+export const AdoptionWorkspace = Schema.Struct({
+  plan: AdoptionPlan,
+  preparedPool: Pool,
+  currentPool: Pool,
+  revision: Schema.NullOr(PoolRevision),
+  approvals: Schema.Array(Approval),
+  adoption: Schema.NullOr(Adoption),
+  glMinor: A.SignedMinorUnits,
+  differenceMinor: A.SignedMinorUnits,
+  stale: Schema.Boolean,
+  sourceOccurrenceId: A.Identifier,
+  currentSourceOccurrenceId: A.Identifier,
+  currentSourcePlanId: A.Identifier,
+  currentPreviewId: A.Identifier,
+  reviewerName: Schema.NullOr(Schema.String),
+  adoptedMinor: A.MinorUnits,
+  originalUnadoptedMinor: A.MinorUnits,
+});
+
+export const AdoptionPageQuery = Schema.Struct({ after: Schema.optional(A.Identifier) });
+
+export const AdoptionPage = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(AdoptionPlan),
+  next: Schema.NullOr(A.Identifier),
+});
+
 export const PrepareSettlement = Schema.Struct({
   adoptionId: A.Identifier,
   expectedVersion: Schema.String,
@@ -139,6 +185,31 @@ const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
 
 export const HistoricalAdoptionsApi = HttpApiGroup.make("historicalAdoptions")
+  .add(
+    HttpApiEndpoint.post("rereviewHistoricalPool", `${base}/historical-pools/:id/revisions`, {
+      ...mutation,
+      payload: RereviewPool,
+      success: PoolRevision,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get(
+      "getHistoricalAdoptionWorkspace",
+      `${base}/historical-adoption-plans/:id/workspace`,
+      {
+        ...identified,
+        success: AdoptionWorkspace,
+      },
+    ),
+  )
+  .add(
+    HttpApiEndpoint.get("listHistoricalAdoptionPlans", `${base}/historical-adoption-plans`, {
+      params: A.Scope,
+      query: AdoptionPageQuery,
+      success: AdoptionPage,
+      error: accountingErrors,
+    }),
+  )
   .add(
     HttpApiEndpoint.post("createHistoricalPool", `${base}/historical-pools`, {
       params: A.Scope,

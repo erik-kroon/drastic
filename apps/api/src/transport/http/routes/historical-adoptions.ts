@@ -12,6 +12,32 @@ export const HistoricalAdoptionsHandlers = HttpApiBuilder.group(
   "historicalAdoptions",
   (handlers) =>
     handlers
+      .handle("rereviewHistoricalPool", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Adoptions.rereviewHistoricalPool(token, {
+            scope: scopeFromPath(params),
+            id: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("getHistoricalAdoptionWorkspace", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Adoptions.getHistoricalAdoptionWorkspace(token, {
+            scope: scopeFromPath(params),
+            id: params.id,
+          }),
+        ),
+      )
+      .handle("listHistoricalAdoptionPlans", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Adoptions.listHistoricalAdoptionPlans(token, {
+            scope: scopeFromPath(params),
+            query,
+          }),
+        ),
+      )
       .handle("createHistoricalPool", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           Adoptions.createHistoricalPool(token, {

@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { HistoricalAdoptionDirectory } from "./adoption-workspace";
 import { useForm } from "@tanstack/react-form";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -49,6 +50,7 @@ export function HistoricalIntake({
     <>
       <WorkspaceHeader title={sv ? "Tidigare bokföring" : "Previous bookkeeping"} />
       <PageContent>
+        <HistoricalAdoptionDirectory />
         <Link href={`${workspacePath(book)}/setup`}>
           {sv ? "Till företagsinställningar" : "Back to company setup"}
         </Link>

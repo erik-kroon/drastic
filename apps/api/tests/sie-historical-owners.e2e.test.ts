@@ -93,6 +93,7 @@ async function retain(
   missingAccount = false,
   pair = false,
   sourceSystem = "synthetic_sie_historical_owners",
+  residual = "40000",
 ) {
   const yearControls = pair
     ? amounts2025.map((row) => ({ ...row, closing: (BigInt(row.closing) * 2n).toString() }))
@@ -195,7 +196,7 @@ async function retain(
               sourceAccount: "1510",
               currency: "SEK",
               originalMinor: "100000",
-              outstandingMinor: "40000",
+              outstandingMinor: residual,
               asOf: "2025-12-31",
               assertedState: "partly_paid",
               detailAvailability: "source_asserted",
@@ -208,7 +209,7 @@ async function retain(
             {
               sourceAccount: "1510",
               currency: "SEK",
-              independentOutstandingMinor: "40000",
+              independentOutstandingMinor: residual,
               basis: "Independent synthetic residual inventory",
             },
           ],
@@ -1008,6 +1009,281 @@ test("SIE multi-member chunk rolls back the first posted member when the second 
     join(environment().artifacts, "sie-all-or-none.json"),
     JSON.stringify(
       { refused, committed, sequenceBeforeRecovery: "0", sequenceAfterRecovery: "2" },
+      null,
+      2,
+    ),
+  );
+});
+
+test("historical pool rereview preserves source and GL while invalidating approval and requiring reconciliation", async () => {
+  const book = await setup();
+  const source = await retain(book, false);
+  const run = await start(book, source);
+  await advance(book, run, await prepare(book, run, "period_2025"));
+
+  const admit = async (retained: Awaited<ReturnType<typeof retain>>, paid: string) =>
+    post(
+      book,
+      `/sie-plans/${retained.plan.id}/historical-items`,
+      {
+        planDigest: retained.plan.digest,
+        payments: [
+          {
+            sourceIdentity: "old_payment",
+            sourceAccount: "1510",
+            currency: "SEK",
+            amountMinor: paid,
+            sourceDate: null,
+            basis: "Synthetic retained payment source",
+          },
+        ],
+        matches: [
+          {
+            sourceIdentity: "old_match",
+            itemIdentity: "source_invoice_001",
+            paymentIdentity: "old_payment",
+            amountMinor: paid,
+            sourceDate: null,
+            basis: "Synthetic reviewed match",
+          },
+        ],
+        paymentControls: [
+          {
+            sourceAccount: "1510",
+            currency: "SEK",
+            independentTotalMinor: paid,
+            basis: "Independent source payment total",
+          },
+        ],
+        matchControls: [
+          {
+            sourceAccount: "1510",
+            currency: "SEK",
+            independentTotalMinor: paid,
+            basis: "Independent source match total",
+          },
+        ],
+        chronology: "unknown",
+        rationale: "Retain the reviewed source interpretation",
+      },
+      Historical.ItemAdmission,
+    );
+
+  const admission = await admit(source, "60000");
+
+  const pool = await post(
+    book,
+    "/historical-pools",
+    {
+      admissionId: admission.id,
+      admissionDigest: admission.digest,
+      basisFiscalYearId: "fy_2025",
+      cutoverOn: "2025-12-31",
+      sourceAccount: "1510",
+      direction: "AR",
+      rationale: "Reviewed source pool",
+    },
+    Adoption.Pool,
+  );
+
+  const plan = await post(
+    book,
+    "/historical-adoption-plans",
+    {
+      poolId: pool.id,
+      poolDigest: pool.digest,
+      sourceIdentity: "source_invoice_001",
+      rationale: "Prepare original residual",
+    },
+    Adoption.AdoptionPlan,
+  );
+
+  const browser = { ...book, token: (await createSession(book)).token };
+
+  const approval = await post(
+    browser,
+    `/historical-adoption-plans/${plan.id}/approvals`,
+    { digest: plan.digest },
+    Adoption.Approval,
+  );
+
+  const reviewed = await retain(
+    book,
+    false,
+    false,
+    false,
+    "synthetic_sie_historical_owners",
+    "30000",
+  );
+
+  expect(reviewed.content).toBe(source.content);
+  const revisedAdmission = await admit(reviewed, "70000");
+
+  const input = {
+    expectedPoolDigest: pool.digest,
+    admissionId: revisedAdmission.id,
+    admissionDigest: revisedAdmission.digest,
+    rationale: "Correct source residual after rereview",
+  };
+
+  await failure(
+    await request(book, `/historical-pools/${pool.id}/revisions`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+    403,
+    "Forbidden",
+  );
+  const before = await ledger(book);
+  const replayKey = key();
+
+  const revise = () =>
+    request(browser, `/historical-pools/${pool.id}/revisions`, {
+      method: "POST",
+      headers: { "idempotency-key": replayKey },
+      body: JSON.stringify(input),
+    });
+
+  const revision = await decoded(await revise(), Adoption.PoolRevision);
+  expect(await decoded(await revise(), Adoption.PoolRevision)).toEqual(revision);
+
+  const view = await decoded(
+    await request(book, `/historical-adoption-plans/${plan.id}/workspace`),
+    Adoption.AdoptionWorkspace,
+  );
+
+  expect([
+    view.preparedPool.exactResidualMinor,
+    view.currentPool.exactResidualMinor,
+    view.glMinor,
+    view.differenceMinor,
+    view.stale,
+    view.adoption,
+  ]).toEqual(["40000", "30000", "40000", "10000", true, null]);
+  expect(view.approvals).toEqual([approval]);
+  expect(
+    await decoded(
+      await request(book, `/historical-adoption-plans/${plan.id}`),
+      Adoption.AdoptionPlan,
+    ),
+  ).toEqual(plan);
+  await failure(
+    await request(book, `/historical-adoption-plans/${plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ digest: plan.digest, approvalId: approval.id }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  await failure(
+    await request(browser, `/historical-adoption-plans/${plan.id}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ digest: plan.digest }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  await failure(
+    await request(book, "/historical-adoption-plans", {
+      method: "POST",
+      body: JSON.stringify({ ...plan.input, poolDigest: revision.pool.digest }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await ledger(book)).toEqual(before);
+  const other = await fixture();
+  await failure(
+    await request(other, `/historical-adoption-plans/${plan.id}/workspace`),
+    404,
+    "NotFound",
+  );
+  await failure(
+    await request(other, `/historical-adoption-plans?after=${plan.id}`),
+    404,
+    "NotFound",
+  );
+
+  const directory = await decoded(
+    await request(book, "/historical-adoption-plans"),
+    Adoption.AdoptionPage,
+  );
+
+  expect(directory.items.map((item) => item.id)).toEqual([plan.id]);
+
+  const restored = await post(
+    browser,
+    `/historical-pools/${pool.id}/revisions`,
+    {
+      expectedPoolDigest: revision.pool.digest,
+      admissionId: admission.id,
+      admissionDigest: admission.digest,
+      rationale: "Resolve discrepancy against retained original source",
+    },
+    Adoption.PoolRevision,
+  );
+
+  await failure(
+    await request(book, `/historical-adoption-plans/${plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ digest: plan.digest, approvalId: approval.id }),
+    }),
+    409,
+    "StaleDependency",
+  );
+
+  const fresh = await post(
+    book,
+    "/historical-adoption-plans",
+    { ...plan.input, poolDigest: restored.pool.digest },
+    Adoption.AdoptionPlan,
+  );
+
+  const freshApproval = await post(
+    browser,
+    `/historical-adoption-plans/${fresh.id}/approvals`,
+    { digest: fresh.digest },
+    Adoption.Approval,
+  );
+
+  const adopted = await post(
+    book,
+    `/historical-adoption-plans/${fresh.id}/execute`,
+    { digest: fresh.digest, approvalId: freshApproval.id },
+    Adoption.Adoption,
+  );
+
+  expect([adopted.openingResidualMinor, adopted.journalIds, adopted.glDeltaMinor]).toEqual([
+    "40000",
+    [],
+    "0",
+  ]);
+  expect(await ledger(book)).toEqual(before);
+  await failure(
+    await request(browser, `/historical-pools/${pool.id}/revisions`, {
+      method: "POST",
+      body: JSON.stringify({ ...input, expectedPoolDigest: restored.pool.digest }),
+    }),
+    409,
+    "AlreadyPosted",
+  );
+  await writeFile(
+    join(environment().artifacts, "historical-pool-rereview.json"),
+    JSON.stringify(
+      {
+        pool,
+        plan,
+        approval,
+        revision,
+        view,
+        directory,
+        restored,
+        fresh,
+        freshApproval,
+        adopted,
+        before,
+        after: await ledger(book),
+      },
       null,
       2,
     ),

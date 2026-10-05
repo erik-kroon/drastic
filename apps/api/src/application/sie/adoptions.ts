@@ -10,6 +10,12 @@ import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { readPool, domainPool, checkedAdoption } from "./adoption-basis";
 
+export {
+  rereviewHistoricalPool,
+  getHistoricalAdoptionWorkspace,
+  listHistoricalAdoptionPlans,
+} from "./pool-rereview";
+
 export { createHistoricalPool } from "./adoption-basis";
 
 type Command = { scope: Scope; id: string; idempotencyKey: string };
@@ -78,6 +84,7 @@ export const prepareHistoricalAdoption = Effect.fn("historical.prepareAdoption")
         scope,
         input,
         poolVersion: current.version,
+        capturedPool: pool,
         plan,
         createdBy: principal.actorId,
         createdAt: yield* isoNow(tx),

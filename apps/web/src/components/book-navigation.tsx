@@ -20,7 +20,11 @@ export function BookNavigation(props: {
   const home = pathname === base || pathname === `${base}/`;
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
   const documents = new URLSearchParams(props.search).get("view") === "documents";
-  const bookkeeping = pathname === `${base}/books`;
+
+  const adoption =
+    pathname === `${base}/history` && new URLSearchParams(props.search).has("adoption");
+
+  const bookkeeping = pathname === `${base}/books` || adoption;
   const loan = bookkeeping && new URLSearchParams(props.search).has("loan");
   const assets = bookkeeping && new URLSearchParams(props.search).get("view") === "assets";
 
@@ -111,7 +115,7 @@ export function BookNavigation(props: {
         <WorkspaceNavLink
           href={`${base}/books`}
           active={bookkeeping}
-          selection={assets || loan ? "neutral" : undefined}
+          selection={assets || loan || adoption ? "neutral" : undefined}
         >
           <NavIcon name="bookkeeping" />
           {copy.bookkeeping}

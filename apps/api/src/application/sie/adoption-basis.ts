@@ -17,7 +17,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { readBasis, readPlan } from "./historical-shared";
 import { readPartition } from "./partitions";
 
-export const readPool = Effect.fn("historical.readPool")(function* (
+export const readOriginalPool = Effect.fn("historical.readOriginalPool")(function* (
   tx: Transaction,
   scope: Scope,
   id: string,
@@ -27,6 +27,27 @@ export const readPool = Effect.fn("historical.readPool")(function* (
   if (!row) return yield* failure("NotFound");
 
   return yield* decode(Contracts.Pool, row.body);
+});
+
+export const readRevision = Effect.fn("historical.readPoolRevision")(function* (
+  tx: Transaction,
+  scope: Scope,
+  id: string,
+) {
+  const row = (yield* Db.readLatestRevision(tx, scope.bookId, id))[0];
+
+  return row ? yield* decode(Contracts.PoolRevision, row.body) : null;
+});
+
+export const readPool = Effect.fn("historical.readPool")(function* (
+  tx: Transaction,
+  scope: Scope,
+  id: string,
+) {
+  const original = yield* readOriginalPool(tx, scope, id);
+  const revision = yield* readRevision(tx, scope, id);
+
+  return revision?.pool ?? original;
 });
 
 export const assertPoolBasis = Effect.fn("historical.assertPoolBasis")(function* (
@@ -63,9 +84,13 @@ export const domainPool = Effect.fn("historical.domainPool")(function* (
   const rows = yield* Db.readAdoptions(tx, scope.bookId, pool.id);
   const adoptions = yield* Effect.forEach(rows, (row) => decode(Contracts.Adoption, row.body));
 
-  const version = yield* digest(
-    adoptions.map((row) => ({ id: row.id, amountMinor: row.openingResidualMinor })),
-  );
+  const assignments = adoptions.map((row) => ({
+    id: row.id,
+    amountMinor: row.openingResidualMinor,
+  }));
+
+  const revision = yield* readRevision(tx, scope, pool.id);
+  const version = yield* digest(revision ? { poolDigest: pool.digest, assignments } : assignments);
 
   const control: Domain.ControlPool = {
     poolId: pool.id,
@@ -86,7 +111,7 @@ export const domainPool = Effect.fn("historical.domainPool")(function* (
   return { control, adoptions, version };
 });
 
-const sourceResiduals = Effect.fn("historical.sourceResiduals")(function* (
+export const sourceResiduals = Effect.fn("historical.sourceResiduals")(function* (
   admission: typeof Historical.ItemAdmission.Type,
   items: typeof Historical.ItemAdmission.Type.openItems,
   sourcePlanId: string,

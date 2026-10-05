@@ -5,6 +5,45 @@ import type { Transaction } from "./transaction";
 
 type BodyRow = { readonly body: Schema.JsonObject };
 
+export function reviewerName(tx: Transaction, actor: string) {
+  return tx.execute<{ readonly name: string }>(
+    sql`select name from openerp.actors where id=${actor}`,
+    "objects",
+  );
+}
+
+export function readLatestRevision(tx: Transaction, book: string, pool: string) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.historical_pool_revisions where book_id=${book} and pool_id=${pool} order by ordinal desc limit 1`,
+    "objects",
+  );
+}
+
+export function insertRevision(
+  tx: Transaction,
+  book: string,
+  revision: typeof Contracts.PoolRevision.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.historical_pool_revisions(book_id,id,pool_id,ordinal,admission_id,digest,body) values(${book},${revision.id},${revision.poolId},${revision.ordinal},${revision.input.admissionId},${revision.digest},${JSON.stringify(revision)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function listPlans(tx: Transaction, book: string, after: string | null) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.historical_adoption_plans where book_id=${book} and (${after}::text is null or id collate "C">${after}) order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function readPlanApprovals(tx: Transaction, book: string, plan: string) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.historical_adoption_approvals where book_id=${book} and plan_id=${plan} order by expires_at desc,id limit 21`,
+    "objects",
+  );
+}
+
 export function readPool(tx: Transaction, book: string, id: string) {
   return tx.execute<BodyRow>(
     sql`select body from openerp.historical_control_pools where book_id=${book} and id=${id}`,

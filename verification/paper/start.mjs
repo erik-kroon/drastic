@@ -45,6 +45,18 @@ const assetHook = process.env.PAPER_ASSETS;
 
 const loanHook = process.env.PAPER_LOANS;
 
+const historicalAdoptionHook = process.env.PAPER_HISTORICAL_ADOPTION;
+
+if (
+  historicalAdoptionHook !== undefined &&
+  historicalAdoptionHook !== "0" &&
+  historicalAdoptionHook !== "1"
+)
+  throw new Error("PAPER_HISTORICAL_ADOPTION must be 0 or 1");
+
+const historicalAdoptionSeed =
+  historicalAdoptionHook === "1" ? await import("./seed-historical-adoption.mjs") : undefined;
+
 if (loanHook !== undefined && loanHook !== "0" && loanHook !== "1")
   throw new Error("PAPER_LOANS must be 0 or 1");
 
@@ -239,6 +251,9 @@ try {
 
   if (loanSeed) fixture.accounts.push(...loanSeed.loanAccounts);
 
+  if (historicalAdoptionSeed)
+    fixture.accounts.push(...historicalAdoptionSeed.historicalAdoptionAccounts);
+
   if (onboardingHook === "1")
     fixture.accounts.push(
       { id: "account_receivable", code: "1510", name: "Synthetic customer receivables" },
@@ -294,6 +309,19 @@ try {
     console.log(
       JSON.stringify(
         await loanSeed.seedLoans({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
+
+  if (historicalAdoptionSeed)
+    console.log(
+      JSON.stringify(
+        await historicalAdoptionSeed.seedHistoricalAdoption({
           apiUrl: listening.url.origin,
           adminUrl,
           accessToken,
