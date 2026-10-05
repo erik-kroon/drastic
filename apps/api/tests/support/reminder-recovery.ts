@@ -24,13 +24,13 @@ async function save(path: string, body: unknown) {
   await writeFile(path, JSON.stringify(body, null, 2), { mode: 0o600, flag: "wx" });
 }
 
-async function retainedHashes(client: Client, bookId: string, version: 4 | 5) {
+async function retainedHashes(client: Client, bookId: string, version: 4 | 6) {
   const tables = [
     "reminder_messages",
     "reminder_approvals",
     "reminder_attempts",
     "reminder_observations",
-    ...(version === 5 ? ["reminder_refusals", "reminder_resolutions"] : []),
+    ...(version === 6 ? ["reminder_refusals", "reminder_resolutions"] : []),
   ];
 
   const bodies: Array<{ table: string; identity: string; bodySha256: string }> = [];
@@ -207,7 +207,10 @@ async function restoreHistoricalData(
   return historicalData;
 }
 
-export async function proveReminderRecovery(bookId: string) {
+export async function proveReminderRecovery(
+  bookId: string,
+  versions: ReadonlyArray<4 | 6> = [6, 4],
+) {
   const env = environment();
   const scratch = await realpath(env.scratch);
   const admin = await database();
@@ -229,6 +232,8 @@ export async function proveReminderRecovery(bookId: string) {
 
     if (sourceUrl.hostname !== "127.0.0.1") throw new Error("Non-loopback recovery refused");
     await mkdir(work, { mode: 0o700 });
+    const objectDirectory = join(scratch, "original-objects");
+    await mkdir(objectDirectory, { mode: 0o700, recursive: true });
 
     const pgBin = await realpath(
       process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim(),
@@ -313,13 +318,13 @@ export async function proveReminderRecovery(bookId: string) {
 
     const results = [];
 
-    for (const version of [5, 4] as const) {
+    for (const version of versions) {
       const sourceName = `openerp_ops_source_reminder_v${version}_${suffix}`;
       const restoredName = `openerp_restore_reminder_v${version}_${suffix}`;
       await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(sourceName)} TEMPLATE template0`);
       created.push(sourceName);
 
-      if (version === 5) {
+      if (version === 6) {
         await run(
           join(pgBin, "pg_restore"),
           ["--exit-on-error", "--single-transaction", "--no-owner", `--dbname=${sourceName}`, dump],
@@ -348,7 +353,7 @@ export async function proveReminderRecovery(bookId: string) {
       let historicalDataTables: Array<typeof Operations.TableFingerprint.Type> = [];
 
       try {
-        if (version === 5) {
+        if (version === 6) {
           await source.query("DROP EXTENSION pg_stat_statements");
         } else {
           const donor = new Client({
@@ -356,12 +361,21 @@ export async function proveReminderRecovery(bookId: string) {
             port: target.port,
             user: target.user,
             password: target.password,
-            database: `openerp_ops_source_reminder_v5_${suffix}`,
+            database: `openerp_ops_source_reminder_v6_${suffix}`,
           });
 
           await donor.connect();
 
           try {
+            const claims = await donor.query<{ count: string }>(
+              "select count(*)::text as count from openerp.employee_claims",
+            );
+
+            if (claims.rows[0]?.count !== "0")
+              throw new Error(
+                "Historical V4 verification cannot project current employee claim work into an older owner schema",
+              );
+
             historicalDataTables = await restoreHistoricalData(
               source,
               donor,
@@ -389,7 +403,7 @@ export async function proveReminderRecovery(bookId: string) {
       }
 
       const release = join(work, `release-v${version}`);
-      await captureRelease(version === 5 ? root : historicalRoot, release);
+      await captureRelease(version === 6 ? root : historicalRoot, release);
       const targetPath = join(work, `source-v${version}.json`);
       await save(targetPath, { ...target, database: sourceName });
       const planPath = join(work, `plan-v${version}.json`);
@@ -423,14 +437,18 @@ export async function proveReminderRecovery(bookId: string) {
       await run(
         "bun",
         [
-          join(version === 5 ? root : historicalRoot, "apps/api/scripts/operations/cli.ts"),
+          join(version === 6 ? root : historicalRoot, "apps/api/scripts/operations/cli.ts"),
           "backup",
           targetPath,
           bundle,
           planPath,
           "--confirm-local-backup",
         ],
-        { cwd: root, timeout: 180000 },
+        {
+          cwd: root,
+          timeout: 180000,
+          env: { ...process.env, OPENERP_OBJECT_DIRECTORY: objectDirectory },
+        },
       );
       const manifestDigest = (await readFile(join(bundle, "manifest.sha256"), "utf8")).trim();
       const manifest = await json(join(bundle, "manifest.json"), Operations.BackupManifest);

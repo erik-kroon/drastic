@@ -11,6 +11,8 @@ import {
   RecoveryWorkInventoryV3,
   RecoveryWorkInventoryV4,
   RecoveryWorkInventoryV5,
+  RecoveryWorkInventoryV6,
+  EmployeeClaimWorkSummary,
   ReminderReviewWorkSummary,
   ReminderWorkSummary,
   RecurringWorkSummary,
@@ -21,12 +23,13 @@ import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 import { requireFencedBackupBoundary } from "./snapshot";
 
-export const workInventoryPath = "durable-work-v5.json";
+export const workInventoryPath = "durable-work-v6.json";
 
 export const workInventoryPaths = [
   "durable-work-v2.json",
   "durable-work-v3.json",
   "durable-work-v4.json",
+  "durable-work-v5.json",
   workInventoryPath,
 ];
 
@@ -55,11 +58,29 @@ const reminderWorkTables = [
 
 const reminderReviewTables = ["reminder_refusals", "reminder_resolutions"];
 
+const employeeClaimTables = [
+  "employee_claims",
+  "employee_claim_revisions",
+  "employee_claim_reviews",
+  "employee_claim_completion_requests",
+  "employee_claim_recognitions",
+  "employee_claim_instructions",
+  "employee_claim_payee_proposals",
+  "employee_claim_payee_verifications",
+  "employee_claim_payment_previews",
+  "employee_claim_payment_exports",
+  "employee_claim_settlement_reviews",
+  "employee_claim_settlements",
+  "employee_claim_payroll_reservations",
+  "employee_claim_payroll_consumptions",
+];
+
 const workTables = [
   ...legacyWorkTables,
   ...recurringWorkTables,
   ...reminderWorkTables,
   ...reminderReviewTables,
+  ...employeeClaimTables,
 ];
 
 function workSummary(
@@ -163,6 +184,26 @@ function reminderReviewSummary(
   });
 }
 
+function employeeClaimSummary(
+  inventory: Omit<
+    typeof RecoveryWorkInventoryV6.Type,
+    | "summary"
+    | "version"
+    | "queue"
+    | "kind"
+    | "snapshot"
+    | "books"
+    | "providerAttemptHistory"
+    | "remoteWorkflowState"
+    | "resumptionAuthority"
+  >,
+) {
+  return Schema.decodeSync(EmployeeClaimWorkSummary)({
+    ...reminderReviewSummary(inventory),
+    employeeClaimRecords: String(inventory.employeeClaimRecords.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -173,6 +214,7 @@ function validateInventory(
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
   const summary = Match.value(inventory).pipe(
+    Match.when({ version: 6 }, employeeClaimSummary),
     Match.when({ version: 5 }, reminderReviewSummary),
     Match.when({ version: 4 }, reminderSummary),
     Match.when({ version: 3 }, recurringSummary),
@@ -280,7 +322,7 @@ function validateInventory(
     }
   }
 
-  if (inventory.version === 4 || inventory.version === 5) {
+  if (inventory.version === 4 || inventory.version === 5 || inventory.version === 6) {
     const families = [
       inventory.reminderMessages,
       inventory.reminderApprovals.map((row) => ({ bookId: row.bookId, id: row.messageId })),
@@ -348,7 +390,21 @@ function validateInventory(
       refuse("Reminder attempts contain duplicate external identities.");
   }
 
-  if (inventory.version === 5) {
+  if (inventory.version === 6) {
+    for (const name of employeeClaimTables) {
+      const rows = inventory.employeeClaimRecords.filter((row) => row.table === name);
+      const table = tables.find((row) => row.schema === "openerp" && row.table === name);
+
+      if (!table || BigInt(table.rows) !== BigInt(rows.length) || rows.length > 10000)
+        refuse("Employee claim recovery inventory differs from complete snapshot counts.");
+      uniqueScopedIds(rows);
+
+      if (rows.some((row) => !bookIds.has(row.bookId)))
+        refuse("Employee claim recovery record has no represented book.");
+    }
+  }
+
+  if (inventory.version === 5 || inventory.version === 6) {
     const families = [inventory.reminderRefusals, inventory.reminderResolutions];
 
     const messages = new Set(
@@ -488,7 +544,7 @@ export async function captureWorkInventory(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
   snapshot: string,
-  version: 2 | 3 | 4 | 5 = 5,
+  version: 2 | 3 | 4 | 5 | 6 = 6,
 ) {
   const requiredTables = [...legacyWorkTables];
 
@@ -496,7 +552,9 @@ export async function captureWorkInventory(
 
   if (version >= 4) requiredTables.push(...reminderWorkTables);
 
-  if (version === 5) requiredTables.push(...reminderReviewTables);
+  if (version >= 5) requiredTables.push(...reminderReviewTables);
+
+  if (version >= 6) requiredTables.push(...employeeClaimTables);
 
   for (const name of [
     ...requiredTables,
@@ -629,13 +687,41 @@ export async function captureWorkInventory(
           )(resolutions.rows.map((row) => row.body)),
         };
 
-        inventory = Schema.decodeSync(RecoveryWorkInventoryV5)({
-          ...common,
-          ...reviewed,
-          version: 5,
-          summary: reminderReviewSummary(reviewed),
-          providerAttemptHistory: "payment-reminder-attempts-retained",
-        });
+        if (version === 5) {
+          inventory = Schema.decodeSync(RecoveryWorkInventoryV5)({
+            ...common,
+            ...reviewed,
+            version: 5,
+            summary: reminderReviewSummary(reviewed),
+            providerAttemptHistory: "payment-reminder-attempts-retained",
+          });
+        } else {
+          const records = [];
+
+          for (const table of employeeClaimTables) {
+            const rows = await client.query<{ body: unknown }>(
+              `SELECT jsonb_build_object('table',$1::text,'bookId',book_id,'id',coalesce(to_jsonb(t)->>'id',jsonb_build_array(to_jsonb(t)->>'instruction_id',to_jsonb(t)->>'approval_id')::text),'bodySha256',encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex')) AS body FROM openerp.${table} t ORDER BY book_id COLLATE "C",to_jsonb(t)::text COLLATE "C"`,
+              [table],
+            );
+
+            records.push(...rows.rows.map((row) => row.body));
+          }
+
+          const claimed = {
+            ...reviewed,
+            employeeClaimRecords: Schema.decodeUnknownSync(
+              RecoveryWorkInventoryV6.fields.employeeClaimRecords,
+            )(records),
+          };
+
+          inventory = Schema.decodeSync(RecoveryWorkInventoryV6)({
+            ...common,
+            ...claimed,
+            version: 6,
+            summary: employeeClaimSummary(claimed),
+            providerAttemptHistory: "payment-reminder-attempts-retained",
+          });
+        }
       }
     }
   }

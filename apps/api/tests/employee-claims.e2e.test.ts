@@ -470,12 +470,27 @@ test("R40 current source drift refuses the old review while completion preserves
   );
 
   expect(history.revisions).toEqual([revision, revised]);
+  expect(history.currentRevision).toBe(revised.revision);
+  expect(history.current.id).toBe(revised.id);
+  expect(history.currentRevision).toBe(Math.max(...history.revisions.map((row) => row.revision)));
   expect(history.reviews).toEqual([review, fresh]);
   expect(history.completionRequests).toEqual([completion]);
   await writeFile(
     join(environment().artifacts, "employee-claims-r40-completion-proof.json"),
     JSON.stringify(
-      { revision, review, changed, stale, completion, revised, fresh, recognition, history },
+      {
+        revision,
+        review,
+        changed,
+        stale,
+        completion,
+        revised,
+        fresh,
+        recognition,
+        history,
+        revisionAuthority: "retained_monotonic_revision",
+        timestampTieObserved: revision.createdAt === revised.createdAt,
+      },
       null,
       2,
     ),

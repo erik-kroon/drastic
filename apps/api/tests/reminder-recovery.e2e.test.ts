@@ -8,7 +8,7 @@ import { legalFixture } from "./support/legal-commerce";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { environment, journal, post } from "./support/fixtures";
 
-test("M60 V5 and an authentic absent-0091 V4 bundle restore exact reminder work while fenced", async () => {
+test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work while fenced", async () => {
   const context = await legalFixture();
 
   const recipient = await post(
@@ -201,7 +201,7 @@ test("M60 V5 and an authentic absent-0091 V4 bundle restore exact reminder work 
 
     const inventory = recovery.inventory;
 
-    if (inventory.version !== 4 && inventory.version !== 5)
+    if (inventory.version !== 4 && inventory.version !== 6)
       throw new Error("Reminder recovery inventory version missing");
 
     const expectedBodies = [
@@ -225,7 +225,7 @@ test("M60 V5 and an authentic absent-0091 V4 bundle restore exact reminder work 
         identity: `${row.attemptId}/${row.observationId}`,
         ...row,
       })),
-      ...(inventory.version === 5
+      ...(inventory.version === 6
         ? [
             ...inventory.reminderRefusals.map((row) => ({
               table: "reminder_refusals",
@@ -251,7 +251,7 @@ test("M60 V5 and an authentic absent-0091 V4 bundle restore exact reminder work 
         .sort(),
     ).toEqual([original.id, replacement.message.id].sort());
 
-    if (inventory.version === 5) {
+    if (inventory.version === 6) {
       expect(
         inventory.reminderRefusals
           .filter((row) => row.bookId === context.book.bookId)
@@ -277,7 +277,7 @@ test("M60 V5 and an authentic absent-0091 V4 bundle restore exact reminder work 
   }
 
   await writeFile(
-    join(environment().artifacts, "reminder-m60-v5-v4-fenced-recovery.json"),
+    join(environment().artifacts, "reminder-m60-v6-v4-fenced-recovery.json"),
     JSON.stringify(
       {
         command: "bun run test:e2e apps/api/tests/reminder-recovery.e2e.test.ts",

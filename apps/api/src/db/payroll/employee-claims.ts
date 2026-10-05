@@ -36,8 +36,11 @@ export function record(tx: Transaction, bookId: string, table: RecordTable, id: 
 }
 
 export function records(tx: Transaction, bookId: string, table: RecordTable, claimId: string) {
+  const order =
+    table === "employee_claim_revisions" ? sql`revision` : sql`(body->>'createdAt')::timestamptz`;
+
   return tx.execute<BodyRow>(
-    sql`select body from openerp.${sql.raw(table)} where book_id=${bookId} and claim_id=${claimId} order by (body->>'createdAt')::timestamptz,id collate "C" limit 51`,
+    sql`select body from openerp.${sql.raw(table)} where book_id=${bookId} and claim_id=${claimId} order by ${order},id collate "C" limit 51`,
     "objects",
   );
 }
