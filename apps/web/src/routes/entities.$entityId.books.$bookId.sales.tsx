@@ -8,6 +8,7 @@ import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { PeppolReviewWorkspace } from "@/components/commerce/peppol-review";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { ReminderRetainedWorkspace } from "@/components/commerce/reminder-retained-review";
+import { ReminderHistoryWorkspace } from "@/components/commerce/reminder-history";
 import { SalesOrders } from "@/components/commerce/sales-orders";
 import { SalesNavigation } from "@/components/commerce/sales-navigation";
 import { CatalogArticles } from "@/components/commerce/catalog-articles";
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
 
 function Page() {
   const search = Route.useSearch();
+  const params = Route.useParams();
 
   if (search.view === "peppol")
     return (
@@ -75,6 +77,14 @@ function Page() {
 
   if (search.view === "collections" && search.reminder)
     return <ReminderRetainedWorkspace id={search.reminder} />;
+
+  if (search.view === "collections" && search.record)
+    return (
+      <ReminderHistoryWorkspace
+        key={`${params.entityId}-${params.bookId}-${search.record}`}
+        invoiceId={search.record}
+      />
+    );
 
   if (search.view === "collections") return <CollectionsPage />;
 

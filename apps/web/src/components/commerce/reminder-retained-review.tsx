@@ -13,6 +13,7 @@ import {
 import {
   ReminderBasisComparison,
   ReminderPaymentEvidence,
+  ReminderPaymentLink,
   ReminderReviewAlert,
 } from "@open-erp/ui/components/reminder-review";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -186,11 +187,9 @@ function ReminderRetainedReview(props: {
             Betalning {format(payment.amountMinor)} registrerades{" "}
             {reminderTime(payment.committedAt)} på {message.invoiceNumber}
           </span>
-          <Link
+          <ReminderPaymentLink
             href={`${sales}${defaultStringifySearch({ ...search, view: "invoices", reminder: undefined, record: message.invoiceId, kind: "invoice", stage: "payments", allocation: payment.planId })}`}
-          >
-            Visa betalningen
-          </Link>
+          />
         </ReminderPaymentEvidence>
       ))}
       {!payments.length ? (
@@ -247,7 +246,9 @@ function ReminderRetainedReview(props: {
         <AssetActionNote status>Påminnelsen är avbruten. Inget skickades.</AssetActionNote>
       ) : null}
       {terminal?.kind === "replaced" ? (
-        <AssetActionNote status>En ny påminnelse är förberedd och behöver ett eget godkännande.</AssetActionNote>
+        <AssetActionNote status>
+          En ny påminnelse är förberedd och behöver ett eget godkännande.
+        </AssetActionNote>
       ) : null}
       <AssetActionNote>
         Den nya påminnelsen skrivs om från fakturans uppgifter och behöver ett eget godkännande som

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+import { Link } from "@open-erp/ui/components/link";
 
 const styles = stylex.create({
   alert: {
@@ -18,12 +19,13 @@ const styles = stylex.create({
   },
   table: {
     width: "100%",
-    borderCollapse: "collapse",
-    tableLayout: "fixed",
     fontSize: tokens.fontSizeControl,
     lineHeight: tokens.lineHeight16Px,
   },
   head: {
+    display: "flex",
+    alignItems: "center",
+    boxSizing: "border-box",
     height: 28,
     backgroundColor: tokens.sidebar,
     borderBlockWidth: 1,
@@ -33,10 +35,13 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeXs,
   },
   header: { fontWeight: tokens.fontWeightSemibold, textAlign: "start", padding: 0 },
-  label: { width: 200, paddingInlineStart: 8 },
-  basis: { width: 250, padding: 0 },
-  state: { textAlign: "end", paddingInlineEnd: 8, color: tokens.captionForeground },
+  label: { width: 200, flexShrink: 0, boxSizing: "border-box", paddingInlineStart: 8 },
+  basis: { width: 250, flexShrink: 0, padding: 0 },
+  state: { flexGrow: 1, textAlign: "end", paddingInlineEnd: 8, color: tokens.captionForeground },
   row: {
+    display: "flex",
+    alignItems: "center",
+    boxSizing: "border-box",
     height: 34,
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",
@@ -59,6 +64,7 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeControl,
     lineHeight: tokens.lineHeight16Px,
   },
+  paymentLink: { color: tokens.primary },
 });
 
 export function ReminderReviewAlert({ children }: { children: ReactNode }) {
@@ -82,29 +88,38 @@ export function ReminderBasisComparison(props: {
   }[];
 }) {
   return (
-    <table {...stylex.props(styles.table)}>
-      <thead {...stylex.props(styles.head)}>
-        <tr>
-          <th scope="col" {...stylex.props(styles.header, styles.label)}>
+    <div role="table" {...stylex.props(styles.table)}>
+      <div role="rowgroup">
+        <div role="row" {...stylex.props(styles.head)}>
+          <div role="columnheader" {...stylex.props(styles.header, styles.label)}>
             Uppgift
-          </th>
-          <th scope="col" {...stylex.props(styles.header, styles.basis)}>
+          </div>
+          <div role="columnheader" {...stylex.props(styles.header, styles.basis)}>
             Godkänt {props.approvedAt}
-          </th>
-          <th scope="col" {...stylex.props(styles.header, styles.basis)}>
+          </div>
+          <div role="columnheader" {...stylex.props(styles.header, styles.basis)}>
             Nu {props.checkedAt}
-          </th>
-          <th scope="col" {...stylex.props(styles.header, styles.state)}>
+          </div>
+          <div role="columnheader" {...stylex.props(styles.header, styles.state)}>
             Läge
-          </th>
-        </tr>
-      </thead>
-      <tbody>
+          </div>
+        </div>
+      </div>
+      <div role="rowgroup">
         {props.rows.map((row) => (
-          <tr key={row.label} {...stylex.props(styles.row, row.changed && styles.changed)}>
-            <td {...stylex.props(styles.label)}>{row.label}</td>
-            <td {...stylex.props(styles.basis)}>{row.approved}</td>
-            <td
+          <div
+            role="row"
+            key={row.label}
+            {...stylex.props(styles.row, row.changed && styles.changed)}
+          >
+            <div role="cell" {...stylex.props(styles.label)}>
+              {row.label}
+            </div>
+            <div role="cell" {...stylex.props(styles.basis)}>
+              {row.approved}
+            </div>
+            <div
+              role="cell"
               {...stylex.props(
                 styles.basis,
                 row.changed && styles.emphasis,
@@ -112,15 +127,25 @@ export function ReminderBasisComparison(props: {
               )}
             >
               {row.current}
-            </td>
-            <td {...stylex.props(styles.state, row.changed && styles.warning)}>{row.state}</td>
-          </tr>
+            </div>
+            <div role="cell" {...stylex.props(styles.state, row.changed && styles.warning)}>
+              {row.state}
+            </div>
+          </div>
         ))}
-      </tbody>
-    </table>
+      </div>
+    </div>
   );
 }
 
 export function ReminderPaymentEvidence({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.payment)}>{children}</div>;
+}
+
+export function ReminderPaymentLink({ href }: { href: string }) {
+  return (
+    <Link href={href} {...stylex.props(styles.paymentLink)}>
+      Visa betalningen
+    </Link>
+  );
 }

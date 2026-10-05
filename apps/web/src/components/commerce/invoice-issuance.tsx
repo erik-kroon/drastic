@@ -472,6 +472,13 @@ export function LegalInvoiceInspector(
             E-faktura
           </Link>
         ) : null}
+        {issueReads.issue ? (
+          <Link
+            href={`${workspacePath(book)}/sales?view=collections&record=${encodeURIComponent(issueReads.issue.registerInvoiceId)}`}
+          >
+            Påminnelser
+          </Link>
+        ) : null}
         <LegalArtifactSection
           copy={copy}
           issue={issueReads.issue}

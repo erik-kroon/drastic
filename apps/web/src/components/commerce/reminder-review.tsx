@@ -240,7 +240,7 @@ export function ReminderPreview({
         <pre>{message.html}</pre>
       </Box>
       <Text>{sv ? "Inga bilagor." : "No attachments."}</Text>
-      <Text role="status">{statuses[view?.status ?? "prepared"]}</Text>
+      <Text role="status">{reminderStatus(view, locale, statuses)}</Text>
       {view?.currentOutstandingMinor !== null && view?.currentOutstandingMinor !== undefined ? (
         <Text>
           {sv ? "Nuvarande obetalda belopp" : "Current outstanding amount"},{" "}
@@ -254,6 +254,7 @@ export function ReminderPreview({
       ) : null}
       {view?.reason ? <Text>{view.reason}</Text> : null}
       <ReminderApprovalCheck book={book} locale={locale} message={message} view={view} />
+      <ReminderReplacementLink book={book} locale={locale} view={view} />
       {view?.status === "prepared" || !view ? (
         <CommandForm
           book={book}
@@ -287,6 +288,40 @@ export function ReminderPreview({
         />
       ) : null}
     </Box>
+  );
+}
+
+function reminderStatus(
+  view: typeof Collections.ReminderView.Type | undefined,
+  locale: CommerceProps["locale"],
+  statuses: Readonly<Record<typeof Collections.ReminderView.Type.status, string>>,
+) {
+  if (view?.resolution?.kind === "replaced")
+    return locale === "sv" ? "Ersatt av en ny påminnelse" : "Replaced by a new reminder";
+
+  if (view?.status === "approved" && !view.approvalUsable)
+    return locale === "sv" ? "Godkännandet gäller inte längre" : "Approval no longer usable";
+
+  return statuses[view?.status ?? "prepared"];
+}
+
+function ReminderReplacementLink({
+  book,
+  locale,
+  view,
+}: CommerceProps & {
+  view: typeof Collections.ReminderView.Type | undefined;
+}) {
+  const search = useSearch({ strict: false });
+
+  if (view?.resolution?.kind !== "replaced") return null;
+
+  return (
+    <Link
+      href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: "collections", reminder: view.resolution.replacementMessageId })}`}
+    >
+      {locale === "sv" ? "Öppna den nya påminnelsen" : "Open the new reminder"}
+    </Link>
   );
 }
 
