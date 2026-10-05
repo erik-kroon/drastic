@@ -1,0 +1,512 @@
+import { createHash, randomBytes } from "node:crypto";
+import { chmod, mkdir, readFile, realpath, symlink, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { Client } from "pg";
+import * as Schema from "effect/Schema";
+import * as Operations from "@open-erp/contracts/operations";
+import { captureRelease } from "../../scripts/operations/artifacts";
+import { tableFingerprints } from "../../scripts/operations/snapshot";
+import { inspectBundleResult } from "../../scripts/operations/workflows";
+import { apiDirectory, database, environment, run } from "./fixtures";
+
+const root = resolve(apiDirectory, "../..");
+
+const hash = (body: string | Uint8Array) => createHash("sha256").update(body).digest("hex");
+
+async function json<S extends Schema.Top & { readonly DecodingServices: never }>(
+  path: string,
+  schema: S,
+) {
+  return Schema.decodeSync(Schema.fromJsonString(schema))(await readFile(path, "utf8"));
+}
+
+async function save(path: string, body: unknown) {
+  await writeFile(path, JSON.stringify(body, null, 2), { mode: 0o600, flag: "wx" });
+}
+
+async function retainedHashes(client: Client, bookId: string, version: 4 | 5) {
+  const tables = [
+    "reminder_messages",
+    "reminder_approvals",
+    "reminder_attempts",
+    "reminder_observations",
+    ...(version === 5 ? ["reminder_refusals", "reminder_resolutions"] : []),
+  ];
+
+  const bodies: Array<{ table: string; identity: string; bodySha256: string }> = [];
+
+  for (const table of tables) {
+    const rows = await client.query<{ identity: string; body: string }>(
+      `SELECT coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',
+        (to_jsonb(r)->>'attempt_id')||'/'||(to_jsonb(r)->>'observation_id')) AS identity,
+        body::text AS body FROM openerp.${client.escapeIdentifier(table)} r
+        WHERE book_id=$1 ORDER BY coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',
+          (to_jsonb(r)->>'attempt_id')||'/'||(to_jsonb(r)->>'observation_id')) COLLATE "C"`,
+      [bookId],
+    );
+
+    for (const row of rows.rows)
+      bodies.push({ table, identity: row.identity, bodySha256: hash(row.body) });
+  }
+
+  return bodies;
+}
+
+async function restoreHistoricalData(
+  historical: Client,
+  donor: Client,
+  dump: string,
+  pgBin: string,
+  pgEnvironment: NodeJS.ProcessEnv,
+  listPath: string,
+) {
+  const columns = `SELECT n.nspname||'.'||c.relname AS name,
+    jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),
+      'identity',a.attidentity,'generated',a.attgenerated) ORDER BY a.attnum) AS columns
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
+    WHERE c.relkind='r' AND n.nspname IN ('openerp','openerp_auth','public')
+      AND NOT(n.nspname='public' AND c.relname='openerp_migrations')
+    GROUP BY n.nspname,c.relname ORDER BY n.nspname COLLATE "C",c.relname COLLATE "C"`;
+
+  const tables = (await historical.query<{ name: string; columns: object }>(columns)).rows;
+
+  const donorTables = new Map(
+    (await donor.query<{ name: string; columns: object }>(columns)).rows.map((row) => [
+      row.name,
+      row.columns,
+    ]),
+  );
+
+  const nonempty = new Set<string>();
+
+  for (const table of tables) {
+    if (JSON.stringify(donorTables.get(table.name)) !== JSON.stringify(table.columns))
+      throw new Error(
+        `Historical data columns differ for ${table.name}; a reviewed fixture is required`,
+      );
+
+    const identifier = table.name
+      .split(".")
+      .map((name) => donor.escapeIdentifier(name))
+      .join(".");
+
+    const count = (
+      await donor.query<{ count: string }>(`SELECT count(*)::text AS count FROM ${identifier}`)
+    ).rows[0]?.count;
+
+    if (count === undefined) throw new Error("Historical table count missing");
+
+    if (count !== "0") nonempty.add(table.name);
+  }
+
+  const parents = (
+    await historical.query<{ child: string; parent: string }>(`
+    SELECT cn.nspname||'.'||c.relname AS child,pn.nspname||'.'||p.relname AS parent
+    FROM pg_constraint f JOIN pg_class c ON c.oid=f.conrelid JOIN pg_namespace cn ON cn.oid=c.relnamespace
+    JOIN pg_class p ON p.oid=f.confrelid JOIN pg_namespace pn ON pn.oid=p.relnamespace
+    WHERE f.contype='f' AND NOT f.condeferrable AND f.conrelid<>f.confrelid`)
+  ).rows;
+
+  const ordered: string[] = [];
+  const remaining = new Set(tables.map((table) => table.name));
+
+  while (remaining.size > 0) {
+    const ready = [...remaining].filter(
+      (name) =>
+        !nonempty.has(name) ||
+        !parents.some(
+          (edge) => edge.child === name && nonempty.has(edge.parent) && remaining.has(edge.parent),
+        ),
+    );
+
+    if (ready.length === 0) throw new Error("Historical data has a nondeferrable dependency cycle");
+
+    for (const name of ready) {
+      ordered.push(name);
+      remaining.delete(name);
+    }
+  }
+
+  const sequences = new Set(
+    (
+      await historical.query<{ name: string }>(`
+    SELECT n.nspname||'.'||c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE c.relkind='S' AND n.nspname IN ('openerp','public')`)
+    ).rows.map((row) => row.name),
+  );
+
+  const entries = (
+    await run(join(pgBin, "pg_restore"), ["--list", dump], { env: pgEnvironment })
+  ).stdout.split("\n");
+
+  const tableEntries = new Map<string, string>();
+  const sequenceEntries: string[] = [];
+
+  for (const entry of entries) {
+    const table = /^\d+; \d+ \d+ TABLE DATA (\w+) (\w+) \w+$/.exec(entry);
+
+    if (table) tableEntries.set(`${table[1]}.${table[2]}`, entry);
+    const sequence = /^\d+; \d+ \d+ SEQUENCE SET (\w+) (\w+) \w+$/.exec(entry);
+
+    if (sequence && sequences.has(`${sequence[1]}.${sequence[2]}`)) sequenceEntries.push(entry);
+  }
+
+  const selected = ordered.map((name) => {
+    const entry = tableEntries.get(name);
+
+    if (!entry) throw new Error(`Captured API state omits historical table ${name}`);
+
+    return entry;
+  });
+
+  if (sequenceEntries.length !== sequences.size)
+    throw new Error("Historical sequence state is incomplete");
+
+  await writeFile(listPath, [...selected, ...sequenceEntries].join("\n") + "\n", {
+    mode: 0o600,
+    flag: "wx",
+  });
+  await historical.query(
+    `TRUNCATE ${tables
+      .map((table) =>
+        table.name
+          .split(".")
+          .map((name) => historical.escapeIdentifier(name))
+          .join("."),
+      )
+      .join(", ")}`,
+  );
+  await run(
+    join(pgBin, "pg_restore"),
+    [
+      "--data-only",
+      "--exit-on-error",
+      "--single-transaction",
+      "--no-owner",
+      `--use-list=${listPath}`,
+      `--dbname=${pgEnvironment.PGDATABASE}`,
+      dump,
+    ],
+    { env: pgEnvironment, timeout: 120000 },
+  );
+
+  const represented = new Set(tables.map((table) => table.name));
+
+  const donorData = (await tableFingerprints(donor)).filter((table) =>
+    represented.has(`${table.schema}.${table.table}`),
+  );
+
+  const historicalData = (await tableFingerprints(historical)).filter((table) =>
+    represented.has(`${table.schema}.${table.table}`),
+  );
+
+  if (JSON.stringify(donorData) !== JSON.stringify(historicalData))
+    throw new Error("Historical synthetic data differs from the captured API state");
+
+  return historicalData;
+}
+
+export async function proveReminderRecovery(bookId: string) {
+  const env = environment();
+  const scratch = await realpath(env.scratch);
+  const admin = await database();
+  const suffix = randomBytes(6).toString("hex");
+  const work = join(scratch, `reminder-recovery-${suffix}`);
+  const created: string[] = [];
+
+  try {
+    const reported = (
+      await admin.query<{ directory: string }>(
+        "SELECT current_setting('data_directory') AS directory",
+      )
+    ).rows[0]?.directory;
+
+    if (!reported || !(await realpath(reported)).startsWith(scratch + "/"))
+      throw new Error("Reminder recovery requires the owned disposable PostgreSQL cluster");
+
+    const sourceUrl = new URL(env.adminUrl);
+
+    if (sourceUrl.hostname !== "127.0.0.1") throw new Error("Non-loopback recovery refused");
+    await mkdir(work, { mode: 0o700 });
+
+    const pgBin = await realpath(
+      process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim(),
+    );
+
+    const identity = (
+      await admin.query<{ id: string }>(
+        "SELECT system_identifier::text AS id FROM pg_control_system()",
+      )
+    ).rows[0]?.id;
+
+    if (!identity) throw new Error("Disposable cluster identity missing");
+
+    const target = Schema.decodeSync(Operations.LocalTarget)({
+      version: 1,
+      dataClass: "synthetic-local-only",
+      host: "127.0.0.1",
+      port: Number(sourceUrl.port),
+      database: "postgres",
+      user: decodeURIComponent(sourceUrl.username),
+      password: decodeURIComponent(sourceUrl.password),
+      expectedSystemIdentifier: identity,
+      pgBinDirectory: pgBin,
+    });
+
+    const pgEnvironment = {
+      PATH: process.env.PATH ?? "",
+      PGHOST: target.host,
+      PGPORT: String(target.port),
+      PGUSER: target.user,
+      PGPASSWORD: target.password,
+      PGDATABASE: "postgres",
+      PGCONNECT_TIMEOUT: "10",
+    };
+
+    const dump = join(work, "api-created-state.dump");
+    await admin.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+
+    try {
+      const snapshot = (await admin.query<{ id: string }>("SELECT pg_export_snapshot() AS id"))
+        .rows[0]?.id;
+
+      if (!snapshot) throw new Error("API-created reminder snapshot missing");
+      await run(
+        join(pgBin, "pg_dump"),
+        ["--format=custom", "--no-owner", `--snapshot=${snapshot}`, `--file=${dump}`],
+        { env: pgEnvironment, timeout: 120000 },
+      );
+      await chmod(dump, 0o600);
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+
+    const adminPath = join(work, "admin.json");
+    await save(adminPath, target);
+    const supplementary = join(work, "supplementary");
+    await mkdir(supplementary, { mode: 0o700 });
+    const custody = "Synthetic configuration custody and suspended reminder recovery. No secrets.";
+    await writeFile(join(supplementary, "custody.txt"), custody, { mode: 0o600, flag: "wx" });
+
+    const historicalRoot = join(work, "historical-source");
+    await mkdir(historicalRoot, { mode: 0o700 });
+    const archive = join(work, "historical-source.tar");
+    const revision = (await run("git", ["rev-parse", "6be48263"], { cwd: root })).stdout.trim();
+    await run("git", ["archive", "--format=tar", `--output=${archive}`, revision], { cwd: root });
+    await chmod(archive, 0o600);
+    await run("tar", ["-xf", archive, "-C", historicalRoot]);
+    await symlink(join(root, "node_modules"), join(historicalRoot, "node_modules"), "dir");
+    await symlink(
+      join(apiDirectory, "node_modules"),
+      join(historicalRoot, "apps/api/node_modules"),
+      "dir",
+    );
+
+    const historicalOwner = await readFile(
+      join(historicalRoot, "apps/api/scripts/operations/durable-work.ts"),
+      "utf8",
+    );
+
+    if (!historicalOwner.includes('workInventoryPath = "durable-work-v4.json"'))
+      throw new Error("Historical HEAD no longer provides the authentic V4 backup producer");
+
+    const results = [];
+
+    for (const version of [5, 4] as const) {
+      const sourceName = `openerp_ops_source_reminder_v${version}_${suffix}`;
+      const restoredName = `openerp_restore_reminder_v${version}_${suffix}`;
+      await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(sourceName)} TEMPLATE template0`);
+      created.push(sourceName);
+
+      if (version === 5) {
+        await run(
+          join(pgBin, "pg_restore"),
+          ["--exit-on-error", "--single-transaction", "--no-owner", `--dbname=${sourceName}`, dump],
+          { env: pgEnvironment, timeout: 120000 },
+        );
+      } else {
+        const legacyUrl = new URL(env.adminUrl);
+        legacyUrl.pathname = `/${sourceName}`;
+        await run("bun", [join(historicalRoot, "apps/api/scripts/migrate.ts")], {
+          cwd: historicalRoot,
+          env: { ...process.env, DATABASE_ADMIN_URL: legacyUrl.toString() },
+          timeout: 120000,
+        });
+      }
+
+      const source = new Client({
+        host: target.host,
+        port: target.port,
+        user: target.user,
+        password: target.password,
+        database: sourceName,
+      });
+
+      await source.connect();
+      let bodyHashes;
+      let historicalDataTables: Array<typeof Operations.TableFingerprint.Type> = [];
+
+      try {
+        if (version === 5) {
+          await source.query("DROP EXTENSION pg_stat_statements");
+        } else {
+          const donor = new Client({
+            host: target.host,
+            port: target.port,
+            user: target.user,
+            password: target.password,
+            database: `openerp_ops_source_reminder_v5_${suffix}`,
+          });
+
+          await donor.connect();
+
+          try {
+            historicalDataTables = await restoreHistoricalData(
+              source,
+              donor,
+              dump,
+              pgBin,
+              { ...pgEnvironment, PGDATABASE: sourceName },
+              join(work, "historical-data.list"),
+            );
+          } finally {
+            await donor.end();
+          }
+
+          const absence = (
+            await source.query<{ absent: boolean }>(
+              "SELECT to_regclass('openerp.reminder_refusals') IS NULL AND to_regclass('openerp.reminder_resolutions') IS NULL AS absent",
+            )
+          ).rows[0]?.absent;
+
+          if (!absence) throw new Error("Legacy recovery fixture still contains V5 relations");
+        }
+
+        bodyHashes = await retainedHashes(source, bookId, version);
+      } finally {
+        await source.end();
+      }
+
+      const release = join(work, `release-v${version}`);
+      await captureRelease(version === 5 ? root : historicalRoot, release);
+      const targetPath = join(work, `source-v${version}.json`);
+      await save(targetPath, { ...target, database: sourceName });
+      const planPath = join(work, `plan-v${version}.json`);
+      await save(
+        planPath,
+        Schema.decodeSync(Operations.RecoveryPlan)({
+          version: 1,
+          operatorId: "synthetic-reminder-recovery",
+          releaseDirectory: release,
+          supplementaryDirectory: supplementary,
+          artifacts: [
+            {
+              path: "custody.txt",
+              bytes: String(Buffer.byteLength(custody)),
+              sha256: hash(custody),
+              kind: "configuration",
+              referenceId: "synthetic-reminder-custody",
+            },
+          ],
+          configuration: (["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL"] as const).map(
+            (name) => ({
+              name,
+              custodyReference: "synthetic-reminder-custody",
+              procedurePath: "custody.txt",
+            }),
+          ),
+          workRecoveryProcedurePath: "custody.txt",
+        }),
+      );
+      const bundle = join(work, `bundle-v${version}`);
+      await run(
+        "bun",
+        [
+          join(version === 5 ? root : historicalRoot, "apps/api/scripts/operations/cli.ts"),
+          "backup",
+          targetPath,
+          bundle,
+          planPath,
+          "--confirm-local-backup",
+        ],
+        { cwd: root, timeout: 180000 },
+      );
+      const manifestDigest = (await readFile(join(bundle, "manifest.sha256"), "utf8")).trim();
+      const manifest = await json(join(bundle, "manifest.json"), Operations.BackupManifest);
+
+      const inventory = await json(
+        join(bundle, `durable-work-v${version}.json`),
+        Operations.RecoveryWorkInventory,
+      );
+
+      const inspection = await inspectBundleResult(bundle, manifestDigest);
+      const output = join(work, `restored-v${version}`);
+      created.push(restoredName);
+      await run(
+        "bun",
+        [
+          join(root, "apps/api/scripts/operations/cli.ts"),
+          "restore",
+          adminPath,
+          bundle,
+          manifestDigest,
+          restoredName,
+          output,
+          "--confirm-fresh-local-restore",
+        ],
+        { cwd: root, timeout: 180000 },
+      );
+      const receipt = await json(join(output, "restore-receipt.json"), Operations.RestoreReceipt);
+
+      const suspension = await json(
+        join(output, "suspension-report.json"),
+        Operations.RestoreSuspensionReport,
+      );
+
+      const restoredInventory = await json(
+        join(output, `durable-work-v${version}.json`),
+        Operations.RecoveryWorkInventory,
+      );
+
+      const fence = (
+        await admin.query<{ allowConnections: boolean; connectionLimit: number }>(
+          'SELECT datallowconn AS "allowConnections",datconnlimit AS "connectionLimit" FROM pg_database WHERE datname=$1',
+          [restoredName],
+        )
+      ).rows[0];
+
+      results.push({
+        version,
+        historicalRevision: version === 4 ? revision : null,
+        historicalDataTables,
+        manifestDigest,
+        sourceMigrationNames: manifest.inventory.migrations.map((migration) => migration.name),
+        sourceTables: manifest.tables.filter(
+          (table) => table.schema === "openerp" && table.table.startsWith("reminder_"),
+        ),
+        inventory,
+        restoredInventory,
+        bodyHashes,
+        inspection,
+        receipt,
+        suspension,
+        fence,
+      });
+    }
+
+    return results;
+  } finally {
+    try {
+      for (const name of created.toReversed()) {
+        await admin.query(
+          "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1",
+          [name],
+        );
+        await admin.query(`DROP DATABASE IF EXISTS ${admin.escapeIdentifier(name)}`);
+      }
+    } finally {
+      await admin.end();
+    }
+  }
+}
