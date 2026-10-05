@@ -1,3 +1,4 @@
+import { EmployeeClaimCapabilities } from "./employee-claims";
 import { DocumentSignatureCapabilities } from "./document-signatures";
 import { FilingCapabilities } from "./filing-lifecycle";
 import { PeppolExchangeCapabilities } from "./peppol-exchange";
@@ -199,6 +200,7 @@ export const Capabilities = {
   ...PayrollRunCapabilities,
   ...ForeignCashCapabilities,
   ...PayrollInputCapabilities,
+  ...EmployeeClaimCapabilities,
   ...AssetDisposalsCapabilities,
   ...PayrollSettlementCapabilities,
   ...ProcessorClearingCapabilities,

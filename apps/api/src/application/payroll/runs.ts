@@ -19,6 +19,7 @@ import {
 } from "../posting";
 import { compileRun, currentCalculation, requirePayrollAccess } from "./run-basis";
 import { reserveInputs, consumeInputs, reserveMonth } from "./inputs";
+import { reserveClaimInstructions, consumeClaimInstructions } from "./employee-claim-instructions";
 import {
   reserveAdjustmentInstructions,
   consumeAdjustmentInstructions,
@@ -227,6 +228,14 @@ export const approveRun = Effect.fn("payroll.approveRun")(function* (
         approval.id,
       );
 
+      yield* reserveClaimInstructions(
+        tx,
+        command.scope,
+        run.id,
+        approval.id,
+        run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
+      );
+
       yield* reserveAdjustmentInstructions(
         tx,
         command.scope,
@@ -394,6 +403,13 @@ export const executeRun = Effect.fn("payroll.executeRun")(function* (
         command.scope,
         run.id,
         run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+      );
+
+      yield* consumeClaimInstructions(
+        tx,
+        command.scope,
+        run.id,
+        run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
       );
 
       yield* consumeAdjustmentInstructions(

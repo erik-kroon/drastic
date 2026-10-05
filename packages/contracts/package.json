@@ -107,6 +107,7 @@
     "./treasury-loans": "./src/treasury-loans.ts",
     "./foreign-cash": "./src/foreign-cash.ts",
     "./payroll-inputs": "./src/payroll-inputs.ts",
+    "./employee-claims": "./src/employee-claims.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./payroll-settlements": "./src/payroll-settlements.ts",
     "./processor-clearing": "./src/processor-clearing.ts",

@@ -8,6 +8,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tax")({
     Schema.Struct({
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
+      occurrence: Schema.optional(Schema.String),
       work: WorkReturnSearch,
       expenseRevision: DocumentQuery.fields.expenseRevision,
       expenseReviewId: DocumentQuery.fields.expenseReviewId,
@@ -19,5 +20,13 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tax")({
 function Page() {
   const search = Route.useSearch();
 
-  return <FinanceArea area="tax" view={search.view} record={search.record} work={search.work} />;
+  return (
+    <FinanceArea
+      area="tax"
+      view={search.view}
+      record={search.record}
+      occurrence={search.occurrence}
+      work={search.work}
+    />
+  );
 }

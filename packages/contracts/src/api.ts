@@ -1,3 +1,4 @@
+import { EmployeeClaimsApi } from "./employee-claims";
 import { DocumentSignaturesApi } from "./document-signatures";
 import { FilingLifecycleApi } from "./filing-lifecycle";
 import { PeppolExchangeApi } from "./peppol-exchange";
@@ -291,6 +292,7 @@ export class Api extends HttpApi.make("open-erp")
     FilingLifecycleApi,
     PeppolExchangeApi,
     PayrollInputApi,
+    EmployeeClaimsApi,
     AssetDisposalsApi,
     PayrollSettlementApi,
     LoanApi,

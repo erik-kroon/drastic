@@ -14,6 +14,18 @@ type WriteClass =
 // A new write has no MCP exposure until its owner classifies it here. These classes
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
+  payroll_submit_employee_claim: "record",
+  payroll_revise_employee_claim: "record",
+  payroll_review_employee_claim: "prepare",
+  payroll_approve_employee_claim: "human_review",
+  payroll_request_claim_completion: "record",
+  payroll_propose_employee_payee: "record",
+  payroll_verify_employee_payee: "human_review",
+  payroll_prepare_claim_payment_file: "prepare",
+  payroll_approve_claim_payment_file: "human_review",
+  payroll_prepare_claim_settlement: "prepare",
+  payroll_approve_claim_settlement: "human_review",
+
   commerce_register_peppol_binding: "human_review",
   commerce_prepare_peppol_artifact: "prepare",
   commerce_prepare_peppol_review: "prepare",

@@ -11,6 +11,7 @@ import * as PayrollRuns from "../db/payroll/runs";
 import * as TreasuryLoans from "../db/treasury/loans";
 import * as PayrollSettlements from "../db/payroll/settlements";
 import * as PayrollInputs from "../db/payroll/inputs";
+import * as EmployeeClaims from "../db/payroll/employee-claims";
 import * as ProcessorDb from "../db/banking/processor-clearing";
 import * as AssetDisposals from "../db/subledger/disposals";
 import * as Impact from "../db/posting-corrections";
@@ -59,6 +60,8 @@ export type PostingOwner = {
     | "cash_credit"
     | "payroll_run"
     | "payroll_input"
+    | "employee_claim"
+    | "employee_claim_settlement"
     | "payroll_payment"
     | "payroll_recovery"
     | "foreign_cash"
@@ -324,6 +327,18 @@ const matchesCashOriginal = Effect.fn("posting.matchesCashOriginal")(function* (
   );
 });
 
+function matchesClaimOriginal(
+  source: { readonly kind: string; readonly body: JsonObject },
+  retained: { readonly body: JsonObject } | undefined,
+  owner?: PostingOwner,
+) {
+  return (
+    source.kind === "employee_claim_source" &&
+    owner?.kind === "employee_claim" &&
+    textField(source.body, "claimId") === textField(retained?.body, "claimId")
+  );
+}
+
 const admitSources = Effect.fn("posting.admitSources")(function* (
   tx: Transaction,
   scope: Scope,
@@ -362,6 +377,8 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
       )
     )
       continue;
+
+    if (matchesClaimOriginal(source, retained, owner)) continue;
 
     if (source.kind === "invoice_issue" && owner?.kind === "invoice_cancellation") continue;
 
@@ -736,6 +753,58 @@ export const admitTreasuryLoan = Effect.fn("posting.admitTreasuryLoan")(function
     return yield* failure("StaleDependency");
 });
 
+const admitEmployeeClaim = Effect.fn("posting.admitEmployeeClaim")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  if (
+    owner?.kind !== "employee_claim" &&
+    owner?.kind !== "employee_claim_settlement" &&
+    (yield* EmployeeClaims.evidenceControl(
+      tx,
+      scope.bookId,
+      action === undefined ? null : (textField(action, "eventId") ?? null),
+      action === undefined ? [] : sourceEvidenceIds(action),
+    ))[0]?.present
+  )
+    return yield* failure("ApprovalRequired");
+
+  const claims = yield* EmployeeClaims.planControl(
+    tx,
+    scope.bookId,
+    changeId,
+    action === undefined ? null : (textField(action, "eventId") ?? null),
+  );
+
+  const claim = claims[0];
+
+  if (claim) {
+    if (claims.length !== 1 || owner?.kind !== claim.kind || owner.id !== claim.id)
+      return yield* failure("ApprovalRequired");
+
+    const body =
+      claim.kind === "employee_claim" ? objectField(claim.body, "preparedRecognition") : claim.body;
+
+    const sealed = yield* decode(Accounting.ChangeSet, objectField(body, "postingPlan"));
+
+    if (
+      sealed.id !== changeId ||
+      (action !== undefined && !equalJson(sealed.groups[0]?.actions[0], action))
+    )
+      return yield* failure("StaleDependency");
+
+    return true;
+  }
+
+  if (owner?.kind === "employee_claim" || owner?.kind === "employee_claim_settlement")
+    return yield* failure("ApprovalRequired");
+
+  return false;
+});
+
 export const admitPayrollInput = Effect.fn("posting.admitPayrollInput")(function* (
   tx: Transaction,
   scope: Scope,
@@ -743,6 +812,8 @@ export const admitPayrollInput = Effect.fn("posting.admitPayrollInput")(function
   owner?: PostingOwner,
   action?: JsonObject,
 ) {
+  if (yield* admitEmployeeClaim(tx, scope, changeId, owner, action)) return;
+
   const rows = yield* PayrollInputs.readReviewByPlan(
     tx,
     scope.bookId,

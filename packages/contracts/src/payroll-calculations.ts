@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema";
 import { PayrollInputSnapshot } from "./payroll-inputs";
+import { ClaimPayrollSnapshot } from "./employee-claims";
 import { AdjustmentSnapshot } from "./payroll-adjustments";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -334,6 +335,9 @@ export const WorkInput = Schema.Struct({
 });
 
 export const PreparePayRun = Schema.Struct({
+  claimInstructionIds: Schema.optional(
+    Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
+  ),
   adjustmentIds: Schema.optional(
     Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
   ),
@@ -383,6 +387,9 @@ export const PayrollBenefitBasis = Schema.Struct({
 export const PayrollCalculationBasis = Schema.Struct({
   adjustmentInstructions: Schema.optional(
     Schema.Array(AdjustmentSnapshot).check(Schema.isMaxLength(100)),
+  ),
+  claimInstructions: Schema.optional(
+    Schema.Array(ClaimPayrollSnapshot).check(Schema.isMaxLength(100)),
   ),
   payrollInputs: Schema.optional(Schema.Array(PayrollInputSnapshot).check(Schema.isMaxLength(100))),
   employeeId: Accounting.Identifier,

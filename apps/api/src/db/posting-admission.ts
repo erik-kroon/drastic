@@ -42,6 +42,9 @@ export function readOwnedSources(
         join openerp.events e on (e.book_id,e.id)=(v.book_id,v.event_id)
     ), reviews as (
       select 'invoice_issue' as kind,id,change_set_id as change_id,evidence_id,body from openerp.invoice_issue_reviews where book_id=${book}
+      union all select 'employee_claim_source',r.id,null,t.evidence_id,r.body from openerp.employee_claim_revisions r cross join lateral jsonb_array_elements(r.body->'items') item join openerp.expense_tax_source_revisions t on t.book_id=r.book_id and t.source_id=item->'selection'->>'taxSourceId' and t.body->>'digest'=item->'selection'->>'taxSourceDigest' where r.book_id=${book} and item->>'outcome'='qualified'
+      union all select 'employee_claim',id,change_set_id,body->'preparedInput'->'input'->'evidence'->>'evidenceId',jsonb_set(body,'{postingPlan}',body->'preparedRecognition'->'postingPlan') from openerp.employee_claim_reviews where book_id=${book}
+      union all select 'employee_claim_settlement',id,change_set_id,body->'input'->>'evidenceId',body from openerp.employee_claim_settlement_reviews where book_id=${book}
       union all select 'supplier_acceptance',id,change_set_id,evidence_id,body from openerp.supplier_acceptance_reviews where book_id=${book}
       union all select 'supplier_credit',id,change_set_id,evidence_id,body from openerp.supplier_credit_reviews where book_id=${book}
       union all select 'supplier_refund',id,change_set_id,evidence_id,body from openerp.supplier_refund_reviews where book_id=${book}

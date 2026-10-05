@@ -16,6 +16,7 @@ import { decode, requireTableAccess, type Scope } from "../commerce/support";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { failure } from "../failures";
 import { captureInputs } from "./inputs";
+import { captureClaimInstructions } from "./employee-claim-instructions";
 
 import { captureAdjustmentInstructions } from "./settlement-instructions";
 
@@ -91,6 +92,17 @@ export const currentCalculation = Effect.fn("payroll.currentRunCalculation")(fun
   );
 
   if (!equalJson(inputs, basis.payrollInputs ?? [])) return yield* failure("StaleDependency");
+
+  const claims = yield* captureClaimInstructions(
+    tx,
+    scope,
+    retained.employeeId,
+    period.startsOn.slice(0, 7),
+    (basis.claimInstructions ?? []).map((row) => row.instructionId),
+    runId,
+  );
+
+  if (!equalJson(claims, basis.claimInstructions ?? [])) return yield* failure("StaleDependency");
 
   const adjustments = yield* captureAdjustmentInstructions(
     tx,
@@ -260,28 +272,36 @@ export const compileRun = Effect.fn("payroll.compileRun")(function* (
       withholdingMinor: calculated.withholdingMinor,
       cashReimbursementMinor: calculated.cashReimbursementMinor,
       reimbursementAlreadyRecognized: false,
-      fundingTransfers: (source.basis.payrollInputs ?? []).flatMap((row) => [
-        ...(row.reimbursementMinor === "0"
-          ? []
-          : [
-              {
-                sourceId: `${row.inputId}_exempt`,
-                kind: "reimbursement" as const,
-                amountMinor: row.reimbursementMinor,
-                liabilityAccountId: row.liabilityAccountId,
-              },
-            ]),
-        ...(row.grossRecognizedMinor === "0"
-          ? []
-          : [
-              {
-                sourceId: `${row.inputId}_gross`,
-                kind: "gross" as const,
-                amountMinor: row.grossRecognizedMinor,
-                liabilityAccountId: row.taxableLiabilityAccountId ?? row.liabilityAccountId,
-              },
-            ]),
-      ]),
+      fundingTransfers: [
+        ...(source.basis.payrollInputs ?? []).flatMap((row) => [
+          ...(row.reimbursementMinor === "0"
+            ? []
+            : [
+                {
+                  sourceId: `${row.inputId}_exempt`,
+                  kind: "reimbursement" as const,
+                  amountMinor: row.reimbursementMinor,
+                  liabilityAccountId: row.liabilityAccountId,
+                },
+              ]),
+          ...(row.grossRecognizedMinor === "0"
+            ? []
+            : [
+                {
+                  sourceId: `${row.inputId}_gross`,
+                  kind: "gross" as const,
+                  amountMinor: row.grossRecognizedMinor,
+                  liabilityAccountId: row.taxableLiabilityAccountId ?? row.liabilityAccountId,
+                },
+              ]),
+        ]),
+        ...(source.basis.claimInstructions ?? []).map((row) => ({
+          sourceId: row.instructionId,
+          kind: "reimbursement" as const,
+          amountMinor: row.amountMinor,
+          liabilityAccountId: row.liabilityAccountId,
+        })),
+      ],
       deductions,
       employerContributionMinor: calculated.employerContributionMinor,
       accruals,

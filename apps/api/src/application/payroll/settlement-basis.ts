@@ -33,7 +33,10 @@ export type JournalLine = {
 export const captureCash = Effect.fn("payroll.captureSettlementCash")(function* (
   tx: Transaction,
   scope: Scope,
-  input: Extract<Input, { kind: "payment" | "cash_recovery" }>,
+  input: Pick<
+    Extract<Input, { kind: "payment" | "cash_recovery" }>,
+    "bankAccountId" | "statementId" | "rowOrdinal" | "evidenceId" | "postingDate"
+  >,
 ) {
   yield* admitAccountRole(tx, scope.bookId, input.bankAccountId, "bank");
 

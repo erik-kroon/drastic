@@ -24,6 +24,7 @@ import * as Db from "../../db/payroll/calculations";
 import type { Transaction } from "../../db/transaction";
 import { calculateRegularPayroll } from "./calculation-basis";
 import { captureInputs, appendInputComponents } from "./inputs";
+import { captureClaimInstructions, appendClaimInstructions } from "./employee-claim-instructions";
 import {
   captureAdjustmentInstructions,
   appendAdjustmentInstructions,
@@ -256,6 +257,7 @@ const stripRetainedComponents = Effect.fn("payroll.stripRetainedComparisonCompon
       `${row.inputId}_reimbursement`,
     ]),
     ...(original.adjustmentInstructions ?? []).map((row) => row.id),
+    ...(original.claimInstructions ?? []).map((row) => row.instructionId),
   ]);
 
   for (const kind of ["adjustments", "reimbursements"] as const) {
@@ -322,9 +324,21 @@ const captureComponents = Effect.fn("payroll.captureCalculationComponents")(func
           submitted.adjustmentIds ?? [],
         );
 
-  const prepared = yield* appendAdjustmentInstructions(withInputs, adjustmentInstructions);
+  const claimInstructions =
+    mode.kind === "paid_comparison"
+      ? (mode.originalBasis.claimInstructions ?? [])
+      : yield* captureClaimInstructions(
+          transaction,
+          scope,
+          submitted.employment.employeeId,
+          submitted.work.earningsPeriod.startsOn.slice(0, 7),
+          submitted.claimInstructionIds ?? [],
+        );
 
-  return { payrollInputs, adjustmentInstructions, prepared };
+  const withClaims = yield* appendClaimInstructions(withInputs, claimInstructions);
+  const prepared = yield* appendAdjustmentInstructions(withClaims, adjustmentInstructions);
+
+  return { payrollInputs, adjustmentInstructions, claimInstructions, prepared };
 });
 
 export const captureCalculationBasis = Effect.fn("payroll.captureCalculationBasis")(function* (
@@ -335,12 +349,8 @@ export const captureCalculationBasis = Effect.fn("payroll.captureCalculationBasi
 ) {
   yield* requireTableGrants(transaction, false);
 
-  const { payrollInputs, adjustmentInstructions, prepared } = yield* captureComponents(
-    transaction,
-    scope,
-    submitted,
-    mode,
-  );
+  const { payrollInputs, adjustmentInstructions, claimInstructions, prepared } =
+    yield* captureComponents(transaction, scope, submitted, mode);
 
   const employeeId = prepared.employment.employeeId;
   const period = prepared.work.earningsPeriod;
@@ -449,35 +459,40 @@ export const captureCalculationBasis = Effect.fn("payroll.captureCalculationBasi
 
   const membership = yield* ProfileDb.readFamilyMembership(transaction, scope.bookId, "payroll");
 
-  const basis = yield* decode(
-    Payroll.PayrollCalculationBasis,
-    yield* toJsonObject({
-      employeeId,
-      employmentRevisionId: employment.id,
-      workRevisionId: work.id,
-      openingRevisionId: opening.id,
-      openingBaseMinor: openingBody.balanceMinor,
-      openingObligationReference: openingBody.obligation,
-      earningsPeriod: period,
-      expectedPaymentOn: paymentOn,
-      currency: book.currency,
-      currencyScale: book.currencyScale,
-      ruleReleaseId: releaseRow.id,
-      ruleReleaseChecksum: releaseRow.checksum,
-      ruleReleaseVersion: releaseRow.version,
-      companyActivationId: witness.activationId,
-      familyMembershipEpoch: membership[0]?.membershipEpoch.toString() ?? null,
-      factRevisionIds: witness.factRevisionIds,
-      factReviewIds: witness.factReviewIds,
-      roleBindingIds: witness.roleBindingIds,
-      evidenceIds: [employment.evidenceId, work.evidenceId, opening.evidenceId],
-      calculatorVersion: release.calculatorVersion,
-      sourceCoverage: "complete",
-      payrollInputs,
-      adjustmentInstructions,
-      reviewedInput: prepared,
-    }),
+  const capturedFields = yield* toJsonObject({
+    employeeId,
+    employmentRevisionId: employment.id,
+    workRevisionId: work.id,
+    openingRevisionId: opening.id,
+    openingBaseMinor: openingBody.balanceMinor,
+    openingObligationReference: openingBody.obligation,
+    earningsPeriod: period,
+    expectedPaymentOn: paymentOn,
+    currency: book.currency,
+    currencyScale: book.currencyScale,
+    ruleReleaseId: releaseRow.id,
+    ruleReleaseChecksum: releaseRow.checksum,
+    ruleReleaseVersion: releaseRow.version,
+    companyActivationId: witness.activationId,
+    familyMembershipEpoch: membership[0]?.membershipEpoch.toString() ?? null,
+    factRevisionIds: witness.factRevisionIds,
+    factReviewIds: witness.factReviewIds,
+    roleBindingIds: witness.roleBindingIds,
+    evidenceIds: [employment.evidenceId, work.evidenceId, opening.evidenceId],
+    calculatorVersion: release.calculatorVersion,
+    sourceCoverage: "complete",
+    payrollInputs,
+    adjustmentInstructions,
+    reviewedInput: prepared,
+  });
+
+  const basisFields: Record<string, Schema.Json> = Object.fromEntries(
+    Object.entries(capturedFields),
   );
+
+  if (claimInstructions.length) basisFields.claimInstructions = claimInstructions;
+
+  const basis = yield* decode(Payroll.PayrollCalculationBasis, basisFields);
 
   const calculated = yield* calculateRegularPayroll(basis, release);
 

@@ -13,6 +13,7 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { PayrollRunReview } from "./run-review";
+import { EmployeeClaimDirectory } from "./employee-claim-directory";
 
 export function PayrollWorkspace({ recordId }: { recordId?: string }) {
   const { book, locale } = useBookWorkspace();
@@ -66,6 +67,7 @@ export function PayrollWorkspace({ recordId }: { recordId?: string }) {
         />
       }
     >
+      <EmployeeClaimDirectory key={`${book.entityId}:${book.id}`} />
       <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
       {list.isSuccess ? (
         <>

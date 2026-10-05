@@ -172,6 +172,12 @@ const PayrollWorkspace = lazy(() =>
   import("@/components/payroll/workspace").then((module) => ({ default: module.PayrollWorkspace })),
 );
 
+const EmployeeClaimWorkspace = lazy(() =>
+  import("@/components/payroll/employee-claim-workspace").then((module) => ({
+    default: module.EmployeeClaimWorkspace,
+  })),
+);
+
 const workReturnAreas = new Set(["sales", "purchases", "tax"]);
 
 const trialBalanceModes = new Set(["trial", "ledger"]);
@@ -181,7 +187,22 @@ function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledg
 }
 
 export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
-  const { locale } = useBookWorkspace();
+  const { book, locale } = useBookWorkspace();
+
+  if (props.area === "tax" && props.view === "claims")
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        {props.record ? (
+          <EmployeeClaimWorkspace
+            key={`${book.entityId}:${book.id}:${props.record}`}
+            claimId={props.record}
+            occurrenceId={props.occurrence}
+          />
+        ) : (
+          <PayrollWorkspace />
+        )}
+      </Suspense>
+    );
 
   if (props.area === "tax" && props.view === "payroll") {
     return (

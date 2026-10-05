@@ -59,7 +59,7 @@ const ibanPattern = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/;
 
 const bicPattern = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
 
-function checkIban(value: string) {
+export function checkIban(value: string) {
   if (!ibanPattern.test(value)) return yieldInvalid();
   const reordered = value.slice(4) + value.slice(0, 4);
   let remainder = 0;
@@ -83,13 +83,13 @@ function yieldInvalid(): never {
   throw failure("InvalidJournal");
 }
 
-function checkBic(value: string) {
+export function checkBic(value: string) {
   if (!bicPattern.test(value)) return yieldInvalid();
 
   return value;
 }
 
-function checkXmlText(value: string) {
+export function checkXmlText(value: string) {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
 
