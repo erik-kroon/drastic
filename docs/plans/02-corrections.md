@@ -88,7 +88,10 @@ Ambiguous or malformed ownership refuses the new capture. This does not approve 
 any constituent and leaves every financial aggregate guard intact.
 See [case context](../../apps/api/docs/CASES.md).
 
-The browser's hardcoded `PostingRecoveryReview` handoff is unchanged and remains an open
-UI integration gap. Backend routing metadata must not be described as a repaired browser
-flow. Independent source review found no actionable blocker within this backend scope;
-runtime behavior remains unverified.
+The 2026-10-05 browser follow-up replaces the hardcoded standalone handoff in both
+proposal review routes with the current `Cases.ReviewResolution` owner. Correction
+children open the complete aggregate; mismatched child or bundle digests refuse review
+actions. The retained [synthetic browser proof](evidence/correction-child-review-20261005/README.md)
+covers both child entries, incorrect revision refusal, lost-response recovery and exact
+replay. This resolves that handoff gap, without claiming the new Q45–Q47 presentation or
+register-compensation acceptance.

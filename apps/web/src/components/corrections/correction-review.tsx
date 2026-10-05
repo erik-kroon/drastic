@@ -18,19 +18,42 @@ import {
 } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
+import { accountingCopy } from "@/lib/accounting-copy";
+import { reviewTargetPath } from "@/lib/book-context";
+import { Link } from "@open-erp/ui/components/link";
 import { CorrectionChainView, CorrectionImpactDetails } from "./impact-review";
 
-export function CorrectionReview({
-  book,
-  setup,
-  locale,
-  id,
-}: {
+type EntryWitness = {
+  constituentId: string;
+  planDigest?: string;
+  bundleDigest: string;
+};
+
+function conflictingEntry(
+  bundle: typeof Corrections.CorrectionBundle.Type | undefined,
+  entry: EntryWitness | undefined,
+) {
+  if (!bundle || !entry) return null;
+
+  const constituent = [bundle.reversal, bundle.replacement].find(
+    (plan) => plan.id === entry.constituentId,
+  );
+
+  return bundle.bundleDigest !== entry.bundleDigest ||
+    !constituent ||
+    (entry.planDigest && constituent.planDigest !== entry.planDigest)
+    ? bundle
+    : null;
+}
+
+export function CorrectionReview(props: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
   id: string;
+  entry?: EntryWitness;
 }) {
+  const { book, setup, locale, id } = props;
   const copy = correctionCopy(locale);
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
@@ -111,6 +134,24 @@ export function CorrectionReview({
 
   const expired = currentApproval ? Date.parse(currentApproval.expiresAt) <= Date.now() : false;
   const stale = requiresNewProposal(approval.error) || requiresNewProposal(execution.error);
+
+  const conflict = conflictingEntry(bundle, props.entry);
+
+  if (conflict)
+    return (
+      <Box display="grid" gap="md" padding="md">
+        <Text role="alert">{accountingCopy(locale).workspace_revision_mismatch}</Text>
+        <Link
+          href={reviewTargetPath(book, {
+            kind: "correction",
+            bundleId: conflict.id,
+            bundleDigest: conflict.bundleDigest,
+          })}
+        >
+          {accountingCopy(locale).workspace_current_revision}
+        </Link>
+      </Box>
+    );
 
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">

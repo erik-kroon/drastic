@@ -169,6 +169,26 @@ test("correction review recovers a lost aggregate response and blocks the compet
   const execute = screen.getByRole("button", "Bokför motbokning och ersättning");
 
   expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  const constituentUrl = `${workspace}/reviews/${first.bundle.reversal.id}/${first.bundle.reversal.planDigest}?status=all&kind=journal`;
+  await app.open(constituentUrl);
+  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible({
+    timeout: 90_000,
+  });
+  await expect(screen.getByRole("heading", "Exakt motbokning")).toBeVisible();
+  await expect(screen.getByRole("heading", "Ersättning")).toBeVisible();
+  await expect(approve).toBeDisabled();
+  await expect(execute).toBeDisabled();
+  const constituentScreenshot = await app.screenshot("correction-child-opens-complete-bundle");
+  await app.open(`${workspace}/reviews/${first.bundle.replacement.id}/`);
+  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible();
+  await expect(approve).toBeDisabled();
+  await app.open(`${workspace}/reviews/${first.bundle.reversal.id}/sha256:${"0".repeat(64)}`);
+  await expect(screen.getByRole("alert")).toContainText(
+    "Länken stämmer inte med det låsta förslaget",
+  );
+  await expect(approve).toHaveCount(0);
+  await expect(execute).toHaveCount(0);
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
   await app.open(reviewUrl(first.bundle.id));
   await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible({
     timeout: 90_000,
@@ -410,7 +430,13 @@ test("correction review recovers a lost aggregate response and blocks the compet
         competingReceipt: competingView.receipt,
         competingApproval: competingView.approval,
         competingSnapshotCurrent: staleImpact.snapshotCurrent,
-        screenshots: { receiptScreenshot, staleScreenshot, originalScreenshot },
+        constituentUrl,
+        screenshots: {
+          constituentScreenshot,
+          receiptScreenshot,
+          staleScreenshot,
+          originalScreenshot,
+        },
         expected: { ledgerIncrement: "2", bankDeltaMinor: "-5500", chainBankBalanceMinor: "7000" },
       },
       null,

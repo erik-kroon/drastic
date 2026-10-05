@@ -13,7 +13,7 @@ import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/atten
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { PostingRecoveryReview } from "@/components/posting-recovery/review";
+import { ReviewOwner } from "@/components/review-owner";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reviews/$planId/$revision")(
@@ -71,12 +71,12 @@ function Review() {
         </>
       }
     >
-      <PostingRecoveryReview
+      <ReviewOwner
         key={`${planId}/${revision}`}
         book={book}
-        accounts={setup.accounts}
+        setup={setup}
         locale={locale}
-        id={planId}
+        planId={planId}
         expectedDigest={revision}
         returnSearch={defaultStringifySearch(filters)}
       />
