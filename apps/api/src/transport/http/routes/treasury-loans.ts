@@ -7,6 +7,20 @@ import { scopeFromPath } from "../scope";
 
 export const TreasuryLoanHandlers = HttpApiBuilder.group(Api, "treasuryLoan", (handlers) =>
   handlers
+    .handle("listLoans", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.list(token, { scope: scopeFromPath(params), after: query.after }),
+      ),
+    )
+    .handle("listLoanReviews", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.listReviews(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          after: query.after,
+        }),
+      ),
+    )
     .handle("adoptLoan", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Owner.adopt(token, {

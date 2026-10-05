@@ -170,12 +170,6 @@ export const recordRate = Effect.fn("treasury.recordLoanRate")(function* (
       if (snapshot.rates.some((rate) => rate.input.effectiveOn === input.effectiveOn))
         return yield* failure("IdempotencyConflict");
 
-      if (
-        snapshot.basis.coverageEndExclusiveOn !== null &&
-        input.effectiveOn < snapshot.basis.coverageEndExclusiveOn
-      )
-        return yield* failure("UnsupportedProfile");
-
       if (snapshot.rates.length >= 1000) return yield* failure("UnsupportedProfile");
       const evidence = yield* readEvidenceReference(tx, scope.bookId, input.evidenceId);
 
@@ -645,6 +639,56 @@ export const getReview = Effect.fn("treasury.getLoanReview")(function* (
         (yield* Db.events(tx, command.scope.bookId, review.loanId)).find(
           (event) => event.body.reviewId === command.id,
         )?.body ?? null,
+    });
+  });
+});
+
+export const list = Effect.fn("treasury.listLoans")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    if (command.after && !(yield* Db.readLoan(tx, command.scope.bookId, command.after))[0])
+      return yield* failure("NotFound");
+
+    const rows = yield* Db.loanPage(tx, command.scope.bookId, command.after ?? null);
+
+    const items = yield* Effect.forEach(rows.slice(0, 20), (row) =>
+      decode(Loans.RetainedLoan, row.body),
+    );
+
+    return yield* decode(Loans.LoanPage, {
+      scope: command.scope,
+      items,
+      next: rows.length > 20 ? (items.at(-1)?.id ?? null) : null,
+    });
+  });
+});
+
+export const listReviews = Effect.fn("treasury.listLoanReviews")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly id: string; readonly after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    yield* readLoan(tx, command.scope, command.id);
+
+    if (command.after) {
+      const anchor = (yield* Db.readReview(tx, command.scope.bookId, command.after))[0];
+
+      if (!anchor || anchor.body.loanId !== command.id) return yield* failure("NotFound");
+    }
+
+    const rows = yield* Db.reviewPage(tx, command.scope.bookId, command.id, command.after ?? null);
+
+    const items = yield* Effect.forEach(rows.slice(0, 20), (row) =>
+      decode(Loans.LoanReview, row.body),
+    );
+
+    return yield* decode(Loans.LoanReviewPage, {
+      scope: command.scope,
+      loanId: command.id,
+      items,
+      next: rows.length > 20 ? (items.at(-1)?.id ?? null) : null,
     });
   });
 });

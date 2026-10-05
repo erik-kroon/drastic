@@ -63,6 +63,7 @@ const journalInput = {
 export const PrepareLoanAccrual = Schema.Struct({
   kind: Schema.Literal("accrual"),
   coverageEndExclusiveOn: Accounting.AccountingDate,
+  correctionReason: Schema.optional(Accounting.Description),
   ...journalInput,
 });
 
@@ -156,7 +157,7 @@ export const LoanEvent = Schema.Struct({
   kind: Schema.Literals(["accrual", "repayment"]),
   postingDate: Accounting.AccountingDate,
   principalMinor: Accounting.MinorUnits,
-  interestMinor: Accounting.MinorUnits,
+  interestMinor: Accounting.SignedMinorUnits,
   feeMinor: Accounting.MinorUnits,
   coverageEndExclusiveOn: Schema.NullOr(Accounting.AccountingDate),
   ownerEffectId: Schema.NullOr(Accounting.Identifier),
@@ -181,6 +182,21 @@ export const LoanReviewView = Schema.Struct({
   event: Schema.NullOr(LoanEvent),
 });
 
+export const LoanPage = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(RetainedLoan),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const LoanReviewPage = Schema.Struct({
+  scope: Accounting.Scope,
+  loanId: Accounting.Identifier,
+  items: Schema.Array(LoanReview),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+const directoryQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 const scoped = { scope: Accounting.Scope };
 
 const command = {
@@ -202,7 +218,7 @@ const capabilities = {
     input: Schema.Struct({ ...loanCommand, input: RecordLoanRate }),
     output: LoanRate,
     description:
-      "Retain one evidenced simple-interest rate at a unique effective date beyond accrued coverage.",
+      "Retain one evidenced simple-interest rate at a unique effective date, including retrospective evidenced changes.",
     readOnly: false,
   },
   treasury_prepare_loan_review: {
@@ -251,6 +267,18 @@ const payload = <S extends Schema.Top>(schema: S) =>
   schema.annotate({ parseOptions: { onExcessProperty: "error" } });
 
 export const LoanApi = HttpApiGroup.make("treasuryLoan").add(
+  HttpApiEndpoint.get("listLoans", root, {
+    params: Accounting.Scope,
+    query: directoryQuery,
+    success: LoanPage,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("listLoanReviews", `${root}/:id/reviews`, {
+    params,
+    query: directoryQuery,
+    success: LoanReviewPage,
+    error: accountingErrors,
+  }),
   HttpApiEndpoint.post("adoptLoan", root, {
     params: Accounting.Scope,
     headers: Accounting.IdempotencyHeaders,

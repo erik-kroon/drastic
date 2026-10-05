@@ -179,8 +179,14 @@ export const compileLoanReview = Effect.fn("treasury.compileLoanReview")(functio
 
     if (Result.isFailure(calculation)) return yield* failure("InvalidJournal");
 
-    if (BigInt(calculation.success.deltaMinor) < 0n) return yield* failure("UnsupportedProfile");
-    const compiled = Loan.compileAccrualJournal(calculation.success.deltaMinor, loan.input, false);
+    if (BigInt(calculation.success.targetMinor) < BigInt(basis.paidInterestMinor))
+      return yield* failure("InvalidJournal");
+
+    const compiled = Loan.compileAccrualJournal(
+      calculation.success.deltaMinor,
+      loan.input,
+      input.correctionReason !== undefined,
+    );
 
     if (Result.isFailure(compiled)) return yield* failure("InvalidJournal");
 

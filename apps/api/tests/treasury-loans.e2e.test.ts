@@ -613,20 +613,7 @@ test("loan rate coverage, split segments, duplicate dates and stale approvals re
     },
   ]);
   const event = await executeReview(book, split, await loanApproval(book, split));
-  await failure(
-    await request(book, `${loanRoot}/${loan.id}/rates`, {
-      method: "POST",
-      body: JSON.stringify({
-        effectiveOn: "2026-09-17",
-        rateNumerator: "9",
-        rateDenominator: "100",
-        evidenceId: agreement.id,
-        reason: "Unsupported correction of settled coverage",
-      }),
-    }),
-    422,
-    "UnsupportedProfile",
-  );
+  await rate(book, loan, agreement.id, "2026-09-17", "9");
   expect((await loanView(book, loan)).balance.accruedInterestMinor).toBe("73973");
   await writeFile(
     join(environment().artifacts, "treasury-loan-rates.json"),
@@ -1023,5 +1010,108 @@ test("loan repayment fees require separate retained evidence and post the exact 
       null,
       2,
     ),
+  );
+});
+
+test("backdated evidenced rates post only the cumulative interest difference", async () => {
+  const { book, loan, agreement } = await adoptedLoan();
+  const input = accrualInput(agreement.id);
+
+  await rate(book, loan, agreement.id);
+  const original = await post(book, `${loanRoot}/${loan.id}/reviews`, input, Loans.LoanReview);
+
+  await executeReview(book, original, await loanApproval(book, original));
+  expect(original.calculation?.targetMinor).toBe("49315");
+
+  const obsolete = await post(book, `${loanRoot}/${loan.id}/reviews`, input, Loans.LoanReview);
+
+  const obsoleteApproval = await loanApproval(book, obsolete);
+
+  await post(
+    book,
+    `${loanRoot}/${loan.id}/rates`,
+    {
+      effectiveOn: "2026-09-16",
+      rateNumerator: "65",
+      rateDenominator: "1000",
+      evidenceId: agreement.id,
+      reason: "Backdated evidenced rate increase",
+    },
+    Loans.LoanRate,
+  );
+  await failure(
+    await request(book, `${loanRoot}/reviews/${obsolete.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ digest: obsolete.digest, approvalId: obsoleteApproval.id }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  const review = await post(book, `${loanRoot}/${loan.id}/reviews`, input, Loans.LoanReview);
+
+  expect(review.calculation?.targetMinor).toBe("51370");
+  expect(review.calculation?.deltaMinor).toBe("2055");
+  expect(review.calculation?.priorEffectiveMinor).toBe("49315");
+
+  const directory = await decoded(await request(book, loanRoot), Loans.LoanPage);
+
+  expect(directory.items.some((item) => item.id === loan.id)).toBe(true);
+
+  const reviews = await decoded(
+    await request(book, `${loanRoot}/${loan.id}/reviews`),
+    Loans.LoanReviewPage,
+  );
+
+  expect(reviews.items.some((item) => item.id === review.id)).toBe(true);
+
+  const other = await fixture();
+
+  await failure(await request(other, `${loanRoot}/${loan.id}/reviews`), 404, "NotFound");
+  await failure(await request(other, `${loanRoot}?after=${loan.id}`), 404, "NotFound");
+  await failure(
+    await request(book, `${loanRoot}/${loan.id}/reviews?after=missing_review`),
+    404,
+    "NotFound",
+  );
+
+  const event = await executeReview(book, review, await loanApproval(book, review));
+
+  expect(event.interestMinor).toBe("2055");
+  expect((await loanView(book, loan)).balance.accruedInterestMinor).toBe("51370");
+  await post(
+    book,
+    `${loanRoot}/${loan.id}/rates`,
+    {
+      effectiveOn: "2026-09-17",
+      rateNumerator: "5",
+      rateDenominator: "100",
+      evidenceId: agreement.id,
+      reason: "Backdated evidenced rate decrease",
+    },
+    Loans.LoanRate,
+  );
+  await failure(
+    await request(book, `${loanRoot}/${loan.id}/reviews`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+    422,
+    "InvalidJournal",
+  );
+
+  const corrected = await post(
+    book,
+    `${loanRoot}/${loan.id}/reviews`,
+    { ...input, correctionReason: "Independent correction of overstated interest" },
+    Loans.LoanReview,
+  );
+
+  expect(BigInt(corrected.calculation?.deltaMinor ?? "0") < 0n).toBe(true);
+  const correctedEvent = await executeReview(book, corrected, await loanApproval(book, corrected));
+
+  expect(correctedEvent.interestMinor).toBe(corrected.calculation?.deltaMinor);
+  await writeFile(
+    join(environment().artifacts, "treasury-backdated-recalculation.json"),
+    JSON.stringify({ original, review, event, corrected, correctedEvent }, null, 2),
   );
 });

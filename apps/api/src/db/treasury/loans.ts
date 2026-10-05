@@ -152,3 +152,17 @@ export function insertAllocation(
     "objects",
   );
 }
+
+export function loanPage(tx: Transaction, book: string, after: string | null) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.treasury_loans where book_id=${book} and (${after}::text is null or id collate "C" > ${after}) order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function reviewPage(tx: Transaction, book: string, loan: string, after: string | null) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.treasury_loan_reviews where book_id=${book} and loan_id=${loan} and (${after}::text is null or id collate "C" > ${after}) order by id collate "C" limit 21`,
+    "objects",
+  );
+}
