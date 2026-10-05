@@ -8,6 +8,7 @@ import { expect, test } from "vitest";
 import * as Schema from "effect/Schema";
 import {
   environment,
+  createSession,
   database,
   decoded,
   evidence,
@@ -46,7 +47,7 @@ async function setup() {
     await admin.end();
   }
 
-  const reviewer = { ...book, actorId: second.actorId, token: second.token };
+  const reviewer = { ...book, actorId: second.actorId, token: (await createSession(second)).token };
   const openingEvidence = await evidence(book);
 
   const opening = await post(
@@ -59,7 +60,7 @@ async function setup() {
   await execute(book, opening);
   const source = await evidence(book);
 
-  return { book, reviewer, source };
+  return { book, reviewer, source, reviewerCredential: { ...reviewer, token: second.token } };
 }
 
 async function commitReview(
@@ -1023,7 +1024,7 @@ test("same-currency transfer conserves both capacities and final consume empties
 });
 
 test("foreign-to-book exchange rolls back journal and holding together and retries the original command", async () => {
-  const { book, reviewer, source } = await setup();
+  const { book, reviewer, source, reviewerCredential } = await setup();
 
   const shared = {
     accountId: "account_bank",
@@ -1078,6 +1079,47 @@ test("foreign-to-book exchange rolls back journal and holding together and retri
       ["account_gain", "0", "1000"],
     ],
   );
+
+  const view = await decoded(
+    await request(book, `/banking/foreign-cash/reviews/${review.id}/exchange`),
+    Cash.ExchangeView,
+  );
+
+  expect([
+    view.grossMinor,
+    view.basis.feeEvidence.feeMinor,
+    view.releasedMinor,
+    view.gainMinor,
+  ]).toEqual(["45000", "500", "44000", "1000"]);
+  expect([view.remainingNativeMinor, view.remainingCarryingMinor]).toEqual(["6000", "66000"]);
+  expect(view.approvals).toEqual([]);
+  expect(view.execution).toBeNull();
+
+  expect(
+    (
+      await request(reviewerCredential, `/banking/foreign-cash/reviews/${review.id}/approvals`, {
+        method: "POST",
+        headers: { "idempotency-key": crypto.randomUUID() },
+        body: JSON.stringify({ version: 1, digest: review.digest }),
+      })
+    ).status,
+  ).toBe(403);
+
+  const directory = await decoded(
+    await request(book, "/banking/foreign-cash/accounts/account_bank/reviews"),
+    Cash.ReviewPage,
+  );
+
+  expect(directory.items.some((item) => item.id === review.id)).toBe(true);
+
+  const stranger = await fixture();
+
+  expect(
+    (await request(stranger, `/banking/foreign-cash/reviews/${review.id}/exchange`)).status,
+  ).toBe(404);
+  expect(
+    (await request(stranger, `/banking/foreign-cash/accounts?after=account_bank`)).status,
+  ).toBe(404);
 
   const approval = await post(
     reviewer,
@@ -1143,6 +1185,18 @@ test("foreign-to-book exchange rolls back journal and holding together and retri
   );
 
   expect([holding.nativeMinor, holding.carryingMinor]).toEqual(["6000", "66000"]);
+
+  const postedView = await decoded(
+    await request(book, `/banking/foreign-cash/reviews/${review.id}/exchange`),
+    Cash.ExchangeView,
+  );
+
+  expect(postedView.execution).toEqual(retried);
+  expect(postedView.approvals).toEqual([approval]);
+  expect([postedView.currentHolding.nativeMinor, postedView.currentHolding.carryingMinor]).toEqual([
+    "6000",
+    "66000",
+  ]);
   const observed = await database();
   let receivingLineId = "";
 

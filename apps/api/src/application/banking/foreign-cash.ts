@@ -941,6 +941,8 @@ export const approveForeignCash = Effect.fn("foreignCash.approve")(function* (
 
     if (command.input.digest !== review.digest) return yield* failure("StaleDependency");
 
+    if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+
     if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
     yield* requireCurrentReview(transaction, command.scope, review);
 
@@ -1272,6 +1274,117 @@ export const getForeignCashReview = Effect.fn("foreignCash.review")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     return yield* getReview(transaction, command.scope, command.reviewId);
+  });
+});
+
+export const listForeignCashHoldings = Effect.fn("foreignCash.listHoldings")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    if (command.after) yield* readHolding(tx, command.scope, command.after);
+
+    const rows = yield* CashDb.accountPage(tx, command.scope.bookId, command.after ?? null);
+
+    const items = yield* Effect.forEach(rows.slice(0, 20), (row) =>
+      readHolding(tx, command.scope, row.accountId),
+    );
+
+    return yield* decode(Contracts.HoldingPage, {
+      scope: command.scope,
+      items,
+      next: rows.length > 20 ? (items.at(-1)?.accountId ?? null) : null,
+    });
+  });
+});
+
+export const listForeignCashReviews = Effect.fn("foreignCash.listReviews")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly accountId: string; readonly after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    yield* readHolding(tx, command.scope, command.accountId);
+
+    if (command.after) {
+      const anchor = yield* getReview(tx, command.scope, command.after);
+
+      if (anchor.input.accountId !== command.accountId) return yield* failure("NotFound");
+    }
+
+    const rows = yield* CashDb.reviewPage(
+      tx,
+      command.scope.bookId,
+      command.accountId,
+      command.after ?? null,
+    );
+
+    const items = yield* Effect.forEach(rows.slice(0, 20), (row) =>
+      decode(Contracts.Review, row.body),
+    );
+
+    return yield* decode(Contracts.ReviewPage, {
+      scope: command.scope,
+      accountId: command.accountId,
+      items,
+      next: rows.length > 20 ? (items.at(-1)?.id ?? null) : null,
+    });
+  });
+});
+
+export const getForeignCashExchange = Effect.fn("foreignCash.exchangeView")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly reviewId: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx) {
+    const review = yield* getReview(tx, command.scope, command.reviewId);
+
+    if (review.input.kind !== "exchange") return yield* failure("NotFound");
+    const input = review.input;
+    const basis = yield* decode(Contracts.ExchangeBasis, review.snapshot);
+    const effect = review.effects[0];
+
+    if (
+      review.effects.length !== 1 ||
+      !effect ||
+      effect.accountId !== input.accountId ||
+      effect.nativeDeltaMinor !== `-${input.nativeMinor}` ||
+      BigInt(effect.carryingDeltaMinor) > 0n ||
+      basis.holding.accountId !== input.accountId ||
+      basis.nativeObservation.accountId !== input.accountId ||
+      basis.nativeObservation.statementId !== input.nativeObservation.statementId ||
+      basis.nativeObservation.rowOrdinal !== input.nativeObservation.rowOrdinal ||
+      basis.nativeObservation.amountMinor !== `-${input.nativeMinor}` ||
+      basis.bookObservation.accountId !== input.receiverAccountId ||
+      basis.bookObservation.statementId !== input.bookObservation.statementId ||
+      basis.bookObservation.rowOrdinal !== input.bookObservation.rowOrdinal ||
+      BigInt(basis.bookObservation.amountMinor) <= 0n ||
+      basis.feeEvidence.id !== input.feeEvidenceId ||
+      basis.book.currency !== review.bookCurrency ||
+      basis.feeEvidence.currency !== review.bookCurrency
+    )
+      return yield* failure("StaleDependency");
+
+    const approvals = yield* CashDb.readApprovals(tx, command.scope.bookId, review.id);
+
+    if (approvals.length > 20) return yield* failure("UnsupportedProfile");
+    const execution = (yield* CashDb.readExecution(tx, command.scope.bookId, review.id))[0];
+    const released = -BigInt(effect.carryingDeltaMinor);
+    const gross = BigInt(basis.bookObservation.amountMinor) + BigInt(basis.feeEvidence.feeMinor);
+
+    return yield* decode(Contracts.ExchangeView, {
+      review,
+      basis,
+      currentHolding: yield* readHolding(tx, command.scope, input.accountId),
+      grossMinor: gross.toString(),
+      releasedMinor: released.toString(),
+      gainMinor: (gross - released).toString(),
+      remainingNativeMinor: (
+        BigInt(basis.holding.nativeMinor) - BigInt(input.nativeMinor)
+      ).toString(),
+      remainingCarryingMinor: (BigInt(basis.holding.carryingMinor) - released).toString(),
+      approvals: yield* Effect.forEach(approvals, (row) => decode(Contracts.Approval, row.body)),
+      execution: execution ? yield* decode(Contracts.Execution, execution.body) : null,
+    });
   });
 });
 

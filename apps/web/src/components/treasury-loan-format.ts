@@ -15,6 +15,8 @@ export function loanDecimal(
 
   const whole = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(rounded / scale);
 
+  if (digits === 0) return `${negative ? "−" : ""}${whole}`;
+
   const decimal =
     new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === "decimal")
       ?.value ?? ",";

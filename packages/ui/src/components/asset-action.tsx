@@ -57,6 +57,7 @@ const assetActionStyles = stylex.create({
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
   },
+  compactJournalRow: { height: 30, borderBlockEndColor: tokens.rowDivider },
   journalLabel: { paddingInlineStart: 8, textAlign: "left" },
   journalCredit: { paddingInlineEnd: 8 },
   breadcrumbs: {
@@ -411,11 +412,13 @@ export function AssetPostedJournal({
   debit,
   credit,
   total = true,
+  compact = false,
 }: {
   rows: readonly { id: string; label: string; debit: string; credit: string }[];
   debit: string;
   credit: string;
   total?: boolean;
+  compact?: boolean;
 }) {
   return (
     <table {...stylex.props(assetActionStyles.table)}>
@@ -438,7 +441,13 @@ export function AssetPostedJournal({
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id} {...stylex.props(assetActionStyles.journalRow)}>
+          <tr
+            key={row.id}
+            {...stylex.props(
+              assetActionStyles.journalRow,
+              compact && assetActionStyles.compactJournalRow,
+            )}
+          >
             <td {...stylex.props(assetActionStyles.journalLabel)}>{row.label}</td>
             <td {...stylex.props(assetActionStyles.amount)}>{row.debit}</td>
             <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>
@@ -447,7 +456,13 @@ export function AssetPostedJournal({
           </tr>
         ))}
         {total ? (
-          <tr {...stylex.props(assetActionStyles.journalRow, assetActionStyles.emphasis)}>
+          <tr
+            {...stylex.props(
+              assetActionStyles.journalRow,
+              compact && assetActionStyles.compactJournalRow,
+              assetActionStyles.emphasis,
+            )}
+          >
             <td {...stylex.props(assetActionStyles.journalLabel)}>Summa</td>
             <td {...stylex.props(assetActionStyles.amount)}>{debit}</td>
             <td {...stylex.props(assetActionStyles.amount, assetActionStyles.journalCredit)}>

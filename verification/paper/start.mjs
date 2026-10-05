@@ -45,6 +45,14 @@ const assetHook = process.env.PAPER_ASSETS;
 
 const loanHook = process.env.PAPER_LOANS;
 
+const foreignCashHook = process.env.PAPER_FOREIGN_CASH;
+
+if (foreignCashHook !== undefined && foreignCashHook !== "0" && foreignCashHook !== "1")
+  throw new Error("PAPER_FOREIGN_CASH must be 0 or 1");
+
+const foreignCashSeed =
+  foreignCashHook === "1" ? await import("./seed-foreign-cash.mjs") : undefined;
+
 const historicalAdoptionHook = process.env.PAPER_HISTORICAL_ADOPTION;
 
 if (
@@ -251,6 +259,11 @@ try {
 
   if (loanSeed) fixture.accounts.push(...loanSeed.loanAccounts);
 
+  if (foreignCashSeed) {
+    fixture.accounts.push(...foreignCashSeed.foreignCashAccounts);
+    fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
+  }
+
   if (historicalAdoptionSeed)
     fixture.accounts.push(...historicalAdoptionSeed.historicalAdoptionAccounts);
 
@@ -304,6 +317,19 @@ try {
 
     console.log(JSON.stringify(payroll));
   }
+
+  if (foreignCashSeed)
+    console.log(
+      JSON.stringify(
+        await foreignCashSeed.seedForeignCash({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
 
   if (loanSeed)
     console.log(

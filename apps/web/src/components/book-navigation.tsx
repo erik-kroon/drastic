@@ -81,6 +81,9 @@ export function BookNavigation(props: {
         <WorkspaceNavLink
           href={`${base}/accounts`}
           active={pathname === `${base}/accounts`}
+          selection={
+            new URLSearchParams(props.search).get("view") === "foreign-cash" ? "neutral" : undefined
+          }
           onPointerEnter={preloadAccounts}
           onFocus={preloadAccounts}
         >

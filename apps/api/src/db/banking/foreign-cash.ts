@@ -70,6 +70,32 @@ export function readReview(transaction: Transaction, bookId: string, id: string)
   );
 }
 
+export function accountPage(transaction: Transaction, bookId: string, after: string | null) {
+  return transaction.execute<{ readonly accountId: string }>(
+    sql`select account_id as "accountId" from openerp.bank_foreign_cash_accounts where book_id=${bookId} and (${after}::text is null or account_id collate "C">${after}::text collate "C") order by account_id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function reviewPage(
+  transaction: Transaction,
+  bookId: string,
+  accountId: string,
+  after: string | null,
+) {
+  return transaction.execute<{ readonly body: JsonObject }>(
+    sql`select body from openerp.bank_foreign_cash_reviews where book_id=${bookId} and body->'input'->>'accountId'=${accountId} and (${after}::text is null or id collate "C">${after}::text collate "C") order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
+export function readApprovals(transaction: Transaction, bookId: string, reviewId: string) {
+  return transaction.execute<{ readonly body: JsonObject }>(
+    sql`select body from openerp.bank_foreign_cash_approvals where book_id=${bookId} and review_id=${reviewId} order by id collate "C" limit 21`,
+    "objects",
+  );
+}
+
 export function readApproval(
   transaction: Transaction,
   bookId: string,

@@ -208,6 +208,11 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
               date={date}
             />
           ) : null}
+          {data && !search.account ? (
+            <PageAction quiet href={`${base}?view=foreign-cash`}>
+              Valutakonton
+            </PageAction>
+          ) : null}
           {data && account ? (
             <AccountActivity
               data={data}

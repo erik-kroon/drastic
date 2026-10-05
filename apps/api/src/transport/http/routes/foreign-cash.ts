@@ -7,6 +7,25 @@ import { scopeFromPath } from "../scope";
 
 export const ForeignCashHandlers = HttpApiBuilder.group(Api, "foreignCash", (handlers) =>
   handlers
+    .handle("listForeignCashHoldings", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.listForeignCashHoldings(token, { scope: scopeFromPath(params), ...query }),
+      ),
+    )
+    .handle("listForeignCashReviews", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.listForeignCashReviews(token, {
+          scope: scopeFromPath(params),
+          accountId: params.id,
+          ...query,
+        }),
+      ),
+    )
+    .handle("getForeignCashExchange", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Owner.getForeignCashExchange(token, { scope: scopeFromPath(params), reviewId: params.id }),
+      ),
+    )
     .handle("prepareForeignCash", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Owner.prepareForeignCash(token, {

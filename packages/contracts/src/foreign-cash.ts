@@ -151,6 +151,57 @@ export const Execution = Schema.Struct({
   obligation: Schema.NullOr(ObligationConsumption),
 });
 
+export const PageQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
+export const HoldingPage = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(Holding),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const ReviewPage = Schema.Struct({
+  scope: Accounting.Scope,
+  accountId: Accounting.Identifier,
+  items: Schema.Array(Review),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const ExchangeObservation = Schema.Struct({
+  statementId: Accounting.Identifier,
+  rowOrdinal: Schema.Int,
+  accountId: Accounting.Identifier,
+  observedOn: Accounting.AccountingDate,
+  amountMinor: SignedMinorUnits,
+  evidenceId: Accounting.Identifier,
+  evidenceSha256: Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)),
+});
+
+export const ExchangeBasis = Schema.Struct({
+  book: Schema.Struct({ currency: CurrencyCode, scale: CurrencyScale }),
+  holding: Holding,
+  nativeObservation: ExchangeObservation,
+  bookObservation: ExchangeObservation,
+  feeEvidence: Schema.Struct({
+    id: Accounting.Identifier,
+    sha256: Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)),
+    currency: CurrencyCode,
+    feeMinor: MinorUnits,
+  }),
+});
+
+export const ExchangeView = Schema.Struct({
+  review: Review,
+  basis: ExchangeBasis,
+  currentHolding: Holding,
+  grossMinor: MinorUnits,
+  releasedMinor: MinorUnits,
+  gainMinor: SignedMinorUnits,
+  remainingNativeMinor: MinorUnits,
+  remainingCarryingMinor: MinorUnits,
+  approvals: Schema.Array(Approval),
+  execution: Schema.NullOr(Execution),
+});
+
 export const Reconciliation = Schema.Struct({
   holding: Holding,
   statementId: Accounting.Identifier,
@@ -177,6 +228,21 @@ const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const ForeignCashApi = HttpApiGroup.make("foreignCash")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("listForeignCashHoldings", `${path}/accounts`, {
+      params: Accounting.Scope,
+      query: PageQuery,
+      error: accountingErrors,
+      success: HoldingPage,
+    }),
+    HttpApiEndpoint.get("listForeignCashReviews", `${path}/accounts/:id/reviews`, {
+      ...identified,
+      query: PageQuery,
+      success: ReviewPage,
+    }),
+    HttpApiEndpoint.get("getForeignCashExchange", `${path}/reviews/:id/exchange`, {
+      ...identified,
+      success: ExchangeView,
+    }),
     HttpApiEndpoint.post("prepareForeignCash", `${path}/reviews`, {
       ...mutation,
       payload: Prepare,
