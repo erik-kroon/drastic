@@ -43,9 +43,16 @@ test("R41 submits a retained paid mileage correction without posting", async ({
   await app.screenshot("R41-paid-mileage-correction-before-submission");
   await screen.getByRole("link", "Ruttkontroll 3 okt.pdf, 150 km", { exact: true }).click();
   await expect(screen.getByRole("link", "Tillbaka till rättelsen", { exact: true })).toBeVisible();
+  await expect(
+    screen.getByRole("img", "Ruttkontroll 3 okt.pdf, sida 1", { exact: true }),
+  ).toBeVisible();
+  await app.screenshot("R41-retained-corrected-route-original");
   await screen.getByRole("link", "Tillbaka till rättelsen", { exact: true }).click();
   await expect(screen.getByRole("button", "Skicka för godkännande", { exact: true })).toBeEnabled();
-  await agent.act("Click Skicka för godkännande once. Stop when that button becomes disabled.");
+  await agent.act(
+    "Click Skicka för godkännande once and wait for Väntar på godkännande to appear.",
+  );
+  await expect(screen.getByText("Väntar på godkännande", { exact: true })).toBeVisible();
   await expect(
     screen.getByRole("button", "Skicka för godkännande", { exact: true }),
   ).toBeDisabled();
