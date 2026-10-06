@@ -9,6 +9,7 @@ import { QuestionTaskContext } from "@open-erp/ui/components/question-task-conte
 import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
   QuestionControl,
+  QuestionCaption,
   QuestionAttachment,
   QuestionMessage,
   QuestionThread,
@@ -285,13 +286,13 @@ function WorkQuestionRecord(props: RecordProps) {
   return (
     <QuestionThread title={question.question} status={status} state={question.state}>
       {question.waitingOn ? (
-        <PageCaption>
+        <QuestionCaption>
           {question.waitingOn === view.actorId
             ? sv
               ? "Väntar på dig"
               : "Waiting for you"
             : `${sv ? "Väntar på" : "Waiting for"} ${memberName(members, question.waitingOn)}`}
-        </PageCaption>
+        </QuestionCaption>
       ) : null}
       {question.events.map((event) => (
         <QuestionMessage

@@ -6,6 +6,11 @@ import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
   control: { minHeight: 32 },
+  caption: {
+    color: tokens.captionForeground,
+    fontSize: tokens.fontSizeXs,
+    lineHeight: tokens.lineHeight16Px,
+  },
   thread: { display: "grid", gap: tokens.space4, minWidth: 0 },
   heading: { display: "grid", gap: tokens.space2 },
   title: {
@@ -145,4 +150,8 @@ export function QuestionAttachment({
 
 export function QuestionControl(props: Omit<ButtonProps, "variant" | "size" | "styleX">) {
   return <Button {...props} variant="outline" styleX={styles.control} />;
+}
+
+export function QuestionCaption({ children }: { children: ReactNode }) {
+  return <p {...stylex.props(styles.caption)}>{children}</p>;
 }

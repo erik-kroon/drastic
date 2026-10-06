@@ -77,7 +77,12 @@ const styles = stylex.create({
   },
   content: { padding: 28, overflowY: "auto", minHeight: 0, flex: "1" },
   invoiceContent: { padding: 20, "@container (max-width: 28rem)": { padding: 16 } },
-  questionHeader: { paddingInline: tokens.space6, paddingBlock: tokens.space2 },
+  questionHeader: {
+    height: 56,
+    flexShrink: 0,
+    paddingInline: tokens.space6,
+    paddingBlock: 0,
+  },
   questionContent: { paddingInline: tokens.space6, paddingBlock: tokens.space5 },
   questionContext: {
     fontFamily: tokens.fontFamilySystem,
