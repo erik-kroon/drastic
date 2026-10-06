@@ -342,20 +342,28 @@ const compileAdjustment = Effect.fn("payroll.compileAdjustment")(function* (
   input: Exclude<Input, { kind: "payment" | "cash_recovery" }>,
 ) {
   const lines: JournalLine[] = [];
-  const { comparison, paid } = yield* validateComparison(tx, scope, input.comparisonId);
-  const capacity = yield* originalCapacity(tx, scope, paid);
-  const delta = BigInt(comparison.calculation.grossMinor) - BigInt(capacity.gross);
+
+  const comparison = yield* readRetained(
+    tx,
+    scope,
+    "payroll_correction_comparisons",
+    input.comparisonId,
+    Settlement.CorrectionComparison,
+  );
 
   const economicKey =
     input.kind === "gross_recovery" && input.mileageSource
       ? `mileage:${input.mileageSource.proposalId}`
-      : `adjustment:${paid.id}:${input.kind}:${comparison.calculation.grossMinor}:${comparison.basis.employmentRevisionId}:${comparison.basis.workRevisionId}`;
+      : `adjustment:${comparison.paidEventId}:${input.kind}:${comparison.calculation.grossMinor}:${comparison.basis.employmentRevisionId}:${comparison.basis.workRevisionId}`;
 
   if (
     input.kind !== "reporting_only" &&
     (yield* Db.readEconomicExecution(tx, scope.bookId, economicKey)).length
   )
     return yield* failure("AlreadyPosted");
+  const { paid } = yield* validateComparison(tx, scope, input.comparisonId);
+  const capacity = yield* originalCapacity(tx, scope, paid);
+  const delta = BigInt(comparison.calculation.grossMinor) - BigInt(capacity.gross);
   let lawfulBasis: typeof Settlement.AdjustmentBasis.Type | null = null;
 
   if (input.kind === "gross_recovery" || input.kind === "future_pay") {

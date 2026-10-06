@@ -508,7 +508,7 @@ test("qualified future net offset consumes receivable6600 once while future gros
       "employment",
       {
         personRef: "Anders Berg",
-        jurisdiction: "QZ",
+        jurisdiction: "QY",
         residency: "Synthetic",
         payTerms: "Synthetic monthly salary",
         workSchedule: "Synthetic October month",
@@ -1103,7 +1103,7 @@ async function futureNetInput(
       "employment",
       {
         personRef: "Anders Berg",
-        jurisdiction: "QZ",
+        jurisdiction: "QY",
         residency: "Synthetic",
         payTerms: "Synthetic salary",
         workSchedule: "Synthetic October",

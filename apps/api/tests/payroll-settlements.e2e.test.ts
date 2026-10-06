@@ -7,11 +7,14 @@ import * as Calculations from "@open-erp/contracts/payroll-calculations";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Foundation from "@open-erp/contracts/payroll-foundation";
+import * as Onboarding from "@open-erp/contracts/onboarding";
 import {
+  createSession,
   database,
   decoded,
   environment,
   failure,
+  fixture,
   key,
   persisted,
   post,
@@ -118,6 +121,7 @@ async function cash(
 async function executeReview(
   f: Awaited<ReturnType<typeof paidFixture>>,
   input: typeof Settlement.PrepareSettlement.Type,
+  approver = f.reviewer,
 ) {
   const review = await post(
     f.book,
@@ -127,7 +131,7 @@ async function executeReview(
   );
 
   const approval = await post(
-    f.reviewer,
+    approver,
     `/payroll/settlement-reviews/${review.id}/approvals`,
     { reviewDigest: review.digest },
     Settlement.SettlementApproval,
@@ -141,6 +145,50 @@ async function executeReview(
   );
 
   return { review, approval, execution };
+}
+
+async function assignedInstructionApprover(f: Awaited<ReturnType<typeof paidFixture>>) {
+  const independent = await fixture();
+  const base = { ...f.book, actorId: independent.actorId, token: independent.token };
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "INSERT INTO openerp.memberships(book_id,actor_id,role) VALUES($1,$2,'operator')",
+      [f.book.bookId, base.actorId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  const authorSession = await createSession(f.book);
+  const approverSession = await createSession(base);
+  const approver = { ...base, token: approverSession.token };
+  const author = { ...f.book, token: authorSession.token };
+  await post(
+    author,
+    "/payroll/access",
+    { actorId: approver.actorId, allowed: true },
+    Foundation.PayrollAccessResult,
+  );
+
+  const responsibilities = await post(
+    author,
+    "/onboarding/responsibilities",
+    {
+      expectedRevision: 0,
+      assignments: {
+        preparerId: f.book.actorId,
+        bookkeepingApproverId: approver.actorId,
+        paymentApproverId: approver.actorId,
+        vatResponsibleId: f.reviewer.actorId,
+        activationConfirmerIds: [f.book.actorId, approver.actorId],
+      },
+    },
+    Onboarding.OnboardingResponsibilities,
+  );
+
+  return { approver, responsibilities };
 }
 
 async function pay(f: Awaited<ReturnType<typeof paidFixture>>) {
@@ -449,12 +497,14 @@ test.each([
   >;
 
   if (vector.kind === "future_pay" && !lawful) throw new Error("Missing offset basis");
+  const authority = await assignedInstructionApprover(f);
 
   const instruction = await executeReview(
     f,
     vector.kind === "future_pay" && lawful
       ? { ...adjustmentInput, kind: "future_pay", lawfulBasisId: lawful.id }
       : { ...adjustmentInput, kind: "additional_compensation", lawfulBasisId: null },
+    authority.approver,
   );
 
   expect(await persisted(f.book)).toEqual(before);
@@ -528,7 +578,7 @@ test.each([
   );
 
   const approval = await post(
-    f.reviewer,
+    authority.approver,
     `/payroll/runs/${run.id}/approvals`,
     { runDigest: run.digest },
     Runs.PayrollRunApproval,
@@ -557,7 +607,19 @@ test.each([
 
   await writeFile(
     join(environment().artifacts, `payroll-${vector.kind}-proof.json`),
-    JSON.stringify({ payment, compared, instruction, calculation, run, executed }, null, 2),
+    JSON.stringify(
+      {
+        payment,
+        compared,
+        responsibilities: authority.responsibilities,
+        instruction,
+        calculation,
+        run,
+        executed,
+      },
+      null,
+      2,
+    ),
   );
 });
 
@@ -629,9 +691,16 @@ test("reporting-only replaces a retained stale item after ledger recovery and po
   expect(prior?.totals.grossMinor).toBe("3000000");
   const before = await persisted(f.book);
 
+  const currentComparison = await post(
+    f.book,
+    `/payroll/paid-events/${result.paid.id}/comparisons`,
+    result.compared.input,
+    Settlement.CorrectionComparison,
+  );
+
   const reporting = await executeReview(f, {
     kind: "reporting_only",
-    comparisonId: result.compared.id,
+    comparisonId: currentComparison.id,
     lawfulBasisId: null,
     recoveryReceivableAccountId: null,
     futureMonth: null,
@@ -661,7 +730,15 @@ test("reporting-only replaces a retained stale item after ledger recovery and po
   await writeFile(
     join(environment().artifacts, "payroll-reporting-only-proof.json"),
     JSON.stringify(
-      { prior, result, reporting, revised, before, after: await persisted(f.book) },
+      {
+        prior,
+        result,
+        currentComparison,
+        reporting,
+        revised,
+        before,
+        after: await persisted(f.book),
+      },
       null,
       2,
     ),

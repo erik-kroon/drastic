@@ -12,6 +12,8 @@ import * as Settlement from "@open-erp/contracts/payroll-settlements";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import * as Source from "@open-erp/contracts/source-intake";
 import * as Onboarding from "@open-erp/contracts/onboarding";
+import { equalJson } from "@open-erp/domain/canonicalization";
+import { Schema } from "effect";
 import { fileObjectStore } from "../../scripts/file-object-store";
 import {
   createSession,
@@ -253,44 +255,77 @@ export async function mileageFixture(
   const independent = await fixture();
   const reviewerBase = { ...base, actorId: independent.actorId, token: independent.token };
   const admin = await database();
-  const releaseId = "r41_synthetic_payroll_qz_v1";
+  const releaseId = "r41_synthetic_payroll_qy_v1";
   const checksum = `sha256:${createHash("sha256").update(JSON.stringify(profile)).digest("hex")}`;
+  let ruleRelease: typeof Profiles.RuleRelease.Type;
 
   try {
+    await admin.query("BEGIN");
+    await admin.query("SELECT pg_advisory_xact_lock(hashtext('r41_synthetic_payroll_qy'))");
     await admin.query(
       "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
       [base.bookId, reviewerBase.actorId],
     );
-    await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QZ','payroll',1,$2,$3) on conflict(id) do nothing",
-      [
-        releaseId,
-        checksum,
-        {
-          id: releaseId,
-          jurisdiction: "QZ",
-          family: "payroll",
-          version: 1,
-          checksum,
-          applicability: {
-            legalForms: [],
-            accountingMethods: [],
-            vatRegistrations: [],
-            payrollRegistrations: [],
-          },
-          requiredFactKinds: [],
-          requiredRoleKinds: [],
-          calculatorVersion: Payroll.SupportedCalculatorVersion,
-          rounding: { mode: "half_up", scale: 2 },
-          validFrom: "2026-01-01",
-          validTo: "2026-12-31",
-          sourceManifest: "R41 isolated synthetic payroll qualification",
-          qualificationStatus: "reviewed",
-          recordClasses: ["synthetic"],
-          payroll: profile,
-        },
-      ],
-    );
+
+    const retained = (
+      await admin.query<{ version: number; checksum: string; body: unknown }>(
+        "SELECT version,checksum,body FROM openerp.rule_releases WHERE id=$1",
+        [releaseId],
+      )
+    ).rows[0];
+
+    const version =
+      retained?.version ??
+      (
+        await admin.query<{ version: number }>(
+          "SELECT coalesce(max(version),0)+1 AS version FROM openerp.rule_releases WHERE jurisdiction='QY' AND family='payroll'",
+        )
+      ).rows[0]?.version;
+
+    if (!Number.isSafeInteger(version) || version === undefined || version < 1)
+      throw new Error("Synthetic payroll release version missing or invalid");
+    ruleRelease = {
+      id: releaseId,
+      jurisdiction: "QY",
+      family: "payroll",
+      version,
+      checksum,
+      applicability: {
+        legalForms: [],
+        accountingMethods: [],
+        vatRegistrations: [],
+        payrollRegistrations: [],
+      },
+      requiredFactKinds: [],
+      requiredRoleKinds: [],
+      calculatorVersion: Payroll.SupportedCalculatorVersion,
+      rounding: { mode: "half_up", scale: 2 },
+      validFrom: "2026-01-01",
+      validTo: "2026-12-31",
+      sourceManifest: "R41 isolated synthetic QY payroll qualification",
+      qualificationStatus: "reviewed",
+      recordClasses: ["synthetic"],
+      payroll: profile,
+    };
+
+    if (retained) {
+      const retainedRelease = Schema.decodeUnknownSync(Profiles.RuleRelease)(retained.body);
+
+      if (retained.checksum !== checksum || !equalJson(retainedRelease, ruleRelease))
+        throw new Error(
+          "Retained synthetic payroll release differs from its exact qualified fixture",
+        );
+    } else {
+      await admin.query(
+        "INSERT INTO openerp.rule_releases(id,jurisdiction,family,version,checksum,body) VALUES($1,'QY','payroll',$2,$3,$4)",
+        [releaseId, version, checksum, ruleRelease],
+      );
+    }
+
+    await admin.query("COMMIT");
+  } catch (error) {
+    await admin.query("ROLLBACK");
+    throw error;
   } finally {
     await admin.end();
   }
@@ -320,7 +355,7 @@ export async function mileageFixture(
     "/company-facts",
     {
       factKind: "jurisdiction",
-      value: { state: "known", value: "QZ" },
+      value: { state: "known", value: "QY" },
       effectiveFrom: "2026-01-01",
       effectiveTo: null,
       supersedesId: null,
@@ -354,7 +389,7 @@ export async function mileageFixture(
       evidenceId: source.id,
       body: {
         personRef: "Anders Berg",
-        jurisdiction: "QZ",
+        jurisdiction: "QY",
         residency: "Synthetic",
         payTerms: "Synthetic monthly salary",
         workSchedule: "Synthetic September month",
@@ -776,6 +811,7 @@ export async function mileageFixture(
 
   return {
     book,
+    ruleRelease,
     reviewer,
     approver,
     assignedResponsibilities,
