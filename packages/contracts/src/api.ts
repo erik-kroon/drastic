@@ -1,5 +1,6 @@
 import { EmployeeClaimsApi } from "./employee-claims";
 import { MileageCorrectionApi } from "./mileage-corrections";
+import { VariablePayReviewApi } from "./variable-pay-review";
 import { DocumentSignaturesApi } from "./document-signatures";
 import { FilingLifecycleApi } from "./filing-lifecycle";
 import { PeppolExchangeApi } from "./peppol-exchange";
@@ -295,6 +296,7 @@ export class Api extends HttpApi.make("open-erp")
     PayrollInputApi,
     EmployeeClaimsApi,
     MileageCorrectionApi,
+    VariablePayReviewApi,
     AssetDisposalsApi,
     PayrollSettlementApi,
     LoanApi,

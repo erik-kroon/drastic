@@ -469,10 +469,27 @@ export const MileageCorrectionWorkSummary = Schema.Struct({
   mileageCorrectionSuccessors: Count,
 });
 
+export const PayrollReviewWorkSummary = Schema.Struct({
+  ...MileageCorrectionWorkSummary.fields,
+  payrollInputAssessmentRecords: Count,
+});
+
 export const RecoveryWorkInventoryV7 = Schema.Struct({
   ...RecoveryWorkInventoryV6.fields,
   version: Schema.Literal(7),
-  summary: MileageCorrectionWorkSummary,
+  summary: PayrollReviewWorkSummary,
+  payrollInputAssessmentRecords: Schema.Array(
+    Schema.Struct({
+      table: Schema.Literals([
+        "payroll_input_assessments",
+        "payroll_input_pending_selections",
+        "payroll_input_dispositions",
+      ]),
+      bookId: Schema.String,
+      id: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(30000)),
   mileageCorrectionRecords: Schema.Array(
     Schema.Struct({
       table: Schema.Literals([
@@ -512,6 +529,7 @@ export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
   summary: Schema.Union([
+    PayrollReviewWorkSummary,
     MileageCorrectionWorkSummary,
     EmployeeClaimWorkSummary,
     ReminderReviewWorkSummary,

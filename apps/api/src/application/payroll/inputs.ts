@@ -29,6 +29,11 @@ import {
   saveCommand,
 } from "../posting";
 import { compileInput } from "./input-basis";
+import {
+  requireManagedVariableInput,
+  requireManagedVariableApproval,
+  requireManagedVariableApprovalActor,
+} from "./variable-pay";
 import { economicKey } from "../purchases/recognition";
 import * as Match from "effect/Match";
 
@@ -257,6 +262,7 @@ export const checkedReview = Effect.fn("payroll.checkedInputReview")(function* (
   if (claimReviewId === undefined) yield* requireUnmanagedClaimSource(tx, scope, submitted.input);
 
   if (!current) return review;
+  yield* requireManagedVariableInput(tx, scope, submitted);
 
   if ((yield* Db.readReviewExecution(tx, scope.bookId, review.id)).length)
     return yield* failure("AlreadyPosted");
@@ -355,6 +361,7 @@ export const prepareInputReviewInTransaction = Effect.fn("payroll.prepareInputRe
   submitted: typeof Inputs.PayrollInput.Type,
   payment: typeof Inputs.DirectPayrollInputPayment.Type | null,
 ) {
+  yield* requireManagedVariableInput(tx, scope, submitted);
   const balance = yield* capacity(tx, scope, submitted);
   const controls = yield* holidayBalances(tx, scope, submitted);
 
@@ -609,6 +616,8 @@ export const approveInput = Effect.fn("payroll.approveInput")(function* (
         true,
       );
 
+      yield* requireManagedVariableApproval(tx, command.scope, principal, review.inputId);
+
       const approval = yield* approveChangeInTransaction(tx, principal, {
         scope: command.scope,
         changeSetId: review.postingPlan.id,
@@ -658,6 +667,14 @@ export const executeInputInTransaction = Effect.fn("payroll.executeInputInTransa
     (yield* Foundation.readPayrollAccess(tx, scope.bookId, approval.actorId)).length !== 1
   )
     return yield* failure("ApprovalRequired");
+
+  yield* requireManagedVariableApprovalActor(
+    tx,
+    scope,
+    approval.actorId,
+    review.inputId,
+    approval.authorityBasis,
+  );
 
   const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
     scope,
@@ -771,6 +788,7 @@ export const snapshotInput = Effect.fn("payroll.snapshotInput")(function* (
   inputId: string,
 ) {
   const submitted = yield* checkedInput(tx, scope, inputId);
+  yield* requireManagedVariableInput(tx, scope, submitted, true);
   const balance = yield* capacity(tx, scope, submitted);
 
   if (!balance.recognized) return yield* failure("ApprovalRequired");

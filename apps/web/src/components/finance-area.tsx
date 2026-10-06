@@ -186,6 +186,12 @@ const MileageCorrectionWorkspace = lazy(() =>
 
 const workReturnAreas = new Set(["sales", "purchases", "tax"]);
 
+const VariablePayWorkspace = lazy(() =>
+  import("@/components/payroll/variable-pay-workspace").then((module) => ({
+    default: module.VariablePayWorkspace,
+  })),
+);
+
 const trialBalanceModes = new Set(["trial", "ledger"]);
 
 function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledger" {
@@ -194,6 +200,21 @@ function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledg
 
 export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
   const { book, locale } = useBookWorkspace();
+
+  if (props.area === "tax" && props.view === "variable")
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        {props.record ? (
+          <VariablePayWorkspace
+            key={`${book.entityId}:${book.id}:${props.record}`}
+            assessmentId={props.record}
+            occurrenceId={props.occurrence}
+          />
+        ) : (
+          <PayrollWorkspace />
+        )}
+      </Suspense>
+    );
 
   if (props.area === "tax" && props.view === "mileage")
     return (

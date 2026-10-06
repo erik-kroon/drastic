@@ -111,6 +111,7 @@
     "./asset-disposals": "./src/asset-disposals.ts",
     "./payroll-settlements": "./src/payroll-settlements.ts",
     "./mileage-corrections": "./src/mileage-corrections.ts",
+    "./variable-pay-review": "./src/variable-pay-review.ts",
     "./processor-clearing": "./src/processor-clearing.ts",
     "./sie-partitions": "./src/sie-partitions.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",

@@ -14,6 +14,9 @@ type WriteClass =
 // A new write has no MCP exposure until its owner classifies it here. These classes
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
+  payroll_assess_variable_input: "prepare",
+  payroll_select_variable_input: "record",
+  payroll_dispose_variable_input: "record",
   payroll_prepare_mileage_correction: "operator_preparation",
   payroll_review_mileage_correction: "prepare",
   payroll_submit_mileage_correction: "record",

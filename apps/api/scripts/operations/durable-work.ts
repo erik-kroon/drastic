@@ -14,6 +14,7 @@ import {
   RecoveryWorkInventoryV6,
   RecoveryWorkInventoryV7,
   MileageCorrectionWorkSummary,
+  PayrollReviewWorkSummary,
   EmployeeClaimWorkSummary,
   ReminderReviewWorkSummary,
   ReminderWorkSummary,
@@ -91,6 +92,12 @@ const mileageCorrectionTables = [
   "payroll_mileage_correction_successors",
 ];
 
+const payrollInputAssessmentTables = [
+  "payroll_input_assessments",
+  "payroll_input_pending_selections",
+  "payroll_input_dispositions",
+];
+
 const workTables = [
   ...legacyWorkTables,
   ...recurringWorkTables,
@@ -98,6 +105,7 @@ const workTables = [
   ...reminderReviewTables,
   ...employeeClaimTables,
   ...mileageCorrectionTables,
+  ...payrollInputAssessmentTables,
 ];
 
 function workSummary(
@@ -235,6 +243,16 @@ function mileageCorrectionSummary(
   });
 }
 
+function payrollReviewSummary(
+  inventory: Parameters<typeof mileageCorrectionSummary>[0] &
+    Pick<typeof RecoveryWorkInventoryV7.Type, "payrollInputAssessmentRecords">,
+) {
+  return Schema.decodeSync(PayrollReviewWorkSummary)({
+    ...mileageCorrectionSummary(inventory),
+    payrollInputAssessmentRecords: String(inventory.payrollInputAssessmentRecords.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -274,7 +292,7 @@ function validateInventory(
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
   const summary = Match.value(inventory).pipe(
-    Match.when({ version: 7 }, mileageCorrectionSummary),
+    Match.when({ version: 7 }, payrollReviewSummary),
     Match.when({ version: 6 }, employeeClaimSummary),
     Match.when({ version: 5 }, reminderReviewSummary),
     Match.when({ version: 4 }, reminderSummary),
@@ -471,6 +489,18 @@ function validateInventory(
   }
 
   if (inventory.version === 7) {
+    for (const name of payrollInputAssessmentTables) {
+      const rows = inventory.payrollInputAssessmentRecords.filter((row) => row.table === name);
+      const table = tables.find((row) => row.schema === "openerp" && row.table === name);
+
+      if (!table || BigInt(table.rows) !== BigInt(rows.length) || rows.length > 10000)
+        refuse("Payroll input review inventory differs from complete snapshot counts.");
+      uniqueScopedIds(rows);
+
+      if (rows.some((row) => !bookIds.has(row.bookId)))
+        refuse("Payroll input review recovery record has no represented book.");
+    }
+
     for (const name of mileageCorrectionBodyTables) {
       const rows = inventory.mileageCorrectionRecords.filter((row) => row.table === name);
       const table = tables.find((row) => row.schema === "openerp" && row.table === name);
@@ -700,6 +730,46 @@ async function captureMileageCorrections(client: Client) {
   };
 }
 
+async function capturePayrollInputAssessments(client: Client) {
+  const invalid = await client.query(`SELECT 1
+    FROM openerp.payroll_input_assessments a
+    LEFT JOIN openerp.payroll_inputs i ON i.book_id=a.book_id AND i.id=a.input_id
+    WHERE i.digest IS DISTINCT FROM a.body->>'inputDigest'
+    UNION ALL SELECT 1
+    FROM openerp.payroll_input_pending_selections s
+    LEFT JOIN openerp.payroll_input_assessments a ON a.book_id=s.book_id AND a.id=s.assessment_id
+    LEFT JOIN openerp.payroll_inputs i ON i.book_id=s.book_id AND i.id=s.input_id
+    WHERE a.input_id IS DISTINCT FROM s.input_id OR a.digest IS DISTINCT FROM s.assessment_digest
+      OR i.digest IS DISTINCT FROM s.body->>'inputDigest'
+      OR a.body->>'inputDigest' IS DISTINCT FROM s.body->>'inputDigest'
+    UNION ALL SELECT 1 FROM openerp.payroll_input_dispositions d
+    LEFT JOIN openerp.payroll_input_pending_selections s ON s.book_id=d.book_id AND s.id=d.selection_id
+    LEFT JOIN openerp.payroll_inputs i ON i.book_id=d.book_id AND i.id=d.input_id
+    WHERE s.input_id IS DISTINCT FROM d.input_id OR s.assessment_id IS DISTINCT FROM d.assessment_id
+      OR s.assessment_digest IS DISTINCT FROM d.assessment_digest
+      OR i.digest IS DISTINCT FROM d.body->>'inputDigest'
+      OR s.body->>'inputDigest' IS DISTINCT FROM d.body->>'inputDigest' LIMIT 1`);
+
+  if (invalid.rowCount)
+    refuse(
+      "Payroll input review decisions differ from their exact retained input, assessment and selection.",
+    );
+  const records = [];
+
+  for (const table of payrollInputAssessmentTables) {
+    const rows = await client.query<{ body: unknown }>(
+      `SELECT jsonb_build_object('table',$1::text,'bookId',book_id,'id',id,'bodySha256',encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex')) AS body FROM openerp.${table} t ORDER BY book_id COLLATE "C",id COLLATE "C"`,
+      [table],
+    );
+
+    records.push(...rows.rows.map((row) => row.body));
+  }
+
+  return Schema.decodeUnknownSync(RecoveryWorkInventoryV7.fields.payrollInputAssessmentRecords)(
+    records,
+  );
+}
+
 export async function captureWorkInventory(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
@@ -716,7 +786,8 @@ export async function captureWorkInventory(
 
   if (version >= 6) requiredTables.push(...employeeClaimTables);
 
-  if (version >= 7) requiredTables.push(...mileageCorrectionTables);
+  if (version >= 7)
+    requiredTables.push(...mileageCorrectionTables, ...payrollInputAssessmentTables);
 
   for (const name of [
     ...requiredTables,
@@ -885,13 +956,17 @@ export async function captureWorkInventory(
               providerAttemptHistory: "payment-reminder-attempts-retained",
             });
           } else {
-            const corrected = { ...claimed, ...(await captureMileageCorrections(client)) };
+            const corrected = {
+              ...claimed,
+              ...(await captureMileageCorrections(client)),
+              payrollInputAssessmentRecords: await capturePayrollInputAssessments(client),
+            };
 
             inventory = Schema.decodeSync(RecoveryWorkInventoryV7)({
               ...common,
               ...corrected,
               version: 7,
-              summary: mileageCorrectionSummary(corrected),
+              summary: payrollReviewSummary(corrected),
               providerAttemptHistory: "payment-reminder-attempts-retained",
             });
           }
