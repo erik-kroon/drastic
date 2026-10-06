@@ -1,4 +1,5 @@
 import * as Settlement from "@open-erp/contracts/payroll-settlements";
+import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import * as Domain from "@open-erp/domain/payroll-runs";
 import * as Recovery from "@open-erp/domain/paid-payroll-recovery";
 import * as Effect from "effect/Effect";
@@ -18,8 +19,15 @@ import { paidItemPopulation } from "./settlement-items";
 import { verifyRunLedger, verifyRecoveryLedger } from "./settlement-ledger";
 import { ReportingCorrection } from "./settlement-support";
 import { checkedRun } from "./runs";
-import { captureCalculationBasis } from "./calculations";
-import { readRetained, claimBalance, ClaimRecord, InstructionRecord } from "./settlement-support";
+import { currentMileageProposal, mileageJournal } from "./settlement-mileage-basis";
+import { readMileageRecord } from "./mileage-correction-records";
+import { mileageLifecycle } from "./mileage-correction-lifecycle";
+import { claimOffsetCapacity, compileClaimNetOffset } from "./settlement-net-recovery";
+import { readRetained, ClaimRecord, InstructionRecord } from "./settlement-support";
+
+import { validateComparison } from "./paid-comparison-basis";
+
+export { validateComparison } from "./paid-comparison-basis";
 
 type Input = typeof Settlement.PrepareSettlement.Type;
 
@@ -74,43 +82,6 @@ export const captureCash = Effect.fn("payroll.captureSettlementCash")(function* 
     evidence,
     accountVersion: account.version.toString(),
   });
-});
-
-export const validateComparison = Effect.fn("payroll.validatePaidComparison")(function* (
-  tx: Transaction,
-  scope: Scope,
-  id: string,
-) {
-  const comparison = yield* readRetained(
-    tx,
-    scope,
-    "payroll_correction_comparisons",
-    id,
-    Settlement.CorrectionComparison,
-  );
-
-  const paid = yield* readRetained(
-    tx,
-    scope,
-    "payroll_paid_events",
-    comparison.paidEventId,
-    Settlement.PaidPayrollEvent,
-  );
-
-  if (paid.digest !== comparison.originalPaidDigest) return yield* failure("StaleDependency");
-
-  const captured = yield* captureCalculationBasis(tx, scope, comparison.input, {
-    kind: "paid_comparison",
-    originalBasis: paid.originalEmployee.calculation.basis,
-  });
-
-  if (
-    !equalJson(captured.basis, comparison.basis) ||
-    !equalJson(captured.calculated, comparison.calculation)
-  )
-    return yield* failure("StaleDependency");
-
-  return { comparison, paid };
 });
 
 export const originalCapacity = Effect.fn("payroll.originalPaidCapacity")(function* (
@@ -241,7 +212,9 @@ const compileCashRecovery = Effect.fn("payroll.compileRecoveryReceipt")(function
   scope: Scope,
   input: Extract<Input, { kind: "cash_recovery" }>,
 ) {
-  const capacity = yield* claimBalance(tx, scope, input.claimId);
+  const capacity = yield* claimOffsetCapacity(tx, scope, input.claimId);
+
+  if (capacity.pending.length) return yield* failure("AlreadyPosted");
   const cash = yield* captureCash(tx, scope, input);
 
   const result = Recovery.recordRecoveryCash({
@@ -269,12 +242,83 @@ const compileCashRecovery = Effect.fn("payroll.compileRecoveryReceipt")(function
   };
 });
 
+const compileMileageRecovery = Effect.fn("payroll.compileMileageRecovery")(function* (
+  tx: Transaction,
+  scope: Scope,
+  input: Extract<Input, { kind: "gross_recovery" }> & {
+    readonly mileageSource: NonNullable<
+      Extract<Input, { kind: "gross_recovery" }>["mileageSource"]
+    >;
+  },
+  context: AdjustmentContext,
+  lawfulBasis: typeof Settlement.AdjustmentBasis.Type,
+) {
+  const { comparison, paid, capacity, delta } = context;
+  const economicKey = context.economicKey;
+
+  const proposal = yield* readMileageRecord(
+    tx,
+    scope,
+    "payroll_mileage_correction_proposals",
+    input.mileageSource.proposalId,
+    Mileage.MileageCorrectionProposal,
+  );
+
+  const lifecycle = yield* mileageLifecycle(tx, scope, proposal.id);
+
+  if (lifecycle.cancellation) return yield* failure("ApprovalRequired");
+
+  const captured = yield* currentMileageProposal(tx, scope, proposal);
+  const exactJournal = mileageJournal(proposal.input, captured, proposal.comparison);
+
+  if (
+    proposal.digest !== input.mileageSource.proposalDigest ||
+    proposal.comparison?.paidComparisonId !== comparison.id ||
+    !proposal.journal ||
+    !equalJson(exactJournal, proposal.journal) ||
+    proposal.comparison.taxableDeltaMinor !== delta.toString() ||
+    input.recoveryReceivableAccountId !== proposal.input.recoveryReceivableAccountId ||
+    lawfulBasis?.evidence.sha256 !== proposal.sources.recoveryBasis?.sha256.slice(7) ||
+    lawfulBasis?.input.reason !== proposal.sources.recoveryReason
+  )
+    return yield* failure("StaleDependency");
+
+  const sourceLines = proposal.journal.lines.map(({ accountId, debitMinor, creditMinor }) => ({
+    accountId,
+    debitMinor,
+    creditMinor,
+    description: "Retained paid mileage source correction",
+  }));
+
+  return {
+    ...empty,
+    originalRun: paid.originalRun,
+    paidEvent: paid,
+    comparison,
+    lawfulBasis,
+    economicKey,
+    capacityDigest: yield* digest({
+      paidCapacity: capacity.digest,
+      proposal: proposal.digest,
+      dependency: captured.dependencyDigest,
+    }),
+    outputs: {
+      ...outputs,
+      reportingReadiness: "adjustment_required" as const,
+      amountMinor: proposal.journal.receivableMinor,
+      remainingReceivableMinor: proposal.journal.receivableMinor,
+      signedGrossDeltaMinor: delta.toString(),
+      contributionCorrectionMinor: proposal.comparison.contributionCorrectionMinor,
+    },
+    lines: sourceLines,
+  };
+});
+
 export const compileSettlement = Effect.fn("payroll.compileSettlement")(function* (
   tx: Transaction,
   scope: Scope,
   input: Input,
 ) {
-  const lines: JournalLine[] = [];
   yield* requireAdjustmentDate(tx, scope, input);
   yield* readEvidenceReference(tx, scope.bookId, input.evidenceId);
   const book = (yield* Ledger.readBook(tx, scope))[0];
@@ -285,10 +329,27 @@ export const compileSettlement = Effect.fn("payroll.compileSettlement")(function
   if (input.kind === "payment") return yield* compilePayment(tx, scope, input);
 
   if (input.kind === "cash_recovery") return yield* compileCashRecovery(tx, scope, input);
+
+  if (input.kind === "future_pay" && input.recoveryClaimId)
+    return yield* compileClaimNetOffset(tx, scope, input, input.recoveryClaimId);
+
+  return yield* compileAdjustment(tx, scope, input);
+});
+
+const compileAdjustment = Effect.fn("payroll.compileAdjustment")(function* (
+  tx: Transaction,
+  scope: Scope,
+  input: Exclude<Input, { kind: "payment" | "cash_recovery" }>,
+) {
+  const lines: JournalLine[] = [];
   const { comparison, paid } = yield* validateComparison(tx, scope, input.comparisonId);
   const capacity = yield* originalCapacity(tx, scope, paid);
   const delta = BigInt(comparison.calculation.grossMinor) - BigInt(capacity.gross);
-  const economicKey = `adjustment:${paid.id}:${input.kind}:${comparison.calculation.grossMinor}:${comparison.basis.employmentRevisionId}:${comparison.basis.workRevisionId}`;
+
+  const economicKey =
+    input.kind === "gross_recovery" && input.mileageSource
+      ? `mileage:${input.mileageSource.proposalId}`
+      : `adjustment:${paid.id}:${input.kind}:${comparison.calculation.grossMinor}:${comparison.basis.employmentRevisionId}:${comparison.basis.workRevisionId}`;
 
   if (
     input.kind !== "reporting_only" &&
@@ -298,7 +359,6 @@ export const compileSettlement = Effect.fn("payroll.compileSettlement")(function
   let lawfulBasis: typeof Settlement.AdjustmentBasis.Type | null = null;
 
   if (input.kind === "gross_recovery" || input.kind === "future_pay") {
-    if (input.lawfulBasisId === null) return yield* failure("ApprovalRequired");
     lawfulBasis = yield* readRetained(
       tx,
       scope,
@@ -313,14 +373,24 @@ export const compileSettlement = Effect.fn("payroll.compileSettlement")(function
 
   if (input.kind === "gross_recovery") {
     if (
-      capacity.instructions.length ||
-      delta >= 0n ||
+      capacity.instructions.some((row) => row.netRecovery === undefined) ||
+      delta > 0n ||
+      (delta === 0n && !input.mileageSource) ||
       input.recoveryReceivableAccountId === null ||
       input.futureMonth !== null
     )
       return yield* failure("UnsupportedProfile");
 
     yield* admitRecoveryAccount(tx, scope, paid, input.recoveryReceivableAccountId);
+
+    if (input.mileageSource && lawfulBasis)
+      return yield* compileMileageRecovery(
+        tx,
+        scope,
+        { ...input, mileageSource: input.mileageSource },
+        { comparison, paid, capacity, economicKey, delta },
+        lawfulBasis,
+      );
 
     const claim = Recovery.compileGrossRecoveryClaim({
       claimId: "pending_claim",

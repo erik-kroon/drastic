@@ -419,6 +419,7 @@ export const executeRun = Effect.fn("payroll.executeRun")(function* (
         run.employees.flatMap(
           (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
         ),
+        principal,
       );
 
       for (const document of payslips) {

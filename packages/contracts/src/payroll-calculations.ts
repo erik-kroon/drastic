@@ -190,6 +190,12 @@ export const PayrollAccrual = Schema.Union([
 // source of statutory tables, decisions, contribution bands and holiday
 // accrual policy in this packet.
 export const PayrollRuleRelease = Schema.Struct({
+  paymentTimingPolicy: Schema.optional(
+    Schema.Struct({
+      kind: Schema.Literals(["on_or_after_earnings_end", "in_earnings_month"]),
+      sourceReference: Accounting.Description,
+    }),
+  ),
   calculatorVersion: Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9._-]{2,127}$/)),
   // The compiled calculator implements no proration. A release that declares
   // anything else is refused rather than paid at a full monthly salary.

@@ -110,6 +110,7 @@
     "./employee-claims": "./src/employee-claims.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./payroll-settlements": "./src/payroll-settlements.ts",
+    "./mileage-corrections": "./src/mileage-corrections.ts",
     "./processor-clearing": "./src/processor-clearing.ts",
     "./sie-partitions": "./src/sie-partitions.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",

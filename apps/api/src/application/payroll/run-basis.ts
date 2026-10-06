@@ -235,6 +235,23 @@ export const compileRun = Effect.fn("payroll.compileRun")(function* (
     const deductions = [];
 
     for (const deduction of source.basis.reviewedInput.employment.deductionComponents) {
+      const recovery = source.basis.adjustmentInstructions?.find(
+        (row) => row.id === deduction.componentId && row.netRecovery !== undefined,
+      );
+
+      if (recovery?.netRecovery) {
+        if (deduction.minor !== recovery.netRecovery.amountMinor)
+          return yield* failure("StaleDependency");
+
+        deductions.push({
+          deductionId: deduction.componentId,
+          amountMinor: deduction.minor,
+          destinationAccountId: recovery.netRecovery.receivableAccountId,
+        });
+
+        continue;
+      }
+
       const account = input.roles.deductions.find(
         (row) => row.roleKind === deduction.destinationRole,
       );

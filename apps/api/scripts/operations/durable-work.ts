@@ -12,6 +12,8 @@ import {
   RecoveryWorkInventoryV4,
   RecoveryWorkInventoryV5,
   RecoveryWorkInventoryV6,
+  RecoveryWorkInventoryV7,
+  MileageCorrectionWorkSummary,
   EmployeeClaimWorkSummary,
   ReminderReviewWorkSummary,
   ReminderWorkSummary,
@@ -23,13 +25,14 @@ import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 import { requireFencedBackupBoundary } from "./snapshot";
 
-export const workInventoryPath = "durable-work-v6.json";
+export const workInventoryPath = "durable-work-v7.json";
 
 export const workInventoryPaths = [
   "durable-work-v2.json",
   "durable-work-v3.json",
   "durable-work-v4.json",
   "durable-work-v5.json",
+  "durable-work-v6.json",
   workInventoryPath,
 ];
 
@@ -75,12 +78,26 @@ const employeeClaimTables = [
   "employee_claim_payroll_consumptions",
 ];
 
+const mileageCorrectionBodyTables = [
+  "payroll_mileage_correction_proposals",
+  "payroll_mileage_correction_review_links",
+  "payroll_mileage_correction_submissions",
+  "payroll_mileage_correction_cancellations",
+  "payroll_adjustment_instruction_cancellations",
+];
+
+const mileageCorrectionTables = [
+  ...mileageCorrectionBodyTables,
+  "payroll_mileage_correction_successors",
+];
+
 const workTables = [
   ...legacyWorkTables,
   ...recurringWorkTables,
   ...reminderWorkTables,
   ...reminderReviewTables,
   ...employeeClaimTables,
+  ...mileageCorrectionTables,
 ];
 
 function workSummary(
@@ -204,9 +221,52 @@ function employeeClaimSummary(
   });
 }
 
+function mileageCorrectionSummary(
+  inventory: Parameters<typeof employeeClaimSummary>[0] &
+    Pick<
+      typeof RecoveryWorkInventoryV7.Type,
+      "mileageCorrectionRecords" | "mileageCorrectionSuccessors"
+    >,
+) {
+  return Schema.decodeSync(MileageCorrectionWorkSummary)({
+    ...employeeClaimSummary(inventory),
+    mileageCorrectionRecords: String(inventory.mileageCorrectionRecords.length),
+    mileageCorrectionSuccessors: String(inventory.mileageCorrectionSuccessors.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
+}
+
+function validateMileageSuccessorChains(
+  rows: typeof RecoveryWorkInventoryV7.Type.mileageCorrectionSuccessors,
+) {
+  const identity = (bookId: string, executionId: string) => JSON.stringify([bookId, executionId]);
+  const represented = new Map(rows.map((row) => [identity(row.bookId, row.executionId), row]));
+  const checked = new Set<string>();
+
+  for (const row of rows) {
+    let current = row;
+    const path = new Set<string>();
+
+    while (!checked.has(identity(current.bookId, current.executionId))) {
+      const id = identity(current.bookId, current.executionId);
+
+      if (path.has(id)) refuse("Mileage correction successor chain contains a cycle.");
+      path.add(id);
+
+      if (current.previousExecutionId === null) break;
+      const previous = represented.get(identity(current.bookId, current.previousExecutionId));
+
+      if (!previous || previous.originalInputId !== current.originalInputId)
+        refuse("Mileage correction successor has no retained predecessor for its original input.");
+      current = previous;
+    }
+
+    for (const id of path) checked.add(id);
+  }
 }
 
 function validateInventory(
@@ -214,6 +274,7 @@ function validateInventory(
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
   const summary = Match.value(inventory).pipe(
+    Match.when({ version: 7 }, mileageCorrectionSummary),
     Match.when({ version: 6 }, employeeClaimSummary),
     Match.when({ version: 5 }, reminderReviewSummary),
     Match.when({ version: 4 }, reminderSummary),
@@ -322,7 +383,12 @@ function validateInventory(
     }
   }
 
-  if (inventory.version === 4 || inventory.version === 5 || inventory.version === 6) {
+  if (
+    inventory.version === 4 ||
+    inventory.version === 5 ||
+    inventory.version === 6 ||
+    inventory.version === 7
+  ) {
     const families = [
       inventory.reminderMessages,
       inventory.reminderApprovals.map((row) => ({ bookId: row.bookId, id: row.messageId })),
@@ -390,7 +456,7 @@ function validateInventory(
       refuse("Reminder attempts contain duplicate external identities.");
   }
 
-  if (inventory.version === 6) {
+  if (inventory.version === 6 || inventory.version === 7) {
     for (const name of employeeClaimTables) {
       const rows = inventory.employeeClaimRecords.filter((row) => row.table === name);
       const table = tables.find((row) => row.schema === "openerp" && row.table === name);
@@ -404,7 +470,53 @@ function validateInventory(
     }
   }
 
-  if (inventory.version === 5 || inventory.version === 6) {
+  if (inventory.version === 7) {
+    for (const name of mileageCorrectionBodyTables) {
+      const rows = inventory.mileageCorrectionRecords.filter((row) => row.table === name);
+      const table = tables.find((row) => row.schema === "openerp" && row.table === name);
+
+      if (!table || BigInt(table.rows) !== BigInt(rows.length) || rows.length > 10000)
+        refuse("Mileage correction recovery inventory differs from complete snapshot counts.");
+      uniqueScopedIds(rows);
+
+      if (rows.some((row) => !bookIds.has(row.bookId)))
+        refuse("Mileage correction recovery record has no represented book.");
+    }
+
+    const successors = inventory.mileageCorrectionSuccessors;
+
+    const table = tables.find(
+      (row) => row.schema === "openerp" && row.table === "payroll_mileage_correction_successors",
+    );
+
+    if (!table || BigInt(table.rows) !== BigInt(successors.length))
+      refuse("Mileage correction successor inventory differs from the complete snapshot.");
+    uniqueScopedIds(successors.map((row) => ({ bookId: row.bookId, id: row.executionId })));
+    uniqueScopedIds(successors.map((row) => ({ bookId: row.bookId, id: row.proposalId })));
+    uniqueScopedIds(
+      successors.map((row) => ({
+        bookId: row.bookId,
+        id: JSON.stringify([row.originalInputId, row.previousExecutionId]),
+      })),
+    );
+
+    const proposals = new Set(
+      inventory.mileageCorrectionRecords
+        .filter((row) => row.table === "payroll_mileage_correction_proposals")
+        .map((row) => JSON.stringify([row.bookId, row.id])),
+    );
+
+    if (
+      successors.some(
+        (row) =>
+          !bookIds.has(row.bookId) || !proposals.has(JSON.stringify([row.bookId, row.proposalId])),
+      )
+    )
+      refuse("Mileage correction successor has no represented scoped proposal.");
+    validateMileageSuccessorChains(successors);
+  }
+
+  if (inventory.version === 5 || inventory.version === 6 || inventory.version === 7) {
     const families = [inventory.reminderRefusals, inventory.reminderResolutions];
 
     const messages = new Set(
@@ -540,11 +652,59 @@ async function captureReminderFamilies(client: Client) {
 }
 
 // The caller owns the same repeatable-read snapshot as the dump and table fingerprints.
+async function captureMileageCorrections(client: Client) {
+  const invalid = await client.query(`SELECT 1
+    FROM openerp.payroll_mileage_correction_successors s
+    LEFT JOIN openerp.payroll_mileage_correction_proposals p ON p.book_id=s.book_id AND p.id=s.proposal_id
+    LEFT JOIN openerp.payroll_mileage_correction_review_links l ON l.book_id=s.book_id AND l.proposal_id=s.proposal_id
+    LEFT JOIN openerp.payroll_settlement_executions e ON e.book_id=s.book_id AND e.id=s.execution_id
+    WHERE p.original_input_id IS DISTINCT FROM s.original_input_id
+      OR p.body->'input'->>'previousCorrectionExecutionId' IS DISTINCT FROM s.previous_execution_id
+      OR l.review_id IS DISTINCT FROM e.review_id LIMIT 1`);
+
+  if (invalid.rowCount)
+    refuse("Mileage correction successor differs from its retained proposal and executed review.");
+
+  const invalidCancellation = await client.query(`SELECT 1
+    FROM openerp.payroll_adjustment_instruction_cancellations c
+    LEFT JOIN openerp.payroll_adjustment_instructions i ON i.book_id=c.book_id AND i.id=c.instruction_id
+    WHERE i.digest IS DISTINCT FROM c.body->>'instructionDigest'
+      OR NOT (i.body ? 'netRecovery')
+      OR EXISTS(SELECT FROM openerp.payroll_adjustment_consumptions x
+        WHERE x.book_id=c.book_id AND x.instruction_id=c.instruction_id) LIMIT 1`);
+
+  if (invalidCancellation.rowCount)
+    refuse("NET instruction cancellation differs from its exact retained unconsumed instruction.");
+  const records = [];
+
+  for (const table of mileageCorrectionBodyTables) {
+    const rows = await client.query<{ body: unknown }>(
+      `SELECT jsonb_build_object('table',$1::text,'bookId',book_id,'id',id,'bodySha256',encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex')) AS body FROM openerp.${table} t ORDER BY book_id COLLATE "C",id COLLATE "C"`,
+      [table],
+    );
+
+    records.push(...rows.rows.map((row) => row.body));
+  }
+
+  const successors = await client.query<{ body: unknown }>(
+    `SELECT jsonb_build_object('bookId',book_id,'executionId',execution_id,'originalInputId',original_input_id,'previousExecutionId',previous_execution_id,'proposalId',proposal_id,'bodySha256',encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex')) AS body FROM openerp.payroll_mileage_correction_successors t ORDER BY book_id COLLATE "C",execution_id COLLATE "C"`,
+  );
+
+  return {
+    mileageCorrectionRecords: Schema.decodeUnknownSync(
+      RecoveryWorkInventoryV7.fields.mileageCorrectionRecords,
+    )(records),
+    mileageCorrectionSuccessors: Schema.decodeUnknownSync(
+      RecoveryWorkInventoryV7.fields.mileageCorrectionSuccessors,
+    )(successors.rows.map((row) => row.body)),
+  };
+}
+
 export async function captureWorkInventory(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
   snapshot: string,
-  version: 2 | 3 | 4 | 5 | 6 = 6,
+  version: 2 | 3 | 4 | 5 | 6 | 7 = 7,
 ) {
   const requiredTables = [...legacyWorkTables];
 
@@ -555,6 +715,8 @@ export async function captureWorkInventory(
   if (version >= 5) requiredTables.push(...reminderReviewTables);
 
   if (version >= 6) requiredTables.push(...employeeClaimTables);
+
+  if (version >= 7) requiredTables.push(...mileageCorrectionTables);
 
   for (const name of [
     ...requiredTables,
@@ -714,13 +876,25 @@ export async function captureWorkInventory(
             )(records),
           };
 
-          inventory = Schema.decodeSync(RecoveryWorkInventoryV6)({
-            ...common,
-            ...claimed,
-            version: 6,
-            summary: employeeClaimSummary(claimed),
-            providerAttemptHistory: "payment-reminder-attempts-retained",
-          });
+          if (version === 6) {
+            inventory = Schema.decodeSync(RecoveryWorkInventoryV6)({
+              ...common,
+              ...claimed,
+              version: 6,
+              summary: employeeClaimSummary(claimed),
+              providerAttemptHistory: "payment-reminder-attempts-retained",
+            });
+          } else {
+            const corrected = { ...claimed, ...(await captureMileageCorrections(client)) };
+
+            inventory = Schema.decodeSync(RecoveryWorkInventoryV7)({
+              ...common,
+              ...corrected,
+              version: 7,
+              summary: mileageCorrectionSummary(corrected),
+              providerAttemptHistory: "payment-reminder-attempts-retained",
+            });
+          }
         }
       }
     }

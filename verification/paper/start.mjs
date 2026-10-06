@@ -74,6 +74,13 @@ if (claimsHook !== undefined && claimsHook !== "0" && claimsHook !== "1")
 
 const claimsSeed = claimsHook === "1" ? await import("./seed-claims.mjs") : undefined;
 
+const mileageHook = process.env.PAPER_MILEAGE;
+
+if (mileageHook !== undefined && mileageHook !== "0" && mileageHook !== "1")
+  throw new Error("PAPER_MILEAGE must be 0 or 1");
+
+const mileageSeed = mileageHook === "1" ? await import("./seed-mileage.mjs") : undefined;
+
 const processorHook = process.env.PAPER_PROCESSORS;
 
 const supplierExpiryHook = process.env.PAPER_SUPPLIER_EXPIRY;
@@ -307,6 +314,8 @@ try {
 
   if (claimsSeed) fixture.accounts.push(...claimsSeed.claimAccounts);
 
+  if (mileageSeed) fixture.accounts.push(...mileageSeed.mileageAccounts);
+
   if (processorSeed) {
     fixture.accounts.push(...processorSeed.processorAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -469,6 +478,19 @@ try {
     console.log(
       JSON.stringify(
         await claimsSeed.seedClaims({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
+
+  if (mileageSeed)
+    console.log(
+      JSON.stringify(
+        await mileageSeed.seedMileage({
           apiUrl: listening.url.origin,
           adminUrl,
           accessToken,

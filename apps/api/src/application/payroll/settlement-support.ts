@@ -35,6 +35,7 @@ export const AllocationRecord = Schema.Struct({
   claimId: Accounting.Identifier,
   executionId: Accounting.Identifier,
   amountMinor: Accounting.MinorUnits,
+  payrollRunId: Schema.optional(Accounting.Identifier),
   ...recordMetadata,
 });
 
@@ -82,7 +83,12 @@ export function readRetained<A>(
   });
 }
 
-type RetainedFields<A> = Omit<A, "scope" | "digest" | "createdAt" | "createdBy" | "receipt">;
+export type RetainedFields<A> = {
+  -readonly [K in keyof Omit<A, "scope" | "digest" | "createdAt" | "createdBy" | "receipt">]: Omit<
+    A,
+    "scope" | "digest" | "createdAt" | "createdBy" | "receipt"
+  >[K];
+};
 
 export function seal<A>(
   tx: Transaction,
@@ -147,7 +153,7 @@ export const claimBalance = Effect.fn("payroll.claimBalance")(function* (
   }
 
   const received = allocations.reduce((sum, row) => sum + BigInt(row.amountMinor), 0n);
-  const remaining = BigInt(claim.claimedGrossMinor) - received;
+  const remaining = BigInt(claim.receivableMinor ?? claim.claimedGrossMinor) - received;
 
   if (remaining < 0n) return yield* failure("StaleDependency");
 

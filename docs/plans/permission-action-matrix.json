@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "capabilities": [
     {
       "name": "accountant_review_artifact",
@@ -3035,6 +3035,30 @@
       ]
     },
     {
+      "name": "payroll_cancel_adjustment_instruction",
+      "readOnly": false,
+      "agentCallable": false,
+      "contractSource": "packages/contracts/src/payroll-settlements.ts",
+      "classification": "human_review",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/payroll-settlements.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_cancel_mileage_correction",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
       "name": "payroll_execute_input",
       "readOnly": false,
       "agentCallable": true,
@@ -3101,6 +3125,17 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-inputs.ts"
+      ]
+    },
+    {
+      "name": "payroll_get_mileage_correction",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts"
       ]
     },
     {
@@ -3181,6 +3216,17 @@
       ]
     },
     {
+      "name": "payroll_list_mileage_corrections",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts"
+      ]
+    },
+    {
       "name": "payroll_list_runs",
       "readOnly": true,
       "agentCallable": true,
@@ -3246,6 +3292,18 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_prepare_mileage_correction",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "operator_preparation",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
       ]
     },
@@ -3343,6 +3401,18 @@
       ]
     },
     {
+      "name": "payroll_review_mileage_correction",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
       "name": "payroll_revise_employee_claim",
       "readOnly": false,
       "agentCallable": true,
@@ -3373,6 +3443,18 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-inputs.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_submit_mileage_correction",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/mileage-corrections.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/mileage-corrections.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
       ]
     },

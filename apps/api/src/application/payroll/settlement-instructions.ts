@@ -8,7 +8,15 @@ import * as Db from "../../db/payroll/settlements";
 import type { Transaction } from "../../db/transaction";
 import { decode, requireTableAccess, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { InstructionRecord } from "./settlement-support";
+import {
+  InstructionRecord,
+  AllocationRecord,
+  seal,
+  persist,
+  claimBalance,
+} from "./settlement-support";
+import { type Principal } from "../commerce/support";
+import { newId } from "../posting";
 
 export const captureAdjustmentInstructions = Effect.fn("payroll.captureAdjustmentInstructions")(
   function* (
@@ -30,6 +38,20 @@ export const captureAdjustmentInstructions = Effect.fn("payroll.captureAdjustmen
       if (retained.employeeId !== employeeId || retained.month !== month) continue;
 
       if ((yield* Db.readInstructionConsumption(tx, scope.bookId, retained.id)).length) continue;
+
+      if ((yield* Db.readInstructionCancellation(tx, scope.bookId, retained.id)).length) continue;
+
+      if (retained.netRecovery) {
+        const balance = yield* claimBalance(tx, scope, retained.netRecovery.claimId);
+
+        if (
+          retained.signedGrossDeltaMinor !== "0" ||
+          balance.remaining !== retained.netRecovery.amountMinor ||
+          balance.claim.recoveryReceivableAccountId !== retained.netRecovery.receivableAccountId
+        )
+          return yield* failure("StaleDependency");
+      }
+
       const reserved = (yield* Db.readInstructionReservations(tx, scope.bookId, retained.id))[0];
 
       if (reserved && reserved.runId !== runId) return yield* failure("AlreadyPosted");
@@ -51,6 +73,7 @@ export const appendAdjustmentInstructions = Effect.fn("payroll.appendAdjustmentI
     if (instructions.length && input.recordClass !== "synthetic")
       return yield* failure("UnsupportedProfile");
     const adjustments = [...input.work.adjustments];
+    const deductions = [...input.employment.deductionComponents];
 
     let available =
       BigInt(input.employment.monthlyCashSalary) +
@@ -66,6 +89,24 @@ export const appendAdjustmentInstructions = Effect.fn("payroll.appendAdjustmentI
           ? -1
           : 1,
     )) {
+      if (row.netRecovery) {
+        if (
+          row.signedGrossDeltaMinor !== "0" ||
+          deductions.some((item) => item.componentId === row.id)
+        )
+          return yield* failure("InvalidJournal");
+
+        deductions.push({
+          componentId: row.id,
+          minor: row.netRecovery.amountMinor,
+          description: "Qualified recovery from net salary",
+          destinationRole: "owner",
+          reducesBenefit: null,
+        });
+
+        continue;
+      }
+
       if (row.kind === "future_pay") {
         const result = Recovery.compileFuturePayAdjustment({
           adjustmentId: row.id,
@@ -90,7 +131,11 @@ export const appendAdjustmentInstructions = Effect.fn("payroll.appendAdjustmentI
       available += BigInt(row.signedGrossDeltaMinor);
     }
 
-    return { ...input, work: { ...input.work, adjustments } };
+    return {
+      ...input,
+      employment: { ...input.employment, deductionComponents: deductions },
+      work: { ...input.work, adjustments },
+    };
   },
 );
 
@@ -103,6 +148,8 @@ export const reserveAdjustmentInstructions = Effect.fn("payroll.reserveAdjustmen
     snapshots: ReadonlyArray<typeof Settlement.AdjustmentSnapshot.Type>,
   ) {
     for (const snapshot of snapshots) {
+      if ((yield* Db.readInstructionCancellation(tx, scope.bookId, snapshot.id)).length)
+        return yield* failure("StaleDependency");
       const existing = (yield* Db.readInstructionReservations(tx, scope.bookId, snapshot.id))[0];
 
       if (existing && (existing.runId !== runId || !equalJson(existing.snapshot, snapshot)))
@@ -118,13 +165,41 @@ export const consumeAdjustmentInstructions = Effect.fn("payroll.consumeAdjustmen
     scope: Scope,
     runId: string,
     snapshots: ReadonlyArray<typeof Settlement.AdjustmentSnapshot.Type>,
+    principal: Principal,
   ) {
     for (const snapshot of snapshots) {
+      if ((yield* Db.readInstructionCancellation(tx, scope.bookId, snapshot.id)).length)
+        return yield* failure("StaleDependency");
       const existing = (yield* Db.readInstructionReservations(tx, scope.bookId, snapshot.id))[0];
 
       if (!existing || existing.runId !== runId || !equalJson(existing.snapshot, snapshot))
         return yield* failure("StaleDependency");
       yield* Db.insertInstructionConsumption(tx, scope.bookId, runId, snapshot);
+
+      if (snapshot.netRecovery) {
+        const balance = yield* claimBalance(tx, scope, snapshot.netRecovery.claimId);
+
+        if (balance.remaining !== snapshot.netRecovery.amountMinor)
+          return yield* failure("StaleDependency");
+
+        const allocation = yield* seal(
+          tx,
+          scope,
+          principal,
+          "execute_payroll_run",
+          runId,
+          AllocationRecord,
+          {
+            id: newId("payroll_net_allocation"),
+            claimId: snapshot.netRecovery.claimId,
+            executionId: snapshot.executionId,
+            payrollRunId: runId,
+            amountMinor: snapshot.netRecovery.amountMinor,
+          },
+        );
+
+        yield* persist(tx, "payroll_recovery_allocations", allocation);
+      }
     }
   },
 );

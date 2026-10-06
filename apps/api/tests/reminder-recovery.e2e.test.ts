@@ -8,7 +8,7 @@ import { legalFixture } from "./support/legal-commerce";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { environment, journal, post } from "./support/fixtures";
 
-test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work while fenced", async () => {
+test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V4 projection", async () => {
   const context = await legalFixture();
 
   const recipient = await post(
@@ -187,6 +187,19 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
   expect(cancelled.approval).toBe(null);
   expect(cancelled.attempt).toBe(null);
   const recoveries = await proveReminderRecovery(context.book.bookId);
+  expect(recoveries.map((recovery) => recovery.version)).toEqual([7, 6]);
+  let v4Refusal: string | null = null;
+
+  try {
+    await proveReminderRecovery(context.book.bookId, [7, 4]);
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+    v4Refusal = error.message;
+  }
+
+  expect(v4Refusal).toMatch(
+    /^Historical donor-only financial work cannot be discarded: openerp\.reminder_(refusals|resolutions)$/,
+  );
 
   for (const recovery of recoveries) {
     expect(recovery.inventory.version).toBe(recovery.version);
@@ -201,7 +214,7 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
 
     const inventory = recovery.inventory;
 
-    if (inventory.version !== 4 && inventory.version !== 6)
+    if (inventory.version !== 4 && inventory.version !== 6 && inventory.version !== 7)
       throw new Error("Reminder recovery inventory version missing");
 
     const expectedBodies = [
@@ -225,7 +238,7 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
         identity: `${row.attemptId}/${row.observationId}`,
         ...row,
       })),
-      ...(inventory.version === 6
+      ...(inventory.version === 6 || inventory.version === 7
         ? [
             ...inventory.reminderRefusals.map((row) => ({
               table: "reminder_refusals",
@@ -244,6 +257,26 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
       .map(({ table, identity, bodySha256 }) => ({ table, identity, bodySha256 }));
 
     expect(recovery.bodyHashes).toEqual(expectedBodies);
+
+    if (recovery.version !== 7) {
+      const transfer = recovery.historicalTransfer;
+
+      if (!transfer) throw new Error("Historical transfer proof missing");
+      expect(transfer.donorProjectedTables).toEqual(transfer.historicalDataTables);
+      expect(
+        transfer.projections.map((projection) => [projection.table, projection.column]),
+      ).toEqual([
+        ["openerp.payroll_adjustment_instructions", "net_claim_id"],
+        ["openerp.payroll_recovery_allocations", "payroll_run_id"],
+      ]);
+      expect(
+        transfer.projections.every(
+          (projection) => projection.allValuesNull && projection.allBodyKeysAbsent,
+        ),
+      ).toBe(true);
+      expect(transfer.donorRawTables).toHaveLength(transfer.historicalDataTables.length);
+    }
+
     expect(
       inventory.reminderMessages
         .filter((row) => row.bookId === context.book.bookId)
@@ -251,7 +284,7 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
         .sort(),
     ).toEqual([original.id, replacement.message.id].sort());
 
-    if (inventory.version === 6) {
+    if (inventory.version === 6 || inventory.version === 7) {
       expect(
         inventory.reminderRefusals
           .filter((row) => row.bookId === context.book.bookId)
@@ -269,6 +302,12 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
           [replacement.message.id, null],
         ]),
       );
+
+      if (inventory.version === 6) {
+        expect(recovery.historicalRevision).not.toBeNull();
+        expect(recovery.sourceMigrationNames).not.toContain("0097-mileage-corrections.sql");
+        expect(recovery.inventory).not.toHaveProperty("mileageCorrectionRecords");
+      }
     } else {
       expect(recovery.sourceMigrationNames).not.toContain("0091-reminder-terminal-review.sql");
       expect(recovery.sourceTables.map((row) => row.table)).not.toContain("reminder_refusals");
@@ -277,7 +316,7 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
   }
 
   await writeFile(
-    join(environment().artifacts, "reminder-m60-v6-v4-fenced-recovery.json"),
+    join(environment().artifacts, "reminder-m60-v7-v6-fenced-recovery.json"),
     JSON.stringify(
       {
         command: "bun run test:e2e apps/api/tests/reminder-recovery.e2e.test.ts",
@@ -287,6 +326,7 @@ test("M60 V6 and an authentic absent-0091 V4 bundle restore exact reminder work 
         replacement,
         cancelled,
         recoveries,
+        v4Refusal,
       },
       null,
       2,

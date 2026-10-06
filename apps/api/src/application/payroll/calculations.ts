@@ -272,12 +272,28 @@ const stripRetainedComponents = Effect.fn("payroll.stripRetainedComparisonCompon
     }
   }
 
+  for (const row of input.employment.deductionComponents.filter((item) =>
+    ownedIds.has(item.componentId),
+  )) {
+    const retained = original.reviewedInput.employment.deductionComponents.find(
+      (item) => item.componentId === row.componentId,
+    );
+
+    if (!equalJson(row, retained)) return yield* failure("StaleDependency");
+  }
+
   return {
     ...input,
     work: {
       ...input.work,
       adjustments: input.work.adjustments.filter((row) => !ownedIds.has(row.componentId)),
       reimbursements: input.work.reimbursements.filter((row) => !ownedIds.has(row.componentId)),
+    },
+    employment: {
+      ...input.employment,
+      deductionComponents: input.employment.deductionComponents.filter(
+        (row) => !ownedIds.has(row.componentId),
+      ),
     },
   };
 });
@@ -287,6 +303,9 @@ type CaptureMode =
   | {
       readonly kind: "paid_comparison";
       readonly originalBasis: typeof Payroll.PayrollCalculationBasis.Type;
+      readonly mileageInputs?: NonNullable<
+        typeof Payroll.PayrollCalculationBasis.Type.payrollInputs
+      >;
     };
 
 const captureComponents = Effect.fn("payroll.captureCalculationComponents")(function* (
@@ -297,7 +316,7 @@ const captureComponents = Effect.fn("payroll.captureCalculationComponents")(func
 ) {
   const payrollInputs =
     mode.kind === "paid_comparison"
-      ? (mode.originalBasis.payrollInputs ?? [])
+      ? (mode.mileageInputs ?? mode.originalBasis.payrollInputs ?? [])
       : yield* captureInputs(
           transaction,
           scope,

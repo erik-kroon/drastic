@@ -368,6 +368,32 @@ function withholdingFor(release: Release, basis: Basis, withholdingBase: bigint,
   };
 }
 
+const requirePaymentTiming = (basis: Basis, release: Release) =>
+  Effect.gen(function* () {
+    const { earningsPeriod, expectedPaymentOn } = basis.reviewedInput.work;
+
+    if (release.paymentTimingPolicy?.kind !== "in_earnings_month") {
+      if (earningsPeriod.endsOn > expectedPaymentOn) return yield* failure("InvalidJournal");
+
+      return;
+    }
+
+    if (basis.reviewedInput.recordClass !== "synthetic")
+      return yield* failure("UnsupportedProfile");
+
+    const year = Number(earningsPeriod.startsOn.slice(0, 4));
+    const month = Number(earningsPeriod.startsOn.slice(5, 7));
+    const calendarEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+
+    if (
+      earningsPeriod.startsOn.slice(8) !== "01" ||
+      earningsPeriod.endsOn !== calendarEnd ||
+      expectedPaymentOn < earningsPeriod.startsOn ||
+      expectedPaymentOn > earningsPeriod.endsOn
+    )
+      return yield* failure("InvalidJournal");
+  });
+
 export const calculateRegularPayroll = (
   basis: Basis,
   release: Release,
@@ -395,9 +421,7 @@ export const calculateRegularPayroll = (
       return yield* failure("InvalidJournal");
     }
 
-    if (work.earningsPeriod.endsOn > work.expectedPaymentOn) {
-      return yield* failure("InvalidJournal");
-    }
+    yield* requirePaymentTiming(basis, release);
 
     const adjustments = [...employment.grossAdjustments, ...work.adjustments];
 

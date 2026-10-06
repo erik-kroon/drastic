@@ -3,6 +3,10 @@ import { effectCapability } from "./shared";
 import * as Owner from "../payroll/settlements";
 
 export const payrollSettlementCapabilities = {
+  payroll_cancel_adjustment_instruction: effectCapability(
+    Capabilities.payroll_cancel_adjustment_instruction,
+    Owner.cancelAdjustmentInstruction,
+  ),
   payroll_prepare_settlement: effectCapability(
     Capabilities.payroll_prepare_settlement,
     Owner.prepareSettlement,

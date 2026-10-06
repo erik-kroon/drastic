@@ -101,7 +101,7 @@ test("MCP withholds human authority and preserves scoped approved execution and 
   const matrix = Schema.decodeSync(
     Schema.fromJsonString(
       Schema.Struct({
-        version: Schema.Literal(2),
+        version: Schema.Literal(3),
         capabilities: Schema.Array(
           Schema.Struct({
             name: Schema.String,

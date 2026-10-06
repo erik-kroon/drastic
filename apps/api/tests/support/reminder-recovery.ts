@@ -24,13 +24,13 @@ async function save(path: string, body: unknown) {
   await writeFile(path, JSON.stringify(body, null, 2), { mode: 0o600, flag: "wx" });
 }
 
-async function retainedHashes(client: Client, bookId: string, version: 4 | 6) {
+async function retainedHashes(client: Client, bookId: string, version: 4 | 6 | 7) {
   const tables = [
     "reminder_messages",
     "reminder_approvals",
     "reminder_attempts",
     "reminder_observations",
-    ...(version === 6 ? ["reminder_refusals", "reminder_resolutions"] : []),
+    ...(version >= 6 ? ["reminder_refusals", "reminder_resolutions"] : []),
   ];
 
   const bodies: Array<{ table: string; identity: string; bodySha256: string }> = [];
@@ -52,6 +52,145 @@ async function retainedHashes(client: Client, bookId: string, version: 4 | 6) {
   return bodies;
 }
 
+type HistoricalColumn = {
+  name: string;
+  type: string;
+  identity: string;
+  generated: string;
+  nullable: boolean;
+  expression: string | null;
+};
+
+const historicalGeneratedColumns = new Map([
+  [
+    "openerp.payroll_adjustment_instructions",
+    {
+      column: "net_claim_id",
+      bodyKey: "netRecovery",
+      expression: "((body -> 'netRecovery'::text) ->> 'claimId'::text)",
+    },
+  ],
+  [
+    "openerp.payroll_recovery_allocations",
+    {
+      column: "payroll_run_id",
+      bodyKey: "payrollRunId",
+      expression: "(body ->> 'payrollRunId'::text)",
+    },
+  ],
+]);
+
+async function requireHistoricalColumns(
+  client: Client,
+  name: string,
+  historical: ReadonlyArray<HistoricalColumn>,
+  current: ReadonlyArray<HistoricalColumn> | undefined,
+) {
+  if (JSON.stringify(current) === JSON.stringify(historical)) return null;
+  const rule = historicalGeneratedColumns.get(name);
+  const extra = current?.filter((column) => !historical.some((old) => old.name === column.name));
+  const column = extra?.[0];
+
+  if (
+    !rule ||
+    extra?.length !== 1 ||
+    !column ||
+    column.name !== rule.column ||
+    column.type !== "text" ||
+    column.identity !== "" ||
+    column.generated !== "s" ||
+    column.nullable !== true ||
+    column.expression !== rule.expression ||
+    JSON.stringify(current?.filter((entry) => entry.name !== rule.column)) !==
+      JSON.stringify(historical)
+  )
+    throw new Error(`Historical data columns differ for ${name}; a reviewed fixture is required`);
+
+  const identifier = name
+    .split(".")
+    .map((part) => client.escapeIdentifier(part))
+    .join(".");
+
+  const present = (
+    await client.query<{ present: boolean }>(
+      `SELECT EXISTS(SELECT FROM ${identifier} WHERE ${client.escapeIdentifier(rule.column)} IS NOT NULL OR body ? $1) AS present`,
+      [rule.bodyKey],
+    )
+  ).rows[0]?.present;
+
+  if (present !== false)
+    throw new Error(`Historical projection would discard retained ${rule.bodyKey} work`);
+
+  return {
+    table: name,
+    column: rule.column,
+    columnMetadata: column,
+    retainedColumns: historical,
+    expression: rule.expression,
+    bodyKey: rule.bodyKey,
+    allValuesNull: true,
+    allBodyKeysAbsent: true,
+  };
+}
+
+async function projectedFingerprint(
+  client: Client,
+  name: string,
+  columns: ReadonlyArray<HistoricalColumn>,
+) {
+  const identifier = name
+    .split(".")
+    .map((part) => client.escapeIdentifier(part))
+    .join(".");
+
+  const selected = columns.map((column) => client.escapeIdentifier(column.name)).join(",");
+
+  const result = (
+    await client.query<{ rows: string; sha256: string }>(`
+    SELECT count(*)::text AS rows,
+      encode(sha256(convert_to(coalesce(string_agg(h,'' ORDER BY h COLLATE "C"),''),'UTF8')),'hex') AS sha256
+    FROM (SELECT encode(sha256(convert_to(row_to_json(r)::text,'UTF8')),'hex') AS h
+      FROM (SELECT ${selected} FROM ONLY ${identifier}) r) hashes`)
+  ).rows[0];
+
+  const [schema, table] = name.split(".");
+
+  if (!result || BigInt(result.rows) > 100000n)
+    throw new Error("Historical projected fingerprint exceeds its retained bound");
+
+  return Schema.decodeUnknownSync(Operations.TableFingerprint)({ schema, table, ...result });
+}
+
+async function historicalProducer(work: string, version: 4 | 6) {
+  const producerRoot = join(work, `historical-source-v${version}`);
+  await mkdir(producerRoot, { mode: 0o700 });
+  const archive = join(work, `historical-source-v${version}.tar`);
+
+  const revision = (
+    await run("git", ["rev-parse", version === 4 ? "6be48263" : "3a3b2093"], { cwd: root })
+  ).stdout.trim();
+
+  await run("git", ["archive", "--format=tar", `--output=${archive}`, revision], { cwd: root });
+  await chmod(archive, 0o600);
+  await run("tar", ["-xf", archive, "-C", producerRoot]);
+  await symlink(join(root, "node_modules"), join(producerRoot, "node_modules"), "dir");
+  await symlink(
+    join(apiDirectory, "node_modules"),
+    join(producerRoot, "apps/api/node_modules"),
+    "dir",
+  );
+
+  const owner = await readFile(
+    join(producerRoot, "apps/api/scripts/operations/durable-work.ts"),
+    "utf8",
+  );
+
+  if (!owner.includes(`workInventoryPath = "durable-work-v${version}.json"`))
+    throw new Error(`Pinned historical source does not provide the authentic V${version} producer`);
+
+  return { root: producerRoot, revision };
+}
+
 async function restoreHistoricalData(
   historical: Client,
   donor: Client,
@@ -62,29 +201,57 @@ async function restoreHistoricalData(
 ) {
   const columns = `SELECT n.nspname||'.'||c.relname AS name,
     jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),
-      'identity',a.attidentity,'generated',a.attgenerated) ORDER BY a.attnum) AS columns
+      'identity',a.attidentity,'generated',a.attgenerated,'nullable',NOT a.attnotnull,
+      'expression',CASE WHEN a.attgenerated<>'' THEN pg_get_expr(d.adbin,d.adrelid) ELSE NULL END) ORDER BY a.attnum) AS columns
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
+    LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
     WHERE c.relkind='r' AND n.nspname IN ('openerp','openerp_auth','public')
       AND NOT(n.nspname='public' AND c.relname='openerp_migrations')
     GROUP BY n.nspname,c.relname ORDER BY n.nspname COLLATE "C",c.relname COLLATE "C"`;
 
-  const tables = (await historical.query<{ name: string; columns: object }>(columns)).rows;
+  const tables = (await historical.query<{ name: string; columns: HistoricalColumn[] }>(columns))
+    .rows;
 
   const donorTables = new Map(
-    (await donor.query<{ name: string; columns: object }>(columns)).rows.map((row) => [
+    (await donor.query<{ name: string; columns: HistoricalColumn[] }>(columns)).rows.map((row) => [
       row.name,
       row.columns,
     ]),
   );
 
+  const representedNames = new Set(tables.map((table) => table.name));
+  const donorOnlyEmptyTables = [];
+
+  for (const name of donorTables.keys()) {
+    if (!name.startsWith("openerp.") || representedNames.has(name)) continue;
+
+    const identifier = name
+      .split(".")
+      .map((part) => donor.escapeIdentifier(part))
+      .join(".");
+
+    const rows = (
+      await donor.query<{ rows: string }>(`SELECT count(*)::text AS rows FROM ${identifier}`)
+    ).rows[0]?.rows;
+
+    if (rows !== "0")
+      throw new Error(`Historical donor-only financial work cannot be discarded: ${name}`);
+    donorOnlyEmptyTables.push({ table: name, rows });
+  }
+
   const nonempty = new Set<string>();
+  const projections = [];
 
   for (const table of tables) {
-    if (JSON.stringify(donorTables.get(table.name)) !== JSON.stringify(table.columns))
-      throw new Error(
-        `Historical data columns differ for ${table.name}; a reviewed fixture is required`,
-      );
+    const projection = await requireHistoricalColumns(
+      donor,
+      table.name,
+      table.columns,
+      donorTables.get(table.name),
+    );
+
+    if (projection) projections.push(projection);
 
     const identifier = table.name
       .split(".")
@@ -193,23 +360,34 @@ async function restoreHistoricalData(
 
   const represented = new Set(tables.map((table) => table.name));
 
-  const donorData = (await tableFingerprints(donor)).filter((table) =>
+  const donorRawTables = (await tableFingerprints(donor)).filter((table) =>
     represented.has(`${table.schema}.${table.table}`),
   );
+
+  const donorProjectedTables = [];
+
+  for (const table of tables)
+    donorProjectedTables.push(await projectedFingerprint(donor, table.name, table.columns));
 
   const historicalData = (await tableFingerprints(historical)).filter((table) =>
     represented.has(`${table.schema}.${table.table}`),
   );
 
-  if (JSON.stringify(donorData) !== JSON.stringify(historicalData))
+  if (JSON.stringify(donorProjectedTables) !== JSON.stringify(historicalData))
     throw new Error("Historical synthetic data differs from the captured API state");
 
-  return historicalData;
+  return {
+    historicalDataTables: historicalData,
+    donorRawTables,
+    donorProjectedTables,
+    projections,
+    donorOnlyEmptyTables,
+  };
 }
 
 export async function proveReminderRecovery(
   bookId: string,
-  versions: ReadonlyArray<4 | 6> = [6, 4],
+  versions: ReadonlyArray<4 | 6 | 7> = [7, 6],
 ) {
   const env = environment();
   const scratch = await realpath(env.scratch);
@@ -294,37 +472,23 @@ export async function proveReminderRecovery(
     const custody = "Synthetic configuration custody and suspended reminder recovery. No secrets.";
     await writeFile(join(supplementary, "custody.txt"), custody, { mode: 0o600, flag: "wx" });
 
-    const historicalRoot = join(work, "historical-source");
-    await mkdir(historicalRoot, { mode: 0o700 });
-    const archive = join(work, "historical-source.tar");
-    const revision = (await run("git", ["rev-parse", "6be48263"], { cwd: root })).stdout.trim();
-    await run("git", ["archive", "--format=tar", `--output=${archive}`, revision], { cwd: root });
-    await chmod(archive, 0o600);
-    await run("tar", ["-xf", archive, "-C", historicalRoot]);
-    await symlink(join(root, "node_modules"), join(historicalRoot, "node_modules"), "dir");
-    await symlink(
-      join(apiDirectory, "node_modules"),
-      join(historicalRoot, "apps/api/node_modules"),
-      "dir",
-    );
-
-    const historicalOwner = await readFile(
-      join(historicalRoot, "apps/api/scripts/operations/durable-work.ts"),
-      "utf8",
-    );
-
-    if (!historicalOwner.includes('workInventoryPath = "durable-work-v4.json"'))
-      throw new Error("Historical HEAD no longer provides the authentic V4 backup producer");
+    if (versions[0] !== 7 || new Set(versions).size !== versions.length)
+      throw new Error(
+        "Recovery proof requires one current donor before distinct historical versions",
+      );
 
     const results = [];
 
     for (const version of versions) {
+      const producer =
+        version === 7 ? { root, revision: null } : await historicalProducer(work, version);
+
       const sourceName = `openerp_ops_source_reminder_v${version}_${suffix}`;
       const restoredName = `openerp_restore_reminder_v${version}_${suffix}`;
       await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(sourceName)} TEMPLATE template0`);
       created.push(sourceName);
 
-      if (version === 6) {
+      if (version === 7) {
         await run(
           join(pgBin, "pg_restore"),
           ["--exit-on-error", "--single-transaction", "--no-owner", `--dbname=${sourceName}`, dump],
@@ -333,8 +497,8 @@ export async function proveReminderRecovery(
       } else {
         const legacyUrl = new URL(env.adminUrl);
         legacyUrl.pathname = `/${sourceName}`;
-        await run("bun", [join(historicalRoot, "apps/api/scripts/migrate.ts")], {
-          cwd: historicalRoot,
+        await run("bun", [join(producer.root, "apps/api/scripts/migrate.ts")], {
+          cwd: producer.root,
           env: { ...process.env, DATABASE_ADMIN_URL: legacyUrl.toString() },
           timeout: 120000,
         });
@@ -350,10 +514,10 @@ export async function proveReminderRecovery(
 
       await source.connect();
       let bodyHashes;
-      let historicalDataTables: Array<typeof Operations.TableFingerprint.Type> = [];
+      let historicalTransfer: Awaited<ReturnType<typeof restoreHistoricalData>> | null = null;
 
       try {
-        if (version === 6) {
+        if (version === 7) {
           await source.query("DROP EXTENSION pg_stat_statements");
         } else {
           const donor = new Client({
@@ -361,28 +525,19 @@ export async function proveReminderRecovery(
             port: target.port,
             user: target.user,
             password: target.password,
-            database: `openerp_ops_source_reminder_v6_${suffix}`,
+            database: `openerp_ops_source_reminder_v7_${suffix}`,
           });
 
           await donor.connect();
 
           try {
-            const claims = await donor.query<{ count: string }>(
-              "select count(*)::text as count from openerp.employee_claims",
-            );
-
-            if (claims.rows[0]?.count !== "0")
-              throw new Error(
-                "Historical V4 verification cannot project current employee claim work into an older owner schema",
-              );
-
-            historicalDataTables = await restoreHistoricalData(
+            historicalTransfer = await restoreHistoricalData(
               source,
               donor,
               dump,
               pgBin,
               { ...pgEnvironment, PGDATABASE: sourceName },
-              join(work, "historical-data.list"),
+              join(work, `historical-data-v${version}.list`),
             );
           } finally {
             await donor.end();
@@ -390,11 +545,14 @@ export async function proveReminderRecovery(
 
           const absence = (
             await source.query<{ absent: boolean }>(
-              "SELECT to_regclass('openerp.reminder_refusals') IS NULL AND to_regclass('openerp.reminder_resolutions') IS NULL AS absent",
+              version === 4
+                ? "SELECT to_regclass('openerp.reminder_refusals') IS NULL AND to_regclass('openerp.reminder_resolutions') IS NULL AS absent"
+                : "SELECT to_regclass('openerp.payroll_mileage_correction_proposals') IS NULL AND to_regclass('openerp.payroll_mileage_correction_successors') IS NULL AS absent",
             )
           ).rows[0]?.absent;
 
-          if (!absence) throw new Error("Legacy recovery fixture still contains V5 relations");
+          if (!absence)
+            throw new Error(`Legacy recovery fixture contains relations newer than V${version}`);
         }
 
         bodyHashes = await retainedHashes(source, bookId, version);
@@ -403,7 +561,7 @@ export async function proveReminderRecovery(
       }
 
       const release = join(work, `release-v${version}`);
-      await captureRelease(version === 6 ? root : historicalRoot, release);
+      await captureRelease(producer.root, release);
       const targetPath = join(work, `source-v${version}.json`);
       await save(targetPath, { ...target, database: sourceName });
       const planPath = join(work, `plan-v${version}.json`);
@@ -437,7 +595,7 @@ export async function proveReminderRecovery(
       await run(
         "bun",
         [
-          join(version === 6 ? root : historicalRoot, "apps/api/scripts/operations/cli.ts"),
+          join(producer.root, "apps/api/scripts/operations/cli.ts"),
           "backup",
           targetPath,
           bundle,
@@ -496,8 +654,8 @@ export async function proveReminderRecovery(
 
       results.push({
         version,
-        historicalRevision: version === 4 ? revision : null,
-        historicalDataTables,
+        historicalRevision: producer.revision,
+        historicalTransfer,
         manifestDigest,
         sourceMigrationNames: manifest.inventory.migrations.map((migration) => migration.name),
         sourceTables: manifest.tables.filter(

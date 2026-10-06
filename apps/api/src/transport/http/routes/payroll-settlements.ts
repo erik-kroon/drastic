@@ -10,6 +10,16 @@ export const PayrollSettlementHandlers = HttpApiBuilder.group(
   "payrollSettlement",
   (handlers) =>
     handlers
+      .handle("cancelPayrollAdjustmentInstruction", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Owner.cancelAdjustmentInstruction(token, {
+            scope: scopeFromPath(params),
+            instructionId: params.instructionId,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
       .handle("preparePayrollSettlement", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           Owner.prepareSettlement(token, {

@@ -4,6 +4,14 @@ import type * as Schema from "effect/Schema";
 import type { Transaction } from "../transaction";
 import type * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 
+export function readPostingChild(tx: Transaction, bookId: string, changeSetId: string) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select id from openerp.supplier_acceptance_reviews
+      where book_id = ${bookId} and change_set_id = ${changeSetId}`,
+    "objects",
+  );
+}
+
 export function insertAcceptance(
   tx: Transaction,
   book: string,
@@ -360,6 +368,28 @@ export function readApprovalActorName(
       from openerp.supplier_acceptance_approvals approval
       join openerp.actors actor on actor.id = approval.actor_id
       where approval.book_id = ${bookId} and approval.id = ${approvalId}
+    `,
+    "objects",
+  );
+}
+
+export function readPriorReviewedAcceptance(
+  transaction: Transaction,
+  bookId: string,
+  draftId: string,
+  counterpartyId: string,
+) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+      select acceptance.id
+      from openerp.supplier_acceptances acceptance
+      join openerp.supplier_acceptance_reviews review
+        on review.book_id = acceptance.book_id and review.id = acceptance.review_id
+      where acceptance.book_id = ${bookId} and acceptance.draft_id <> ${draftId}
+        and acceptance.body->>'profile' = 'swedish-purchase-v1'
+        and review.body->'draftSnapshot'->'content'->>'counterpartyId' = ${counterpartyId}
+      order by acceptance.body->>'createdAt', acceptance.id
+      limit 1
     `,
     "objects",
   );

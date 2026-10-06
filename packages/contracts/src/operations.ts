@@ -463,18 +463,56 @@ export const RecoveryWorkInventoryV6 = Schema.Struct({
   ).check(Schema.isMaxLength(140000)),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 
+export const MileageCorrectionWorkSummary = Schema.Struct({
+  ...EmployeeClaimWorkSummary.fields,
+  mileageCorrectionRecords: Count,
+  mileageCorrectionSuccessors: Count,
+});
+
+export const RecoveryWorkInventoryV7 = Schema.Struct({
+  ...RecoveryWorkInventoryV6.fields,
+  version: Schema.Literal(7),
+  summary: MileageCorrectionWorkSummary,
+  mileageCorrectionRecords: Schema.Array(
+    Schema.Struct({
+      table: Schema.Literals([
+        "payroll_mileage_correction_proposals",
+        "payroll_mileage_correction_review_links",
+        "payroll_mileage_correction_submissions",
+        "payroll_mileage_correction_cancellations",
+        "payroll_adjustment_instruction_cancellations",
+      ]),
+      bookId: Schema.String,
+      id: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(50000)),
+  mileageCorrectionSuccessors: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      executionId: Schema.String,
+      originalInputId: Schema.String,
+      previousExecutionId: Schema.NullOr(Schema.String),
+      proposalId: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const RecoveryWorkInventory = Schema.Union([
   RecoveryWorkInventoryV2,
   RecoveryWorkInventoryV3,
   RecoveryWorkInventoryV4,
   RecoveryWorkInventoryV5,
   RecoveryWorkInventoryV6,
+  RecoveryWorkInventoryV7,
 ]);
 
 export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
   summary: Schema.Union([
+    MileageCorrectionWorkSummary,
     EmployeeClaimWorkSummary,
     ReminderReviewWorkSummary,
     ReminderWorkSummary,

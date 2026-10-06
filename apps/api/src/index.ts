@@ -1,4 +1,5 @@
 import { EmployeeClaimHandlers } from "./transport/http/routes/employee-claims";
+import { MileageCorrectionHandlers } from "./transport/http/routes/mileage-corrections";
 import { configuredDocumentDelivery } from "./adapters/documents/local-fixture";
 import { DocumentSignatureHandlers } from "./transport/http/routes/document-signatures";
 import { FilingLifecycleHandlers } from "./transport/http/routes/filing-lifecycle";
@@ -238,6 +239,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PeppolExchangeHandlers,
     PayrollInputHandlers,
     EmployeeClaimHandlers,
+    MileageCorrectionHandlers,
     AssetDisposalHandlers,
     PayrollSettlementHandlers,
     TreasuryLoanHandlers,

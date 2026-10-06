@@ -51,6 +51,7 @@ export type VehicleOwnership = typeof VehicleOwnership.Type;
 
 export const TripRevision = Schema.Struct({
   id: Identifier,
+  reference: Schema.optional(Description),
   claimantId: Identifier,
   businessPurpose: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(500)),
   departureOn: AccountingDate,

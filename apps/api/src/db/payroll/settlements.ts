@@ -13,6 +13,7 @@ export const settlementTables = [
   "payroll_recovery_claims",
   "payroll_recovery_allocations",
   "payroll_adjustment_instructions",
+  "payroll_adjustment_instruction_cancellations",
   "payroll_adjustment_reservations",
   "payroll_adjustment_consumptions",
   "payroll_reporting_corrections",
@@ -132,6 +133,13 @@ export function readInstructionConsumption(tx: Transaction, bookId: string, id: 
   );
 }
 
+export function readClaimOffsetInstructions(tx: Transaction, bookId: string, claimId: string) {
+  return tx.execute<BodyRow>(
+    sql`select i.body from openerp.payroll_adjustment_instructions i where i.book_id=${bookId} and i.body->'netRecovery'->>'claimId'=${claimId} and not exists(select from openerp.payroll_adjustment_consumptions c where c.book_id=i.book_id and c.instruction_id=i.id) and not exists(select from openerp.payroll_adjustment_instruction_cancellations x where x.book_id=i.book_id and x.instruction_id=i.id) order by i.id collate "C" limit 101`,
+    "objects",
+  );
+}
+
 export function readInstructionReservations(tx: Transaction, bookId: string, id: string) {
   return tx.execute<{ readonly runId: string; readonly snapshot: Schema.JsonObject }>(
     sql`select r.run_id as "runId",r.snapshot from openerp.payroll_adjustment_reservations r join openerp.approvals a on a.book_id=r.book_id and a.id=r.approval_id where r.book_id=${bookId} and r.instruction_id=${id} and a.expires_at>clock_timestamp() and not exists(select from openerp.posting_approval_revocations v where v.book_id=a.book_id and v.approval_id=a.id) and not exists(select from openerp.payroll_run_reservation_releases x where x.book_id=a.book_id and x.approval_id=a.id)`,
@@ -180,6 +188,7 @@ export function readCapacityReservations(tx: Transaction, bookId: string, key: s
     and (a.body->>'kernelApprovalId' is null or exists(select from openerp.approvals k where k.book_id=a.book_id and k.id=a.body->>'kernelApprovalId' and k.expires_at>clock_timestamp()))
     and not exists(select from openerp.payroll_settlement_executions e where e.book_id=r.book_id and e.review_id=r.review_id)
     and not exists(select from openerp.posting_approval_revocations v where v.book_id=r.book_id and v.approval_id=a.body->>'kernelApprovalId')
+    and not exists(select from openerp.payroll_mileage_correction_review_links ml join openerp.payroll_mileage_correction_cancellations mc on mc.book_id=ml.book_id and mc.proposal_id=ml.proposal_id where ml.book_id=r.book_id and ml.review_id=r.review_id)
     order by r.approval_id collate "C"
   `,
     "objects",
@@ -228,6 +237,24 @@ export function readLatestPeriod(tx: Transaction, bookId: string, reportingPerio
     select body from openerp.payroll_period_revisions where book_id=${bookId} and body->>'reportingPeriod'=${reportingPeriod}
     order by (body->>'createdAt')::timestamptz desc,id collate "C" desc limit 1
   `,
+    "objects",
+  );
+}
+
+export function readInstructionCancellation(tx: Transaction, bookId: string, id: string) {
+  return tx.execute<BodyRow>(
+    sql`select body from openerp.payroll_adjustment_instruction_cancellations where book_id=${bookId} and instruction_id=${id}`,
+    "objects",
+  );
+}
+
+export function readClaimInstructionCancellations(
+  tx: Transaction,
+  bookId: string,
+  claimId: string,
+) {
+  return tx.execute<BodyRow>(
+    sql`select c.body from openerp.payroll_adjustment_instruction_cancellations c join openerp.payroll_adjustment_instructions i on i.book_id=c.book_id and i.id=c.instruction_id where c.book_id=${bookId} and i.net_claim_id=${claimId} order by c.id collate "C" limit 101`,
     "objects",
   );
 }

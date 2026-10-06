@@ -6,7 +6,8 @@ import * as Runs from "./payroll-runs";
 import * as Domain from "@open-erp/domain/payroll-runs";
 import { CommandReceipt, EvidenceReference } from "./commerce";
 import { accountingErrors } from "./accounting-errors";
-import { AdjustmentInstruction } from "./payroll-adjustments";
+import { AdjustmentInstruction, AdjustmentSnapshot } from "./payroll-adjustments";
+import { MileageSplit } from "@open-erp/domain/mileage-reimbursement";
 
 export { AdjustmentInstruction, AdjustmentSnapshot } from "./payroll-adjustments";
 
@@ -51,6 +52,9 @@ export const PrepareSettlement = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("cash_recovery"), claimId: Accounting.Identifier, ...bank }),
   Schema.Struct({
     kind: Schema.Literal("gross_recovery"),
+    mileageSource: Schema.optional(
+      Schema.Struct({ proposalId: Accounting.Identifier, proposalDigest: Accounting.Digest }),
+    ),
     comparisonId: Accounting.Identifier,
     lawfulBasisId: Accounting.Identifier,
     recoveryReceivableAccountId: Accounting.Identifier,
@@ -59,6 +63,7 @@ export const PrepareSettlement = Schema.Union([
   }),
   Schema.Struct({
     kind: Schema.Literal("future_pay"),
+    recoveryClaimId: Schema.optional(Accounting.Identifier),
     comparisonId: Accounting.Identifier,
     lawfulBasisId: Accounting.Identifier,
     recoveryReceivableAccountId: Schema.Null,
@@ -109,11 +114,22 @@ export const CorrectionComparison = Schema.Struct({
   calculation: Calculations.PayrollFrozenCalculation,
   grossDeltaMinor: Accounting.SignedMinorUnits,
   contributionDeltaMinor: Accounting.SignedMinorUnits,
+  correctionPopulationDigest: Schema.optional(Accounting.Digest),
+  mileageCorrections: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        originalInputId: Accounting.Identifier,
+        originalInputDigest: Accounting.Digest,
+        split: MileageSplit,
+      }),
+    ).check(Schema.isMaxLength(100)),
+  ),
   noFinancialEffect: Schema.Literal(true),
   ...metadata,
 });
 
 export const RecordAdjustmentBasis = Schema.Struct({
+  recoveryClaimId: Schema.optional(Accounting.Identifier),
   comparisonId: Accounting.Identifier,
   kind: AdjustmentKind,
   evidenceId: Accounting.Identifier,
@@ -144,6 +160,10 @@ export const RecoveryClaim = Schema.Struct({
   paidEventId: Accounting.Identifier,
   comparisonId: Accounting.Identifier,
   claimedGrossMinor: Accounting.MinorUnits,
+  receivableMinor: Schema.optional(Accounting.MinorUnits),
+  mileageSource: Schema.optional(
+    Schema.Struct({ proposalId: Accounting.Identifier, originalInputId: Accounting.Identifier }),
+  ),
   recoveryReceivableAccountId: Accounting.Identifier,
   originalSpecificationNumber: Schema.String,
   reportingPeriod: Schema.String,
@@ -209,8 +229,31 @@ export const SettlementExecution = Schema.Struct({
   ...metadata,
 });
 
+export const CancelAdjustmentInstruction = Schema.Struct({
+  instructionDigest: Accounting.Digest,
+  claimBalanceDigest: Accounting.Digest,
+  reason: Accounting.Description,
+});
+
+export const AdjustmentInstructionCancellation = Schema.Struct({
+  id: Accounting.Identifier,
+  instructionId: Accounting.Identifier,
+  ...CancelAdjustmentInstruction.fields,
+  ...metadata,
+});
+
+export const NetInstructionState = Schema.Struct({
+  instruction: AdjustmentSnapshot,
+  cancellation: Schema.NullOr(AdjustmentInstructionCancellation),
+  claimBalanceDigest: Accounting.Digest,
+  remainingReceivableMinor: Accounting.MinorUnits,
+  reservedRunId: Schema.NullOr(Accounting.Identifier),
+  consumedRunId: Schema.NullOr(Accounting.Identifier),
+});
+
 export const SettlementView = Schema.Struct({
   review: SettlementReview,
+  netInstruction: Schema.NullOr(NetInstructionState),
   approvals: Schema.Array(SettlementApproval),
   execution: Schema.NullOr(SettlementExecution),
   remainingReceivableMinor: Accounting.MinorUnits,
@@ -253,6 +296,17 @@ const command = {
 };
 
 export const PayrollSettlementCapabilities = {
+  payroll_cancel_adjustment_instruction: {
+    description: "Independently cancel an exact unreserved, unconsumed net recovery instruction.",
+    input: Schema.Struct({
+      ...command,
+      instructionId: Accounting.Identifier,
+      input: CancelAdjustmentInstruction,
+    }),
+    output: AdjustmentInstructionCancellation,
+    readOnly: false,
+    agentCallable: false,
+  },
   payroll_prepare_settlement: {
     description:
       "Prepare exact local payroll settlement or explicit paid adjustment from stored sources.",
@@ -321,6 +375,19 @@ const payload = <S extends Schema.Top>(schema: S) =>
 
 export const PayrollSettlementApi = HttpApiGroup.make("payrollSettlement")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
+  .add(
+    HttpApiEndpoint.post(
+      "cancelPayrollAdjustmentInstruction",
+      `${root}/adjustment-instructions/:instructionId/cancellations`,
+      {
+        params: Schema.Struct({ ...Accounting.Scope.fields, instructionId: Accounting.Identifier }),
+        headers: Accounting.IdempotencyHeaders,
+        payload: payload(CancelAdjustmentInstruction),
+        success: AdjustmentInstructionCancellation,
+        error: accountingErrors,
+      },
+    ),
+  )
   .add(
     HttpApiEndpoint.post("preparePayrollSettlement", `${root}/settlement-reviews`, {
       params: Accounting.Scope,

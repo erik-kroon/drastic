@@ -227,9 +227,10 @@
       "leaf": "mileage-reimbursement",
       "status": "wired",
       "consumers": [
-        "apps/api/src/application/payroll/input-basis.ts"
+        "apps/api/src/application/payroll/input-basis.ts",
+        "apps/api/src/application/payroll/settlement-mileage-basis.ts"
       ],
-      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
+      "note": "Original award public proof is retained in docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. R41 paid-source correction and settlement/reporting/future-NET recovery have dated native, browser and Paper proof in docs/plans/evidence/permissions-mileage-20261006/README.md. The application reads retained awards and payroll records. Company, provider and statutory qualification remains separate."
     },
     {
       "leaf": "money",

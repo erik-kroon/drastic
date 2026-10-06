@@ -1,4 +1,5 @@
 import { employeeClaimCapabilities } from "./employee-claims";
+import { mileageCorrectionCapabilities } from "./mileage-corrections";
 import { documentSignatureCapabilities } from "./document-signatures";
 import { filingCapabilities } from "./filing-lifecycle";
 import { peppolExchangeCapabilities } from "./peppol-exchange";
@@ -95,6 +96,7 @@ export const capabilities = {
   ...foreignCashCapabilities,
   ...payrollInputCapabilities,
   ...employeeClaimCapabilities,
+  ...mileageCorrectionCapabilities,
   ...assetDisposalCapabilities,
   ...payrollSettlementCapabilities,
   ...processorClearingCapabilities,

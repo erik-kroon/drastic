@@ -284,7 +284,6 @@ export const saveOnboardingResponsibilities = Effect.fn("onboarding.saveResponsi
         );
 
         if (request.previous) return request.previous;
-        yield* currentOnboardingCase(tx, command.scope);
         const previous = yield* currentPolicy(tx, command.scope);
 
         if ((previous?.revision ?? 0) !== command.input.expectedRevision)

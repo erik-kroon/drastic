@@ -65,7 +65,9 @@ const styles = stylex.create({
 
 export function MileageCorrectionComparison({
   rows,
+  originalLabel = "Ursprunglig",
 }: {
+  originalLabel?: "Ursprunglig" | "Föregående rättelse";
   rows: readonly {
     id: string;
     label: string;
@@ -82,7 +84,7 @@ export function MileageCorrectionComparison({
             Del
           </span>
           <span role="columnheader" {...stylex.props(styles.number)}>
-            Ursprunglig
+            {originalLabel}
           </span>
           <span role="columnheader" {...stylex.props(styles.number)}>
             Rättad
