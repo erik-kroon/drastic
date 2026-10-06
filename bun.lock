@@ -73,6 +73,7 @@
         "better-auth": "1.7.5",
         "effect": "4.0.0",
         "lucide-react": "catalog:",
+        "pdfjs-dist": "6.3.289",
         "react": "catalog:",
         "react-dom": "catalog:",
       },
