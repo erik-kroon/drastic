@@ -1,0 +1,17 @@
+{
+  "extends": "../../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@/*": ["../../../apps/web/src/*"],
+      "@open-erp/ui/*": ["../../../packages/ui/src/*"],
+      "@stylexjs/stylex": ["../../../packages/ui/node_modules/@stylexjs/stylex"],
+      "react": ["../../../apps/web/node_modules/@types/react/index.d.ts"],
+      "react/*": ["../../../apps/web/node_modules/@types/react/*"],
+      "react-dom": ["../../../apps/web/node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/*": ["../../../apps/web/node_modules/@types/react-dom/*"]
+    }
+  },
+  "include": ["fixture.ts", "board.tsx", "vite.config.ts", "env.d.ts"]
+}

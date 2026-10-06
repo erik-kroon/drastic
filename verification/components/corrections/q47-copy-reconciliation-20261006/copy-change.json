@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-06",
+  "reason": "Prepared correction plans already exist. Distinguish their existence from ledger posting.",
+  "before": "Ingen av dem finns",
+  "after": "Ingen av dem är bokförd",
+  "changedFrames": ["Q47"],
+  "stylesChanged": false,
+  "jsxOnlyChange": "Exact phrase replacement",
+  "beforePngSha256": "f04a4f59dff471fd165f4549d2ab87cbdb16bd2853c2aa6ba5cca8f759828441",
+  "afterPngSha256": "395562808d708dff28dda8a0c722b21da350f57a31fabc0f9d075733d01f8b0d",
+  "baselineFormat": "Paper export PNG 1x 1440x900",
+  "verification": "Final isolated candidate parity pending; no financial command changed."
+}

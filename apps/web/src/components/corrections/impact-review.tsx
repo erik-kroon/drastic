@@ -8,8 +8,9 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SealedAction } from "@/components/journal-review";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
-import { workspacePath } from "@/lib/book-context";
-import { useWorkReturn, workReturnHref } from "@/lib/work-return";
+import { Link } from "@open-erp/ui/components/link";
+import { workspacePath, reviewTargetPath } from "@/lib/book-context";
+import { useWorkReturn, encodeWorkReturn } from "@/lib/work-return";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
 
@@ -28,6 +29,9 @@ export function CorrectionImpactDetails({
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.impact}</Heading>
+      <Link href={`${workspacePath(book)}/books?correctionImpact=${encodeURIComponent(impact.id)}`}>
+        {copy.impact}: {impact.id}
+      </Link>
       <Text>
         {copy.impactId}: {impact.id}
       </Text>
@@ -191,7 +195,7 @@ export function CorrectionChainView({
                 {copy.receipt}: {receipt.id}
               </Text>
               <a
-                href={`${workReturnHref(`${workspacePath(book)}/tools`, "corrections", work)}&bundle=${encodeURIComponent(receipt.bundleId)}`}
+                href={`${reviewTargetPath(book, { kind: "correction", bundleId: receipt.bundleId, bundleDigest: receipt.bundleDigest })}${work ? `&work=${encodeURIComponent(encodeWorkReturn(work) ?? "")}` : ""}`}
               >
                 {receipt.bundleId}
               </a>

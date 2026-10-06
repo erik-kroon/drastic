@@ -8,6 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
+import { workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
@@ -19,7 +20,7 @@ export function CorrectionDiscovery({
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
-  onSelected: (id: string) => void;
+  onSelected: (id: string, digest?: string) => void;
 }) {
   const copy = correctionCopy(locale);
   const [after, setAfter] = useState("");
@@ -57,7 +58,11 @@ export function CorrectionDiscovery({
           <Text>{bundle.createdAt}</Text>
           <Text>{bundle.receipt ? copy.committed : copy.review}</Text>
           <Box>
-            <Button size="xl" variant="outline" onClick={() => onSelected(bundle.id)}>
+            <Button
+              size="xl"
+              variant="outline"
+              onClick={() => onSelected(bundle.id, bundle.bundleDigest)}
+            >
               {copy.recover}: {bundle.id}
             </Button>
           </Box>
@@ -142,7 +147,8 @@ export function CorrectionDiscovery({
                 onClick={() => {
                   const result = recovery.data?.result;
 
-                  if (Schema.is(Corrections.CorrectionBundle)(result)) onSelected(result.id);
+                  if (Schema.is(Corrections.CorrectionBundle)(result))
+                    onSelected(result.id, result.bundleDigest);
                 }}
               >
                 {copy.recover}: {recovery.data.result.id}
@@ -163,7 +169,7 @@ export function CorrectionDiscovery({
                     Schema.is(Corrections.CorrectionBundleApproval)(result) ||
                     Schema.is(Corrections.CorrectionBundleReceipt)(result)
                   )
-                    onSelected(result.bundleId);
+                    onSelected(result.bundleId, result.bundleDigest);
                 }}
               >
                 {copy.recover}: {recovery.data.result.bundleId}
@@ -172,9 +178,7 @@ export function CorrectionDiscovery({
           ) : null}
           {recovery.data.result && Schema.is(Corrections.CorrectionImpact)(recovery.data.result) ? (
             <a
-              href={`${bookPath(book)}/correction-impact-reviews/${recovery.data.result.id}`}
-              target="_blank"
-              rel="noreferrer"
+              href={`${workspacePath(book)}/books?correctionImpact=${encodeURIComponent(recovery.data.result.id)}`}
             >
               {copy.impactId}: {recovery.data.result.id}
             </a>

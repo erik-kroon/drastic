@@ -37,5 +37,5 @@ export type ReviewTarget =
 export function reviewTargetPath(book: typeof Accounting.Book.Type, target: ReviewTarget) {
   return target.kind === "standalone"
     ? reviewPath(book, target.changeSetId, target.planDigest)
-    : `${workspacePath(book)}/tools?view=corrections&bundle=${encodeURIComponent(target.bundleId)}`;
+    : `${workspacePath(book)}/books?correction=${encodeURIComponent(target.bundleId)}&correctionDigest=${encodeURIComponent(target.bundleDigest)}`;
 }

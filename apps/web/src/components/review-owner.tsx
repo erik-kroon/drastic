@@ -6,11 +6,10 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { CorrectionReview } from "@/components/corrections/correction-review";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
-import { reviewPath } from "@/lib/book-context";
+import { reviewPath, reviewTargetPath } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
 
 export function ReviewOwner(props: {
@@ -64,21 +63,21 @@ export function ReviewOwner(props: {
       />
     );
 
-  if (target?.kind === "correction")
-    return (
-      <CorrectionReview
-        key={target.bundleId}
-        book={book}
-        setup={setup}
-        locale={locale}
-        id={target.bundleId}
-        entry={{
-          constituentId: planId,
-          planDigest: props.expectedDigest,
-          bundleDigest: target.bundleDigest,
-        }}
-      />
-    );
+  if (target?.kind === "correction") {
+    const destination = reviewTargetPath(book, {
+      kind: "correction",
+      bundleId: target.bundleId,
+      bundleDigest: target.bundleDigest,
+    });
+
+    const context = new URLSearchParams(props.returnSearch);
+    const ownerReturn = context.get("returnTo");
+    const work = context.get("work");
+    const witnesses = `&correctionChild=${encodeURIComponent(planId)}${props.expectedDigest ? `&correctionPlanDigest=${encodeURIComponent(props.expectedDigest)}` : ""}`;
+    const returnContext = `${work ? `&work=${encodeURIComponent(work)}` : ""}${ownerReturn ? `&returnTo=${encodeURIComponent(ownerReturn)}` : ""}`;
+
+    return <Navigate to={`${destination}${witnesses}${returnContext}`} replace />;
+  }
 
   return (
     <Box display="grid" gap="md" padding="md">

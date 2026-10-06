@@ -153,35 +153,178 @@ test("correction review recovers a lost aggregate response and blocks the compet
     return { impact, bundle };
   };
 
-  const first = await prepare("7000");
-  const competing = await prepare("9000");
   const workQuery = "?status=all&kind=journal";
+  await app.open(`${workspace}/tools?view=corrections&work=${encodeURIComponent(workQuery)}`);
+  await screen.getByLabel("Originalverifikationens ID").fill(original.id);
+  await screen.getByRole("button", "Hämta originalverifikation").click();
+  await expect(screen.getByRole("heading", "Förbered ersättning")).toBeVisible();
+  await screen.getByRole("combobox", "Rättelseperiod").click();
+  await screen.getByRole("option", /^period_synthetic_2026, 2026-01-01/).click();
+  await screen.getByLabel("Rättelsedatum").fill(setup.today);
+  await screen
+    .getByLabel("Varför rättelsen behövs")
+    .fill("Synthetic UI alternative 7000 minor units");
+  await screen.getByLabel("Ersättningens beskrivning").first().fill("Syntetisk ersättning 7000");
 
-  const reviewUrl = (id: string) =>
-    `${workspace}/tools?view=corrections&work=${encodeURIComponent(workQuery)}&bundle=${encodeURIComponent(id)}`;
+  const bankLine = screen.getByRole("group", "Rad 1");
+  const clearingLine = screen.getByRole("group", "Rad 2");
+  await expect(bankLine.getByRole("combobox", "Konto")).toContainText(
+    "1930, Synthetic bank account",
+  );
+  await bankLine.getByLabel("Debet i minsta valutaenhet").fill("7000");
+  await bankLine.getByLabel("Kredit i minsta valutaenhet").fill("0");
+  await expect(clearingLine.getByRole("combobox", "Konto")).toContainText(
+    "2999, Synthetic clearing account",
+  );
+  await clearingLine.getByLabel("Debet i minsta valutaenhet").fill("0");
+  await clearingLine.getByLabel("Kredit i minsta valutaenhet").fill("7000");
+  await screen.getByRole("button", "Granska den föreslagna rättelsens följder").click();
+  await expect(screen.getByRole("heading", "Granskning av rättelsens följder")).toBeVisible();
 
-  const confirm = screen.getByRole(
-    "checkbox",
-    "Jag har granskat båda rättelsedelarna och motiveringen.",
+  const seal = screen.getByRole("button", "Försegla motbokning och ersättning");
+  await expect(seal).toBeDisabled();
+  await expect(bankLine.getByLabel("Debet i minsta valutaenhet")).toBeDisabled();
+  await expect(screen.getByLabel("Varför rättelsen behövs")).toBeDisabled();
+
+  const impactHref = await screen
+    .getByRole("link", /^Granskning av rättelsens följder: /)
+    .getAttribute("href");
+
+  const preparedImpactId = Schema.decodeUnknownSync(Accounting.Identifier)(
+    new URL(impactHref ?? "", workspace).searchParams.get("correctionImpact"),
   );
 
-  const approve = screen.getByRole("button", "Godkänn hela rättelsepaketet");
+  const preparedImpact = await call(
+    `/correction-impact-reviews/${preparedImpactId}`,
+    Corrections.CorrectionImpactView,
+  );
+
+  expect(preparedImpact.snapshotCurrent).toBe(true);
+  expect(preparedImpact.impact.voucherId).toBe(original.id);
+  expect(preparedImpact.impact.basis.blockers).toEqual([]);
+  expect(preparedImpact.impact.basis.intent).toMatchObject({
+    accountingPeriodId: "period_synthetic_2026",
+    postingDate: setup.today,
+    rationale: "Synthetic UI alternative 7000 minor units",
+    replacement: {
+      description: "Syntetisk ersättning 7000",
+      lines: [
+        { accountId: "account_bank", debitMinor: "7000", creditMinor: "0" },
+        { accountId: "account_clearing", debitMinor: "0", creditMinor: "7000" },
+      ],
+    },
+  });
+  expect(preparedImpact.impact.basis.netChange).toEqual([
+    { accountId: "account_bank", deltaMinor: "-5500" },
+    { accountId: "account_clearing", deltaMinor: "5500" },
+  ]);
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  const draftImpactScreenshot = await app.screenshot("correction-ui-draft-reviewed-before-sealing");
+  await screen
+    .getByRole(
+      "checkbox",
+      "Jag har granskat den exakta ersättningen, berörda poster och begränsningarna nedan.",
+    )
+    .check();
+  await expect(seal).toBeEnabled();
+  await seal.click();
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket för ${original.action.series}${original.number}`),
+  ).toBeVisible();
+
+  const preparedUrl = Schema.decodeUnknownSync(Schema.String)(
+    await browser.evaluate("() => location.href"),
+  );
+
+  const preparedQuery = new URL(preparedUrl).searchParams;
+
+  const preparedBundleId = Schema.decodeUnknownSync(Accounting.Identifier)(
+    preparedQuery.get("correction"),
+  );
+
+  const preparedBundle = await call(
+    `/correction-bundles/${preparedBundleId}`,
+    Corrections.CorrectionBundleView,
+  );
+
+  expect(preparedQuery.get("work")).toBe(workQuery);
+  expect(preparedQuery.get("correctionDigest")).toBe(preparedBundle.bundle.bundleDigest);
+  expect(preparedBundle.bundle.originalVoucher).toEqual(original);
+  expect(preparedBundle.bundle.impactReview).toEqual({
+    id: preparedImpact.impact.id,
+    digest: preparedImpact.impact.digest,
+  });
+
+  const preparedPosting = preparedBundle.bundle.replacement.groups
+    .flatMap((group) => group.actions)
+    .filter(Schema.is(Accounting.VoucherPostingAction));
+
+  expect(preparedPosting).toHaveLength(1);
+  expect(preparedPosting[0]?.lines).toMatchObject(
+    preparedImpact.impact.basis.intent.replacement.lines,
+  );
+  expect(preparedPosting[0]?.lines).toHaveLength(2);
+  expect(new Set(preparedPosting[0]?.lines.map((line) => line.lineId)).size).toBe(2);
+
+  for (const line of preparedPosting[0]?.lines ?? []) {
+    expect(Schema.is(Accounting.Identifier)(line.lineId)).toBe(true);
+    expect(line.originalDimensions).toEqual([]);
+  }
+
+  expect(preparedBundle.approval).toBeNull();
+  expect(preparedBundle.receipt).toBeNull();
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  const first = { impact: preparedImpact.impact, bundle: preparedBundle.bundle };
+
+  const preparedBundleScreenshot = await app.screenshot(
+    "correction-ui-preparation-reaches-canonical-owner",
+  );
+
+  const competing = await prepare("9000");
+
+  const reviewUrl = (id: string) =>
+    `${workspace}/books?correction=${encodeURIComponent(id)}&work=${encodeURIComponent(workQuery)}`;
+
+  const approve = screen.getByRole("button", "Godkänn hela rättelsen");
   const execute = screen.getByRole("button", "Bokför motbokning och ersättning");
 
   expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  await app.open(`${workspace}/tools?view=corrections&work=${encodeURIComponent(workQuery)}`);
+  await screen.getByRole("button", `Hämta rättelsepaket och kvitto: ${first.bundle.id}`).click();
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket för ${original.action.series}${original.number}`),
+  ).toBeVisible();
+  const recoveredEntryUrl = await browser.evaluate("() => location.href");
+  expect(recoveredEntryUrl).toBe(
+    `${workspace}/books?correction=${encodeURIComponent(first.bundle.id)}&correctionDigest=${encodeURIComponent(first.bundle.bundleDigest)}&work=${encodeURIComponent(workQuery)}`,
+  );
+  await expect(approve).toBeEnabled();
+  await agent.assert(
+    "The recovered correction is shown in the Bokföring workspace with its sidebar and one Godkänn hela rättelsen action. The former tools preparation page is no longer surrounding the correction review. Return the configured JSON judgment.",
+  );
+
+  const preparationEntryScreenshot = await app.screenshot(
+    "correction-preparation-entry-uses-bookkeeping-owner",
+  );
+
   const constituentUrl = `${workspace}/reviews/${first.bundle.reversal.id}/${first.bundle.reversal.planDigest}?status=all&kind=journal`;
   await app.open(constituentUrl);
-  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible({
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket för ${original.action.series}${original.number}`),
+  ).toBeVisible({
     timeout: 90_000,
   });
+  await screen.getByText("Underlag, följder och rättelsehistorik", { exact: true }).click();
   await expect(screen.getByRole("heading", "Exakt motbokning")).toBeVisible();
   await expect(screen.getByRole("heading", "Ersättning")).toBeVisible();
-  await expect(approve).toBeDisabled();
-  await expect(execute).toBeDisabled();
+  await expect(approve).toBeEnabled();
+  await expect(execute).toHaveCount(0);
   const constituentScreenshot = await app.screenshot("correction-child-opens-complete-bundle");
   await app.open(`${workspace}/reviews/${first.bundle.replacement.id}/`);
-  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible();
-  await expect(approve).toBeDisabled();
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket för ${original.action.series}${original.number}`),
+  ).toBeVisible();
+  await expect(approve).toBeEnabled();
   await app.open(`${workspace}/reviews/${first.bundle.reversal.id}/sha256:${"0".repeat(64)}`);
   await expect(screen.getByRole("alert")).toContainText(
     "Länken stämmer inte med det låsta förslaget",
@@ -190,38 +333,35 @@ test("correction review recovers a lost aggregate response and blocks the compet
   await expect(execute).toHaveCount(0);
   expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
   await app.open(reviewUrl(first.bundle.id));
-  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible({
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket för ${original.action.series}${original.number}`),
+  ).toBeVisible({
     timeout: 90_000,
   });
+  await screen.getByText("Underlag, följder och rättelsehistorik", { exact: true }).click();
   await expect(screen.getByRole("heading", "Exakt motbokning")).toBeVisible();
   await expect(screen.getByRole("heading", "Ersättning")).toBeVisible();
   await expect(screen.getByRole("heading", "Granskning av rättelsens följder")).toBeVisible();
   await expect(
     screen.getByRole("table", "Föreslagna saldoförändringar (minsta valutaenhet)"),
   ).toContainText(/account_bank\s+-5500/);
-  await expect(approve).toBeDisabled();
-  await expect(execute).toBeDisabled();
-  await agent.assert(
-    "The complete correction review shows the exact reversal, replacement and proposed net changes, and posting requires confirmation and operator approval. Return the configured JSON judgment.",
-  );
-  await expect(execute).toBeDisabled();
-  await confirm.focus();
-  await confirm.press("Space");
-  await expect(confirm).toBeChecked();
   await expect(approve).toBeEnabled();
-  await approve.focus();
-  await approve.press("Enter");
-  await expect(execute).toBeEnabled();
-
-  const approved = await call(
-    `/correction-bundles/${first.bundle.id}`,
-    Corrections.CorrectionBundleView,
+  await expect(execute).toHaveCount(0);
+  const impactPath = `${base}/correction-impact-reviews/${first.impact.id}`;
+  await browser.route(impactPath, (route) => route.abort());
+  await screen.getByRole("button", "Uppdatera godkännande och kvitto").click();
+  await expect(approve).toHaveCount(0);
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  await browser.unroute(impactPath);
+  await screen.getByRole("button", "Uppdatera godkännande och kvitto").click();
+  await expect(approve).toBeEnabled();
+  await agent.assert(
+    "The complete correction review shows the exact reversal, replacement and proposed net changes, and one approval action posts both parts together. Return the configured JSON judgment.",
   );
-
-  if (!approved.approval) throw new Error("Browser approval was not retained");
-
+  await expect(execute).toHaveCount(0);
   let committed: typeof Corrections.CorrectionBundleReceipt.Type | undefined;
   let executionKey = "";
+  let executionWitness: typeof Corrections.ExecuteCorrectionBundle.Type | undefined;
   const executionPath = `${base}/correction-bundles/${first.bundle.id}/execute`;
 
   await browser.route(executionPath, async (route) => {
@@ -229,6 +369,10 @@ test("correction review recovers a lost aggregate response and blocks the compet
       executionKey = route.request.headers["idempotency-key"] ?? "";
 
       expect(executionKey).toMatch(/^[a-zA-Z0-9_-]{8,128}$/);
+
+      executionWitness = Schema.decodeSync(
+        Schema.fromJsonString(Corrections.ExecuteCorrectionBundle),
+      )(route.request.postData ?? "");
 
       const response = await fetch(route.request.url, {
         method: route.request.method,
@@ -247,8 +391,8 @@ test("correction review recovers a lost aggregate response and blocks the compet
       await route.abort();
     }
   });
-  await execute.focus();
-  await execute.press("Enter");
+  await approve.focus();
+  await approve.press("Enter");
   await expect.poll(() => committed?.bundleId).toBe(first.bundle.id);
   await browser.unroute(executionPath);
 
@@ -283,6 +427,19 @@ test("correction review recovers a lost aggregate response and blocks the compet
     "correction-aggregate-after-lost-response-and-reload",
   );
 
+  const approved = await call(
+    `/correction-bundles/${first.bundle.id}`,
+    Corrections.CorrectionBundleView,
+  );
+
+  expect(approved.approval).toBeNull();
+  expect(approved.receipt).toEqual(receipt);
+  expect(executionWitness).toEqual({
+    version: first.bundle.version,
+    bundleDigest: first.bundle.bundleDigest,
+    approvalId: receipt.approvalId,
+  });
+
   const recovered = await call(
     `/correction-bundles/${first.bundle.id}`,
     Corrections.CorrectionBundleView,
@@ -304,7 +461,7 @@ test("correction review recovers a lost aggregate response and blocks the compet
     {
       version: first.bundle.version,
       bundleDigest: first.bundle.bundleDigest,
-      approvalId: approved.approval.id,
+      approvalId: receipt.approvalId,
     },
     executionKey,
   );
@@ -349,18 +506,17 @@ test("correction review recovers a lost aggregate response and blocks the compet
   ).toBe(-5500n);
 
   await app.open(reviewUrl(competing.bundle.id));
-  await expect(screen.getByRole("heading", "Granska hela rättelsen")).toBeVisible();
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket ${competing.bundle.id} är inaktuellt`),
+  ).toBeVisible();
   await expect(
     screen.getByText(
       "Registrerade uppgifter har ändrats. Skapa en ny granskning och ett nytt paket; återanvänd inte godkännandet.",
       { exact: true },
     ),
   ).toBeVisible();
-  await confirm.focus();
-  await confirm.press("Space");
-  await expect(confirm).toBeChecked();
-  await expect(approve).toBeDisabled();
-  await expect(execute).toBeDisabled();
+  await expect(approve).toHaveCount(0);
+  await expect(execute).toHaveCount(0);
 
   const competingView = await call(
     `/correction-bundles/${competing.bundle.id}`,
@@ -375,6 +531,20 @@ test("correction review recovers a lost aggregate response and blocks the compet
   expect(competingView.receipt).toBeNull();
   expect(competingView.approval).toBeNull();
   expect(staleImpact.snapshotCurrent).toBe(false);
+  await app.open(`${workspace}/books?correctionImpact=${encodeURIComponent(competing.impact.id)}`);
+  await expect(
+    screen.getByRole("heading", "Granskning av rättelsens följder").first(),
+  ).toBeVisible();
+  await expect(approve).toHaveCount(0);
+  await expect(screen.getByRole("alert").first()).toContainText(
+    "Registrerade uppgifter har ändrats",
+  );
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(after);
+  await app.open(reviewUrl(competing.bundle.id));
+  await expect(
+    screen.getByRole("heading", `Rättelsepaket ${competing.bundle.id} är inaktuellt`),
+  ).toBeVisible();
+  await screen.getByText("Underlag, följder och rättelsehistorik", { exact: true }).click();
   await expect(
     screen.getByText(`Kvitto för hela rättelsepaketet: ${receipt.id}`, { exact: true }),
   ).toBeVisible();
@@ -385,10 +555,15 @@ test("correction review recovers a lost aggregate response and blocks the compet
 
   const receiptLink = screen.getByRole("link", first.bundle.id, { exact: true });
 
-  await expect(receiptLink).toHaveAttribute("href", reviewUrl(first.bundle.id).replace(origin, ""));
+  await expect(receiptLink).toHaveAttribute(
+    "href",
+    `${workspace.replace(origin, "")}/books?correction=${encodeURIComponent(first.bundle.id)}&correctionDigest=${encodeURIComponent(first.bundle.bundleDigest)}&work=${encodeURIComponent(workQuery)}`,
+  );
   await receiptLink.focus();
   await receiptLink.press("Enter");
-  await expect(browser).toHaveURL(reviewUrl(first.bundle.id));
+  await expect(browser).toHaveURL(
+    `${workspace}/books?correction=${encodeURIComponent(first.bundle.id)}&correctionDigest=${encodeURIComponent(first.bundle.bundleDigest)}&work=${encodeURIComponent(workQuery)}`,
+  );
   await expect(screen.getByRole("heading", "Kvitto för hela rättelsepaketet")).toBeVisible();
   await screen.getByRole("link", "Tillbaka till arbetet").focus();
   await screen.getByRole("link", "Tillbaka till arbetet").press("Enter");
@@ -413,10 +588,12 @@ test("correction review recovers a lost aggregate response and blocks the compet
         scenario:
           "Synthetic correction from 12500 to 7000 minor units with competing 9000 alternative",
         executionKey,
+        executionWitness,
         initial,
         before,
         after,
         original,
+        preparation: { preparedUrl, preparedImpact, preparedBundle },
         bundleId: first.bundle.id,
         competingBundleId: competing.bundle.id,
         receipt,
@@ -432,7 +609,11 @@ test("correction review recovers a lost aggregate response and blocks the compet
         competingSnapshotCurrent: staleImpact.snapshotCurrent,
         constituentUrl,
         screenshots: {
+          draftImpactScreenshot,
+          preparedBundleScreenshot,
           constituentScreenshot,
+          preparationEntryScreenshot,
+          recoveredEntryUrl,
           receiptScreenshot,
           staleScreenshot,
           originalScreenshot,

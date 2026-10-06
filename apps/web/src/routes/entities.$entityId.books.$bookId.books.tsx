@@ -19,6 +19,11 @@ import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
 import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
+import { BlockedCorrectionImpactReview } from "@/components/corrections/blocked-impact-review";
+import {
+  CorrectionReview,
+  correctionEntryWitness,
+} from "@/components/corrections/correction-review";
 import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostedRecord } from "@/components/posted-records";
 import { VoucherWorkspace } from "@/components/voucher-workspace";
@@ -31,6 +36,11 @@ import { accountingCopy } from "@/lib/accounting-copy";
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts", "assets"])),
   savedRequest: Schema.optional(SavedRequestKey),
+  correction: Schema.optional(Identifier),
+  correctionImpact: Schema.optional(Identifier),
+  correctionDigest: Schema.optional(Digest),
+  correctionChild: Schema.optional(Identifier),
+  correctionPlanDigest: Schema.optional(Digest),
   record: Schema.optional(Schema.String),
   loan: Schema.optional(Identifier),
   loanReview: Schema.optional(Identifier),
@@ -78,6 +88,29 @@ function Books() {
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: query.returnTo } });
   };
+
+  if (query.correctionImpact)
+    return (
+      <BlockedCorrectionImpactReview
+        key={query.correctionImpact}
+        book={book}
+        locale={locale}
+        id={query.correctionImpact}
+        setup={setup}
+      />
+    );
+
+  if (query.correction)
+    return (
+      <CorrectionReview
+        key={query.correction}
+        book={book}
+        setup={setup}
+        locale={locale}
+        id={query.correction}
+        entry={correctionEntryWitness(query)}
+      />
+    );
 
   if (view === "accounts" && query.loan)
     return (

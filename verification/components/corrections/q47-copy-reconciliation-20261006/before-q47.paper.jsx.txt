@@ -1,0 +1,436 @@
+(
+    <div className="[font-synthesis:none] wrap-anywhere text-[12px] leading-ui-sm flex overflow-clip w-brand-board h-[900px] relative bg-ui-surface antialiased">
+      <div className="w-ui-sidebar h-[900px] shrink-0 flex flex-col py-[10px] [padding-inline:8px] gap-px bg-[#F7F8FA] border-r border-r-solid border-r-[#E6EAF0]">
+        <div className="flex items-center h-ui-lg mb-[6px] [padding-inline:8px] [gap:8px] shrink-0">
+          <div className="w-[20px] h-[20px] flex items-center justify-center rounded-[5px] shrink-0 [background-color:#0F172A]">
+            <div className="flex text-[10px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[12px] text-ui-surface">
+              FK
+            </div>
+          </div>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] font-brand-display leading-ui-sm [color:#0F172A]">
+            Fjällby Konsult AB
+          </div>
+          <div className="text-[12px] font-[system-ui,sans-serif] leading-ui-sm text-[#5C6C80]">
+            ⌄
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [margin-bottom:8px] [padding-inline:8px] rounded-brand-control shrink-0 bg-ui-surface border border-solid border-[#E6EAF0]">
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#5C6C80]">
+            Sök
+          </div>
+          <div className="text-[11px] font-['Inter',system-ui,sans-serif] leading-[14px] text-[#5C6C80]">
+            Ctrl K
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 8l2 2 4-4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Att göra
+          </div>
+          <div className="text-[12px] font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#5C6C80]">
+            7
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 13V8M8 13V3M13 13V6" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Översikt
+          </div>
+        </div>
+        <div className="pt-[12px] pb-[4px] [padding-inline:8px]">
+          <div className="text-[11px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[14px] text-[#5C6C80]">
+            ARBETE
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M2 6l6-3 6 3M3 7v5M6.5 7v5M9.5 7v5M13 7v5M2 13h12" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Bank
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 2h6l3 3v9H4zM10 2v3h3" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Försäljning
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 5h10l-1 9H4zM6 5a2 2 0 014 0" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Inköp
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M2 4h4l1.5 1.5H14V13H2z" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Dokument
+          </div>
+        </div>
+        <div className="pt-[12px] pb-[4px] [padding-inline:8px]">
+          <div className="text-[11px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[14px] text-[#5C6C80]">
+            REDOVISNING
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 3h8a2 2 0 012 2v8H5a2 2 0 01-2-2zM3 11a2 2 0 012-2h8" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Bokföring
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 12L12 4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="5" cy="5" r="1.5" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="11" cy="11" r="1.5" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Skatt och löner
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 2h8v12H4zM6 6h4M6 9h4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Rapporter
+          </div>
+        </div>
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 6.5h12M5 2v2M11 2v2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Bokslut
+          </div>
+        </div>
+        <div className="grow" />
+        <div className="flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <circle cx="8" cy="8" r="2.2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]">
+            Inställningar
+          </div>
+        </div>
+        <div className="flex items-center h-ui-lg [padding-inline:8px] [gap:8px] shrink-0">
+          <div className="w-[20px] h-[20px] flex items-center justify-center rounded-[10px] shrink-0 bg-[#E3E8F2]">
+            <div className="flex text-[9px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[12px] [color:#2448A5]">
+              ES
+            </div>
+          </div>
+          <div className="grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm [color:#0F172A]">
+            Elin Sund
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col grow min-w-[0px]">
+        <div className="flex items-center shrink-0 h-[48px] px-[20px] [gap:8px] border-b border-b-solid border-b-[#E6EAF0]">
+          <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-[500] text-[#5C6C80]">
+            Bokföring
+          </div>
+          <div className="[font-size-adjust:none] text-[17px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#B3BBC7]">
+            ›
+          </div>
+          <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-[500] text-[#5C6C80]">
+            Verifikat
+          </div>
+          <div className="[font-size-adjust:none] text-[17px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#B3BBC7]">
+            ›
+          </div>
+          <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-[500] text-[#5C6C80]">
+            A148
+          </div>
+          <div className="[font-size-adjust:none] text-[17px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#B3BBC7]">
+            ›
+          </div>
+          <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]">
+            Rättelsepaket R-0007
+          </div>
+        </div>
+        <div className="flex grow min-h-[0px]">
+          <div className="flex flex-col grow min-w-[0px] pt-ui-sm px-ui-lg">
+            <div className="flex items-center h-[40px] mt-[12px] w-[752px] px-[12px] rounded-brand-control gap-[10px] shrink-0 bg-[#FFF7E6] border border-solid border-[#F0D9A8]">
+              <div className="w-[12px] h-[12px] shrink-0 rounded-brand-control [border-width:1.5px] border-solid border-[#8A5A00]" />
+              <div className="[font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] text-[#8A5A00]">
+                Godkännandet nekades 4 okt 14:20. Underlaget ändrades kl 14:05, efter att paketet förbereddes. Inget är bokfört.
+              </div>
+            </div>
+            <div className="flex items-center mt-ui-sm gap-[10px]">
+              <div className="[font-size-adjust:none] text-brand-body leading-[22px] font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]">
+                Rättelsepaket R-0007 är inaktuellt
+              </div>
+              <div className="py-[2px] [padding-inline:8px] rounded-[10px] bg-[#F7F8FA] border border-solid border-[#E6EAF0]">
+                <div className="[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                  Exempeldata
+                </div>
+              </div>
+            </div>
+            <div className="[font-size-adjust:none] text-ui-caption leading-[18px] mt-[4px] w-[752px] font-['Inter',system-ui,sans-serif] text-[#475569]">
+              Backningen A158 och ersättningen A159 hörde ihop och kunde bara bokföras tillsammans. Ingen av dem finns, och A148 är oförändrat.
+            </div>
+            <div className="[font-size-adjust:none] text-[12px] leading-ui-sm mt-[18px] mb-[6px] font-['Inter',system-ui,sans-serif] font-brand-display text-[#5C6C80]">
+              BEROENDEN SOM PAKETET BYGGDE PÅ
+            </div>
+            <div className="flex items-center h-[28px] w-[752px] shrink-0 bg-[#F7F8FA] border-t border-t-solid border-t-[#E6EAF0] border-b border-b-solid border-b-[#E6EAF0]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]">
+                  Beroende
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]">
+                Förberedd 4 okt 10:41
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]">
+                Nu 4 okt 14:20
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-[12px] leading-ui-sm text-right font-['Inter',system-ui,sans-serif] font-brand-display flex justify-end flex-wrap text-[#475569]">
+                  Läge
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Original A148
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Bevarat
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Bevarat
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#1E6256]">
+                  Samma
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Period oktober
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Öppen
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Öppen
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#1E6256]">
+                  Samma
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Konton 4010 och 6550
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Aktiva
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Aktiva
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#1E6256]">
+                  Samma
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 bg-[#FFF7E6] border-b border-b-solid border-b-[#F0D9A8]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Faktura 1048, kvar att betala
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                7 500,00
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]">
+                0,00
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#8A5A00]">
+                  Ändrad
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 bg-[#FFF7E6] border-b border-b-solid border-b-[#F0D9A8]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Betalningsfördelningar
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                1 st, 5 000,00
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]">
+                2 st, 12 500,00
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#8A5A00]">
+                  Ändrad
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] w-[752px] shrink-0 border-b border-b-solid border-b-[#E6EAF0]">
+              <div className="w-[230px] shrink-0 [font-size-adjust:none] [padding-left:8px]">
+                <div className="text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                  Kontrollsumma för underlaget
+                </div>
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Menlo-Regular','Menlo',system-ui,sans-serif] text-[#475569]">
+                7F3A 91C2 B04E
+              </div>
+              <div className="w-[170px] shrink-0 [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Menlo-Regular','Menlo',system-ui,sans-serif] [color:#0F172A]">
+                5D20 C77A 18F3
+              </div>
+              <div className="grow text-right [font-size-adjust:none] [padding-right:8px]">
+                <div className="text-ui-caption leading-ui-sm text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#8A5A00]">
+                  Ny
+                </div>
+              </div>
+            </div>
+            <div className="[font-size-adjust:none] text-[12px] leading-ui-sm mt-[20px] mb-[6px] font-['Inter',system-ui,sans-serif] font-brand-display text-[#5C6C80]">
+              VAD SOM ÄNDRADES
+            </div>
+            <div className="flex items-center justify-between h-ui-lg w-[752px] shrink-0 border-t border-t-solid border-t-[#E6EAF0] border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Händelse
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                4 okt 14:05, Maja Ek kopplade betalning 7 500,00 till faktura 1048
+              </div>
+            </div>
+            <div className="flex items-center justify-between h-ui-lg w-[752px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Därför inte längre giltigt
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Ersättningen skulle lämna fakturan med fel saldo och fel fördelning
+              </div>
+            </div>
+            <div className="[font-size-adjust:none] text-[12px] leading-[18px] [margin-top:8px] w-[752px] font-['Inter',system-ui,sans-serif] text-[#475569]">
+              Ett gammalt godkännande flyttas aldrig över till ett nytt paket. Det nya paketet får ett eget godkännande på sin egen kontrollsumma.
+            </div>
+          </div>
+          <div className="flex flex-col shrink-0 w-[400px] pt-ui-md pb-[20px] px-ui-md border-l border-l-solid border-l-[#E6EAF0]">
+            <div className="[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#5C6C80]">
+              Vad som gäller nu
+            </div>
+            <div className="[font-size-adjust:none] text-brand-body leading-[22px] mt-[2px] font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]">
+              Inget är bokfört, förbered om
+            </div>
+            <div className="flex items-center justify-between h-[34px] mt-[14px] shrink-0 border-t border-t-solid border-t-[#E6EAF0] border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Backning A158
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Inte bokförd
+              </div>
+            </div>
+            <div className="flex items-center justify-between h-[34px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Ersättning A159
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Inte bokförd
+              </div>
+            </div>
+            <div className="flex items-center justify-between h-[34px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Original A148
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#1E6256]">
+                Bevarat, oförändrat
+              </div>
+            </div>
+            <div className="flex items-center justify-between h-[34px] shrink-0 border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Ditt godkännande
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#8A5A00]">
+                Nekat
+              </div>
+            </div>
+            <div className="[font-size-adjust:none] text-[12px] leading-[18px] mt-[10px] font-['Inter',system-ui,sans-serif] text-[#475569]">
+              Godkännandet gällde kontrollsumman 7F3A 91C2 B04E. Den passar inte längre underlaget, 5D20 C77A 18F3.
+            </div>
+            <div className="[font-size-adjust:none] text-[12px] leading-ui-sm mt-[20px] mb-[6px] font-['Inter',system-ui,sans-serif] font-brand-display text-[#5C6C80]">
+              STEG
+            </div>
+            <div className="flex items-center h-[34px] shrink-0 border-t border-t-solid border-t-[#E6EAF0]">
+              <div className="grow [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                1. Förberedd, inaktuell
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                10:41
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] shrink-0 border-t border-t-solid border-t-[#EEF1F5]">
+              <div className="grow [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                2. Godkännande nekades
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#8A5A00]">
+                14:20
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] shrink-0 bg-[#FFF7E6] border-t border-t-solid border-t-[#F0D9A8]">
+              <div className="grow [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                3. Förbered om på nuvarande underlag
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#8A5A00]">
+                Nästa
+              </div>
+            </div>
+            <div className="flex items-center h-[34px] shrink-0 border-t border-t-solid border-t-[#EEF1F5] border-b border-b-solid border-b-[#EEF1F5]">
+              <div className="grow [font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                4. Nytt godkännande, Elin Sund
+              </div>
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]">
+                Efter steg 3
+              </div>
+            </div>
+            <div className="grow" />
+            <div className="flex items-center justify-center h-ui-lg rounded-brand-control shrink-0 [background-color:#2448A5]">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-[500] text-ui-surface">
+                Be Sara förbereda om rättelsen
+              </div>
+            </div>
+            <div className="flex items-center justify-between h-[28px] mt-[10px] shrink-0">
+              <div className="[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]">
+                Avbryt rättelsen
+              </div>
+              <div className="[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#5C6C80]">
+                A148 ligger kvar
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute [left:8px] top-[322px] w-[208px] h-[28px] rounded-brand-control bg-[#0F172A12]" />
+    </div>
+  )

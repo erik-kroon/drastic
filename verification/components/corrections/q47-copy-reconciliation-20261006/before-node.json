@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"id\": \"1R1Y-0\",\n  \"name\": \"Backningen A158 och …\",\n  \"component\": \"Text\",\n  \"width\": 752,\n  \"height\": null,\n  \"worldX\": null,\n  \"worldY\": null,\n  \"x\": null,\n  \"y\": null,\n  \"isVisible\": true,\n  \"isLocked\": false,\n  \"parentId\": \"1R1Q-0\",\n  \"childIds\": [],\n  \"childCount\": 0,\n  \"artboardId\": \"1QOW-0\",\n  \"textContent\": \"Backningen A158 och ersättningen A159 hörde ihop och kunde bara bokföras tillsammans. Ingen av dem finns, och A148 är oförändrat.\"\n}"
+    }
+  ]
+}

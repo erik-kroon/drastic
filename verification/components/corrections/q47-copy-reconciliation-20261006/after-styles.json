@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"styles\": {\n    \"1QOW-0\": {\n      \"display\": \"flex\",\n      \"overflow\": \"clip\",\n      \"width\": \"1440px\",\n      \"height\": \"900px\",\n      \"left\": \"13680px\",\n      \"top\": \"2940px\",\n      \"position\": \"absolute\",\n      \"backgroundColor\": \"#FFFFFF\"\n    },\n    \"1R1Y-0\": {\n      \"fontSizeAdjust\": \"none\",\n      \"fontSize\": \"13px\",\n      \"lineHeight\": \"18px\",\n      \"marginTop\": \"4px\",\n      \"width\": \"752px\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 400,\n      \"color\": \"#475569\"\n    }\n  }\n}"
+    }
+  ]
+}

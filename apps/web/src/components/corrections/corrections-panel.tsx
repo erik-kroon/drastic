@@ -1,6 +1,8 @@
+import { Navigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
 import { Box } from "@open-erp/ui/components/box";
@@ -12,7 +14,8 @@ import { SealedAction } from "@/components/journal-review";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
-import { CorrectionReview } from "./correction-review";
+import { reviewTargetPath, workspacePath } from "@/lib/book-context";
+import { useWorkReturn, encodeWorkReturn } from "@/lib/work-return";
 import { CorrectionDiscovery } from "./discovery";
 import { CorrectionChainView, CorrectionImpactDetails } from "./impact-review";
 
@@ -26,7 +29,13 @@ export function CorrectionsPanel(props: {
   const { book, setup, locale, open } = props;
   const copy = correctionCopy(locale);
   const [originalId, setOriginalId] = useState("");
-  const [bundleId, setBundleId] = useState(props.bundleId ?? "");
+
+  const [bundle, setBundle] = useState<{ id: string; digest?: string } | undefined>(
+    props.bundleId ? { id: props.bundleId } : undefined,
+  );
+
+  const work = encodeWorkReturn(useWorkReturn());
+  const openBundle = (id: string, digest?: string) => setBundle({ id, digest });
   const [error, setError] = useState("");
 
   const original = useQuery({
@@ -47,15 +56,29 @@ export function CorrectionsPanel(props: {
         `${bookPath(book)}/vouchers/${encodeURIComponent(id)}/correction-bundle`,
         Corrections.CorrectionBundleView,
       ),
-    onSuccess: (view) => setBundleId(view.bundle.id),
+    onSuccess: (view) => openBundle(view.bundle.id, view.bundle.bundleDigest),
   });
+
+  if (bundle) {
+    const destination = bundle.digest
+      ? reviewTargetPath(book, {
+          kind: "correction",
+          bundleId: bundle.id,
+          bundleDigest: bundle.digest,
+        })
+      : `${workspacePath(book)}/books?correction=${encodeURIComponent(bundle.id)}`;
+
+    return (
+      <Navigate to={`${destination}${work ? `&work=${encodeURIComponent(work)}` : ""}`} replace />
+    );
+  }
 
   return (
     <details open={open} id="corrections" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="lg" minWidth="zero">
         <Text tone="muted">{copy.scope}</Text>
-        <CorrectionDiscovery book={book} locale={locale} onSelected={setBundleId} />
+        <CorrectionDiscovery book={book} locale={locale} onSelected={openBundle} />
         <Box
           as="form"
           display="grid"
@@ -72,7 +95,7 @@ export function CorrectionsPanel(props: {
 
             setError("");
             setOriginalId(id);
-            setBundleId("");
+            setBundle(undefined);
             recovery.reset();
           }}
         >
@@ -103,7 +126,7 @@ export function CorrectionsPanel(props: {
             }
 
             setError("");
-            setBundleId(id);
+            openBundle(id);
           }}
         >
           <InputField
@@ -146,7 +169,7 @@ export function CorrectionsPanel(props: {
             <AccountingStatus locale={locale} pending={recovery.isPending} error={recovery.error} />
           </>
         ) : null}
-        {original.data && !bundleId ? (
+        {original.isSuccess && original.data && !original.isFetching ? (
           <>
             <CorrectionChainView book={book} setup={setup} locale={locale} id={original.data.id} />
             <Heading>{copy.original}</Heading>
@@ -163,18 +186,9 @@ export function CorrectionsPanel(props: {
               setup={setup}
               locale={locale}
               original={original.data}
-              onPrepared={setBundleId}
+              onPrepared={openBundle}
             />
           </>
-        ) : null}
-        {bundleId ? (
-          <CorrectionReview
-            key={bundleId}
-            book={book}
-            setup={setup}
-            locale={locale}
-            id={bundleId}
-          />
         ) : null}
       </Box>
     </details>
@@ -186,7 +200,7 @@ function ReplacementDraft(props: {
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
   original: typeof Accounting.Voucher.Type;
-  onPrepared: (id: string) => void;
+  onPrepared: (id: string, digest: string) => void;
 }) {
   const { book, setup, locale, original } = props;
   const copy = correctionCopy(locale);
@@ -217,7 +231,7 @@ function ReplacementDraft(props: {
 
       return readAccounting(path, Corrections.CorrectionBundle, options);
     },
-    onSuccess: (bundle) => props.onPrepared(bundle.id),
+    onSuccess: (bundle) => props.onPrepared(bundle.id, bundle.bundleDigest),
   });
 
   return (
@@ -245,7 +259,7 @@ function ReplacementDraft(props: {
           },
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setError(copy.invalid);
 
           return;
