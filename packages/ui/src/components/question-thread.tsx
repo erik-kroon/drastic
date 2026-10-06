@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Button, type ButtonProps } from "@open-erp/ui/components/button";
 import { FileText } from "lucide-react";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
+  control: { minHeight: 32 },
   thread: { display: "grid", gap: tokens.space4, minWidth: 0 },
   heading: { display: "grid", gap: tokens.space2 },
   title: {
@@ -139,4 +141,8 @@ export function QuestionAttachment({
   ) : (
     <div {...stylex.props(styles.attachmentRow)}>{row}</div>
   );
+}
+
+export function QuestionControl(props: Omit<ButtonProps, "variant" | "size" | "styleX">) {
+  return <Button {...props} variant="outline" styleX={styles.control} />;
 }

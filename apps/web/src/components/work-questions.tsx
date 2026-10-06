@@ -8,6 +8,7 @@ import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { QuestionTaskContext } from "@open-erp/ui/components/question-task-context";
 import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
+  QuestionControl,
   QuestionAttachment,
   QuestionMessage,
   QuestionThread,
@@ -152,13 +153,9 @@ function WorkQuestionsPanel(props: QuestionProps) {
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
-        <Button
-          variant="outline"
-          disabled={questions.isFetching}
-          onClick={() => void questions.refetch()}
-        >
+        <QuestionControl disabled={questions.isFetching} onClick={() => void questions.refetch()}>
           {sv ? "Uppdatera" : "Refresh"}
-        </Button>
+        </QuestionControl>
       </Box>
       <AccountingStatus locale={locale} pending={questions.isPending} error={questions.error} />
       <AccountingStatus locale={locale} pending={team.isPending} error={team.error} />
@@ -409,9 +406,9 @@ function AnswerQuestion(props: RecordProps) {
   return (
     <Box display="grid" gap="lg">
       <Box>
-        <Button variant="outline" onClick={() => setUploading(true)}>
+        <QuestionControl onClick={() => setUploading(true)}>
           {sv ? "Ladda upp nytt kvitto" : "Upload new receipt"}
-        </Button>
+        </QuestionControl>
       </Box>
       {uploading ? (
         <DocumentUpload

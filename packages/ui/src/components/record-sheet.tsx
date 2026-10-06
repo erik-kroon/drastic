@@ -39,6 +39,7 @@ const styles = stylex.create({
   },
   questionBackdrop: { zIndex: 40, backgroundColor: tokens.transparent },
   questionSheet: {
+    fontFamily: tokens.fontFamilySystem,
     width: "min(420px, 100vw)",
     insetBlock: 0,
     insetInlineEnd: 0,
@@ -79,6 +80,7 @@ const styles = stylex.create({
   questionHeader: { paddingInline: tokens.space6, paddingBlock: tokens.space2 },
   questionContent: { paddingInline: tokens.space6, paddingBlock: tokens.space5 },
   questionContext: {
+    fontFamily: tokens.fontFamilySystem,
     position: "fixed",
     insetBlock: 0,
     insetInlineStart: 224,
