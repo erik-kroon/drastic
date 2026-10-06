@@ -1,0 +1,1117 @@
+{
+  "frames": [
+    {
+      "artboard": {
+        "id": "PIO-0",
+        "name": "T1 Inställningar: team och roller",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 0,
+        "worldY": 0
+      },
+      "oldHeader": "PS8-0",
+      "header": "PS8-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "13U4-0",
+        "name": "T1b Team och roller: ge byrån åtkomst (dialog)",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 0,
+        "worldY": 980
+      },
+      "oldHeader": "13UU-0",
+      "header": "13UU-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "PIP-0",
+        "name": "T2 Inställningar: assistenter och API-nycklar",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 1520,
+        "worldY": 0
+      },
+      "oldHeader": "PVL-0",
+      "header": "26CS-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '18px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '16px', height: '48px', marginBottom: '-15px', marginTop: '-15px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1E8Y-0",
+        "name": "T1g Inställningar: ändra roll, följder",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 27360,
+        "worldY": 0
+      },
+      "oldHeader": "1E9O-0",
+      "header": "1E9O-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1ECH-0",
+        "name": "T2e Inställningar: API-nyckel kunde inte skapas",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 28880,
+        "worldY": 0
+      },
+      "oldHeader": "1ED9-0",
+      "header": "26D3-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '18px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '16px', height: '48px', marginBottom: '-15px', marginTop: '-15px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "16OI-0",
+        "name": "T1c Team och roller: bjud in, roll och åtkomst (dialog)",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 16720,
+        "worldY": 0
+      },
+      "oldHeader": "16P8-0",
+      "header": "16P8-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "16S1-0",
+        "name": "T1d Team och roller: ta bort åtkomst, följder (dialog)",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 18240,
+        "worldY": 0
+      },
+      "oldHeader": "16SR-0",
+      "header": "16SR-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "16VK-0",
+        "name": "T2b API-nycklar: skapa nyckel, behörighet och giltighet (dialog)",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 1520,
+        "worldY": 980
+      },
+      "oldHeader": "16WC-0",
+      "header": "26DE-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '18px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '16px', height: '48px', marginBottom: '-15px', marginTop: '-15px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "16ZB-0",
+        "name": "T2c API-nycklar: nyckeln visas en gång (dialog)",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 19760,
+        "worldY": 0
+      },
+      "oldHeader": "1703-0",
+      "header": "26DP-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '18px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '16px', height: '48px', marginBottom: '-15px', marginTop: '-15px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1O-0",
+        "name": "T3 Inställningar: företag",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 3040,
+        "worldY": 0
+      },
+      "oldHeader": "S92-0",
+      "header": "S92-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Företag\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Företag\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1Q-0",
+        "name": "T5 Inställningar: fakturering",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 6080,
+        "worldY": 0
+      },
+      "oldHeader": "SFC-0",
+      "header": "SFC-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Fakturering\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Fakturering\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1R-0",
+        "name": "T6 Inställningar: säkerhetskopior",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 7600,
+        "worldY": 0
+      },
+      "oldHeader": "SIP-0",
+      "header": "SIP-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1HVA-0",
+        "name": "T6c Säkerhetskopior: senaste återställningstest, bara läsning",
+        "childCount": 5,
+        "width": 1440,
+        "height": 900,
+        "worldX": 30400,
+        "worldY": 0
+      },
+      "oldHeader": "1HVR-0",
+      "header": "26JD-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Säkerhetskopior\n        </div>\n        <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n          <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n            Återställningstest\n          </div>\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1L0W-0",
+        "name": "T6d Säkerhetskopior: återställningstest, en kontroll misslyckades",
+        "childCount": 5,
+        "width": 1440,
+        "height": 900,
+        "worldX": 31920,
+        "worldY": 0
+      },
+      "oldHeader": "1L39-0",
+      "header": "26JJ-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Säkerhetskopior\n        </div>\n        <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n          <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n            Återställningstest\n          </div>\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "186B-0",
+        "name": "T1e Team och roller: inbjudningar, ej levererad, utgången och skicka igen",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 24320,
+        "worldY": 0
+      },
+      "oldHeader": "1871-0",
+      "header": "1871-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "182K-0",
+        "name": "T2d API-nycklar: återkalla nyckel",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 22800,
+        "worldY": 0
+      },
+      "oldHeader": "183C-0",
+      "header": "26E0-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '18px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '16px', height: '48px', marginBottom: '-15px', marginTop: '-15px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', height: '48px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Skapa nyckel\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "17ZA-0",
+        "name": "T6b Säkerhetskopior: återställ som kopia och kontrollera",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 7600,
+        "worldY": 980
+      },
+      "oldHeader": "17ZR-0",
+      "header": "17ZR-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Säkerhetskopior\n      </div>\n      <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Exportera all data\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1S-0",
+        "name": "T7 Inställningar: inkorg",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 9120,
+        "worldY": 0
+      },
+      "oldHeader": "SLT-0",
+      "header": "SLT-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Inkorg\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Inkorg\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1T-0",
+        "name": "T8 Inställningar: din profil",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 10640,
+        "worldY": 0
+      },
+      "oldHeader": "SOS-0",
+      "header": "SOS-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Din profil\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Din profil\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1CME-0",
+        "name": "T1f Team och roller: tvåstegsverifiering syns per person, ingen roll kräver den",
+        "childCount": 5,
+        "width": 1440,
+        "height": 900,
+        "worldX": 25840,
+        "worldY": 0
+      },
+      "oldHeader": "1CN4-0",
+      "header": "1CN4-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Team och roller\n      </div>\n      <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Bjud in\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1CIR-0",
+        "name": "T8b Din profil: tvåstegsverifiering är valfri, påminnelse före aktivering",
+        "childCount": 5,
+        "width": 1440,
+        "height": 900,
+        "worldX": 10640,
+        "worldY": 980
+      },
+      "oldHeader": "1CJN-0",
+      "header": "1CJN-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Din profil\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Din profil\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "SVQ-0",
+        "name": "T10 Inställningar: bank och betalningar",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 13680,
+        "worldY": 0
+      },
+      "oldHeader": "T4W-0",
+      "header": "T4W-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bank och betalningar\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bank och betalningar\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "TOR-0",
+        "name": "T9 Inställningar: skatt",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 12160,
+        "worldY": 0
+      },
+      "oldHeader": "TRD-0",
+      "header": "TRD-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Skatt\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Skatt\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1PWG-0",
+        "name": "T12 Regler: stående bokföringsmandat med tak, återspelad och nekad händelse",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 0,
+        "worldY": 1960
+      },
+      "oldHeader": "1QD6-0",
+      "header": "26EB-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Regler\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Stående bokföringsmandat\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Regler\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "1PYF-0",
+        "name": "T13 Integrationer: hanterade tjänster, säkerhetskopior ingår alltid",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 1520,
+        "worldY": 1960
+      },
+      "oldHeader": "1QDD-0",
+      "header": "26EF-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Integrationer\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Hanterade tjänster\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Integrationer\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "20CQ-0",
+        "name": "T14 Regler: mandat föreslaget, aktiveras av en administratör",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 0,
+        "worldY": 3920
+      },
+      "oldHeader": "20YV-0",
+      "header": "26EJ-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Regler\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Förslag till mandat\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Regler\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "20HR-0",
+        "name": "T15 Regler: mandat utgånget, ny händelse nekas",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 1520,
+        "worldY": 3920
+      },
+      "oldHeader": "210L-0",
+      "header": "26EN-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Regler\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Utgånget mandat\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Regler\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "20MS-0",
+        "name": "T16 Regler: mandat återkallat 09:13, tidigare bokning ligger kvar",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 3040,
+        "worldY": 3920
+      },
+      "oldHeader": "212B-0",
+      "header": "26ER-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Regler\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Återkallat mandat\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Regler\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "20RT-0",
+        "name": "T17 Regler: beslut om nekade händelser",
+        "childCount": 3,
+        "width": 1440,
+        "height": 900,
+        "worldX": 4560,
+        "worldY": 3920
+      },
+      "oldHeader": "214G-0",
+      "header": "26EV-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', fontSynthesis: 'none', gap: '8px', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Inställningar\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n        Regler\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#B3BBC7', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '17px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n        ›\n      </div>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n        Nekade händelser\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased', width: '1016px' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Regler\n        </div>\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "S1P-0",
+        "name": "T4 Inställningar: bokföring",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 4560,
+        "worldY": 0
+      },
+      "oldHeader": "SC6-0",
+      "header": "SC6-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "17SC-0",
+        "name": "T4b Bokföring: ändra verifikationsserier, validering och spara",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 4560,
+        "worldY": 980
+      },
+      "oldHeader": "17T1-0",
+      "header": "17T1-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "17VT-0",
+        "name": "T4c Bokföring: lämna sidan med osparade ändringar",
+        "childCount": 6,
+        "width": 1440,
+        "height": 900,
+        "worldX": 21280,
+        "worldY": 0
+      },
+      "oldHeader": "17WI-0",
+      "header": "17WI-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n        Bokföring\n      </div>\n    </div>\n  )"
+    },
+    {
+      "artboard": {
+        "id": "U08-0",
+        "name": "T11 Assistentpolicy",
+        "childCount": 4,
+        "width": 1440,
+        "height": 900,
+        "worldX": 15200,
+        "worldY": 0
+      },
+      "oldHeader": "11M1-0",
+      "header": "26EZ-0",
+      "beforeJsx": "(\n    <div style={{ alignItems: 'end', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSize: '12px', fontSynthesis: 'none', gap: '24px', height: '48px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '24px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignSelf: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px', marginRight: '16px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          Inställningar\n        </div>\n        <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n          ›\n        </div>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>\n          Assistenter och API\n        </div>\n      </div>\n      <div style={{ alignContent: 'center', boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, height: '100%', lineHeight: '16px' }}>\n        API-nycklar\n      </div>\n      <div style={{ alignItems: 'center', borderBottomColor: '#2448A5', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', height: '100%' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n          Assistentpolicy\n        </div>\n      </div>\n    </div>\n  )",
+      "afterJsx": "(\n    <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', fontSynthesis: 'none', height: '48px', justifyContent: 'space-between', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingInline: '32px', WebkitFontSmoothing: 'antialiased' }}>\n      <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '24px' }}>\n        <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: 'var(--font-ui)', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Assistenter och API\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '20px', height: '47px' }}>\n          <div style={{ alignItems: 'center', borderBottomColor: '#00000000', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              API-nycklar\n            </div>\n          </div>\n          <div style={{ alignItems: 'center', borderBottomColor: 'var(--color-ui-action)', borderBottomStyle: 'solid', borderBottomWidth: '2px', boxSizing: 'border-box', display: 'flex', fontFamily: 'var(--font-ui)', height: '47px' }}>\n            <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', display: 'flex', fontFamily: 'var(--font-ui)', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Assistentpolicy\n            </div>\n          </div>\n        </div>\n      </div>\n    </div>\n  )"
+    }
+  ],
+  "styles": {
+    "styles": {
+      "PS8-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "13UU-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26CS-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "1E9O-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26D3-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "16P8-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "16SR-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26DE-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26DP-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "S92-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "SFC-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "SIP-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26JD-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26JJ-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "1871-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26E0-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "17ZR-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "SLT-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "SOS-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "1CN4-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "1CJN-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "T4W-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "TRD-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EB-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EF-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EJ-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EN-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26ER-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EV-0": {
+        "position": "absolute",
+        "left": "0px",
+        "top": "0px",
+        "width": "1016px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "SC6-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "17T1-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "17WI-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "48px",
+        "paddingInline": "32px",
+        "flexShrink": "0",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "26EZ-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "48px",
+        "flexShrink": "0",
+        "paddingInline": "32px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      }
+    }
+  },
+  "exports": [
+    {
+      "nodeId": "13U4-0",
+      "filePath": "/Users/admin/Downloads/T1b Team och roller_ ge byrån åtkomst (dialog) (4).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1b.png",
+      "sha256": "b99e77a68b55d264adcfb462b1a54974ad51523a710cd081a72d1860241b4ba2"
+    },
+    {
+      "nodeId": "16OI-0",
+      "filePath": "/Users/admin/Downloads/T1c Team och roller_ bjud in, roll och åtkomst (dialog) (3).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1c.png",
+      "sha256": "e1ad125bd8b03088962461b4e2a0db89709206fcf3f8dcfb9ee6cc70c56bceee"
+    },
+    {
+      "nodeId": "16S1-0",
+      "filePath": "/Users/admin/Downloads/T1d Team och roller_ ta bort åtkomst, följder (dialog) (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1d.png",
+      "sha256": "e73e6f6483b584e10fac4221fbc1a087a32f659173bed8584085111d1198456d"
+    },
+    {
+      "nodeId": "16VK-0",
+      "filePath": "/Users/admin/Downloads/T2b API-nycklar_ skapa nyckel, behörighet och giltighet (dialog) (3).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T2b.png",
+      "sha256": "e0ecef2353fd0ae665415ed7896400d87a704d3eac0d255c3c3a3133a40a671c"
+    },
+    {
+      "nodeId": "16ZB-0",
+      "filePath": "/Users/admin/Downloads/T2c API-nycklar_ nyckeln visas en gång (dialog) (3).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T2c.png",
+      "sha256": "447c16a3d8830161751b312f90c8630f1dadd340ca821b16d4e575307a466881"
+    },
+    {
+      "nodeId": "17SC-0",
+      "filePath": "/Users/admin/Downloads/T4b Bokföring_ ändra verifikationsserier, validering och spara (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T4b.png",
+      "sha256": "ab80d5bbd553fe51ca77b957728381c370da374decf28a14f866d8cc7f3398ac"
+    },
+    {
+      "nodeId": "17VT-0",
+      "filePath": "/Users/admin/Downloads/T4c Bokföring_ lämna sidan med osparade ändringar (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T4c.png",
+      "sha256": "8cfd7263caae150a55abbbf5be3fc7a20e4dd51f4a1ebc7754c65c362cabd843"
+    },
+    {
+      "nodeId": "17ZA-0",
+      "filePath": "/Users/admin/Downloads/T6b Säkerhetskopior_ återställ som kopia och kontrollera (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T6b.png",
+      "sha256": "f0b58c3e289dd5320bce6415345984bd4b2469ce6f1c0ff5bc4504330bd92d15"
+    },
+    {
+      "nodeId": "182K-0",
+      "filePath": "/Users/admin/Downloads/T2d API-nycklar_ återkalla nyckel (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T2d.png",
+      "sha256": "755c86fde50aa87ac9189bea2f36c507ef33e52d0b7024f1fa9fe8aa21ed7305"
+    },
+    {
+      "nodeId": "186B-0",
+      "filePath": "/Users/admin/Downloads/T1e Team och roller_ inbjudningar, ej levererad, utgången och skicka igen (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1e.png",
+      "sha256": "a9c9e466d7e65ecc927136773701edb1ced9167c3086e8572dd3234f215567db"
+    },
+    {
+      "nodeId": "1CIR-0",
+      "filePath": "/Users/admin/Downloads/T8b Din profil_ tvåstegsverifiering är valfri, påminnelse före aktivering (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T8b.png",
+      "sha256": "3b36d1ecfa02a56c51356a86ac6626168154c94c3b2f633928a765f95a2542a9"
+    },
+    {
+      "nodeId": "1CME-0",
+      "filePath": "/Users/admin/Downloads/T1f Team och roller_ tvåstegsverifiering syns per person, ingen roll kräver den (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1f.png",
+      "sha256": "47237bf17aea938b7ef603da0ee9a4698ae0196edeffb9110ed821368f9ee796"
+    },
+    {
+      "nodeId": "1E8Y-0",
+      "filePath": "/Users/admin/Downloads/T1g Inställningar_ ändra roll, följder (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1g.png",
+      "sha256": "917acc85d5ce9253ac4c2c2e98ffdf93d6d0be2c9f936fb2480cce8de895db3f"
+    },
+    {
+      "nodeId": "1ECH-0",
+      "filePath": "/Users/admin/Downloads/T2e Inställningar_ API-nyckel kunde inte skapas (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T2e.png",
+      "sha256": "edc6b80de5ab1cf67060dff388398a5decade00d6bc086b4be9297f8229d5726"
+    },
+    {
+      "nodeId": "1HVA-0",
+      "filePath": "/Users/admin/Downloads/T6c Säkerhetskopior_ senaste återställningstest, bara läsning (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T6c.png",
+      "sha256": "840f529d91d7b6a5a96cba60d0d8e2d7b18eeddd2d006cb11fa4cfeabbf5bb01"
+    },
+    {
+      "nodeId": "1L0W-0",
+      "filePath": "/Users/admin/Downloads/T6d Säkerhetskopior_ återställningstest, en kontroll misslyckades (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T6d.png",
+      "sha256": "628d4508e80d7c397455203cba2a2db8c9d17a46d7a1a158ab3f323e8c366024"
+    },
+    {
+      "nodeId": "1PWG-0",
+      "filePath": "/Users/admin/Downloads/T12 Regler_ stående bokföringsmandat med tak, återspelad och nekad händelse (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T12.png",
+      "sha256": "e9817796698c35dfda9cc26e248866098b953d4b36f5c8241f92c03c154f2c50"
+    },
+    {
+      "nodeId": "1PYF-0",
+      "filePath": "/Users/admin/Downloads/T13 Integrationer_ hanterade tjänster, säkerhetskopior ingår alltid (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T13.png",
+      "sha256": "f7111d40ff7b66540e904c147c10010a8ac004eacff9138a3850ec33f341f5ed"
+    },
+    {
+      "nodeId": "20CQ-0",
+      "filePath": "/Users/admin/Downloads/T14 Regler_ mandat föreslaget, aktiveras av en administratör (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T14.png",
+      "sha256": "a3225158aaa2a7f8abdd20eafa84398dc6bd0871994d965f5443c467ffd606ca"
+    },
+    {
+      "nodeId": "20HR-0",
+      "filePath": "/Users/admin/Downloads/T15 Regler_ mandat utgånget, ny händelse nekas (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T15.png",
+      "sha256": "1ac4521313395be96f8e28e42dfcc6bd7c95b12131c221c2b024b360edfdd076"
+    },
+    {
+      "nodeId": "20MS-0",
+      "filePath": "/Users/admin/Downloads/T16 Regler_ mandat återkallat 09_13, tidigare bokning ligger kvar (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T16.png",
+      "sha256": "63b3e64a23ab732f797a50454a4bd112282d8294c045fce1e8cce30cae9b5a2b"
+    },
+    {
+      "nodeId": "20RT-0",
+      "filePath": "/Users/admin/Downloads/T17 Regler_ beslut om nekade händelser (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T17.png",
+      "sha256": "abb184f545adc0ddfa2be3f10ec9137c355d4afb381ef1d8bb1d226529676b1e"
+    },
+    {
+      "nodeId": "PIO-0",
+      "filePath": "/Users/admin/Downloads/T1 Inställningar_ team och roller (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T1.png",
+      "sha256": "bfe202e5b6c471b5cce6f22454be79a946f5fb6d22b7a10189fbeaea166d9d9f"
+    },
+    {
+      "nodeId": "PIP-0",
+      "filePath": "/Users/admin/Downloads/T2 Inställningar_ assistenter och API-nycklar (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T2.png",
+      "sha256": "b8a181bb8e3cf319529f3282a4def0b2eea206c17df640c26fce7f0dd36add69"
+    },
+    {
+      "nodeId": "S1O-0",
+      "filePath": "/Users/admin/Downloads/T3 Inställningar_ företag (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T3.png",
+      "sha256": "d0e19a73fed82cee2945eea466eeadede46f5dbc26c4260dfd51aa2f96ee94f6"
+    },
+    {
+      "nodeId": "S1P-0",
+      "filePath": "/Users/admin/Downloads/T4 Inställningar_ bokföring (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T4.png",
+      "sha256": "7c03b77c57f6b1b7a0d29b24ef4edbc3cf5d48de0772c01de83a89dac0f83ef1"
+    },
+    {
+      "nodeId": "S1Q-0",
+      "filePath": "/Users/admin/Downloads/T5 Inställningar_ fakturering (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T5.png",
+      "sha256": "c1b128a649261f491b74f594234e79e441bff769e00465838b5b2d4e64492832"
+    },
+    {
+      "nodeId": "S1R-0",
+      "filePath": "/Users/admin/Downloads/T6 Inställningar_ säkerhetskopior (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T6.png",
+      "sha256": "3a6b543e90d5c305c413094395741528630c05f3b3d59f76179a616a9873b649"
+    },
+    {
+      "nodeId": "S1S-0",
+      "filePath": "/Users/admin/Downloads/T7 Inställningar_ inkorg (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T7.png",
+      "sha256": "e96b97666d8cc28b0189b900656385d8b55cac8857114419745ac73415b521e4"
+    },
+    {
+      "nodeId": "S1T-0",
+      "filePath": "/Users/admin/Downloads/T8 Inställningar_ din profil (1).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T8.png",
+      "sha256": "6405f531ada0ddde360cebc101e0ca9c5aae784c4fbba0097b9e61139b50427b"
+    },
+    {
+      "nodeId": "SVQ-0",
+      "filePath": "/Users/admin/Downloads/T10 Inställningar_ bank och betalningar (3).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T10.png",
+      "sha256": "49919780d42aaaef1e3a90d709c4f780408bd8d3c513375ae0fe5542c6ddb344"
+    },
+    {
+      "nodeId": "TOR-0",
+      "filePath": "/Users/admin/Downloads/T9 Inställningar_ skatt (3).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T9.png",
+      "sha256": "8da1019a26228d9a802d023511b84787a81d5101b868c00674fbf7e941e866b5"
+    },
+    {
+      "nodeId": "U08-0",
+      "filePath": "/Users/admin/Downloads/T11 Assistentpolicy (2).png",
+      "evidencePath": "verification/paper/lantern-top-bars-20261006/page09/T11.png",
+      "sha256": "75756a08a0828e1dd34c5171268c6acc23004b324ec14131463ffdb677fdf85a"
+    }
+  ],
+  "vatCorrection": {
+    "frame": "T9",
+    "before": "Kvartal",
+    "after": "Månadsvis",
+    "basis": "User steering 6 Oct 2026; no deadline copy on this settings frame"
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "date": "2026-10-06",
+  "fileId": "01M3M9A2DA2G08DSJA5K8ZE68S",
+  "pageId": "p-17-0",
+  "bars": [
+    {
+      "artboard": "PIU-0",
+      "bar": "26A4-0",
+      "content": "Q23-0"
+    },
+    {
+      "artboard": "PIV-0",
+      "bar": "26AB-0",
+      "content": "23DR-0"
+    },
+    {
+      "artboard": "SPK-0",
+      "bar": "26AI-0",
+      "content": "23G4-0"
+    },
+    {
+      "artboard": "SPL-0",
+      "bar": "26AP-0",
+      "content": "23L4-0"
+    },
+    {
+      "artboard": "U0C-0",
+      "bar": "26AW-0",
+      "content": "U26-0"
+    },
+    {
+      "artboard": "U0D-0",
+      "bar": "26B3-0",
+      "content": "23NO-0"
+    },
+    {
+      "artboard": "VI2-0",
+      "bar": "26BF-0",
+      "content": "23IU-0"
+    },
+    {
+      "artboard": "VI3-0",
+      "bar": "26BK-0",
+      "content": "23PJ-0"
+    },
+    {
+      "artboard": "VI4-0",
+      "bar": "26BP-0",
+      "content": "23SD-0"
+    },
+    {
+      "artboard": "VI7-0",
+      "bar": "26BU-0",
+      "content": "W0O-0"
+    },
+    {
+      "artboard": "VI8-0",
+      "bar": "26BZ-0",
+      "content": "23YC-0"
+    },
+    {
+      "artboard": "YTB-0",
+      "bar": "26C4-0",
+      "content": "241J-0"
+    },
+    {
+      "artboard": "YTC-0",
+      "bar": "26CB-0",
+      "content": "YVF-0"
+    },
+    {
+      "artboard": "YTD-0",
+      "bar": "26CI-0",
+      "content": "23ZN-0"
+    },
+    {
+      "artboard": "YTE-0",
+      "bar": "26CN-0",
+      "content": "23TK-0"
+    }
+  ],
+  "computedStyles": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+      },
+      {
+        "type": "text",
+        "text": "{\n  \"styles\": {\n    \"26A4-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26AB-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26AI-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26AP-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26AW-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26B3-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26BF-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26BK-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26BP-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26BU-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26BZ-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26C4-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26CB-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26CI-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"26CN-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"flexShrink\": \"0\",\n      \"height\": \"48px\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"gap\": \"8px\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"VZD-0\": {\n      \"height\": \"48px\",\n      \"flexShrink\": \"0\",\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"VZP-0\": {\n      \"height\": \"48px\",\n      \"flexShrink\": \"0\",\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"paddingInline\": \"var(--spacing-ui-lg)\",\n      \"backgroundColor\": \"var(--color-ui-surface)\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    }\n  }\n}"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "artboard": "PIU-0",
+      "path": "W1.png"
+    },
+    {
+      "artboard": "PIV-0",
+      "path": "W2.png"
+    },
+    {
+      "artboard": "SPK-0",
+      "path": "W3.png"
+    },
+    {
+      "artboard": "SPL-0",
+      "path": "W4.png"
+    },
+    {
+      "artboard": "U0C-0",
+      "path": "W5.png"
+    },
+    {
+      "artboard": "U0D-0",
+      "path": "W6.png"
+    },
+    {
+      "artboard": "VI2-0",
+      "path": "W7.png"
+    },
+    {
+      "artboard": "VI3-0",
+      "path": "W8.png"
+    },
+    {
+      "artboard": "VI4-0",
+      "path": "W9.png"
+    },
+    {
+      "artboard": "VI5-0",
+      "path": "W10.png"
+    },
+    {
+      "artboard": "VI6-0",
+      "path": "W11.png"
+    },
+    {
+      "artboard": "VI7-0",
+      "path": "W12.png"
+    },
+    {
+      "artboard": "VI8-0",
+      "path": "W13.png"
+    },
+    {
+      "artboard": "YTB-0",
+      "path": "W14.png"
+    },
+    {
+      "artboard": "YTC-0",
+      "path": "W15.png"
+    },
+    {
+      "artboard": "YTD-0",
+      "path": "W16.png"
+    },
+    {
+      "artboard": "YTE-0",
+      "path": "W17.png"
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+{
+  "date": "2026-10-06",
+  "page": 11,
+  "scope": "Read-only capture gap closure; retained screenshots",
+  "frames": [
+    {
+      "id": "PIT-0",
+      "name": "V2 Regler: register",
+      "png": "V2.png",
+      "pngSha256": "9fd3b62f7cf6feacd0de48f514fd81c88001f9c204f63e3d6835cc7e3161b594",
+      "capture": "PIT-0.capture.json",
+      "captureSha256": "00aa09e4dfc9554a16d8112ab92e9d45b7f6f223b7dd565c51b4c8f42039e09a",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "SVY-0",
+      "name": "V8 Regel: detalj",
+      "png": "V8.png",
+      "pngSha256": "d1c78c6f79ec6520990890a48cf7e74ccfd3abb6dd3c133edecb99eceae67ccd",
+      "capture": "SVY-0.capture.json",
+      "captureSha256": "ebb77d74d6f51896151693424f5a8e97273aeffeed5b4fe531221bd8bfd85979",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "U0B-0",
+      "name": "V10 Lägg till klient",
+      "png": "V10.png",
+      "pngSha256": "01b44aed1263e1152000970bc619436ee75fa91a10903577f6d31fac04b9e8c3",
+      "capture": "U0B-0.capture.json",
+      "captureSha256": "3fb2094dfd4379f3de059744a085dc19e00ad360fc4e4a133158d40bfc5a992e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "W3C-0",
+      "name": "V13 Byrå åtkomst",
+      "png": "V13.png",
+      "pngSha256": "a116da6d48c85caddee1e5d7588dc9999719e07f63b039af381fef88540339e2",
+      "capture": "W3C-0.capture.json",
+      "captureSha256": "479c2c041feed5fe3d39703a64a9ff7c50bcc50208c1bcb3439991fbed0dfbd5",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "W4K-0",
+      "name": "V14 Byrå policys",
+      "png": "V14.png",
+      "pngSha256": "f99546aa37777231cb844d115a215064fb63d74849da4a808386e5e12a922962",
+      "capture": "W4K-0.capture.json",
+      "captureSha256": "04424b2eb36a668f1325e8718a59ce0387ae8dab04909e1243136acf7ff45caa",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "W5E-0",
+      "name": "V15 Byrå jämförelse",
+      "png": "V15.png",
+      "pngSha256": "0b5ccb3830956b2e1f347f37e919e47f6a1a1fb6420904f6e8db07d289dd1c34",
+      "capture": "W5E-0.capture.json",
+      "captureSha256": "a4ffdc4d7088ad6e247c7fcd55ff77e4aee4466726f4f464c4a7cef425a7983d",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for all node IDs returned by that tree. Read-only capture; retained PNG was reviewed in earlier pass, not rereviewed here.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "W6G-0",
+      "name": "V11 Integrationer",
+      "png": "V11.png",
+      "pngSha256": "713f0ced57762d9ada649c4b8705ebb004fe6e5edb3b3dd5ba9218ce45635efc",
+      "capture": "W6G-0.capture.json",
+      "captureSha256": "0cf36419ea4d8a12e67332de109276c000c3cb51e87a08c8cec8fc4d13f53a82",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "18QO-0",
+      "name": "V2b Regler: regel sparad efter godkännande, omfattning och ångra",
+      "png": "V2b.png",
+      "pngSha256": "f8523c8194643745e1c2ec90263e96e11fbb620ff5e01c82a4c0754f7d8fe624",
+      "capture": "18QO-0.capture.json",
+      "captureSha256": "07d28096e8358287122ca07983e3490bc47fe3cefd5a73b86c3a44548363c821",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "18D8-0",
+      "name": "V21 Integrationer: status lokalt och hos motparten, försämrad och behörighet saknas",
+      "png": "V21.png",
+      "pngSha256": "2f02f38b89edd69c62b076c5c69c8c5641c78d5123df2d976c1a98e301abf997",
+      "capture": "18D8-0.capture.json",
+      "captureSha256": "7bcf792736b31470ec269ca17781bd77fcfe76ad9a5f800ae537561c6635af3e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "18GL-0",
+      "name": "V22 Integration: Swedbank försämrad, hämtning misslyckades och återhämtning",
+      "png": "V22.png",
+      "pngSha256": "4c91fca9227b09ca30ee611b6006316fe624e7348cf357308c73c1f25f949f27",
+      "capture": "18GL-0.capture.json",
+      "captureSha256": "621f844b32ea29e54bb9db705706c2712090c27b04b86b8ac50f9198ba923d2e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1IF2-0",
+      "name": "V27 Integration: betalförmedlare, anslutning och roller",
+      "png": "V27.png",
+      "pngSha256": "24970bafdde0cc5eb814efe238cf1321e7b81d3c40d0a24213b6d6a10c584790",
+      "capture": "1IF2-0.capture.json",
+      "captureSha256": "6b0c8c4196e99566a9660bd1fcc0be5e9378533552f053387b96267cc4d6e868",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "18JY-0",
+      "name": "V23 Integration: anslut Skatteverket, behörighet nekad",
+      "png": "V23.png",
+      "pngSha256": "7f59271a58725f280c2af6dbb9118809f3d351341f4ed9fb1243c253d17ab579",
+      "capture": "18JY-0.capture.json",
+      "captureSha256": "26d2029f1d7d5aa4e8f3836eb1832ef5c2b0cc0d9c20b33cad5d9f992018ec1e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "18NB-0",
+      "name": "V24 Integration: koppla från Swedbank, följder (dialog)",
+      "png": "V24.png",
+      "pngSha256": "4256fa03dc118df4f35efdf501494f2f6d8be05c0b842ecbd0c3db301ac3f71f",
+      "capture": "18NB-0.capture.json",
+      "captureSha256": "27ac59439a874af2806ae59795a75ded7d19433daf7beae9d5eafe80e983dccb",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "W9T-0",
+      "name": "V12 Integration detalj",
+      "png": "V12.png",
+      "pngSha256": "249a0de56ba1c82bc630fd8c5fd4225c91b8cd2d944ed1b69eb52f615ac00a81",
+      "capture": "W9T-0.capture.json",
+      "captureSha256": "6994a6dbecef17da6c4357fb3856418f05d07b71fa11180e11f8774241b864c5",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "WD8-0",
+      "name": "V16 Kunskap",
+      "png": "V16.png",
+      "pngSha256": "8ec3a00e1eeeb5644ed375062e95a07b72235421c539979f78834e45ec3379af",
+      "capture": "WD8-0.capture.json",
+      "captureSha256": "b005d6bcea86a1bdbb8eddc65f3d5c5f7e3de5b13fe756a1253fbbca7020287d",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "WGP-0",
+      "name": "V17 E-postinkorg",
+      "png": "V17.png",
+      "pngSha256": "6402c3b31933fe63b5bdbdb519119f15896f9f31688b630bc5daad5feb49b878",
+      "capture": "WGP-0.capture.json",
+      "captureSha256": "dd34c1bdc337dce673c25ab07fa5682b5a4503e12d5d5cd8b6366936c51197ea",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "10GX-0",
+      "name": "V19 Integrationer: kategori Underlag in",
+      "png": "V19.png",
+      "pngSha256": "69db1b731c0fe94424612c41f0bc2e2c0241a003e0314666ecf756eafc72216a",
+      "capture": "10GX-0.capture.json",
+      "captureSha256": "994596e04a4ba069695f60c50272befb5ec883b7e7aab7e7f1a2f44293188934",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "13FH-0",
+      "name": "V1 Byrå: klientportfölj",
+      "png": "V1.png",
+      "pngSha256": "de7668d18ab17e66c66b8567189b5e088a15b44708b0f7c9549ed68c784fae77",
+      "capture": "13FH-0.capture.json",
+      "captureSha256": "f3cae03c60a7ce6a14e523b4f12533d9bea669f624f6e67a34f0405fde48c732",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1CFT-0",
+      "name": "V18 Byt ansvarig klient",
+      "png": "V18.png",
+      "pngSha256": "5c90ae0c9a06b7505f3377bf39081d7a5e514a0a1a6ad84570a4a643a4b0755a",
+      "capture": "1CFT-0.capture.json",
+      "captureSha256": "63cff0dd6a9f02d201d7e27abe4a4011c5a263bca4ea25cee700db2cea1d1526",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1B0X-0",
+      "name": "V25 Byrå: överlämna klienter, åtkomst saknas hos en (dialog)",
+      "png": "V25.png",
+      "pngSha256": "2503f31bb6e98f2a57ec3f59a22653d2a6a31bc8071c7bdbd9b646a0aa3d02e4",
+      "capture": "1B0X-0.capture.json",
+      "captureSha256": "e13f2f34eea0bc7eb6c95b1a9010acb3afee6665b7ec157fbd0a6d82620dd13e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1B36-0",
+      "name": "V26 Byrå: överlämnat 1 av 2, resultat per klient",
+      "png": "V26.png",
+      "pngSha256": "e061a3d706f50591b6cf9fa608e5e2f2065a5ad83977899218cbd3c7d9c28961",
+      "capture": "1B36-0.capture.json",
+      "captureSha256": "255f906a95bb2243515e0ee4d7b63740f79dbef182428a3ff2c0e875d89220b0",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "13HS-0",
+      "name": "V9 Byrå: klientdetalj med åtkomst, hinder och datum",
+      "png": "V9.png",
+      "pngSha256": "ad074d7e4194f032f7626add0e84745e7a4df55e4543aa04c109f649d419d319",
+      "capture": "13HS-0.capture.json",
+      "captureSha256": "6ce36723a4189122bf3107ea871f1231e02a1af2add2b66069d2636156c7bf58",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "13KJ-0",
+      "name": "V20 Byrå: klientens bok öppnad med byråkontext",
+      "png": "V20.png",
+      "pngSha256": "ef3b72024e1ac39e2655bc7f4091b9d9f8a84f3c141468fcaaa73ac07d6c42b4",
+      "capture": "13KJ-0.capture.json",
+      "captureSha256": "b2b0ad84ae9983fbdd07b65d948d81f5568d2afadcff0cf391f6ff7a5b98851a",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    }
+  ]
+}

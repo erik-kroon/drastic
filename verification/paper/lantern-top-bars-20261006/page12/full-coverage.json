@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-06",
+  "page": 12,
+  "scope": "Read-only capture gap closure; retained screenshots",
+  "frames": [
+    {
+      "id": "PIU-0",
+      "name": "W1 Hjälp",
+      "png": "W1.png",
+      "pngSha256": "77882b9beb1d2fa9ef251dded1b812df72c088b10eea18daebe3557070640136",
+      "capture": "PIU-0.capture.json",
+      "captureSha256": "805a35abaccd0fb2b7d594d351e3a83975a232086fac9bc40839d1a75e8bd56c",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "PIV-0",
+      "name": "W2 API-referens",
+      "png": "W2.png",
+      "pngSha256": "467904b302c8665059def11105c05c198bacade6ced6eda8a2e1d8611fc9a527",
+      "capture": "PIV-0.capture.json",
+      "captureSha256": "5fb84bc935afc7265ab3e6506b767498cac0fc03ebdfbf72b52903e136812536",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "SPK-0",
+      "name": "W3 Webhooks",
+      "png": "W3.png",
+      "pngSha256": "8191317a0af6b4d87a259c6b806f37117d1a9d07eb0f7dfba21f61e1514b8072",
+      "capture": "SPK-0.capture.json",
+      "captureSha256": "33fac05348aa7965b61557ac1b4e0fd0bbf4eb535845ba2bc9cbf68d67d81bd2",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "SPL-0",
+      "name": "W4 Felkoder",
+      "png": "W4.png",
+      "pngSha256": "f5642e07eaae66e46320da3746651f545daf0de08cfc5ff663c119b72412085e",
+      "capture": "SPL-0.capture.json",
+      "captureSha256": "f46273c8c72b0dbed464f3a6512873686d1bd57e88ed7ca1bfca7a82c624d84e",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "U0C-0",
+      "name": "W5 Hjälp: första veckan",
+      "png": "W5.png",
+      "pngSha256": "5e99cff468c5731d773a637bcccf5587ce0e4b2ab6086a421946326ca492e1f5",
+      "capture": "U0C-0.capture.json",
+      "captureSha256": "bedd70940facbf2d167e108dd343068032d6ecc59df69f0ed3431067b9286e18",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "U0D-0",
+      "name": "W6 API: autentisering",
+      "png": "W6.png",
+      "pngSha256": "b3b8cf3529ece7a15ed3f95b79750728d9296186fc8e701f8a97533504f94165",
+      "capture": "U0D-0.capture.json",
+      "captureSha256": "5d5bac96c380bb2c968af219354cec07af636e9770c2d4cb38fe064b08adef5c",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI2-0",
+      "name": "W7 Fel och återställning",
+      "png": "W7.png",
+      "pngSha256": "2600f6468048605250179578c0ad4dc457399acab2950cc76efa52ae0075ce62",
+      "capture": "VI2-0.capture.json",
+      "captureSha256": "1de2ebd77b9ad9496f27b3da6fc494c41f01d7737e25db5940c60dc0648f788d",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI3-0",
+      "name": "W8 Händelser",
+      "png": "W8.png",
+      "pngSha256": "ceb6eac6c0692a5bc6ad1416e4992b0aaccf0ae5318d0c9af1ca0f9d688f56dc",
+      "capture": "VI3-0.capture.json",
+      "captureSha256": "8b5a872cd6ead5520d171d28de9a1b974e791cef4ff96cb7d898a30b61e8e7c6",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI4-0",
+      "name": "W9 Ändringslogg",
+      "png": "W9.png",
+      "pngSha256": "daff8d0262efe2de8b202c3ebd41a1c091cbd232341e9ef200ea6e9bd41510ec",
+      "capture": "VI4-0.capture.json",
+      "captureSha256": "851c333a6c79466a344ecc651abb1d271bfca521c348cb5e1e4d6401d2a07630",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI5-0",
+      "name": "W10 Integritetspolicy",
+      "png": "W10.png",
+      "pngSha256": "33bffa79edd0c93f635a5c6974306e4ee8e862c6dccb04ba284861cae30aaad9",
+      "capture": "VI5-0.capture.json",
+      "captureSha256": "05a1d606f0a414aef92b33ec8d4c0e2ad732ee52c6d1e9a4e8cc27a8e0d215da",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI6-0",
+      "name": "W11 Personuppgiftsbiträdesavtal",
+      "png": "W11.png",
+      "pngSha256": "661201fa25364d2c589bdae1e7bffc4ca934962d15e0b8f57e865d11b67fdef7",
+      "capture": "VI6-0.capture.json",
+      "captureSha256": "3303412e2b61ae3736c6298d623e79fc96ea9a394a299e64fbc7707c08878e6f",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI7-0",
+      "name": "W12 Utvecklardokumentation",
+      "png": "W12.png",
+      "pngSha256": "f74a5941b87daa38df78caf69f1126a69c12d20a0d4d3fe6fd1c50708b782da0",
+      "capture": "VI7-0.capture.json",
+      "captureSha256": "fbe7cf708bf7135276937b1a8982c451a74e2a40b3f2545aef0a3d211552d1f7",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "VI8-0",
+      "name": "W13 Anslut en assistent",
+      "png": "W13.png",
+      "pngSha256": "40cebebd399a8644b062965b59c3c2f92e40ee74684f930933cd9730afd0b737",
+      "capture": "VI8-0.capture.json",
+      "captureSha256": "d8590ddfb64070446e7037e91dcc61f012f725d0ae9d6cb80da1dc9eef2e136a",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "YTB-0",
+      "name": "W14 Referens: skapa fakturautkast (mall)",
+      "png": "W14.png",
+      "pngSha256": "f7836049bff7827bf7848ec398f82e7d7566e6bebc9420ff81fd852f0a32b57f",
+      "capture": "YTB-0.capture.json",
+      "captureSha256": "0e9ef20749af108d16da2c9119424d07bfa2b21cedaf1be7f282a5b79da0b100",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "YTC-0",
+      "name": "W15 Recept: skicka underlag för granskning",
+      "png": "W15.png",
+      "pngSha256": "01efc6dcf2172205492823d6d07c1cc640d235ab61e5728e8148a39eb04f72f7",
+      "capture": "YTC-0.capture.json",
+      "captureSha256": "6bd8e611506f97337eaf4dc0b9b303a40d9c549ba33a19ce593ec6061af627f1",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "YTD-0",
+      "name": "W16 Connect an assistant (English)",
+      "png": "W16.png",
+      "pngSha256": "4606573fcc016f7010396727b9b53ef504e7415bd09b8b5a5abcccc3b05c6003",
+      "capture": "YTD-0.capture.json",
+      "captureSha256": "55168b9b54d95d464f1e175af1fed437ff5bb37c9b3d42fd35eb1b237dae4424",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "YTE-0",
+      "name": "W17 Versioner",
+      "png": "W17.png",
+      "pngSha256": "92f08697b677e0eeb402071259365c6b3211a5934c086f9972b3fcb46f82429b",
+      "capture": "YTE-0.capture.json",
+      "captureSha256": "bd756080ffb6bc6988e8d21d095b7022f3caadb8136e6b2c21590b9f43045a8f",
+      "styleScope": "Full-frame JSX; depth-7 tree; computed styles for frame nodes through three nesting levels, including direct bar/body containers. Read-only capture; no new screenshot review.",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    }
+  ]
+}

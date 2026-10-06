@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"summary\": \"Frame \\\"Toppfält: områdesläge och detaljläge\\\" (24TN-0) 1440×?\\n  Frame \\\"Toppfält områdesläge\\\" (24TZ-0) ?×48\\n    Text \\\"Försäljning\\\" (24U0-0) ?×? \\\"Försäljning\\\"\\n    Frame \\\"Flikar\\\" (24U1-0) ?×?\\n      Text \\\"Fakturor\\\" (24U2-0) ?×? \\\"Fakturor\\\"\\n      Frame \\\"Aktiv flik\\\" (24U3-0) ?×?\\n        ... 1 children\\n      Text \\\"Kunder\\\" (24U5-0) ?×? \\\"Kunder\\\"\\n    Rectangle \\\"Rectangle\\\" (24U6-0) ?×?\\n    Frame \\\"Frame\\\" (24U7-0) ?×28\\n      Text \\\"Importera\\\" (24U8-0) ?×? \\\"Importera\\\"\\n    Frame \\\"Frame\\\" (24U9-0) ?×28\\n      Text \\\"Ny faktura\\\" (24UA-0) ?×? \\\"Ny faktura\\\"\\n  Frame \\\"Frame\\\" (24UB-0) ?×?\\n    Text \\\"Områdesläge: området…\\\" (24UC-0) ?×? \\\"Områdesläge: områdets rubrik, flikar och högst en primär och\\\"\\n  Frame \\\"Toppfält detaljläge\\\" (24UD-0) ?×48\\n    Text \\\"Försäljning\\\" (24UE-0) ?×? \\\"Försäljning\\\"\\n    Text \\\"/\\\" (24UF-0) ?×? \\\"/\\\"\\n    Text \\\"Fakturor\\\" (24UG-0) ?×? \\\"Fakturor\\\"\\n    Text \\\"/\\\" (24UH-0) ?×? \\\"/\\\"\\n    Text \\\"F-2026-0038\\\" (24UI-0) ?×? \\\"F-2026-0038\\\"\\n    Text \\\"Förfallen 19 dagar\\\" (24UJ-0) ?×? \\\"Förfallen 19 dagar\\\"\\n    Rectangle \\\"Rectangle\\\" (24UK-0) ?×?\\n    Frame \\\"Frame\\\" (24UL-0) ?×28\\n      Text \\\"Skicka påminnelse\\\" (24UM-0) ?×? \\\"Skicka påminnelse\\\"\\n    Frame \\\"Frame\\\" (24UN-0) ?×28\\n      Text \\\"Registrera betalning\\\" (24UO-0) ?×? \\\"Registrera betalning\\\"\\n  Frame \\\"Frame\\\" (24UP-0) ?×?\\n    Text \\\"Detaljläge: föräldra…\\\" (24UQ-0) ?×? \\\"Detaljläge: föräldrar som länkar med snedstreck, aktuell sid\\\"\",\n  \"nodeId\": \"24TN-0\",\n  \"depth\": 3\n}"
+    }
+  ]
+}

@@ -1,0 +1,1322 @@
+{
+  "nodeId": "1ZU3-0",
+  "date": "2026-10-06",
+  "scope": "Copy sweep only; body exceptions remain",
+  "tree": {
+    "summary": "Frame \"R62 ränteuppgift: källgranskning och rättad kontrolluppgift\" (1ZU3-0) 1440×900\n  Frame \"Sidebar (komponent)\" (1ZU6-0) 224×900\n    Frame \"Frame\" (1ZVX-0) ?×32\n      Frame \"Frame\" (1ZW0-0) 20×20\n        Text \"FK\" (1ZW1-0) ?×? \"FK\"\n      Text \"Fjällby Konsult AB\" (1ZVZ-0) ?×? \"Fjällby Konsult AB\"\n      Text \"⌄\" (1ZVY-0) ?×? \"⌄\"\n    Frame \"Frame\" (1ZVU-0) ?×28\n      Text \"Sök\" (1ZVW-0) ?×? \"Sök\"\n      Text \"Ctrl K\" (1ZVV-0) ?×? \"Ctrl K\"\n    Frame \"Frame\" (1ZVO-0) ?×28\n      SVG \"SVG\" (1ZVR-0) ?×?\n        SVGVisualElement \"Rect\" (1ZVT-0) ?×?\n        SVGVisualElement \"Path\" (1ZVS-0) ?×?\n      Text \"Att göra\" (1ZVQ-0) ?×? \"Att göra\"\n      Text \"7\" (1ZVP-0) ?×? \"7\"\n    Frame \"Frame\" (1ZVK-0) ?×28\n      SVG \"SVG\" (1ZVM-0) ?×?\n        SVGVisualElement \"Path\" (1ZVN-0) ?×?\n      Text \"Översikt\" (1ZVL-0) ?×? \"Översikt\"\n    Frame \"Frame\" (1ZVI-0) ?×?\n      Text \"ARBETE\" (1ZVJ-0) ?×? \"ARBETE\"\n    Frame \"Frame\" (1ZVE-0) ?×28\n      SVG \"SVG\" (1ZVG-0) ?×?\n        SVGVisualElement \"Path\" (1ZVH-0) ?×?\n      Text \"Bank\" (1ZVF-0) ?×? \"Bank\"\n    Frame \"Frame\" (1ZVA-0) ?×28\n      SVG \"SVG\" (1ZVC-0) ?×?\n        SVGVisualElement \"Path\" (1ZVD-0) ?×?\n      Text \"Försäljning\" (1ZVB-0) ?×? \"Försäljning\"\n    Frame \"Frame\" (1ZV6-0) ?×28\n      SVG \"SVG\" (1ZV8-0) ?×?\n        SVGVisualElement \"Path\" (1ZV9-0) ?×?\n      Text \"Inköp\" (1ZV7-0) ?×? \"Inköp\"\n    Frame \"Frame\" (1ZV2-0) ?×28\n      SVG \"SVG\" (1ZV4-0) ?×?\n        SVGVisualElement \"Path\" (1ZV5-0) ?×?\n      Text \"Dokument\" (1ZV3-0) ?×? \"Dokument\"\n    Frame \"Frame\" (1ZV0-0) ?×?\n      Text \"REDOVISNING\" (1ZV1-0) ?×? \"REDOVISNING\"\n    Frame \"Frame\" (1ZUW-0) ?×28\n      SVG \"SVG\" (1ZUY-0) ?×?\n        SVGVisualElement \"Path\" (1ZUZ-0) ?×?\n      Text \"Bokföring\" (1ZUX-0) ?×? \"Bokföring\"\n    Frame \"Frame\" (1ZUQ-0) ?×28\n      SVG \"SVG\" (1ZUS-0) ?×?\n        SVGVisualElement \"Path\" (1ZUV-0) ?×?\n        SVGVisualElement \"Circle\" (1ZUU-0) ?×?\n        SVGVisualElement \"Circle\" (1ZUT-0) ?×?\n      Text \"Skatt och löner\" (1ZUR-0) ?×? \"Skatt och löner\"\n    Frame \"Frame\" (1ZUM-0) ?×28\n      SVG \"SVG\" (1ZUO-0) ?×?\n        SVGVisualElement \"Path\" (1ZUP-0) ?×?\n      Text \"Rapporter\" (1ZUN-0) ?×? \"Rapporter\"\n    Frame \"Frame\" (1ZUH-0) ?×28\n      SVG \"SVG\" (1ZUJ-0) ?×?\n        SVGVisualElement \"Rect\" (1ZUL-0) ?×?\n        SVGVisualElement \"Path\" (1ZUK-0) ?×?\n      Text \"Bokslut\" (1ZUI-0) ?×? \"Bokslut\"\n    Rectangle \"Rectangle\" (1ZUG-0) ?×?\n    Frame \"Frame\" (1ZUB-0) ?×28\n      SVG \"SVG\" (1ZUD-0) ?×?\n        SVGVisualElement \"Circle\" (1ZUF-0) ?×?\n        SVGVisualElement \"Path\" (1ZUE-0) ?×?\n      Text \"Inställningar\" (1ZUC-0) ?×? \"Inställningar\"\n    Frame \"Frame\" (1ZU7-0) ?×32\n      Frame \"Frame\" (1ZU9-0) 20×20\n        Text \"ES\" (1ZUA-0) ?×? \"ES\"\n      Text \"Elin Sund\" (1ZU8-0) ?×? \"Elin Sund\"\n  Frame \"Huvud\" (1ZU5-0) ?×?\n    Frame \"Överrad\" (2051-0) ?×48\n      Text \"Skatt och löner\" (2052-0) ?×? \"Skatt och löner\"\n      Text \"/\" (2053-0) ?×? \"/\"\n      Text \"Kontrolluppgifter\" (2054-0) ?×? \"Kontrolluppgifter\"\n      Text \"/\" (2055-0) ?×? \"/\"\n      Text \"Ränta 2025\" (2056-0) ?×? \"Ränta 2025\"\n      Text \"/\" (2057-0) ?×? \"/\"\n      Text \"Granska ränteuppgift\" (2058-0) ?×? \"Granska ränteuppgift\"\n    Frame \"Innehåll\" (2059-0) ?×?\n      Frame \"Huvudkolumn\" (205A-0) ?×?\n        Frame \"Frame\" (205B-0) ?×?\n          Text \"Maria Holms ränteupp…\" (205C-0) ?×? \"Maria Holms ränteuppgift avviker från bokförd ränta\"\n          Frame \"Frame\" (205D-0) ?×?\n            Text \"Granskas\" (205E-0) ?×? \"Granskas\"\n        Text \"Långivaren skickade …\" (205H-0) 752×? \"Långivaren skickade en rättad uppgift den 12 september för l\"\n        Frame \"Frame\" (205I-0) ?×?\n          Frame \"Frame\" (205J-0) ?×?\n            Text \"Långivarens uppgift\" (205K-0) ?×? \"Långivarens uppgift\"\n            Text \"8 640,00\" (205L-0) ?×? \"8 640,00\"\n          Frame \"Frame\" (205M-0) ?×?\n            Text \"Bokförd ränta\" (205N-0) ?×? \"Bokförd ränta\"\n            Text \"8 460,00\" (205O-0) ?×? \"8 460,00\"\n          Frame \"Frame\" (205P-0) ?×?\n            Text \"Skillnad\" (205Q-0) ?×? \"Skillnad\"\n            Text \"180,00\" (205R-0) ?×? \"180,00\"\n        Text \"KÄLLOR FÖR RÄNTA 202…\" (205S-0) ?×? \"KÄLLOR FÖR RÄNTA 2025\"\n        Frame \"Frame\" (205T-0) 752×28\n          Rectangle \"Rectangle\" (205U-0) 22×?\n          Text \"Källa\" (205V-0) ?×? \"Källa\"\n          Text \"Belopp\" (205W-0) 110×? \"Belopp\"\n          Frame \"Frame\" (205X-0) 190×?\n            Text \"Läge\" (205Y-0) ?×? \"Läge\"\n        Frame \"Frame\" (205Z-0) 752×34\n          Frame \"Frame\" (2060-0) 22×?\n            Rectangle \"Rectangle\" (2061-0) 12×12\n          Text \"Uppgift från långiva…\" (2062-0) ?×? \"Uppgift från långivaren, 12 sep\"\n          Text \"8 640,00\" (2063-0) 110×? \"8 640,00\"\n          Frame \"Frame\" (2064-0) 190×?\n            Text \"Påstående, ej styrkt\" (2065-0) ?×? \"Påstående, ej styrkt\"\n        Frame \"Frame\" (2066-0) 752×34\n          Frame \"Frame\" (2067-0) 22×?\n            Rectangle \"Rectangle\" (2068-0) 12×12\n          Text \"Betalda räntor enlig…\" (2069-0) ?×? \"Betalda räntor enligt bankhändelser, 4 betalningar\"\n          Text \"8 640,00\" (206A-0) 110×? \"8 640,00\"\n          Frame \"Frame\" (206B-0) 190×?\n            Text \"Stämmer med långivar…\" (206C-0) ?×? \"Stämmer med långivaren\"\n        Frame \"Frame\" (206D-0) 752×34\n          Frame \"Frame\" (206E-0) 22×?\n            Rectangle \"Rectangle\" (206F-0) 12×12\n          Text \"Bokförd ränta i huvu…\" (206G-0) ?×? \"Bokförd ränta i huvudboken\"\n          Text \"8 460,00\" (206H-0) 110×? \"8 460,00\"\n          Frame \"Frame\" (206I-0) 190×?\n            Text \"180,00 lägre\" (206J-0) ?×? \"180,00 lägre\"\n        Text \"KONTROLLUPPGIFT KU20\" (206K-0) ?×? \"KONTROLLUPPGIFT KU20\"\n        Frame \"Frame\" (206L-0) 752×28\n          Frame \"Frame\" (206M-0) ?×?\n            Text \"Version\" (206N-0) ?×? \"Version\"\n          Text \"Belopp\" (206O-0) 110×? \"Belopp\"\n          Frame \"Frame\" (206P-0) 190×?\n            Text \"Läge\" (206Q-0) ?×? \"Läge\"\n        Frame \"Frame\" (206R-0) 752×34\n          Frame \"Frame\" (206S-0) ?×?\n            Text \"Version 1, lämnad 27…\" (206T-0) ?×? \"Version 1, lämnad 27 jan 2026\"\n          Text \"8 460,00\" (206U-0) 110×? \"8 460,00\"\n          Frame \"Frame\" (206V-0) 190×?\n            Text \"Gäller, ligger kvar\" (206W-0) ?×? \"Gäller, ligger kvar\"\n        Frame \"Frame\" (206X-0) 752×34\n          Frame \"Frame\" (206Y-0) ?×?\n            Text \"Version 2, rättelse …\" (206Z-0) ?×? \"Version 2, rättelse som ny rad\"\n          Text \"8 640,00\" (2070-0) 110×? \"8 640,00\"\n          Frame \"Frame\" (2071-0) 190×?\n            Text \"Förslag, ej lämnad\" (2072-0) ?×? \"Förslag, ej lämnad\"\n      Frame \"Sidopanel\" (2073-0) 400×?\n        Text \"Lån 2893, Maria Holm\" (2074-0) ?×? \"Lån 2893, Maria Holm\"\n        Text \"Vilket underlag gäll…\" (2075-0) ?×? \"Vilket underlag gäller\"\n        Frame \"Frame\" (2076-0) ?×?\n          Rectangle \"Rectangle\" (2077-0) 14×14\n          Frame \"Frame\" (2078-0) ?×?\n            Text \"Betalda räntor i ban…\" (2079-0) ?×? \"Betalda räntor i banken\"\n            Text \"8 640,00 styrks av f…\" (207A-0) ?×? \"8 640,00 styrks av fyra bankhändelser och stämmer med långiv\"\n        Frame \"Frame\" (207B-0) ?×?\n          Rectangle \"Rectangle\" (207C-0) 14×14\n          Frame \"Frame\" (207D-0) ?×?\n            Text \"Bokförd ränta\" (207E-0) ?×? \"Bokförd ränta\"\n            Text \"8 460,00 behålls och…\" (207F-0) ?×? \"8 460,00 behålls och ingen rättelse föreslås.\"\n        Text \"DÄRFÖR\" (207G-0) ?×? \"DÄRFÖR\"\n        Text \"Banken visar vad som…\" (207H-0) ?×? \"Banken visar vad som faktiskt betalats. Samma belopp hos två\"\n        Text \"VAD SOM INTE SKER\" (207I-0) ?×? \"VAD SOM INTE SKER\"\n        Text \"Underlaget godkänns …\" (207J-0) ?×? \"Underlaget godkänns men ingen kontrolluppgift lämnas och ing\"\n        Rectangle \"Rectangle\" (207K-0) ?×?\n        Frame \"Frame\" (207L-0) ?×32\n          Text \"Godkänn underlag\" (207M-0) ?×? \"Godkänn underlag\"\n        Frame \"Frame\" (207N-0) ?×28\n          Text \"Visa uppgiften från …\" (207O-0) ?×? \"Visa uppgiften från långivaren\"\n          Text \"12 sep\" (207P-0) ?×? \"12 sep\"\n  Frame \"Nav active\" (1ZU4-0) 208×28",
+    "nodeId": "1ZU3-0",
+    "depth": 10
+  },
+  "jsx": "(\n    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', fontSize: '12px', fontSynthesis: 'none', height: '900px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', position: 'relative', WebkitFontSmoothing: 'antialiased', width: '1440px' }}>\n      <div style={{ backgroundColor: '#F7F8FA', borderRightColor: '#E6EAF0', borderRightStyle: 'solid', borderRightWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '1px', height: '900px', paddingBlock: '10px', paddingInline: '8px', width: '224px' }}>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '32px', marginBottom: '6px', paddingInline: '8px' }}>\n          <div style={{ alignItems: 'center', backgroundColor: '#0F172A', borderRadius: '5px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '20px', justifyContent: 'center', width: '20px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '10px', fontWeight: 600, lineHeight: '12px' }}>\n              FK\n            </div>\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>\n            Fjällby Konsult AB\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: 'system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>\n            ⌄\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', marginBottom: '8px', paddingInline: '8px' }}>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Sök\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '11px', lineHeight: '14px' }}>\n            Ctrl K\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <rect x=\"2\" y=\"2\" width=\"12\" height=\"12\" rx=\"3\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n            <path d=\"M5 8l2 2 4-4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Att göra\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>\n            7\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 13V8M8 13V3M13 13V6\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Översikt\n          </div>\n        </div>\n        <div style={{ boxSizing: 'border-box', paddingBottom: '4px', paddingInline: '8px', paddingTop: '12px' }}>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, lineHeight: '14px' }}>\n            ARBETE\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M2 6l6-3 6 3M3 7v5M6.5 7v5M9.5 7v5M13 7v5M2 13h12\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Bank\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 2h6l3 3v9H4zM10 2v3h3\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Försäljning\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 5h10l-1 9H4zM6 5a2 2 0 014 0\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Inköp\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M2 4h4l1.5 1.5H14V13H2z\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Dokument\n          </div>\n        </div>\n        <div style={{ boxSizing: 'border-box', paddingBottom: '4px', paddingInline: '8px', paddingTop: '12px' }}>\n          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, lineHeight: '14px' }}>\n            REDOVISNING\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 3h8a2 2 0 012 2v8H5a2 2 0 01-2-2zM3 11a2 2 0 012-2h8\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Bokföring\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 12L12 4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <circle cx=\"5\" cy=\"5\" r=\"1.5\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <circle cx=\"11\" cy=\"11\" r=\"1.5\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Skatt och löner\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 2h8v12H4zM6 6h4M6 9h4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Rapporter\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <rect x=\"2\" y=\"3\" width=\"12\" height=\"11\" rx=\"2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n            <path d=\"M2 6.5h12M5 2v2M11 2v2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Bokslut\n          </div>\n        </div>\n        <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />\n        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <circle cx=\"8\" cy=\"8\" r=\"2.2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <path d=\"M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n          </svg>\n          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Inställningar\n          </div>\n        </div>\n        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '32px', paddingInline: '8px' }}>\n          <div style={{ alignItems: 'center', backgroundColor: '#E3E8F2', borderRadius: '10px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '20px', justifyContent: 'center', width: '20px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#2448A5', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '9px', fontWeight: 600, lineHeight: '12px' }}>\n              ES\n            </div>\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            Elin Sund\n          </div>\n        </div>\n      </div>\n      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexGrow: '1', minWidth: '0px' }}>\n        <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '48px', paddingInline: '32px' }}>\n          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            Skatt och löner\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            /\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            Kontrolluppgifter\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            /\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            Ränta 2025\n          </div>\n          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n            /\n          </div>\n          <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n            Granska ränteuppgift\n          </div>\n        </div>\n        <div style={{ boxSizing: 'border-box', display: 'flex', flexGrow: '1', minHeight: '0px' }}>\n          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexGrow: '1', minWidth: '0px', paddingInline: '24px', paddingTop: '8px' }}>\n            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '10px', marginTop: '12px' }}>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '15px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '22px' }}>\n                Maria Holms ränteuppgift avviker från bokförd ränta\n              </div>\n              <div style={{ backgroundColor: '#FFF7E6', borderColor: '#F0D9A8', borderRadius: '10px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', paddingBlock: '2px', paddingInline: '8px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                  Granskas\n                </div>\n              </div>\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px', marginTop: '4px', width: '752px' }}>\n              Långivaren skickade en rättad uppgift den 12 september för lån 2893. En uppgift från långivaren är ett påstående och blir underlag först när den stöds av betalda räntor i banken.\n            </div>\n            <div style={{ boxSizing: 'border-box', display: 'flex', gap: '44px', marginTop: '16px' }}>\n              <div style={{ boxSizing: 'border-box' }}>\n                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                  Långivarens uppgift\n                </div>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '20px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '26px' }}>\n                  8 640,00\n                </div>\n              </div>\n              <div style={{ boxSizing: 'border-box' }}>\n                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                  Bokförd ränta\n                </div>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '20px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '26px' }}>\n                  8 460,00\n                </div>\n              </div>\n              <div style={{ boxSizing: 'border-box' }}>\n                <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                  Skillnad\n                </div>\n                <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '20px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '26px' }}>\n                  180,00\n                </div>\n              </div>\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '22px' }}>\n              KÄLLOR FÖR RÄNTA 2025\n            </div>\n            <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }} />\n              <div style={{ boxSizing: 'border-box', color: '#475569', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>\n                Källa\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '110px' }}>\n                Belopp\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right' }}>\n                  Läge\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>\n                <div style={{ borderColor: '#8A5A00', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '12px', width: '12px' }} />\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n                Uppgift från långivaren, 12 sep\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '110px' }}>\n                8 640,00\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>\n                  Påstående, ej styrkt\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', backgroundColor: '#ECF4FE', borderColor: '#2448A5', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>\n                <div style={{ backgroundColor: '#1E6256', borderRadius: '6px', boxSizing: 'border-box', height: '12px', width: '12px' }} />\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '18px' }}>\n                Betalda räntor enligt bankhändelser, 4 betalningar\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '110px' }}>\n                8 640,00\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#1E6256', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>\n                  Stämmer med långivaren\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>\n                <div style={{ borderColor: '#8A5A00', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '12px', width: '12px' }} />\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n                Bokförd ränta i huvudboken\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '110px' }}>\n                8 460,00\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>\n                  180,00 lägre\n                </div>\n              </div>\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '22px' }}>\n              KONTROLLUPPGIFT KU20\n            </div>\n            <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>\n                  Version\n                </div>\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '110px' }}>\n                Belopp\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right' }}>\n                  Läge\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '18px' }}>\n                  Version 1, lämnad 27 jan 2026\n                </div>\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '110px' }}>\n                8 460,00\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>\n                  Gäller, ligger kvar\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>\n              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '18px' }}>\n                  Version 2, rättelse som ny rad\n                </div>\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '110px' }}>\n                8 640,00\n              </div>\n              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '190px' }}>\n                <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'flex', flexWrap: 'wrap', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>\n                  Förslag, ej lämnad\n                </div>\n              </div>\n            </div>\n          </div>\n          <div style={{ borderLeftColor: '#E6EAF0', borderLeftStyle: 'solid', borderLeftWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', paddingBottom: '20px', paddingInline: '16px', paddingTop: '16px', width: '400px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n              Lån 2893, Maria Holm\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '15px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '22px', marginTop: '2px' }}>\n              Vilket underlag gäller\n            </div>\n            <div style={{ alignItems: 'start', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', gap: '10px', marginTop: '14px', paddingBlock: '10px' }}>\n              <div style={{ borderColor: '#2448A5', borderRadius: '7px', borderStyle: 'solid', borderWidth: '4px', boxSizing: 'border-box', flexShrink: '0', height: '14px', marginTop: '2px', width: '14px' }} />\n              <div style={{ boxSizing: 'border-box' }}>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '18px' }}>\n                  Betalda räntor i banken\n                </div>\n                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n                  8 640,00 styrks av fyra bankhändelser och stämmer med långivaren.\n                </div>\n              </div>\n            </div>\n            <div style={{ alignItems: 'start', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#EEF1F5', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', gap: '10px', paddingBlock: '10px' }}>\n              <div style={{ borderColor: '#B3BBC7', borderRadius: '7px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', flexShrink: '0', height: '14px', marginTop: '2px', width: '14px' }} />\n              <div style={{ boxSizing: 'border-box' }}>\n                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '18px' }}>\n                  Bokförd ränta\n                </div>\n                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n                  8 460,00 behålls och ingen rättelse föreslås.\n                </div>\n              </div>\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '20px' }}>\n              DÄRFÖR\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n              Banken visar vad som faktiskt betalats. Samma belopp hos två källor räcker som underlag, men en källa som bara påstår något räcker inte.\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '20px' }}>\n              VAD SOM INTE SKER\n            </div>\n            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>\n              Underlaget godkänns men ingen kontrolluppgift lämnas och inget bokförs. Rättelsen av räntan på 180,00 och den rättade kontrolluppgiften hanteras som egna steg. Version 1 skrivs aldrig över.\n            </div>\n            <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />\n            <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', justifyContent: 'center' }}>\n              <div style={{ boxSizing: 'border-box', color: '#FFFFFF', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>\n                Godkänn underlag\n              </div>\n            </div>\n            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', justifyContent: 'space-between', marginTop: '10px' }}>\n              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                Visa uppgiften från långivaren\n              </div>\n              <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>\n                12 sep\n              </div>\n            </div>\n          </div>\n        </div>\n      </div>\n      <div style={{ backgroundColor: '#0F172A12', borderRadius: '6px', boxSizing: 'border-box', height: '28px', left: '8px', position: 'absolute', top: '351px', width: '208px' }} />\n    </div>\n  )",
+  "computedStyles": {
+    "styles": {
+      "1ZU3-0": {
+        "display": "flex",
+        "overflow": "clip",
+        "width": "1440px",
+        "height": "900px",
+        "left": 6080,
+        "top": "5024px",
+        "position": "absolute",
+        "backgroundColor": "#FFFFFF"
+      },
+      "1ZU6-0": {
+        "width": "224px",
+        "height": "900px",
+        "flexShrink": "0",
+        "display": "flex",
+        "flexDirection": "column",
+        "paddingBlock": "10px",
+        "paddingInline": "8px",
+        "gap": "1px",
+        "backgroundColor": "#F7F8FA",
+        "borderRightWidth": "1px",
+        "borderRightStyle": "solid",
+        "borderRightColor": "#E6EAF0"
+      },
+      "1ZVX-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "32px",
+        "marginBottom": "6px",
+        "paddingInline": "8px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZW0-0": {
+        "width": "20px",
+        "height": "20px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "borderRadius": "5px",
+        "flexShrink": "0",
+        "backgroundColor": "#0F172A"
+      },
+      "1ZW1-0": {
+        "display": "flex",
+        "fontSize": "10px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "lineHeight": "12px",
+        "color": "#FFFFFF"
+      },
+      "1ZVZ-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "lineHeight": "16px",
+        "color": "#0F172A"
+      },
+      "1ZVY-0": {
+        "fontSize": "12px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#5C6C80"
+      },
+      "1ZVU-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "marginBottom": "8px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "flexShrink": "0",
+        "backgroundColor": "#FFFFFF",
+        "borderWidth": "1px",
+        "borderStyle": "solid",
+        "borderColor": "#E6EAF0"
+      },
+      "1ZVW-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#5C6C80"
+      },
+      "1ZVV-0": {
+        "fontSize": "11px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "14px",
+        "color": "#5C6C80"
+      },
+      "1ZVO-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZVR-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZVT-0": {},
+      "1ZVS-0": {},
+      "1ZVQ-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZVP-0": {
+        "fontSize": "12px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#5C6C80"
+      },
+      "1ZVK-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZVM-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZVN-0": {},
+      "1ZVL-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZVI-0": {
+        "paddingTop": "12px",
+        "paddingBottom": "4px",
+        "paddingInline": "8px"
+      },
+      "1ZVJ-0": {
+        "fontSize": "11px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "lineHeight": "14px",
+        "color": "#5C6C80"
+      },
+      "1ZVE-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZVG-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZVH-0": {},
+      "1ZVF-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZVA-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZVC-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZVD-0": {},
+      "1ZVB-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZV6-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZV8-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZV9-0": {},
+      "1ZV7-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZV2-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZV4-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZV5-0": {},
+      "1ZV3-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZV0-0": {
+        "paddingTop": "12px",
+        "paddingBottom": "4px",
+        "paddingInline": "8px"
+      },
+      "1ZV1-0": {
+        "fontSize": "11px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "lineHeight": "14px",
+        "color": "#5C6C80"
+      },
+      "1ZUW-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZUY-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZUZ-0": {},
+      "1ZUX-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZUQ-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZUS-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZUV-0": {},
+      "1ZUU-0": {},
+      "1ZUT-0": {},
+      "1ZUR-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZUM-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZUO-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZUP-0": {},
+      "1ZUN-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZUH-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZUJ-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZUL-0": {},
+      "1ZUK-0": {},
+      "1ZUI-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZUG-0": {
+        "flexGrow": "1"
+      },
+      "1ZUB-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "paddingInline": "8px",
+        "borderRadius": "6px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZUD-0": {
+        "display": "inline-block",
+        "flexShrink": "0"
+      },
+      "1ZUF-0": {},
+      "1ZUE-0": {},
+      "1ZUC-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#475569"
+      },
+      "1ZU7-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "32px",
+        "paddingInline": "8px",
+        "gap": "8px",
+        "flexShrink": "0"
+      },
+      "1ZU9-0": {
+        "width": "20px",
+        "height": "20px",
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "borderRadius": "10px",
+        "flexShrink": "0",
+        "backgroundColor": "#E3E8F2"
+      },
+      "1ZUA-0": {
+        "display": "flex",
+        "fontSize": "9px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "lineHeight": "12px",
+        "color": "#2448A5"
+      },
+      "1ZU8-0": {
+        "flexGrow": "1",
+        "flexBasis": "0%",
+        "fontSize": "13px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "lineHeight": "16px",
+        "color": "#0F172A"
+      },
+      "1ZU5-0": {
+        "display": "flex",
+        "flexDirection": "column",
+        "flexGrow": "1",
+        "minWidth": "0px"
+      },
+      "2051-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "flexShrink": "0",
+        "height": "48px",
+        "paddingInline": "32px",
+        "gap": "8px",
+        "backgroundColor": "var(--color-ui-surface)",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "2052-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "2053-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#64748B"
+      },
+      "2054-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "2055-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#64748B"
+      },
+      "2056-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "2057-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#64748B"
+      },
+      "2058-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "var(--color-ui-text)"
+      },
+      "2059-0": {
+        "display": "flex",
+        "flexGrow": "1",
+        "minHeight": "0px"
+      },
+      "205A-0": {
+        "display": "flex",
+        "flexDirection": "column",
+        "flexGrow": "1",
+        "minWidth": "0px",
+        "paddingTop": "8px",
+        "paddingInline": "24px"
+      },
+      "205B-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "marginTop": "12px",
+        "gap": "10px"
+      },
+      "205C-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "15px",
+        "lineHeight": "22px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#0F172A"
+      },
+      "205D-0": {
+        "paddingBlock": "2px",
+        "paddingInline": "8px",
+        "borderRadius": "10px",
+        "backgroundColor": "#FFF7E6",
+        "borderWidth": "1px",
+        "borderStyle": "solid",
+        "borderColor": "#F0D9A8"
+      },
+      "205E-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#8A5A00"
+      },
+      "205H-0": {
+        "width": "752px",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "marginTop": "4px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "205I-0": {
+        "display": "flex",
+        "marginTop": "16px",
+        "gap": "44px"
+      },
+      "205J-0": {},
+      "205K-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#5C6C80"
+      },
+      "205L-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "20px",
+        "lineHeight": "26px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#0F172A"
+      },
+      "205M-0": {},
+      "205N-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#5C6C80"
+      },
+      "205O-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "20px",
+        "lineHeight": "26px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#0F172A"
+      },
+      "205P-0": {},
+      "205Q-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#5C6C80"
+      },
+      "205R-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "20px",
+        "lineHeight": "26px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#8A5A00"
+      },
+      "205S-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "marginTop": "22px",
+        "marginBottom": "6px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#5C6C80"
+      },
+      "205T-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "width": "752px",
+        "flexShrink": "0",
+        "backgroundColor": "#F7F8FA",
+        "borderTopWidth": "1px",
+        "borderTopStyle": "solid",
+        "borderTopColor": "#E6EAF0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "205U-0": {
+        "width": "22px",
+        "flexShrink": "0"
+      },
+      "205V-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#475569"
+      },
+      "205W-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "205X-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "205Y-0": {
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "205Z-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "34px",
+        "width": "752px",
+        "flexShrink": "0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "2060-0": {
+        "width": "22px",
+        "flexShrink": "0"
+      },
+      "2061-0": {
+        "width": "12px",
+        "height": "12px",
+        "borderRadius": "6px",
+        "borderWidth": "1.5px",
+        "borderStyle": "solid",
+        "borderColor": "#8A5A00"
+      },
+      "2062-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#0F172A"
+      },
+      "2063-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#0F172A"
+      },
+      "2064-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "2065-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#8A5A00"
+      },
+      "2066-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "34px",
+        "width": "752px",
+        "flexShrink": "0",
+        "backgroundColor": "#ECF4FE",
+        "borderWidth": "1px",
+        "borderStyle": "solid",
+        "borderColor": "#2448A5"
+      },
+      "2067-0": {
+        "width": "22px",
+        "flexShrink": "0"
+      },
+      "2068-0": {
+        "width": "12px",
+        "height": "12px",
+        "borderRadius": "6px",
+        "backgroundColor": "#1E6256"
+      },
+      "2069-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#0F172A"
+      },
+      "206A-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#0F172A"
+      },
+      "206B-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "206C-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#1E6256"
+      },
+      "206D-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "34px",
+        "width": "752px",
+        "flexShrink": "0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "206E-0": {
+        "width": "22px",
+        "flexShrink": "0"
+      },
+      "206F-0": {
+        "width": "12px",
+        "height": "12px",
+        "borderRadius": "6px",
+        "borderWidth": "1.5px",
+        "borderStyle": "solid",
+        "borderColor": "#8A5A00"
+      },
+      "206G-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#0F172A"
+      },
+      "206H-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#0F172A"
+      },
+      "206I-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "206J-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#8A5A00"
+      },
+      "206K-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "marginTop": "22px",
+        "marginBottom": "6px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#5C6C80"
+      },
+      "206L-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "28px",
+        "width": "752px",
+        "flexShrink": "0",
+        "backgroundColor": "#F7F8FA",
+        "borderTopWidth": "1px",
+        "borderTopStyle": "solid",
+        "borderTopColor": "#E6EAF0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "206M-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "paddingLeft": "8px"
+      },
+      "206N-0": {
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#475569"
+      },
+      "206O-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "206P-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "206Q-0": {
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "206R-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "34px",
+        "width": "752px",
+        "flexShrink": "0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#EEF1F5"
+      },
+      "206S-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "paddingLeft": "8px"
+      },
+      "206T-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#0F172A"
+      },
+      "206U-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "206V-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "206W-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#475569"
+      },
+      "206X-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "height": "34px",
+        "width": "752px",
+        "flexShrink": "0",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#E6EAF0"
+      },
+      "206Y-0": {
+        "flexGrow": "1",
+        "fontSizeAdjust": "none",
+        "paddingLeft": "8px"
+      },
+      "206Z-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#0F172A"
+      },
+      "2070-0": {
+        "width": "110px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#0F172A"
+      },
+      "2071-0": {
+        "width": "190px",
+        "flexShrink": "0",
+        "textAlign": "right",
+        "fontSizeAdjust": "none",
+        "paddingRight": "8px"
+      },
+      "2072-0": {
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "textAlign": "right",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "display": "flex",
+        "justifyContent": "end",
+        "flexWrap": "wrap",
+        "color": "#8A5A00"
+      },
+      "2073-0": {
+        "display": "flex",
+        "flexDirection": "column",
+        "flexShrink": "0",
+        "width": "400px",
+        "paddingTop": "16px",
+        "paddingBottom": "20px",
+        "paddingInline": "16px",
+        "borderLeftWidth": "1px",
+        "borderLeftStyle": "solid",
+        "borderLeftColor": "#E6EAF0"
+      },
+      "2074-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#5C6C80"
+      },
+      "2075-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "15px",
+        "lineHeight": "22px",
+        "marginTop": "2px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#0F172A"
+      },
+      "2076-0": {
+        "display": "flex",
+        "alignItems": "start",
+        "marginTop": "14px",
+        "paddingBlock": "10px",
+        "gap": "10px",
+        "borderTopWidth": "1px",
+        "borderTopStyle": "solid",
+        "borderTopColor": "#E6EAF0"
+      },
+      "2077-0": {
+        "width": "14px",
+        "height": "14px",
+        "flexShrink": "0",
+        "marginTop": "2px",
+        "borderRadius": "7px",
+        "borderWidth": "4px",
+        "borderStyle": "solid",
+        "borderColor": "#2448A5"
+      },
+      "2078-0": {},
+      "2079-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 500,
+        "color": "#0F172A"
+      },
+      "207A-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "207B-0": {
+        "display": "flex",
+        "alignItems": "start",
+        "paddingBlock": "10px",
+        "gap": "10px",
+        "borderTopWidth": "1px",
+        "borderTopStyle": "solid",
+        "borderTopColor": "#EEF1F5",
+        "borderBottomWidth": "1px",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "#EEF1F5"
+      },
+      "207C-0": {
+        "width": "14px",
+        "height": "14px",
+        "flexShrink": "0",
+        "marginTop": "2px",
+        "borderRadius": "7px",
+        "borderWidth": "1.5px",
+        "borderStyle": "solid",
+        "borderColor": "#B3BBC7"
+      },
+      "207D-0": {},
+      "207E-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 500,
+        "color": "#0F172A"
+      },
+      "207F-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "207G-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "marginTop": "20px",
+        "marginBottom": "6px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#5C6C80"
+      },
+      "207H-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "207I-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "marginTop": "20px",
+        "marginBottom": "6px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 600,
+        "color": "#5C6C80"
+      },
+      "207J-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "18px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#475569"
+      },
+      "207K-0": {
+        "flexGrow": "1"
+      },
+      "207L-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "height": "32px",
+        "flexShrink": "0",
+        "borderRadius": "6px",
+        "backgroundColor": "#2448A5"
+      },
+      "207M-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 500,
+        "color": "#FFFFFF"
+      },
+      "207N-0": {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "height": "28px",
+        "marginTop": "10px",
+        "flexShrink": "0"
+      },
+      "207O-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "13px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#0F172A"
+      },
+      "207P-0": {
+        "fontSizeAdjust": "none",
+        "fontSize": "12px",
+        "lineHeight": "16px",
+        "whiteSpace": "pre-wrap",
+        "fontFamily": "\"Inter\", system-ui, sans-serif",
+        "fontWeight": 400,
+        "color": "#5C6C80"
+      },
+      "1ZU4-0": {
+        "position": "absolute",
+        "left": "8px",
+        "top": "351px",
+        "width": "208px",
+        "height": "28px",
+        "borderRadius": "6px",
+        "backgroundColor": "#0F172A12"
+      }
+    }
+  }
+}

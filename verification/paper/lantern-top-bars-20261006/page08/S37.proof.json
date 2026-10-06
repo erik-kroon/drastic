@@ -1,0 +1,1098 @@
+{
+  "id": "1ZY1-0",
+  "name": "S37 underlag: ogiltigförklaring efter rättelse",
+  "childCount": 3,
+  "width": 1440,
+  "height": 900,
+  "worldX": 1520,
+  "worldY": 3920,
+  "tree": "Frame \"S37 underlag: ogiltigförklaring efter rättelse\" (1ZY1-0) 1440×900\n  Frame \"Sidebar (komponent)\" (1ZY4-0) 224×900\n    Frame \"Frame\" (1ZZV-0) ?×32\n      Frame \"Frame\" (1ZZY-0) 20×20\n        Text \"FK\" (1ZZZ-0) ?×? \"FK\"\n      Text \"Fjällby Konsult AB\" (1ZZX-0) ?×? \"Fjällby Konsult AB\"\n      Text \"⌄\" (1ZZW-0) ?×? \"⌄\"\n    Frame \"Frame\" (1ZZS-0) ?×28\n      Text \"Sök\" (1ZZU-0) ?×? \"Sök\"\n      Text \"Ctrl K\" (1ZZT-0) ?×? \"Ctrl K\"\n    Frame \"Frame\" (1ZZM-0) ?×28\n      SVG \"SVG\" (1ZZP-0) ?×?\n        SVGVisualElement \"Rect\" (1ZZR-0) ?×?\n        SVGVisualElement \"Path\" (1ZZQ-0) ?×?\n      Text \"Att göra\" (1ZZO-0) ?×? \"Att göra\"\n      Text \"7\" (1ZZN-0) ?×? \"7\"\n    Frame \"Frame\" (1ZZI-0) ?×28\n      SVG \"SVG\" (1ZZK-0) ?×?\n        SVGVisualElement \"Path\" (1ZZL-0) ?×?\n      Text \"Översikt\" (1ZZJ-0) ?×? \"Översikt\"\n    Frame \"Frame\" (1ZZG-0) ?×?\n      Text \"ARBETE\" (1ZZH-0) ?×? \"ARBETE\"\n    Frame \"Frame\" (1ZZC-0) ?×28\n      SVG \"SVG\" (1ZZE-0) ?×?\n        SVGVisualElement \"Path\" (1ZZF-0) ?×?\n      Text \"Bank\" (1ZZD-0) ?×? \"Bank\"\n    Frame \"Frame\" (1ZZ8-0) ?×28\n      SVG \"SVG\" (1ZZA-0) ?×?\n        SVGVisualElement \"Path\" (1ZZB-0) ?×?\n      Text \"Försäljning\" (1ZZ9-0) ?×? \"Försäljning\"\n    Frame \"Frame\" (1ZZ4-0) ?×28\n      SVG \"SVG\" (1ZZ6-0) ?×?\n        SVGVisualElement \"Path\" (1ZZ7-0) ?×?\n      Text \"Inköp\" (1ZZ5-0) ?×? \"Inköp\"\n    Frame \"Frame\" (1ZZ0-0) ?×28\n      SVG \"SVG\" (1ZZ2-0) ?×?\n        SVGVisualElement \"Path\" (1ZZ3-0) ?×?\n      Text \"Dokument\" (1ZZ1-0) ?×? \"Dokument\"\n    Frame \"Frame\" (1ZYY-0) ?×?\n      Text \"REDOVISNING\" (1ZYZ-0) ?×? \"REDOVISNING\"\n    Frame \"Frame\" (1ZYU-0) ?×28\n      SVG \"SVG\" (1ZYW-0) ?×?\n        SVGVisualElement \"Path\" (1ZYX-0) ?×?\n      Text \"Bokföring\" (1ZYV-0) ?×? \"Bokföring\"\n    Frame \"Frame\" (1ZYO-0) ?×28\n      SVG \"SVG\" (1ZYQ-0) ?×?\n        SVGVisualElement \"Path\" (1ZYT-0) ?×?\n        SVGVisualElement \"Circle\" (1ZYS-0) ?×?\n        SVGVisualElement \"Circle\" (1ZYR-0) ?×?\n      Text \"Skatt och löner\" (1ZYP-0) ?×? \"Skatt och löner\"\n    Frame \"Frame\" (1ZYK-0) ?×28\n      SVG \"SVG\" (1ZYM-0) ?×?\n        SVGVisualElement \"Path\" (1ZYN-0) ?×?\n      Text \"Rapporter\" (1ZYL-0) ?×? \"Rapporter\"\n    Frame \"Frame\" (1ZYF-0) ?×28\n      SVG \"SVG\" (1ZYH-0) ?×?\n        SVGVisualElement \"Rect\" (1ZYJ-0) ?×?\n        SVGVisualElement \"Path\" (1ZYI-0) ?×?\n      Text \"Bokslut\" (1ZYG-0) ?×? \"Bokslut\"\n    Rectangle \"Rectangle\" (1ZYE-0) ?×?\n    Frame \"Frame\" (1ZY9-0) ?×28\n      SVG \"SVG\" (1ZYB-0) ?×?\n        SVGVisualElement \"Circle\" (1ZYD-0) ?×?\n        SVGVisualElement \"Path\" (1ZYC-0) ?×?\n      Text \"Inställningar\" (1ZYA-0) ?×? \"Inställningar\"\n    Frame \"Frame\" (1ZY5-0) ?×32\n      Frame \"Frame\" (1ZY7-0) 20×20\n        Text \"ES\" (1ZY8-0) ?×? \"ES\"\n      Text \"Elin Sund\" (1ZY6-0) ?×? \"Elin Sund\"\n  Frame \"Huvud\" (1ZY3-0) ?×?\n    Frame \"Toppfält, detaljläge\" (26XV-0) ?×48\n      Text \"Bokslut\" (26XW-0) ?×? \"Bokslut\"\n      Text \"/\" (26XX-0) ?×? \"/\"\n      Text \"September 2026\" (26XY-0) ?×? \"September 2026\"\n      Text \"/\" (26XZ-0) ?×? \"/\"\n      Text \"Ny granskning\" (26Y0-0) ?×? \"Ny granskning\"\n    Frame \"Innehåll\" (20AQ-0) ?×?\n      Frame \"Huvudkolumn\" (20AR-0) ?×?\n        Frame \"Frame\" (20AS-0) ?×?\n          Text \"Tre godkännanden gäl…\" (20AT-0) ?×? \"Tre godkännanden gäller inte längre efter en rättelse\"\n          Frame \"Frame\" (20AU-0) ?×?\n            Text \"Ny granskning krävs\" (20AV-0) ?×? \"Ny granskning krävs\"\n        Text \"Rättelsen 2 okt 08:5…\" (20AY-0) 752×? \"Rättelsen 2 okt 08:55 ändrade siffror som godkändes 08:30.\"\n        Frame \"Frame\" (20AZ-0) ?×?\n          Frame \"Frame\" (20B0-0) ?×?\n            Text \"Resultat vid godkänn…\" (20B1-0) ?×? \"Resultat vid godkännande\"\n            Text \"50 408,00\" (20B2-0) ?×? \"50 408,00\"\n          Frame \"Frame\" (20B3-0) ?×?\n            Text \"Resultat nu\" (20B4-0) ?×? \"Resultat nu\"\n            Text \"54 608,00\" (20B5-0) ?×? \"54 608,00\"\n          Frame \"Frame\" (20B6-0) ?×?\n            Text \"Ändring\" (20B7-0) ?×? \"Ändring\"\n            Text \"4 200,00\" (20B8-0) ?×? \"4 200,00\"\n        Text \"Godkännanden från 2 …\" (20B9-0) ?×? \"Godkännanden från 2 okt 08:30\"\n        Frame \"Frame\" (20BA-0) 752×32\n          Rectangle \"Rectangle\" (20BB-0) 22×?\n          Text \"Del\" (20BC-0) ?×? \"Del\"\n          Frame \"Frame\" (20BD-0) 230×?\n            Text \"Läge\" (20BE-0) ?×? \"Läge\"\n        Frame \"Frame\" (20BF-0) 752×32\n          Frame \"Frame\" (20BG-0) 19×?\n            Rectangle \"Rectangle\" (20BH-0) 12×12\n          Text \"Resultaträkning\" (20BI-0) ?×? \"Resultaträkning\"\n          Frame \"Frame\" (20BJ-0) 230×?\n            Text \"Ogiltigt, siffrorna …\" (20BK-0) ?×? \"Ogiltigt, siffrorna ändrades\"\n        Frame \"Frame\" (20BL-0) 752×32\n          Frame \"Frame\" (20BM-0) 22×?\n            Rectangle \"Rectangle\" (20BN-0) 12×12\n          Text \"Balansräkning\" (20BO-0) ?×? \"Balansräkning\"\n          Frame \"Frame\" (20BP-0) 230×?\n            Text \"Ogiltigt, siffrorna …\" (20BQ-0) ?×? \"Ogiltigt, siffrorna ändrades\"\n        Frame \"Frame\" (20BR-0) 752×32\n          Frame \"Frame\" (20BS-0) 22×?\n            Rectangle \"Rectangle\" (20BT-0) 12×12\n          Text \"Skatteberäkning\" (20BU-0) ?×? \"Skatteberäkning\"\n          Frame \"Frame\" (20BV-0) 230×?\n            Text \"Ogiltigt, underlaget…\" (20BW-0) ?×? \"Ogiltigt, underlaget ändrades\"\n        Frame \"Frame\" (20BX-0) 752×32\n          Frame \"Frame\" (20BY-0) 22×?\n            Rectangle \"Rectangle\" (20BZ-0) 12×12\n          Text \"Momsavstämning\" (20C0-0) ?×? \"Momsavstämning\"\n          Frame \"Frame\" (20C1-0) 230×?\n            Text \"Gäller, rättelsen be…\" (20C2-0) ?×? \"Gäller, rättelsen berör den inte\"\n        Text \"Rättelsen\" (20C3-0) ?×? \"Rättelsen\"\n        Text \"Rättelsen 2 okt 08:5…\" (20C4-0) 752×? \"Rättelsen 2 okt 08:55 flyttade 4 200,00 från kostnad till ba\"\n      Frame \"Sidopanel\" (20C5-0) 400×?\n        Text \"Ny granskning\" (20C6-0) ?×? \"Ny granskning\"\n        Text \"Tre delar behöver ny…\" (20C7-0) ?×? \"Tre delar behöver nya godkännanden\"\n        Frame \"Frame\" (20C8-0) ?×32\n          Text \"Resultaträkning\" (20C9-0) ?×? \"Resultaträkning\"\n          Text \"Johan Berg\" (20CA-0) ?×? \"Johan Berg\"\n        Frame \"Frame\" (20CB-0) ?×32\n          Text \"Balansräkning\" (20CC-0) ?×? \"Balansräkning\"\n          Text \"Johan Berg\" (20CD-0) ?×? \"Johan Berg\"\n        Frame \"Frame\" (20CE-0) ?×32\n          Text \"Skatteberäkning\" (20CF-0) ?×? \"Skatteberäkning\"\n          Text \"Johan Berg\" (20CG-0) ?×? \"Johan Berg\"\n        Rectangle \"Rectangle\" (20CJ-0) ?×?\n        Frame \"Frame\" (20CK-0) ?×32\n          Text \"Begär ny granskning\" (20CL-0) ?×? \"Begär ny granskning\"\n        Frame \"Frame\" (20CM-0) ?×28\n          Text \"Visa rättelsen\" (20CN-0) ?×? \"Visa rättelsen\"\n          Text \"2 okt\" (20CO-0) ?×? \"2 okt\"",
+  "computedStyles": {
+    "1ZY1-0": {
+      "display": "flex",
+      "overflow": "clip",
+      "width": "1440px",
+      "height": "900px",
+      "left": 1520,
+      "top": "3920px",
+      "position": "absolute",
+      "backgroundColor": "#FFFFFF"
+    },
+    "komponent": null,
+    "1ZY4-0": {
+      "width": "224px",
+      "height": "900px",
+      "flexShrink": "0",
+      "display": "flex",
+      "flexDirection": "column",
+      "paddingBlock": "10px",
+      "paddingInline": "8px",
+      "gap": "1px",
+      "backgroundColor": "#F7F8FA",
+      "borderRightWidth": "1px",
+      "borderRightStyle": "solid",
+      "borderRightColor": "#E6EAF0"
+    },
+    "1ZZV-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "marginBottom": "6px",
+      "paddingInline": "8px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZY-0": {
+      "width": "20px",
+      "height": "20px",
+      "display": "flex",
+      "alignItems": "center",
+      "justifyContent": "center",
+      "borderRadius": "5px",
+      "flexShrink": "0",
+      "backgroundColor": "#0F172A"
+    },
+    "1ZZZ-0": {
+      "display": "flex",
+      "fontSize": "10px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "12px",
+      "color": "#FFFFFF"
+    },
+    "1ZZX-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "16px",
+      "color": "#0F172A"
+    },
+    "1ZZW-0": {
+      "fontSize": "12px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZS-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "marginBottom": "8px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "flexShrink": "0",
+      "backgroundColor": "#FFFFFF",
+      "borderWidth": "1px",
+      "borderStyle": "solid",
+      "borderColor": "#E6EAF0"
+    },
+    "1ZZU-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZT-0": {
+      "fontSize": "11px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "14px",
+      "color": "#475569"
+    },
+    "1ZZM-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZP-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZR-0": {},
+    "1ZZQ-0": {},
+    "1ZZO-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZN-0": {
+      "fontSize": "12px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZI-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZK-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZL-0": {},
+    "1ZZJ-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZG-0": {
+      "paddingTop": "12px",
+      "paddingBottom": "4px",
+      "paddingInline": "8px"
+    },
+    "1ZZH-0": {
+      "fontSize": "11px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "14px",
+      "color": "#475569"
+    },
+    "1ZZC-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZE-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZF-0": {},
+    "1ZZD-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZ8-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZA-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZB-0": {},
+    "1ZZ9-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZ4-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZ6-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZ7-0": {},
+    "1ZZ5-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZZ0-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZZ2-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZZ3-0": {},
+    "1ZZ1-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZYY-0": {
+      "paddingTop": "12px",
+      "paddingBottom": "4px",
+      "paddingInline": "8px"
+    },
+    "1ZYZ-0": {
+      "fontSize": "11px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "14px",
+      "color": "#475569"
+    },
+    "1ZYU-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZYW-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZYX-0": {},
+    "1ZYV-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZYO-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZYQ-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZYT-0": {},
+    "1ZYS-0": {},
+    "1ZYR-0": {},
+    "1ZYP-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZYK-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZYM-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZYN-0": {},
+    "1ZYL-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZYF-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0",
+      "backgroundColor": "#E6EAF0"
+    },
+    "1ZYH-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZYJ-0": {},
+    "1ZYI-0": {},
+    "1ZYG-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZYE-0": {
+      "flexGrow": "1"
+    },
+    "1ZY9-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "28px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZYB-0": {
+      "display": "inline-block",
+      "flexShrink": "0"
+    },
+    "1ZYD-0": {},
+    "1ZYC-0": {},
+    "1ZYA-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "1ZY5-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "paddingInline": "8px",
+      "gap": "8px",
+      "flexShrink": "0"
+    },
+    "1ZY7-0": {
+      "width": "20px",
+      "height": "20px",
+      "display": "flex",
+      "alignItems": "center",
+      "justifyContent": "center",
+      "borderRadius": "10px",
+      "flexShrink": "0",
+      "backgroundColor": "#E3E8F2"
+    },
+    "1ZY8-0": {
+      "display": "flex",
+      "fontSize": "9px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "12px",
+      "color": "#2448A5"
+    },
+    "1ZY6-0": {
+      "flexGrow": "1",
+      "flexBasis": "0%",
+      "fontSize": "13px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#0F172A"
+    },
+    "1ZY3-0": {
+      "display": "flex",
+      "flexDirection": "column",
+      "flexGrow": "1",
+      "minWidth": "0px"
+    },
+    "26XV-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "flexShrink": "0",
+      "height": "48px",
+      "paddingInline": "32px",
+      "gap": "8px",
+      "backgroundColor": "#FFFFFF",
+      "borderBottomWidth": "1px",
+      "borderBottomStyle": "solid",
+      "borderBottomColor": "#E6EAF0"
+    },
+    "26XW-0": {
+      "fontSize": "13px",
+      "display": "inline-block",
+      "width": "max-content",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "26XX-0": {
+      "fontSize": "13px",
+      "display": "inline-block",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#64748B"
+    },
+    "26XY-0": {
+      "fontSize": "13px",
+      "display": "inline-block",
+      "width": "max-content",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#475569"
+    },
+    "26XZ-0": {
+      "fontSize": "13px",
+      "display": "inline-block",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "lineHeight": "16px",
+      "color": "#64748B"
+    },
+    "26Y0-0": {
+      "fontSize": "13px",
+      "display": "inline-block",
+      "width": "max-content",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "lineHeight": "16px",
+      "color": "#0F172A"
+    },
+    "20AQ-0": {
+      "display": "flex",
+      "flexGrow": "1",
+      "minHeight": "0px"
+    },
+    "20AR-0": {
+      "display": "flex",
+      "flexDirection": "column",
+      "flexGrow": "1",
+      "minWidth": "0px",
+      "paddingTop": "8px",
+      "paddingInline": "32px"
+    },
+    "20AS-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "marginTop": "12px",
+      "gap": "10px"
+    },
+    "20AT-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "15px",
+      "lineHeight": "22px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#0F172A"
+    },
+    "20AU-0": {
+      "paddingBlock": "2px",
+      "paddingInline": "8px",
+      "borderRadius": "6px",
+      "backgroundColor": "#FFFFFF"
+    },
+    "20AV-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "borderTopLeftRadius": "0px",
+      "borderTopRightRadius": "0px",
+      "borderBottomRightRadius": "0px",
+      "borderBottomLeftRadius": "0px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#92400E"
+    },
+    "20AY-0": {
+      "width": "752px",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "marginTop": "4px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20AZ-0": {
+      "display": "flex",
+      "marginTop": "16px",
+      "gap": "44px"
+    },
+    "20B0-0": {},
+    "20B1-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20B2-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "20px",
+      "lineHeight": "28px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "fontFeatureSettings": "\"tnum\"",
+      "color": "#0F172A"
+    },
+    "20B3-0": {},
+    "20B4-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20B5-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "20px",
+      "lineHeight": "28px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "fontFeatureSettings": "\"tnum\"",
+      "color": "#0F172A"
+    },
+    "20B6-0": {},
+    "20B7-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20B8-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "20px",
+      "lineHeight": "28px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "fontFeatureSettings": "\"tnum\"",
+      "color": "#0F172A"
+    },
+    "20B9-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "marginTop": "22px",
+      "marginBottom": "6px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#475569"
+    },
+    "20BA-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "width": "752px",
+      "flexShrink": "0",
+      "backgroundColor": "#F7F8FA",
+      "borderTopWidth": "1px",
+      "borderTopStyle": "solid",
+      "borderTopColor": "#E6EAF0",
+      "borderBottomWidth": "1px",
+      "borderBottomStyle": "solid",
+      "borderBottomColor": "#E6EAF0"
+    },
+    "20BB-0": {
+      "width": "22px",
+      "flexShrink": "0"
+    },
+    "20BC-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#475569"
+    },
+    "20BD-0": {
+      "width": "230px",
+      "flexShrink": "0",
+      "textAlign": "right",
+      "fontSizeAdjust": "none",
+      "paddingRight": "8px"
+    },
+    "20BE-0": {
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "textAlign": "right",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "display": "flex",
+      "justifyContent": "end",
+      "flexWrap": "wrap",
+      "color": "#475569"
+    },
+    "20BF-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "width": "752px",
+      "flexShrink": "0",
+      "backgroundColor": "#EEF3FC",
+      "borderLeftWidth": "3px",
+      "borderLeftStyle": "solid",
+      "borderLeftColor": "#2448A5"
+    },
+    "20BG-0": {
+      "width": "19px",
+      "flexShrink": "0"
+    },
+    "20BH-0": {
+      "width": "12px",
+      "height": "12px",
+      "borderRadius": "6px",
+      "borderWidth": "1.5px",
+      "borderStyle": "solid",
+      "borderColor": "#8A5A00"
+    },
+    "20BI-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#0F172A"
+    },
+    "20BJ-0": {
+      "width": "230px",
+      "flexShrink": "0",
+      "textAlign": "right",
+      "fontSizeAdjust": "none",
+      "paddingRight": "8px"
+    },
+    "20BK-0": {
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "textAlign": "right",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "display": "flex",
+      "justifyContent": "end",
+      "flexWrap": "wrap",
+      "color": "#92400E"
+    },
+    "20BL-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "width": "752px",
+      "flexShrink": "0",
+      "borderBottomWidth": "1px",
+      "borderBottomStyle": "solid",
+      "borderBottomColor": "#E6EAF0"
+    },
+    "20BM-0": {
+      "width": "22px",
+      "flexShrink": "0"
+    },
+    "20BN-0": {
+      "width": "12px",
+      "height": "12px",
+      "borderRadius": "6px",
+      "borderWidth": "1.5px",
+      "borderStyle": "solid",
+      "borderColor": "#8A5A00"
+    },
+    "20BO-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20BP-0": {
+      "width": "230px",
+      "flexShrink": "0",
+      "textAlign": "right",
+      "fontSizeAdjust": "none",
+      "paddingRight": "8px"
+    },
+    "20BQ-0": {
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "textAlign": "right",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "display": "flex",
+      "justifyContent": "end",
+      "flexWrap": "wrap",
+      "color": "#92400E"
+    },
+    "20BR-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "width": "752px",
+      "flexShrink": "0",
+      "borderBottomWidth": "1px",
+      "borderBottomStyle": "solid",
+      "borderBottomColor": "#E6EAF0"
+    },
+    "20BS-0": {
+      "width": "22px",
+      "flexShrink": "0"
+    },
+    "20BT-0": {
+      "width": "12px",
+      "height": "12px",
+      "borderRadius": "6px",
+      "borderWidth": "1.5px",
+      "borderStyle": "solid",
+      "borderColor": "#8A5A00"
+    },
+    "20BU-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20BV-0": {
+      "width": "230px",
+      "flexShrink": "0",
+      "textAlign": "right",
+      "fontSizeAdjust": "none",
+      "paddingRight": "8px"
+    },
+    "20BW-0": {
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "textAlign": "right",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "display": "flex",
+      "justifyContent": "end",
+      "flexWrap": "wrap",
+      "color": "#92400E"
+    },
+    "20BX-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "width": "752px",
+      "flexShrink": "0",
+      "borderBottomWidth": "1px",
+      "borderBottomStyle": "solid",
+      "borderBottomColor": "#E6EAF0"
+    },
+    "20BY-0": {
+      "width": "22px",
+      "flexShrink": "0"
+    },
+    "20BZ-0": {
+      "width": "12px",
+      "height": "12px",
+      "borderRadius": "6px",
+      "backgroundColor": "#1E6256"
+    },
+    "20C0-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20C1-0": {
+      "width": "230px",
+      "flexShrink": "0",
+      "textAlign": "right",
+      "fontSizeAdjust": "none",
+      "paddingRight": "8px"
+    },
+    "20C2-0": {
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "textAlign": "right",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "display": "flex",
+      "justifyContent": "end",
+      "flexWrap": "wrap",
+      "color": "#1E6256"
+    },
+    "20C3-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "14px",
+      "lineHeight": "16px",
+      "marginTop": "22px",
+      "marginBottom": "6px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#475569"
+    },
+    "20C4-0": {
+      "width": "752px",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20C5-0": {
+      "display": "flex",
+      "flexDirection": "column",
+      "flexShrink": "0",
+      "width": "400px",
+      "paddingTop": "16px",
+      "paddingBottom": "20px",
+      "paddingInline": "16px",
+      "borderLeftWidth": "1px",
+      "borderLeftStyle": "solid",
+      "borderLeftColor": "#E6EAF0"
+    },
+    "20C6-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20C7-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "15px",
+      "lineHeight": "22px",
+      "marginTop": "2px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 600,
+      "color": "#0F172A"
+    },
+    "20C8-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "marginTop": "14px",
+      "flexShrink": "0",
+      "borderTopWidth": "1px",
+      "borderTopStyle": "solid",
+      "borderTopColor": "#E6EAF0"
+    },
+    "20C9-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20CA-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20CB-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "flexShrink": "0"
+    },
+    "20CC-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20CD-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20CE-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "height": "32px",
+      "flexShrink": "0"
+    },
+    "20CF-0": {
+      "flexGrow": "1",
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20CG-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    },
+    "20CJ-0": {
+      "flexGrow": "1"
+    },
+    "20CK-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "justifyContent": "center",
+      "height": "32px",
+      "flexShrink": "0",
+      "borderRadius": "6px",
+      "backgroundColor": "#2448A5"
+    },
+    "20CL-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 500,
+      "color": "#FFFFFF"
+    },
+    "20CM-0": {
+      "display": "flex",
+      "alignItems": "center",
+      "justifyContent": "space-between",
+      "height": "28px",
+      "marginTop": "10px",
+      "flexShrink": "0"
+    },
+    "20CN-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "13px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#0F172A"
+    },
+    "20CO-0": {
+      "fontSizeAdjust": "none",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "whiteSpace": "pre-wrap",
+      "fontFamily": "\"Inter\", system-ui, sans-serif",
+      "fontWeight": 400,
+      "color": "#475569"
+    }
+  },
+  "jsx": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+      },
+      {
+        "type": "text",
+        "text": "(\n    <div className=\"[font-synthesis:none] wrap-anywhere text-[12px] leading-ui-sm flex overflow-clip w-brand-board h-[900px] bg-ui-surface antialiased\">\n      <div className=\"w-ui-sidebar h-[900px] shrink-0 flex flex-col py-[10px] [padding-inline:8px] gap-px bg-[#F7F8FA] border-r border-r-solid border-r-[#E6EAF0]\">\n        <div className=\"flex items-center h-ui-lg mb-[6px] [padding-inline:8px] [gap:8px] shrink-0\">\n          <div className=\"w-[20px] h-[20px] flex items-center justify-center rounded-[5px] shrink-0 [background-color:#0F172A]\">\n            <div className=\"flex text-[10px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[12px] text-ui-surface\">\n              FK\n            </div>\n          </div>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] font-brand-display leading-ui-sm [color:#0F172A]\">\n            Fjällby Konsult AB\n          </div>\n          <div className=\"text-[12px] font-[system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            ⌄\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [margin-bottom:8px] [padding-inline:8px] rounded-brand-control shrink-0 bg-ui-surface border border-solid border-[#E6EAF0]\">\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Sök\n          </div>\n          <div className=\"text-[11px] font-['Inter',system-ui,sans-serif] leading-[14px] text-[#475569]\">\n            Ctrl K\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <rect x=\"2\" y=\"2\" width=\"12\" height=\"12\" rx=\"3\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n            <path d=\"M5 8l2 2 4-4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Att göra\n          </div>\n          <div className=\"text-[12px] font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            7\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 13V8M8 13V3M13 13V6\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Översikt\n          </div>\n        </div>\n        <div className=\"pt-[12px] pb-[4px] [padding-inline:8px]\">\n          <div className=\"text-[11px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[14px] text-[#475569]\">\n            ARBETE\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M2 6l6-3 6 3M3 7v5M6.5 7v5M9.5 7v5M13 7v5M2 13h12\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Bank\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 2h6l3 3v9H4zM10 2v3h3\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Försäljning\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 5h10l-1 9H4zM6 5a2 2 0 014 0\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Inköp\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M2 4h4l1.5 1.5H14V13H2z\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Dokument\n          </div>\n        </div>\n        <div className=\"pt-[12px] pb-[4px] [padding-inline:8px]\">\n          <div className=\"text-[11px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[14px] text-[#475569]\">\n            REDOVISNING\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M3 3h8a2 2 0 012 2v8H5a2 2 0 01-2-2zM3 11a2 2 0 012-2h8\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Bokföring\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 12L12 4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <circle cx=\"5\" cy=\"5\" r=\"1.5\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <circle cx=\"11\" cy=\"11\" r=\"1.5\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Skatt och löner\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <path d=\"M4 2h8v12H4zM6 6h4M6 9h4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Rapporter\n          </div>\n        </div>\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0 bg-[#E6EAF0]\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <rect x=\"2\" y=\"3\" width=\"12\" height=\"11\" rx=\"2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n            <path d=\"M2 6.5h12M5 2v2M11 2v2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" strokeLinejoin=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Bokslut\n          </div>\n        </div>\n        <div className=\"grow\" />\n        <div className=\"flex items-center h-[28px] [padding-inline:8px] rounded-brand-control [gap:8px] shrink-0\">\n          <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style={{ display: 'inline-block', flexShrink: '0' }}>\n            <circle cx=\"8\" cy=\"8\" r=\"2.2\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n            <path d=\"M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4\" fill=\"none\" stroke=\"#64748B\" strokeWidth=\"1.4\" strokeLinecap=\"round\" />\n          </svg>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Inställningar\n          </div>\n        </div>\n        <div className=\"flex items-center h-ui-lg [padding-inline:8px] [gap:8px] shrink-0\">\n          <div className=\"w-[20px] h-[20px] flex items-center justify-center rounded-[10px] shrink-0 bg-[#E3E8F2]\">\n            <div className=\"flex text-[9px] font-['Inter',system-ui,sans-serif] font-brand-display leading-[12px] [color:#2448A5]\">\n              ES\n            </div>\n          </div>\n          <div className=\"grow basis-[0%] text-ui-caption font-['Inter',system-ui,sans-serif] leading-ui-sm [color:#0F172A]\">\n            Elin Sund\n          </div>\n        </div>\n      </div>\n      <div className=\"flex flex-col grow min-w-[0px]\">\n        <div className=\"flex items-center shrink-0 h-[48px] px-ui-lg [gap:8px] bg-ui-surface border-b border-b-solid border-b-[#E6EAF0]\">\n          <div className=\"text-ui-caption inline-block w-max font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            Bokslut\n          </div>\n          <div className=\"text-ui-caption inline-block font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#64748B]\">\n            /\n          </div>\n          <div className=\"text-ui-caption inline-block w-max font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#475569]\">\n            September 2026\n          </div>\n          <div className=\"text-ui-caption inline-block font-['Inter',system-ui,sans-serif] leading-ui-sm text-[#64748B]\">\n            /\n          </div>\n          <div className=\"text-ui-caption inline-block w-max font-['Inter',system-ui,sans-serif] font-brand-display leading-ui-sm [color:#0F172A]\">\n            Ny granskning\n          </div>\n        </div>\n        <div className=\"flex grow min-h-[0px]\">\n          <div className=\"flex flex-col grow min-w-[0px] [padding-top:8px] px-ui-lg\">\n            <div className=\"flex items-center mt-[12px] gap-[10px]\">\n              <div className=\"[font-size-adjust:none] text-ui-body leading-[22px] font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]\">\n                Tre godkännanden gäller inte längre efter en rättelse\n              </div>\n              <div className=\"py-[2px] [padding-inline:8px] rounded-brand-control bg-ui-surface\">\n                <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#92400E]\">\n                  Ny granskning krävs\n                </div>\n              </div>\n            </div>\n            <div className=\"w-[752px] [font-size-adjust:none] text-ui-caption leading-[18px] mt-[4px] font-['Inter',system-ui,sans-serif] text-[#475569]\">\n              Rättelsen 2 okt 08:55 ändrade siffror som godkändes 08:30.\n            </div>\n            <div className=\"flex mt-ui-sm gap-[44px]\">\n              <div className=\"\">\n                <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                  Resultat vid godkännande\n                </div>\n                <div className=\"[font-size-adjust:none] text-ui-section leading-[28px] font-['Inter',system-ui,sans-serif] font-brand-display font-features-['tnum'] [color:#0F172A]\">\n                  50 408,00\n                </div>\n              </div>\n              <div className=\"\">\n                <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                  Resultat nu\n                </div>\n                <div className=\"[font-size-adjust:none] text-ui-section leading-[28px] font-['Inter',system-ui,sans-serif] font-brand-display font-features-['tnum'] [color:#0F172A]\">\n                  54 608,00\n                </div>\n              </div>\n              <div className=\"\">\n                <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                  Ändring\n                </div>\n                <div className=\"[font-size-adjust:none] text-ui-section leading-[28px] font-['Inter',system-ui,sans-serif] font-brand-display font-features-['tnum'] [color:#0F172A]\">\n                  4 200,00\n                </div>\n              </div>\n            </div>\n            <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm mt-[22px] mb-[6px] font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]\">\n              Godkännanden från 2 okt 08:30\n            </div>\n            <div className=\"flex items-center h-ui-lg w-[752px] shrink-0 bg-[#F7F8FA] border-t border-t-solid border-t-[#E6EAF0] border-b border-b-solid border-b-[#E6EAF0]\">\n              <div className=\"w-[22px] shrink-0\" />\n              <div className=\"grow [font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]\">\n                Del\n              </div>\n              <div className=\"w-[230px] shrink-0 text-right [font-size-adjust:none] [padding-right:8px]\">\n                <div className=\"text-[12px] leading-ui-sm text-right font-['Inter',system-ui,sans-serif] font-brand-display flex justify-end flex-wrap text-[#475569]\">\n                  Läge\n                </div>\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg w-[752px] shrink-0 bg-[#EEF3FC] [border-left-width:3px] border-l-solid [border-left-color:#2448A5]\">\n              <div className=\"w-[19px] shrink-0\">\n                <div className=\"w-[12px] h-[12px] rounded-brand-control [border-width:1.5px] border-solid border-[#8A5A00]\" />\n              </div>\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]\">\n                Resultaträkning\n              </div>\n              <div className=\"w-[230px] shrink-0 text-right [font-size-adjust:none] [padding-right:8px]\">\n                <div className=\"text-ui-caption leading-[18px] text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#92400E]\">\n                  Ogiltigt, siffrorna ändrades\n                </div>\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg w-[752px] shrink-0 border-b border-b-solid border-b-[#E6EAF0]\">\n              <div className=\"w-[22px] shrink-0\">\n                <div className=\"w-[12px] h-[12px] rounded-brand-control [border-width:1.5px] border-solid border-[#8A5A00]\" />\n              </div>\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Balansräkning\n              </div>\n              <div className=\"w-[230px] shrink-0 text-right [font-size-adjust:none] [padding-right:8px]\">\n                <div className=\"text-ui-caption leading-[18px] text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#92400E]\">\n                  Ogiltigt, siffrorna ändrades\n                </div>\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg w-[752px] shrink-0 border-b border-b-solid border-b-[#E6EAF0]\">\n              <div className=\"w-[22px] shrink-0\">\n                <div className=\"w-[12px] h-[12px] rounded-brand-control [border-width:1.5px] border-solid border-[#8A5A00]\" />\n              </div>\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Skatteberäkning\n              </div>\n              <div className=\"w-[230px] shrink-0 text-right [font-size-adjust:none] [padding-right:8px]\">\n                <div className=\"text-ui-caption leading-[18px] text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#92400E]\">\n                  Ogiltigt, underlaget ändrades\n                </div>\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg w-[752px] shrink-0 border-b border-b-solid border-b-[#E6EAF0]\">\n              <div className=\"w-[22px] shrink-0\">\n                <div className=\"w-[12px] h-[12px] rounded-brand-control bg-[#1E6256]\" />\n              </div>\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Momsavstämning\n              </div>\n              <div className=\"w-[230px] shrink-0 text-right [font-size-adjust:none] [padding-right:8px]\">\n                <div className=\"text-ui-caption leading-[18px] text-right font-['Inter',system-ui,sans-serif] flex justify-end flex-wrap text-[#1E6256]\">\n                  Gäller, rättelsen berör den inte\n                </div>\n              </div>\n            </div>\n            <div className=\"[font-size-adjust:none] text-ui-control leading-ui-sm mt-[22px] mb-[6px] font-['Inter',system-ui,sans-serif] font-brand-display text-[#475569]\">\n              Rättelsen\n            </div>\n            <div className=\"w-[752px] [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] text-[#475569]\">\n              Rättelsen 2 okt 08:55 flyttade 4 200,00 från kostnad till balans. Septemberresultatet ökade till 54 608,00.\n            </div>\n          </div>\n          <div className=\"flex flex-col shrink-0 w-[400px] pt-ui-sm pb-[20px] px-ui-sm border-l border-l-solid border-l-[#E6EAF0]\">\n            <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]\">\n              Ny granskning\n            </div>\n            <div className=\"[font-size-adjust:none] text-ui-body leading-[22px] mt-[2px] font-['Inter',system-ui,sans-serif] font-brand-display [color:#0F172A]\">\n              Tre delar behöver nya godkännanden\n            </div>\n            <div className=\"flex items-center h-ui-lg mt-[14px] shrink-0 border-t border-t-solid border-t-[#E6EAF0]\">\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Resultaträkning\n              </div>\n              <div className=\"[font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                Johan Berg\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg shrink-0\">\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Balansräkning\n              </div>\n              <div className=\"[font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                Johan Berg\n              </div>\n            </div>\n            <div className=\"flex items-center h-ui-lg shrink-0\">\n              <div className=\"grow [font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Skatteberäkning\n              </div>\n              <div className=\"[font-size-adjust:none] text-ui-caption leading-[18px] font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                Johan Berg\n              </div>\n            </div>\n            <div className=\"grow\" />\n            <div className=\"flex items-center justify-center h-ui-lg shrink-0 rounded-brand-control [background-color:#2448A5]\">\n              <div className=\"[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] font-[500] text-ui-surface\">\n                Begär ny granskning\n              </div>\n            </div>\n            <div className=\"flex items-center justify-between h-[28px] mt-[10px] shrink-0\">\n              <div className=\"[font-size-adjust:none] text-ui-caption leading-ui-sm font-['Inter',system-ui,sans-serif] [color:#0F172A]\">\n                Visa rättelsen\n              </div>\n              <div className=\"[font-size-adjust:none] text-[12px] leading-ui-sm font-['Inter',system-ui,sans-serif] text-[#475569]\">\n                2 okt\n              </div>\n            </div>\n          </div>\n        </div>\n      </div>\n    </div>\n  )"
+      }
+    ]
+  }
+}

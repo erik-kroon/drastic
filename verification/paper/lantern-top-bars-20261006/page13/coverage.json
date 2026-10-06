@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-06",
+  "page": "13 System och checkpoint",
+  "scope": "All10liveframes captured; isolated fixtures/spec deliberately excluded from product shell; unresolved source/component obligations retained",
+  "frames": [
+    {
+      "id": "NKY-0",
+      "name": "04 Översikt",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 4560,
+      "worldY": 0,
+      "classification": "retained product/stress frame with canonical bar",
+      "artifacts": {
+        "NKY-0.png": "28bddd455251ae75eda094e04e34279d8bc7ff8f3657ac5f2584d2cafcd4d410",
+        "NKY-0.jsx.txt": "1c3f8b5e7e1d06bd3fa481759cdb1091f78800fd7843d76df5c62fefe7aa8c86",
+        "NKY-0.computed-styles.json": "1aa44f03298246bd59d8ff1322a929351b6445d5a5fdd0f78abcc7562cb73983",
+        "NKY-0.tree.json": "6df44dbbe508ffb9cb06385deca9dc965ffbd1a77243773e03e11cd5c7ee760b"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "NT8-0",
+      "name": "Sidonavigering (komponent): vald rad fylls #E6EAF0",
+      "childCount": 1,
+      "width": 300,
+      "height": 900,
+      "worldX": 1520,
+      "worldY": 980,
+      "classification": "isolated sidebar fixture",
+      "artifacts": {
+        "NT8-0.png": "819685b94aaac3a2a2850f5e5389d226eac5122fdb73c485e667c310d22d5d6f",
+        "NT8-0.jsx.txt": "9e5469b44aae3febd03c39ef74426e1a3253232511724a0d14d8b9972079b470",
+        "NT8-0.computed-styles.json": "87d9adcc5ac0ccc43632fbf52cb2b9dedea8a0699503ea960658770cd8886707",
+        "NT8-0.tree.json": "6f89aaa91f090498fd8d3cd3b0be9523e40fee1cc2a0ffcb575748d12730792e"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "X1G-0",
+      "name": "K20 Delade tillstånd: laddar, fel, okänt utfall",
+      "childCount": 7,
+      "width": 1440,
+      "height": 900,
+      "worldX": 6080,
+      "worldY": 0,
+      "classification": "isolated state fixture",
+      "artifacts": {
+        "X1G-0.png": "78f7bddbd0ece5c79fb8c65492abaf005b01b0ed269de0098afea832aca56f62",
+        "X1G-0.jsx.txt": "2e0e542933050dacb6552633e4c67a3d914a39097ca9ffb2f38c5c37144d4b22",
+        "X1G-0.computed-styles.json": "293b4fff7efde4967cbefe59e9700b64dd692fd16bb98d04b7f2ef6198c3222e",
+        "X1G-0.tree.json": "2945380ba430cea48ab899e6ce9d3399cf727f1b85c59a906848ec295e70dc10"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "X1H-0",
+      "name": "K21 Tillstånd: ändrat, sparfel, okänt utfall",
+      "childCount": 7,
+      "width": 1440,
+      "height": 900,
+      "worldX": 7600,
+      "worldY": 0,
+      "classification": "isolated state fixture",
+      "artifacts": {
+        "X1H-0.png": "e726cf03f8f5aa7fe0954c55a8a712217e51eeac5dff10c999a67aa4276690a1",
+        "X1H-0.jsx.txt": "8bbf391b5cb793cb83b6938a06b07fe432b444b7dd8cbe67fc5e13e435ac619b",
+        "X1H-0.computed-styles.json": "f1bd188e4c5d310c7fbee8ce10bc3332ea2223bff1f352a0270afb33c71fa9f8",
+        "X1H-0.tree.json": "a0d09f17413a10bdb62aef3c0c888ffec3bf8a5af38b0ed49b0549854627531b"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "1082-0",
+      "name": "K22 Översikt: siffrornas underlag, okända rester och väg till arbetet",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 9120,
+      "worldY": 0,
+      "classification": "retained product/stress frame with canonical bar",
+      "artifacts": {
+        "1082-0.png": "b9653f9f02e39b1769b5db15889cb4ec12523ca359d1a89ecb10f92db4f953d6",
+        "1082-0.jsx.txt": "0c850b7c9698020e069a4e7752f5327e1b5a35ca4a1d1471c41fc41d448d9324",
+        "1082-0.computed-styles.json": "92e13591bd43a37f1d37e413c6c05cf04eb546b72ad505da2aa26d7046c653aa",
+        "1082-0.tree.json": "7f7a63caab1fcfb606fb69335106f5df4eb734195200cb013f2bf8e2ca239bd6"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "11PO-0",
+      "name": "K23 Komponenter v2: knappar, fält, val, tillstånd, navigation",
+      "childCount": 1,
+      "width": 1440,
+      "height": 1080,
+      "worldX": 10640,
+      "worldY": 0,
+      "classification": "component catalogue",
+      "artifacts": {
+        "11PO-0.png": "ab2b8f064f30ad5f6de326c7c2843957e84c3c79476dcd5157e1f30344d3fb67",
+        "11PO-0.jsx.txt": "fe11b0e0da773da56eab801401d0deb2cbeed79dd1433b9f03b8a6737db76780",
+        "11PO-0.computed-styles.json": "99a5e22040ae437fc6b22f11e28a490c5ebfc7ed28b6d0ba2390a745ab70500f",
+        "11PO-0.tree.json": "7210921182a6776721b41714b23b276c6e15b3a5fb0fc5b9d2bdf776851d312c"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "125N-0",
+      "name": "K24 Stresstest: tätt fakturaregister, 48 rader",
+      "childCount": 3,
+      "width": 1280,
+      "height": null,
+      "worldX": 12200,
+      "worldY": 0,
+      "classification": "retained product/stress frame with canonical bar",
+      "artifacts": {
+        "125N-0.png": "a1be48b798758e5ac26e1f833c9b55eccfa8cd59bb2512ada8607565ca07265a",
+        "125N-0.jsx.txt": "ef893c0a5006f6e86c2f4804970c0c065f8251065857982a7cd9ec554e41747b",
+        "125N-0.computed-styles.json": "ae302a5bdc33ce4980472f8826f6165ad95bb2bd9c42c425c0187c0267d6dfb5",
+        "125N-0.tree.json": "4ada606e772b069627b0803ad68d37443f13f060d31826eea7be5779d05949f8"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "12AG-0",
+      "name": "K25 Stresstest: lång faktura, radredigering och fast åtgärdsfält",
+      "childCount": 1,
+      "width": 1280,
+      "height": null,
+      "worldX": 12200,
+      "worldY": 980,
+      "classification": "retained product/stress frame with canonical bar",
+      "artifacts": {
+        "12AG-0.png": "b21056026d085f093600b5eba7f5478495129b21f5854a3e6c7994fc35e17321",
+        "12AG-0.jsx.txt": "452e7f887026769eb72831f7460c192ddf950e95d5be5c59b8156bbb71a51ae3",
+        "12AG-0.computed-styles.json": "5dc3834d9d939ea5ddb5533a5d4103d4a43940fe7284d11d40737735f9a2c789",
+        "12AG-0.tree.json": "4c5fbd6a287c91db39d8f39b4be9e492e7b4473e915f80d2d345e5ca7c5f19b9"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "13CP-0",
+      "name": "K26 Designsystem: färg, typsnitt och mått (gäller tillsammans med K23)",
+      "childCount": 1,
+      "width": 1280,
+      "height": null,
+      "worldX": 13800,
+      "worldY": 0,
+      "classification": "written design-system specification",
+      "artifacts": {
+        "13CP-0.png": "2bd96763988f0e4e0a0f181d83ed04763dfc211f4b82d3f85adb6647822ac77f",
+        "13CP-0.jsx.txt": "8fd3d49c2d9b399fc8106f5795dfb4fb14551f9f50dbdcd01f174a675eddf97f",
+        "13CP-0.computed-styles.json": "8eff5c97fab41ab6d09326cc88094f984c92d8b3c63eac152b46490f9e8a0c79",
+        "13CP-0.tree.json": "6b21d6f4a329b52baccc3fe42227fa4704b0290dfab0bec89d2bdcf2424f9792"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    },
+    {
+      "id": "24TN-0",
+      "name": "Toppfält: områdesläge och detaljläge",
+      "childCount": 4,
+      "width": 1440,
+      "height": null,
+      "worldX": 15160,
+      "worldY": 0,
+      "classification": "two-mode canonical reference",
+      "artifacts": {
+        "24TN-0.png": "c0da6817e7cdde204b9530af30cdfcca964a35e93e151e1a6fc4d62d069f0fc0",
+        "24TN-0.jsx.txt": "5b44b8088096bde42d1bd9f616059b10232eb62eccafe8f5fcf66e54dd5ca55c",
+        "24TN-0.computed-styles.json": "719c7a597003a736291452be9e90e00efa47806af7184446b94b25c203c05fcd",
+        "24TN-0.tree.json": "50ddacf4e18edce166b63357a17012100669e0eea21d11a0c648d568f975310c"
+      },
+      "computed_style_scope": "All nodes visible in depth3 tree, including bars and body groups"
+    }
+  ]
+}

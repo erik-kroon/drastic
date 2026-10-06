@@ -1,0 +1,140 @@
+[
+  {
+    "frame": "V2 Regler: register",
+    "id": "PIT-0",
+    "screenshot": "V2.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=PIT-0"
+  },
+  {
+    "frame": "V8 Regel: detalj",
+    "id": "SVY-0",
+    "screenshot": "V8.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=SVY-0"
+  },
+  {
+    "frame": "V10 Lägg till klient",
+    "id": "U0B-0",
+    "screenshot": "V10.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=U0B-0"
+  },
+  {
+    "frame": "V13 Byrå åtkomst",
+    "id": "W3C-0",
+    "screenshot": "V13.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=W3C-0"
+  },
+  {
+    "frame": "V14 Byrå policys",
+    "id": "W4K-0",
+    "screenshot": "V14.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=W4K-0"
+  },
+  {
+    "frame": "V15 Byrå jämförelse",
+    "id": "W5E-0",
+    "screenshot": "V15.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=W5E-0"
+  },
+  {
+    "frame": "V11 Integrationer",
+    "id": "W6G-0",
+    "screenshot": "V11.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=W6G-0"
+  },
+  {
+    "frame": "V2b Regler: regel sparad efter godkännande, omfattning och ångra",
+    "id": "18QO-0",
+    "screenshot": "V2b.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=18QO-0"
+  },
+  {
+    "frame": "V21 Integrationer: status lokalt och hos motparten, försämrad och behörighet saknas",
+    "id": "18D8-0",
+    "screenshot": "V21.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=18D8-0"
+  },
+  {
+    "frame": "V22 Integration: Swedbank försämrad, hämtning misslyckades och återhämtning",
+    "id": "18GL-0",
+    "screenshot": "V22.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=18GL-0"
+  },
+  {
+    "frame": "V27 Integration: betalförmedlare, anslutning och roller",
+    "id": "1IF2-0",
+    "screenshot": "V27.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=1IF2-0"
+  },
+  {
+    "frame": "V23 Integration: anslut Skatteverket, behörighet nekad",
+    "id": "18JY-0",
+    "screenshot": "V23.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=18JY-0"
+  },
+  {
+    "frame": "V24 Integration: koppla från Swedbank, följder (dialog)",
+    "id": "18NB-0",
+    "screenshot": "V24.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=18NB-0"
+  },
+  {
+    "frame": "V12 Integration detalj",
+    "id": "W9T-0",
+    "screenshot": "V12.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=W9T-0"
+  },
+  {
+    "frame": "V16 Kunskap",
+    "id": "WD8-0",
+    "screenshot": "V16.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=WD8-0"
+  },
+  {
+    "frame": "V17 E-postinkorg",
+    "id": "WGP-0",
+    "screenshot": "V17.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=WGP-0"
+  },
+  {
+    "frame": "V19 Integrationer: kategori Underlag in",
+    "id": "10GX-0",
+    "screenshot": "V19.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=10GX-0"
+  },
+  {
+    "frame": "V1 Byrå: klientportfölj",
+    "id": "13FH-0",
+    "screenshot": "V1.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=13FH-0"
+  },
+  {
+    "frame": "V18 Byt ansvarig klient",
+    "id": "1CFT-0",
+    "screenshot": "V18.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=1CFT-0"
+  },
+  {
+    "frame": "V25 Byrå: överlämna klienter, åtkomst saknas hos en (dialog)",
+    "id": "1B0X-0",
+    "screenshot": "V25.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=1B0X-0"
+  },
+  {
+    "frame": "V26 Byrå: överlämnat 1 av 2, resultat per klient",
+    "id": "1B36-0",
+    "screenshot": "V26.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=1B36-0"
+  },
+  {
+    "frame": "V9 Byrå: klientdetalj med åtkomst, hinder och datum",
+    "id": "13HS-0",
+    "screenshot": "V9.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=13HS-0"
+  },
+  {
+    "frame": "V20 Byrå: klientens bok öppnad med byråkontext",
+    "id": "13KJ-0",
+    "screenshot": "V20.png",
+    "url": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-16-0?node=13KJ-0"
+  }
+]

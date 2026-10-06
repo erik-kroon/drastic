@@ -1,0 +1,1064 @@
+[
+  {
+    "page": "04",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "P21-0",
+            "name": "Utbetalningen saknar…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Utbetalningen saknar kvitto, faktura och verifikation."
+              }
+            ]
+          },
+          {
+            "id": "150H-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "1GE9-0",
+            "name": "Verifikationsförslag",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag"
+              }
+            ]
+          },
+          {
+            "id": "1JJY-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "1LD0-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "1GHY-0",
+            "name": "Preliminärt verifika…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Preliminärt verifikationsförslag"
+              }
+            ]
+          },
+          {
+            "id": "1GPN-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, 1 okt"
+              }
+            ]
+          },
+          {
+            "id": "1JPB-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, två steg, 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "UAF-0",
+            "name": "Verifikation K37",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation K37"
+              }
+            ]
+          },
+          {
+            "id": "266D-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, 2 okt"
+              }
+            ]
+          }
+        ],
+        "count": 10
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "05",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "17I8-0",
+            "name": "Dokumentet är koppla…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Dokumentet är kopplat till verifikation A148 sedan 2 okt."
+              }
+            ]
+          },
+          {
+            "id": "17I9-0",
+            "name": "Koppla till verifika…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Koppla till verifikation"
+              }
+            ]
+          },
+          {
+            "id": "Z6Z-0",
+            "name": "3 träffar i filnamn,…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "3 träffar i filnamn, motpart, typ, datum, belopp, verifikation och texten som lästs ur dokumenten."
+              }
+            ]
+          },
+          {
+            "id": "Z7B-0",
+            "name": "Verifikation A148",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A148"
+              }
+            ]
+          },
+          {
+            "id": "Z7I-0",
+            "name": "Verifikation A131",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A131"
+              }
+            ]
+          },
+          {
+            "id": "ZA9-0",
+            "name": "Sökningen gäller fil…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Sökningen gäller filnamn, motpart, typ, datum, belopp, verifikation och texten som lästs ur dokumenten."
+              }
+            ]
+          },
+          {
+            "id": "17IB-0",
+            "name": "Sök verifikation ell…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Sök verifikation eller leverantörsfaktura"
+              }
+            ]
+          },
+          {
+            "id": "17IG-0",
+            "name": "En bokförd verifikat…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "En bokförd verifikation måste ha ett underlag"
+              }
+            ]
+          },
+          {
+            "id": "17II-0",
+            "name": "Ändringen syns i dok…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Ändringen syns i dokumentets och verifikationens historik"
+              }
+            ]
+          },
+          {
+            "id": "R21-0",
+            "name": "Kopplade verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Kopplade verifikationer"
+              }
+            ]
+          },
+          {
+            "id": "P59-0",
+            "name": "Verifikation A148",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A148"
+              }
+            ]
+          },
+          {
+            "id": "P5E-0",
+            "name": "Verifikation A149",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A149"
+              }
+            ]
+          },
+          {
+            "id": "P5T-0",
+            "name": "Verifikation A137",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A137"
+              }
+            ]
+          },
+          {
+            "id": "P84-0",
+            "name": "Öppna verifikation A…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Öppna verifikation A148"
+              }
+            ]
+          },
+          {
+            "id": "17HX-0",
+            "name": "Verifikation A148, b…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A148, bokförd 2 okt 08:55"
+              }
+            ]
+          },
+          {
+            "id": "17I2-0",
+            "name": "Öppna verifikation A…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Öppna verifikation A148"
+              }
+            ]
+          }
+        ],
+        "count": 16
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "07",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "1HAY-0",
+            "name": "Tidrapporten rättade…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Tidrapporten rättades efter utbetalningen. Skillnaden är beräknad mot den utbetalda lönen, verifikation A140. Du väljer hur den hanteras."
+              }
+            ]
+          },
+          {
+            "id": "1HF5-0",
+            "name": "Verifikationsförslag",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag"
+              }
+            ]
+          },
+          {
+            "id": "1KBO-0",
+            "name": "Verifikationsförslag…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsförslag, rättelse av MIL-2026-0012"
+              }
+            ]
+          },
+          {
+            "id": "1KN5-0",
+            "name": "Maja Holm, september…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Maja Holm, september är utbetald, verifikation A140. Återkravet är 465,00 netto (600,00 brutto, avdragen skatt 135,00) och du valde att kvitta mot kommande lön."
+              }
+            ]
+          },
+          {
+            "id": "1FBT-0",
+            "name": "Körningen är godkänd…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Körningen är godkänd. Bokför skapar en verifikation daterad 2 okt 2026 i period oktober 2026, som du bekräftar i en förhandsvisning före bokföring. Inget är utbetalt."
+              }
+            ]
+          },
+          {
+            "id": "PFR-0",
+            "name": "Underlaget räknas fr…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Underlaget räknas från bokförda verifikationer. Inlämning sker efter godkännande och signering."
+              }
+            ]
+          },
+          {
+            "id": "25N0-0",
+            "name": "Övriga verifikatione…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Övriga verifikationer i september"
+              }
+            ]
+          },
+          {
+            "id": "1DVE-0",
+            "name": "Körningen är godkänd…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Körningen är godkänd och bokförd som verifikation"
+              }
+            ]
+          },
+          {
+            "id": "1NM6-0",
+            "name": "Verifikation när du …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation när du godkänner"
+              }
+            ]
+          },
+          {
+            "id": "1Z7U-0",
+            "name": "Verifikation när ban…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation när banken bekräftat"
+              }
+            ]
+          },
+          {
+            "id": "1ZAR-0",
+            "name": "Verifikation",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation"
+              }
+            ]
+          },
+          {
+            "id": "1ZDM-0",
+            "name": "Verifikation",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation"
+              }
+            ]
+          },
+          {
+            "id": "1ZEZ-0",
+            "name": "Summan av årets inlä…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Summan av årets inlämnade momsdeklarationer jämförs med bokföringen. En tidigare avstämning byggde på underlag som har ändrats, så den har räknats om från sparade deklarationer och verifikationer."
+              }
+            ]
+          },
+          {
+            "id": "1ZHX-0",
+            "name": "Varje belopp i dekla…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Varje belopp i deklarationen går att följa till sina verifikationer. Krediter visas som egna rader med pil till det de rättar, ursprungsraden ändras inte."
+              }
+            ]
+          },
+          {
+            "id": "1ZJP-0",
+            "name": "Raden i deklaratione…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Raden i deklarationen är netto efter krediten. Båda händelserna finns kvar som egna verifikationer."
+              }
+            ]
+          },
+          {
+            "id": "160F-0",
+            "name": "Inga verifikationer …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Inga verifikationer har ändrats sedan Saras granskning"
+              }
+            ]
+          },
+          {
+            "id": "17RO-0",
+            "name": "Avdrag för ingående …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Avdrag för ingående moms medges inte för verifikation A149, eftersom fakturan saknar uppgift som krävs för avdrag. Beslutet kan överklagas inom den tid som anges i beslutet."
+              }
+            ]
+          },
+          {
+            "id": "17RX-0",
+            "name": "En ny verifikation k…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "En ny verifikation krediterar 2641 Debiterad ingående moms och debiterar kostnadskontot med 498,00, en gång. Oktoberdeklarationen påverkas inte. Differensen 498,00 betalas via skattekontot."
+              }
+            ]
+          },
+          {
+            "id": "1DVZ-0",
+            "name": "Visa verifikation",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Visa verifikation"
+              }
+            ]
+          },
+          {
+            "id": "1ZGB-0",
+            "name": "Verifikation A141, k…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation A141, korrigering av faktura F-2025-0233 bokförd 12 jan 2026 mot december"
+              }
+            ]
+          },
+          {
+            "id": "1ZHE-0",
+            "name": "Visa verifikation A1…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Visa verifikation A141"
+              }
+            ]
+          },
+          {
+            "id": "1ZI2-0",
+            "name": "Verifikation",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation"
+              }
+            ]
+          },
+          {
+            "id": "1ZI8-0",
+            "name": "Verifikation 2 okt",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "1ZIE-0",
+            "name": "Verifikation 3 okt",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation 3 okt"
+              }
+            ]
+          },
+          {
+            "id": "1ZIW-0",
+            "name": "29 verifikationer",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "29 verifikationer"
+              }
+            ]
+          },
+          {
+            "id": "1ZJK-0",
+            "name": "Ingen källa saknar v…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Ingen källa saknar verifikation eller är hänförd till fel period"
+              }
+            ]
+          },
+          {
+            "id": "1ZK6-0",
+            "name": "Öppna verifikation A…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Öppna verifikation A171"
+              }
+            ]
+          }
+        ],
+        "count": 27
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "08",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "16HZ-0",
+            "name": "Rättelser bokförs so…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Rättelser bokförs som nya verifikationer i en öppen period med hänvisning till originalet."
+              }
+            ]
+          },
+          {
+            "id": "16EO-0",
+            "name": "Nya verifikationer i…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Nya verifikationer i september kan inte bokföras"
+              }
+            ]
+          },
+          {
+            "id": "16EQ-0",
+            "name": "Befintliga verifikat…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Befintliga verifikationer bevaras. Rättelser bokförs i öppen period."
+              }
+            ]
+          },
+          {
+            "id": "TKI-0",
+            "name": "✓ Från bokförda veri…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "✓ Från bokförda verifikationer"
+              }
+            ]
+          },
+          {
+            "id": "TN2-0",
+            "name": "Verifikationer och u…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationer och underlag, låsta perioder"
+              }
+            ]
+          },
+          {
+            "id": "27EE-0",
+            "name": "Rätta en verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Rätta en verifikation i september"
+              }
+            ]
+          },
+          {
+            "id": "1CAG-0",
+            "name": "Visa otaggade verifi…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Visa otaggade verifikation"
+              }
+            ]
+          },
+          {
+            "id": "20AF-0",
+            "name": "Visa verifikationen",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Visa verifikationen"
+              }
+            ]
+          },
+          {
+            "id": "20A8-0",
+            "name": "Rättas som ny verifi…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Rättas som ny verifikation, ursprunget ligger kvar."
+              }
+            ]
+          }
+        ],
+        "count": 9
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "09",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "189W-0",
+            "name": "Ändra verifikationss…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Ändra verifikationsserier"
+              }
+            ]
+          },
+          {
+            "id": "189X-0",
+            "name": "Serien anges med en …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Serien anges med en bokstav och används när verifikationer numreras."
+              }
+            ]
+          },
+          {
+            "id": "18AT-0",
+            "name": "En serie som redan h…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "En serie som redan har verifikationer kan inte byta namn eller tas bort."
+              }
+            ]
+          },
+          {
+            "id": "246L-0",
+            "name": "Bokförda verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Bokförda verifikationer och tidigare godkännanden påverkas inte."
+              }
+            ]
+          },
+          {
+            "id": "24BQ-0",
+            "name": "Kopian kan användas …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Kopian kan användas först när supporten har jämfört saldon, verifikationer och originalfiler med säkerhetskopian."
+              }
+            ]
+          },
+          {
+            "id": "SCD-0",
+            "name": "Verifikationsserier",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsserier"
+              }
+            ]
+          },
+          {
+            "id": "1HZG-0",
+            "name": "Verifikationer, fakt…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationer, fakturor, bankhändelser"
+              }
+            ]
+          },
+          {
+            "id": "1L1Z-0",
+            "name": "Verifikationer, fakt…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationer, fakturor, bankhändelser"
+              }
+            ]
+          },
+          {
+            "id": "17SV-0",
+            "name": "Verifikationsserier",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsserier"
+              }
+            ]
+          },
+          {
+            "id": "17WC-0",
+            "name": "Verifikationsserier",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsserier"
+              }
+            ]
+          },
+          {
+            "id": "249I-0",
+            "name": "Förbereda verifikati…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Förbereda verifikationer, fakturor och moms"
+              }
+            ]
+          },
+          {
+            "id": "23X0-0",
+            "name": "Förbereda verifikati…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Förbereda verifikationer, fakturor och moms. Godkänner inte"
+              }
+            ]
+          },
+          {
+            "id": "1HZJ-0",
+            "name": "Verifikationsnummer …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsnummer och gränser"
+              }
+            ]
+          },
+          {
+            "id": "1HZT-0",
+            "name": "Kvitton för bokförda…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Kvitton för bokförda verifikationer"
+              }
+            ]
+          },
+          {
+            "id": "1L1X-0",
+            "name": "Verifikationsnummer …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikationsnummer och gränser"
+              }
+            ]
+          },
+          {
+            "id": "1L1N-0",
+            "name": "Kvitton för bokförda…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Kvitton för bokförda verifikationer"
+              }
+            ]
+          },
+          {
+            "id": "23VB-0",
+            "name": "Assistenter bokför a…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Assistenter bokför aldrig själva. Bokföring sker bara efter en persons godkännande, per verifikation eller genom ett aktivt mandat som en administratör har godkänt i förväg."
+              }
+            ]
+          }
+        ],
+        "count": 17
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "11",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "W60-0",
+            "name": "Bokförda verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Bokförda verifikationer, ej avstämd mot bank"
+              }
+            ]
+          },
+          {
+            "id": "W66-0",
+            "name": "Bokförda verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Bokförda verifikationer, perioden låst 2 okt"
+              }
+            ]
+          },
+          {
+            "id": "13JZ-0",
+            "name": "Förbereda verifikati…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Förbereda verifikationer"
+              }
+            ]
+          }
+        ],
+        "count": 3
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "12",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "Q20-0",
+            "name": "Rätta en verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Rätta en verifikation"
+              }
+            ]
+          },
+          {
+            "id": "23BX-0",
+            "name": "Rätta en verifikatio…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Rätta en verifikation"
+              }
+            ]
+          },
+          {
+            "id": "Q27-0",
+            "name": "Ladda upp fakturan i…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Ladda upp fakturan i Inköp. OpenERP läser ut uppgifterna och föreslår konton. Du granskar förslaget mot originalet. Verifikationen bokförs när en godkännare godkänner den."
+              }
+            ]
+          },
+          {
+            "id": "23RI-0",
+            "name": "En leverans kan uppr…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "En leverans kan upprepas. Hoppa över dubbletter med event_id, inte object_id: flera händelser kan gälla samma verifikation."
+              }
+            ]
+          },
+          {
+            "id": "23SM-0",
+            "name": "Ny händelse voucher.…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Ny händelse voucher.corrected när en verifikation rättas. voucher.posted skickas som tidigare bara när en verifikation bokförs."
+              }
+            ]
+          },
+          {
+            "id": "W13-0",
+            "name": "Läs verifikationer, …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Läs verifikationer, konton och rapporter med read:vouchers och read:reports."
+              }
+            ]
+          },
+          {
+            "id": "23OF-0",
+            "name": "Läsa verifikationer …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Läsa verifikationer och kontoplan"
+              }
+            ]
+          },
+          {
+            "id": "23Q2-0",
+            "name": "Verifikation bokförd…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation bokförd vid godkännande"
+              }
+            ]
+          },
+          {
+            "id": "23Q6-0",
+            "name": "Verifikation rättad …",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Verifikation rättad med en ny verifikation"
+              }
+            ]
+          }
+        ],
+        "count": 9
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  },
+  {
+    "page": "13",
+    "results": [
+      {
+        "nodes": [
+          {
+            "id": "X3J-0",
+            "name": "Godkännandet är spar…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Godkännandet är sparat, men det är okänt om verifikationen bokfördes. Bokför inte igen förrän utfallet är kontrollerat."
+              }
+            ]
+          },
+          {
+            "id": "NRQ-0",
+            "name": "Faktura 1048 och 882…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Faktura 1048 och 882, verifikation A148 och A149"
+              }
+            ]
+          },
+          {
+            "id": "NS0-0",
+            "name": "Visa verifikationern…",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Visa verifikationerna"
+              }
+            ]
+          },
+          {
+            "id": "X3O-0",
+            "name": "Öppna verifikationer",
+            "component": "Text",
+            "matched": [
+              {
+                "textValue": "Öppna verifikationer"
+              }
+            ]
+          }
+        ],
+        "count": 4
+      },
+      {
+        "nodes": [],
+        "count": 0
+      }
+    ]
+  }
+]

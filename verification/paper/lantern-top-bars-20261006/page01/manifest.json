@@ -1,0 +1,848 @@
+{
+  "fileId": "01M3M9A2DA2G08DSJA5K8ZE68S",
+  "pageId": "p-L-0",
+  "date": "2026-10-06",
+  "scope": "All 35 live artboards: 31 product frames and 4 preserved QA fixtures; static Paper evidence only",
+  "frames": [
+    {
+      "frame": "L1",
+      "nodeId": "NV6-0",
+      "name": "L1 Att göra: kö med förhandsvisning",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L1.png",
+          "sha256": "768a435a3d75106c561ca5e5acedad44d87c8b65d6142d9ab6409e88fee71928"
+        },
+        "tree.json": {
+          "path": "L1.tree.json",
+          "sha256": "673c587b429d35d170bdba468120ea91b5e64e8fb205afcd8e9af1d3d4c95de6"
+        },
+        "jsx.txt": {
+          "path": "L1.jsx.txt",
+          "sha256": "5ba947326aea2d7ab31d3e2e99fedd0183df2cb184edcb3364aec3b10528f07b"
+        },
+        "computed-styles.json": {
+          "path": "L1.computed-styles.json",
+          "sha256": "38ec61fed449284cb938fc0490bfef5693dc784aa286a81ddb74f223f236cc50"
+        }
+      }
+    },
+    {
+      "frame": "L12",
+      "nodeId": "13YN-0",
+      "name": "L12 Fråga klienten: bankhändelse saknar underlag",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L12.png",
+          "sha256": "61d2bcefa0296a605b6382da6d1f8919be6658318f9d85e2e3204779613e35f6"
+        },
+        "tree.json": {
+          "path": "L12.tree.json",
+          "sha256": "195158a75e2d8e0c195c3eb7f675ac85191e7bbd222f5f63d5b1028ed8e51b02"
+        },
+        "jsx.txt": {
+          "path": "L12.jsx.txt",
+          "sha256": "59b882e729f7026aeef264f1d92658bf242f03c935ea451422c1ffa199e8ff74"
+        },
+        "computed-styles.json": {
+          "path": "L12.computed-styles.json",
+          "sha256": "54f0e63d0a052d387496613aae75c767e277351782ac971bc5f347cc76cb953e"
+        }
+      }
+    },
+    {
+      "frame": "L13",
+      "nodeId": "142W-0",
+      "name": "L13 Klientens svar: fråga, text och bifogad fil",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L13.png",
+          "sha256": "86a797182292c78ab6d62a52913aa5c4a81dea31a75f02c5eb1b0438396440b6"
+        },
+        "tree.json": {
+          "path": "L13.tree.json",
+          "sha256": "d131738629d98d07d5cdf6de1e195aa4de3bb55620844d5457adb74254c73a61"
+        },
+        "jsx.txt": {
+          "path": "L13.jsx.txt",
+          "sha256": "83f8c2b08fc29ef1d5b12454a4d7129888f17ab0a96fdce35ad3fcaf07d041d2"
+        },
+        "computed-styles.json": {
+          "path": "L13.computed-styles.json",
+          "sha256": "f5b6defde6d23ab6427254a5565c3b0f7e41617bc61605fae4fdf3adeef28789"
+        }
+      }
+    },
+    {
+      "frame": "L14",
+      "nodeId": "146S-0",
+      "name": "L14 Tillbaka hos bokföraren: svar och bilaga i samma uppgift",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L14.png",
+          "sha256": "685df618298952bab16cc648fdbfb4c450812ada3bcd6c3594fd2ca263e8ddd4"
+        },
+        "tree.json": {
+          "path": "L14.tree.json",
+          "sha256": "4157df5bf69c8f66120760c37855f3721eb77ef0ba51ae862dafc5d8d2469eb8"
+        },
+        "jsx.txt": {
+          "path": "L14.jsx.txt",
+          "sha256": "0fda11ff196dcdfffe3cdbe22cd2cb3120bf3c113f54a75e12038a4c6719aab8"
+        },
+        "computed-styles.json": {
+          "path": "L14.computed-styles.json",
+          "sha256": "dc737014e10844bae34e03f5d003184fc266e65502f7da05697186a5ca81b201"
+        }
+      }
+    },
+    {
+      "frame": "L15",
+      "nodeId": "14B4-0",
+      "name": "L15 Löst: uppgiften har lämnat kön i alla vyer",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L15.png",
+          "sha256": "bbef620fb133984602c31f883fb5ea4304ea92a93da19c9db9036d6ca7bb04d7"
+        },
+        "tree.json": {
+          "path": "L15.tree.json",
+          "sha256": "a62ed41cffff4b043b0cd89ae5e8e8976279027ac2e50eaaf0fb2edec9c44845"
+        },
+        "jsx.txt": {
+          "path": "L15.jsx.txt",
+          "sha256": "cdcebb41bcc2fef7c5e8209145370069a262e4751a941c555aaa1c0f9e323ccd"
+        },
+        "computed-styles.json": {
+          "path": "L15.computed-styles.json",
+          "sha256": "49efbe63afca42d1f45a350d91beaa274e63a738f1d02b5fe7380759b00cc8a6"
+        }
+      }
+    },
+    {
+      "frame": "L16",
+      "nodeId": "14ET-0",
+      "name": "L16 Att göra: period september, moms och bokslut som samma uppgifter",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L16.png",
+          "sha256": "6fe1c13ac43d7a992b94395ff59b6d9a5a5d67427011d6d4089889d9fd8f0f3e"
+        },
+        "tree.json": {
+          "path": "L16.tree.json",
+          "sha256": "2e87a0ed6f02dbace3ace81995a4f5a4e1fa97e915b6614082f3f4ee4d337e68"
+        },
+        "jsx.txt": {
+          "path": "L16.jsx.txt",
+          "sha256": "4227b058632cef84329f1dd3ebcba072f5495edc1537db8bab02a36f26a84af2"
+        },
+        "computed-styles.json": {
+          "path": "L16.computed-styles.json",
+          "sha256": "2c1ce46d49c6158f8db8778ea3d836c499c8c14d2f20a15a912383a336fa5677"
+        }
+      }
+    },
+    {
+      "frame": "L17",
+      "nodeId": "14SL-0",
+      "name": "L17 Granska i grupp: stödda förslag, undantag och ändrad rad",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L17.png",
+          "sha256": "37135dd9fc55fa6a714e4b51bf229ba0e007253fdf34439acb7dce9aa6afd7a3"
+        },
+        "tree.json": {
+          "path": "L17.tree.json",
+          "sha256": "93922963895c1f2c43f3ef0950516e07a7ebeeb1b2cc41b7872d8cd1e060baa0"
+        },
+        "jsx.txt": {
+          "path": "L17.jsx.txt",
+          "sha256": "f6dd8f1dd0da60765fe6bc864c16a70b78e84e492bd64ac49efd371d3088e2e7"
+        },
+        "computed-styles.json": {
+          "path": "L17.computed-styles.json",
+          "sha256": "0649a512fd39d020ea18c32ed61675a8dc4210914f43e928651b276b1658d38b"
+        }
+      }
+    },
+    {
+      "frame": "L18",
+      "nodeId": "14US-0",
+      "name": "L18 Gruppen bokförd: resultat per rad, kvarvarande uppgifter",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L18.png",
+          "sha256": "cfbd216eb9718dac8b3c95a169809174d005a20073b4e4cd5acda77c1bfdc286"
+        },
+        "tree.json": {
+          "path": "L18.tree.json",
+          "sha256": "25c88592dc677a0a28d6fb010a101802837ae9df664b93d00e191424368772f7"
+        },
+        "jsx.txt": {
+          "path": "L18.jsx.txt",
+          "sha256": "17f809401ee3ad63a93cdca66951917f8a20eb3de79545a08bbb51ee630507c0"
+        },
+        "computed-styles.json": {
+          "path": "L18.computed-styles.json",
+          "sha256": "9e3313007121d8d0f0bd12a5b6dd828c1338067cc1a432ee10c659ee1eeef57e"
+        }
+      }
+    },
+    {
+      "frame": "L19",
+      "nodeId": "175R-0",
+      "name": "L19 Granska: underlaget ändrades efter förslaget, ändring sparades inte",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L19.png",
+          "sha256": "f65551e1a343e6b7491373629a88b5dffd9a03062b8216b83a3dde42234c11c5"
+        },
+        "tree.json": {
+          "path": "L19.tree.json",
+          "sha256": "d0e1008718f7486011b73606194382ef7c3e7f5f3f166519efd1edda34549b65"
+        },
+        "jsx.txt": {
+          "path": "L19.jsx.txt",
+          "sha256": "c12cf6e6cb8703ad84f8b1ea1c3d34eff40621f7c74b0cd6af771243d81f7ae7"
+        },
+        "computed-styles.json": {
+          "path": "L19.computed-styles.json",
+          "sha256": "c5a15063911a132c51e3be0cb1fdac3c0e6ea7741e80fde39064334150f61488"
+        }
+      }
+    },
+    {
+      "frame": "L2",
+      "nodeId": "NZX-0",
+      "name": "L2 Granska: fokuserat läge",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L2.png",
+          "sha256": "612e5c8250a114e16ff335ac6f0a49c2f1e21341be8d8c9efb0c6afb272cabad"
+        },
+        "tree.json": {
+          "path": "L2.tree.json",
+          "sha256": "b099a79c9672b78f57b6d95e74af4ec830aff4758d8e716f3844b3b13d7b35ee"
+        },
+        "jsx.txt": {
+          "path": "L2.jsx.txt",
+          "sha256": "14040ca32e540c07a1d6a538cfd1452119399e6ed114da7c0c212196a8bee6dc"
+        },
+        "computed-styles.json": {
+          "path": "L2.computed-styles.json",
+          "sha256": "54518a4d3d65952fdf43da8960ae2ed72a58026601d8a220e7ddef1c0d56b7bb"
+        }
+      }
+    },
+    {
+      "frame": "L20",
+      "nodeId": "1ABG-0",
+      "name": "L20 Granska: bokföringen fick inget svar, kontrollera före nytt försök (exempel)",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L20.png",
+          "sha256": "8f95230d2dbecbc94ddfb14c32965af7eccb6dba6d3b69bd5935c7486d26050a"
+        },
+        "tree.json": {
+          "path": "L20.tree.json",
+          "sha256": "b8a91f4ebc14afd7e91ef231ea4f23cbb10705511653a5c052ae7e10d468ed6f"
+        },
+        "jsx.txt": {
+          "path": "L20.jsx.txt",
+          "sha256": "2ed2db7a751082bab2405403ee44be548fa89963df70d34b5c6189ec05345f7e"
+        },
+        "computed-styles.json": {
+          "path": "L20.computed-styles.json",
+          "sha256": "4a15ed9e243fb9498dc324a3f0dbfb26eb045f9da0943f3418edbef137fbce6f"
+        }
+      }
+    },
+    {
+      "frame": "L21",
+      "nodeId": "1AEU-0",
+      "name": "L21 Bokförd A153, resultat 2 okt 09:13",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L21.png",
+          "sha256": "9acc32d7879fee0138bfc7c96513618abaac882c726f7479f62ff3b9d3d21571"
+        },
+        "tree.json": {
+          "path": "L21.tree.json",
+          "sha256": "432f07226971a6bcd7bdb29e39f497399d78a019db9bd4fa288cb3de1667b5e8"
+        },
+        "jsx.txt": {
+          "path": "L21.jsx.txt",
+          "sha256": "99ce710b7b874f5522bf1bbaee8abd0bd9e52f7524ce28965138382d81475866"
+        },
+        "computed-styles.json": {
+          "path": "L21.computed-styles.json",
+          "sha256": "4e78d3b40ab3c906522ebd47d6ac7dead9012195239474f23968e6e119e8a2c8"
+        }
+      }
+    },
+    {
+      "frame": "L22",
+      "nodeId": "1AI8-0",
+      "name": "L22 Granska: bokföringen nekades, låst period (exempel)",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L22.png",
+          "sha256": "2cc9b2da9f494d7f2376dd85f3354b941acdcb5ddb0996a597450f0b875179dc"
+        },
+        "tree.json": {
+          "path": "L22.tree.json",
+          "sha256": "db6a2e3a2f42aa8bd592cd3414d520c877f269e5e0236f1d33f675c6ac65a43d"
+        },
+        "jsx.txt": {
+          "path": "L22.jsx.txt",
+          "sha256": "2620fc4d8127d5a29b3e4a778f181583d6e204debdf8969e134664ddfd85e2af"
+        },
+        "computed-styles.json": {
+          "path": "L22.computed-styles.json",
+          "sha256": "b2af8e573f6ea73b9542eab52964b6d4f0993e03fea3acff466c6d38f36f8674"
+        }
+      }
+    },
+    {
+      "frame": "L23",
+      "nodeId": "1ALM-0",
+      "name": "L23 Sök: inga träffar och avgränsad åtkomst",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L23.png",
+          "sha256": "ed5c9bc7dae17882fa91d7c08c8e6212aa70afe8521511811b751f1012d005a9"
+        },
+        "tree.json": {
+          "path": "L23.tree.json",
+          "sha256": "4771332f997cecb73a57b97d8f29d3d4f0f4d0ff0dfa8697db5c586907b5d046"
+        },
+        "jsx.txt": {
+          "path": "L23.jsx.txt",
+          "sha256": "573e3cd007872415e50d5350736f901cbf833ef48090acc010deb414a9e786ce"
+        },
+        "computed-styles.json": {
+          "path": "L23.computed-styles.json",
+          "sha256": "fb1cb6a47af441ef6197ace578885c8996397c122cef49a10d1cbad16fb20570"
+        }
+      }
+    },
+    {
+      "frame": "L24",
+      "nodeId": "1AP8-0",
+      "name": "L24 Sök: laddar, delvis fel och träffar",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L24.png",
+          "sha256": "b1fd8734f8d33892c0ea1fb3d4031e9284f6aa3978302134307a23f311650e02"
+        },
+        "tree.json": {
+          "path": "L24.tree.json",
+          "sha256": "61dd9062e0d37f529ed5bf1e1ed4b31a3294a1cbe508755223e45d187867bbcd"
+        },
+        "jsx.txt": {
+          "path": "L24.jsx.txt",
+          "sha256": "fc1f941dbdd02bd283a996d700c53c3845c634b815b42ebf8391c1d11ce7218b"
+        },
+        "computed-styles.json": {
+          "path": "L24.computed-styles.json",
+          "sha256": "08f618189f6cbbd843bf4d14d501a2eab3665a7733ea7cd64199b3bf113930ed"
+        }
+      }
+    },
+    {
+      "frame": "L25",
+      "nodeId": "1ASU-0",
+      "name": "L25 Sök: filter, tangentbord och byte av företag",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L25.png",
+          "sha256": "374d0394671321fe821d49b5f35ab256d1fd9f7f68847ae03484a47dc3e37df9"
+        },
+        "tree.json": {
+          "path": "L25.tree.json",
+          "sha256": "557acf90c2e1e74199f61c18e1473118d3d76179eee88cfa70784112bd9d44ac"
+        },
+        "jsx.txt": {
+          "path": "L25.jsx.txt",
+          "sha256": "e252619ce3228ac81c29430e211a80701477ddc07fd5222748146f286e0dd008"
+        },
+        "computed-styles.json": {
+          "path": "L25.computed-styles.json",
+          "sha256": "7b0c6abc8400825a0c1520cf9f5774dcee3ee66ef33cfe9ef641dba9d50919db"
+        }
+      }
+    },
+    {
+      "frame": "L26",
+      "nodeId": "1E26-0",
+      "name": "L26 Granska: bokföring pågår, knappar avstängda",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L26.png",
+          "sha256": "b23ad5ed4264e1cccd70780bd0afea1f080d65e36579cf15a116135cbba0399d"
+        },
+        "tree.json": {
+          "path": "L26.tree.json",
+          "sha256": "e9f2052174244361302fe4d0b28085b06f662cf5925af2d0481d94aa1e5c878b"
+        },
+        "jsx.txt": {
+          "path": "L26.jsx.txt",
+          "sha256": "bbc60b4d591c93b86474f6c6f1d558d14b9432f603f4f90365b2a94c9b049095"
+        },
+        "computed-styles.json": {
+          "path": "L26.computed-styles.json",
+          "sha256": "7f58fcdbdd55673724f26898b6694a565e29af222fe9a515d934e7b9745f2378"
+        }
+      }
+    },
+    {
+      "frame": "L27",
+      "nodeId": "1E5K-0",
+      "name": "L27 Granska: behörigheten ändrades, kan inte godkänna",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L27.png",
+          "sha256": "d5f7444a60ed1cb3b1f6e04ec6247991c7fb94541b47d7d535a8fb7e17e7b060"
+        },
+        "tree.json": {
+          "path": "L27.tree.json",
+          "sha256": "a5669b8250e74f05d122597b54e13f230c316c0d6d15d4c5d9ed0716ee106bca"
+        },
+        "jsx.txt": {
+          "path": "L27.jsx.txt",
+          "sha256": "110891d66546f851323620eb2e42edaf4a3cf8e3f4466422bee1e041a76805a7"
+        },
+        "computed-styles.json": {
+          "path": "L27.computed-styles.json",
+          "sha256": "f73cc5b201be2142551afa0b847bcd3ac10fe0fcf405acb59cb8ca38b6d9a4d3"
+        }
+      }
+    },
+    {
+      "frame": "L28",
+      "nodeId": "1M63-0",
+      "name": "L28 Godkännande inaktuellt, ändrat underlag",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L28.png",
+          "sha256": "ae2c1d76261d11e18b8dbb35f496a3107b00c8f4cb928708c8b39bf24195480f"
+        },
+        "tree.json": {
+          "path": "L28.tree.json",
+          "sha256": "32ea9c482d43ab48d15ad29ec394c0bc79c39fe3f14262ca3f8031d606b5d5e5"
+        },
+        "jsx.txt": {
+          "path": "L28.jsx.txt",
+          "sha256": "f12a4d1a11ec298e66eb6b19e4c3ccb9658f5a58a8e9d3affebfffabf3bb6913"
+        },
+        "computed-styles.json": {
+          "path": "L28.computed-styles.json",
+          "sha256": "5a043771d6dab0d4db68d95876f9a636fa94fd6204b6a043e0434dcfce8e30d9"
+        }
+      }
+    },
+    {
+      "frame": "L29",
+      "nodeId": "1MA3-0",
+      "name": "L29 Granska: godkännandet återkallades av godkännaren före bokföring, skäl sparat (exempel)",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L29.png",
+          "sha256": "676426eaca66d9fbe3f52d47b78c47aceaa31f8173f763bc44c8195376bbc00e"
+        },
+        "tree.json": {
+          "path": "L29.tree.json",
+          "sha256": "00243cacded14f7d870f288b5dd844e6485b25af704d0b9820d2dd06e7d5c82f"
+        },
+        "jsx.txt": {
+          "path": "L29.jsx.txt",
+          "sha256": "8d32c59bdf794bb39830bf017da289d1e46e0ea305ef9f8e1e8dc3780e5e69b8"
+        },
+        "computed-styles.json": {
+          "path": "L29.computed-styles.json",
+          "sha256": "27354c2b1257b0dd329bb986b236cae76cbb183a95a190f5aeb60488bdf3d27f"
+        }
+      }
+    },
+    {
+      "frame": "L3",
+      "nodeId": "O3V-0",
+      "name": "L3 Granska: undantag, otydlig moms",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L3.png",
+          "sha256": "478dbb694d2e9d0b809ff9b8fa8fe194f792fb2d97f4681b0505169e8c02692e"
+        },
+        "tree.json": {
+          "path": "L3.tree.json",
+          "sha256": "f2ab349d61a58541634a7cb0850e7f904fdb80b89a89edf00b196806b7b9cf9f"
+        },
+        "jsx.txt": {
+          "path": "L3.jsx.txt",
+          "sha256": "c69b639e315c43e5d884e0890aae2ae29a4d2e8ace87955792e66ba0fe3f7e06"
+        },
+        "computed-styles.json": {
+          "path": "L3.computed-styles.json",
+          "sha256": "67cb0185614da004902e266e4e832829a575fb90da015d3dea4dea86014821bc"
+        }
+      }
+    },
+    {
+      "frame": "L30",
+      "nodeId": "1PJR-0",
+      "name": "L30 granska: godkännande kräver två personer, förberedaren räknas inte (exempel)",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L30.png",
+          "sha256": "fd6ba019bc16cedd71f212c8c7d83cb3773178a89536b0fee349023d6e463658"
+        },
+        "tree.json": {
+          "path": "L30.tree.json",
+          "sha256": "6a40c4b8834dc3e04f6c0fe3b38f0cf8e9ed46123b08b5192d1be3c19271c511"
+        },
+        "jsx.txt": {
+          "path": "L30.jsx.txt",
+          "sha256": "fc819cd09cbfe61c64aacd719d5146849a296df325e487cb3b87fe5c8c9c0634"
+        },
+        "computed-styles.json": {
+          "path": "L30.computed-styles.json",
+          "sha256": "35fa7e2376f42286932142387abee5a3effb886b082a8989ee39641feb26f396"
+        }
+      }
+    },
+    {
+      "frame": "L31",
+      "nodeId": "214N-0",
+      "name": "L31 godkännande: två godkännare krävs, ett av två",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L31.png",
+          "sha256": "4350b4bdbadc8e2a4e54ba088b1581f7dda8c08a5126eb644ccf81594b8de873"
+        },
+        "tree.json": {
+          "path": "L31.tree.json",
+          "sha256": "a6bfee0bd1edbd0211aadf81d91dbe2d9c1323473f331d9dc7169559aefbecc5"
+        },
+        "jsx.txt": {
+          "path": "L31.jsx.txt",
+          "sha256": "74409c05afbf26e38ad0a35b5bebd1ba447abd3b823e28e3d6366813b833e391"
+        },
+        "computed-styles.json": {
+          "path": "L31.computed-styles.json",
+          "sha256": "44a63cbf43578b9df84366c821a7779d3cfe47a7131801d80f29a1b3ce29f5f0"
+        }
+      }
+    },
+    {
+      "frame": "L32",
+      "nodeId": "216M-0",
+      "name": "L32 granskning: granskare ändrad och avslag",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L32.png",
+          "sha256": "92d67bdd1188761576a041b01f38a56d89e4a1a96fa7437c49f14102e0e2300c"
+        },
+        "tree.json": {
+          "path": "L32.tree.json",
+          "sha256": "27d5826d253ca1466e42b42707064e5441aed709302eb022241463c53dc40e27"
+        },
+        "jsx.txt": {
+          "path": "L32.jsx.txt",
+          "sha256": "0e4cb8ac6f7a20774ddb3f24cd4545f2ecd61545b166ea20d20dea13e0d1c9f5"
+        },
+        "computed-styles.json": {
+          "path": "L32.computed-styles.json",
+          "sha256": "cec7d1acd65634d959821ae4f7b0f3091dff6bc311657471e40745629edb4336"
+        }
+      }
+    },
+    {
+      "frame": "L33",
+      "nodeId": "218L-0",
+      "name": "L33 godkännande: återkallad behörighet",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L33.png",
+          "sha256": "78448733d6a9866d099454337f8d53c60419bb6a22c1c71fad2739f6f6a734bb"
+        },
+        "tree.json": {
+          "path": "L33.tree.json",
+          "sha256": "3681b32a999750bccf031cd7d498036dd06d5f4fe6a3f510704d0751c5b3c5f6"
+        },
+        "jsx.txt": {
+          "path": "L33.jsx.txt",
+          "sha256": "ffd34c5ca50a9319b1e42085639057c8067ea8254ecbf6b4c0aecce3a2eb3f7b"
+        },
+        "computed-styles.json": {
+          "path": "L33.computed-styles.json",
+          "sha256": "e7c839208e7fa3a0421deec73cf549b4f32417027492fb4e02ce676098e399b0"
+        }
+      }
+    },
+    {
+      "frame": "L4",
+      "nodeId": "O3W-0",
+      "name": "L4 Granska: rätta förslaget före bokföring",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L4.png",
+          "sha256": "8f33bdf348b5d0ac54ce99605d8f43c2144e23fd2d13af7af371f5c07b86ca5f"
+        },
+        "tree.json": {
+          "path": "L4.tree.json",
+          "sha256": "cb71820c564d8003c9af5fcc13c863851ff664a973736eb608be2ba1236e1a15"
+        },
+        "jsx.txt": {
+          "path": "L4.jsx.txt",
+          "sha256": "75e9b9e300298079b44ab3fe1f79c4ac1445c6d1c0ec928b1c380e35fb65b125"
+        },
+        "computed-styles.json": {
+          "path": "L4.computed-styles.json",
+          "sha256": "442dd5de8d0c1ca8503766440b282ca4990008eee926be50cd1ea633c80d222f"
+        }
+      }
+    },
+    {
+      "frame": "L5",
+      "nodeId": "O3X-0",
+      "name": "L5 Granska: klart, nästa hinder",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L5.png",
+          "sha256": "729d003ef3a08bd42762bab845940120eb90a0d631ff3f97b1f6d5e9d3b4b0c2"
+        },
+        "tree.json": {
+          "path": "L5.tree.json",
+          "sha256": "c2ed457e1679e289620d376f501e087949f1d97a44cac2a5d8caba425ad33605"
+        },
+        "jsx.txt": {
+          "path": "L5.jsx.txt",
+          "sha256": "ab6399b1fd7da3e488f66a4ade1d27c28b2027752316965b4db3f3d713bbb382"
+        },
+        "computed-styles.json": {
+          "path": "L5.computed-styles.json",
+          "sha256": "f96fccbd65aac25b94c8804b4bf425173194f385f9227ed07c5e8cc7d8853e67"
+        }
+      }
+    },
+    {
+      "frame": "L6",
+      "nodeId": "O3Y-0",
+      "name": "L6 Att göra: godkännarens kö (överlämning från bokförare)",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L6.png",
+          "sha256": "9611f4ca07296cfc45f316fd665030b03c665d7895657681d71edc443d0e42ef"
+        },
+        "tree.json": {
+          "path": "L6.tree.json",
+          "sha256": "45073b0cebd71d5899ab36478ce092857dacd17f8628c17cefb4138f3aae93cf"
+        },
+        "jsx.txt": {
+          "path": "L6.jsx.txt",
+          "sha256": "46b79b6650799bd11096053b838e0c24f5b6e5aa136f09085c4c31024ff86832"
+        },
+        "computed-styles.json": {
+          "path": "L6.computed-styles.json",
+          "sha256": "5c786bd42c5238e949b9f006ecc326435f9a629430f223f5b582d0584f498fe9"
+        }
+      }
+    },
+    {
+      "frame": "L7",
+      "nodeId": "U0E-0",
+      "name": "L7 Kommandosök",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L7.png",
+          "sha256": "2707ec48726ebb7b5ef57a1790ed723d066611cc8fcc350eba1b6da37642cac6"
+        },
+        "tree.json": {
+          "path": "L7.tree.json",
+          "sha256": "dae78080a8fd802e50b5b198b369e09c905d4fd3d48a2028f1a563e573c4f8be"
+        },
+        "jsx.txt": {
+          "path": "L7.jsx.txt",
+          "sha256": "3e5d04a005bf57e4a87780fdda4ab44c0389349d301de9a756ab61bdaf81a0a4"
+        },
+        "computed-styles.json": {
+          "path": "L7.computed-styles.json",
+          "sha256": "c5a2ac585d135d5b548e06e57ec42fcfd927a4d08554cdd58eb9182933812b13"
+        }
+      }
+    },
+    {
+      "frame": "L8",
+      "nodeId": "YZT-0",
+      "name": "L8 Förbered leverantörsfaktura från dokument",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L8.png",
+          "sha256": "06fae23f87aeafa99d8005398e905745e48f5f71277f152b6cbbfa9119b7a558"
+        },
+        "tree.json": {
+          "path": "L8.tree.json",
+          "sha256": "717750afeb1adf7b480b86ffb530baa0acc28f3a1bf8dfd435ecaabd94fa532b"
+        },
+        "jsx.txt": {
+          "path": "L8.jsx.txt",
+          "sha256": "4ba9226f254a8080da20437a597f3ad32dbb51200903fb6271d74c1fd147258e"
+        },
+        "computed-styles.json": {
+          "path": "L8.computed-styles.json",
+          "sha256": "3505360ee7329507341689064bea0b70a166ca3cf89349cd4229b727dd61bc42"
+        }
+      }
+    },
+    {
+      "frame": "L9",
+      "nodeId": "YZU-0",
+      "name": "L9 Tillbaka i Att göra: uppgiften har bytt tillstånd",
+      "kind": "product design frame",
+      "artifacts": {
+        "png": {
+          "path": "L9.png",
+          "sha256": "cda56750d81a3b9da46cab915b5df89ca1ff0bfb2d9701e794b83243ef457806"
+        },
+        "tree.json": {
+          "path": "L9.tree.json",
+          "sha256": "1335791de015e8582fc30bcc76c2e98618d9a17b616b34dd34d7fa04146e1bdf"
+        },
+        "jsx.txt": {
+          "path": "L9.jsx.txt",
+          "sha256": "bab74e04bd2e1dc74464d7c137f5ab4326cdcd9784c2aa76be274a618251d138"
+        },
+        "computed-styles.json": {
+          "path": "L9.computed-styles.json",
+          "sha256": "ed4cd9ae0b882e5c550e17340eda81cf120a788f8d6739bfe2117b45f1a5494f"
+        }
+      }
+    },
+    {
+      "frame": "QA-L14",
+      "nodeId": "237L-0",
+      "name": "L14 native document question task (draft reference)",
+      "kind": "isolated QA fixture",
+      "artifacts": {
+        "png": {
+          "path": "QA-L14.png",
+          "sha256": "cd198693bda256917907321717d6e3e6d847c6707599003805c033a3e6a78c78"
+        },
+        "tree.json": {
+          "path": "QA-L14.tree.json",
+          "sha256": "d7833847dcbc52115c5f4bd3705d6f103d3ef4ef0d313ae10e5b4150de50460f"
+        },
+        "jsx.txt": {
+          "path": "QA-L14.jsx.txt",
+          "sha256": "94ee8d28bb32ec4b7fa01c632425f0114ee563e107244ad3a86a87a26d95b340"
+        },
+        "computed-styles.json": {
+          "path": "QA-L14.computed-styles.json",
+          "sha256": "c7a57ae5650c9f0790f0a18085b71a4c1c5133ed787a7388c19659e8877d493d"
+        }
+      }
+    },
+    {
+      "frame": "QA-L17",
+      "nodeId": "1TTU-0",
+      "name": "L17 native supplier fixture (draft parity variant)",
+      "kind": "isolated QA fixture",
+      "artifacts": {
+        "png": {
+          "path": "QA-L17.png",
+          "sha256": "79c9878cb28bfc2f97301a839e57a6097823fce3f98c683160040105d94cf318"
+        },
+        "tree.json": {
+          "path": "QA-L17.tree.json",
+          "sha256": "97e7678faac775f50229824796d452cb1d39eb3a32dbc112bd0d8bc61f061370"
+        },
+        "jsx.txt": {
+          "path": "QA-L17.jsx.txt",
+          "sha256": "373ded3c3ca0577b14bedfa317612d910daa1c7dc159a39c46f0dabbb944d723"
+        },
+        "computed-styles.json": {
+          "path": "QA-L17.computed-styles.json",
+          "sha256": "7c0725094acd9249c66601f3471b8a84369c39b384b238caaabef2dd095d52e4"
+        }
+      }
+    },
+    {
+      "frame": "QA-L18",
+      "nodeId": "228J-0",
+      "name": "L18 native supplier receipts (draft parity variant)",
+      "kind": "isolated QA fixture",
+      "artifacts": {
+        "png": {
+          "path": "QA-L18.png",
+          "sha256": "e8a507cf2588787772396aad9467cecffb2463a3cb8ab16b163234b282278865"
+        },
+        "tree.json": {
+          "path": "QA-L18.tree.json",
+          "sha256": "e32a3ac4e175563d24e2e2e315f131dfa19ffaa9dee907fe7053cfeb755af431"
+        },
+        "jsx.txt": {
+          "path": "QA-L18.jsx.txt",
+          "sha256": "6ec779b967debb30a50ee48d1d6582d428786c14d345f1b1e0ac2542b1769e68"
+        },
+        "computed-styles.json": {
+          "path": "QA-L18.computed-styles.json",
+          "sha256": "a30c91961c6691fa36f86ee4607262ab968f402f7f5f5c951119f34d053b33ee"
+        }
+      }
+    },
+    {
+      "frame": "QA-L2",
+      "nodeId": "22PH-0",
+      "name": "L2 native manual supplier fixture (draft parity variant)",
+      "kind": "isolated QA fixture",
+      "artifacts": {
+        "png": {
+          "path": "QA-L2.png",
+          "sha256": "c17d75b0d16cc903142fc29d826310fb27f4387c3fd289b8bc2b28f2f8409c05"
+        },
+        "tree.json": {
+          "path": "QA-L2.tree.json",
+          "sha256": "64c12a07d9c9aa8e86f0820814216663c2da29ee9552b53af89e3e3fbd64eddd"
+        },
+        "jsx.txt": {
+          "path": "QA-L2.jsx.txt",
+          "sha256": "5db5d225dc9c19f3241724b54de424ed883d20253466607bee17099293f166e1"
+        },
+        "computed-styles.json": {
+          "path": "QA-L2.computed-styles.json",
+          "sha256": "f66ef62b207702cb226b957cff2e839e87d039f5e7bd11460cf64203cba39f9e"
+        }
+      }
+    }
+  ]
+}

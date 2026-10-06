@@ -42,3 +42,13 @@ bun run test:browser tests/browser/supplier.e2e.ts
 Do not run `npx e2e run` directly against an arbitrary existing application. The wrapper supplies `OPENERP_E2E_SESSION` from its fresh launcher; the helper refuses a session for another target.
 
 The wrapper supplies `OPENERP_E2E_APP_URL`, `OPENERP_E2E_PROXY_URL` and `OPENERP_E2E_OUTPUT` to the config. Do not override them to point at an existing company runtime.
+
+## Native reviewed supplier group
+
+Use `PAPER_WORK_GROUP=1` to provision the native group's BAS 6110, 2440 and 2641 accounts. The test checks those scoped active accounts before creating any evidence or draft; a missing or ambiguous fixture chart fails that preflight. Select one fixture profile per runtime: the supplier-expiry profile supplies its own 2440 account. Native review grants and postings use the synthetic browser session and independent original evidence.
+
+```bash
+PAPER_WORK_GROUP=1 bun run test:browser tests/browser/posting-work-group.e2e.ts
+```
+
+The test retains `work-group-results.json`, interrupted/recovered screenshots and the runner's trace/report. A passing run must establish independent native receipts, original-key recovery, exclusion of changed/new supplier proposals and net 20000, input VAT 5000 and payable credit 25000 minor units.

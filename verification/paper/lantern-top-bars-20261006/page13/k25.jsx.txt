@@ -1,0 +1,341 @@
+(
+    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSynthesis: 'none', height: 'fit-content', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', WebkitFontSmoothing: 'antialiased', width: '1280px' }}>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '48px', paddingInline: '32px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Försäljning
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Fakturor
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>
+            Faktura till Skogsbruk Nord AB, 8 rader
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            ○ Utkast
+          </div>
+        </div>
+        <div style={{ alignItems: 'start', boxSizing: 'border-box', display: 'flex', gap: '32px', paddingInline: '32px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', width: '720px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px', marginBottom: '8px' }}>
+              Rader
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#D3D8DF', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px', width: '24px' }}>
+                Nr
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+                Beskrivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                Antal
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+                  Enhet
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                À-pris
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                Moms
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                Belopp
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                1
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Konferensrådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                12
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 080,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                12 960,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                2
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Löpande rådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                20
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                20 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', backgroundColor: '#EEF3FC', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderLeftColor: '#2448A5', borderLeftStyle: 'solid', borderLeftWidth: '3px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '40px', marginLeft: '-3px' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '3px', width: '24px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  3
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', flexBasis: '0%', flexGrow: '1', paddingRight: '8px' }}>
+                <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#2448A5', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', outline: '2px solid #D8E3F7', paddingInline: '8px' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                    Workshop
+                  </div>
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '56px' }}>
+                <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', justifyContent: 'end', paddingInline: '8px' }}>
+                  <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                    2
+                  </div>
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  st
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                8 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                16 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                4
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Konferensrådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                8
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 080,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                8 640,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                5
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Löpande rådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                15
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                15 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                6
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Workshop
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                1
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  st
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                8 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                8 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                7
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Konferensrådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                5
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 080,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                5 400,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '24px' }}>
+                8
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Löpande rådgivning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '56px' }}>
+                10
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', paddingLeft: '8px', width: '48px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  tim
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '80px' }}>
+                1 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '48px' }}>
+                25 %
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '96px' }}>
+                10 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '40px' }}>
+              <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Lägg till rad
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'end', borderTopColor: '#D3D8DF', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
+              <div style={{ boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', width: '280px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Summa exkl. moms
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  96 000,00
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', width: '280px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  Moms 25 %
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                  24 000,00
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', width: '280px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+                  Att betala
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+                  120 000,00 kr
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', height: '0px', paddingTop: '12px' }} />
+          </div>
+          <div style={{ backgroundColor: '#F7F8FA', borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '8px', padding: '16px', width: '400px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+              Förhandsvisning
+            </div>
+            <div style={{ backgroundColor: '#FFFFFF', borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '6px', padding: '16px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>
+                Faktura
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Fjällby Konsult AB till Skogsbruk Nord AB
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Förfallodag 4 nov
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                8 rader, summa exkl. moms 96 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Moms 25 % 24 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+                Att betala 120 000,00 kr
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderTopColor: '#D3D8DF', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '48px', justifyContent: 'end', marginTop: '16px', paddingInline: '32px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+            <div style={{ alignItems: 'center', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Spara utkast
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', height: '28px', paddingInline: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                Utfärda faktura
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )

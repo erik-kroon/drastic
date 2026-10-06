@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"summary\": \"Frame \\\"K23 Komponenter v2: knappar, fält, val, tillstånd, navigation\\\" (11PO-0) 1440×1080\\n  Frame \\\"Frame\\\" (11W7-0) ?×?\\n    Frame \\\"Frame\\\" (11W8-0) ?×?\\n      Text \\\"Komponenter, version…\\\" (11W9-0) ?×? \\\"Komponenter, version 2\\\"\\n      Text \\\"Gäller hela specifik…\\\" (11WA-0) ?×? \\\"Gäller hela specifikationen tillsammans med K26. Ingen text \\\"\\n    Frame \\\"Frame\\\" (11WB-0) ?×?\\n      Frame \\\"Frame\\\" (11WC-0) 600×?\\n        ... 6 children\\n      Frame \\\"Frame\\\" (11WS-0) ?×?\\n        ... 3 children\\n    Frame \\\"Frame\\\" (11X4-0) ?×?\\n      Frame \\\"Frame\\\" (11X5-0) 600×?\\n        ... 4 children\\n      Frame \\\"Frame\\\" (11XN-0) ?×?\\n        ... 7 children\\n    Frame \\\"Frame\\\" (11YG-0) ?×?\\n      Frame \\\"Frame\\\" (11YH-0) 600×?\\n        ... 4 children\\n      Frame \\\"Frame\\\" (11ZB-0) ?×?\\n        ... 2 children\\n    Frame \\\"Frame\\\" (11ZN-0) ?×?\\n      Frame \\\"Frame\\\" (11ZO-0) 600×?\\n        ... 4 children\\n      Frame \\\"Frame\\\" (1201-0) ?×?\\n        ... 5 children\",\n  \"nodeId\": \"11PO-0\",\n  \"depth\": 3\n}"
+    }
+  ]
+}

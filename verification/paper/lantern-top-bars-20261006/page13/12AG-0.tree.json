@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"summary\": \"Frame \\\"K25 Stresstest: lång faktura, radredigering och fast åtgärdsfält\\\" (12AG-0) 1280×?\\n  Frame \\\"Frame\\\" (12AH-0) ?×?\\n    Frame \\\"Toppfält detaljläge\\\" (26GW-0) ?×48\\n      Text \\\"Försäljning\\\" (26GX-0) ?×? \\\"Försäljning\\\"\\n      Text \\\"/\\\" (26GY-0) ?×? \\\"/\\\"\\n      Text \\\"Fakturor\\\" (26GZ-0) ?×? \\\"Fakturor\\\"\\n      Text \\\"/\\\" (26H0-0) ?×? \\\"/\\\"\\n      Text \\\"Faktura till Skogsbr…\\\" (26H1-0) ?×? \\\"Faktura till Skogsbruk Nord AB, 8 rader\\\"\\n      Text \\\"○ Utkast\\\" (26H2-0) ?×? \\\"○ Utkast\\\"\\n    Frame \\\"Frame\\\" (12AL-0) ?×?\\n      Frame \\\"Frame\\\" (12AM-0) 720×?\\n        ... 13 children\\n      Frame \\\"Frame\\\" (12DF-0) 400×?\\n        ... 2 children\\n    Frame \\\"Frame\\\" (12DP-0) ?×48\\n      Frame \\\"Frame\\\" (12DR-0) ?×?\\n        ... 2 children\",\n  \"nodeId\": \"12AG-0\",\n  \"depth\": 3\n}"
+    }
+  ]
+}

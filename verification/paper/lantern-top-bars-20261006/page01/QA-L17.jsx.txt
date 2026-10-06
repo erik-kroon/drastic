@@ -1,0 +1,196 @@
+(
+    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSize: '12px', fontSynthesis: 'none', height: '900px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', WebkitFontSmoothing: 'antialiased', width: '1440px' }}>
+      <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '48px', paddingInline: '20px', width: '100%' }}>
+        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '8px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Att göra
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>
+            Granska i grupp
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />
+        <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+          Fjällby Konsult AB
+        </div>
+      </div>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexGrow: '1', minHeight: '0px', width: '100%' }}>
+        <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexGrow: '1', minWidth: '0px' }}>
+          <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '30px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+              Kan bokföras tillsammans
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 500, lineHeight: '16px' }}>
+              3
+            </div>
+            <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+              Känd leverantör, kopplat underlag, vanlig behandling
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '52px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '30px' }}>
+              <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '4px', boxSizing: 'border-box', display: 'flex', height: '16px', justifyContent: 'center', width: '16px' }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+                  <path d="M2 5.2l2 2 4-4.4" fill="none" stroke="#FFFFFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', flexGrow: '1' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                Tallvik grupp G-001
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Kan bokföras tillsammans
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '210px' }}>
+              G-001 kopplad
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '200px' }}>
+              6110 Kontorsmaterial
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '100px' }}>
+              125,00
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '52px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '30px' }}>
+              <div style={{ backgroundColor: '#FFFFFF', borderColor: '#8A94A6', borderRadius: '4px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '16px', width: '16px' }} />
+            </div>
+            <div style={{ boxSizing: 'border-box', flexGrow: '1' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                Tallvik grupp G-002
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Kan bokföras tillsammans
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '210px' }}>
+              G-002 kopplad
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '200px' }}>
+              6110 Kontorsmaterial
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '100px' }}>
+              125,00
+            </div>
+          </div>
+          <div style={{ backgroundColor: '#FFF7E6', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', height: '64px', justifyContent: 'center', paddingInline: '20px' }}>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '30px' }}>
+                <div style={{ backgroundColor: '#FFFFFF', borderColor: '#8A94A6', borderRadius: '4px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '16px', width: '16px' }} />
+              </div>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+                  Tallvik grupp G-003
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                  Granskas var för sig
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '210px' }}>
+                G-003 kopplad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '200px' }}>
+                6110 Kontorsmaterial
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '100px' }}>
+                125,00
+              </div>
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '30px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+              Granskas var för sig
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', display: 'inline-block', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 500, lineHeight: '16px' }}>
+              1
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '52px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '30px' }}>
+              <div style={{ backgroundColor: '#FFFFFF', borderColor: '#8A94A6', borderRadius: '4px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '16px', width: '16px' }} />
+            </div>
+            <div style={{ boxSizing: 'border-box', flexGrow: '1' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+                Tallvik grupp G-NEW
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+                Granskas var för sig
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '210px' }}>
+              G-NEW kopplad
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', flexShrink: '0', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', width: '200px' }}>
+              6110 Kontorsmaterial
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '100px' }}>
+              125,00
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', paddingBlock: '12px', paddingInline: '20px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+              Nya leverantörer, saknade underlag och otydlig moms ingår aldrig i en grupp. Betalningar, utskick och inlämningar godkänns alltid var för sig.
+            </div>
+          </div>
+        </div>
+        <div style={{ borderLeftColor: '#E6EAF0', borderLeftStyle: 'solid', borderLeftWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', paddingBlock: '20px', paddingInline: '24px', width: '420px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+            Vald grupp
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '18px', fontWeight: 600, lineHeight: '22px', marginTop: '2px' }}>
+            1 verifikation
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px', marginTop: '2px' }}>
+            Tallvik grupp G-001
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '22px' }}>
+            BOKFÖRS
+          </div>
+          <div style={{ alignItems: 'center', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              6110 Kontorsmaterial
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', lineHeight: '16px' }}>
+              100,00
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', borderTopColor: '#EEF1F5', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              2641 Ingående moms
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', lineHeight: '16px' }}>
+              25,00
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#EEF1F5', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              2440 Leverantörsskulder
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontFeatureSettings: '"tnum"', fontSize: '13px', lineHeight: '16px' }}>
+              −125,00
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '18px', marginTop: '12px' }}>
+            Varje verifikation får egen rad i historiken och kan rättas för sig. Om en rad ändras innan du bokför tas den bort ur gruppen.
+          </div>
+          <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />
+          <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '32px', justifyContent: 'center' }}>
+            <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>
+              Bokför 1 verifikation
+            </div>
+          </div>
+          <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', justifyContent: 'space-between', marginTop: '10px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+              Avbryt
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )

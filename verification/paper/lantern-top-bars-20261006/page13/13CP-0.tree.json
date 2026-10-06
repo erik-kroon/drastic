@@ -1,0 +1,12 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+    },
+    {
+      "type": "text",
+      "text": "{\n  \"summary\": \"Frame \\\"K26 Designsystem: färg, typsnitt och mått (gäller tillsammans med K23)\\\" (13CP-0) 1280×?\\n  Frame \\\"Frame\\\" (13CQ-0) 1216×?\\n    Frame \\\"Frame\\\" (13CR-0) ?×?\\n      Text \\\"Designsystem: färg, …\\\" (13CS-0) ?×? \\\"Designsystem: färg, typsnitt och mått\\\"\\n      Text \\\"Gäller tillsammans m…\\\" (13CT-0) ?×? \\\"Gäller tillsammans med Komponenter version 2 (K23). Baslinje\\\"\\n    Frame \\\"Frame\\\" (13CU-0) ?×?\\n      Frame \\\"Frame\\\" (13CV-0) 560×?\\n        ... 11 children\\n      Frame \\\"Frame\\\" (13DR-0) 560×?\\n        ... 7 children\",\n  \"nodeId\": \"13CP-0\",\n  \"depth\": 3\n}"
+    }
+  ]
+}

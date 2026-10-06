@@ -1,6 +1,7 @@
 import { EmployeeClaimCapabilities } from "./employee-claims";
 import { MileageCorrectionCapabilities } from "./mileage-corrections";
 import { VariablePayReviewCapabilities } from "./variable-pay-review";
+import { PaidRecoveryCapabilities } from "./paid-payroll-recovery";
 import { DocumentSignatureCapabilities } from "./document-signatures";
 import { FilingCapabilities } from "./filing-lifecycle";
 import { PeppolExchangeCapabilities } from "./peppol-exchange";
@@ -205,6 +206,7 @@ export const Capabilities = {
   ...EmployeeClaimCapabilities,
   ...MileageCorrectionCapabilities,
   ...VariablePayReviewCapabilities,
+  ...PaidRecoveryCapabilities,
   ...AssetDisposalsCapabilities,
   ...PayrollSettlementCapabilities,
   ...ProcessorClearingCapabilities,

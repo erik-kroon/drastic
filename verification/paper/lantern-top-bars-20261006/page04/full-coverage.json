@@ -1,0 +1,317 @@
+{
+  "date": "2026-10-06",
+  "page": 4,
+  "scope": "Read-only capture gap closure; retained screenshots",
+  "frames": [
+    {
+      "id": "OOX-0",
+      "name": "O1 Bank: händelser och täckning",
+      "png": "O1.png",
+      "pngSha256": "0de203452c2b87f41db0fd99ebfcf5606b5ae9367729cc02c024d56b89646c41",
+      "capture": "OOX-0.capture.json",
+      "captureSha256": "4877011325c249fa7be1d5c7c17d91368767b42a0caf9d445543060354c8ca59",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "OOY-0",
+      "name": "O2 Bank: avstämning",
+      "png": "O2.png",
+      "pngSha256": "d4d1e2eb48d835f2ccac2ed6cad20ecf3e0f0d32d8e1d496b8f65033034db775",
+      "capture": "OOY-0.capture.json",
+      "captureSha256": "672d7e80346ebbe65036dad481201f85d329a7dabddeb7ce1625de299d4f2859",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "Q3X-0",
+      "name": "O3 Importera kontoutdrag",
+      "png": "O3.png",
+      "pngSha256": "c4a481d50ff527cc52c5d8265d729e316e9817321000fa62181387425c6233a9",
+      "capture": "Q3X-0.capture.json",
+      "captureSha256": "fe80d535b378e07d6348939fdda170ef64b542bf68c8f03d67588d402c396c15",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "U04-0",
+      "name": "O5 Bankhändelse: kopplad",
+      "png": "O5.png",
+      "pngSha256": "8ed3e912a1e488000b79f6d9536359bf1d7b8232e3806f0271b852ab03b87c11",
+      "capture": "U04-0.capture.json",
+      "captureSha256": "1c435b21c15db93de61e94c96f3218744f32181075e6e430a1fbefd08c8679ae",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "14J1-0",
+      "name": "O6 Bank: anslut banken, välj bank och medgivande",
+      "png": "O6.png",
+      "pngSha256": "40ddfde8c380dd0e3a9a360b617c87ab67abf23b6e5fe61b60e12641c39ef102",
+      "capture": "14J1-0.capture.json",
+      "captureSha256": "7a73ef6b5bf7ea20dbad8d3568a3af695ebad2a55f2b44dd2e29b9c7e0201a24",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "14M7-0",
+      "name": "O7 Bank: ansluten, första hämtningen och täckning",
+      "png": "O7.png",
+      "pngSha256": "8f3c1fbcac06259b5f440ba7c74c22d6a22896cd1b255eebf98aa3e88b6cf0be",
+      "capture": "14M7-0.capture.json",
+      "captureSha256": "091367c8d3640cefd3123ea6523657b28bcb199b7990a2be6a76cd5a8fbcfa54",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "14PI-0",
+      "name": "O8 Bank: medgivandet har gått ut, lucka i täckningen (läge 2 apr 2027)",
+      "png": "O8.png",
+      "pngSha256": "ec19204e198f931bf3ae5a7d21681c58812b1856c40a64bf90f3e01ff0d7416b",
+      "capture": "14PI-0.capture.json",
+      "captureSha256": "a61c7aac2165ae789914964d3eeec5875dbdc2b72c7fe432e995a56b987574dd",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "14X1-0",
+      "name": "O9 Bank: inbetalning fördelas, överbetalning och delbetalning (exempelhändelse)",
+      "png": "O9.png",
+      "pngSha256": "7096666da014d36b9bda32cf3e77ff35a392f61b513c5dcef33a9d5821f7fceb",
+      "capture": "14X1-0.capture.json",
+      "captureSha256": "93b7400ef5b0692a1ab4c71f6b3e03ba32b7e096ca98d5375e6c16362266117e",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "150Z-0",
+      "name": "O10 Importera kontoutdrag: radgranskning med dubblett, konflikt och felrad",
+      "png": "O10.png",
+      "pngSha256": "9694f8b5c9bd96e1120d6ab9d0e921acd6abb91e7830c5dcb5439b52d057ef63",
+      "capture": "150Z-0.capture.json",
+      "captureSha256": "caf518618d9c42b840528e793c18e0634d3f8919a92eae539321a9852f241682",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1CRW-0",
+      "name": "O11 importera kontoutdrag: filformat stöds inte och fel konto",
+      "png": "O11.png",
+      "pngSha256": "ba37dae9436cd73fac1120e6402a7a86870e34c5cc20ee29afada47e9678c392",
+      "capture": "1CRW-0.capture.json",
+      "captureSha256": "769f5004442620a01c58471e4edc5e5245edaec27920ce11f85768b438877149",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1CRX-0",
+      "name": "O12 import avbröts: rader som redan finns hoppas över vid fortsättning",
+      "png": "O12.png",
+      "pngSha256": "04d855f2a6578e37460d9ea218bbed0151ab7fcacabdda49612770edbf2c2a7a",
+      "capture": "1CRX-0.capture.json",
+      "captureSha256": "3516d83d1e0c5b85e65cd11fd6892ad80f2d93694a953d2a16c06cb3f2f1ef5e",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1CRY-0",
+      "name": "O13 import klar: resultat, hoppade rader och konflikt kvar",
+      "png": "O13.png",
+      "pngSha256": "c3c95fa2328d02d13d567f42107a8fa18dfaf47be9d94627170ffdf36aac00a0",
+      "capture": "1CRY-0.capture.json",
+      "captureSha256": "1b9f5f9561440d56de95994b068fedcbcb57e742b7beea86f01e79ef82f392c2",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1CRZ-0",
+      "name": "O14 inbetalning fördelas på flera fakturor",
+      "png": "O14.png",
+      "pngSha256": "27cb88c1de946410a0501b64f98d90c70f32e5b162a5ca7819b7507a8e7ce339",
+      "capture": "1CRZ-0.capture.json",
+      "captureSha256": "da111b52b756b2a98a6f585716b30e6997c14a5a801da84aa5e0725cbaeef559",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1F1J-0",
+      "name": "O15 avstämning filtrerad från Översikt: skillnaden på banken",
+      "png": "O15.png",
+      "pngSha256": "dacafde1b3ae9e958a54c6dcb0283f37029644bc5dac3412a54ed579789c60f6",
+      "capture": "1F1J-0.capture.json",
+      "captureSha256": "86069723ce2c8714152c07d2b95ecbbfcfa5bd720f06af8be620f204c530ce5f",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1G7O-0",
+      "name": "O16 valutakonto: innehav i EUR, bokfört värde i SEK och åtgärder (exempel)",
+      "png": "O16.png",
+      "pngSha256": "3d8fa3beb27e02b2aec3db3f2e63ced7b234255fc99d6faf7e6761212586e452",
+      "capture": "1G7O-0.capture.json",
+      "captureSha256": "601768aebbbf499345f68af3d00887d59aef4d05c1ba9a8fe81c820ed97a6fd1",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1G7P-0",
+      "name": "O17 valutakonto: betala leverantörsfaktura i EUR, granska och godkänn (exempel)",
+      "png": "O17.png",
+      "pngSha256": "bdffd31d8f5564f8a1b7f21c9e2cd3345a548fae8e096ad1fd3e0a456786cfdc",
+      "capture": "1G7P-0.capture.json",
+      "captureSha256": "c913134a21a050d018167b4b6e93d7224cc7b6c63cc42f3470b348da98f77107",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1JEY-0",
+      "name": "O24 Växling bokförs, efter O17, 2 okt 09:20",
+      "png": "O24.png",
+      "pngSha256": "2362bb5d74885e4a0bd893d8a6f291ded7c1f32343e863ce48cbfed035563718",
+      "capture": "1JEY-0.capture.json",
+      "captureSha256": "f1dc491b4d10479c9104463e730d761be27ac46cc64bb3b13dfd3119284c4f59",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1L76-0",
+      "name": "O26 Utbetalning efter godkänd1048, 2okt09:20",
+      "png": "O26.png",
+      "pngSha256": "0e8bb1df30eefd6486e3cf0116474fefd05fdd886c5878d51c7500999d8b779b",
+      "capture": "1L76-0.capture.json",
+      "captureSha256": "6e35bac56373874924f661def9d0bd6e5363fa4967259a246307b717553162c7",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1LDU-0",
+      "name": "O28 avstämning 1930 per 31 aug: godkännandet blev inaktuellt när kontoutdraget rättades (exempel)",
+      "png": "O28.png",
+      "pngSha256": "9a447c376d5b9a728d6a58265c956172fb4ff61d75d114ea7b35d43564ed17f7",
+      "capture": "1LDU-0.capture.json",
+      "captureSha256": "aaf62968b092fc586114bba0c49865de64cf575a1cc16b4bd0774dcfca39164d",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1LJR-0",
+      "name": "O29 avstämning 1930 per 31 jul: skillnad 0,00 men en krävd källa saknar täckning (exempel)",
+      "png": "O29.png",
+      "pngSha256": "f745aa3f01b1d3a201ef17bb8cf90a800176a4d445235b78a0d0af97b423554b",
+      "capture": "1LJR-0.capture.json",
+      "captureSha256": "8ca067300811dd6836eb2cb9d111590d320421b7174ec506d4cc95f74b4dfd70",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1LTK-0",
+      "name": "O30 täckning juni: lucka 15 till 21 jun och saldot stämmer inte över luckan (exempel)",
+      "png": "O30.png",
+      "pngSha256": "65cecc2d8edc7d4136b56cf1bcce60cd62a0ecbad203bfd52fb3576350fadeab",
+      "capture": "1LTK-0.capture.json",
+      "captureSha256": "c610012eecb42f20ba19a04ba933fa3fc546e27e7298c0aa2a414cf123d27cd8",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1G7Q-0",
+      "name": "O18 valutakonto: omvärdera till rapportkurs, kursen från källa (exempel)",
+      "png": "O18.png",
+      "pngSha256": "dcd78da05d3bde1529076409e827984a6f1c004b2d52857e879493ef53f4ee99",
+      "capture": "1G7Q-0.capture.json",
+      "captureSha256": "e5b7f826a08e5407fc1a33430121263fa573e648e576ae0d4dbdd769f3ced996",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1G7R-0",
+      "name": "O19 betalförmedlare: hämtade händelser, klassning och avstämning (exempel)",
+      "png": "O19.png",
+      "pngSha256": "09b42fd4abb7fb74b549941046c4329223bcb4133db88158bf152f2465a40300",
+      "capture": "1G7R-0.capture.json",
+      "captureSha256": "5eb26fa9b13c3019d0bc6d9a9a9693ac0070a774e054645d8a86a0ed93a0ab72",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1G7S-0",
+      "name": "O20 betalförmedlare: granska kundbetalning mot faktura, ingen ny försäljning (exempel)",
+      "png": "O20.png",
+      "pngSha256": "c117ad0ccd8b70d4782f4bd34831f7c1c74d35d36e36d6f2103c498f94119579",
+      "capture": "1G7S-0.capture.json",
+      "captureSha256": "b0b2c40f94fea81ed3112e9206146c53f44e3f5682553f7c758cb7e7bd579cfa",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1JL4-0",
+      "name": "O25 betalförmedlare: utbetalning 1 220 kopplas till bankraden i två steg (exempel)",
+      "png": "O25.png",
+      "pngSha256": "84de8971f87392bd91b963c61028f45cb475cfc54fbb3b715267d55972c9a274",
+      "capture": "1JL4-0.capture.json",
+      "captureSha256": "2a4d61e36da8b2db1bcba48e9678dcab9c2696f9c8981e72cf20f5b69268354b",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1PFT-0",
+      "name": "O31 bank: byte av leverantör för bankflöde, överlappning och samma händelser (exempel)",
+      "png": "O31.png",
+      "pngSha256": "de1cbae306947f43a0d7733aeb13f3ea801178f2a40918d3e49cf26ff89ab275",
+      "capture": "1PFT-0.capture.json",
+      "captureSha256": "1d4ea6fcfda625400c0dbd7416415e77b1bf6b9ef84aaf10c1f21ce857e72dfd",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1WDN-0",
+      "name": "O35 Sena rader efter Johan godkänt, 2okt09:16",
+      "png": "O35.png",
+      "pngSha256": "1a8f22e2725fec45ace186f5ebec192b7867b1f9455b0513c48ddf16d6534a2a",
+      "capture": "1WDN-0.capture.json",
+      "captureSha256": "e810d377af3a7a3e1c82eafd6cc79e970c25903ec339e22bc66750f920843103",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1WFM-0",
+      "name": "O36 Återställningsresultat, 2 okt 09:24",
+      "png": "O36.png",
+      "pngSha256": "6972e9547c7211c1d216703a3aef5dbda68036c041688a6f3b39fb44115f5f16",
+      "capture": "1WFM-0.capture.json",
+      "captureSha256": "07015975abf863a41ec7a41f68e167562e9f6ed777dac12e37ca1c8e81d024cb",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1VLB-0",
+      "name": "O32 övergång: matchning av överlappande rader",
+      "png": "O32.png",
+      "pngSha256": "44f123d9ecf4ea3c0608b37d4aa558f1069bfb939c77ddbba564b912203a7954",
+      "capture": "1VLB-0.capture.json",
+      "captureSha256": "f43a3f4b6fada79d37e28b8bc5f82e9c2bb6098a54046b52fb1e4b95e9404294",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1VNA-0",
+      "name": "O33 övergång: oreglerade skillnader",
+      "png": "O33.png",
+      "pngSha256": "99e9d8afae52d1e95a6da0dad89f8dc1418c0116ae55539b98ab7e1c72317333",
+      "capture": "1VNA-0.capture.json",
+      "captureSha256": "6ea7f7e1cd25ab7429ac50464c71c08c9d4c0f2ee8217612dd6b51d30345364e",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    },
+    {
+      "id": "1VP9-0",
+      "name": "O34 Beslut sparade, inväntar Johan, 2okt09:14",
+      "png": "O34.png",
+      "pngSha256": "89238b3b68066d2599fae3324f6e0a390741825fc047c9fda65f88487b475d98",
+      "capture": "1VP9-0.capture.json",
+      "captureSha256": "a10fb66b3ef9ffa975b33266d74258fa1a0d25b18c682fef2d21fe65e37dd41a",
+      "styleScope": "all IDs in depth-7 tree",
+      "screenshotReview": "retained earlier screenshot review; no new review claim"
+    }
+  ]
+}

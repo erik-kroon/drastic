@@ -1,0 +1,429 @@
+{
+  "file": {
+    "id": "01M3M9A2DA2G08DSJA5K8ZE68S",
+    "name": "Enthusiastic lantern"
+  },
+  "contentHash": {
+    "tokens": "831a6b71"
+  }
+}
+(
+    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', fontSize: '12px', fontSynthesis: 'none', height: '900px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', WebkitFontSmoothing: 'antialiased', width: '1440px' }}>
+      <div style={{ backgroundColor: '#F7F8FA', borderRightColor: '#E6EAF0', borderRightStyle: 'solid', borderRightWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '1px', height: '900px', paddingBlock: '10px', paddingInline: '8px', width: '224px' }}>
+        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '32px', marginBottom: '6px', paddingInline: '8px' }}>
+          <div style={{ alignItems: 'center', backgroundColor: '#0F172A', borderRadius: '5px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '20px', justifyContent: 'center', width: '20px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '10px', fontWeight: 600, lineHeight: '12px' }}>
+              NI
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '16px' }}>
+            Norrverk Industri AB
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: 'system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+            ⌄
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#E6EAF0', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', marginBottom: '8px', paddingInline: '8px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Sök
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', lineHeight: '14px' }}>
+            Ctrl K
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 8l2 2 4-4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Att göra
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', lineHeight: '16px' }}>
+            7
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 13V8M8 13V3M13 13V6" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Översikt
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', paddingBottom: '4px', paddingInline: '8px', paddingTop: '12px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, lineHeight: '14px' }}>
+            ARBETE
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M2 6l6-3 6 3M3 7v5M6.5 7v5M9.5 7v5M13 7v5M2 13h12" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Bank
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 2h6l3 3v9H4zM10 2v3h3" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Försäljning
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 5h10l-1 9H4zM6 5a2 2 0 014 0" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Inköp
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M2 4h4l1.5 1.5H14V13H2z" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Dokument
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', paddingBottom: '4px', paddingInline: '8px', paddingTop: '12px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '11px', fontWeight: 600, lineHeight: '14px' }}>
+            REDOVISNING
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', backgroundColor: '#E6EAF0', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M3 3h8a2 2 0 012 2v8H5a2 2 0 01-2-2zM3 11a2 2 0 012-2h8" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Bokföring
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 12L12 4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="5" cy="5" r="1.5" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="11" cy="11" r="1.5" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Skatt och löner
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <path d="M4 2h8v12H4zM6 6h4M6 9h4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Rapporter
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 6.5h12M5 2v2M11 2v2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Bokslut
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />
+        <div style={{ alignItems: 'center', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '28px', paddingInline: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', flexShrink: '0' }}>
+            <circle cx="8" cy="8" r="2.2" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4" fill="none" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          <div style={{ boxSizing: 'border-box', color: '#475569', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Inställningar
+          </div>
+        </div>
+        <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '32px', paddingInline: '8px' }}>
+          <div style={{ alignItems: 'center', backgroundColor: '#E3E8F2', borderRadius: '10px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '20px', justifyContent: 'center', width: '20px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#2448A5', display: 'flex', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '9px', fontWeight: 600, lineHeight: '12px' }}>
+              SL
+            </div>
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#0F172A', flexBasis: '0%', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>
+            Sara Lind
+          </div>
+        </div>
+      </div>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexGrow: '1', minWidth: '0px' }}>
+        <div style={{ alignItems: 'center', backgroundColor: 'var(--color-ui-surface)', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', gap: '8px', height: '48px', paddingInline: '32px' }}>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            Bokföring
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            Anläggningstillgångar
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            I-0011 Lastmaskin
+          </div>
+          <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+            /
+          </div>
+          <div style={{ boxSizing: 'border-box', color: 'var(--color-ui-text)', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px' }}>
+            Komponenter
+          </div>
+        </div>
+        <div style={{ boxSizing: 'border-box', display: 'flex', flexGrow: '1', minHeight: '0px' }}>
+          <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexGrow: '1', minWidth: '0px', paddingInline: '32px', paddingTop: '8px' }}>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '15px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '22px' }}>
+                Lastmaskin i delar, 70 000,00
+              </div>
+              <div style={{ borderRadius: '10px', boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+                  ! Antaganden behöver granskas
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px', marginTop: '4px', width: '752px' }}>
+              K3-planen delas upp per komponent. Nyttjandeperiod och restvärde behöver underlag och separat granskning.
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '18px' }}>
+              Komponenter och antaganden
+            </div>
+            <div style={{ alignItems: 'center', backgroundColor: '#F7F8FA', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, lineHeight: '16px' }}>
+                  Komponent
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '90px' }}>
+                Kostnad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '70px' }}>
+                År
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right', width: '90px' }}>
+                Restvärde
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '150px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontWeight: 600, justifyContent: 'end', lineHeight: '16px', textAlign: 'right' }}>
+                  Motivering
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', backgroundColor: '#EEF3FC', borderLeftColor: '#2448A5', borderLeftStyle: 'solid', borderLeftWidth: '3px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '18px' }}>
+                  Motor
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                35 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '70px' }}>
+                10
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                5 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '150px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'flex', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>
+                  Saknas
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '18px' }}>
+                  Chassi
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                25 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '70px' }}>
+                8
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                3 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '150px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#475569', display: 'flex', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>
+                  Tillverkarens uppgift
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', lineHeight: '18px' }}>
+                  Hydraulik
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                10 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '70px' }}>
+                5
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                0,00
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', fontSizeAdjust: 'none', paddingRight: '8px', textAlign: 'right', width: '150px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#8A5A00', display: 'flex', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', justifyContent: 'end', lineHeight: '18px', textAlign: 'right' }}>
+                  Saknas
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexGrow: '1', fontSizeAdjust: 'none', paddingLeft: '8px' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontWeight: 600, lineHeight: '18px' }}>
+                  Summa
+                </div>
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                70 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '70px' }} />
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', flexShrink: '0', flexWrap: 'wrap', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, justifyContent: 'end', lineHeight: '18px', textAlign: 'right', width: '90px' }}>
+                8 000,00
+              </div>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '150px' }} />
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '22px' }}>
+              Kontroll av uppdelningen
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>
+                <div style={{ backgroundColor: '#1E6256', borderRadius: '6px', boxSizing: 'border-box', height: '12px', width: '12px' }} />
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Komponenternas kostnad är lika med fakturans belopp, faktura 8802
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                70 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>
+                <div style={{ borderColor: '#8A5A00', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '12px', width: '12px' }} />
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Fördelningen på komponenter kommer från ett internt förslag, inte från fakturan
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#8A5A00', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Behöver granskas
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '34px', width: '752px' }}>
+              <div style={{ boxSizing: 'border-box', flexShrink: '0', width: '22px' }}>
+                <div style={{ borderColor: '#B3BBC7', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', height: '12px', width: '12px' }} />
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Granskning av antaganden av annan person än den som la in dem
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Väntar
+              </div>
+            </div>
+          </div>
+          <div style={{ borderLeftColor: '#E6EAF0', borderLeftStyle: 'solid', borderLeftWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', paddingBottom: '20px', paddingInline: '16px', paddingTop: '16px', width: '400px' }}>
+            <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+              Motor, valda antaganden
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '15px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '22px', marginTop: '2px' }}>
+              Motivera livslängd och restvärde
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '20px' }}>
+              Motivering
+            </div>
+            <div style={{ alignItems: 'start', borderTopColor: '#E6EAF0', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', gap: '10px', paddingBlock: '10px' }}>
+              <div style={{ borderColor: '#2448A5', borderRadius: '7px', borderStyle: 'solid', borderWidth: '4px', boxSizing: 'border-box', flexShrink: '0', height: '14px', marginTop: '2px', width: '14px' }} />
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '18px' }}>
+                  Tillverkarens uppgift
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                  Ladda upp underlag, till exempel serviceplan med förväntad drifttid.
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'start', borderTopColor: '#EEF1F5', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', gap: '10px', paddingBlock: '10px' }}>
+              <div style={{ borderColor: '#B3BBC7', borderRadius: '7px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', flexShrink: '0', height: '14px', marginTop: '2px', width: '14px' }} />
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '18px' }}>
+                  Erfarenhet av liknande maskin
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                  Kräver att du anger vilken maskin och vilket utfall.
+                </div>
+              </div>
+            </div>
+            <div style={{ alignItems: 'start', borderBottomColor: '#EEF1F5', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderTopColor: '#EEF1F5', borderTopStyle: 'solid', borderTopWidth: '1px', boxSizing: 'border-box', display: 'flex', gap: '10px', paddingBlock: '10px' }}>
+              <div style={{ borderColor: '#B3BBC7', borderRadius: '7px', borderStyle: 'solid', borderWidth: '1.5px', boxSizing: 'border-box', flexShrink: '0', height: '14px', marginTop: '2px', width: '14px' }} />
+              <div style={{ boxSizing: 'border-box' }}>
+                <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '18px' }}>
+                  Ingen motivering
+                </div>
+                <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                  Planen kan inte godkännas utan underlag.
+                </div>
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '16px', marginBottom: '6px', marginTop: '20px' }}>
+              Planberäkning september–december
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '30px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Motor, 250,00 per månad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                1 000,00
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '30px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Chassi, 229,17 per månad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                916,67
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '30px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                Hydraulik, 166,67 per månad
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '18px' }}>
+                666,67
+              </div>
+            </div>
+            <div style={{ alignItems: 'center', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '30px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', flexGrow: '1', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '18px' }}>
+                Summa 2026
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 600, lineHeight: '18px' }}>
+                2 583,34
+              </div>
+            </div>
+            <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '18px', marginTop: '12px' }}>
+              ! Motorn och hydrauliken saknar motivering. Tidigare månader behöver hanteras när planen godkänns.
+            </div>
+            <div style={{ boxSizing: 'border-box', flexGrow: '1' }} />
+            <div style={{ alignItems: 'center', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', justifyContent: 'center' }}>
+              <div style={{ boxSizing: 'border-box', color: '#FFFFFF', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', fontWeight: 500, lineHeight: '16px' }}>
+                Spara motiveringen för motorn
+              </div>
+            </div>
+            <div style={{ alignItems: 'start', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', gap: '4px', justifyContent: 'center', marginTop: '10px', minHeight: '48px', paddingBlock: '4px', paddingInline: '8px' }}>
+              <div style={{ boxSizing: 'border-box', color: '#64748B', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '13px', fontSizeAdjust: 'none', lineHeight: '16px' }}>
+                Skicka antaganden till granskning
+              </div>
+              <div style={{ boxSizing: 'border-box', color: '#5C6C80', fontFamily: '"Inter", system-ui, sans-serif', fontSize: '12px', fontSizeAdjust: 'none', lineHeight: '16px', maxWidth: '330px' }}>
+                Två motiveringar saknas
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )

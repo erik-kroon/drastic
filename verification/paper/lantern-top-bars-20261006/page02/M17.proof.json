@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-06",
+  "fileId": "01M3M9A2DA2G08DSJA5K8ZE68S",
+  "pageId": "p-X-0",
+  "artboard": "WPK-0",
+  "tree": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+      },
+      {
+        "type": "text",
+        "text": "{\n  \"summary\": \"Frame \\\"M17 Utgången fakturalänk\\\" (WPK-0) 1440×900\\n  Frame \\\"Frame\\\" (WQ7-0) ?×48\\n    Text \\\"Fjällby Konsult AB\\\" (WQ8-0) ?×? \\\"Fjällby Konsult AB\\\"\\n  Frame \\\"Frame\\\" (WQ9-0) 520×?\\n    Text \\\"Länken har gått ut\\\" (WQA-0) ?×? \\\"Länken har gått ut\\\"\\n    Text \\\"Kontakta Fjällby Kon…\\\" (WQB-0) ?×? \\\"Kontakta Fjällby Konsult AB för en ny länk. Fakturan är dens\\\"\\n    Frame \\\"Frame\\\" (27HA-0) ?×?\\n      Text \\\"fakturor@fjallby.exa…\\\" (27HB-0) ?×? \\\"fakturor@fjallby.example.test\\\"\\n      Frame \\\"Frame\\\" (27HC-0) ?×28\\n        Text \\\"Be om en ny länk\\\" (27HD-0) ?×? \\\"Be om en ny länk\\\"\",\n  \"nodeId\": \"WPK-0\",\n  \"depth\": 10\n}"
+      }
+    ]
+  },
+  "jsx": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+      },
+      {
+        "type": "text",
+        "text": "(\n    <div style={{ backgroundColor: '#F3F5F8', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSize: '12px', fontSynthesis: 'none', height: '900px', lineHeight: '16px', MozOsxFontSmoothing: 'grayscale', overflow: 'clip', overflowWrap: 'anywhere', WebkitFontSmoothing: 'antialiased', width: '1440px' }}>\n      <div style={{ alignItems: 'center', backgroundColor: '#FFFFFF', borderBottomColor: '#E6EAF0', borderBottomStyle: 'solid', borderBottomWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '48px', paddingInline: '32px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Fjällby Konsult AB\n        </div>\n      </div>\n      <div style={{ alignSelf: 'center', backgroundColor: '#FFFFFF', borderColor: '#D3D8DF', borderRadius: '6px', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', marginTop: '80px', padding: '28px', width: '520px' }}>\n        <div style={{ boxSizing: 'border-box', color: '#0F172A', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '20px' }}>\n          Länken har gått ut\n        </div>\n        <div style={{ boxSizing: 'border-box', color: '#475569', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '20px', marginTop: '6px' }}>\n          Kontakta Fjällby Konsult AB för en ny länk. Fakturan är densamma.\n        </div>\n        <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '16px' }}>\n          <div style={{ boxSizing: 'border-box', color: '#475569', display: 'inline-block', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', lineHeight: '16px' }}>\n            fakturor@fjallby.example.test\n          </div>\n          <div style={{ alignItems: 'center', alignSelf: 'start', backgroundColor: '#2448A5', borderRadius: '6px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: '28px', justifyContent: 'center', paddingInline: '12px' }}>\n            <div style={{ boxSizing: 'border-box', color: '#FFFFFF', display: 'flex', fontFamily: '\"Inter\", system-ui, sans-serif', fontSize: '13px', fontWeight: 500, lineHeight: '16px' }}>\n              Be om en ny länk\n            </div>\n          </div>\n        </div>\n      </div>\n    </div>\n  )"
+      }
+    ]
+  },
+  "styles": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"file\": {\n    \"id\": \"01M3M9A2DA2G08DSJA5K8ZE68S\",\n    \"name\": \"Enthusiastic lantern\"\n  },\n  \"contentHash\": {\n    \"tokens\": \"831a6b71\"\n  }\n}"
+      },
+      {
+        "type": "text",
+        "text": "{\n  \"styles\": {\n    \"WPK-0\": {\n      \"display\": \"flex\",\n      \"overflow\": \"clip\",\n      \"width\": \"1440px\",\n      \"height\": \"900px\",\n      \"position\": \"absolute\",\n      \"flexDirection\": \"column\",\n      \"left\": \"24320px\",\n      \"top\": \"0px\",\n      \"backgroundColor\": \"#F3F5F8\"\n    },\n    \"WQ7-0\": {\n      \"height\": \"48px\",\n      \"flexShrink\": \"0\",\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"paddingInline\": \"32px\",\n      \"backgroundColor\": \"#FFFFFF\",\n      \"borderBottomWidth\": \"1px\",\n      \"borderBottomStyle\": \"solid\",\n      \"borderBottomColor\": \"#E6EAF0\"\n    },\n    \"WQ8-0\": {\n      \"display\": \"flex\",\n      \"fontSize\": \"16px\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 600,\n      \"lineHeight\": \"20px\",\n      \"color\": \"#0F172A\"\n    },\n    \"WQ9-0\": {\n      \"alignSelf\": \"center\",\n      \"width\": \"520px\",\n      \"marginTop\": \"80px\",\n      \"display\": \"flex\",\n      \"flexDirection\": \"column\",\n      \"padding\": \"28px\",\n      \"borderRadius\": \"6px\",\n      \"backgroundColor\": \"#FFFFFF\",\n      \"borderWidth\": \"1px\",\n      \"borderStyle\": \"solid\",\n      \"borderColor\": \"#D3D8DF\"\n    },\n    \"WQA-0\": {\n      \"fontSize\": \"16px\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 600,\n      \"lineHeight\": \"20px\",\n      \"color\": \"#0F172A\"\n    },\n    \"WQB-0\": {\n      \"fontSize\": \"13px\",\n      \"lineHeight\": \"20px\",\n      \"marginTop\": \"6px\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 400,\n      \"color\": \"#475569\"\n    },\n    \"27HA-0\": {\n      \"display\": \"flex\",\n      \"flexDirection\": \"column\",\n      \"paddingTop\": \"16px\",\n      \"gap\": \"12px\"\n    },\n    \"27HB-0\": {\n      \"fontSize\": \"13px\",\n      \"display\": \"inline-block\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 400,\n      \"lineHeight\": \"16px\",\n      \"color\": \"#475569\"\n    },\n    \"27HC-0\": {\n      \"display\": \"flex\",\n      \"alignItems\": \"center\",\n      \"justifyContent\": \"center\",\n      \"alignSelf\": \"start\",\n      \"height\": \"28px\",\n      \"paddingInline\": \"12px\",\n      \"borderRadius\": \"6px\",\n      \"flexShrink\": \"0\",\n      \"backgroundColor\": \"#2448A5\"\n    },\n    \"27HD-0\": {\n      \"display\": \"flex\",\n      \"fontSize\": \"13px\",\n      \"whiteSpace\": \"pre-wrap\",\n      \"fontFamily\": \"\\\"Inter\\\", system-ui, sans-serif\",\n      \"fontWeight\": 500,\n      \"lineHeight\": \"16px\",\n      \"color\": \"#FFFFFF\"\n    }\n  }\n}"
+      }
+    ]
+  }
+}
