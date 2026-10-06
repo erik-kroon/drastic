@@ -1,5 +1,8 @@
 import * as Claims from "@open-erp/contracts/employee-claims";
+import { swedishBusinessDate } from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Db from "../../db/payroll/employee-claims";
 import * as Ledger from "../../db/posting";
 import { admitHumanActor } from "../../db/human-actor";
@@ -289,7 +292,7 @@ export const prepareClaimPaymentFile = Effect.fn("claims.preparePaymentFile")(fu
         payee.proposal.input.employeeRevisionId !== instruction.employeeRevisionId
       )
         return yield* failure("StaleDependency");
-      const today = (yield* Ledger.readDatabaseTime(tx)).now.slice(0, 10);
+      const today = swedishBusinessDate(new Date((yield* Ledger.readDatabaseTime(tx)).now));
 
       if (command.input.executionDate < today) return yield* failure("InvalidJournal");
       yield* checkAccount(
@@ -396,7 +399,10 @@ export const approveClaimPaymentFile = Effect.fn("claims.approvePaymentFile")(fu
 
       if (payee.digest !== preview.payee.digest) return yield* failure("StaleDependency");
 
-      if (preview.input.executionDate < (yield* Ledger.readDatabaseTime(tx)).now.slice(0, 10))
+      if (
+        preview.input.executionDate <
+        swedishBusinessDate(new Date((yield* Ledger.readDatabaseTime(tx)).now))
+      )
         return yield* failure("StaleDependency");
 
       const xml = transferDocument({
@@ -459,6 +465,76 @@ export const approveClaimPaymentFile = Effect.fn("claims.approvePaymentFile")(fu
   );
 });
 
+const bankConfirmation = Effect.fn("claims.bankConfirmation")(function* (
+  tx: Transaction,
+  scope: Scope,
+  instruction: typeof Claims.ClaimInstruction.Type,
+  exported: typeof Claims.ClaimPaymentExport.Type,
+  cash: Effect.Success<ReturnType<typeof captureCash>>,
+  evidence: typeof Claims.SettleClaimInstruction.Type.payeeEvidence,
+) {
+  const preview = yield* Basis.readClaimRecord(
+    tx,
+    scope,
+    "employee_claim_payment_previews",
+    exported.previewId,
+    Claims.ClaimPaymentPreview,
+  );
+
+  const payee = yield* Basis.readClaimRecord(
+    tx,
+    scope,
+    "employee_claim_payee_verifications",
+    preview.payee.id,
+    Claims.EmployeePayeeVerification,
+  );
+
+  if (
+    preview.digest !== exported.previewDigest ||
+    preview.instruction.digest !== instruction.digest ||
+    preview.amountMinor !== instruction.amountMinor ||
+    payee.digest !== preview.payee.digest ||
+    cash.observedOn < preview.input.executionDate ||
+    cash.observedOn < swedishBusinessDate(new Date(exported.createdAt))
+  )
+    return yield* failure("StaleDependency");
+  yield* requireRetainedEvidence(tx, scope.bookId, evidence);
+  const source = (yield* Ledger.readEvidence(tx, scope.bookId, evidence.evidenceId))[0];
+
+  if (!source || source.mediaType !== "application/json")
+    return yield* failure("UnsupportedProfile");
+
+  const confirmation = yield* Schema.decodeEffect(
+    Schema.fromJsonString(Claims.SyntheticClaimBankConfirmation),
+  )(source.content).pipe(Effect.mapError(() => failure("UnsupportedProfile")));
+
+  const expected = {
+    profile: "synthetic_employee_claim_bank_confirmation_v1",
+    recordClass: "synthetic",
+    scope,
+    statementId: cash.statementId,
+    rowOrdinal: cash.rowOrdinal,
+    bankAccountId: cash.accountId,
+    bankEvidence: cash.evidence,
+    observedOn: cash.observedOn,
+    amountMinor: instruction.amountMinor,
+    instructionId: instruction.id,
+    instructionDigest: instruction.digest,
+    exportId: exported.id,
+    exportDigest: exported.digest,
+    exportSha256: exported.sha256,
+    previewId: preview.id,
+    previewDigest: preview.digest,
+    payeeVerificationId: payee.id,
+    payeeVerificationDigest: payee.digest,
+    creditorIban: payee.proposal.input.creditorIban,
+  };
+
+  if (!equalJson(confirmation, expected)) return yield* failure("StaleDependency");
+
+  return confirmation;
+});
+
 const settlementBasis = Effect.fn("claims.settlementBasis")(function* (
   tx: Transaction,
   scope: Scope,
@@ -481,15 +557,25 @@ const settlementBasis = Effect.fn("claims.settlementBasis")(function* (
 
   if (BigInt(cash.amountMinor) !== -BigInt(instruction.amountMinor))
     return yield* failure("InvalidJournal");
-  yield* requireRetainedEvidence(tx, scope.bookId, input.payeeEvidence);
+
+  const confirmation = yield* bankConfirmation(
+    tx,
+    scope,
+    instruction,
+    exported,
+    cash,
+    input.payeeEvidence,
+  );
 
   return {
     instruction,
     cash,
+    confirmation,
     capacityDigest: yield* digest({
       instruction,
       exported,
       cash,
+      confirmation,
       payeeEvidence: input.payeeEvidence,
     }),
   };
@@ -581,6 +667,7 @@ export const prepareClaimSettlement = Effect.fn("claims.prepareSettlement")(func
           input: command.input,
           capacityDigest: captured.capacityDigest,
           amountMinor: captured.instruction.amountMinor,
+          confirmation: captured.confirmation,
           postingPlan,
         }),
       );

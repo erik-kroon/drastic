@@ -47,10 +47,21 @@ const currentReviewState = Effect.fn("claims.currentReviewState")(function* (
 
   if (employment.id !== revision.employeeRevisionId) return ["employee_revision_changed"];
 
-  const capture = yield* Basis.captureClaimSources(tx, scope, revision.input).pipe(
+  const capture = yield* Basis.captureClaimSources(
+    tx,
+    scope,
+    revision.input,
+    revision.claimId,
+  ).pipe(
     Effect.map((items) => (equalJson(items, review.items) ? [] : ["source_revision_changed"])),
     Effect.catchTag("AccountingError", (error) =>
-      ["StaleDependency", "MissingEvidence", "UnsupportedProfile", "NotFound"].includes(error.code)
+      [
+        "StaleDependency",
+        "MissingEvidence",
+        "UnsupportedProfile",
+        "NotFound",
+        "AlreadyPosted",
+      ].includes(error.code)
         ? Effect.succeed(["source_qualification_changed"])
         : Effect.fail(error),
     ),
@@ -73,7 +84,7 @@ const revisionRecord = Effect.fn("claims.revisionRecord")(function* (
     command.input.month,
   );
 
-  const items = yield* Basis.captureClaimSources(tx, command.scope, command.input);
+  const items = yield* Basis.captureClaimSources(tx, command.scope, command.input, claimId);
 
   const result = yield* Basis.sealClaimRecord(
     tx,
@@ -259,7 +270,13 @@ export const reviewEmployeeClaim = Effect.fn("claims.review")(function* (
         )).id !== current.employeeRevisionId
       )
         return yield* failure("StaleDependency");
-      const items = yield* Basis.captureClaimSources(tx, command.scope, current.input);
+
+      const items = yield* Basis.captureClaimSources(
+        tx,
+        command.scope,
+        current.input,
+        current.claimId,
+      );
 
       if (!equalJson(items, current.items)) return yield* failure("StaleDependency");
       const id = newId("claim_review");
@@ -380,6 +397,13 @@ export const approveEmployeeClaim = Effect.fn("claims.approve")(function* (
       if (review.digest !== command.input.reviewDigest) return yield* failure("StaleDependency");
 
       if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+      if (
+        (yield* Db.records(tx, command.scope.bookId, "employee_claim_recognitions", review.claimId))
+          .length
+      )
+        return yield* failure("AlreadyPosted");
+
       const current = yield* Basis.currentClaimRevision(tx, command.scope, review.claimId);
 
       const reviews = yield* Basis.claimHistory(
@@ -403,12 +427,6 @@ export const approveEmployeeClaim = Effect.fn("claims.approve")(function* (
         (yield* currentReviewState(tx, command.scope, current, review, completions)).length
       )
         return yield* failure("StaleDependency");
-
-      if (
-        (yield* Db.records(tx, command.scope.bookId, "employee_claim_recognitions", review.claimId))
-          .length
-      )
-        return yield* failure("AlreadyPosted");
 
       const canonical = yield* checkedReview(
         tx,

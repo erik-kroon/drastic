@@ -230,10 +230,34 @@ const requireSyntheticClaimBook = Effect.fn("claims.syntheticBook")(function* (
     return yield* failure("UnsupportedProfile");
 });
 
+const requireClaimSourceOwner = Effect.fn("claims.requireSourceOwner")(function* (
+  tx: Transaction,
+  scope: Scope,
+  receipt: typeof Claims.SyntheticEmployeeReceipt.Type,
+  claimId: string | undefined,
+) {
+  const owners = yield* Db.sourceControl(
+    tx,
+    scope.bookId,
+    receipt.counterpartyId,
+    receipt.supplierDocumentNumber,
+  );
+
+  if (owners.some((owner) => owner.claimId !== claimId)) return yield* failure("AlreadyPosted");
+  const purchase = economicKey(receipt.counterpartyId, receipt.supplierDocumentNumber);
+
+  if (
+    (yield* InputDb.readComponents(tx, scope.bookId, [`purchase:${purchase}`])).length ||
+    (yield* InputDb.readPurchaseConflict(tx, scope.bookId, purchase))[0]?.present
+  )
+    return yield* failure("AlreadyPosted");
+});
+
 export const captureClaimSources = Effect.fn("claims.captureSources")(function* (
   tx: Transaction,
   scope: Scope,
   input: typeof Claims.SubmitEmployeeClaim.Type,
+  claimId?: string,
 ) {
   yield* requireSyntheticClaimBook(tx, scope);
 
@@ -274,6 +298,9 @@ export const captureClaimSources = Effect.fn("claims.captureSources")(function* 
     const party = yield* decode(Commerce.CounterpartyRevision, partyRow.revision);
     const identity = `${economicKey(receipt.counterpartyId, receipt.supplierDocumentNumber)}:${receipt.sourceLineId}`;
     const previous = seen.get(identity);
+
+    if (!previous && receipt.paidBy === "employee")
+      yield* requireClaimSourceOwner(tx, scope, receipt, claimId);
 
     const tax =
       previous || receipt.paidBy === "company"

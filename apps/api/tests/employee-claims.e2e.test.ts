@@ -147,6 +147,29 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
     Claims.EmployeePayeeVerification,
   );
 
+  const utcDate = new Date().toISOString().slice(0, 10);
+  const calendarBoundaryObserved = f.file.executionDate > utcDate;
+
+  if (calendarBoundaryObserved) {
+    await failure(
+      await request(
+        f.book,
+        `/payroll/claims/instructions/${recognition.directInstruction.id}/payment-previews`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...f.file,
+            instructionDigest: recognition.directInstruction.digest,
+            payeeVerificationId: verified.id,
+            executionDate: utcDate,
+          }),
+        },
+      ),
+      422,
+      "InvalidJournal",
+    );
+  }
+
   const preview = await post(
     f.book,
     `/payroll/claims/instructions/${recognition.directInstruction.id}/payment-previews`,
@@ -233,14 +256,17 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
     { account_id: "claim_vat", balance: "250000" },
   ]);
 
+  const exportedOn = A.swedishBusinessDate(new Date(exported.createdAt));
+  const observedOn = f.file.executionDate >= exportedOn ? f.file.executionDate : exportedOn;
+
   const declaration = {
     kind: "synthetic_bank_statement_v1",
     statementIdentifier: key(),
     sourceBankAccountId: "synthetic_claim_bank",
     accountId: "account_bank",
     currency: "SEK",
-    startsOn: "2026-01-31",
-    endsOn: "2026-01-31",
+    startsOn: observedOn,
+    endsOn: observedOn,
     openingMinor: "1000000",
     closingMinor: "500000",
     completeness: { declaredComplete: true, basis: "Whole retained synthetic bank row" },
@@ -248,7 +274,7 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
       {
         rowOrdinal: 1,
         providerId: key(),
-        date: "2026-01-31",
+        date: observedOn,
         description: "Observed fixed employee claim payment",
         amountMinor: "-500000",
       },
@@ -274,20 +300,163 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
     Bank.StatementImportReceipt,
   );
 
+  const confirmation = {
+    profile: "synthetic_employee_claim_bank_confirmation_v1",
+    recordClass: "synthetic",
+    scope: { entityId: f.book.entityId, bookId: f.book.bookId },
+    statementId: statement.statement.id,
+    rowOrdinal: 1,
+    bankAccountId: "account_bank",
+    bankEvidence: { evidenceId: cashEvidence.id, sha256: cashEvidence.sha256 },
+    observedOn: observedOn,
+    amountMinor: "500000",
+    instructionId: recognition.directInstruction.id,
+    instructionDigest: recognition.directInstruction.digest,
+    exportId: exported.id,
+    exportDigest: exported.digest,
+    exportSha256: exported.sha256,
+    previewId: preview.id,
+    previewDigest: preview.digest,
+    payeeVerificationId: verified.id,
+    payeeVerificationDigest: verified.digest,
+    creditorIban: verified.proposal.input.creditorIban,
+  };
+
+  const settlementInput = {
+    instructionDigest: recognition.directInstruction.digest,
+    exportId: exported.id,
+    statementId: statement.statement.id,
+    rowOrdinal: 1,
+    bankAccountId: "account_bank",
+    evidenceId: cashEvidence.id,
+    postingDate: observedOn,
+    accountingPeriodId: "period_2026",
+    series: "A",
+    payeeEvidence: f.evidence,
+  };
+
+  const settlementPath = `/payroll/claims/instructions/${recognition.directInstruction.id}/settlement-reviews`;
+
+  await failure(
+    await request(f.book, settlementPath, {
+      method: "POST",
+      body: JSON.stringify(settlementInput),
+    }),
+    422,
+    "UnsupportedProfile",
+  );
+
+  for (const changed of [
+    { exportSha256: "0".repeat(64) },
+    { creditorIban: "DE89370400440532013000" },
+    { statementId: "unrelated_same_amount_statement" },
+  ]) {
+    const unrelated = await post(
+      f.book,
+      "/evidence",
+      {
+        title: "Unrelated same-amount bank confirmation",
+        content: JSON.stringify({ ...confirmation, ...changed }),
+        mediaType: "application/json",
+        origin: "Synthetic R40 association refusal",
+      },
+      A.Evidence,
+    );
+
+    await failure(
+      await request(f.book, settlementPath, {
+        method: "POST",
+        body: JSON.stringify({
+          ...settlementInput,
+          payeeEvidence: { evidenceId: unrelated.id, sha256: unrelated.sha256 },
+        }),
+      }),
+      409,
+      "StaleDependency",
+    );
+  }
+
+  const oldDeclaration = {
+    ...declaration,
+    statementIdentifier: key(),
+    startsOn: "2026-01-31",
+    endsOn: "2026-01-31",
+    rows: declaration.rows.map((row) => ({ ...row, providerId: key(), date: "2026-01-31" })),
+  };
+
+  const oldEvidence = await post(
+    f.book,
+    "/evidence",
+    {
+      title: "Bank debit before this payment file",
+      content: JSON.stringify(oldDeclaration),
+      mediaType: "application/json",
+      origin: "Synthetic chronology refusal",
+    },
+    A.Evidence,
+  );
+
+  const oldStatement = await post(
+    f.book,
+    "/bank-statements",
+    {
+      ...oldDeclaration,
+      evidenceId: oldEvidence.id,
+      existingMatches: [],
+    },
+    Bank.StatementImportReceipt,
+  );
+
+  const oldConfirmation = await post(
+    f.book,
+    "/evidence",
+    {
+      title: "Exact references with invalid chronology",
+      content: JSON.stringify({
+        ...confirmation,
+        statementId: oldStatement.statement.id,
+        bankEvidence: { evidenceId: oldEvidence.id, sha256: oldEvidence.sha256 },
+        observedOn: "2026-01-31",
+      }),
+      mediaType: "application/json",
+      origin: "Synthetic chronology refusal",
+    },
+    A.Evidence,
+  );
+
+  await failure(
+    await request(f.book, settlementPath, {
+      method: "POST",
+      body: JSON.stringify({
+        ...settlementInput,
+        statementId: oldStatement.statement.id,
+        evidenceId: oldEvidence.id,
+        postingDate: "2026-01-31",
+        payeeEvidence: { evidenceId: oldConfirmation.id, sha256: oldConfirmation.sha256 },
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+
+  const confirmationEvidence = await post(
+    f.book,
+    "/evidence",
+    {
+      title: "Exact synthetic employee bank confirmation",
+      content: JSON.stringify(confirmation),
+      mediaType: "application/json",
+      origin: "Retained source for independent settlement review",
+    },
+    A.Evidence,
+  );
+
   const settlementReview = await post(
     f.book,
-    `/payroll/claims/instructions/${recognition.directInstruction.id}/settlement-reviews`,
+    settlementPath,
     {
-      instructionDigest: recognition.directInstruction.digest,
-      exportId: exported.id,
-      statementId: statement.statement.id,
-      rowOrdinal: 1,
-      bankAccountId: "account_bank",
-      evidenceId: cashEvidence.id,
-      postingDate: "2026-01-31",
-      accountingPeriodId: "period_2026",
-      series: "A",
-      payeeEvidence: f.evidence,
+      ...settlementInput,
+      payeeEvidence: { evidenceId: confirmationEvidence.id, sha256: confirmationEvidence.sha256 },
     },
     Claims.ClaimSettlementReview,
   );
@@ -350,6 +519,11 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
         runExecution,
         view,
         balances,
+        confirmation,
+        confirmationEvidence,
+        calendarBoundaryObserved,
+        oldStatement,
+        oldConfirmation,
         settlementReview,
         settlement,
         settledView,
@@ -750,7 +924,7 @@ test("R40 submitted originals fence previously approved legacy inputs and concur
   );
 });
 
-test("R40 current V6 backup, inspect and fenced restore preserve retained claim decisions and fixed instructions", async () => {
+test("R40 current V7 backup, inspect and fenced restore preserve retained claim decisions and fixed instructions", async () => {
   const f = await employeeClaimFixture();
 
   const revision = await post(
@@ -795,9 +969,9 @@ test("R40 current V6 backup, inspect and fenced restore preserve retained claim 
     Claims.EmployeeClaimRecognition,
   );
 
-  const recovered = (await proveReminderRecovery(f.book.bookId, [6]))[0];
+  const recovered = (await proveReminderRecovery(f.book.bookId, [7]))[0];
 
-  if (!recovered || recovered.inventory.version !== 6)
+  if (!recovered || recovered.inventory.version !== 7)
     throw new Error("Current claim recovery inventory missing");
   expect(recovered.restoredInventory).toEqual(recovered.inventory);
   expect(recovered.inspection.durableWork).toBe("matched");
@@ -827,3 +1001,142 @@ test("R40 current V6 backup, inspect and fenced restore preserve retained claim 
     JSON.stringify({ revision, completion, revised, review, recognition, recovered }, null, 2),
   );
 }, 180000);
+
+test("R40 rejects another pending claim owner and prior recognized legacy source before retaining a fence", async () => {
+  const pending = await employeeClaimFixture();
+
+  const first = await post(
+    pending.book,
+    "/payroll/claims",
+    pending.submission,
+    Claims.EmployeeClaimRevision,
+  );
+
+  const duplicate = await request(pending.book, "/payroll/claims", {
+    method: "POST",
+    body: JSON.stringify({ ...pending.submission, claimKey: `other_${key()}` }),
+  });
+
+  await failure(duplicate, 409, "AlreadyPosted");
+
+  const directory = await decoded(
+    await request(pending.book, "/payroll/claims"),
+    Claims.EmployeeClaimDirectory,
+  );
+
+  expect(directory.claims.map((row) => row.claimId)).toEqual([first.claimId]);
+
+  const f = await employeeClaimFixture();
+
+  if (!f.taxSource || !f.taxReview) throw new Error("Missing retained qualification");
+  const receipt = f.receipt;
+
+  const legacyInput = await post(
+    f.book,
+    "/payroll/inputs",
+    {
+      employeeId: f.submission.employeeId,
+      month: f.submission.month,
+      recordClass: "synthetic",
+      economicKey: `legacy_${key()}`,
+      evidence: { evidenceId: f.taxSource.facts.evidenceId, sha256: f.taxSource.evidenceSha256 },
+      purpose: "Prepared before claim submission",
+      accountingPeriodId: "period_2026",
+      postingDate: "2026-01-15",
+      series: "A",
+      liabilityAccountId: "claim_liability",
+      basis: {
+        kind: "claim",
+        paidBy: "employee",
+        counterpartyId: receipt.counterpartyId,
+        supplierDocumentNumber: receipt.supplierDocumentNumber,
+        inputVatAccountId: "claim_vat",
+        line: {
+          sourceLineId: receipt.sourceLineId,
+          expenseAccountId: "claim_expense",
+          netMinor: receipt.netMinor,
+          sourceTaxMinor: receipt.vatMinor,
+          sourceGrossMinor: receipt.grossMinor,
+          treatment: {
+            treatmentId: "synthetic_expense_tax_v1",
+            rate: { numerator: "1", denominator: "4" },
+            deduction: { numerator: "1", denominator: "1" },
+            invoiceTaxRounding: "half_up",
+            deductionRounding: "half_up",
+            acceptancePolicy: "exact_match",
+            toleranceMinor: "0",
+            basis: f.taxReview.facts.deductionBasis,
+          },
+          sourceRefs: [
+            {
+              evidenceId: f.taxSource.facts.evidenceId,
+              sourceKey: f.submission.items[0]?.occurrenceId,
+            },
+          ],
+        },
+      },
+    },
+    Inputs.PayrollInput,
+  );
+
+  const legacyReview = await post(
+    f.book,
+    `/payroll/inputs/${legacyInput.id}/reviews`,
+    { inputDigest: legacyInput.digest },
+    Inputs.PayrollInputReview,
+  );
+
+  const legacyApproval = await post(
+    f.book,
+    `/payroll/input-reviews/${legacyReview.id}/approvals`,
+    { reviewDigest: legacyReview.digest },
+    Inputs.PayrollInputApproval,
+  );
+
+  const legacyExecution = await post(
+    f.book,
+    `/payroll/input-reviews/${legacyReview.id}/executions`,
+    { reviewDigest: legacyReview.digest, approvalId: legacyApproval.id },
+    Inputs.PayrollInputExecution,
+  );
+
+  await failure(
+    await request(f.book, "/payroll/claims", {
+      method: "POST",
+      body: JSON.stringify(f.submission),
+    }),
+    409,
+    "AlreadyPosted",
+  );
+
+  const empty = await decoded(
+    await request(f.book, "/payroll/claims"),
+    Claims.EmployeeClaimDirectory,
+  );
+
+  expect(empty.claims).toEqual([]);
+
+  const legacyView = await decoded(
+    await request(f.book, `/payroll/inputs/${legacyInput.id}`),
+    Inputs.PayrollInputView,
+  );
+
+  expect(legacyView.snapshot).not.toBeNull();
+  await writeFile(
+    join(environment().artifacts, "employee-claims-r40-source-conflicts-proof.json"),
+    JSON.stringify(
+      {
+        first,
+        directory,
+        legacyInput,
+        legacyReview,
+        legacyApproval,
+        legacyExecution,
+        empty,
+        legacyView,
+      },
+      null,
+      2,
+    ),
+  );
+});

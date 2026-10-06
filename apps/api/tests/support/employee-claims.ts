@@ -292,7 +292,7 @@ export async function employeeClaimFixture() {
       reason: "Retained synthetic employee account",
     },
     file: {
-      executionDate: new Date().toISOString().slice(0, 10),
+      executionDate: A.swedishBusinessDate(new Date()),
       debtorName: "Synthetic employer",
       debtorIban: "SE4550000000058398257466",
       debtorBic: "ESSESESS",

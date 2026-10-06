@@ -231,6 +231,28 @@ export const ClaimPaymentExport = Schema.Struct({
   bankAccepted: Schema.Literal(false),
 });
 
+export const SyntheticClaimBankConfirmation = Schema.Struct({
+  profile: Schema.Literal("synthetic_employee_claim_bank_confirmation_v1"),
+  recordClass: Schema.Literal("synthetic"),
+  scope: A.Scope,
+  statementId: A.Identifier,
+  rowOrdinal: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  bankAccountId: A.Identifier,
+  bankEvidence: Inputs.InputEvidence,
+  observedOn: A.AccountingDate,
+  amountMinor: A.MinorUnits,
+  instructionId: A.Identifier,
+  instructionDigest: A.Digest,
+  exportId: A.Identifier,
+  exportDigest: A.Digest,
+  exportSha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+  previewId: A.Identifier,
+  previewDigest: A.Digest,
+  payeeVerificationId: A.Identifier,
+  payeeVerificationDigest: A.Digest,
+  creditorIban: iban,
+});
+
 export const SettleClaimInstruction = Schema.Struct({
   instructionDigest: A.Digest,
   exportId: A.Identifier,
@@ -250,6 +272,7 @@ export const ClaimSettlementReview = Schema.Struct({
   input: SettleClaimInstruction,
   capacityDigest: A.Digest,
   amountMinor: A.MinorUnits,
+  confirmation: Schema.optional(SyntheticClaimBankConfirmation),
   postingPlan: A.ChangeSet,
 });
 
