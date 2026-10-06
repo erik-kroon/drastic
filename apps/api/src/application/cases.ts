@@ -488,6 +488,11 @@ export const resolveReviewTarget = Effect.fn("cases.resolveReviewTarget")(functi
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireCaseAccess(transaction, false);
 
+    const supplierAccess = yield* readTableAccess(transaction, ["supplier_acceptance_reviews"]);
+
+    if (supplierAccess.length !== 1 || supplierAccess.some((row) => !row.canSelect))
+      return yield* unsupported();
+
     const planRow = (yield* PostingDb.readPlan(
       transaction,
       command.scope.bookId,
@@ -512,7 +517,33 @@ export const resolveReviewTarget = Effect.fn("cases.resolveReviewTarget")(functi
 
     if (owners.some((owner) => !owner.consistent)) return yield* failure("StaleDependency");
 
+    const suppliers = yield* Db.readSupplierReviewOwner(
+      transaction,
+      command.scope.bookId,
+      command.changeSetId,
+    );
+
+    if (suppliers.length > 1 || (suppliers.length > 0 && owners.length > 0))
+      return yield* failure("StaleDependency");
+
+    const supplier = suppliers[0];
+
+    if (supplier && supplier.planDigest !== plan.planDigest)
+      return yield* failure("StaleDependency");
+
     const resolvedAt = (yield* PostingDb.readDatabaseTime(transaction)).now;
+
+    if (supplier)
+      return yield* decode(ResolutionSchema, {
+        kind: "supplier_acceptance",
+        changeSetId: plan.id,
+        planDigest: plan.planDigest,
+        reviewId: supplier.reviewId,
+        reviewDigest: supplier.reviewDigest,
+        draftId: supplier.draftId,
+        resolvedAt,
+      });
+
     const owner = owners[0];
 
     if (owners.length > 1) {

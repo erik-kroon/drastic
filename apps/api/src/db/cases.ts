@@ -288,6 +288,26 @@ export function readReviewOwners(transaction: Transaction, bookId: string, chang
   );
 }
 
+export function readSupplierReviewOwner(
+  transaction: Transaction,
+  bookId: string,
+  changeSetId: string,
+) {
+  return transaction.execute<{
+    readonly reviewId: string;
+    readonly draftId: string;
+    readonly reviewDigest: string;
+    readonly planDigest: string;
+  }>(
+    sql`select id as "reviewId", draft_id as "draftId", body->>'digest' as "reviewDigest",
+      body#>>'{postingPlan,planDigest}' as "planDigest"
+      from openerp.supplier_acceptance_reviews
+      where book_id = ${bookId} and change_set_id = ${changeSetId}
+      limit 2`,
+    "objects",
+  );
+}
+
 export function readBookProfile(transaction: Transaction, bookId: string) {
   return transaction.execute<BookProfileRow>(
     sql`select profile, authority from openerp.books where id = ${bookId}`,

@@ -168,6 +168,15 @@ export const CaseContext = Schema.Struct({
 // ownership instead of trusting a frozen body or a stored URI.
 export const ReviewResolution = Schema.Union([
   Schema.Struct({
+    kind: Schema.Literal("supplier_acceptance"),
+    changeSetId: Accounting.Identifier,
+    planDigest: Accounting.Digest,
+    reviewId: Accounting.Identifier,
+    reviewDigest: Accounting.Digest,
+    draftId: Accounting.Identifier,
+    resolvedAt: Schema.String,
+  }),
+  Schema.Struct({
     kind: Schema.Literal("standalone"),
     changeSetId: Accounting.Identifier,
     planDigest: Accounting.Digest,
