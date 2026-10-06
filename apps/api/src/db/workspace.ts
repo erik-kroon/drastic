@@ -565,9 +565,9 @@ function attentionCte(bookId: string) {
         r.body->'content'->>'title', r.body->'content'->>'documentDate', r.body->>'createdAt',
         r.body->'totals'->>'grossMinor', r.body->'content'->>'currency',
         (r.body->'content'->>'currencyScale')::integer,
-        case when accepted.id is not null or cash.id is not null or credit.id is not null or review.id is not null
+        case when accepted.id is not null or cash.id is not null or credit.id is not null or service.id is not null or review.id is not null
           then 'completed' else 'open' end,
-        case when accepted.id is not null or cash.id is not null or credit.id is not null then 'supplier_accepted'
+        case when accepted.id is not null or cash.id is not null or credit.id is not null or service.id is not null then 'supplier_accepted'
           when review.id is not null then 'supplier_review_prepared' else 'supplier_draft' end
       from openerp.supplier_invoice_drafts d
       join openerp.supplier_invoice_draft_revisions r
@@ -575,6 +575,7 @@ function attentionCte(bookId: string) {
       left join openerp.supplier_acceptances accepted on accepted.book_id = d.book_id and accepted.draft_id = d.id
       left join openerp.commerce_invoices cash on cash.book_id = d.book_id and cash.cash_method_source_draft_id = d.id
       left join openerp.cash_method_credits credit on credit.book_id = d.book_id and credit.draft_id = d.id
+      left join openerp.service_purchases service on service.book_id = d.book_id and service.draft_id = d.id
       left join lateral (
         select a.id from openerp.supplier_acceptance_reviews a
         where a.book_id = d.book_id and a.draft_id = d.id and a.draft_revision = d.current_revision
@@ -617,6 +618,22 @@ function attentionCte(bookId: string) {
       ) e
     )
   `;
+}
+
+export function readQuestionAttentionOwner(
+  transaction: Transaction,
+  bookId: string,
+  kind: string,
+  recordId: string,
+) {
+  return transaction.execute<{
+    readonly revision: string;
+    readonly state: string;
+  }>(
+    sql`with ${attentionCte(bookId)}
+      select revision, state from observed where kind = ${kind} and id = ${recordId}`,
+    "objects",
+  );
 }
 
 export function readContextResolutions(

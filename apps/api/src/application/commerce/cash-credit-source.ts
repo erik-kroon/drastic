@@ -1,3 +1,4 @@
+import { requireResolvedSupplierQuestions } from "../work-questions";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import { equalJson } from "@open-erp/domain/canonicalization";
@@ -65,6 +66,8 @@ export const readCashCreditSource = Effect.fn("cashCredit.readRetainedSource")(f
   const draft = yield* decode(Drafts.SupplierInvoiceDraftRevision, retained.body);
 
   if (draft.digest !== input.expectedDigest) return yield* failure("StaleDependency");
+
+  yield* requireResolvedSupplierQuestions(tx, scope, input.draftId);
 
   const invoice = yield* liveInvoice(tx, scope.bookId, input.invoiceId);
   const content = draft.content;

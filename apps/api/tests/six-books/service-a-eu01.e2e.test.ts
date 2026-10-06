@@ -10,12 +10,18 @@ import {
   database,
   decoded,
   environment,
+  failure,
   key,
   post,
   request,
   run,
   type BookFixture,
 } from "../support/fixtures";
+import {
+  askSupplierQuestion,
+  closeSupplierQuestion,
+  supplierQuestions,
+} from "../support/work-questions";
 
 // NEXT-05 boundary probe via Book A A-EU01 facts (challenge input only).
 // A-EU01: eu_supplier, German hosting, EUR 100000 native, book rate 112/10,
@@ -114,6 +120,25 @@ async function fixtureBookA(): Promise<BookFixture> {
   };
 }
 
+async function serviceCounts(book: BookFixture) {
+  const admin = await database();
+
+  try {
+    const result = await admin.query(
+      `select
+      (select count(*)::integer from openerp.vouchers where book_id=$1) as vouchers,
+      (select count(*)::integer from openerp.commerce_invoices where book_id=$1) as invoices,
+      (select count(*)::integer from openerp.service_purchases where book_id=$1) as purchases,
+      (select count(*)::integer from openerp.service_purchase_tax_facts where book_id=$1) as tax_facts`,
+      [book.bookId],
+    );
+
+    return result.rows;
+  } finally {
+    await admin.end();
+  }
+}
+
 test("six-books service A-EU01: prepare refuses without qualified rule release", async () => {
   const env = environment();
 
@@ -197,40 +222,60 @@ test("six-books service A-EU01: prepare refuses without qualified rule release",
     Drafts.SupplierInvoiceDraftRevision,
   );
 
-  const prepareResponse = await request(book, "/commerce/service-purchase-reviews", {
-    method: "POST",
-    body: JSON.stringify({
-      profile: "general-service-reverse-charge-v1",
-      draftId: draft.id,
-      expectedRevision: draft.revision,
-      expectedDigest: draft.digest,
-      controlAccountId: "account_payable",
-      inputVatAccountId: "account_input_vat",
-      outputVatAccountId: "account_output_vat",
-      accountingPeriodId: "period-a",
-      series: "A",
-      reason: "Six-books A-EU01 reverse-charge probe",
-      taxPoint: { taxPointOn: "2025-10-15", basis: "document_date" },
-      rateId: "se-25-standard",
-      lineAssignments: [
-        {
-          lineId: "line_eu1",
-          expenseAccountId: "account_expense",
-          originalNetMinor: "100000",
-          originalCurrency: "EUR",
-          originalScale: 2,
-          sourceTaxMinor: "0",
-          serviceKind: "hosting-service",
-          jurisdictionClass: "EU_OTHER",
-          deduction: { numerator: "1", denominator: "1" },
-          accountingRate: { numerator: "112", denominator: "10" },
-          accountingRateScheme: "A-EU01 synthetic book rate",
-          taxPointRate: { numerator: "112", denominator: "10" },
-          taxPointRateScheme: "A-EU01 synthetic book rate",
-        },
-      ],
-    }),
-  });
+  const prepareInput = {
+    profile: "general-service-reverse-charge-v1",
+    draftId: draft.id,
+    expectedRevision: draft.revision,
+    expectedDigest: draft.digest,
+    controlAccountId: "account_payable",
+    inputVatAccountId: "account_input_vat",
+    outputVatAccountId: "account_output_vat",
+    accountingPeriodId: "period-a",
+    series: "A",
+    reason: "Six-books A-EU01 reverse-charge probe",
+    taxPoint: { taxPointOn: "2025-10-15", basis: "document_date" },
+    rateId: "se-25-standard",
+    lineAssignments: [
+      {
+        lineId: "line_eu1",
+        expenseAccountId: "account_expense",
+        originalNetMinor: "100000",
+        originalCurrency: "EUR",
+        originalScale: 2,
+        sourceTaxMinor: "0",
+        serviceKind: "hosting-service",
+        jurisdictionClass: "EU_OTHER",
+        deduction: { numerator: "1", denominator: "1" },
+        accountingRate: { numerator: "112", denominator: "10" },
+        accountingRateScheme: "A-EU01 synthetic book rate",
+        taxPointRate: { numerator: "112", denominator: "10" },
+        taxPointRateScheme: "A-EU01 synthetic book rate",
+      },
+    ],
+  };
+
+  const question = await askSupplierQuestion(
+    book,
+    draft.id,
+    "Confirm the retained hosting original before service recognition",
+  );
+
+  const history = await supplierQuestions(book, draft.id);
+  const beforeQuestions = await serviceCounts(book);
+  const commandKey = key();
+
+  const prepare = () =>
+    request(book, "/commerce/service-purchase-reviews", {
+      method: "POST",
+      headers: { "idempotency-key": commandKey },
+      body: JSON.stringify(prepareInput),
+    });
+
+  await failure(await prepare(), 422, "MissingEvidence");
+  expect(await serviceCounts(book)).toEqual(beforeQuestions);
+  expect(await supplierQuestions(book, draft.id)).toEqual(history);
+  const closedQuestion = await closeSupplierQuestion(book, draft.id, question.id);
+  const prepareResponse = await prepare();
 
   const prepareBody = await prepareResponse.text();
 
@@ -304,6 +349,11 @@ test("six-books service A-EU01: prepare refuses without qualified rule release",
     foreignProbeCode: code,
     bookCurrencyProbeCode: sekCode,
     draftId: draft.id,
+    question: closedQuestion,
+    beforeQuestions,
+    afterQuestions: await serviceCounts(book),
+    preparationQuestionGate: "actual-public-refusal",
+    executionAndCompletionProof: "blocked-by-existing-qualified-release-gap",
   };
 
   await writeFile(
@@ -311,5 +361,6 @@ test("six-books service A-EU01: prepare refuses without qualified rule release",
     `${JSON.stringify(report, null, 2)}\n`,
   );
 
+  expect(await serviceCounts(book)).toEqual(beforeQuestions);
   expect(report.status).toBe("BLOCKED_UNSUPPORTED");
 });

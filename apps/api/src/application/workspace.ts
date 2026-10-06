@@ -16,6 +16,7 @@ import * as Db from "../db/workspace";
 import * as PostingDb from "../db/posting";
 import type { Transaction } from "../db/transaction";
 import { getSupplierAcceptanceReviewInTransaction } from "./purchases/acceptance";
+import { questionSummary } from "./work-questions";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -594,6 +595,16 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       }),
     );
 
+    const questions = yield* Effect.forEach(page, (row) => {
+      if (row.kind === "document" || row.kind === "supplier")
+        return questionSummary(transaction, command.scope, { kind: row.kind, recordId: row.id });
+
+      if (row.supplierReviewId)
+        return questionSummary(transaction, command.scope, { kind: "journal", recordId: row.id });
+
+      return Effect.succeed(null);
+    });
+
     return yield* decode(AttentionPageSchema, {
       scope: command.scope,
       checkedAt: yield* isoNow(transaction),
@@ -605,6 +616,8 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       items: page.map((row, index) => ({
         recurringAgreementId: row.recurringAgreementId,
         supplierReview: supplierReviews[index] ?? null,
+        questionRoot: questions[index]?.root ?? null,
+        questionSummary: questions[index]?.summary ?? null,
         key: row.key,
         assignment:
           row.assignmentKind === null

@@ -1,3 +1,4 @@
+import { requireResolvedSupplierQuestions } from "../work-questions";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
@@ -234,6 +235,8 @@ export const admitCashInvoiceInTransaction = Effect.fn("commerce.invoices.admitC
     const draft = yield* decode(Drafts.SupplierInvoiceDraftRevision, retained.body);
 
     if (draft.digest !== input.expectedDigest) return yield* failure("StaleDependency");
+
+    yield* requireResolvedSupplierQuestions(transaction, command.scope, input.draftId);
 
     if (
       (yield* Db.readDraftAdoption(transaction, command.scope.bookId, head.id)).length ||

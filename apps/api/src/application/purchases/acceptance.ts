@@ -24,6 +24,7 @@ import * as RecognitionContract from "@open-erp/contracts/supplier-recognition";
 import * as Recognition from "./recognition";
 import * as Shared from "./shared";
 import { calculateSupplierDraft } from "./draft-calculation";
+import { requireResolvedSupplierQuestions, questionSummary } from "../work-questions";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -422,6 +423,8 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
         return yield* failure("AlreadyPosted");
       }
 
+      yield* requireResolvedSupplierQuestions(transaction, command.scope, command.input.draftId);
+
       const recalculated = yield* calculateSupplierDraft(
         transaction,
         command.scope.bookId,
@@ -745,6 +748,9 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
       return yield* failure("StaleDependency");
     }
 
+    const proposal = yield* Shared.decode(ReviewSchema, review.body);
+    yield* requireResolvedSupplierQuestions(transaction, command.scope, proposal.input.draftId);
+
     const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
 
     if (blockers.length > 0) return yield* failure("StaleDependency");
@@ -945,6 +951,7 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
       yield* readBook(transaction, scope.bookId);
       const row = yield* readReview(transaction, scope.bookId, reviewId);
       const review = yield* Shared.decode(ReviewSchema, row.body);
+      yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
 
       if (
         review.digest !== input.digest ||
@@ -1112,7 +1119,18 @@ export const getSupplierAcceptanceReviewInTransaction = Effect.fn(
     command.reviewId,
   ))[0];
 
-  const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
+  const plan = yield* Shared.decode(ReviewSchema, review.body);
+
+  const questions = yield* questionSummary(transaction, command.scope, {
+    kind: "supplier",
+    recordId: plan.input.draftId,
+  });
+
+  const blockers = [...(yield* acceptanceBlockers(transaction, command.scope, review))];
+
+  if (!acceptance && questions.summary.unresolved > 0)
+    blockers.push("Unresolved questions remain on this task.");
+
   const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
 
   if (now === undefined) return yield* failure("InternalError");
@@ -1146,8 +1164,16 @@ export const getSupplierAcceptanceReviewInTransaction = Effect.fn(
     acceptance === undefined &&
     blockers.length === 0;
 
+  const priorReviewedAcceptance = (yield* AcceptanceDb.readPriorReviewedAcceptance(
+    transaction,
+    command.scope.bookId,
+    plan.draftSnapshot.id,
+    plan.draftSnapshot.content.counterpartyId,
+  ))[0];
+
   return yield* Shared.decode(ViewSchema, {
-    plan: yield* Shared.decode(ReviewSchema, review.body),
+    priorReviewedAcceptanceReceiptId: priorReviewedAcceptance?.id ?? null,
+    plan,
     approval: approval ? yield* Shared.decode(ApprovalSchema, approval.body) : null,
     acceptance: acceptance ? acceptance.body : null,
     blockers,

@@ -342,7 +342,8 @@ export function readSealedDraft(
         "supplier",
         () => sql`select id from openerp.supplier_acceptances where book_id=${book} and draft_id=${id}
           union all select id from openerp.commerce_invoices where book_id=${book} and cash_method_source_draft_id=${id}
-          union all select id from openerp.cash_method_credits where book_id=${book} and draft_id=${id}`,
+          union all select id from openerp.cash_method_credits where book_id=${book} and draft_id=${id}
+          union all select id from openerp.service_purchases where book_id=${book} and draft_id=${id}`,
       ),
       Match.when(
         "register",

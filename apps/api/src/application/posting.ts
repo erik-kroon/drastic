@@ -3,6 +3,7 @@ import { requireOnboardingResponsibility } from "./onboarding-policy";
 import * as OnboardingCaseDb from "../db/onboarding";
 import * as OnboardingLifecycleDb from "../db/onboarding-lifecycle";
 import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
+import * as SupplierAcceptanceDb from "../db/purchases/acceptance";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { swedishBusinessDate } from "@open-erp/domain/values";
 import {
@@ -1868,6 +1869,18 @@ const readSupplierPostingReservation = Effect.fn("posting.readSupplierReservatio
   transaction: Transaction,
   command: { scope: Scope; changeSetId: string; owner?: PostingOwner },
 ) {
+  const acceptance = (yield* SupplierAcceptanceDb.readPostingChild(
+    transaction,
+    command.scope.bookId,
+    command.changeSetId,
+  ))[0];
+
+  if (
+    acceptance &&
+    (command.owner?.kind !== "supplier_acceptance" || command.owner.id !== acceptance.id)
+  )
+    return yield* failure("ApprovalRequired");
+
   const settlement = (yield* SupplierSettlementDb.readPostingChild(
     transaction,
     command.scope.bookId,

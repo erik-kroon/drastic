@@ -242,6 +242,13 @@ test("six-books recognition A-P01: two-line domestic purchase posts exact group"
     Acceptance.SupplierAcceptanceReview,
   );
 
+  const unfamiliar = await decoded(
+    await request(book, `/commerce/supplier-acceptance-reviews/${review.id}`),
+    Acceptance.SupplierAcceptanceView,
+  );
+
+  expect(unfamiliar.priorReviewedAcceptanceReceiptId).toBeNull();
+
   const approval = await post(
     book,
     `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
@@ -257,6 +264,55 @@ test("six-books recognition A-P01: two-line domestic purchase posts exact group"
   );
 
   expect(acceptance.registerInvoiceId.length).toBeGreaterThan(0);
+
+  const nextSource = await post(
+    book,
+    "/evidence",
+    {
+      title: "A-P01 next retained original INV-002",
+      content: "Synthetic INV-002 net1600000 tax400000 gross2000000; distinct original",
+      mediaType: "text/plain",
+      origin: "DRA105 prior reviewed supplier proof",
+    },
+    Accounting.Evidence,
+  );
+
+  const nextDraft = await post(
+    book,
+    "/commerce/supplier-invoice-drafts",
+    {
+      draftKey: `group_${key()}`,
+      content: {
+        ...draft.content,
+        sourceEvidenceId: nextSource.id,
+        supplierDocumentNumber: "INV-002",
+        lines: draft.content.lines.map((line) => ({ ...line, taxEvidenceId: nextSource.id })),
+      },
+    },
+    Drafts.SupplierInvoiceDraftRevision,
+  );
+
+  const nextReview = await post(
+    book,
+    "/commerce/supplier-acceptance-reviews",
+    {
+      ...review.input,
+      draftId: nextDraft.id,
+      expectedRevision: nextDraft.revision,
+      expectedDigest: nextDraft.digest,
+    },
+    Acceptance.SupplierAcceptanceReview,
+  );
+
+  const familiar = await decoded(
+    await request(book, `/commerce/supplier-acceptance-reviews/${nextReview.id}`),
+    Acceptance.SupplierAcceptanceView,
+  );
+
+  expect(familiar.priorReviewedAcceptanceReceiptId).toBe(acceptance.id);
+  expect(familiar.acceptance).toBeNull();
+  expect(familiar.approval).toBeNull();
+  expect(familiar.plan.draftSnapshot.content.sourceTotalMinor).toBe("2000000");
 
   const invoice = await decoded(
     await request(book, `/commerce/invoices/${acceptance.registerInvoiceId}`),

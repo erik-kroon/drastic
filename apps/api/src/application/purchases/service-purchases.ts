@@ -7,9 +7,11 @@ import {
   type ServicePurchasePlan,
 } from "@open-erp/domain/service-purchases";
 import * as Effect from "effect/Effect";
+import * as Match from "effect/Match";
 import * as Result from "effect/Result";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
+import { questionSummary, requireResolvedSupplierQuestions } from "../work-questions";
 import {
   digest,
   approveChangeInTransaction,
@@ -470,12 +472,11 @@ function serviceRecognition(
     // The tax point must be a date the retained supplier document actually
     // carries. A received-date basis has no draft evidence in this owner and
     // is refused rather than assumed.
-    const expectedTaxPoint =
-      input.taxPoint.basis === "document_date"
-        ? Shared.textField(content, "documentDate")
-        : input.taxPoint.basis === "supply_date"
-          ? Shared.textField(content, "supplyDate")
-          : undefined;
+    const expectedTaxPoint = Match.value(input.taxPoint.basis).pipe(
+      Match.when("document_date", () => Shared.textField(content, "documentDate")),
+      Match.when("supply_date", () => Shared.textField(content, "supplyDate")),
+      Match.orElse(() => undefined),
+    );
 
     if (expectedTaxPoint === undefined || expectedTaxPoint !== input.taxPoint.taxPointOn) {
       return yield* Shared.unsupported();
@@ -819,6 +820,8 @@ export const prepareServicePurchase = Effect.fn("purchases.service-purchases.pre
         return yield* failure("StaleDependency");
       }
 
+      yield* requireResolvedSupplierQuestions(transaction, command.scope, command.input.draftId);
+
       if (
         (yield* Db.readAcceptanceForDraft(
           transaction,
@@ -977,6 +980,14 @@ function serviceBlockers(transaction: Transaction, scope: Scope, review: Db.Revi
 
     const blockers: string[] = [];
 
+    const questions = yield* questionSummary(transaction, scope, {
+      kind: "supplier",
+      recordId: Shared.textField(input, "draftId") ?? "",
+    });
+
+    if (questions.summary.unresolved > 0)
+      blockers.push("The supplier task has unresolved questions.");
+
     const head = yield* AcceptanceDb.readDraftHead(
       transaction,
       bookId,
@@ -1069,6 +1080,12 @@ export const approveServicePurchaseInTransaction = Effect.fn(
     if (command.input.digest !== Shared.textField(review.body, "digest")) {
       return yield* failure("StaleDependency");
     }
+
+    yield* requireResolvedSupplierQuestions(
+      transaction,
+      command.scope,
+      Shared.textField(Shared.objectField(review.body, "input"), "draftId") ?? "",
+    );
 
     const blockers = yield* serviceBlockers(transaction, command.scope, review);
 
@@ -1198,10 +1215,11 @@ export const executeServicePurchase = Effect.fn("purchases.service-purchases.exe
       const row = yield* readReview(transaction, scope.bookId, reviewId);
       const review = yield* Shared.decode(ReviewSchema, row.body);
 
-      if (
-        review.digest !== input.digest ||
-        (yield* serviceBlockers(transaction, scope, row)).length
-      )
+      if (review.digest !== input.digest) return yield* failure("StaleDependency");
+
+      yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
+
+      if ((yield* serviceBlockers(transaction, scope, row)).length)
         return yield* failure("StaleDependency");
 
       const approval = (yield* Db.readApprovalById(

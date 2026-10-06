@@ -8,6 +8,14 @@ import * as Schema from "effect/Schema";
 import { database, decoded, failure, key, post, request, execute } from "./support/fixtures";
 import { cashFixture, paymentSnapshot, postedCash, allocateCash } from "./support/cash-payment";
 import { createDraft } from "./support/supplier-review";
+import {
+  askSupplierQuestion,
+  closeSupplierQuestion,
+  supplierQuestions,
+} from "./support/work-questions";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { environment } from "./support/fixtures";
 
 // Failure-first HTTP/PostgreSQL obligations: a suffix credit must never touch paid
 // principal, unrecognized debt creates no accounting, and recognized debt reverses
@@ -850,4 +858,100 @@ test("retained credit VAT split must match the original suffix before and after 
     "UnsupportedProfile",
   );
   expect(await snapshot(context)).toEqual(recognized);
+}, 240000);
+
+test("cash credit retains supplier questions through preparation, approval and execution", async () => {
+  const context = await fixture();
+  const { book, creditDraft, input } = context;
+
+  const initialQuestion = await askSupplierQuestion(
+    book,
+    creditDraft.id,
+    "Confirm the retained credit source before preparation",
+  );
+
+  const beforePreparation = await snapshot(context);
+  const history = await supplierQuestions(book, creditDraft.id);
+  const prepareKey = key();
+
+  const prepare = () =>
+    request(book, path, {
+      method: "POST",
+      headers: { "idempotency-key": prepareKey },
+      body: JSON.stringify(input),
+    });
+
+  await failure(await prepare(), 422, "MissingEvidence");
+  expect(await snapshot(context)).toEqual(beforePreparation);
+  expect(await supplierQuestions(book, creditDraft.id)).toEqual(history);
+  await closeSupplierQuestion(book, creditDraft.id, initialQuestion.id);
+  const plan = await decoded(await prepare(), Cash.CashCreditPlan);
+  expect(await decoded(await prepare(), Cash.CashCreditPlan)).toEqual(plan);
+
+  const later = await askSupplierQuestion(
+    book,
+    creditDraft.id,
+    "Resolve the retained credit question before approval",
+  );
+
+  const approveKey = key();
+
+  const approve = () =>
+    request(context.reviewer, `${path}/${plan.id}/approvals`, {
+      method: "POST",
+      headers: { "idempotency-key": approveKey },
+      body: JSON.stringify({ planDigest: plan.digest }),
+    });
+
+  const beforeApproval = await snapshot(context);
+
+  await failure(await approve(), 422, "MissingEvidence");
+  expect(await snapshot(context)).toEqual(beforeApproval);
+  await closeSupplierQuestion(book, creditDraft.id, later.id);
+  const approval = await decoded(await approve(), Cash.CashCreditApproval);
+
+  const executionQuestion = await askSupplierQuestion(
+    book,
+    creditDraft.id,
+    "Review the credit before consuming the retained approval",
+  );
+
+  const beforeExecution = await snapshot(context);
+  const executeKey = key();
+
+  const execute = () =>
+    request(book, `${path}/${plan.id}/execute`, {
+      method: "POST",
+      headers: { "idempotency-key": executeKey },
+      body: JSON.stringify({ planDigest: plan.digest, approvalId: approval.id }),
+    });
+
+  await failure(await execute(), 422, "MissingEvidence");
+  expect(await snapshot(context)).toEqual(beforeExecution);
+  const closed = await closeSupplierQuestion(book, creditDraft.id, executionQuestion.id);
+  const receipt = await decoded(await execute(), Cash.CashCreditReceipt);
+  expect(await decoded(await execute(), Cash.CashCreditReceipt)).toEqual(receipt);
+  const completed = await supplierQuestions(book, creditDraft.id);
+  expect(completed.owner.completed).toBe(true);
+  expect(completed.questions.every((question) => question.state === "closed")).toBe(true);
+  await writeFile(
+    join(environment().artifacts, "cash-credit-question-gates.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        root: initialQuestion.root,
+        draftId: creditDraft.id,
+        question: closed,
+        planId: plan.id,
+        receipt,
+        beforePreparation,
+        beforeApproval,
+        beforeExecution,
+        afterExecution: await snapshot(context),
+        exactReplay: true,
+      },
+      null,
+      2,
+    ),
+  );
 }, 240000);

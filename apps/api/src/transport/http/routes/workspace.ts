@@ -11,6 +11,7 @@ import {
   getAgentContextDelta,
 } from "../../../application/agent/continuation";
 import * as Workspace from "../../../application/workspace";
+import * as Questions from "../../../application/work-questions";
 
 export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handlers) =>
   handlers
@@ -46,6 +47,43 @@ export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handler
         advanceAgentContext(token, {
           scope: scopeFromPath(params),
           captureId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("readWorkQuestions", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Questions.readWorkQuestions(token, {
+          scope: scopeFromPath(params),
+          target: payload,
+        }),
+      ),
+    )
+    .handle("askWorkQuestion", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Questions.askWorkQuestion(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("answerWorkQuestion", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Questions.answerWorkQuestion(token, {
+          scope: scopeFromPath(params),
+          questionId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("closeWorkQuestion", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Questions.closeWorkQuestion(token, {
+          scope: scopeFromPath(params),
+          questionId: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),

@@ -219,7 +219,7 @@ test("document attention preserves acquisition identity and supplier handoff bef
   const prepared = await decoded(await request(book, "/attention"), Workspace.AttentionPage);
   expect(prepared.total).toBe("2");
   expect(prepared.items.some((item) => item.kind === "supplier")).toBe(false);
-  expect(prepared.items.find((item) => item.kind === "journal")?.supplierReview).toEqual({
+  expect(prepared.items.find((item) => item.kind === "journal")?.supplierReview).toMatchObject({
     draftId: handoff.draft.id,
     reviewId: acceptance.id,
   });

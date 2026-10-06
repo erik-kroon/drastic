@@ -133,7 +133,112 @@ export const DeletedView = Schema.Struct({ scope: Accounting.Scope, id: Accounti
 
 export const AssignmentResult = Schema.Struct({ scope: Accounting.Scope, assignment: Assignment });
 
+export const QuestionTarget = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literals(["document", "supplier", "journal"]),
+    recordId: Accounting.Identifier,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("bank"),
+    recordId: Accounting.Identifier,
+    rowOrdinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10000 })),
+  }),
+]);
+
+export const QuestionRoot = Schema.Struct({
+  kind: Schema.Literals(["document", "supplier", "bank"]),
+  recordId: Accounting.Identifier,
+  rowOrdinal: Schema.NullOr(Schema.Int),
+  key: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512)),
+});
+
+export const QuestionAttachmentReference = Schema.Struct({
+  occurrenceId: Accounting.Identifier,
+  sha256: Accounting.Digest,
+});
+
+export const QuestionAttachment = Schema.Struct({
+  ...QuestionAttachmentReference.fields,
+  filename: Schema.String,
+  mediaType: Schema.String,
+  byteLength: Schema.Int,
+  availability: Schema.Literals(["readable", "unreadable", "unavailable"]),
+});
+
+export const QuestionEvent = Schema.Struct({
+  revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+  action: Schema.Literals(["asked", "answered", "closed"]),
+  actorId: Accounting.Identifier,
+  createdAt: Schema.String,
+  text: Schema.String.check(Schema.isMaxLength(2000)),
+  attachments: Schema.Array(QuestionAttachment).check(Schema.isMaxLength(5)),
+});
+
+export const WorkQuestion = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  root: QuestionRoot,
+  kind: Schema.Literals(["clarification", "missing_evidence"]),
+  question: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
+  askedBy: Accounting.Identifier,
+  requestedFrom: Accounting.Identifier,
+  createdAt: Schema.String,
+  state: Schema.Literals(["open", "answered", "closed"]),
+  revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+  waitingOn: Schema.NullOr(Accounting.Identifier),
+  events: Schema.Array(QuestionEvent).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+});
+
+export const QuestionSummary = Schema.Struct({
+  unresolved: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+  open: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+  answered: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+  waitingOn: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(50)),
+});
+
+export const WorkQuestionsView = Schema.Struct({
+  scope: Accounting.Scope,
+  actorId: Accounting.Identifier,
+  root: QuestionRoot,
+  owner: Schema.Struct({
+    target: QuestionTarget,
+    revision: Accounting.Digest,
+    completed: Schema.Boolean,
+  }),
+  questions: Schema.Array(WorkQuestion).check(Schema.isMaxLength(50)),
+});
+
+export const AskWorkQuestion = Schema.Struct({
+  target: QuestionTarget,
+  expectedTargetRevision: Accounting.Digest,
+  kind: WorkQuestion.fields.kind,
+  question: WorkQuestion.fields.question,
+  requestedFrom: Accounting.Identifier,
+});
+
+export const AnswerWorkQuestion = Schema.Struct({
+  target: QuestionTarget,
+  expectedTargetRevision: Accounting.Digest,
+  expectedRevision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+  text: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
+  attachments: Schema.Array(QuestionAttachmentReference).check(Schema.isMaxLength(5)),
+});
+
+export const CloseWorkQuestion = Schema.Struct({
+  target: QuestionTarget,
+  expectedTargetRevision: Accounting.Digest,
+  expectedRevision: AnswerWorkQuestion.fields.expectedRevision,
+  reason: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
+});
+
+export const WorkQuestionResult = Schema.Struct({
+  scope: Accounting.Scope,
+  question: WorkQuestion,
+});
+
 export const AttentionItem = Schema.Struct({
+  questionRoot: Schema.optional(Schema.NullOr(QuestionRoot)),
+  questionSummary: Schema.optional(Schema.NullOr(QuestionSummary)),
   recurringAgreementId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   supplierReview: Schema.optional(
     Schema.NullOr(
@@ -463,6 +568,49 @@ export const WorkspaceApi = HttpApiGroup.make("workspace").add(
     success: Coordination,
     error: accountingErrors,
   }),
+  HttpApiEndpoint.post(
+    "readWorkQuestions",
+    "/v1/entities/:entityId/books/:bookId/workspace/questions/read",
+    {
+      params: Accounting.Scope,
+      payload: QuestionTarget.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: WorkQuestionsView,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "askWorkQuestion",
+    "/v1/entities/:entityId/books/:bookId/workspace/questions",
+    {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: AskWorkQuestion.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: WorkQuestionResult,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "answerWorkQuestion",
+    "/v1/entities/:entityId/books/:bookId/workspace/questions/:id/answers",
+    {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: AnswerWorkQuestion.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: WorkQuestionResult,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "closeWorkQuestion",
+    "/v1/entities/:entityId/books/:bookId/workspace/questions/:id/close",
+    {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: CloseWorkQuestion.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: WorkQuestionResult,
+      error: accountingErrors,
+    },
+  ),
   HttpApiEndpoint.post(
     "assignWorkspaceWork",
     "/v1/entities/:entityId/books/:bookId/workspace/assignments",

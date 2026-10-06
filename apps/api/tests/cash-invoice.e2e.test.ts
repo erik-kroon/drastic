@@ -19,6 +19,11 @@ import {
   type BookFixture,
 } from "./support/fixtures";
 import { createDraft, supplierFixture } from "./support/supplier-review";
+import {
+  askSupplierQuestion,
+  closeSupplierQuestion,
+  supplierQuestions,
+} from "./support/work-questions";
 
 // Failure-first expectations: original G125000=N100000+VAT25000 remains
 // commercial debt only. Acceptance publishes no journal or tax fact.
@@ -717,3 +722,68 @@ test("locked document period admits only a constrained commercial cash invoice w
     await admin.end();
   }
 }, 240000);
+
+for (const route of [path, "/commerce/cash-method/lines"]) {
+  test(`cash adoption ${route} respects the supplier question root and recovers its original result`, async () => {
+    const { book, draft, input } = await prepared();
+
+    const question = await askSupplierQuestion(
+      book,
+      draft.id,
+      "Confirm the original before commercial-only adoption",
+    );
+
+    const before = await financialCounts(book);
+
+    const invoicesBefore = await decoded(
+      await request(book, "/commerce/invoices"),
+      Commerce.InvoicePage,
+    );
+
+    const historyBefore = await supplierQuestions(book, draft.id);
+    const commandKey = key();
+
+    const send = () =>
+      request(book, route, {
+        method: "POST",
+        headers: { "idempotency-key": commandKey },
+        body: JSON.stringify(input),
+      });
+
+    await failure(await send(), 422, "MissingEvidence");
+    expect(await financialCounts(book)).toEqual(before);
+    expect(await decoded(await request(book, "/commerce/invoices"), Commerce.InvoicePage)).toEqual(
+      invoicesBefore,
+    );
+    expect(await supplierQuestions(book, draft.id)).toEqual(historyBefore);
+    const closed = await closeSupplierQuestion(book, draft.id, question.id);
+    const invoice = await decoded(await send(), Commerce.Invoice);
+    expect(await decoded(await send(), Commerce.Invoice)).toEqual(invoice);
+    expect(invoice.amountMinor).toBe("125000");
+    expect(await financialCounts(book)).toEqual(before);
+    const questions = await supplierQuestions(book, draft.id);
+    expect(questions.owner.completed).toBe(true);
+    expect(questions.questions[0]?.state).toBe("closed");
+    await writeFile(
+      join(
+        environment().artifacts,
+        `cash-question-${route.endsWith("lines") ? "lines" : "invoice"}.json`,
+      ),
+      JSON.stringify(
+        {
+          syntheticOnly: true,
+          root: question.root,
+          draftId: draft.id,
+          question: closed,
+          refusal: "MissingEvidence",
+          invoice,
+          financialBefore: before,
+          financialAfter: await financialCounts(book),
+          exactReplay: true,
+        },
+        null,
+        2,
+      ),
+    );
+  }, 240000);
+}
