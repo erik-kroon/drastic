@@ -5,6 +5,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectField, TextareaField } from "@open-erp/ui/components/field";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
+import { QuestionTaskContext } from "@open-erp/ui/components/question-task-context";
 import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
   QuestionAttachment,
@@ -19,6 +20,8 @@ import { CommandForm, checkScope, type CommerceProps } from "./commerce/shared";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { sourceDocumentOptions } from "@/lib/source-documents";
 import { coordinationOptions } from "@/lib/workspace-coordination";
+import { attentionCopy, attentionState } from "@/lib/attention";
+import { formatMinorAmount } from "@/lib/workspace-api";
 
 type Target = typeof Workspace.QuestionTarget.Type;
 
@@ -44,16 +47,18 @@ export function attentionQuestionTarget(item: typeof Workspace.AttentionItem.Typ
 export function WorkQuestionsEntry(
   props: QuestionProps & {
     summary?: typeof Workspace.QuestionSummary.Type | null;
+    task?: { item: typeof Workspace.AttentionItem.Type; assignee: string };
   },
 ) {
   const [open, setOpen] = useState(false);
   const sv = props.locale === "sv";
+  const item = props.task?.item;
+  const questionLabel = `${sv ? "Frågor att besvara" : "Questions to answer"}${props.summary && props.summary.unresolved > 0 ? ` (${props.summary.unresolved})` : ""}`;
 
   return (
     <>
       <Button static variant="ghost" onClick={() => setOpen(true)}>
-        {sv ? "Frågor att besvara" : "Questions to answer"}
-        {props.summary && props.summary.unresolved > 0 ? ` (${props.summary.unresolved})` : ""}
+        {questionLabel}
       </Button>
       {open ? (
         <RecordSheet
@@ -61,6 +66,26 @@ export function WorkQuestionsEntry(
           title={sv ? "Frågor att besvara" : "Questions to answer"}
           closeLabel={sv ? "Stäng" : "Close"}
           onClose={() => setOpen(false)}
+          context={
+            item && props.task ? (
+              <QuestionTaskContext
+                heading={sv ? "Att göra" : "To do"}
+                kind={attentionCopy(props.locale)[item.kind]}
+                title={item.title}
+                state={attentionState(item, props.locale)}
+                date={new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
+                  new Date(item.updatedAt),
+                )}
+                amount={
+                  item.amountMinor !== null && item.currencyScale !== null
+                    ? `${formatMinorAmount(item.amountMinor, item.currencyScale, props.locale)} ${item.currency ?? ""}`
+                    : "—"
+                }
+                assignee={props.task.assignee}
+                questions={questionLabel}
+              />
+            ) : undefined
+          }
         >
           <WorkQuestionsPanel {...props} />
         </RecordSheet>

@@ -101,6 +101,7 @@ async function inspectAnsweredQuestionPane(
   browser: Browser,
   screen: Screen,
   readable: typeof Source.SourceOccurrence.Type,
+  taskTitle: string,
   capture: (label: string) => Promise<string>,
 ) {
   const dialog = screen.getByRole("dialog", "Frågor att besvara", { exact: true });
@@ -110,6 +111,7 @@ async function inspectAnsweredQuestionPane(
   });
 
   await browser.setViewport({ width: 1440, height: 900 });
+  await expect(browser.locator("[data-question-task-context]")).toContainText(taskTitle);
   await expect(dialog.getByText("Besvarad", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", "Markera som löst", { exact: true })).toBeEnabled();
   await dialog.getByRole("button", "Uppdatera", { exact: true }).scrollIntoView();
@@ -164,6 +166,7 @@ async function inspectAnsweredQuestionPane(
 
   await browser.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+  await expect(browser.locator("[data-question-task-context]")).toHaveCount(0);
 
   const entry = screen.getByRole("button", "Frågor att besvara (1)", { exact: true });
 
@@ -390,8 +393,12 @@ test("a retained original returns through questions, explicit review, posting an
   expect(answered.question.events.at(-1)?.attachments[0]?.availability).toBe("readable");
   await expect(questionDialog.getByText("Besvarad", { exact: true })).toBeVisible();
 
-  const questionPane = await inspectAnsweredQuestionPane(browser, screen, readable, (label) =>
-    app.screenshot(label),
+  const questionPane = await inspectAnsweredQuestionPane(
+    browser,
+    screen,
+    readable,
+    filename,
+    (label) => app.screenshot(label),
   );
 
   const paneQuestions = await call("/workspace/questions/read", Workspace.WorkQuestionsView, {

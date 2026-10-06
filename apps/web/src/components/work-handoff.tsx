@@ -46,6 +46,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
             {...context}
             target={questionTarget}
             summary={props.item.questionSummary}
+            task={{ item: props.item, assignee: label }}
           />
         ) : null}
         {current?.dueOn ? (

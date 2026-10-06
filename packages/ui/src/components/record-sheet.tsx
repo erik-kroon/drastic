@@ -78,6 +78,19 @@ const styles = stylex.create({
   invoiceContent: { padding: 20, "@container (max-width: 28rem)": { padding: 16 } },
   questionHeader: { paddingInline: tokens.space6, paddingBlock: tokens.space2 },
   questionContent: { paddingInline: tokens.space6, paddingBlock: tokens.space5 },
+  questionContext: {
+    position: "fixed",
+    insetBlock: 0,
+    insetInlineStart: 224,
+    insetInlineEnd: 420,
+    zIndex: 41,
+    backgroundColor: tokens.card,
+    paddingInline: tokens.space5,
+    paddingBlockStart: tokens.space4,
+    paddingBlockEnd: tokens.space8,
+    overflowY: "auto",
+    "@media (max-width: 1024px)": { display: "none" },
+  },
 });
 
 /** Keeps the parent register mounted with its query and position. */
@@ -89,6 +102,7 @@ export function RecordSheet({
   dismissible = true,
   invoice = false,
   presentation = "default",
+  context,
 }: {
   title: string;
   closeLabel: string;
@@ -97,6 +111,7 @@ export function RecordSheet({
   dismissible?: boolean;
   invoice?: boolean;
   presentation?: "default" | "question";
+  context?: ReactNode;
 }) {
   const question = presentation === "question";
 
@@ -116,6 +131,11 @@ export function RecordSheet({
     >
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(styles.backdrop, question && styles.questionBackdrop)} />
+        {question && context ? (
+          <div inert data-question-task-context {...stylex.props(styles.questionContext)}>
+            {context}
+          </div>
+        ) : null}
         <Dialog.Popup
           {...stylex.props(
             styles.sheet,
