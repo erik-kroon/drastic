@@ -61,7 +61,19 @@ test("R42 retains three blockers and returns the input without financial effects
     approved: false,
     dispositions: [],
   });
+  expect(before).toHaveProperty("blockers", [
+    "unsupported_work",
+    "holiday_control",
+    "duplicate_source",
+  ]);
   await app.screenshot("R42-three-retained-blockers");
+  await screen.getByRole("link", "Visa raden", { exact: true }).click();
+  await expect(
+    screen.getByRole("link", "Tillbaka till granskningen", { exact: true }),
+  ).toBeVisible();
+  await expect(screen.getByText(/synthetic-variable-timesheet-v1/)).toBeVisible();
+  await app.screenshot("R42-retained-timesheet-original");
+  await screen.getByRole("link", "Tillbaka till granskningen", { exact: true }).click();
   await browser.reload();
   await expect(screen.getByRole("button", "Godkänn", { exact: true })).toBeDisabled();
   await agent.act(
