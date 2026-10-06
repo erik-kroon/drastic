@@ -32,6 +32,8 @@ import { bankCandidateCopy } from "@/components/bank-match-candidates/copy";
 import { BankUnmatchReview } from "@/components/bank-match-reversals/review";
 import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/notice";
 import { mutationOptions } from "@/lib/accounting-api";
+import { WorkQuestionsEntry } from "./work-questions";
+import { accountingCopy } from "@/lib/accounting-copy";
 
 type Props = CommerceProps & {
   statementId?: string;
@@ -113,6 +115,11 @@ function DiscoverMatch(props: Props & { statementId: string }) {
       {data ? (
         <>
           <RecordHeading title={data.source.description} subtitle={data.source.observedOn} />
+          <WorkQuestionsEntry
+            book={book}
+            locale={locale}
+            target={{ kind: "bank", recordId: statementId, rowOrdinal }}
+          />
           <RecordSummary>
             <RecordFact label={sv ? "Banktransaktion" : "Bank transaction"}>
               {money(data.source.amountMinor)}
@@ -124,6 +131,7 @@ function DiscoverMatch(props: Props & { statementId: string }) {
               {money(data.source.remainingMinor)}
             </RecordFact>
           </RecordSummary>
+          <BankSourceStatementLink book={book} locale={locale} statementId={statementId} />
           <Disclosure label={sv ? "Visa kontoutdragets underlag" : "View statement evidence"}>
             <EvidenceInspector
               book={book}
@@ -651,6 +659,15 @@ function MatchingReview(props: Props & { id: string }) {
                 title={`${sv ? "Matchning" : "Match"} ${index + 1}`}
               >
                 <MatchingTransactions book={book} locale={locale} capacity={item} />
+                <WorkQuestionsEntry
+                  book={book}
+                  locale={locale}
+                  target={{
+                    kind: "bank",
+                    recordId: item.leg.statementId,
+                    rowOrdinal: item.leg.rowOrdinal,
+                  }}
+                />
                 <RecordSummary>
                   <RecordFact label={sv ? "Belopp som matchas" : "Amount to match"}>
                     {money(item.leg.amountMinor)}
@@ -975,6 +992,7 @@ function MatchingTransactions(
               {sv ? "Banktransaktion" : "Bank transaction"}, {capacity.observedOn}
             </PageCaption>
             <Text>{records.data.source.description}</Text>
+            <BankSourceStatementLink book={book} locale={locale} statementId={leg.statementId} />
           </Box>
           <Box display="grid" gap="sm">
             <PageCaption>
@@ -994,5 +1012,28 @@ function MatchingTransactions(
         </RecordColumns>
       ) : null}
     </>
+  );
+}
+
+function BankSourceStatementLink(props: CommerceProps & { statementId: string }) {
+  const ownerSearch = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
+  const copy = accountingCopy(props.locale);
+
+  return (
+    <PageAction
+      quiet
+      href={`${workspacePath(props.book)}/accounts${defaultStringifySearch({
+        ...ownerSearch,
+        view: "bank",
+        record: `statement:${props.statementId}`,
+        statement: undefined,
+        row: undefined,
+        plan: undefined,
+        undo: undefined,
+        returnTo: encodeOwnerReturn({ owner: "bank", search: ownerSearch }),
+      })}`}
+    >
+      {copy.bank_statement}
+    </PageAction>
   );
 }

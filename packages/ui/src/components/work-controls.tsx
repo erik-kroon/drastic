@@ -73,6 +73,7 @@ const styles = stylex.create({
   },
   source: { marginBlockStart: tokens.space3_5 },
   reviewFooter: { marginBlockStart: "auto", paddingBlockStart: tokens.space4 },
+  focusedFooter: { fontSize: tokens.fontSizeControl, lineHeight: tokens.lineHeight18Px },
   previewActions: {
     display: "flex",
     flexDirection: "column",
@@ -171,8 +172,18 @@ export function WorkSource({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.source)}>{children}</div>;
 }
 
-export function WorkReviewFooter({ children }: { children: ReactNode }) {
-  return <div {...stylex.props(styles.reviewFooter)}>{children}</div>;
+export function WorkReviewFooter({
+  children,
+  presentation,
+}: {
+  children: ReactNode;
+  presentation?: "focused";
+}) {
+  return (
+    <div {...stylex.props(styles.reviewFooter, presentation === "focused" && styles.focusedFooter)}>
+      {children}
+    </div>
+  );
 }
 
 export function WorkPreviewActions({

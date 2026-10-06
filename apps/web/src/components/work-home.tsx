@@ -33,17 +33,26 @@ import { useBookWorkspace } from "@/lib/book-context";
 import { workQueueHref, type WorkReturn } from "@/lib/work-return";
 import { AccountingStatus } from "./accounting-status";
 import { OriginalDocument } from "./original-document";
+import { WorkGroupReview, WorkGroupEntry } from "./work-group-review";
 import { WorkSupplierPreview } from "./work-supplier-preview";
 
 export function WorkHome() {
   const work = useCompanyWork();
+
   const { book, locale, base } = work;
+
   const sv = locale === "sv";
+
   const copy = attentionCopy(locale);
+
   const [status, setStatus] = useState<"open" | "completed" | "watch">("open");
 
   const kind = "all";
+
+  const [groupReview, setGroupReview] = useState(false);
+
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
   const sort = "oldest";
 
   const filters: WorkReturn = {
@@ -53,12 +62,15 @@ export function WorkHome() {
   };
 
   const query = useQuery(attentionQueryOptions(book, filters));
+
   const page = query.isError ? undefined : query.data;
 
   const rows = homeRows(work, page?.items ?? [], status, kind, filters);
 
   const selected = rows.find((item) => item.key === selectedKey) ?? rows[0];
+
   const groups = [...new Set(rows.map((item) => item.group))];
+
   const reviewGroup = sv ? "Granska och godkänn" : "Review and approve";
 
   groups.sort((left, right) => Number(right === reviewGroup) - Number(left === reviewGroup));
@@ -66,107 +78,134 @@ export function WorkHome() {
   const activeQuery = status === "watch" ? work.sales : query;
 
   return (
-    <RegisterWorkspace
-      detailSize="wide"
-      headingSpacing="work"
-      title={sv ? "Att göra" : "To do"}
-      tabs={
-        <RegisterTabs
-          spacing="work"
-          label={sv ? "Arbetsstatus" : "Work status"}
-          value={status}
-          options={[
-            {
-              value: "open",
-              label: `${sv ? "Väntar på dig" : "Waiting for you"}${page ? ` ${page.counts.open}` : ""}`,
-            },
-            {
-              value: "watch",
-              label: `${sv ? "Bevakas" : "Watching"}${work.sales.data ? ` ${work.sales.data.counts.overdue}` : ""}`,
-            },
-            { value: "completed", label: sv ? "Klart" : "Completed" },
-          ]}
-          onChange={(value) => {
-            if (value === "open" || value === "completed" || value === "watch") {
-              setStatus(value);
-              setSelectedKey(null);
-            }
-          }}
+    <>
+      {groupReview ? (
+        <WorkGroupReview
+          key={`${book.entityId}/${book.id}`}
+          items={page?.items ?? []}
+          onClose={() => setGroupReview(false)}
         />
-      }
-      action={
-        <WorkHeaderAction href={workQueueHref(base, filters)}>
-          {sv ? "Granska alla" : "Review all"}
-        </WorkHeaderAction>
-      }
-      detail={
-        selected ? (
-          <WorkHomeDetail work={work} page={page} selected={selected} filters={filters} />
-        ) : (
-          <PageCaption>
-            {sv ? "Välj en rad för att se nästa steg." : "Select a row to see the next step."}
-          </PageCaption>
-        )
-      }
-    >
-      {activeQuery.isPending || activeQuery.isError ? (
-        <Box padding="lg">
-          <AccountingStatus
-            locale={locale}
-            pending={activeQuery.isPending}
-            error={activeQuery.error}
+      ) : null}
+      <RegisterWorkspace
+        detailSize="wide"
+        headingSpacing="work"
+        title={sv ? "Att göra" : "To do"}
+        tabs={
+          <RegisterTabs
+            spacing="work"
+            label={sv ? "Arbetsstatus" : "Work status"}
+            value={status}
+            options={homeStatusOptions(locale, page?.counts.open, work.sales.data?.counts.overdue)}
+            onChange={(value) => {
+              if (value === "open" || value === "completed" || value === "watch") {
+                setStatus(value);
+                setSelectedKey(null);
+              }
+            }}
           />
-          {activeQuery.isError ? (
-            <Button
-              variant="outline"
-              disabled={activeQuery.isFetching}
-              onClick={() => {
-                void activeQuery.refetch();
-              }}
-            >
-              {copy.refresh}
-            </Button>
-          ) : null}
-        </Box>
-      ) : null}
-      <HomeBankStatus work={work} status={status} kind={kind} />
-      {groups.map((group) => {
-        const items = rows.filter((item) => item.group === group);
-
-        if (!items.length) return null;
-
-        return (
-          <Box key={group}>
-            <RegisterGroup title={group} count={items.length} />
-            {items.map((item) => (
-              <RegisterRow
-                stateSize="compact"
-                key={item.key}
-                title={item.title}
-                status={item.status}
-                state={item.state}
-                amount={item.amount}
-                selected={selected?.key === item.key}
-                onSelect={() => setSelectedKey(item.key)}
-              />
-            ))}
+        }
+        action={
+          <Box display="flex" gap="sm">
+            <WorkGroupEntry
+              role={book.role}
+              status={status}
+              locale={locale}
+              onOpen={() => setGroupReview(true)}
+            />
+            <WorkHeaderAction href={workQueueHref(base, filters)}>
+              {sv ? "Granska alla" : "Review all"}
+            </WorkHeaderAction>
           </Box>
-        );
-      })}
-      {activeQuery.isSuccess && rows.length === 0 ? (
-        <Box padding="lg">
-          <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
-        </Box>
-      ) : null}
-      {status !== "watch" && page?.next ? (
-        <Box padding="lg">
-          <PageAction quiet href={workQueueHref(base, { ...filters, after: page.next })}>
-            {copy.next}
-          </PageAction>
-        </Box>
-      ) : null}
-    </RegisterWorkspace>
+        }
+        detail={
+          selected ? (
+            <WorkHomeDetail work={work} page={page} selected={selected} filters={filters} />
+          ) : (
+            <PageCaption>
+              {sv ? "Välj en rad för att se nästa steg." : "Select a row to see the next step."}
+            </PageCaption>
+          )
+        }
+      >
+        {activeQuery.isPending || activeQuery.isError ? (
+          <Box padding="lg">
+            <AccountingStatus
+              locale={locale}
+              pending={activeQuery.isPending}
+              error={activeQuery.error}
+            />
+            {activeQuery.isError ? (
+              <Button
+                variant="outline"
+                disabled={activeQuery.isFetching}
+                onClick={() => {
+                  void activeQuery.refetch();
+                }}
+              >
+                {copy.refresh}
+              </Button>
+            ) : null}
+          </Box>
+        ) : null}
+        <HomeBankStatus work={work} status={status} kind={kind} />
+        {groups.map((group) => {
+          const items = rows.filter((item) => item.group === group);
+
+          if (!items.length) return null;
+
+          return (
+            <Box key={group}>
+              <RegisterGroup title={group} count={items.length} />
+              {items.map((item) => (
+                <RegisterRow
+                  stateSize="compact"
+                  key={item.key}
+                  title={item.title}
+                  status={item.status}
+                  state={item.state}
+                  amount={item.amount}
+                  selected={selected?.key === item.key}
+                  onSelect={() => setSelectedKey(item.key)}
+                />
+              ))}
+            </Box>
+          );
+        })}
+        {activeQuery.isSuccess && rows.length === 0 ? (
+          <Box padding="lg">
+            <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
+          </Box>
+        ) : null}
+        {status !== "watch" && page?.next ? (
+          <Box padding="lg">
+            <PageAction quiet href={workQueueHref(base, { ...filters, after: page.next })}>
+              {copy.next}
+            </PageAction>
+          </Box>
+        ) : null}
+      </RegisterWorkspace>
+    </>
   );
+}
+
+function homeStatusOptions(
+  locale: CompanyWork["locale"],
+  open: string | undefined,
+  overdue: number | undefined,
+) {
+  const sv = locale === "sv";
+
+  return [
+    {
+      value: "open",
+      label: `${sv ? "Väntar på dig" : "Waiting for you"}${open === undefined ? "" : ` ${open}`}`,
+    },
+    {
+      value: "watch",
+      label: `${sv ? "Bevakas" : "Watching"}${overdue === undefined ? "" : ` ${overdue}`}`,
+    },
+    { value: "completed", label: sv ? "Klart" : "Completed" },
+  ];
 }
 
 function WorkHomeDetail({
@@ -249,6 +288,7 @@ function JournalPreview({
   item: typeof Workspace.AttentionItem.Type;
 }) {
   const { book, locale } = work;
+
   const { setup } = useBookWorkspace();
 
   const proposal = useQuery({
@@ -279,6 +319,7 @@ function JournalPreview({
     group.actions.flatMap((action) =>
       action.lines.map((line) => {
         const account = setup.accounts.find((candidate) => candidate.id === line.accountId);
+
         const signed = BigInt(line.debitMinor) > 0n ? line.debitMinor : `-${line.creditMinor}`;
 
         return {
@@ -355,7 +396,9 @@ function homeRows(
   filters: WorkReturn,
 ) {
   const { book, locale, base } = work;
+
   const sv = locale === "sv";
+
   const copy = attentionCopy(locale);
 
   const amount = (item: typeof Workspace.AttentionItem.Type) =>

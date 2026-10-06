@@ -9,11 +9,16 @@ import {
   ReviewQueueItem,
 } from "@open-erp/ui/components/focused-review";
 import { useQuery } from "@tanstack/react-query";
-import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/attention";
+import {
+  attentionQueryOptions,
+  attentionPath,
+  attentionCopy,
+  expiredSupplierApproval,
+} from "@/lib/attention";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { ReviewOwner } from "@/components/review-owner";
+import { ReviewOwner, reviewTargetQueryOptions } from "@/components/review-owner";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reviews/$planId/$revision")(
@@ -27,13 +32,42 @@ function Review() {
   const copy = accountingCopy(locale);
   const owner = decodeOwnerReturn(filters.returnTo);
   const queue = useQuery(attentionQueryOptions(book, filters));
+  const target = useQuery(reviewTargetQueryOptions(book, planId));
+
+  const presentation =
+    !target.isError && target.data?.kind === "supplier_acceptance" ? "focused" : undefined;
+
   const reasons = attentionCopy(locale);
   const items = queue.isError ? [] : (queue.data?.items ?? []);
 
+  const ownerLabels =
+    locale === "sv"
+      ? {
+          purchases: "Inköp /",
+          documents: "Dokument /",
+          bank: "Bank /",
+          sales: "Försäljning /",
+          work: "Att göra /",
+        }
+      : {
+          purchases: "Purchases /",
+          documents: "Documents /",
+          bank: "Bank /",
+          sales: "Sales /",
+          work: "To do /",
+        };
+
   return (
     <FocusedReview
-      title={copy.workspace_review}
-      backLabel={copy.workspace_back}
+      presentation={presentation}
+      title={
+        presentation && queue.data && !queue.isError
+          ? locale === "sv"
+            ? `Granska: ${queue.data.counts.open} kvar`
+            : `Review: ${queue.data.counts.open} remaining`
+          : copy.workspace_review
+      }
+      backLabel={presentation ? ownerLabels[owner?.owner ?? "work"] : copy.workspace_back}
       backHref={
         owner
           ? ownerReturnHref(workspacePath(book), owner)
@@ -42,7 +76,7 @@ function Review() {
       identity={book.name}
       queue={
         <>
-          <ReviewQueueLabel>
+          <ReviewQueueLabel presentation={presentation}>
             {locale === "sv" ? "GRANSKA OCH GODKÄNN" : "REVIEW AND APPROVE"}
           </ReviewQueueLabel>
           <AccountingStatus locale={locale} pending={queue.isPending} error={queue.error} />
@@ -51,6 +85,19 @@ function Review() {
               key={item.key}
               title={item.title}
               active={item.kind === "journal" && item.id === planId}
+              presentation={presentation}
+              status={
+                item.state === "completed"
+                  ? "completed"
+                  : expiredSupplierApproval(item) !== null ||
+                      item.reason === "document_reading_failed"
+                    ? "warning"
+                    : item.reason === "invoice_draft" ||
+                        item.reason === "supplier_draft" ||
+                        item.reason === "document_review"
+                      ? "draft"
+                      : "pending"
+              }
               href={attentionPath(book, item, filters)}
               detail={
                 item.amountMinor !== null && item.currencyScale !== null

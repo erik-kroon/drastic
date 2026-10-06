@@ -20,6 +20,7 @@ export function OriginalDocument(
     id: string;
     sha256?: string;
     compact?: boolean;
+    presentation?: "focused";
     archive?: boolean;
     view?: PdfView;
     onViewChange?: (view: PdfView) => void;
@@ -32,8 +33,51 @@ export function OriginalDocument(
   const mismatch = source && props.sha256 && source.occurrence.sha256 !== props.sha256;
   const sv = props.locale === "sv";
 
+  const actions = source ? (
+    <>
+      {!props.compact ? (
+        <Box>
+          <Button
+            variant="outline"
+            onClick={() =>
+              downloadIntake(
+                new Blob(
+                  [Uint8Array.from(atob(source.contentBase64), (char) => char.charCodeAt(0))],
+                  { type: source.occurrence.mediaType },
+                ),
+                source.occurrence.filename,
+              )
+            }
+          >
+            <Download size={14} strokeWidth={1.5} />
+            {sv ? "Ladda ned original" : "Download original"}
+          </Button>
+        </Box>
+      ) : null}
+      {!props.archive ? <PageCaption>{source.occurrence.filename}</PageCaption> : null}
+      {props.quote && props.quote.page === props.view?.page ? (
+        <PageCaption>
+          {sv ? "Sida" : "Page"} {props.quote.page}: “{props.quote.quote}”
+        </PageCaption>
+      ) : null}
+      {!props.compact ? (
+        <PageAction
+          quiet
+          compact={props.presentation === "focused"}
+          href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "documents", work)}&record=${encodeURIComponent(source.occurrence.id)}`}
+        >
+          {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
+        </PageAction>
+      ) : null}
+    </>
+  ) : null;
+
   return (
-    <Box display="grid" gap={props.compact ? "sm" : "lg"} minWidth="zero">
+    <Box
+      display="grid"
+      gap={props.compact || props.presentation === "focused" ? "sm" : "lg"}
+      minWidth="zero"
+    >
       <AccountingStatus
         locale={props.locale}
         pending={query.isPending}
@@ -76,6 +120,7 @@ export function OriginalDocument(
               locale={props.locale}
               view={props.view}
               onViewChange={props.onViewChange}
+              presentation={props.presentation}
             />
           ) : (
             <DocumentPreview
@@ -86,39 +131,13 @@ export function OriginalDocument(
               filename={source.occurrence.filename}
             />
           )}
-          {!props.compact ? (
-            <Box>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  downloadIntake(
-                    new Blob(
-                      [Uint8Array.from(atob(source.contentBase64), (char) => char.charCodeAt(0))],
-                      { type: source.occurrence.mediaType },
-                    ),
-                    source.occurrence.filename,
-                  )
-                }
-              >
-                <Download size={14} strokeWidth={1.5} />
-                {sv ? "Ladda ned original" : "Download original"}
-              </Button>
+          {props.presentation === "focused" ? (
+            <Box display="grid" gap="lg" minWidth="zero">
+              {actions}
             </Box>
-          ) : null}
-          {!props.archive ? <PageCaption>{source.occurrence.filename}</PageCaption> : null}
-          {props.quote && props.quote.page === props.view?.page ? (
-            <PageCaption>
-              {sv ? "Sida" : "Page"} {props.quote.page}: “{props.quote.quote}”
-            </PageCaption>
-          ) : null}
-          {!props.compact ? (
-            <PageAction
-              quiet
-              href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "documents", work)}&record=${encodeURIComponent(source.occurrence.id)}`}
-            >
-              {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
-            </PageAction>
-          ) : null}
+          ) : (
+            actions
+          )}
         </>
       ) : null}
     </Box>
@@ -131,6 +150,7 @@ function OriginalPdf(props: {
   locale: "sv" | "en";
   view?: PdfView;
   onViewChange?: (view: PdfView) => void;
+  presentation?: "focused";
 }) {
   const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
 
@@ -142,6 +162,7 @@ function OriginalPdf(props: {
       locale={props.locale}
       view={props.view ?? view}
       onViewChange={props.onViewChange ?? setView}
+      presentation={props.presentation}
     />
   );
 }

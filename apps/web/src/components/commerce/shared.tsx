@@ -174,6 +174,7 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     compact?: boolean;
+    presentation?: "focused";
     fullWidthSubmit?: boolean;
     variant?: "default" | "outline";
     recoveryId?: string;
@@ -245,8 +246,9 @@ export function CommandForm<
   return (
     <Box
       as="form"
+      aria-label={props.label}
       display="grid"
-      gap="lg"
+      gap={props.presentation === "focused" ? "none" : "lg"}
       minWidth="zero"
       aria-describedby={errorId}
       onSubmit={(event) => {
@@ -299,7 +301,7 @@ export function CommandForm<
             type="submit"
             size={props.compact ? "default" : "xl"}
             variant={props.variant}
-            fullWidth={props.fullWidthSubmit}
+            fullWidth={props.presentation === "focused" || props.fullWidthSubmit}
             disabled={props.canSubmit === false}
           >
             {command.isPending ? (locale === "sv" ? "Sparar…" : "Saving…") : props.label}

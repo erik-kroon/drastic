@@ -1,7 +1,8 @@
-import type { ComponentProps, ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Check, ChevronRight } from "lucide-react";
 import { Link } from "@open-erp/ui/components/link";
+import { Button } from "@open-erp/ui/components/button";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
@@ -35,6 +36,28 @@ const styles = stylex.create({
     borderInlineStartColor: tokens.border,
     minWidth: 0,
   },
+  focusedReview: {
+    minHeight: "calc(100dvh - 48px)",
+    "@media (max-width: 1023px)": { gridTemplateColumns: "minmax(0, 1fr)" },
+  },
+  focusedEvidence: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: tokens.space2,
+    paddingBlock: tokens.space3,
+  },
+  focusedOriginal: { width: 620, maxWidth: "100%", minWidth: 0 },
+  focusedDecision: { gap: 0 },
+  paneSwitch: {
+    display: "none",
+    "@media (max-width: 1023px)": {
+      display: "flex",
+      gap: tokens.space2,
+      padding: tokens.space3,
+    },
+  },
+  inactivePane: { "@media (max-width: 1023px)": { display: "none" } },
   layout: {
     display: "grid",
     gap: tokens.space8,
@@ -140,6 +163,11 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeControl,
   },
   compactSummary: { minHeight: tokens.controlHeightSm },
+  focusedDisclosure: {
+    paddingBlock: 0,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+  },
   note: {
     display: "grid",
     gap: tokens.space2,
@@ -201,15 +229,57 @@ export function WorkflowSurface({ children }: { children: ReactNode }) {
 export function ReviewColumns({
   evidence,
   children,
+  focused,
 }: {
   evidence: ReactNode;
   children: ReactNode;
+  focused?: { evidenceLabel: string; decisionLabel: string };
 }) {
+  const [pane, setPane] = useState<"evidence" | "decision">("evidence");
+
   return (
-    <div {...stylex.props(styles.review)}>
-      <section {...stylex.props(styles.reviewEvidence)}>{evidence}</section>
-      <section {...stylex.props(styles.reviewDecision)}>{children}</section>
-    </div>
+    <>
+      {focused ? (
+        <div {...stylex.props(styles.paneSwitch)}>
+          <Button
+            variant={pane === "evidence" ? "default" : "outline"}
+            aria-pressed={pane === "evidence"}
+            onClick={() => setPane("evidence")}
+          >
+            {focused.evidenceLabel}
+          </Button>
+          <Button
+            variant={pane === "decision" ? "default" : "outline"}
+            aria-pressed={pane === "decision"}
+            onClick={() => setPane("decision")}
+          >
+            {focused.decisionLabel}
+          </Button>
+        </div>
+      ) : null}
+      <div {...stylex.props(styles.review, focused && styles.focusedReview)}>
+        <section
+          aria-label={focused?.evidenceLabel}
+          {...stylex.props(
+            styles.reviewEvidence,
+            focused && styles.focusedEvidence,
+            focused && pane !== "evidence" && styles.inactivePane,
+          )}
+        >
+          {focused ? <div {...stylex.props(styles.focusedOriginal)}>{evidence}</div> : evidence}
+        </section>
+        <section
+          aria-label={focused?.decisionLabel}
+          {...stylex.props(
+            styles.reviewDecision,
+            focused && styles.focusedDecision,
+            focused && pane !== "decision" && styles.inactivePane,
+          )}
+        >
+          {children}
+        </section>
+      </div>
+    </>
   );
 }
 
@@ -270,18 +340,30 @@ export function Disclosure({
   children,
   defaultOpen = false,
   compact = false,
+  presentation,
 }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
   compact?: boolean;
+  presentation?: "focused";
 }) {
   return (
     <details
       open={defaultOpen}
-      {...stylex.props(styles.disclosure, compact && styles.compactDisclosure)}
+      {...stylex.props(
+        styles.disclosure,
+        compact && styles.compactDisclosure,
+        presentation === "focused" && styles.focusedDisclosure,
+      )}
     >
-      <summary role="button" {...stylex.props(styles.summary, compact && styles.compactSummary)}>
+      <summary
+        role="button"
+        {...stylex.props(
+          styles.summary,
+          (compact || presentation === "focused") && styles.compactSummary,
+        )}
+      >
         {title}
       </summary>
       <div {...stylex.props(styles.details)}>{children}</div>

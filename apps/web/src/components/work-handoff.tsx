@@ -11,6 +11,7 @@ import { CommandForm } from "./commerce/shared";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookKey, bookPath } from "@/lib/accounting-api";
 import { coordinationOptions } from "@/lib/workspace-coordination";
+import { WorkQuestionsEntry, attentionQuestionTarget } from "./work-questions";
 
 export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }) {
   const context = useBookWorkspace();
@@ -20,6 +21,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
   const client = useQueryClient();
   const [editing, setEditing] = useState<typeof Workspace.AttentionItem.Type | null>(null);
   const current = props.item.assignment;
+  const questionTarget = attentionQuestionTarget(props.item);
   const members = team.isError ? [] : (team.data?.members ?? []);
   const member = members.find((item) => item.id === current?.assigneeId);
 
@@ -39,6 +41,13 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
         <Button static variant="ghost" onClick={() => setEditing(props.item)}>
           {label}
         </Button>
+        {questionTarget && (props.item.questionSummary?.unresolved ?? 0) > 0 ? (
+          <WorkQuestionsEntry
+            {...context}
+            target={questionTarget}
+            summary={props.item.questionSummary}
+          />
+        ) : null}
         {current?.dueOn ? (
           <PageCaption>
             {sv ? "Senast" : "Due"} {current.dueOn}
@@ -62,6 +71,13 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
             >
               {sv ? "Försök igen" : "Retry team"}
             </Button>
+          ) : null}
+          {questionTarget ? (
+            <WorkQuestionsEntry
+              {...context}
+              target={questionTarget}
+              summary={props.item.questionSummary}
+            />
           ) : null}
           {team.isSuccess ? (
             <CommandForm

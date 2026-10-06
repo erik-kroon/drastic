@@ -1,0 +1,390 @@
+import { createHash, randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import * as Schema from "effect/Schema";
+import * as Accounting from "../../packages/contracts/src/accounting";
+import * as Commerce from "../../packages/contracts/src/commerce";
+import * as Source from "../../packages/contracts/src/source-intake";
+import * as Inbox from "../../packages/contracts/src/supplier-inbox";
+import * as Drafts from "../../packages/contracts/src/supplier-invoice-drafts";
+import * as Acceptance from "../../packages/contracts/src/supplier-acceptance";
+import { test } from "@e2e-dev/web";
+import { expect } from "e2e";
+import { signInSyntheticOperator } from "./synthetic-session";
+import { twoPageOriginal } from "./original-fixture";
+
+for (const changed of [false, true]) {
+  test(`a selected supplier review ${changed ? "keeps its original after a newer draft" : "posts against its uploaded original"}`, async ({
+    app,
+    browser,
+    screen,
+    agent,
+  }) => {
+    const output = process.env.OPENERP_E2E_OUTPUT;
+
+    if (!output) throw new Error("Use the disposable browser launcher");
+
+    const workspace = await signInSyntheticOperator(browser, app.baseUrl);
+    const origin = new URL(workspace).origin;
+    const base = workspace.replace(origin, `${origin}/api/v1`);
+
+    const cookie = (await browser.cookies())
+      .map((entry) => `${entry.name}=${entry.value}`)
+      .join("; ");
+
+    const call = async <S extends Schema.Top & { readonly DecodingServices: never }>(
+      path: string,
+      schema: S,
+      body?: unknown,
+    ): Promise<S["Type"]> => {
+      const response = await fetch(`${base}${path}`, {
+        method: body === undefined ? "GET" : "POST",
+        headers: {
+          cookie,
+          origin,
+          "content-type": "application/json",
+          "idempotency-key": randomUUID(),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      expect(response.status).toBe(200);
+
+      return Schema.decodeSync(Schema.fromJsonString(schema))(await response.text());
+    };
+
+    const filename = changed
+      ? `frozen-original-${randomUUID()}.pdf`
+      : "frozen-original-537acf6c-9e82-42da-96d0-db0dee72e71b.pdf";
+
+    const bytes = twoPageOriginal();
+    const expectedHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    const file = join(output, filename);
+
+    await writeFile(file, bytes);
+    await app.open(`${workspace}/purchases?view=supplier-drafts`);
+    await expect(screen.getByRole("button", "Ladda upp original")).toBeVisible({ timeout: 90000 });
+    await agent.act(
+      "Open Ladda upp original. Stop when Dokument and Spara original are visible; do not choose a file.",
+    );
+    await expect(screen.getByLabel("Dokument", { exact: true })).toBeVisible();
+    await screen.getByLabel("Dokument", { exact: true }).setInputFiles(file);
+
+    const upload = browser.waitForResponse("**/source-occurrences");
+
+    await screen.getByRole("button", "Spara original", { exact: true }).click();
+
+    const uploaded = await upload;
+
+    expect(uploaded.status).toBe(200);
+
+    const occurrence = Schema.decodeUnknownSync(Source.SourceOccurrence)(await uploaded.json());
+
+    expect(occurrence.sha256).toBe(expectedHash);
+
+    const entry = await call("/evidence", Accounting.Evidence, {
+      title: filename,
+      origin: "Local synthetic frozen review qualification",
+      mediaType: "application/json",
+      content: JSON.stringify({
+        kind: "supplier_invoice_source_v1",
+        source: { occurrenceId: occurrence.id, sha256: expectedHash, filename },
+      }),
+    });
+
+    const party = await call("/commerce/counterparties", Commerce.CounterpartyRevision, {
+      kind: "synthetic_counterparty_v1",
+      externalKey: `frozen_${randomUUID()}`,
+      role: "supplier",
+      displayName: "Frozen original supplier",
+      evidenceId: entry.id,
+      reason: "Local synthetic qualification",
+    });
+
+    const identity = {
+      legalName: "Synthetic identity",
+      registrationId: "SYNTHETIC",
+      taxId: null,
+      address: "Synthetic address",
+      countryCode: "SE",
+      evidenceId: entry.id,
+    };
+
+    const content = {
+      title: filename,
+      counterpartyId: party.id,
+      counterpartyRevision: party.revision,
+      supplier: identity,
+      buyer: identity,
+      sourceEvidenceId: entry.id,
+      supplierDocumentNumber: `FROZEN-${changed ? "CHANGED" : "POSTED"}`,
+      currency: "SEK",
+      currencyScale: 2,
+      documentDate: "2026-10-03",
+      supplyDate: "2026-10-03",
+      dueDate: "2026-10-14",
+      paymentTerms: "Synthetic terms",
+      sourceTotalMinor: "125000",
+      lines: [
+        {
+          id: "line_frozen_source",
+          description: "Synthetic gross cost",
+          quantity: "1",
+          unitPriceMinor: "125000",
+          baseMinor: "125000",
+          discountMinor: "0",
+          chargeMinor: "0",
+          taxMinor: "0",
+          taxDescription: "Synthetic no tax treatment",
+          taxEvidenceId: entry.id,
+          sourceGrossMinor: "125000",
+        },
+      ],
+    } satisfies typeof Drafts.SupplierDraftContent.Type;
+
+    const handoff = await call(
+      `/commerce/supplier-inbox/${occurrence.id}/review`,
+      Inbox.SupplierInboxReview,
+      {
+        draft: { draftKey: `frozen_${randomUUID()}`, content },
+        reviewReason: "Independently inspected original",
+        reviewAttemptId: null,
+      },
+    );
+
+    const plan = await call(
+      "/commerce/supplier-acceptance-reviews",
+      Acceptance.SupplierAcceptanceReview,
+      {
+        profile: "synthetic-manual-supplier-v1",
+        draftId: handoff.draft.id,
+        expectedRevision: handoff.draft.revision,
+        expectedDigest: handoff.draft.digest,
+        controlAccountId: "account_clearing",
+        debitAccountId: "account_bank",
+        accountingPeriodId: "period_synthetic_2026",
+        series: "A",
+        reason: "Local synthetic reviewed original",
+        acknowledgeSyntheticOnly: true,
+      },
+    );
+
+    const reviewPath = `/commerce/supplier-acceptance-reviews/${plan.id}`;
+    const before = await call("/ledger", Accounting.LedgerSnapshot);
+    let replacement: typeof Drafts.SupplierInvoiceDraftRevision.Type | null = null;
+
+    if (changed) {
+      const newer = await call("/source-occurrences", Source.SourceOccurrence, {
+        sourceSystem: "synthetic-review",
+        sourceAccountId: "supplier",
+        occurrenceKey: randomUUID(),
+        sourceRevision: "2",
+        filename: "newer-original.txt",
+        mediaType: "text/plain",
+        contentBase64: Buffer.from("Newer original must not replace the sealed review").toString(
+          "base64",
+        ),
+      });
+
+      const newerEvidence = await call("/evidence", Accounting.Evidence, {
+        title: "Newer supplier original",
+        origin: "Synthetic changed revision",
+        mediaType: "application/json",
+        content: JSON.stringify({
+          kind: "supplier_invoice_source_v1",
+          source: { occurrenceId: newer.id, sha256: newer.sha256, filename: newer.filename },
+        }),
+      });
+
+      replacement = await call(
+        `/commerce/supplier-invoice-drafts/${handoff.draft.id}/revisions`,
+        Drafts.SupplierInvoiceDraftRevision,
+        {
+          expectedRevision: handoff.draft.revision,
+          expectedDigest: handoff.draft.digest,
+          reason: "Synthetic new original",
+          content: {
+            ...content,
+            sourceEvidenceId: newerEvidence.id,
+            supplierDocumentNumber: "NEWER-REVISION",
+          },
+        },
+      );
+    }
+
+    const purchasesQuery = {
+      view: "supplier-drafts",
+      record: handoff.draft.id,
+      review: plan.id,
+      q: filename,
+      filename,
+      currency: "SEK",
+    };
+
+    const purchasesUrl = `${workspace}/purchases?${new URLSearchParams(purchasesQuery).toString()}`;
+
+    await app.open(purchasesUrl);
+    await expect(screen.getByRole("link", "Granska", { exact: true })).toBeVisible();
+    await screen.getByRole("link", "Granska", { exact: true }).focus();
+    await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
+    await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+
+    const focusedUrl = new URL(await browser.url());
+    const ownerReturn = focusedUrl.searchParams.get("returnTo");
+
+    expect(ownerReturn?.startsWith("owner:")).toBe(true);
+    expect(JSON.parse(decodeURIComponent(ownerReturn?.slice(6) ?? ""))).toEqual({
+      owner: "purchases",
+      search: purchasesQuery,
+    });
+
+    await browser.reload();
+    await expect(screen.getByRole("link", "Inköp /", { exact: true })).toBeVisible();
+    await screen.getByRole("link", "Inköp /", { exact: true }).focus();
+    await screen.getByRole("link", "Inköp /", { exact: true }).press("Enter");
+    await expect
+      .poll(async () => {
+        const returned = new URL(await browser.url());
+
+        return {
+          path: returned.pathname,
+          search: Object.fromEntries(returned.searchParams),
+        };
+      })
+      .toEqual({ path: new URL(purchasesUrl).pathname, search: purchasesQuery });
+    await expect(screen.getByRole("link", "Granska", { exact: true })).toBeVisible();
+
+    const workQuery = { q: filename, kind: "journal", status: "open", sort: "newest" };
+    const workUrl = `${workspace}/work?${new URLSearchParams(workQuery).toString()}`;
+
+    await app.open(workUrl);
+    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    await screen.getByRole("link", filename, { exact: true }).focus();
+    await screen.getByRole("link", filename, { exact: true }).press("Enter");
+    await expect(screen.getByRole("heading", "Granska: 1 kvar", { exact: true })).toBeVisible();
+    await browser.reload();
+    await expect(screen.getByRole("link", "Att göra /", { exact: true })).toBeVisible();
+    await screen.getByRole("link", "Att göra /", { exact: true }).focus();
+    await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
+    await expect
+      .poll(async () => {
+        const returned = new URL(await browser.url());
+
+        return {
+          path: returned.pathname,
+          search: Object.fromEntries(returned.searchParams),
+        };
+      })
+      .toEqual({ path: new URL(workUrl).pathname, search: workQuery });
+    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+
+    await app.open(purchasesUrl);
+    await expect(screen.getByRole("link", "Granska", { exact: true })).toBeVisible();
+    await screen.getByRole("link", "Granska", { exact: true }).focus();
+    await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
+    await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+    await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+    await expect(screen.getByRole("combobox", "Sida", { exact: true })).toHaveCount(1);
+    await screen.getByRole("combobox", "Sida", { exact: true }).click();
+    await screen.getByRole("option", "2 av 2", { exact: true }).click();
+    await expect(screen.getByRole("img", `${filename}, sida 2`)).toBeVisible();
+    await screen.getByText("Sidtext", { exact: true }).click();
+    await expect(screen.getByText("Independent original page two", { exact: true })).toBeVisible();
+    await agent.assert(
+      "The selected review has one original document pane showing page two beside the proposed accounting decision. Return only the configured JSON judgment. Do not infer any posting.",
+      { timeout: 30000 },
+    );
+
+    if (!changed)
+      await expect(
+        screen.getByRole(
+          "checkbox",
+          "Jag förstår att detta bokför förslaget utan att fastställa momsbehandling.",
+          { exact: true },
+        ),
+      ).not.toBeChecked();
+
+    const screenshot = await app.screenshot(
+      changed ? "frozen-original-stale-review" : "frozen-original-ready-review",
+    );
+
+    const nativeL2Screenshot = changed ? null : await app.screenshot("native-focused-l2-ready");
+
+    if (changed) {
+      await expect(screen.getByRole("button", "Attestera bokföring", { exact: true })).toHaveCount(
+        0,
+      );
+      await expect(screen.getByRole("img", "newer-original.txt, sida 1")).toHaveCount(0);
+      expect((await call(reviewPath, Acceptance.SupplierAcceptanceView)).dependenciesCurrent).toBe(
+        false,
+      );
+      expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+    } else {
+      await screen
+        .getByRole(
+          "checkbox",
+          "Jag förstår att detta bokför förslaget utan att fastställa momsbehandling.",
+          { exact: true },
+        )
+        .check();
+      await screen.getByRole("button", "Attestera bokföring", { exact: true }).focus();
+      await screen.getByRole("button", "Attestera bokföring", { exact: true }).press("Enter");
+      await expect(
+        screen.getByRole("button", "Bokför och registrera", { exact: true }),
+      ).toBeEnabled();
+      await screen
+        .getByRole("form")
+        .filter({ has: screen.getByRole("button", "Bokför och registrera", { exact: true }) })
+        .getByRole("checkbox")
+        .check();
+      await screen.getByRole("button", "Bokför och registrera", { exact: true }).focus();
+      await screen.getByRole("button", "Bokför och registrera", { exact: true }).press("Enter");
+      await expect
+        .poll(
+          async () =>
+            (await call(reviewPath, Acceptance.SupplierAcceptanceView)).acceptance !== null,
+        )
+        .toBe(true);
+    }
+
+    const view = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+    const after = await call("/ledger", Accounting.LedgerSnapshot);
+
+    expect(view.plan.draftSnapshot.sourceEvidence.evidenceId).toBe(entry.id);
+    expect(view.plan.draftSnapshot.revision).toBe(handoff.draft.revision);
+
+    if (view.acceptance) {
+      expect(view.acceptance.draftDigest).toBe(handoff.draft.digest);
+      expect(view.acceptance.postingReceipt.changeSetId).toBe(plan.postingPlan.id);
+      expect(BigInt(after.sequence) - BigInt(before.sequence)).toBe(1n);
+    }
+
+    await writeFile(
+      join(
+        output,
+        changed ? "supplier-frozen-original-stale.json" : "supplier-frozen-original-posted.json",
+      ),
+      JSON.stringify(
+        {
+          synthetic: true,
+          fixtureProfile: plan.profile,
+          occurrence,
+          expectedHash,
+          draft: handoff.draft.id,
+          selectedReviewId: plan.id,
+          replacementRevision: replacement?.revision ?? null,
+          view,
+          before,
+          after,
+          screenshot,
+          nativeL2Screenshot,
+          returnContext: { purchasesQuery, workQuery },
+        },
+        null,
+        2,
+      ),
+    );
+  });
+}

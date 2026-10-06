@@ -65,7 +65,7 @@ export function CaseContextPanel(props: {
       if (resolution.kind === "ambiguous") return;
 
       props.onReview(
-        resolution.kind === "standalone"
+        resolution.kind !== "correction"
           ? {
               kind: "standalone",
               changeSetId: resolution.changeSetId,

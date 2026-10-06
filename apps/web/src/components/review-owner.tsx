@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cases from "@open-erp/contracts/cases";
@@ -7,24 +7,14 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
+import { SupplierFocusedReview } from "@/components/commerce/supplier-focused-review";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { reviewPath, reviewTargetPath } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
 
-export function ReviewOwner(props: {
-  book: typeof Accounting.Book.Type;
-  setup: typeof Accounting.BookSetup.Type;
-  locale: Locale;
-  planId: string;
-  expectedDigest?: string;
-  returnSearch: string;
-}) {
-  const { book, setup, locale, planId } = props;
-
-  const copy = accountingCopy(locale);
-
-  const resolution = useQuery({
+export function reviewTargetQueryOptions(book: typeof Accounting.Book.Type, planId: string) {
+  return queryOptions({
     queryKey: [...bookKey(book), "review-target", planId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
@@ -40,14 +30,44 @@ export function ReviewOwner(props: {
     },
     retry: false,
   });
+}
+
+export function ReviewOwner(props: {
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type;
+  locale: Locale;
+  planId: string;
+  expectedDigest?: string;
+  returnSearch: string;
+}) {
+  const { book, setup, locale, planId } = props;
+
+  const copy = accountingCopy(locale);
+
+  const resolution = useQuery(reviewTargetQueryOptions(book, planId));
 
   const target = resolution.isError ? undefined : resolution.data;
 
-  if (target?.kind === "standalone" && !props.expectedDigest)
+  if (
+    (target?.kind === "standalone" || target?.kind === "supplier_acceptance") &&
+    !props.expectedDigest
+  )
     return (
       <Navigate
         to={`${reviewPath(book, planId, target.planDigest)}${props.returnSearch}`}
         replace
+      />
+    );
+
+  if (target?.kind === "supplier_acceptance")
+    return (
+      <SupplierFocusedReview
+        book={book}
+        locale={locale}
+        accounts={setup.accounts}
+        owner={target}
+        expectedDigest={props.expectedDigest ?? target.planDigest}
+        returnSearch={props.returnSearch}
       />
     );
 

@@ -37,6 +37,17 @@ const styles = stylex.create({
     "--primary": "var(--foreground)",
     "--primary-foreground": "var(--background)",
   },
+  questionBackdrop: { zIndex: 40, backgroundColor: tokens.transparent },
+  questionSheet: {
+    width: "min(420px, 100vw)",
+    insetBlock: 0,
+    insetInlineEnd: 0,
+    zIndex: 45,
+    borderRadius: tokens.radiusNone,
+    borderWidth: 0,
+    borderInlineStartWidth: 1,
+    boxShadow: tokens.shadowNone,
+  },
   header: {
     display: "flex",
     alignItems: "center",
@@ -65,9 +76,11 @@ const styles = stylex.create({
   },
   content: { padding: 28, overflowY: "auto", minHeight: 0, flex: "1" },
   invoiceContent: { padding: 20, "@container (max-width: 28rem)": { padding: 16 } },
+  questionHeader: { paddingInline: tokens.space6, paddingBlock: tokens.space2 },
+  questionContent: { paddingInline: tokens.space6, paddingBlock: tokens.space5 },
 });
 
-/** Read-only record inspection keeps the parent register mounted with its query and position. */
+/** Keeps the parent register mounted with its query and position. */
 export function RecordSheet({
   title,
   closeLabel,
@@ -75,6 +88,7 @@ export function RecordSheet({
   children,
   dismissible = true,
   invoice = false,
+  presentation = "default",
 }: {
   title: string;
   closeLabel: string;
@@ -82,11 +96,14 @@ export function RecordSheet({
   children: ReactNode;
   dismissible?: boolean;
   invoice?: boolean;
+  presentation?: "default" | "question";
 }) {
+  const question = presentation === "question";
+
   return (
     <Dialog.Root
       open
-      disablePointerDismissal={!dismissible}
+      disablePointerDismissal={question || !dismissible}
       onOpenChange={(open, event) => {
         if (!dismissible && event.reason === "escape-key") {
           event.cancel();
@@ -98,15 +115,29 @@ export function RecordSheet({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
-        <Dialog.Popup {...stylex.props(styles.sheet, invoice && styles.invoiceSheet)}>
-          <div {...stylex.props(styles.header)}>
+        <Dialog.Backdrop {...stylex.props(styles.backdrop, question && styles.questionBackdrop)} />
+        <Dialog.Popup
+          {...stylex.props(
+            styles.sheet,
+            invoice && styles.invoiceSheet,
+            question && styles.questionSheet,
+          )}
+        >
+          <div {...stylex.props(styles.header, question && styles.questionHeader)}>
             <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
             <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
               <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </div>
-          <div {...stylex.props(styles.content, invoice && styles.invoiceContent)}>{children}</div>
+          <div
+            {...stylex.props(
+              styles.content,
+              invoice && styles.invoiceContent,
+              question && styles.questionContent,
+            )}
+          >
+            {children}
+          </div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

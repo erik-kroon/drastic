@@ -78,6 +78,7 @@ function Books() {
 
   const ownerReturnLabels = {
     documents: locale === "sv" ? "Tillbaka till dokument" : "Back to documents",
+    purchases: accountingCopy(locale).workspace_back,
     sales: accountingCopy(locale).workspace_back,
     bank: accountingCopy(locale).workspace_back,
     work: accountingCopy(locale).workspace_back,

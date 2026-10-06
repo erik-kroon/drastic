@@ -1,5 +1,12 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useWorkReturn, workReturnHref, useOwnerReturn } from "@/lib/work-return";
+import { defaultStringifySearch, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+  useWorkReturn,
+  workReturnHref,
+  useOwnerReturn,
+  encodeOwnerReturn,
+  PurchasesOwnerQuery,
+  type WorkReturn,
+} from "@/lib/work-return";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -14,14 +21,10 @@ import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
-import { workspacePath } from "@/lib/book-context";
+import { reviewPath, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
-import {
-  SupplierApprovalExpiry,
-  isSupplierApprovalExpired,
-  supplierApprovalRefetchInterval,
-} from "./supplier-approval-expiry";
+import { supplierApprovalRefetchInterval } from "./supplier-approval-expiry";
 
 type Draft = typeof Drafts.SupplierInvoiceDraftRevision.Type;
 
@@ -130,6 +133,35 @@ export function useSupplierAcceptanceHistory(book: CommerceProps["book"], draftI
   });
 }
 
+export function supplierAcceptanceSelection(
+  selected: string | undefined,
+  history: typeof Acceptance.SupplierAcceptanceHistory.Type | undefined,
+) {
+  const acceptedReview = history?.items.find((item) => item.acceptanceId !== null);
+
+  return {
+    reviewId: selected ?? acceptedReview?.id,
+    accepted: acceptedReview !== undefined,
+  };
+}
+
+export function supplierFocusedReviewHref(
+  book: CommerceProps["book"],
+  plan: typeof Acceptance.SupplierAcceptanceReview.Type,
+  work: WorkReturn | undefined,
+  search: typeof PurchasesOwnerQuery.Type,
+) {
+  return `${reviewPath(book, plan.postingPlan.id, plan.postingPlan.planDigest)}${defaultStringifySearch(
+    {
+      ...work,
+      returnTo: encodeOwnerReturn({
+        owner: "purchases",
+        search: { ...search, record: plan.input.draftId, review: plan.id },
+      }),
+    },
+  )}`;
+}
+
 export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; current: boolean }) {
   const search = useSearch({ from: "/entities/$entityId/books/$bookId/purchases" });
   const navigate = useNavigate({ from: "/entities/$entityId/books/$bookId/purchases" });
@@ -139,10 +171,9 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
   };
 
   const sv = props.locale === "sv";
+  const work = useWorkReturn();
   const history = useSupplierAcceptanceHistory(props.book, props.draft.id);
-  const acceptedReview = history.data?.items.find((item) => item.acceptanceId !== null);
-  const accepted = acceptedReview !== undefined;
-  const reviewId = search.review ?? acceptedReview?.id;
+  const { accepted, reviewId } = supplierAcceptanceSelection(search.review, history.data);
 
   return (
     <RecordSection title={sv ? "Granska och bokför" : "Review and post"}>
@@ -170,7 +201,13 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
               ))}
             </Box>
           ) : null}
-          {reviewId ? <SupplierAcceptanceReview {...props} id={reviewId} /> : null}
+          {reviewId ? (
+            <SupplierAcceptanceReview
+              {...props}
+              key={`${props.book.entityId}/${props.book.id}/${props.draft.id}/${reviewId}`}
+              id={reviewId}
+            />
+          ) : null}
           {reviewId && !accepted && props.current && props.book.role === "operator" ? (
             <Box>
               <Button static variant="outline" onClick={() => setReviewId("")}>
@@ -179,7 +216,14 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
             </Box>
           ) : null}
           {!reviewId && !accepted && props.current && props.book.role === "operator" ? (
-            <SupplierAcceptancePreparation {...props} onPrepared={setReviewId} />
+            <SupplierAcceptancePreparation
+              {...props}
+              onPrepared={(plan) => {
+                void navigate({
+                  to: supplierFocusedReviewHref(props.book, plan, work, search),
+                });
+              }}
+            />
           ) : null}
         </>
       ) : null}
@@ -187,9 +231,21 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
   );
 }
 
-function PostingAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) {
+function PostingAcknowledgment({
+  locale,
+  presentation,
+}: {
+  locale: CommerceProps["locale"];
+  presentation?: "focused";
+}) {
   return (
-    <Box as="label" display="flex" alignItems="start" gap="md" padding="md">
+    <Box
+      as="label"
+      display="flex"
+      alignItems="start"
+      gap={presentation === "focused" ? "sm" : "md"}
+      padding={presentation === "focused" ? "none" : "md"}
+    >
       <input type="checkbox" name="acknowledgeSyntheticOnly" required />
       <span>
         {locale === "sv"
@@ -201,7 +257,11 @@ function PostingAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) 
 }
 
 function SupplierAcceptancePreparation(
-  props: CommerceProps & { draft: Draft; current: boolean; onPrepared: (id: string) => void },
+  props: CommerceProps & {
+    draft: Draft;
+    current: boolean;
+    onPrepared: (plan: typeof Acceptance.SupplierAcceptanceReview.Type) => void;
+  },
 ) {
   const sv = props.locale === "sv";
 
@@ -272,7 +332,7 @@ function SupplierAcceptancePreparation(
         label={sv ? "Förbered bokföring" : "Prepare posting"}
         allowed={props.current && setup.isSuccess && props.book.role === "operator"}
         input={(fields) => acceptanceCommand(props.draft, fields)}
-        onSuccess={(review) => props.onPrepared(review.id)}
+        onSuccess={props.onPrepared}
       >
         <SelectField
           name="controlAccountId"
@@ -361,183 +421,181 @@ function SupplierAcceptancePreparation(
   );
 }
 
-function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Draft }) {
-  const sv = props.locale === "sv";
+export function assertSupplierReviewIdentity(
+  book: CommerceProps["book"],
+  draftId: string,
+  reviewId: string,
+  view: typeof Acceptance.SupplierAcceptanceView.Type,
+) {
+  const plan = view.plan;
+  const snapshot = plan.draftSnapshot;
 
-  const setup = useQuery({
-    queryKey: [...bookKey(props.book), "setup"],
-    queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
-    retry: false,
-  });
+  checkScope(book, plan.scope);
+  checkScope(book, plan.postingPlan.scope);
+  checkScope(book, snapshot.scope);
 
-  const review = useQuery<typeof Acceptance.SupplierAcceptanceView.Type>({
-    queryKey: [...commerceKey(props.book), "supplier-acceptance-review", props.id],
+  if (
+    plan.id !== reviewId ||
+    plan.input.draftId !== draftId ||
+    snapshot.id !== draftId ||
+    snapshot.revision !== plan.input.expectedRevision ||
+    snapshot.digest !== plan.input.expectedDigest ||
+    snapshot.sourceEvidence.evidenceId !== snapshot.content.sourceEvidenceId ||
+    plan.evidence.evidenceId !== snapshot.sourceEvidence.evidenceId ||
+    plan.evidence.sha256 !== snapshot.sourceEvidence.sha256
+  )
+    throw new Error("Supplier acceptance review mismatch");
+
+  if (view.approval) {
+    checkScope(book, view.approval.scope);
+
+    if (view.approval.reviewId !== plan.id)
+      throw new Error("Supplier acceptance approval mismatch");
+  }
+
+  if (view.acceptance) {
+    checkScope(book, view.acceptance.scope);
+
+    if (
+      view.acceptance.reviewId !== plan.id ||
+      view.acceptance.reviewDigest !== plan.digest ||
+      view.acceptance.draftId !== snapshot.id ||
+      view.acceptance.draftRevision !== snapshot.revision ||
+      view.acceptance.draftDigest !== snapshot.digest ||
+      view.acceptance.postingReceipt.changeSetId !== plan.postingPlan.id ||
+      view.acceptance.postingReceipt.planDigest !== plan.postingPlan.planDigest
+    )
+      throw new Error("Supplier acceptance receipt mismatch");
+  }
+}
+
+export function useSupplierAcceptanceReview(
+  book: CommerceProps["book"],
+  draftId: string,
+  reviewId: string,
+) {
+  return useQuery<typeof Acceptance.SupplierAcceptanceView.Type>({
+    queryKey: [...commerceKey(book), "supplier-acceptance-review", reviewId],
     refetchInterval: (query) => supplierApprovalRefetchInterval(query.state.data),
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-acceptance-reviews/${encodeURIComponent(props.id)}`,
+        `${commercePath(book)}/supplier-acceptance-reviews/${encodeURIComponent(reviewId)}`,
         Acceptance.SupplierAcceptanceView,
         { signal },
       );
 
-      checkScope(props.book, result.plan.scope);
-
-      if (result.plan.id !== props.id || result.plan.input.draftId !== props.draft.id)
-        throw new Error("Supplier acceptance review mismatch");
-
-      if (result.approval) checkScope(props.book, result.approval.scope);
-
-      if (result.acceptance) checkScope(props.book, result.acceptance.scope);
+      assertSupplierReviewIdentity(book, draftId, reviewId, result);
 
       return result;
     },
     retry: false,
   });
+}
 
+function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Draft }) {
+  const review = useSupplierAcceptanceReview(props.book, props.draft.id, props.id);
+  const work = useWorkReturn();
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/purchases" });
   const view = review.isError ? undefined : review.data;
 
-  if (view && isSupplierApprovalExpired(view)) {
+  if (view)
     return (
-      <SupplierApprovalExpiry
-        {...props}
-        view={view}
-        heading
-        ready={review.isFetchedAfterMount && review.fetchStatus === "idle"}
-        onRenewed={() => {
-          void review.refetch();
-        }}
-      />
+      <Box display="grid" gap="sm">
+        <PageCaption>
+          {props.locale === "sv" ? "Granskning" : "Review"} {view.plan.ordinal},{" "}
+          {props.locale === "sv" ? "utkastversion" : "draft revision"}{" "}
+          {view.plan.draftSnapshot.revision}
+        </PageCaption>
+        <PageAction href={supplierFocusedReviewHref(props.book, view.plan, work, search)}>
+          {props.locale === "sv" ? "Granska" : "Review"}
+        </PageAction>
+      </Box>
     );
-  }
 
   return (
     <Box display="grid" gap="lg">
-      <Box>
+      <AccountingStatus locale={props.locale} pending={review.isPending} error={review.error} />
+      {review.isError ? (
         <Button
           variant="outline"
           disabled={review.isFetching}
           onClick={() => void review.refetch()}
         >
-          {sv ? "Uppdatera granskning" : "Refresh review"}
+          {props.locale === "sv" ? "Uppdatera granskning" : "Refresh review"}
         </Button>
-      </Box>
-      <AccountingStatus locale={props.locale} pending={review.isPending} error={review.error} />
-      <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
-      {view ? (
-        <>
-          <SupplierReviewedLines
-            locale={props.locale}
-            plan={view.plan}
-            accounts={setup.data?.accounts ?? []}
-          />
-          <Text>{sv ? "Bokföringseffekt" : "Accounting effect"}</Text>
-          <DataTable
-            title={sv ? "Föreslagen verifikation" : "Proposed voucher"}
-            narrow="stack"
-            columns={[
-              { id: "account", label: sv ? "Konto" : "Account" },
-              { id: "debit", label: sv ? "Debet" : "Debit", numeric: true },
-              { id: "credit", label: sv ? "Kredit" : "Credit", numeric: true },
-            ]}
-            rows={view.plan.postingPlan.groups.flatMap((group) =>
-              group.actions.flatMap((action) =>
-                action.lines.map((line) => {
-                  const account = setup.data?.accounts.find((item) => item.id === line.accountId);
-
-                  return {
-                    id: `${group.id}:${line.lineId}`,
-                    cells: [
-                      account ? `${account.code}, ${account.name}` : line.accountId,
-                      formatMinorAmount(
-                        line.debitMinor,
-                        view.plan.draftSnapshot.content.currencyScale,
-                        props.locale,
-                      ),
-                      formatMinorAmount(
-                        line.creditMinor,
-                        view.plan.draftSnapshot.content.currencyScale,
-                        props.locale,
-                      ),
-                    ],
-                  };
-                }),
-              ),
-            )}
-          />
-          {!view.acceptance
-            ? view.blockers.map((blocker) => <Text key={blocker}>{blocker}</Text>)
-            : null}
-          {view.acceptance ? (
-            <SupplierAcceptanceResult
-              book={props.book}
-              locale={props.locale}
-              receipt={view.acceptance}
-              draftId={props.draft.id}
-              reviewId={props.id}
-            />
-          ) : null}
-          {!view.acceptance ? (
-            <>
-              <CommandForm
-                {...props}
-                compact
-                path={`${commercePath(props.book)}/supplier-acceptance-reviews/${encodeURIComponent(props.id)}/approvals`}
-                recoveryId={props.id}
-                schema={Acceptance.ApproveSupplierAcceptance}
-                output={Acceptance.SupplierAcceptanceApproval}
-                label={sv ? "Attestera bokföring" : "Approve posting"}
-                onSuccess={() => void review.refetch()}
-                allowed={
-                  review.isFetchedAfterMount &&
-                  review.fetchStatus === "idle" &&
-                  view.dependenciesCurrent &&
-                  view.blockers.length === 0 &&
-                  !view.approvalUsable &&
-                  props.book.role === "operator"
-                }
-                input={(fields) => ({
-                  version: 1,
-                  digest: view.plan.digest,
-                  acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
-                })}
-              >
-                <PostingAcknowledgment locale={props.locale} />
-              </CommandForm>
-              {view.approval && view.approvalUsable ? (
-                <CommandForm
-                  {...props}
-                  compact
-                  path={`${commercePath(props.book)}/supplier-acceptance-reviews/${encodeURIComponent(props.id)}/execute`}
-                  recoveryId={`${props.id}:${view.approval.id}`}
-                  schema={Acceptance.ExecuteSupplierAcceptance}
-                  output={Acceptance.SupplierAcceptanceReceipt}
-                  label={sv ? "Bokför och registrera" : "Post and register"}
-                  onSuccess={() => void review.refetch()}
-                  allowed={
-                    review.isFetchedAfterMount &&
-                    review.fetchStatus === "idle" &&
-                    view.blockers.length === 0 &&
-                    view.dependenciesCurrent &&
-                    props.book.role === "operator"
-                  }
-                  input={(fields) => ({
-                    version: 1,
-                    digest: view.plan.digest,
-                    approvalId: view.approval?.id,
-                    acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
-                  })}
-                >
-                  <PostingAcknowledgment locale={props.locale} />
-                </CommandForm>
-              ) : null}
-            </>
-          ) : null}
-        </>
       ) : null}
     </Box>
+  );
+}
+
+export function SupplierAcceptanceActions(
+  props: CommerceProps & {
+    view: typeof Acceptance.SupplierAcceptanceView.Type;
+    ready: boolean;
+    onChanged: () => void;
+    presentation?: "focused";
+  },
+) {
+  const { view } = props;
+  const sv = props.locale === "sv";
+
+  if (view.acceptance) return null;
+
+  return (
+    <>
+      <CommandForm
+        {...props}
+        compact
+        path={`${commercePath(props.book)}/supplier-acceptance-reviews/${encodeURIComponent(view.plan.id)}/approvals`}
+        recoveryId={view.plan.id}
+        schema={Acceptance.ApproveSupplierAcceptance}
+        output={Acceptance.SupplierAcceptanceApproval}
+        label={sv ? "Attestera bokföring" : "Approve posting"}
+        onSuccess={props.onChanged}
+        allowed={
+          props.ready &&
+          view.dependenciesCurrent &&
+          view.blockers.length === 0 &&
+          !view.approvalUsable &&
+          props.book.role === "operator"
+        }
+        input={(fields) => ({
+          version: 1,
+          digest: view.plan.digest,
+          acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
+        })}
+      >
+        <PostingAcknowledgment locale={props.locale} presentation={props.presentation} />
+      </CommandForm>
+      {view.approval && view.approvalUsable ? (
+        <CommandForm
+          {...props}
+          compact
+          path={`${commercePath(props.book)}/supplier-acceptance-reviews/${encodeURIComponent(view.plan.id)}/execute`}
+          recoveryId={`${view.plan.id}:${view.approval.id}`}
+          schema={Acceptance.ExecuteSupplierAcceptance}
+          output={Acceptance.SupplierAcceptanceReceipt}
+          label={sv ? "Bokför och registrera" : "Post and register"}
+          onSuccess={props.onChanged}
+          allowed={
+            props.ready &&
+            view.blockers.length === 0 &&
+            view.dependenciesCurrent &&
+            props.book.role === "operator"
+          }
+          input={(fields) => ({
+            version: 1,
+            digest: view.plan.digest,
+            approvalId: view.approval?.id,
+            acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
+          })}
+        >
+          <PostingAcknowledgment locale={props.locale} presentation={props.presentation} />
+        </CommandForm>
+      ) : null}
+    </>
   );
 }
 
@@ -685,7 +743,7 @@ function deductionLabel(basis: string, sv: boolean) {
   return sv ? "Ej avdragsgill" : "Not deductible";
 }
 
-function SupplierReviewedLines(props: {
+export function SupplierReviewedLines(props: {
   locale: CommerceProps["locale"];
   plan: typeof Acceptance.SupplierAcceptanceReview.Type;
   accounts: ReadonlyArray<(typeof Accounting.BookSetup.Type)["accounts"][number]>;
@@ -744,7 +802,7 @@ function SupplierReviewedLines(props: {
   );
 }
 
-function SupplierAcceptanceResult(
+export function SupplierAcceptanceResult(
   props: CommerceProps & {
     receipt: typeof Acceptance.SupplierAcceptanceReceipt.Type;
     draftId: string;

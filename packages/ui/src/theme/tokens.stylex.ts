@@ -143,6 +143,7 @@ export const tokens = stylex.defineConsts({
   fontSizeSidebarInitials: "0.625rem",
   fontSizeAvatarInitials: "0.5625rem",
   fontFamilySystem: "system-ui, sans-serif",
+  fontDocumentText: "Helvetica, system-ui, sans-serif",
   avatarBackground: "var(--avatar-background)",
   lineHeight12Px: "0.75rem",
   fontSizeCompact: "0.6875rem",

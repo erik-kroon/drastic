@@ -31,7 +31,12 @@ import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { SupplierInvoiceEditor } from "./supplier-invoice-editor";
 import { SupplierInbox } from "./supplier-inbox";
 import { SupplierPaymentState } from "./supplier-payment-state";
-import { SupplierAcceptancePanel, useSupplierAcceptanceHistory } from "./supplier-acceptance";
+import { WorkQuestionsEntry } from "../work-questions";
+import {
+  SupplierAcceptancePanel,
+  supplierAcceptanceSelection,
+  useSupplierAcceptanceHistory,
+} from "./supplier-acceptance";
 import {
   Details,
   Facts,
@@ -361,7 +366,8 @@ function SupplierDraftRecord(
   const record = props.record;
   const current = props.current;
   const acceptance = useSupplierAcceptanceHistory(props.book, record.id);
-  const accepted = acceptance.data?.items.some((item) => item.acceptanceId !== null) ?? false;
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/purchases" });
+  const { accepted, reviewId } = supplierAcceptanceSelection(search.review, acceptance.data);
 
   return (
     <>
@@ -381,6 +387,13 @@ function SupplierDraftRecord(
           ) : undefined
         }
       />
+      <Box>
+        <WorkQuestionsEntry
+          book={props.book}
+          locale={props.locale}
+          target={{ kind: "supplier", recordId: record.id }}
+        />
+      </Box>
       <WorkflowSteps
         label={sv ? "Fakturans steg" : "Invoice stages"}
         labels={sv ? ["Utkast", "Granskning", "Bokförd"] : ["Draft", "Review", "Posted"]}
@@ -426,8 +439,12 @@ function SupplierDraftRecord(
         </RecordFact>
       </RecordSummary>
       <SupplierPaymentState locale={props.locale} />
-      <SupplierDraftEvidenceAndFacts {...props} />
-      <SupplierDraftLines {...props} record={record} />
+      {acceptance.isSuccess && !reviewId ? (
+        <>
+          <SupplierDraftEvidenceAndFacts {...props} />
+          <SupplierDraftLines {...props} record={record} />
+        </>
+      ) : null}
       <SupplierAcceptancePanel {...props} draft={record} current={current} />
       <Details title={sv ? "Versionshistorik" : "Version history"}>
         <SupplierDraftHistory

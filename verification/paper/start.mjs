@@ -28,6 +28,11 @@ const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).st
 
 const databaseName = process.env.PAPER_DATABASE ?? "postgres";
 
+const commitTimestamps = process.env.OPENERP_E2E_TRACK_COMMIT_TIMESTAMPS;
+
+if (commitTimestamps !== undefined && commitTimestamps !== "0" && commitTimestamps !== "1")
+  throw new Error("OPENERP_E2E_TRACK_COMMIT_TIMESTAMPS must be 0 or 1");
+
 if (!/^(postgres|openerp_ops_source_[a-z0-9_]{1,40})$/.test(databaseName))
   throw new Error(
     "Use a dedicated synthetic operational database or the default disposable database.",
@@ -97,6 +102,13 @@ if (supplierExpiryHook !== undefined && supplierExpiryHook !== "0" && supplierEx
 
 const supplierExpirySeed =
   supplierExpiryHook === "1" ? await import("./seed-supplier-expiry.mjs") : undefined;
+
+const workGroupHook = process.env.PAPER_WORK_GROUP;
+
+if (workGroupHook !== undefined && workGroupHook !== "0" && workGroupHook !== "1")
+  throw new Error("PAPER_WORK_GROUP must be 0 or 1");
+
+const workGroupSeed = workGroupHook === "1" ? await import("./seed-work-group.mjs") : undefined;
 
 if (processorHook !== undefined && processorHook !== "0" && processorHook !== "1")
   throw new Error("PAPER_PROCESSORS must be 0 or 1");
@@ -265,7 +277,7 @@ try {
     "-l",
     join(artifacts, "postgres.log"),
     "-o",
-    `-h 127.0.0.1 -p ${port} -k ${scratch}`,
+    `-h 127.0.0.1 -p ${port} -k ${scratch}${commitTimestamps === "1" ? " -c track_commit_timestamp=on" : ""}`,
     "-w",
     "start",
   ]);
@@ -339,6 +351,8 @@ try {
     fixture.accounts.push(...historicalAdoptionSeed.historicalAdoptionAccounts);
 
   if (supplierExpirySeed) fixture.accounts.push(...supplierExpirySeed.supplierExpiryAccounts);
+
+  if (workGroupSeed) fixture.accounts.push(...workGroupSeed.workGroupAccounts);
 
   if (onboardingHook === "1")
     fixture.accounts.push(

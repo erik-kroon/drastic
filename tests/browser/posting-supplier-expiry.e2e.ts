@@ -8,6 +8,7 @@ import * as Workspace from "../../packages/contracts/src/workspace";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
 import { signInSyntheticOperator } from "./synthetic-session";
+import { insertBoundedSupplierExpiry } from "../../apps/api/tests/support/supplier-expiry-browser";
 
 const ExpiryFixture = Schema.Struct({
   synthetic: Schema.Literal(true),
@@ -157,7 +158,7 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
     .poll(async () => (await call(reviewPath, Acceptance.SupplierAcceptanceView)).approval?.ordinal)
     .toBe(2);
 
-  const renewed = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+  let renewed = await call(reviewPath, Acceptance.SupplierAcceptanceView);
 
   if (!renewed.approval) throw new Error("Keyboard renewal did not retain a native approval");
 
@@ -176,6 +177,88 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
       ?.supplierReview?.approvalObservation.state,
   ).toBe("available");
   await app.open(`${origin}${fixture.purchaseRoute}`);
+
+  const openFocused = screen.getByRole("link", "Granska", { exact: true });
+
+  await openFocused.focus();
+  await openFocused.press("Enter");
+
+  const focusPath = `${workspace}/reviews/${encodeURIComponent(renewed.plan.postingPlan.id)}/${encodeURIComponent(renewed.plan.postingPlan.planDigest)}`;
+
+  await expect
+    .poll(async () => new URL(await browser.url()).pathname)
+    .toBe(new URL(focusPath).pathname);
+
+  const focusedUrl = await browser.url();
+
+  await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+  await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+
+  const wrongDigest = `sha256:${"0".repeat(64)}`;
+
+  expect(wrongDigest === renewed.plan.postingPlan.planDigest).toBe(false);
+  await app.open(
+    `${workspace}/reviews/${encodeURIComponent(renewed.plan.postingPlan.id)}/${encodeURIComponent(wrongDigest)}${new URL(focusedUrl).search}`,
+  );
+  await expect(screen.getByRole("alert")).toContainText(
+    "Länken stämmer inte med det låsta förslaget.",
+  );
+  await expect(screen.getByRole("button", "Attestera bokföring", { exact: true })).toHaveCount(0);
+  await expect(screen.getByRole("button", "Godkänn igen", { exact: true })).toHaveCount(0);
+  await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+
+  const wrongDigestScreenshot = await app.screenshot("supplier-focus-wrong-digest-refused");
+  const sessionFile = process.env.OPENERP_E2E_SESSION;
+
+  if (!sessionFile) throw new Error("Bounded expiry requires the disposable synthetic session");
+
+  const timerFixture = await insertBoundedSupplierExpiry(sessionFile, origin, renewed.approval);
+
+  expect(timerFixture.ordinal).toBe(3);
+  expect(Date.parse(timerFixture.expiresAt) - Date.parse(timerFixture.createdAt)).toBe(3600000);
+  await app.open(focusedUrl);
+  await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toBeEnabled();
+
+  const mountedAvailable = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+
+  expect(mountedAvailable.approval?.id).toBe(timerFixture.id);
+  expect(mountedAvailable.approvalObservation.state).toBe("available");
+  expect(mountedAvailable.approvalUsable).toBe(true);
+  await expect(screen.getByRole("region", "Godkännandet")).toBeVisible({ timeout: 25000 });
+  await expect(screen.getByRole("button", "Bokför", { exact: true })).toBeDisabled();
+  await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
+
+  const mountedExpired = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+
+  expect(mountedExpired.approval?.id).toBe(timerFixture.id);
+  expect(mountedExpired.approvalObservation.state).toBe("expired");
+  expect(mountedExpired.plan).toEqual(expired.plan);
+  expect(mountedExpired.acceptance).toBeNull();
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+
+  const mountedExpiryScreenshot = await app.screenshot("supplier-focus-expiry-without-refresh");
+  const focusedRenewal = screen.getByRole("button", "Godkänn igen", { exact: true });
+
+  await focusedRenewal.focus();
+  await focusedRenewal.press("Enter");
+  await expect
+    .poll(async () => (await call(reviewPath, Acceptance.SupplierAcceptanceView)).approval?.ordinal)
+    .toBe(4);
+
+  const firstRenewed = renewed;
+
+  renewed = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+
+  if (!renewed.approval) throw new Error("Mounted expiry renewal did not retain a native grant");
+
+  expect(renewed.approval.id === timerFixture.id).toBe(false);
+  expect(renewed.plan).toEqual(expired.plan);
+  expect(renewed.approvalObservation.state).toBe("available");
+  expect(renewed.approvalUsable).toBe(true);
+  expect(renewed.acceptance).toBeNull();
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
 
   const acknowledgment = screen.getByRole(
     "checkbox",
@@ -324,6 +407,10 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
         refusal,
         queueItem: item,
         expired,
+        firstRenewed,
+        timerFixture,
+        mountedAvailable,
+        mountedExpired,
         renewed,
         executionKey,
         executionInput,
@@ -341,7 +428,15 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
           payableDeltaMinor: "-249000",
           paid: false,
         },
-        screenshots: { expiredScreenshot, recoveredScreenshot },
+        focusedRoute: focusedUrl,
+        wrongDigestRefused: true,
+        expiryWithoutRefresh: true,
+        screenshots: {
+          expiredScreenshot,
+          wrongDigestScreenshot,
+          mountedExpiryScreenshot,
+          recoveredScreenshot,
+        },
       },
       null,
       2,

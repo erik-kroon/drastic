@@ -7,6 +7,8 @@ import * as Drafts from "./supplier-invoice-drafts";
 import * as Recognition from "./supplier-recognition";
 import { accountingErrors } from "./accounting-errors";
 
+export const workGroupSelectionLimit = 50;
+
 const SharedSupplierAcceptanceFields = {
   draftId: Accounting.Identifier,
   expectedRevision: Commerce.Version,
@@ -152,6 +154,7 @@ export const SupplierApprovalObservation = Schema.Union([
 ]);
 
 export const SupplierAcceptanceView = Schema.Struct({
+  priorReviewedAcceptanceReceiptId: Schema.NullOr(Accounting.Identifier),
   plan: SupplierAcceptanceReview,
   approval: Schema.NullOr(SupplierAcceptanceApproval),
   acceptance: Schema.NullOr(SupplierAcceptanceReceipt),

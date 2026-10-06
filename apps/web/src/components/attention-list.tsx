@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { WorkGroupReview } from "./work-group-review";
 import { WorkHandoff } from "./work-handoff";
 import { useQuery } from "@tanstack/react-query";
 import type { WorkReturn } from "@/lib/work-return";
@@ -30,109 +32,124 @@ export function AttentionList(props: {
   const work = attentionWork(props.filters);
   const kind = props.filters.kind ?? "all";
   const shown = page ? String(page.items.length) : null;
+  const [groupReview, setGroupReview] = useState(false);
 
   return (
-    <Box display="grid" gap="lg">
-      <Box display="flex" flexWrap="wrap" gap="md" justifyContent="between" alignItems="center">
-        <Box display="grid" gap="xs">
-          <Text role="status" tone="muted">
-            {page ? `${copy.total}: ${page.total}` : copy.all}
-          </Text>
-          {page ? (
-            <PageCaption>
-              {copy.openCount}: {page.counts.open}, {copy.completedCount}: {page.counts.completed} ,{" "}
-              {copy.splitScope}
-            </PageCaption>
-          ) : null}
-        </Box>
-        <Button
-          static
-          variant="ghost"
-          disabled={query.isFetching}
-          onClick={() => {
-            void query.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
-      <AccountingStatus locale={locale} pending={query.isPending} error={query.error} />
-      {page ? (
-        <>
-          {page.items.length ? (
-            <DataTable
-              title={kind === "all" ? copy.all : copy[kind]}
-              narrow="stack"
-              columns={[
-                { id: "record", label: copy.title },
-                { id: "kind", label: copy.type },
-                { id: "date", label: copy.updated },
-                { id: "state", label: copy.action },
-                { id: "amount", label: copy.amount, numeric: true },
-                { id: "assignment", label: locale === "sv" ? "Ansvarig" : "Assigned to" },
-              ]}
-              rows={page.items.map((item) => ({
-                id: item.key,
-                cells: [
-                  <Link key="open" href={attentionPath(book, item, work)}>
-                    {item.title}
-                  </Link>,
-                  copy[item.kind],
-                  new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                    new Date(item.updatedAt),
-                  ),
-                  <Badge key="status" variant={item.state === "open" ? "warning" : "secondary"}>
-                    {attentionState(item, locale)}
-                  </Badge>,
-                  item.amountMinor !== null && item.currencyScale !== null
-                    ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`
-                    : "—",
-                  <WorkHandoff key="handoff" item={item} />,
-                ],
-              }))}
-            />
-          ) : (
-            <PageEmpty
-              title={props.filters.after ? copy.emptyPage : copy.empty}
-              detail={props.filters.after ? copy.emptyPageDetail : copy.emptyDetail}
-            />
-          )}
-          <PageCaption>{copy.coverage}</PageCaption>
-          {shown !== null && shown !== page.total ? (
-            <PageCaption>
-              {copy.showing} {shown} {copy.of} {page.total}
-            </PageCaption>
-          ) : null}
-          <PageCaption>
-            {copy.updated}{" "}
-            {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-              new Date(page.checkedAt),
-            )}
-          </PageCaption>
-        </>
+    <>
+      {groupReview ? (
+        <WorkGroupReview
+          key={`${book.entityId}/${book.id}`}
+          items={page?.items ?? []}
+          onClose={() => setGroupReview(false)}
+        />
       ) : null}
-      {props.filters.after || page?.next ? (
-        <Box display="flex" gap="md">
+      <Box display="grid" gap="lg">
+        <Box display="flex" flexWrap="wrap" gap="md" justifyContent="between" alignItems="center">
+          <Box display="grid" gap="xs">
+            <Text role="status" tone="muted">
+              {page ? `${copy.total}: ${page.total}` : copy.all}
+            </Text>
+            {page ? (
+              <PageCaption>
+                {copy.openCount}: {page.counts.open}, {copy.completedCount}: {page.counts.completed}{" "}
+                , {copy.splitScope}
+              </PageCaption>
+            ) : null}
+          </Box>
           <Button
             static
-            variant="outline"
-            disabled={!props.filters.after}
-            onClick={() => props.onPage(undefined)}
-          >
-            {copy.first}
-          </Button>
-          <Button
-            static
-            variant="outline"
-            disabled={!page?.next}
+            variant="ghost"
+            disabled={query.isFetching}
             onClick={() => {
-              if (page?.next) props.onPage(page.next);
+              void query.refetch();
             }}
           >
-            {copy.next}
+            {copy.refresh}
           </Button>
         </Box>
-      ) : null}
-    </Box>
+        {book.role === "operator" && props.filters.status !== "completed" ? (
+          <Button variant="outline" onClick={() => setGroupReview(true)}>
+            {locale === "sv" ? "Granska i grupp" : "Review as a group"}
+          </Button>
+        ) : null}
+        <AccountingStatus locale={locale} pending={query.isPending} error={query.error} />
+        {page ? (
+          <>
+            {page.items.length ? (
+              <DataTable
+                title={kind === "all" ? copy.all : copy[kind]}
+                narrow="stack"
+                columns={[
+                  { id: "record", label: copy.title },
+                  { id: "kind", label: copy.type },
+                  { id: "date", label: copy.updated },
+                  { id: "state", label: copy.action },
+                  { id: "amount", label: copy.amount, numeric: true },
+                  { id: "assignment", label: locale === "sv" ? "Ansvarig" : "Assigned to" },
+                ]}
+                rows={page.items.map((item) => ({
+                  id: item.key,
+                  cells: [
+                    <Link key="open" href={attentionPath(book, item, work)}>
+                      {item.title}
+                    </Link>,
+                    copy[item.kind],
+                    new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                      new Date(item.updatedAt),
+                    ),
+                    <Badge key="status" variant={item.state === "open" ? "warning" : "secondary"}>
+                      {attentionState(item, locale)}
+                    </Badge>,
+                    item.amountMinor !== null && item.currencyScale !== null
+                      ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`
+                      : "—",
+                    <WorkHandoff key="handoff" item={item} />,
+                  ],
+                }))}
+              />
+            ) : (
+              <PageEmpty
+                title={props.filters.after ? copy.emptyPage : copy.empty}
+                detail={props.filters.after ? copy.emptyPageDetail : copy.emptyDetail}
+              />
+            )}
+            <PageCaption>{copy.coverage}</PageCaption>
+            {shown !== null && shown !== page.total ? (
+              <PageCaption>
+                {copy.showing} {shown} {copy.of} {page.total}
+              </PageCaption>
+            ) : null}
+            <PageCaption>
+              {copy.updated}{" "}
+              {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date(page.checkedAt),
+              )}
+            </PageCaption>
+          </>
+        ) : null}
+        {props.filters.after || page?.next ? (
+          <Box display="flex" gap="md">
+            <Button
+              static
+              variant="outline"
+              disabled={!props.filters.after}
+              onClick={() => props.onPage(undefined)}
+            >
+              {copy.first}
+            </Button>
+            <Button
+              static
+              variant="outline"
+              disabled={!page?.next}
+              onClick={() => {
+                if (page?.next) props.onPage(page.next);
+              }}
+            >
+              {copy.next}
+            </Button>
+          </Box>
+        ) : null}
+      </Box>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import * as stylex from "@stylexjs/stylex";
 import { Box } from "@open-erp/ui/components/box";
@@ -21,6 +21,12 @@ type PageState =
   | { status: "ready"; page: number; zoom: number; width: number; height: number; text: string };
 
 const styles = stylex.create({
+  toolbar: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: tokens.space3,
+  },
   viewport: {
     overflow: "auto",
     maxHeight: 640,
@@ -42,6 +48,37 @@ const styles = stylex.create({
     margin: 0,
   },
   control: { width: "auto", minWidth: 80 },
+  focusedToolbar: {
+    minHeight: tokens.controlHeight,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    columnGap: tokens.space4,
+  },
+  focusedPageControl: { width: 64, minWidth: 64 },
+  focusedZoomControl: { width: 72, minWidth: 72 },
+  focusedTextAction: { marginInlineStart: "auto", color: tokens.primary },
+  focusedViewport: { padding: 0, borderRadius: 0 },
+  focusedTextPanel: {
+    marginBlockStart: tokens.space4,
+    borderBlockStartWidth: 1,
+    borderBlockStartStyle: "solid",
+    borderBlockStartColor: tokens.border,
+    paddingBlockStart: tokens.space5,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    color: tokens.mutedForeground,
+  },
+  focusedTextSummary: {
+    cursor: "pointer",
+    listStyle: "none",
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
+  focusedText: {
+    fontFamily: tokens.fontDocumentText,
+    lineHeight: tokens.lineHeight20Px,
+    marginBlockStart: tokens.space4,
+    color: tokens.foreground,
+  },
 });
 
 export function PdfViewer(props: {
@@ -51,11 +88,14 @@ export function PdfViewer(props: {
   locale: "sv" | "en";
   view: PdfView;
   onViewChange: (view: PdfView) => void;
+  presentation?: "focused";
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [documentState, setDocumentState] = useState<DocumentState>({ status: "loading" });
   const [pageState, setPageState] = useState<PageState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [textOpen, setTextOpen] = useState(false);
+  const textId = useId();
   const { content, view, workerUrl } = props;
   const sv = props.locale === "sv";
 
@@ -145,14 +185,16 @@ export function PdfViewer(props: {
   const failed = documentState.status === "error" || pageState.status === "error";
 
   return (
-    <Box display="grid" gap="md" minWidth="zero">
-      <Box display="flex" flexWrap="wrap" alignItems="center" gap="md">
+    <Box display="grid" gap={props.presentation === "focused" ? "sm" : "md"} minWidth="zero">
+      <div
+        {...stylex.props(styles.toolbar, props.presentation === "focused" && styles.focusedToolbar)}
+      >
         <Box as="label" display="flex" alignItems="center" gap="sm">
           {sv ? "Sida" : "Page"}
           <SelectControl
             aria-label={sv ? "Sida" : "Page"}
             size="compact"
-            styleX={styles.control}
+            styleX={props.presentation === "focused" ? styles.focusedPageControl : styles.control}
             value={String(view.page)}
             disabled={documentState.status !== "ready"}
             options={
@@ -175,7 +217,7 @@ export function PdfViewer(props: {
           <SelectControl
             aria-label="Zoom"
             size="compact"
-            styleX={styles.control}
+            styleX={props.presentation === "focused" ? styles.focusedZoomControl : styles.control}
             value={String(view.zoom)}
             options={[50, 75, 100, 125, 150, 200].map((zoom) => ({
               value: String(zoom),
@@ -186,8 +228,26 @@ export function PdfViewer(props: {
             }}
           />
         </Box>
-      </Box>
-      <div {...stylex.props(styles.viewport)}>
+        {props.presentation === "focused" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={textOpen}
+            aria-controls={textId}
+            styleX={styles.focusedTextAction}
+            onClick={() => setTextOpen(!textOpen)}
+          >
+            {sv ? "Sidtext" : "Page text"}
+          </Button>
+        ) : null}
+      </div>
+      <div
+        {...stylex.props(
+          styles.viewport,
+          props.presentation === "focused" && styles.focusedViewport,
+        )}
+      >
         <canvas
           ref={canvas}
           role="img"
@@ -219,9 +279,29 @@ export function PdfViewer(props: {
           </Box>
         </Box>
       ) : null}
-      <Disclosure title={sv ? "Sidtext" : "Page text"}>
-        {ready ? <pre {...stylex.props(styles.text)}>{pageState.text}</pre> : null}
-      </Disclosure>
+      {props.presentation === "focused" ? (
+        <details open={textOpen} {...stylex.props(styles.focusedTextPanel)}>
+          <summary
+            role="button"
+            {...stylex.props(styles.focusedTextSummary)}
+            onClick={(event) => {
+              event.preventDefault();
+              setTextOpen(!textOpen);
+            }}
+          >
+            {textOpen ? "⌄" : "›"} {sv ? "Sidtext" : "Page text"}
+          </summary>
+          <div id={textId}>
+            {ready ? (
+              <pre {...stylex.props(styles.text, styles.focusedText)}>{pageState.text}</pre>
+            ) : null}
+          </div>
+        </details>
+      ) : (
+        <Disclosure title={sv ? "Sidtext" : "Page text"}>
+          {ready ? <pre {...stylex.props(styles.text)}>{pageState.text}</pre> : null}
+        </Disclosure>
+      )}
     </Box>
   );
 }

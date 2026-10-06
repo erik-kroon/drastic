@@ -20,6 +20,7 @@ export function EvidenceInspector(props: {
   locale: Locale;
   expanded?: boolean;
   compact?: boolean;
+  presentation?: "focused";
   view?: PdfView;
   onViewChange?: (view: PdfView) => void;
   quote?: { page: number; quote: string };
@@ -54,7 +55,7 @@ export function EvidenceInspector(props: {
       : null;
 
   return (
-    <Box display="grid" gap="md" minWidth="zero">
+    <Box display="grid" gap={props.presentation === "focused" ? "sm" : "md"} minWidth="zero">
       {!props.expanded ? (
         <Box>
           <Button
@@ -72,7 +73,7 @@ export function EvidenceInspector(props: {
         id={panelId}
         hidden={!open}
         display={open ? "grid" : "none"}
-        gap="md"
+        gap={props.presentation === "focused" ? "lg" : "md"}
         minWidth="zero"
         padding={props.expanded ? "none" : "lg"}
         borderWidth={props.expanded ? "none" : "thin"}
@@ -128,10 +129,14 @@ export function EvidenceInspector(props: {
                 view={props.view}
                 onViewChange={props.onViewChange}
                 quote={props.quote}
+                presentation={props.presentation}
               />
             ) : null}
             {props.compact ? (
-              <Disclosure title={locale === "sv" ? "Sparade uppgifter" : "Retained details"}>
+              <Disclosure
+                presentation={props.presentation}
+                title={locale === "sv" ? "Sparade uppgifter" : "Retained details"}
+              >
                 <Label htmlFor={contentId}>{copy.journal_content}</Label>
                 <Box
                   display="grid"

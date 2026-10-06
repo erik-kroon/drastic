@@ -28,6 +28,7 @@ const styles = stylex.create({
     ":disabled": { cursor: "not-allowed", backgroundColor: tokens.controlDisabledBackground },
   },
   checkedCheckbox: { backgroundColor: tokens.primary, borderColor: tokens.primary },
+  preservedDisabledCheckbox: { ":disabled": { backgroundColor: tokens.card } },
   checkWrap: { position: "relative", width: 16, height: 16, display: "flex", flexShrink: 0 },
   check: {
     position: "absolute",
@@ -106,9 +107,14 @@ const styles = stylex.create({
 type CheckboxControlProps = Omit<
   ComponentProps<"input">,
   "type" | "className" | "style" | "defaultChecked"
-> & { label: ReactNode; checked: boolean };
+> & { label: ReactNode; checked: boolean; disabledAppearance?: "preserve" };
 
-export function CheckboxControl({ label, checked, ...props }: CheckboxControlProps) {
+export function CheckboxControl({
+  label,
+  checked,
+  disabledAppearance,
+  ...props
+}: CheckboxControlProps) {
   return (
     <label {...stylex.props(styles.label)}>
       <span {...stylex.props(styles.checkWrap)}>
@@ -116,7 +122,11 @@ export function CheckboxControl({ label, checked, ...props }: CheckboxControlPro
           {...props}
           type="checkbox"
           checked={checked}
-          {...stylex.props(styles.checkbox, checked && styles.checkedCheckbox)}
+          {...stylex.props(
+            styles.checkbox,
+            checked && styles.checkedCheckbox,
+            disabledAppearance === "preserve" && !checked && styles.preservedDisabledCheckbox,
+          )}
         />
         {checked ? (
           <span aria-hidden="true" {...stylex.props(styles.check)}>

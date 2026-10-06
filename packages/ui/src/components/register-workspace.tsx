@@ -229,6 +229,7 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeight16Px,
     marginBlockStart: 2,
   },
+  focusedNote: { marginBlockStart: 0 },
   detailLink: {
     color: { default: tokens.primary, ":hover": tokens.primary },
     textDecoration: { default: "none", ":hover": "underline" },
@@ -256,6 +257,7 @@ const styles = stylex.create({
   actions: { display: "grid", gap: 10, marginBlockStart: "auto", paddingBlockStart: tokens.space4 },
   lines: { marginBlockStart: 20 },
   reviewLines: { marginBlockStart: tokens.space2 },
+  focusedLines: { marginBlockStart: tokens.space6 },
   unlabelledLines: { marginBlockStart: tokens.space3_5 },
   lineList: {
     borderBlockStartWidth: 1,
@@ -345,7 +347,7 @@ const styles = stylex.create({
 export type RegisterStatus = "open" | "pending" | "warning" | "overdue" | "completed" | "draft";
 
 // Status marks from the Paper register component: 14 px, 1.4 stroke, shape carries the meaning.
-function StatusMark({ status }: { status: RegisterStatus }) {
+export function StatusMark({ status }: { status: RegisterStatus }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.4 };
 
   return (
@@ -377,17 +379,20 @@ export function RegisterDetailLines({
   lines,
   rowSize = "standard",
   hideHeading = false,
+  presentation,
 }: {
   title: string;
   lines: readonly { id: string; description: string; amount: string; href?: string }[];
   rowSize?: "standard" | "review";
   hideHeading?: boolean;
+  presentation?: "focused";
 }) {
   return (
     <section
       {...stylex.props(
         styles.lines,
         rowSize === "review" && styles.reviewLines,
+        presentation === "focused" && styles.focusedLines,
         hideHeading && styles.unlabelledLines,
       )}
       aria-label={title}
@@ -635,18 +640,24 @@ export function RegisterDetailHeading({
   amount,
   caption,
   note,
+  presentation,
 }: {
   title: string;
   amount?: string;
   caption?: string;
   note?: string;
+  presentation?: "focused";
 }) {
   return (
     <div>
       {caption ? <p {...stylex.props(styles.caption)}>{caption}</p> : null}
       <h2 {...stylex.props(styles.detailTitle)}>{title}</h2>
       {amount !== undefined ? <p {...stylex.props(styles.detailAmount)}>{amount}</p> : null}
-      {note ? <p {...stylex.props(styles.detailNote)}>{note}</p> : null}
+      {note ? (
+        <p {...stylex.props(styles.detailNote, presentation === "focused" && styles.focusedNote)}>
+          {note}
+        </p>
+      ) : null}
     </div>
   );
 }

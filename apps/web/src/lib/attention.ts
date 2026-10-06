@@ -69,7 +69,7 @@ export function attentionPath(
   work: WorkReturn,
 ) {
   if (item.supplierReview)
-    return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(item.supplierReview.draftId)}&review=${encodeURIComponent(item.supplierReview.reviewId)}`;
+    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
 
   if (item.kind === "recurring" && item.recurringAgreementId)
     return `${workReturnHref(`${workspacePath(book)}/sales`, "recurring", work)}&record=${encodeURIComponent(item.recurringAgreementId)}&job=${encodeURIComponent(item.id)}`;

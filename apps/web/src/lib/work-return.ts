@@ -76,6 +76,13 @@ export const DocumentQuery = Schema.Struct({
   record: Schema.optional(Schema.String),
 });
 
+export const PurchasesOwnerQuery = Schema.Struct({
+  ...DocumentQuery.fields,
+  review: Schema.optional(Accounting.Identifier),
+  occurrence: Schema.optional(Accounting.Identifier),
+  returnTo: Schema.optional(Schema.String.check(Schema.isMaxLength(8192))),
+});
+
 const pageNumber = Schema.optional(
   Schema.Union([
     Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/)),
@@ -119,6 +126,7 @@ const SalesOwnerQuery = Schema.Struct({
 export const OwnerReturn = Schema.Union([
   Schema.Struct({ owner: Schema.Literal("sales"), search: SalesOwnerQuery }),
   Schema.Struct({ owner: Schema.Literal("documents"), search: DocumentQuery }),
+  Schema.Struct({ owner: Schema.Literal("purchases"), search: PurchasesOwnerQuery }),
   Schema.Struct({ owner: Schema.Literal("bank"), search: BankOwnerQuery }),
   Schema.Struct({ owner: Schema.Literal("work"), search: WorkQueueQuery }),
 ]);
@@ -152,6 +160,8 @@ export function ownerReturnDestination(base: string, owner: OwnerReturn) {
       return { to: `${base}/sales`, search: owner.search };
     case "documents":
       return { to: `${base}/purchases`, search: { ...owner.search, view: "documents" } };
+    case "purchases":
+      return { to: `${base}/purchases`, search: owner.search };
     case "bank":
       return { to: `${base}/accounts`, search: owner.search };
     case "work":
