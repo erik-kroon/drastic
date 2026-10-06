@@ -81,6 +81,13 @@ if (mileageHook !== undefined && mileageHook !== "0" && mileageHook !== "1")
 
 const mileageSeed = mileageHook === "1" ? await import("./seed-mileage.mjs") : undefined;
 
+const variableHook = process.env.PAPER_VARIABLE;
+
+if (variableHook !== undefined && variableHook !== "0" && variableHook !== "1")
+  throw new Error("PAPER_VARIABLE must be 0 or 1");
+
+const variableSeed = variableHook === "1" ? await import("./seed-variable.mjs") : undefined;
+
 const processorHook = process.env.PAPER_PROCESSORS;
 
 const supplierExpiryHook = process.env.PAPER_SUPPLIER_EXPIRY;
@@ -316,6 +323,8 @@ try {
 
   if (mileageSeed) fixture.accounts.push(...mileageSeed.mileageAccounts);
 
+  if (variableSeed) fixture.accounts.push(...variableSeed.variableAccounts);
+
   if (processorSeed) {
     fixture.accounts.push(...processorSeed.processorAccounts);
     fixture.accounts.find((account) => account.id === "account_bank").name = "Bank";
@@ -491,6 +500,19 @@ try {
     console.log(
       JSON.stringify(
         await mileageSeed.seedMileage({
+          apiUrl: listening.url.origin,
+          adminUrl,
+          accessToken,
+          fixture,
+          artifacts,
+        }),
+      ),
+    );
+
+  if (variableSeed)
+    console.log(
+      JSON.stringify(
+        await variableSeed.seedVariable({
           apiUrl: listening.url.origin,
           adminUrl,
           accessToken,
