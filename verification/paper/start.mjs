@@ -30,6 +30,11 @@ const databaseName = process.env.PAPER_DATABASE ?? "postgres";
 
 const commitTimestamps = process.env.OPENERP_E2E_TRACK_COMMIT_TIMESTAMPS;
 
+const webMode = process.env.OPENERP_E2E_WEB_MODE ?? "development";
+
+if (webMode !== "development" && webMode !== "built")
+  throw new Error("OPENERP_E2E_WEB_MODE must be development or built");
+
 if (commitTimestamps !== undefined && commitTimestamps !== "0" && commitTimestamps !== "1")
   throw new Error("OPENERP_E2E_TRACK_COMMIT_TIMESTAMPS must be 0 or 1");
 
@@ -602,11 +607,33 @@ try {
       ),
     );
 
+  if (webMode === "built") {
+    web = spawn("bun", ["run", "build", "--config", "tests/vite.config.ts"], {
+      cwd: join(root, "apps/web"),
+      env: { ...process.env, OPENERP_E2E_API_URL: listening.url.origin },
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    web.stdout.on("data", (chunk) => {
+      webLog += chunk.toString();
+    });
+    web.stderr.on("data", (chunk) => {
+      webLog += chunk.toString();
+    });
+
+    const [code] = await once(web, "exit");
+    await writeFile(join(artifacts, "web-build.log"), webLog);
+
+    if (code !== 0) throw new Error(`Web build failed\n${webLog}`);
+
+    webLog = "";
+  }
+
   web = spawn(
     "bun",
     [
       "run",
-      "dev",
+      webMode === "built" ? "serve" : "dev",
       "--config",
       "tests/vite.config.ts",
       "--host",

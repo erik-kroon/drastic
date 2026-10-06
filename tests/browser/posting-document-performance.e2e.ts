@@ -669,6 +669,7 @@ test("P03 and P04 retain comparable painted public-owner latency", async ({
       ).version;
 
       const environment = {
+        webMode: process.env.OPENERP_E2E_WEB_MODE ?? "development",
         node: process.version,
         platform: platform(),
         arch: arch(),
