@@ -17,7 +17,10 @@ const codex = createOpenAICompatible({
 });
 
 export default {
-  tests: "tests/browser/**/*.e2e.ts",
+  tests:
+    process.env.OPENERP_DEMO_FIXTURE === "1"
+      ? "tests/browser/document-question-posting.e2e.ts"
+      : "tests/browser/**/*.e2e.ts",
   targets: [
     {
       name: "synthetic-chromium",

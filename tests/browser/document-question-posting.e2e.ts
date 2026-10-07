@@ -295,7 +295,7 @@ test("a retained original returns through questions, explicit review, posting an
   if (!operator)
     throw new Error("The current synthetic session must have actual operator membership");
 
-  const suffix = randomUUID();
+  const suffix = process.env.OPENERP_DEMO_FIXTURE === "1" ? "funding-demo-v1" : randomUUID();
   const filename = `question-original-${suffix}.pdf`;
   const originalBytes = twoPageOriginal();
   const originalFile = join(output, filename);
@@ -613,13 +613,43 @@ test("a retained original returns through questions, explicit review, posting an
   ).toBeEnabled();
   await executeForm.getByRole("checkbox").check();
 
-  const receiptResponse = browser.waitForResponse(
-    `**/commerce/supplier-acceptance-reviews/${plan.id}/execute`,
-  );
+  const executionPath = `${base}/commerce/supplier-acceptance-reviews/${plan.id}/execute`;
+  let committed: typeof Acceptance.SupplierAcceptanceReceipt.Type | undefined;
+  let executionKey: string | undefined;
+
+  await browser.route(executionPath, async (route) => {
+    const response = await fetch(route.request.url, {
+      method: route.request.method,
+      headers: { ...route.request.headers, cookie, origin },
+      body: route.request.postData ?? undefined,
+      signal: AbortSignal.timeout(20000),
+    });
+
+    expect(response.status).toBe(200);
+    committed = Schema.decodeUnknownSync(Acceptance.SupplierAcceptanceReceipt)(
+      await response.json(),
+    );
+    executionKey = route.request.headers["idempotency-key"];
+    await route.abort();
+  });
 
   await executeForm.getByRole("button", "Bokför och registrera", { exact: true }).focus();
   await executeForm.getByRole("button", "Bokför och registrera", { exact: true }).press("Enter");
-  const receipt = await decodedResponse(receiptResponse, Acceptance.SupplierAcceptanceReceipt);
+  await expect.poll(() => committed?.reviewId).toBe(plan.id);
+  await browser.unroute(executionPath);
+
+  if (!committed || !executionKey)
+    throw new Error("The real owner must commit before response loss");
+  const receipt = committed;
+  const afterLostResponse = await call("/ledger", Accounting.LedgerSnapshot);
+
+  await browser.reload();
+  await expect(screen.getByRole("status").filter({ hasText: "Bokförd" })).toBeVisible();
+  await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
+
+  const recoveryScreenshot = await app.screenshot(
+    "document-question-lost-response-reloaded-receipt",
+  );
 
   const posted = await call(
     `/commerce/supplier-acceptance-reviews/${plan.id}`,
@@ -633,6 +663,23 @@ test("a retained original returns through questions, explicit review, posting an
   expect(posted.plan.draftSnapshot.sourceEvidence.evidenceId).toBe(sourceEvidence.id);
   expect(posted.acceptance).toEqual(receipt);
   expect(BigInt(afterPosting.sequence) - BigInt(before.sequence)).toBe(1n);
+  expect(afterPosting).toEqual(afterLostResponse);
+  expect(
+    afterPosting.accounts.map(({ accountId, debitMinor, creditMinor, balanceMinor }) => ({
+      accountId,
+      debitMinor,
+      creditMinor,
+      balanceMinor,
+    })),
+  ).toEqual([
+    { accountId: "account_bank", debitMinor: "125000", creditMinor: "0", balanceMinor: "125000" },
+    {
+      accountId: "account_clearing",
+      debitMinor: "0",
+      creditMinor: "125000",
+      balanceMinor: "-125000",
+    },
+  ]);
 
   const completed = await call("/workspace/questions/read", Workspace.WorkQuestionsView, {
     kind: "supplier",
@@ -881,6 +928,7 @@ test("a retained original returns through questions, explicit review, posting an
         },
         approval,
         receipt,
+        recovery: { executionKey, committed, afterLostResponse, reloaded: true },
         completed,
         statement,
         retainedStatement,
@@ -899,6 +947,7 @@ test("a retained original returns through questions, explicit review, posting an
           desktopScreenshot,
           narrowScreenshot,
           postingScreenshot,
+          recoveryScreenshot,
           bankEvidenceScreenshot,
           statementScreenshot,
           bankScreenshot,

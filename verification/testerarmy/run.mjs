@@ -51,6 +51,8 @@ let sessionDirectory;
 
 await mkdir(output, { recursive: true });
 
+console.log(`Reports and startup logs: ${runDirectory}`);
+
 async function start(executable, args, name, ready) {
   const log = createWriteStream(resolve(output, `${name}.log`), { flags: "w", mode: 0o600 });
 
