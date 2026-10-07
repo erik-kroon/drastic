@@ -483,7 +483,7 @@ export const Capabilities = {
   },
   ledger_prepare_journal: {
     description:
-      "Prepare an immutable manual journal proposal. Does not post. Tax must be not_applicable; synthetic-core-v1 only.",
+      "Prepare an immutable manual journal proposal. Does not post. Tax must be not_applicable. Company-setup books require an activated, reviewed manual-journal release and operator approval before execution; synthetic-core-v1 remains supported.",
     input: Schema.Struct({ ...mutation, input: Accounting.PrepareJournal }),
     output: Accounting.ChangeSet,
     readOnly: false,

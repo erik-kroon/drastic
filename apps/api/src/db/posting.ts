@@ -588,6 +588,19 @@ export function insertCommandReceipt(
   return transaction.insert(commandReceipts).values([row]);
 }
 
+export function readManualPreparation(transaction: Transaction, bookId: string, planId: string) {
+  return transaction
+    .select({ result: commandReceipts.result })
+    .from(commandReceipts)
+    .where(
+      and(
+        eq(commandReceipts.bookId, bookId),
+        eq(commandReceipts.operation, "prepare_journal"),
+        sql`${commandReceipts.result}->>'id' = ${planId}`,
+      ),
+    );
+}
+
 export function allocateSeriesCounter(
   transaction: Transaction,
   bookId: string,

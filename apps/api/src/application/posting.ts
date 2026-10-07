@@ -24,12 +24,17 @@ import {
   resolveAssignmentsInTransaction,
 } from "./dimensions/assignments";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Profiles from "@open-erp/contracts/company-profiles";
+import * as ProfileDb from "../db/company-profiles";
 import { digest, versionedDigest } from "./json";
 import { resolveCompanyProfileInTransaction } from "./company-profiles";
 
 export { digest, versionedDigest } from "./json";
 
-import { ExecutionReceipt as DomainExecutionReceipt } from "@open-erp/domain/ledger";
+import {
+  ExecutionReceipt as DomainExecutionReceipt,
+  ManualCompanyAdmission,
+} from "@open-erp/domain/ledger";
 import { orderPostingGroups, validatePostingLines } from "@open-erp/domain/posting";
 import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
@@ -56,6 +61,9 @@ type JsonObject = Schema.JsonObject;
 
 type Principal = VerifiedPrincipal;
 
+type PrepareJournalCommand =
+  typeof import("@open-erp/contracts/capabilities").Capabilities.ledger_prepare_journal.input.Type;
+
 const PlanSchema = Accounting.ChangeSet;
 
 const VoucherSchema = Accounting.Voucher;
@@ -75,6 +83,10 @@ const BookSetupSchema = Accounting.BookSetup;
 const BookStatusSchema = Accounting.BookStatus;
 
 const BookDirectorySchema = Schema.Array(Accounting.Book);
+
+const manualJournalContext = Object.freeze({ kind: "public_manual_journal" as const });
+
+type ManualContext = typeof manualJournalContext;
 
 // Only an owning legal application operation may present these purposes. Every other
 // posting purpose stays synthetic and manual.
@@ -307,7 +319,162 @@ function validateReversalAction(transaction: Transaction, scope: Scope, action: 
   });
 }
 
-export function validateAction(
+function isCompanyManualAction(action: Action) {
+  return (
+    action.manualCompanyAdmission !== undefined &&
+    action.kind === "post_voucher" &&
+    action.postingPurpose === "adjustment" &&
+    action.correctsVoucherId === null &&
+    action.occurrenceKey === "manual_journal" &&
+    action.taxAssessment === "not_applicable" &&
+    action.vatReclassification === undefined &&
+    !["legalIssue", "legalCredit", "resultTransfer", "assetProceeds", "foreignCurrency"].some(
+      (name) => name in action,
+    ) &&
+    action.manualCompanyAdmission.witness.selectorDate === action.postingDate
+  );
+}
+
+const readManualAdmission = Effect.fn("posting.readManualAdmission")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  book: { currency: string },
+  postingOn: string,
+  code: "UnsupportedProfile" | "StaleDependency",
+) {
+  if (!Accounting.isCalendarDate(postingOn)) return yield* failure(code);
+
+  const resolved = yield* resolveCompanyProfileInTransaction(transaction, scope, "actual_company", {
+    postingOn,
+    taxPointOn: null,
+    paymentOn: null,
+    reportOn: null,
+    taxPeriodOn: null,
+  });
+
+  const witness = resolved.families.find(
+    (family) => family.family === "posting_eligibility",
+  )?.witness;
+
+  if (!witness || witness.activationId === null) return yield* failure(code);
+
+  const row = (yield* ProfileDb.readRuleReleases(transaction, "posting_eligibility")).find(
+    (entry) => entry.id === witness.ruleReleaseId && entry.checksum === witness.ruleReleaseChecksum,
+  );
+
+  if (!row) return yield* failure(code);
+
+  const release = yield* Schema.decodeUnknownEffect(Profiles.RuleRelease)(row.body).pipe(
+    Effect.mapError(() => failure(code)),
+  );
+
+  if (
+    release.calculatorVersion !== "manual-journal-v1" ||
+    !release.requiredFactKinds.includes("accounting_method") ||
+    !release.requiredFactKinds.includes("base_currency") ||
+    release.applicability.accountingMethods.length === 0 ||
+    !release.applicability.baseCurrencies?.includes(book.currency)
+  )
+    return yield* failure(code);
+
+  const currentFacts = yield* ProfileDb.readFactRevisions(
+    transaction,
+    scope.entityId,
+    postingOn,
+    postingOn,
+  );
+
+  if (
+    currentFacts.some(
+      (fact) => fact.supersedesId !== null && witness.factRevisionIds.includes(fact.supersedesId),
+    )
+  )
+    return yield* failure(code);
+
+  const currencyRow = currentFacts.find(
+    (fact) => fact.factKind === "base_currency" && witness.factRevisionIds.includes(fact.id),
+  );
+
+  if (!currencyRow) return yield* failure(code);
+
+  const currency = yield* Schema.decodeUnknownEffect(Profiles.FactRevision)(currencyRow.body).pipe(
+    Effect.mapError(() => failure(code)),
+  );
+
+  if (
+    currency.factKind !== "base_currency" ||
+    currency.value.state !== "known" ||
+    currency.value.value !== book.currency
+  )
+    return yield* failure(code);
+
+  const membership = (yield* ProfileDb.readFamilyMembership(
+    transaction,
+    scope.bookId,
+    "posting_eligibility",
+  ))[0];
+
+  if (!membership) return yield* failure(code);
+
+  return yield* Schema.decodeUnknownEffect(ManualCompanyAdmission)({
+    witness,
+    membershipEpoch: membership.membershipEpoch.toString(),
+  }).pipe(Effect.mapError(() => failure(code)));
+});
+
+const retainedManualContext = Effect.fn("posting.retainedManualContext")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  plan: Plan,
+  owner?: PostingOwner,
+  allowCorrectionChild = false,
+) {
+  const attached = plan.groups.some((group) =>
+    group.actions.some((action) => action.manualCompanyAdmission !== undefined),
+  );
+
+  if (!attached) return undefined;
+
+  const action = plan.groups[0]?.actions[0];
+
+  if (
+    owner !== undefined ||
+    allowCorrectionChild ||
+    !equalJson(plan.scope, scope) ||
+    plan.groups.length !== 1 ||
+    plan.groups[0]?.actions.length !== 1 ||
+    !action ||
+    !isCompanyManualAction(action)
+  )
+    return yield* failure("UnsupportedProfile");
+
+  const receipts = yield* Db.readManualPreparation(transaction, scope.bookId, plan.id);
+
+  if (!receipts.some((receipt) => equalJson(receipt.result, plan)))
+    return yield* failure("UnsupportedProfile");
+
+  return manualJournalContext;
+});
+
+function supportsPostingProfile(
+  book: { currency: string; profile: string },
+  action: Action,
+  manualContext?: ManualContext,
+) {
+  if (action.currency !== book.currency) return false;
+
+  if (action.manualCompanyAdmission !== undefined) {
+    return (
+      manualContext === manualJournalContext &&
+      book.profile === "company-setup-v1" &&
+      isCompanyManualAction(action)
+    );
+  }
+
+  return book.profile === "synthetic-core-v1";
+}
+
+function validateActionWithContext(
   transaction: Transaction,
   scope: Scope,
   book: { currency: string; profile: string; authority: string },
@@ -315,13 +482,14 @@ export function validateAction(
   allowLegal = false,
   allowTransfer = false,
   allowAsset = false,
+  manualContext?: ManualContext,
 ) {
   return Effect.gen(function* () {
     const lines = validatePostingLines(action.lines);
 
     if (Result.isFailure(lines)) return yield* postingFailure(lines.failure.code);
 
-    if (action.currency !== book.currency || book.profile !== "synthetic-core-v1") {
+    if (!supportsPostingProfile(book, action, manualContext)) {
       return yield* failure("UnsupportedProfile");
     }
 
@@ -379,13 +547,34 @@ export function validateAction(
   });
 }
 
-export function validatePlan(
+export function validateAction(
+  transaction: Transaction,
+  scope: Scope,
+  book: { currency: string; profile: string; authority: string },
+  action: Action,
+  allowLegal = false,
+  allowTransfer = false,
+  allowAsset = false,
+) {
+  return validateActionWithContext(
+    transaction,
+    scope,
+    book,
+    action,
+    allowLegal,
+    allowTransfer,
+    allowAsset,
+  );
+}
+
+function validatePlanWithContext(
   transaction: Transaction,
   scope: Scope,
   plan: Plan,
   allowLegal = false,
   allowTransfer = false,
   allowAsset = false,
+  manualContext?: ManualContext,
 ) {
   return Effect.gen(function* () {
     const planWithoutDigest = Object.fromEntries(
@@ -402,6 +591,29 @@ export function validatePlan(
 
     if (Result.isFailure(groups)) return yield* failure("InvalidJournal");
     const book = yield* readBook(transaction, scope);
+
+    if (manualContext === manualJournalContext) {
+      const action = plan.groups[0]?.actions[0];
+
+      if (
+        plan.groups.length !== 1 ||
+        plan.groups[0]?.actions.length !== 1 ||
+        !action ||
+        !isCompanyManualAction(action)
+      )
+        return yield* failure("UnsupportedProfile");
+
+      const current = yield* readManualAdmission(
+        transaction,
+        scope,
+        book,
+        action.postingDate,
+        "StaleDependency",
+      );
+
+      if (!equalJson(action.manualCompanyAdmission, current))
+        return yield* failure("StaleDependency");
+    }
 
     const accountVersions = new Map(
       (yield* Db.readAccounts(
@@ -441,7 +653,7 @@ export function validatePlan(
 
       for (const action of storedGroup.actions) {
         const decodedAction = yield* decode(ActionSchema, action);
-        yield* validateAction(
+        yield* validateActionWithContext(
           transaction,
           scope,
           book,
@@ -449,11 +661,39 @@ export function validatePlan(
           allowLegal,
           allowTransfer,
           allowAsset,
+          manualContext,
         );
       }
     }
   });
 }
+
+export function validatePlan(
+  transaction: Transaction,
+  scope: Scope,
+  plan: Plan,
+  allowLegal = false,
+  allowTransfer = false,
+  allowAsset = false,
+) {
+  return validatePlanWithContext(transaction, scope, plan, allowLegal, allowTransfer, allowAsset);
+}
+
+export const validateManualJournalPlanInTransaction = Effect.fn(
+  "posting.validateManualJournalPlanInTransaction",
+)(function* (transaction: Transaction, scope: Scope, plan: Plan) {
+  const manualContext = yield* retainedManualContext(transaction, scope, plan);
+
+  return yield* validatePlanWithContext(
+    transaction,
+    scope,
+    plan,
+    false,
+    false,
+    false,
+    manualContext,
+  );
+});
 
 export function replay<A>(
   transaction: Transaction,
@@ -701,11 +941,12 @@ export const bookSetup = Effect.fn("posting.bookSetup")(function* (
           locked: row.locked,
         })),
         blockers:
-          book.profile === "synthetic-core-v1" && book.authority === "native"
+          (book.profile === "synthetic-core-v1" || book.profile === "company-setup-v1") &&
+          book.authority === "native"
             ? []
             : ["The book profile or writer authority is not supported."],
         warnings: [
-          "Manual journal entry is limited to the synthetic-core-v1 profile. Other operations have their own company-profile requirements.",
+          "Company manual journals require an activated dated manual-journal release. Other operations have their own company-profile requirements.",
           "This book has not been verified for live company accounting. Source completeness, archive recovery and statutory outcomes require separate evidence.",
         ],
       });
@@ -735,6 +976,25 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
         },
       );
 
+      const companyManualAvailable =
+        book.profile === "company-setup-v1" && book.authority === "native"
+          ? yield* readManualAdmission(
+              transaction,
+              command.scope,
+              book,
+              today,
+              "UnsupportedProfile",
+            ).pipe(
+              Effect.as(true),
+              Effect.catchIf(
+                (error) =>
+                  error instanceof Accounting.AccountingError &&
+                  error.code === "UnsupportedProfile",
+                () => Effect.succeed(false),
+              ),
+            )
+          : false;
+
       return yield* decode(BookStatusSchema, {
         scope: command.scope,
         profile: book.profile,
@@ -746,9 +1006,11 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
           {
             id: "journals",
             installed: true,
-            available: book.profile === "synthetic-core-v1" && book.authority === "native",
+            available:
+              (book.profile === "synthetic-core-v1" && book.authority === "native") ||
+              companyManualAvailable,
             limitation:
-              "Synthetic exact manual journals only; execution requires operator approval.",
+              "Exact manual journals only. Company journals require a dated activated manual release; execution requires operator approval. Source completeness and statutory outcomes remain separate.",
           },
           ...admission.families.map((family) => ({
             id: `company_profile:${family.family}`,
@@ -788,191 +1050,234 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
   );
 });
 
-export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTransaction")(
-  function* (
-    transaction: Transaction,
-    principal: Principal,
-    command: typeof import("@open-erp/contracts/capabilities").Capabilities.ledger_prepare_journal.input.Type,
-  ) {
-    return yield* Effect.gen(function* () {
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_journal",
-        principal.actorId,
-        command.input,
-        PlanSchema,
-      );
+const prepareJournalWithContext = Effect.fn("posting.prepareJournalWithContext")(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: PrepareJournalCommand,
+  manualContext?: ManualContext,
+) {
+  return yield* Effect.gen(function* () {
+    const book = yield* readBook(transaction, command.scope);
 
-      if (request.previous) return request.previous;
+    const request = yield* replay(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      "prepare_journal",
+      principal.actorId,
+      command.input,
+      PlanSchema,
+    );
 
-      const evidenceRows = yield* Db.readEvidence(
+    if (request.previous) {
+      if (
+        manualContext !== manualJournalContext &&
+        request.previous.groups.some((group) =>
+          group.actions.some((action) => action.manualCompanyAdmission !== undefined),
+        )
+      )
+        return yield* failure("UnsupportedProfile");
+
+      return request.previous;
+    }
+
+    if (book.profile === "company-setup-v1" && manualContext !== manualJournalContext)
+      return yield* failure("UnsupportedProfile");
+
+    const evidenceRows = yield* Db.readEvidence(
+      transaction,
+      command.scope.bookId,
+      command.input.evidenceId,
+    );
+
+    const source = evidenceRows[0];
+
+    if (!source) return yield* failure("MissingEvidence");
+
+    const admission =
+      book.profile === "company-setup-v1"
+        ? yield* readManualAdmission(
+            transaction,
+            command.scope,
+            book,
+            command.input.postingDate,
+            "UnsupportedProfile",
+          )
+        : undefined;
+
+    const period = yield* readPeriod(transaction, command.scope, command.input.accountingPeriodId);
+
+    const eventRows = yield* Db.readEvent(
+      transaction,
+      command.scope.bookId,
+      source.id,
+      command.input.eventKey,
+    );
+
+    const eventId = eventRows[0]?.id ?? newId("event");
+
+    if (eventRows.length === 0) {
+      yield* Db.insertEvent(
         transaction,
         command.scope.bookId,
-        command.input.evidenceId,
-      );
-
-      const source = evidenceRows[0];
-
-      if (!source) return yield* failure("MissingEvidence");
-      const book = yield* readBook(transaction, command.scope);
-
-      const period = yield* readPeriod(
-        transaction,
-        command.scope,
-        command.input.accountingPeriodId,
-      );
-
-      const eventRows = yield* Db.readEvent(
-        transaction,
-        command.scope.bookId,
+        eventId,
         source.id,
         command.input.eventKey,
       );
+    }
 
-      const eventId = eventRows[0]?.id ?? newId("event");
+    const actionFields = {
+      kind: "post_voucher" as const,
+      correctsVoucherId: null,
+      eventId,
+      postingPurpose: "adjustment" as const,
+      occurrenceKey: "manual_journal",
+      fiscalYearId: period.fiscalYearId,
+      accountingPeriodId: command.input.accountingPeriodId,
+      postingDate: command.input.postingDate,
+      series: command.input.series,
+      currency: book.currency,
+      description: command.input.description,
+      rationale: command.input.rationale,
+      taxAssessment: command.input.taxAssessment,
+      lines: command.input.lines.map((line) => ({ ...line, lineId: newId("line") })),
+      evidenceRefs: [
+        {
+          evidenceId: source.id,
+          sha256: source.sha256,
+          locator: command.input.eventKey,
+        },
+      ],
+    };
 
-      if (eventRows.length === 0) {
-        yield* Db.insertEvent(
-          transaction,
-          command.scope.bookId,
-          eventId,
-          source.id,
-          command.input.eventKey,
-        );
-      }
+    // A reviewed dimension policy travels with the proposal. A book with no
+    // dimension effective at the posting date carries none, and a line with
+    // none keeps exactly the shape it had.
+    const reviewed = command.input.dimensionPolicy;
 
-      const actionFields = {
-        kind: "post_voucher" as const,
-        correctsVoucherId: null,
-        eventId,
-        postingPurpose: "adjustment" as const,
-        occurrenceKey: "manual_journal",
-        fiscalYearId: period.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: command.input.postingDate,
-        series: command.input.series,
-        currency: book.currency,
-        description: command.input.description,
-        rationale: command.input.rationale,
-        taxAssessment: command.input.taxAssessment,
-        lines: command.input.lines.map((line) => ({ ...line, lineId: newId("line") })),
-        evidenceRefs: [
-          {
-            evidenceId: source.id,
-            sha256: source.sha256,
-            locator: command.input.eventKey,
-          },
-        ],
-      };
+    let actionValue: typeof Accounting.PostingAction.Type = actionFields;
 
-      // A reviewed dimension policy travels with the proposal. A book with no
-      // dimension effective at the posting date carries none, and a line with
-      // none keeps exactly the shape it had.
-      const reviewed = command.input.dimensionPolicy;
+    if (reviewed) actionValue = { ...actionValue, dimensionPolicy: [...reviewed] };
 
-      const actionValue = reviewed
-        ? { ...actionFields, dimensionPolicy: [...reviewed] }
-        : actionFields;
+    if (admission) actionValue = { ...actionValue, manualCompanyAdmission: admission };
 
-      const action = yield* decode(ActionSchema, actionValue);
+    const action = yield* decode(ActionSchema, actionValue);
 
-      yield* validateAction(transaction, command.scope, book, action);
+    yield* validateActionWithContext(
+      transaction,
+      command.scope,
+      book,
+      action,
+      false,
+      false,
+      false,
+      manualContext,
+    );
 
-      // NEXT-14. Resolve and seal the original dimension assignment of every
-      // line before the proposal is hashed, so approval covers exactly the
-      // assignment set execution will retain.
-      const assigned = yield* resolveAssignmentsInTransaction(transaction, command.scope, action);
+    // NEXT-14. Resolve and seal the original dimension assignment of every
+    // line before the proposal is hashed, so approval covers exactly the
+    // assignment set execution will retain.
+    const assigned = yield* resolveAssignmentsInTransaction(transaction, command.scope, action);
 
-      const createdAt = yield* isoNow(transaction);
-      const changeSetId = newId("change");
-      const groupId = newId("group");
+    const createdAt = yield* isoNow(transaction);
+    const changeSetId = newId("change");
+    const groupId = newId("group");
 
-      const planValue = {
-        schemaVersion: "1" as const,
-        canonicalization: "openerp-c14n-v1" as const,
-        id: changeSetId,
-        version: 1 as const,
-        scope: command.scope,
-        createdAt,
-        dependencies: [
-          {
-            kind: "profile" as const,
-            resourceId: book.id,
-            version: book.profileVersion.toString(),
-            reason: "Book currency and supported profile",
-          },
-          {
-            kind: "writer_epoch" as const,
-            resourceId: book.id,
-            version: book.writerEpoch.toString(),
-            reason: "Single authoritative writer",
-          },
-          {
-            kind: "period" as const,
-            resourceId: period.id,
-            version: period.version.toString(),
-            reason: "Posting dates and lock state",
-          },
-        ],
-        groups: [
-          {
-            id: groupId,
-            dependsOnGroupIds: [],
-            actions: [assigned],
-          },
-        ],
-      };
+    const planValue = {
+      schemaVersion: "1" as const,
+      canonicalization: "openerp-c14n-v1" as const,
+      id: changeSetId,
+      version: 1 as const,
+      scope: command.scope,
+      createdAt,
+      dependencies: [
+        {
+          kind: "profile" as const,
+          resourceId: book.id,
+          version: book.profileVersion.toString(),
+          reason: "Book currency and supported profile",
+        },
+        {
+          kind: "writer_epoch" as const,
+          resourceId: book.id,
+          version: book.writerEpoch.toString(),
+          reason: "Single authoritative writer",
+        },
+        {
+          kind: "period" as const,
+          resourceId: period.id,
+          version: period.version.toString(),
+          reason: "Posting dates and lock state",
+        },
+      ],
+      groups: [
+        {
+          id: groupId,
+          dependsOnGroupIds: [],
+          actions: [assigned],
+        },
+      ],
+    };
 
-      const accountRows = yield* Db.readAccounts(
-        transaction,
-        command.scope.bookId,
-        assigned.lines.map((line) => line.accountId),
-      );
+    const accountRows = yield* Db.readAccounts(
+      transaction,
+      command.scope.bookId,
+      assigned.lines.map((line) => line.accountId),
+    );
 
-      const accountDependencies = accountRows.map((account) => ({
-        kind: "account" as const,
-        resourceId: account.id,
-        version: account.version.toString(),
-        reason: "Exact account configuration",
-      }));
+    const accountDependencies = accountRows.map((account) => ({
+      kind: "account" as const,
+      resourceId: account.id,
+      version: account.version.toString(),
+      reason: "Exact account configuration",
+    }));
 
-      const planWithoutDigest = {
-        ...planValue,
-        dependencies: [...planValue.dependencies, ...accountDependencies],
-      };
+    const planWithoutDigest = {
+      ...planValue,
+      dependencies: [...planValue.dependencies, ...accountDependencies],
+    };
 
-      const planDigest = yield* versionedDigest(planWithoutDigest);
-      const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
-      yield* Db.insertPlan(transaction, {
-        bookId: command.scope.bookId,
-        id: changeSetId,
-        plan,
-        digest: planDigest,
-        createdBy: principal.actorId,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_journal",
-        principal.actorId,
-        plan,
-      );
-
-      return plan;
+    const planDigest = yield* versionedDigest(planWithoutDigest);
+    const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
+    yield* Db.insertPlan(transaction, {
+      bookId: command.scope.bookId,
+      id: changeSetId,
+      plan,
+      digest: planDigest,
+      createdBy: principal.actorId,
     });
+    yield* saveCommand(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      request.expected,
+      "prepare_journal",
+      principal.actorId,
+      plan,
+    );
+
+    return plan;
+  });
+});
+
+export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTransaction")(
+  function* (transaction: Transaction, principal: Principal, command: PrepareJournalCommand) {
+    return yield* prepareJournalWithContext(transaction, principal, command);
   },
 );
+
+export const prepareManualJournalInTransaction = Effect.fn(
+  "posting.prepareManualJournalInTransaction",
+)(function* (transaction: Transaction, principal: Principal, command: PrepareJournalCommand) {
+  return yield* prepareJournalWithContext(transaction, principal, command, manualJournalContext);
+});
 
 export const prepareJournal = Effect.fn("posting.prepareJournal")(function* (
   token: string,
   command: typeof import("@open-erp/contracts/capabilities").Capabilities.ledger_prepare_journal.input.Type,
 ) {
   return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
-    prepareJournalInTransaction(transaction, principal, command),
+    prepareManualJournalInTransaction(transaction, principal, command),
   );
 });
 
@@ -999,6 +1304,9 @@ export const validateChange = Effect.fn("posting.validateChange")(function* (
 ) {
   return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
+      const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
+      const manualContext = yield* retainedManualContext(transaction, command.scope, plan);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1010,8 +1318,15 @@ export const validateChange = Effect.fn("posting.validateChange")(function* (
       );
 
       if (request.previous) return request.previous;
-      const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
-      yield* validatePlan(transaction, command.scope, plan);
+      yield* validatePlanWithContext(
+        transaction,
+        command.scope,
+        plan,
+        false,
+        false,
+        false,
+        manualContext,
+      );
 
       const result = {
         changeSetId: plan.id,
@@ -1049,6 +1364,15 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
     },
   ) {
     return yield* Effect.gen(function* () {
+      const retained = yield* readPlan(transaction, command.scope, command.changeSetId);
+
+      const manualContext = yield* retainedManualContext(
+        transaction,
+        command.scope,
+        retained,
+        command.owner,
+      );
+
       yield* admitRetainedPlanOwnership(transaction, command);
 
       yield* readSupplierPostingReservation(transaction, command);
@@ -1087,16 +1411,17 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         return yield* failure("StaleDependency");
       }
 
-      yield* validatePlan(
+      yield* validatePlanWithContext(
         transaction,
         command.scope,
         plan,
         command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
         command.owner?.kind === "financial_close",
         isAssetProceedsOwner(command.owner),
+        manualContext,
       );
 
-      if (command.owner !== undefined) {
+      if (command.owner !== undefined || manualContext === manualJournalContext) {
         for (const group of plan.groups) {
           for (const action of group.actions) {
             yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
@@ -1281,6 +1606,16 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
   },
 ) {
   return yield* Effect.gen(function* () {
+    const retained = yield* readPlan(transaction, command.scope, command.changeSetId);
+
+    const manualContext = yield* retainedManualContext(
+      transaction,
+      command.scope,
+      retained,
+      command.owner,
+      command.allowCorrectionChild === true,
+    );
+
     yield* admitRetainedPlanOwnership(transaction, command);
 
     const settlement = yield* readSupplierPostingReservation(transaction, command);
@@ -1333,13 +1668,14 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
 
     if (!group || !actionValue) return yield* failure("InvalidJournal");
     const action = yield* decode(ActionSchema, actionValue);
-    yield* validatePlan(
+    yield* validatePlanWithContext(
       transaction,
       command.scope,
       plan,
       command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
       command.owner?.kind === "financial_close",
       isAssetProceedsOwner(command.owner),
+      manualContext,
     );
     yield* assertPlanUnposted(transaction, command.scope, plan);
     yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
@@ -1616,6 +1952,11 @@ export function sealActionInTransaction(
 
 export const prepareCorrectionInTransaction = Effect.fn("posting.prepareCorrectionInTransaction")(
   function* (transaction: Transaction, principal: Principal, command: CorrectionCommand) {
+    const original = yield* readVoucher(transaction, command.scope, command.voucherId);
+
+    if (original.action.manualCompanyAdmission !== undefined)
+      return yield* failure("UnsupportedProfile");
+
     const owned = (yield* SupplierSettlementDb.readReceiptByVoucher(
       transaction,
       command.scope.bookId,
@@ -1639,7 +1980,6 @@ export const prepareCorrectionInTransaction = Effect.fn("posting.prepareCorrecti
     );
 
     if (request.previous) return request.previous;
-    const original = yield* readVoucher(transaction, command.scope, command.voucherId);
 
     if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
 

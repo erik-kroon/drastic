@@ -14,10 +14,10 @@ import {
   executeChangeInTransaction,
   isoNow,
   newId,
-  prepareJournalInTransaction,
+  prepareManualJournalInTransaction,
   replay,
   saveCommand,
-  validatePlan,
+  validateManualJournalPlanInTransaction,
 } from "./posting";
 import * as Db from "../db/posting";
 import * as RecoveryDb from "../db/posting-recovery";
@@ -425,7 +425,7 @@ function runSavedCommand(
     if (command.operation === "prepare_journal") {
       return {
         operation: command.operation,
-        result: yield* prepareJournalInTransaction(transaction, principal, {
+        result: yield* prepareManualJournalInTransaction(transaction, principal, {
           scope,
           idempotencyKey: commandKey,
           input: command.input,
@@ -749,7 +749,11 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
       const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
       const summary = yield* recoverySummary(transaction, command.scope, plan, planRow.createdBy);
 
-      const validation = yield* validatePlan(transaction, command.scope, plan).pipe(
+      const validation = yield* validateManualJournalPlanInTransaction(
+        transaction,
+        command.scope,
+        plan,
+      ).pipe(
         Effect.asVoid,
         Effect.mapError(databaseFailure),
         Effect.match({

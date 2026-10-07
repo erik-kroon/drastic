@@ -156,7 +156,7 @@ const AccountingApi = HttpApiGroup.make("accounting").add(
     ...mutation,
     payload: Accounting.PrepareJournal.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: Accounting.ChangeSet,
-  }),
+  }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   HttpApiEndpoint.get("getChange", `${bookPath}/change-sets/:id`, {
     ...identified,
     success: Accounting.ChangeSet,

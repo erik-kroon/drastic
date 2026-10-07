@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { Identifier, AccountingDate, Description, Digest, Scope } from "./values";
+import { Identifier, AccountingDate, CalendarDate, Description, Digest, Scope } from "./values";
 import { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "./money";
 import { DimensionPolicy, OriginalDimensionAssignment } from "./dimensions";
 
@@ -48,7 +48,36 @@ export const DependencyVersion = Schema.Struct({
   version: Schema.String,
 });
 
-export const PostingAction = Schema.Struct({
+export const ManualCompanyAdmission = Schema.Struct({
+  witness: Schema.Struct({
+    family: Schema.Literal("posting_eligibility"),
+    recordClass: Schema.Literal("actual_company"),
+    dates: Schema.Struct({
+      postingOn: CalendarDate,
+      taxPointOn: Schema.Null,
+      paymentOn: Schema.Null,
+      reportOn: Schema.Null,
+      taxPeriodOn: Schema.Null,
+    }),
+    selectorDate: CalendarDate,
+    jurisdiction: Schema.String.check(Schema.isPattern(/^[A-Z]{2}$/)),
+    ruleReleaseId: Identifier,
+    ruleReleaseChecksum: Digest,
+    factRevisionIds: Schema.Array(Identifier).check(Schema.isMaxLength(40)),
+    factReviewIds: Schema.Array(Identifier).check(Schema.isMaxLength(40)),
+    roleBindingIds: Schema.Array(Identifier).check(Schema.isMaxLength(20)),
+    activationId: Identifier,
+  }),
+  membershipEpoch: Schema.String.check(Schema.isPattern(/^[1-9][0-9]*$/)),
+}).check(
+  Schema.makeFilter(
+    (admission) =>
+      admission.witness.selectorDate === admission.witness.dates.postingOn ||
+      "Manual admission must select the posting date.",
+  ),
+);
+
+const PostingActionSchema = Schema.Struct({
   kind: Schema.Literal("post_voucher"),
   correctsVoucherId: Schema.NullOr(Identifier),
   eventId: Identifier,
@@ -62,6 +91,7 @@ export const PostingAction = Schema.Struct({
   description: Description,
   rationale: Description,
   taxAssessment: Schema.Literal("not_applicable"),
+  manualCompanyAdmission: Schema.optional(ManualCompanyAdmission),
   // NEXT-14. The reviewed requirement for each dimension effective at the
   // posting date. It is sealed into the plan so approval covers it, and the
   // resolved original assignments travel with each line. A dimension the policy
@@ -81,6 +111,34 @@ export const PostingAction = Schema.Struct({
     Schema.Struct({ evidenceId: Identifier, sha256: Schema.String, locator: Schema.String }),
   ),
 });
+
+function manualAdmissionMatches(action: typeof PostingActionSchema.Type) {
+  return (
+    action.manualCompanyAdmission === undefined ||
+    (action.postingPurpose === "adjustment" &&
+      action.correctsVoucherId === null &&
+      action.occurrenceKey === "manual_journal" &&
+      action.vatReclassification === undefined &&
+      action.manualCompanyAdmission.witness.selectorDate === action.postingDate)
+  );
+}
+
+export const PostingAction = PostingActionSchema.check(
+  Schema.makeFilter(
+    (action) =>
+      manualAdmissionMatches(action) ||
+      "Company manual admission cannot authorize another posting action.",
+  ),
+);
+
+function ownedAdmissionAbsent(action: {
+  readonly manualCompanyAdmission?: typeof ManualCompanyAdmission.Type;
+}) {
+  return (
+    action.manualCompanyAdmission === undefined ||
+    "Company manual admission cannot authorize an owned posting action."
+  );
+}
 
 // Read-only legal AR variant. Generic manual journal admission remains PostingAction and
 // the SQL inspect_action restriction remains synthetic-only.
@@ -104,7 +162,7 @@ export const LegalArPostingAction = Schema.Struct({
     netMinor: MinorUnits,
     taxMinor: MinorUnits,
   }),
-});
+}).check(Schema.makeFilter(ownedAdmissionAbsent));
 
 // Read-only legal customer credit variant. It reverses already recognized
 // revenue and output VAT against the same receivable control and never opens a
@@ -150,13 +208,19 @@ export const LegalCustomerCreditPostingAction = Schema.Struct({
     netMinor: MinorUnits,
     taxMinor: MinorUnits,
   }),
-});
+}).check(Schema.makeFilter(ownedAdmissionAbsent));
 
 const SyntheticVoucherAction = Schema.Struct({
   ...PostingAction.fields,
   legalIssue: Schema.optional(Schema.Null),
   legalCredit: Schema.optional(Schema.Null),
-});
+}).check(
+  Schema.makeFilter(
+    (action) =>
+      manualAdmissionMatches(action) ||
+      "Company manual admission cannot authorize another posting action.",
+  ),
+);
 
 // Financial-close result-transfer variant (NEXT-23). It moves exactly the
 // sealed transfer delta from the nominal result-transfer role to the
@@ -183,7 +247,7 @@ export const ResultTransferPostingAction = Schema.Struct({
     fiscalYearId: Identifier,
     deltaMinor: SignedMinorUnits,
   }),
-});
+}).check(Schema.makeFilter(ownedAdmissionAbsent));
 
 export const AssetProceedsPostingAction = Schema.Struct({
   ...PostingAction.fields,
@@ -197,7 +261,7 @@ export const AssetProceedsPostingAction = Schema.Struct({
     vatMinor: MinorUnits,
     correctionOf: Schema.Null,
   }),
-});
+}).check(Schema.makeFilter(ownedAdmissionAbsent));
 
 export const VoucherPostingAction = Schema.Union([
   SyntheticVoucherAction,
