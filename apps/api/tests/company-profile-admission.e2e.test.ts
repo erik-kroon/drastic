@@ -22,6 +22,14 @@ import {
 
 const path = "/company-activation-plans";
 
+const actualProfilePath = `/company-profile?${new URLSearchParams({
+  recordClass: "actual_company",
+  postingOn: "2026-09-22",
+  taxPointOn: "2026-09-22",
+  paymentOn: "2026-09-22",
+  reportOn: "2026-09-22",
+})}`;
+
 const input: typeof Profiles.PrepareCompanyActivation.Type = {
   family: "posting_eligibility",
   recordClass: "synthetic",
@@ -37,16 +45,51 @@ const input: typeof Profiles.PrepareCompanyActivation.Type = {
   reason: "Synthetic authenticated activation admission",
 };
 
-async function prepared() {
+function qualificationDossier(artifact: { id: string; sha256: string }) {
+  const releaseChecksum = `sha256:${"a".repeat(64)}`;
+  const reference = { artifactId: artifact.id, sha256: `sha256:${artifact.sha256}` };
+
+  return {
+    releaseChecksum,
+    primarySources: [
+      {
+        publisherUrl: "https://example.invalid/synthetic-company-rule",
+        version: "synthetic-2026-v1",
+        sha256: `sha256:${artifact.sha256}`,
+        retrievedAt: "2026-10-01T10:00:00.000Z",
+        effectiveFrom: "2026-01-01",
+        effectiveTo: "2026-12-31",
+      },
+    ],
+    reviewer: "Synthetic independent rule reviewer",
+    reviewedAt: "2026-10-02T10:00:00.000Z",
+    reviewArtifact: reference,
+    examples: [{ ...reference, releaseChecksum }],
+    counterexamples: [{ ...reference, releaseChecksum }],
+  };
+}
+
+type QualificationFixture = {
+  jurisdiction: string;
+  qualification?: (artifact: { id: string; sha256: string }) => Schema.JsonObject;
+};
+
+async function prepared(configuration?: QualificationFixture) {
   const book = await fixture();
   const independent = await fixture();
   const reviewer = { ...book, actorId: independent.actorId, token: independent.token };
   const source = await evidence(book);
-  const admin = await database();
+  const jurisdiction = configuration?.jurisdiction ?? "QY";
 
-  const release = {
-    id: "company_activation_synthetic_v1",
-    jurisdiction: "QY",
+  const recordClass: typeof Profiles.RecordClass.Type =
+    configuration === undefined ? "synthetic" : "actual_company";
+
+  const baseRelease = {
+    id:
+      configuration === undefined
+        ? "company_activation_synthetic_v1"
+        : `company_qualification_${jurisdiction.toLowerCase()}_v1`,
+    jurisdiction,
     family: "posting_eligibility",
     version: 1,
     checksum: `sha256:${"a".repeat(64)}`,
@@ -64,8 +107,19 @@ async function prepared() {
     validTo: "2026-12-31",
     sourceManifest: "Synthetic QY jurisdiction fixture; no company or statutory claim",
     qualificationStatus: "reviewed",
-    recordClasses: ["synthetic"],
+    recordClasses: [recordClass],
+  } satisfies typeof Profiles.RuleRelease.Type;
+
+  Schema.decodeSync(Profiles.RuleRelease)(baseRelease);
+
+  const release = {
+    ...baseRelease,
+    ...(configuration?.qualification === undefined
+      ? {}
+      : { qualification: configuration.qualification(source) }),
   };
+
+  const admin = await database();
 
   try {
     await admin.query(
@@ -73,8 +127,8 @@ async function prepared() {
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QY','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
-      [release.id, release.checksum, release],
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,$2,'posting_eligibility',1,$3,$4) on conflict(id) do nothing",
+      [release.id, jurisdiction, release.checksum, release],
     );
   } finally {
     await admin.end();
@@ -83,7 +137,7 @@ async function prepared() {
   const facts: Array<typeof Profiles.FactRevision.Type> = [];
 
   for (const declaration of [
-    { factKind: "jurisdiction", value: { state: "known", value: "QY" } },
+    { factKind: "jurisdiction", value: { state: "known", value: jurisdiction } },
     { factKind: "accounting_method", value: { state: "known", value: "accrual" } },
   ]) {
     const fact = await post(
@@ -130,7 +184,7 @@ async function prepared() {
     Profiles.RoleBinding,
   );
 
-  return { book, reviewer, source, facts };
+  return { book, reviewer, source, facts, release };
 }
 
 function canonical(value: Schema.Json): string {
@@ -210,6 +264,231 @@ function execution(
     body: JSON.stringify({ planDigest: plan.digest, approvalId: approval.id }),
   };
 }
+
+const qualificationFailures: ReadonlyArray<QualificationFixture & { name: string }> = [
+  { name: "missing dossier", jurisdiction: "ZA" },
+  {
+    name: "mismatched release checksum",
+    jurisdiction: "ZB",
+    qualification: (artifact) => ({
+      ...qualificationDossier(artifact),
+      releaseChecksum: `sha256:${"b".repeat(64)}`,
+    }),
+  },
+  {
+    name: "example for another release",
+    jurisdiction: "ZC",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        examples: dossier.examples.map((example) => ({
+          ...example,
+          releaseChecksum: `sha256:${"b".repeat(64)}`,
+        })),
+      };
+    },
+  },
+  {
+    name: "counterexample for another release",
+    jurisdiction: "ZD",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        counterexamples: dossier.counterexamples.map((example) => ({
+          ...example,
+          releaseChecksum: `sha256:${"b".repeat(64)}`,
+        })),
+      };
+    },
+  },
+  {
+    name: "passed flag without review artifact",
+    jurisdiction: "ZE",
+    qualification: (artifact) => ({
+      ...qualificationDossier(artifact),
+      reviewArtifact: { passed: true },
+    }),
+  },
+  {
+    name: "empty primary source inventory",
+    jurisdiction: "ZF",
+    qualification: (artifact) => ({ ...qualificationDossier(artifact), primarySources: [] }),
+  },
+  {
+    name: "invalid primary source URL",
+    jurisdiction: "ZG",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        primarySources: dossier.primarySources.map((source) => ({
+          ...source,
+          publisherUrl: "local-unverified-source",
+        })),
+      };
+    },
+  },
+  {
+    name: "source interval excludes release validity",
+    jurisdiction: "ZH",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        primarySources: dossier.primarySources.map((source) => ({
+          ...source,
+          effectiveTo: "2026-08-31",
+        })),
+      };
+    },
+  },
+  {
+    name: "invalid retrieval timestamp",
+    jurisdiction: "ZI",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        primarySources: dossier.primarySources.map((source) => ({
+          ...source,
+          retrievedAt: "2026-02-30T10:00:00.000Z",
+        })),
+      };
+    },
+  },
+  {
+    name: "invalid review timestamp",
+    jurisdiction: "ZJ",
+    qualification: (artifact) => ({
+      ...qualificationDossier(artifact),
+      reviewedAt: "not-a-timestamp",
+    }),
+  },
+  {
+    name: "blank reviewer",
+    jurisdiction: "ZK",
+    qualification: (artifact) => ({ ...qualificationDossier(artifact), reviewer: " " }),
+  },
+  {
+    name: "missing independent examples",
+    jurisdiction: "ZL",
+    qualification: (artifact) => ({ ...qualificationDossier(artifact), examples: [] }),
+  },
+];
+
+test.each(qualificationFailures)(
+  "actual-company rule qualification refuses $name without partial admission",
+  async (configuration) => {
+    const { book } = await prepared(configuration);
+    const before = await counts(book);
+    const profile = await decoded(await request(book, actualProfilePath), Profiles.CompanyProfile);
+    const posting = profile.families.find((family) => family.family === "posting_eligibility");
+
+    expect(posting?.status).toBe("incomplete");
+    expect(posting?.witness).toBeNull();
+    expect(posting?.gaps.map((gap) => gap.state)).toEqual(["missing_rule_release"]);
+
+    const refusal = await refuse(
+      book,
+      path,
+      { method: "POST", body: JSON.stringify({ ...input, recordClass: "actual_company" }) },
+      422,
+      "UnsupportedProfile",
+    );
+
+    const after = await counts(book);
+
+    expect(after).toEqual(before);
+    await save(`company-qualification-${configuration.jurisdiction}`, {
+      failureCase: configuration.name,
+      profile,
+      before,
+      refusal,
+      after,
+    });
+  },
+);
+
+test("structured actual-company rule qualification resolves and keeps date and account guards", async () => {
+  const { book, reviewer, release } = await prepared({
+    jurisdiction: "ZM",
+    qualification: qualificationDossier,
+  });
+
+  const profile = await decoded(await request(book, actualProfilePath), Profiles.CompanyProfile);
+  const posting = profile.families.find((family) => family.family === "posting_eligibility");
+
+  expect(posting?.status).toBe("resolved");
+  expect(posting?.witness?.recordClass).toBe("actual_company");
+  expect(posting?.witness?.ruleReleaseId).toBe("company_qualification_zm_v1");
+  expect(posting?.witness?.ruleReleaseChecksum).toBe(`sha256:${"a".repeat(64)}`);
+
+  const plan = await post(
+    book,
+    path,
+    { ...input, recordClass: "actual_company" },
+    Profiles.CompanyActivationPlan,
+  );
+
+  const approval = await approve(reviewer, plan);
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "update openerp.accounts set version=version+1 where book_id=$1 and id='account_clearing'",
+      [book.bookId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  const before = await counts(book);
+
+  const staleAccount = await refuse(
+    book,
+    `${path}/${plan.id}/executions`,
+    execution(plan, approval),
+    409,
+    "StaleDependency",
+  );
+
+  const outsideValidity = await refuse(
+    book,
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...input,
+        recordClass: "actual_company",
+        dates: { ...input.dates, postingOn: "2027-01-01" },
+      }),
+    },
+    422,
+    "UnsupportedProfile",
+  );
+
+  const after = await counts(book);
+
+  expect(after).toEqual(before);
+  expect(after.admission.activations).toBe(0);
+  await save("company-qualification-valid", {
+    release,
+    profile,
+    plan,
+    approval,
+    before,
+    staleAccount,
+    outsideValidity,
+    after,
+  });
+});
 
 test("company activation seals authenticated actor and database time, executes without journal and recovers unread response", async () => {
   const { book, reviewer } = await prepared();

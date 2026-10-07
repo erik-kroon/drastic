@@ -541,6 +541,87 @@ export const ReleaseApplicability = Schema.Struct({
   payrollRegistrations: Schema.Array(Registration),
 });
 
+const QualificationText = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(200),
+  Schema.makeFilter((value) => value.trim().length > 0 || "Qualification text must not be blank."),
+);
+
+const QualificationTimestamp = Schema.String.check(
+  Schema.isPattern(
+    /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/,
+  ),
+  Schema.makeFilter(
+    (value) =>
+      (Accounting.isCalendarDate(value.slice(0, 10)) && Number.isFinite(Date.parse(value))) ||
+      "Enter a valid qualification timestamp with a time zone.",
+  ),
+);
+
+const QualificationArtifact = Schema.Struct({
+  artifactId: Accounting.Identifier,
+  sha256: Accounting.Digest,
+});
+
+const RulePrimarySource = Schema.Struct({
+  publisherUrl: Schema.String.check(
+    Schema.isMaxLength(2048),
+    Schema.makeFilter((value) => {
+      try {
+        const url = new URL(value);
+
+        return (
+          (value === value.trim() && (url.protocol === "https:" || url.protocol === "http:")) ||
+          "Enter an HTTP or HTTPS publisher URL."
+        );
+      } catch {
+        return "Enter an HTTP or HTTPS publisher URL.";
+      }
+    }),
+  ),
+  version: QualificationText,
+  sha256: Accounting.Digest,
+  retrievedAt: QualificationTimestamp,
+  effectiveFrom: Accounting.CalendarDate,
+  effectiveTo: Accounting.CalendarDate,
+}).check(
+  Schema.makeFilter(
+    (source) =>
+      source.effectiveFrom <= source.effectiveTo || "The source effective interval is reversed.",
+  ),
+);
+
+const RuleQualificationExample = Schema.Struct({
+  ...QualificationArtifact.fields,
+  releaseChecksum: Accounting.Digest,
+});
+
+export const RuleReleaseQualification = Schema.Struct({
+  releaseChecksum: Accounting.Digest,
+  primarySources: Schema.Array(RulePrimarySource).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(20),
+  ),
+  reviewer: QualificationText,
+  reviewedAt: QualificationTimestamp,
+  reviewArtifact: QualificationArtifact,
+  examples: Schema.Array(RuleQualificationExample).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(100),
+  ),
+  counterexamples: Schema.Array(RuleQualificationExample).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(100),
+  ),
+}).check(
+  Schema.makeFilter(
+    (qualification) =>
+      [...qualification.examples, ...qualification.counterexamples].every(
+        (example) => example.releaseChecksum === qualification.releaseChecksum,
+      ) || "Every example and counterexample must cite the qualified release checksum.",
+  ),
+);
+
 export const RuleRelease = Schema.Struct({
   id: Accounting.Identifier,
   jurisdiction: Jurisdiction,
@@ -560,6 +641,7 @@ export const RuleRelease = Schema.Struct({
   sourceManifest: Accounting.Description,
   qualificationStatus: Schema.Literals(["reviewed", "withdrawn"]),
   recordClasses: Schema.Array(RecordClass).check(Schema.isMinLength(1), Schema.isMaxLength(2)),
+  qualification: Schema.optional(RuleReleaseQualification),
   // A family carries its own reviewed executable content in this one release
   // record. The payroll family's tables, decisions, contribution bands and
   // holiday policy live here, so there is exactly one rule-release authority.
@@ -575,6 +657,18 @@ export const RuleRelease = Schema.Struct({
   Schema.makeFilter(
     (release) =>
       release.validFrom <= release.validTo || "A release must be valid until at least its start.",
+  ),
+  Schema.makeFilter(
+    (release) =>
+      release.qualification === undefined ||
+      (Accounting.isCalendarDate(release.validFrom) &&
+        Accounting.isCalendarDate(release.validTo) &&
+        release.qualification.releaseChecksum === release.checksum &&
+        release.qualification.primarySources.every(
+          (source) =>
+            source.effectiveFrom <= release.validFrom && source.effectiveTo >= release.validTo,
+        )) ||
+      "Qualification must cite this release checksum and sources covering its valid interval.",
   ),
 );
 

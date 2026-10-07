@@ -281,6 +281,7 @@ function qualifies(entry: Release, input: WitnessInput, jurisdiction: string) {
     entry.row.family === input.family &&
     entry.release.qualificationStatus === "reviewed" &&
     entry.release.recordClasses.includes(input.recordClass) &&
+    (input.recordClass !== "actual_company" || entry.release.qualification !== undefined) &&
     entry.release.validFrom <= input.date &&
     input.date <= entry.release.validTo
   );
