@@ -59,7 +59,7 @@ const styles = stylex.create({
     borderColor: tokens.input,
     borderRadius: tokens.radiusControl,
     backgroundColor: tokens.card,
-    color: tokens.foreground,
+    color: tokens.reviewText,
     fontFamily: "inherit",
     fontSize: tokens.fontSizeControl,
     lineHeight: tokens.lineHeight16Px,
@@ -136,11 +136,18 @@ const styles = stylex.create({
     color: tokens.mutedForeground,
   },
   refusal: {
+    "--foreground": tokens.reviewText,
     flexDirection: "column",
     alignItems: "stretch",
     paddingInline: tokens.space16,
     gap: tokens.space3,
-    color: tokens.foreground,
+    color: tokens.reviewText,
+  },
+  preparedPlan: {
+    "--foreground": tokens.reviewText,
+    color: tokens.reviewText,
+    display: "grid",
+    gap: tokens.space3,
   },
   refusalAction: { paddingBlockStart: tokens.space2 },
   refusalTitle: {
@@ -265,6 +272,10 @@ export function BankReviewFacts({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.facts)}>{children}</div>;
 }
 
+export function BankReviewPreparedPlan({ children }: { children: ReactNode }) {
+  return <div {...stylex.props(styles.preparedPlan)}>{children}</div>;
+}
+
 export function BankReviewFooter({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.footer)}>{children}</div>;
 }
@@ -371,9 +382,17 @@ export function BankReviewWarning({
   );
 }
 
-export function BankReviewFact({ label, children }: { label: ReactNode; children: ReactNode }) {
+export function BankReviewFact({
+  label,
+  children,
+  align = "baseline",
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  align?: "baseline" | "center";
+}) {
   return (
-    <div {...stylex.props(styles.row)}>
+    <div {...stylex.props(styles.row, align === "center" && styles.headingRow)}>
       <span>{label}</span>
       <span {...stylex.props(styles.amount)}>{children}</span>
     </div>

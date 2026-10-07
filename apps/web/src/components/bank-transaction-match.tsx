@@ -18,6 +18,7 @@ import {
   BankReviewLink,
   BankReviewTextAction,
   BankReviewFacts,
+  BankReviewPreparedPlan,
   BankReviewFooter,
   BankReviewOriginalPlaceholder,
   BankReviewCandidateCard,
@@ -1382,8 +1383,9 @@ function PreparedMatch(
         <>
           <MatchProposal book={book} candidate={candidate} data={data} locale={locale} prepared />
           <MatchExplanation candidate={candidate} sv={sv} />
-          <Box display="grid" gap="md">
+          <BankReviewPreparedPlan>
             <BankReviewFact
+              align="center"
               label={
                 <BankReviewSectionTitle>
                   {sv ? "Förberedd plan" : "Prepared plan"}
@@ -1427,7 +1429,7 @@ function PreparedMatch(
               </Text>
               <Text variant="control">{view.plan.input.reason}</Text>
             </Box>
-          </Box>
+          </BankReviewPreparedPlan>
           <BankReviewFooter>
             <BankReviewCaption>
               {sv
