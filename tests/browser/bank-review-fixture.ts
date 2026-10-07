@@ -133,7 +133,7 @@ export async function bankReviewFixture(
 
   const source = {
     kind: "synthetic_bank_statement_v1",
-    statementIdentifier: `bank_review_${suffix}`,
+    statementIdentifier: "bank_review_demo_2026_0037",
     sourceBankAccountId: "synthetic_bank",
     accountId: "account_bank",
     currency: "SEK",
