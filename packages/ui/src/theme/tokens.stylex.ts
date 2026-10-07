@@ -39,6 +39,7 @@ export const tokens = stylex.defineConsts({
   lineHeight22Px: "1.375rem",
   lineHeight14Px: "0.875rem",
   reviewCanvas: "#eef1f5",
+  reviewSideSurface: "#f7f8fa",
   lineHeight21Px: "1.3125rem",
   menuBackdrop: "rgba(15, 23, 42, 0.22)",
   radiusSheetTop: "12px 12px 0 0",

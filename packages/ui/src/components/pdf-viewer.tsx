@@ -58,6 +58,9 @@ const styles = stylex.create({
   focusedZoomControl: { width: 72, minWidth: 72 },
   focusedTextAction: { marginInlineStart: "auto", color: tokens.primary },
   focusedViewport: { padding: 0, borderRadius: 0 },
+  bankViewport: { maxHeight: 480, backgroundColor: tokens.reviewSideSurface },
+  bankHeading: { flexGrow: 1, fontWeight: tokens.fontWeightSemibold },
+  bankControl: { gap: 2, paddingInline: 6, fontSize: tokens.fontSizeControl },
   focusedTextPanel: {
     marginBlockStart: tokens.space4,
     borderBlockStartWidth: 1,
@@ -88,7 +91,7 @@ export function PdfViewer(props: {
   locale: "sv" | "en";
   view: PdfView;
   onViewChange: (view: PdfView) => void;
-  presentation?: "focused";
+  presentation?: "focused" | "bank";
   onAvailabilityChange?: (available: boolean) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -99,6 +102,7 @@ export function PdfViewer(props: {
   const textId = useId();
   const { content, view, workerUrl } = props;
   const sv = props.locale === "sv";
+  const focused = props.presentation === "focused" || props.presentation === "bank";
 
   useEffect(() => {
     let cancelled = false;
@@ -191,15 +195,19 @@ export function PdfViewer(props: {
 
   return (
     <Box display="grid" gap={props.presentation === "focused" ? "sm" : "md"} minWidth="zero">
-      <div
-        {...stylex.props(styles.toolbar, props.presentation === "focused" && styles.focusedToolbar)}
-      >
+      <div {...stylex.props(styles.toolbar, focused && styles.focusedToolbar)}>
+        {props.presentation === "bank" ? (
+          <span {...stylex.props(styles.bankHeading)}>Original</span>
+        ) : null}
         <Box as="label" display="flex" alignItems="center" gap="sm">
           {sv ? "Sida" : "Page"}
           <SelectControl
             aria-label={sv ? "Sida" : "Page"}
             size="compact"
-            styleX={props.presentation === "focused" ? styles.focusedPageControl : styles.control}
+            styleX={[
+              focused ? styles.focusedPageControl : styles.control,
+              props.presentation === "bank" && styles.bankControl,
+            ]}
             value={String(view.page)}
             disabled={documentState.status !== "ready"}
             options={
@@ -222,7 +230,10 @@ export function PdfViewer(props: {
           <SelectControl
             aria-label="Zoom"
             size="compact"
-            styleX={props.presentation === "focused" ? styles.focusedZoomControl : styles.control}
+            styleX={[
+              focused ? styles.focusedZoomControl : styles.control,
+              props.presentation === "bank" && styles.bankControl,
+            ]}
             value={String(view.zoom)}
             options={[50, 75, 100, 125, 150, 200].map((zoom) => ({
               value: String(zoom),
@@ -233,7 +244,7 @@ export function PdfViewer(props: {
             }}
           />
         </Box>
-        {props.presentation === "focused" ? (
+        {focused ? (
           <Button
             type="button"
             variant="ghost"
@@ -250,7 +261,8 @@ export function PdfViewer(props: {
       <div
         {...stylex.props(
           styles.viewport,
-          props.presentation === "focused" && styles.focusedViewport,
+          focused && styles.focusedViewport,
+          props.presentation === "bank" && styles.bankViewport,
         )}
       >
         <canvas
@@ -284,7 +296,7 @@ export function PdfViewer(props: {
           </Box>
         </Box>
       ) : null}
-      {props.presentation === "focused" ? (
+      {props.presentation === "bank" && !textOpen ? null : focused ? (
         <details open={textOpen} {...stylex.props(styles.focusedTextPanel)}>
           <summary
             role="button"

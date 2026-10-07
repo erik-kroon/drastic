@@ -11,6 +11,16 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { enteredExpenseSource, sourceDocumentOptions } from "@/lib/source-documents";
 import { downloadIntake } from "@/components/source-intake/download";
 import type { CommerceProps } from "@/components/commerce/shared";
+import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
+import { encodeOwnerReturn } from "@/lib/work-return";
+import { workspacePath } from "@/lib/book-context";
+import { PageAction } from "@open-erp/ui/components/accounting-page";
+
+class BankOriginalChecksumMismatch extends Error {
+  constructor(readonly expected: string) {
+    super("Matching original checksum mismatch");
+  }
+}
 
 export function useBankMatchOriginal(
   props: CommerceProps & {
@@ -55,7 +65,7 @@ export function useBankMatchOriginal(
         if (original) originals.push(original);
       }
 
-      if (!originals.length) return null;
+      if (!originals.length) return { voucher, original: null, source: null };
 
       if (originals.length !== 1) throw new Error("Matching original is ambiguous");
 
@@ -67,9 +77,9 @@ export function useBankMatchOriginal(
       const source = await client.fetchQuery(options);
 
       if (source.occurrence.sha256 !== original.sha256)
-        throw new Error("Matching original checksum mismatch");
+        throw new BankOriginalChecksumMismatch(original.sha256);
 
-      return { original, source };
+      return { original, source, voucher };
     },
     retry: false,
   });
@@ -78,20 +88,20 @@ export function useBankMatchOriginal(
 export function BankMatchOriginal(
   props: CommerceProps & {
     query: ReturnType<typeof useBankMatchOriginal>;
-    onAvailabilityChange: (available: boolean) => void;
+    onAvailabilityChange?: (available: boolean) => void;
   },
 ) {
   const { query, onAvailabilityChange } = props;
+  const ownerSearch = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
   const sv = props.locale === "sv";
   const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
 
-  if (query.isSuccess && query.data === null) return null;
+  if (query.isSuccess && query.data.source === null) return null;
 
-  const retained = query.isSuccess ? query.data : undefined;
+  const retained = query.isSuccess && query.data.source !== null ? query.data : undefined;
 
   return (
     <Box display="grid" gap="md" minWidth="zero">
-      <Text weight="semibold">Original</Text>
       {query.isPending ? (
         <PageCaption role="status">{sv ? "Visar sidan…" : "Rendering page…"}</PageCaption>
       ) : null}
@@ -101,10 +111,19 @@ export function BankMatchOriginal(
             {sv ? "Originalet kan inte visas" : "The original cannot be shown"}
           </Text>
           <Text>
-            {sv
-              ? "Originalet kan inte granskas. Matchningen kan inte förberedas."
-              : "The original cannot be reviewed. The match cannot be prepared."}
+            {query.error instanceof BankOriginalChecksumMismatch
+              ? sv
+                ? "Den hämtade filen stämmer inte med den sparade kontrollsumman. Ingen annan fil visas i stället."
+                : "The fetched file does not match the stored checksum. No substitute file is shown."
+              : sv
+                ? "Originalet kan inte granskas. Matchningen kan inte förberedas."
+                : "The original cannot be reviewed. The match cannot be prepared."}
           </Text>
+          {query.error instanceof BankOriginalChecksumMismatch ? (
+            <PageCaption title={query.error.expected}>
+              {sv ? "Sparad SHA-256" : "Stored SHA-256"} {query.error.expected}
+            </PageCaption>
+          ) : null}
           <Box>
             <Button
               variant="outline"
@@ -126,7 +145,7 @@ export function BankMatchOriginal(
               locale={props.locale}
               view={view}
               onViewChange={setView}
-              presentation="focused"
+              presentation="bank"
               onAvailabilityChange={onAvailabilityChange}
             />
           ) : (
@@ -154,6 +173,13 @@ export function BankMatchOriginal(
             >
               {sv ? "Ladda ned original" : "Download original"}
             </Button>
+            <PageAction
+              quiet
+              compact
+              href={`${workspacePath(props.book)}/books${defaultStringifySearch({ view: "vouchers", record: retained.voucher.id, returnTo: encodeOwnerReturn({ owner: "bank", search: ownerSearch }) })}`}
+            >
+              {sv ? "Öppna verifikation" : "Open voucher"}
+            </PageAction>
           </Box>
         </>
       ) : null}

@@ -84,6 +84,34 @@ const styles = stylex.create({
     paddingBlock: 0,
   },
   questionContent: { paddingInline: tokens.space6, paddingBlock: tokens.space5 },
+  bankSheet: {
+    insetBlock: 0,
+    insetInlineStart: 0,
+    insetInlineEnd: 0,
+    width: "100vw",
+    borderRadius: 0,
+    borderWidth: 0,
+    boxShadow: tokens.shadowNone,
+  },
+  bankHeader: { height: 48, paddingBlock: 0, paddingInline: tokens.space8, flexShrink: 0 },
+  bankTitle: {
+    fontSize: tokens.fontSizeBase,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight20Px,
+  },
+  bankHeading: { display: "flex", alignItems: "center", gap: tokens.space4 },
+  bankReturn: {
+    borderWidth: 0,
+    padding: 0,
+    cursor: "pointer",
+    backgroundColor: tokens.transparent,
+    color: tokens.primary,
+    fontFamily: "inherit",
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
+  bankContent: { padding: 0 },
   questionContext: {
     fontFamily: tokens.fontFamilySystem,
     position: "fixed",
@@ -117,10 +145,11 @@ export function RecordSheet({
   children: ReactNode;
   dismissible?: boolean;
   invoice?: boolean;
-  presentation?: "default" | "question";
+  presentation?: "default" | "question" | "bank-review";
   context?: ReactNode;
 }) {
   const question = presentation === "question";
+  const bank = presentation === "bank-review";
 
   return (
     <Dialog.Root
@@ -148,19 +177,38 @@ export function RecordSheet({
             styles.sheet,
             invoice && styles.invoiceSheet,
             question && styles.questionSheet,
+            bank && styles.bankSheet,
           )}
         >
-          <div {...stylex.props(styles.header, question && styles.questionHeader)}>
-            <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
-            <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
-              <X size={16} aria-hidden="true" />
-            </Dialog.Close>
+          <div
+            {...stylex.props(
+              styles.header,
+              question && styles.questionHeader,
+              bank && styles.bankHeader,
+            )}
+          >
+            <div {...stylex.props(bank && styles.bankHeading)}>
+              {bank ? (
+                <Dialog.Close {...stylex.props(styles.bankReturn)}>Bank / Händelser</Dialog.Close>
+              ) : null}
+              <Dialog.Title {...stylex.props(styles.title, bank && styles.bankTitle)}>
+                {title}
+              </Dialog.Title>
+            </div>
+            {bank ? (
+              context
+            ) : (
+              <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
+                <X size={16} aria-hidden="true" />
+              </Dialog.Close>
+            )}
           </div>
           <div
             {...stylex.props(
               styles.content,
               invoice && styles.invoiceContent,
               question && styles.questionContent,
+              bank && styles.bankContent,
             )}
           >
             {children}

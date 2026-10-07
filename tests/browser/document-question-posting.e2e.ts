@@ -765,7 +765,7 @@ test("a retained original returns through questions, explicit review, posting an
   await app.open(
     `${workspace}/accounts?account=account_bank&from=2026-10-01&to=2026-10-31&statement=${statement.statement.id}&row=1`,
   );
-  const matching = screen.getByRole("dialog", "Matcha transaktion", { exact: true });
+  const matching = screen.getByRole("dialog", "Granska matchning", { exact: true });
 
   await expect(matching.getByRole("heading", filename, { exact: true })).toBeVisible();
   await expect(browser.locator(`div:has(> h2:text-is("${filename}")) > p`)).toHaveText(
@@ -878,6 +878,7 @@ test("a retained original returns through questions, explicit review, posting an
 
   await expect(matching.getByRole("link", "Importerat kontoutdrag", { exact: true })).toBeVisible();
 
+  await matching.getByRole("button", "Granska planen", { exact: true }).click();
   await matching
     .getByRole("checkbox", "Jag har granskat beloppen och kontoutdragets underlag.", {
       exact: true,

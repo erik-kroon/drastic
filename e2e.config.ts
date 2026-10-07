@@ -14,6 +14,7 @@ if (!appUrl || !proxyUrl || !output)
 const codex = createOpenAICompatible({
   name: "codex",
   baseURL: proxyUrl,
+  supportsStructuredOutputs: true,
 });
 
 export default {
@@ -32,7 +33,13 @@ export default {
       app: { url: appUrl, environment: "test" },
     },
   ],
-  agents: { default: { model: codex.chatModel("gpt-6-luna"), maxModelCalls: 30 } },
+  agents: {
+    default: {
+      model: codex.chatModel("gpt-6-luna"),
+      context: "Structured judgments use JSON output.",
+      maxModelCalls: 30,
+    },
+  },
   workers: 1,
   retries: 0,
   timeout: 240_000,

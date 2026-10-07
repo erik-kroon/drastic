@@ -269,7 +269,9 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
       )}
       {(search.statement && search.row) || search.plan ? (
         <RecordSheet
-          title={sv ? "Matcha transaktion" : "Match transaction"}
+          title={sv ? "Granska matchning" : "Review match"}
+          presentation="bank-review"
+          context={<Text>{book.name}</Text>}
           closeLabel={sv ? "Stäng matchning" : "Close matching"}
           onClose={() => change(clearRecord)}
         >
@@ -281,6 +283,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
             planId={search.plan}
             reversalId={search.undo}
             accountId={search.account}
+            onClose={() => change(clearRecord)}
             onPlan={(plan) => change({ ...search, plan })}
             onReversal={(undo) => change({ ...search, undo })}
           />
