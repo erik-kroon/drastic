@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
 import { encodeOwnerReturn } from "@/lib/work-return";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -12,6 +12,19 @@ import {
   BankReviewAmount,
   BankReviewReason,
   BankReviewAcknowledgment,
+  BankReviewSection,
+  BankReviewFact,
+  BankReviewHeading,
+  BankReviewLink,
+  BankReviewTextAction,
+  BankReviewFacts,
+  BankReviewFooter,
+  BankReviewOriginalPlaceholder,
+  BankReviewCandidateCard,
+  BankReviewWarning,
+  BankReviewCaption,
+  BankReviewSubmit,
+  BankReviewSectionTitle,
 } from "@open-erp/ui/components/bank-evidence-review";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -40,7 +53,11 @@ import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/n
 import { mutationOptions } from "@/lib/accounting-api";
 import { WorkQuestionsEntry } from "./work-questions";
 import { accountingCopy } from "@/lib/accounting-copy";
-import { BankMatchOriginal, useBankMatchOriginal } from "@/components/bank-match-original";
+import {
+  BankMatchOriginal,
+  useBankMatchOriginal,
+  useBankMatchDocument,
+} from "@/components/bank-match-original";
 import { coordinationOptions } from "@/lib/workspace-coordination";
 
 type Props = CommerceProps & {
@@ -49,6 +66,7 @@ type Props = CommerceProps & {
   planId?: string;
   reversalId?: string;
   accountId?: string;
+  accountLabel?: string;
   onClose: () => void;
   onPlan: (id: string) => void;
   onReversal: (id: string) => void;
@@ -125,7 +143,7 @@ function DiscoverMatch(props: Props & { statementId: string }) {
   const money = (value: string) =>
     data ? `${formatMinorAmount(value, data.currencyScale, locale)} ${data.currency}` : "—";
 
-  return (
+  const standardReview = (
     <Box display="grid" gap="xl" minWidth="zero">
       <AccountingStatus locale={locale} pending={matches.isPending} error={matches.error} />
       {matches.isError ? (
@@ -265,6 +283,149 @@ function DiscoverMatch(props: Props & { statementId: string }) {
       ) : null}
     </Box>
   );
+
+  const pair = bankAmbiguousPair(data, !!selectedCover);
+
+  return pair ? (
+    <AmbiguousMatch
+      {...props}
+      {...pair}
+      current={!matches.isFetching}
+      fallback={standardReview}
+      onChoose={(candidate) => setSelection(`${candidate.voucherId}:${candidate.lineId}`)}
+    />
+  ) : (
+    standardReview
+  );
+}
+
+function bankAmbiguousPair(
+  data: typeof Candidates.BankMatchCandidates.Type | undefined,
+  coverSelected: boolean,
+) {
+  if (
+    !data ||
+    coverSelected ||
+    !data.source.eligible ||
+    data.eligibleCount !== 2 ||
+    data.equalAmountEligibleCount !== 2
+  )
+    return null;
+
+  const eligible = data.candidates.filter((candidate) => candidate.eligible);
+  const [first, second] = eligible;
+
+  if (
+    !first ||
+    !second ||
+    eligible.length !== 2 ||
+    eligible.some((candidate) => candidate.referenceComparison !== "unavailable")
+  )
+    return null;
+
+  return { data, candidates: [first, second] satisfies [typeof first, typeof second] };
+}
+
+function AmbiguousMatch(
+  props: Props & {
+    data: typeof Candidates.BankMatchCandidates.Type;
+    candidates: [
+      typeof Candidates.BankMatchCandidate.Type,
+      typeof Candidates.BankMatchCandidate.Type,
+    ];
+    current: boolean;
+    fallback: React.ReactNode;
+    onChoose: (candidate: typeof Candidates.BankMatchCandidate.Type) => void;
+  },
+) {
+  const { book, locale, data, candidates } = props;
+  const sv = locale === "sv";
+  const first = useBankMatchDocument({ book, locale, selection: candidates[0] });
+  const second = useBankMatchDocument({ book, locale, selection: candidates[1] });
+
+  if (
+    first.isError ||
+    second.isError ||
+    (first.isSuccess && !first.data.document?.source) ||
+    (second.isSuccess && !second.data.document?.source)
+  )
+    return props.fallback;
+
+  const documents = [first.data, second.data];
+  const amount = `${formatMinorAmount(candidates[0].remainingMinor, data.currencyScale, locale)} ${data.currency}`;
+
+  return (
+    <BankEvidenceReview
+      bank={<MatchBankSource {...props} data={data} />}
+      original={
+        <BankReviewOriginalPlaceholder>
+          {sv
+            ? "Välj Granska vid ett underlag för att läsa originalet."
+            : "Choose Review beside a document to read the original."}
+        </BankReviewOriginalPlaceholder>
+      }
+      decision={
+        <>
+          <BankReviewSection>
+            <BankReviewCaption>
+              {sv ? "FLERA MÖJLIGA KOPPLINGAR" : "MULTIPLE POSSIBLE LINKS"}
+            </BankReviewCaption>
+            <BankReviewHeading title={sv ? "Välj underlag" : "Choose evidence"} />
+            <Box display="grid" gap="sm">
+              {candidates.map((candidate, index) => (
+                <BankReviewCandidateCard
+                  key={`${candidate.voucherId}:${candidate.lineId}`}
+                  title={candidate.description}
+                  amount={`${formatMinorAmount(candidate.remainingMinor, data.currencyScale, locale)} ${data.currency}`}
+                  detail={`${documents[index]?.document?.fields?.supplierName ?? ""}, ${bankReviewDate(candidate.postedOn, locale, false)}`}
+                  identity={`${sv ? "Verifikation" : "Voucher"} ${documents[index]?.voucher.number ?? ""}, ${candidate.description}`}
+                  disabled={!props.current || !documents[index]}
+                  onReview={() => props.onChoose(candidate)}
+                  action={sv ? "Granska" : "Review"}
+                />
+              ))}
+            </Box>
+          </BankReviewSection>
+          <Box display="grid" gap="md">
+            <BankReviewSectionTitle>
+              {sv ? "Varför behöver detta granskas?" : "Why does this need review?"}
+            </BankReviewSectionTitle>
+            <Text variant="control">
+              {sv ? `Båda raderna har ${amount} kvar.` : `Both lines have ${amount} remaining.`}
+            </Text>
+            <Text variant="control">
+              {sv
+                ? "Samma belopp räcker inte för att välja underlag."
+                : "The same amount is not enough to choose evidence."}
+            </Text>
+            <Text variant="control" tone="muted">
+              {sv
+                ? "Lika belopp och datum bevisar inte samma transaktion. Ingen jämförbar fakturareferens finns."
+                : "Equal amounts and dates do not prove the same transaction. No comparable invoice reference is available."}
+            </Text>
+            <BankReviewWarning>
+              {sv
+                ? "Två bokförda rader har samma belopp. Ingen koppling har valts."
+                : "Two posted lines have the same amount. No link has been selected."}
+            </BankReviewWarning>
+          </Box>
+          <BankReviewFooter>
+            <BankReviewCaption>
+              {sv
+                ? "Välj underlag innan du förbereder matchningen."
+                : "Choose evidence before preparing a match."}
+            </BankReviewCaption>
+            <BankReviewSubmit disabled>
+              {sv ? "Förbered matchning" : "Prepare match"}
+            </BankReviewSubmit>
+            <BankReviewTextAction onClick={props.onClose}>
+              {sv ? "Lämna i granskning" : "Leave in review"}
+            </BankReviewTextAction>
+          </BankReviewFooter>
+        </>
+      }
+    />
+  );
 }
 
 function selectedBankCover(
@@ -312,11 +473,11 @@ function ExactCoverChoices({
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text role="status">{status}</Text>
-      <PageCaption>
+      <BankReviewCaption>
         {sv
           ? `Sökområde: ${data.window.startsOn}–${data.window.endsOn}. ${search.searchedCount} av ${search.populationCount} möjliga rader, högst ${search.limits.maxSetSize} rader per kombination. Ingen matchning sparas när du väljer.`
           : `Search scope: ${data.window.startsOn}–${data.window.endsOn}. ${search.searchedCount} of ${search.populationCount} eligible lines, at most ${search.limits.maxSetSize} lines per combination. Choosing does not save a match.`}
-      </PageCaption>
+      </BankReviewCaption>
       {!data.coverConflicts.completeWithinStatement ? (
         <Text>
           {sv
@@ -467,11 +628,26 @@ function MatchChoice(
     }) &&
     abs(legs.reduce((sum, leg) => sum + BigInt(leg.amountMinor ?? "0"), 0n)) <= abs(sourceAmount);
 
+  const initialCapacity = useRef({
+    source: data.source.remainingMinor,
+    candidate: candidate?.remainingMinor,
+  });
+
+  const reviewState = bankReviewState({
+    refused: original.isError,
+    initial: initialCapacity.current,
+    source: data.source.remainingMinor,
+    candidate: candidate?.remainingMinor,
+    ready: bankReviewReady(valid, acknowledged, reason, originalAvailable),
+  });
+
   const form = (
     <CommandForm
       {...props}
       compact
-      presentation={candidate ? "focused" : undefined}
+      presentation={candidate ? "bank" : undefined}
+      submitCaption={bankReviewCaption(reviewState, sv)}
+      afterSubmit={<MatchLeaveAction enabled={!!candidate} sv={sv} onClose={props.onClose} />}
       recoveryId={`${data.source.statementId}:${data.source.rowOrdinal}`}
       path={`${bookPath(props.book)}/bank-allocation-plans`}
       schema={Settlement.PrepareBankAllocation}
@@ -524,11 +700,13 @@ function MatchChoice(
         checked={acknowledged}
         onChange={(checked) => setReviewedDigest(checked ? data.digest : null)}
       />
-      <PageCaption>
-        {sv
-          ? "Förberedelsen bokför inget. Planen granskas och godkänns separat."
-          : "Preparation posts nothing. The plan is reviewed and approved separately."}
-      </PageCaption>
+      {!candidate ? (
+        <BankReviewCaption>
+          {sv
+            ? "Förberedelsen bokför inget. Planen granskas och godkänns separat."
+            : "Preparation posts nothing. The plan is reviewed and approved separately."}
+        </BankReviewCaption>
+      ) : null}
     </CommandForm>
   );
 
@@ -550,37 +728,147 @@ function MatchChoice(
       decision={
         <>
           <MatchProposal
+            book={props.book}
             candidate={candidate}
-            original={original}
             data={data}
             locale={locale}
             onBack={props.onBack}
+            changed={reviewState === "changed"}
           />
-          <MatchExplanation candidate={candidate} sv={sv} />
-          {form}
-          <Button variant="ghost" onClick={props.onClose}>
-            {sv ? "Lämna i granskning" : "Leave in review"}
-          </Button>
+          <MatchExplanation candidate={candidate} sv={sv} state={reviewState} />
+          <MatchReviewForm refused={original.isError} sv={sv} form={form} onClose={props.onClose} />
         </>
       }
     />
   );
 }
 
+type BankReviewState = "review" | "ready" | "refused" | "changed" | "prepared";
+
+function bankReviewReady(
+  valid: boolean,
+  acknowledged: boolean,
+  reason: string,
+  originalAvailable: boolean,
+) {
+  return valid && acknowledged && !!reason.trim() && originalAvailable;
+}
+
+function bankReviewState(props: {
+  refused: boolean;
+  initial: { source: string; candidate?: string };
+  source: string;
+  candidate?: string;
+  ready: boolean;
+}): BankReviewState {
+  if (props.refused) return "refused";
+
+  if (
+    !props.ready &&
+    (props.initial.source !== props.source || props.initial.candidate !== props.candidate)
+  )
+    return "changed";
+
+  return props.ready ? "ready" : "review";
+}
+
+function bankReviewCaption(state: BankReviewState, sv: boolean) {
+  if (state === "changed")
+    return sv
+      ? "Kontrollera beloppet och bekräfta granskningen igen."
+      : "Check the amount and confirm the review again.";
+
+  if (state === "ready")
+    return sv
+      ? "Förberedelsen bokför inget. Planen granskas och godkänns separat."
+      : "Preparation posts nothing. The plan is reviewed and approved separately.";
+
+  return sv
+    ? "Ange en motivering och bekräfta granskningen."
+    : "Enter a reason and confirm the review.";
+}
+
+function MatchReviewWarning({ state, sv }: { state: BankReviewState; sv: boolean }) {
+  if (state === "changed")
+    return (
+      <BankReviewWarning destructive>
+        {sv
+          ? "Kvar att matcha ändrades medan du granskade. Inget förbereddes."
+          : "The remaining amount changed during review. Nothing was prepared."}
+      </BankReviewWarning>
+    );
+
+  if (state !== "review" && state !== "ready") return null;
+
+  return (
+    <BankReviewWarning>
+      {sv
+        ? "Granska underlaget. Källtäckning är inte fastställd."
+        : "Review the evidence. Source coverage is not established."}
+    </BankReviewWarning>
+  );
+}
+
+function MatchReviewForm({
+  refused,
+  sv,
+  form,
+  onClose,
+}: {
+  refused: boolean;
+  sv: boolean;
+  form: ReactNode;
+  onClose: () => void;
+}) {
+  if (!refused) return form;
+
+  return (
+    <BankReviewFooter>
+      <BankReviewCaption>
+        {sv
+          ? "Originalet måste kunna granskas innan du förbereder matchningen."
+          : "The original must be reviewable before preparing the match."}
+      </BankReviewCaption>
+      <BankReviewSubmit disabled>{sv ? "Förbered matchning" : "Prepare match"}</BankReviewSubmit>
+      <MatchLeaveAction enabled sv={sv} onClose={onClose} />
+    </BankReviewFooter>
+  );
+}
+
+function MatchLeaveAction({
+  enabled,
+  sv,
+  onClose,
+}: {
+  enabled: boolean;
+  sv: boolean;
+  onClose: () => void;
+}) {
+  if (!enabled) return null;
+
+  return (
+    <BankReviewTextAction type="button" onClick={onClose}>
+      {sv ? "Lämna i granskning" : "Leave in review"}
+    </BankReviewTextAction>
+  );
+}
+
 function MatchProposal(props: {
+  book: Props["book"];
   candidate: typeof Candidates.BankMatchCandidate.Type;
-  original: ReturnType<typeof useBankMatchOriginal>;
   data: typeof Candidates.BankMatchCandidates.Type;
   locale: Props["locale"];
   onBack?: () => void;
   prepared?: boolean;
+  changed?: boolean;
 }) {
   const { candidate, data, locale, onBack } = props;
   const sv = locale === "sv";
+  const document = useBankMatchDocument({ book: props.book, locale, selection: candidate });
 
   return (
-    <Box display="grid" gap="sm">
-      <PageCaption>
+    <BankReviewSection>
+      <BankReviewCaption>
         {props.prepared
           ? sv
             ? "FÖRBEREDD MATCHNING"
@@ -588,22 +876,32 @@ function MatchProposal(props: {
           : sv
             ? "FÖRESLAGEN KOPPLING"
             : "PROPOSED LINK"}
-      </PageCaption>
-      <RecordHeading title={candidate.description} subtitle={candidate.postedOn} />
-      <RecordSummary>
-        <RecordFact label={sv ? "Verifikation" : "Voucher"}>
-          {props.original.data?.voucher.number}
-        </RecordFact>
-        <RecordFact label={sv ? "Kvar att matcha" : "Remaining"}>
-          {formatMinorAmount(candidate.remainingMinor, data.currencyScale, locale)} {data.currency}
-        </RecordFact>
-      </RecordSummary>
-      {onBack ? (
-        <Button variant="ghost" onClick={onBack}>
-          {sv ? "Välj en annan transaktion" : "Choose another transaction"}
-        </Button>
+      </BankReviewCaption>
+      <BankReviewHeading title={candidate.description} />
+      {document.data?.document?.fields?.supplierName ? (
+        <Text variant="control" tone="muted">
+          {document.data.document.fields.supplierName}
+        </Text>
       ) : null}
-    </Box>
+      <BankReviewFacts>
+        <BankReviewFact
+          label={`${sv ? "Verifikation" : "Voucher"} ${document.data?.voucher.number ?? ""}, ${bankReviewDate(candidate.postedOn, locale, false)}`}
+        >
+          {formatMinorAmount(candidate.amountMinor, data.currencyScale, locale)} {data.currency}
+        </BankReviewFact>
+        <BankReviewFact label={sv ? "Kvar att matcha" : "Remaining"}>
+          <Text variant="control" weight={props.changed ? "semibold" : undefined}>
+            {formatMinorAmount(candidate.remainingMinor, data.currencyScale, locale)}{" "}
+            {data.currency}
+          </Text>
+        </BankReviewFact>
+      </BankReviewFacts>
+      {onBack ? (
+        <BankReviewTextAction onClick={onBack}>
+          {sv ? "Välj en annan transaktion" : "Choose another transaction"}
+        </BankReviewTextAction>
+      ) : null}
+    </BankReviewSection>
   );
 }
 
@@ -612,19 +910,43 @@ function MatchBankSource(props: Props & { data: typeof Candidates.BankMatchCandi
   const sv = locale === "sv";
 
   return (
-    <Box display="grid" gap="sm">
-      <PageCaption>{sv ? "BANKHÄNDELSE" : "BANK ENTRY"}</PageCaption>
-      <RecordHeading title={data.source.description} subtitle={data.source.observedOn} />
-      <Text>
-        {formatMinorAmount(data.source.amountMinor, data.currencyScale, locale)} {data.currency}
-      </Text>
+    <BankReviewSection bank>
+      <BankReviewCaption>
+        {sv
+          ? `BANKHÄNDELSE, ${BigInt(data.source.amountMinor) < 0n ? "UTBETALNING" : "INBETALNING"}`
+          : "BANK ENTRY"}
+      </BankReviewCaption>
+      <BankReviewHeading
+        title={data.source.description}
+        amount={`${formatMinorAmount(data.source.amountMinor, data.currencyScale, locale)} ${data.currency}`}
+        metadata={
+          <>
+            <span>{bankReviewDate(data.source.observedOn, locale)}</span>
+            {props.accountLabel ? <span>{props.accountLabel}</span> : null}
+            {data.source.providerId === null ? (
+              <span>{sv ? "Manuellt kontoutdrag" : "Manual statement"}</span>
+            ) : null}
+          </>
+        }
+      />
       <BankSourceStatementLink
         book={props.book}
         locale={locale}
         statementId={data.source.statementId}
+        presentation="bank-review"
       />
-    </Box>
+    </BankReviewSection>
   );
+}
+
+function bankReviewDate(value: string, locale: Props["locale"], year = true) {
+  return new Date(`${value}T12:00:00Z`)
+    .toLocaleDateString(locale === "sv" ? "sv-SE" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      year: year ? "numeric" : undefined,
+    })
+    .replaceAll(".", "");
 }
 
 function MatchAmountInput(props: {
@@ -657,6 +979,11 @@ function MatchAmountInput(props: {
     <BankReviewAmount
       label={`${props.locale === "sv" ? "Belopp att matcha" : "Amount to match"}, ${props.data.currency}`}
       value={props.amounts[key] ?? ""}
+      formattedValue={
+        entered === null
+          ? undefined
+          : formatMinorAmount(entered, props.data.currencyScale, props.locale)
+      }
       error={
         valid
           ? undefined
@@ -672,16 +999,26 @@ function MatchAmountInput(props: {
 function MatchExplanation({
   candidate,
   sv,
+  state = "prepared",
 }: {
   candidate: typeof Candidates.BankMatchCandidate.Type;
   sv: boolean;
+  state?: BankReviewState;
 }) {
   return (
-    <Box display="grid" gap="sm">
-      <Text variant="control">{sv ? "Varför visas förslaget?" : "Why is this suggested?"}</Text>
+    <BankReviewSection open={state === "refused"}>
+      <BankReviewSectionTitle>
+        {sv ? "Varför visas förslaget?" : "Why is this suggested?"}
+      </BankReviewSectionTitle>
       {candidate.equalRemainingAmount ? (
         <Text variant="control">
           {sv ? "Återstående belopp är lika." : "Remaining amounts are equal."}
+        </Text>
+      ) : state === "changed" ? (
+        <Text variant="control">
+          {sv
+            ? "Återstående belopp är inte längre lika."
+            : "Remaining amounts are no longer equal."}
         </Text>
       ) : null}
       {candidate.dayDistance === 0 ? (
@@ -691,24 +1028,25 @@ function MatchExplanation({
             : "Posting date and bank date are the same day."}
         </Text>
       ) : null}
-      <Text variant="control">
+      <Text variant="control" tone="muted">
         {sv
           ? "Lika belopp och datum bevisar inte samma transaktion."
           : "Equal amounts and dates do not prove the same transaction."}
+        {candidate.referenceComparison === "unavailable"
+          ? sv
+            ? " Ingen jämförbar fakturareferens finns."
+            : " No comparable invoice reference is available."
+          : ""}
       </Text>
-      {candidate.referenceComparison === "unavailable" ? (
-        <PageCaption>
+      {state === "refused" ? (
+        <BankReviewWarning destructive>
           {sv
-            ? "Ingen jämförbar fakturareferens finns."
-            : "No comparable invoice reference is available."}
-        </PageCaption>
+            ? "Originalet kan inte granskas. Matchningen kan inte förberedas."
+            : "The original cannot be reviewed. The match cannot be prepared."}
+        </BankReviewWarning>
       ) : null}
-      <PageCaption>
-        {sv
-          ? "Granska underlaget. Källtäckning är inte fastställd."
-          : "Review the evidence. Source coverage is not established."}
-      </PageCaption>
-    </Box>
+      <MatchReviewWarning state={state} sv={sv} />
+    </BankReviewSection>
   );
 }
 
@@ -1042,36 +1380,67 @@ function PreparedMatch(
       original={<BankMatchOriginal book={book} locale={locale} query={original} />}
       decision={
         <>
-          <MatchProposal
-            candidate={candidate}
-            original={original}
-            data={data}
-            locale={locale}
-            prepared
-          />
+          <MatchProposal book={book} candidate={candidate} data={data} locale={locale} prepared />
           <MatchExplanation candidate={candidate} sv={sv} />
-          <RecordSection title={sv ? "Förberedd plan" : "Prepared plan"}>
-            <Text>
+          <Box display="grid" gap="md">
+            <BankReviewFact
+              label={
+                <BankReviewSectionTitle>
+                  {sv ? "Förberedd plan" : "Prepared plan"}
+                </BankReviewSectionTitle>
+              }
+            >
+              <BankReviewWarning caption>
+                {sv ? "Väntar på godkännande" : "Waiting for approval"}
+              </BankReviewWarning>
+            </BankReviewFact>
+            <BankReviewFact
+              label={
+                <Text variant="control" tone="muted">
+                  {sv ? "Belopp att matcha" : "Amount to match"}
+                </Text>
+              }
+            >
+              {formatMinorAmount(leg.amountMinor, view.plan.currencyScale, locale)}{" "}
+              {view.plan.currency}
+            </BankReviewFact>
+            <BankReviewFact
+              label={
+                <Text variant="control" tone="muted">
+                  {sv ? "Förberedd av" : "Prepared by"}
+                </Text>
+              }
+            >
+              {preparer},{" "}
+              {new Date(view.plan.createdAt)
+                .toLocaleString(sv ? "sv-SE" : "en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+                .replaceAll(".", "")}
+            </BankReviewFact>
+            <Box display="grid" gap="xs" paddingBlockStart="xs">
+              <Text variant="control" tone="muted">
+                {sv ? "Motivering" : "Reason"}
+              </Text>
+              <Text variant="control">{view.plan.input.reason}</Text>
+            </Box>
+          </Box>
+          <BankReviewFooter>
+            <BankReviewCaption>
               {sv
-                ? "Inget har bokförts eller matchats ännu. Planen granskas och godkänns separat."
-                : "Nothing has been posted or matched yet. The plan is reviewed and approved separately."}
-            </Text>
-            <RecordSummary>
-              <RecordFact label={sv ? "Belopp" : "Amount"}>
-                {formatMinorAmount(leg.amountMinor, view.plan.currencyScale, locale)}{" "}
-                {view.plan.currency}
-              </RecordFact>
-              <RecordFact label={sv ? "Förberedd av" : "Prepared by"}>{preparer}</RecordFact>
-              <RecordFact label={sv ? "Förberedd" : "Prepared"}>
-                {new Date(view.plan.createdAt).toLocaleString(sv ? "sv-SE" : "en-GB")}
-              </RecordFact>
-            </RecordSummary>
-            <Text>{view.plan.input.reason}</Text>
-          </RecordSection>
-          <Button onClick={props.onReview}>{sv ? "Granska planen" : "Review plan"}</Button>
-          <Button variant="ghost" onClick={props.onClose}>
-            {sv ? "Lämna i granskning" : "Leave in review"}
-          </Button>
+                ? "Inget är bokfört. Godkännande och utförande sker separat."
+                : "Nothing is posted. Approval and execution happen separately."}
+            </BankReviewCaption>
+            <BankReviewSubmit onClick={props.onReview}>
+              {sv ? "Granska planen" : "Review plan"}
+            </BankReviewSubmit>
+            <BankReviewTextAction onClick={props.onClose}>
+              {sv ? "Tillbaka till händelser" : "Back to entries"}
+            </BankReviewTextAction>
+          </BankReviewFooter>
         </>
       }
     />
@@ -1341,24 +1710,29 @@ function MatchingTransactions(
   );
 }
 
-function BankSourceStatementLink(props: CommerceProps & { statementId: string }) {
+function BankSourceStatementLink(
+  props: CommerceProps & { statementId: string; presentation?: "bank-review" },
+) {
   const ownerSearch = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
   const copy = accountingCopy(props.locale);
 
-  return (
-    <PageAction
-      quiet
-      href={`${workspacePath(props.book)}/accounts${defaultStringifySearch({
-        ...ownerSearch,
-        view: "bank",
-        record: `statement:${props.statementId}`,
-        statement: undefined,
-        row: undefined,
-        plan: undefined,
-        undo: undefined,
-        returnTo: encodeOwnerReturn({ owner: "bank", search: ownerSearch }),
-      })}`}
-    >
+  const href = `${workspacePath(props.book)}/accounts${defaultStringifySearch({
+    ...ownerSearch,
+    view: "bank",
+    record: `statement:${props.statementId}`,
+    statement: undefined,
+    row: undefined,
+    plan: undefined,
+    undo: undefined,
+    returnTo: encodeOwnerReturn({ owner: "bank", search: ownerSearch }),
+  })}`;
+
+  return props.presentation === "bank-review" ? (
+    <BankReviewLink href={href}>
+      {props.locale === "sv" ? "Öppna kontoutdrag" : "Open statement"}
+    </BankReviewLink>
+  ) : (
+    <PageAction quiet href={href}>
       {copy.bank_statement}
     </PageAction>
   );

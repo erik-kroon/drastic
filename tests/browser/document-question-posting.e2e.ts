@@ -876,7 +876,10 @@ test("a retained original returns through questions, explicit review, posting an
   await matchingForm.getByRole("button", "Förbered matchning", { exact: true }).click();
   const matchPlan = await decodedResponse(matchPlanResponse, Settlement.BankAllocationPlan);
 
-  await expect(matching.getByRole("link", "Importerat kontoutdrag", { exact: true })).toBeVisible();
+  await expect(matching.getByRole("link", "Öppna kontoutdrag", { exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`record=statement%3A${statement.statement.id}`),
+  );
 
   await matching.getByRole("button", "Granska planen", { exact: true }).click();
   await matching

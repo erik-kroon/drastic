@@ -140,10 +140,10 @@ export async function bankReviewFixture(
     startsOn: "2026-10-01",
     endsOn: "2026-10-31",
     openingMinor: "0",
-    closingMinor: "-125000",
+    closingMinor: "-175000",
     completeness: {
       declaredComplete: false,
-      basis: "Synthetic single outgoing row; no coverage claim",
+      basis: "Synthetic outgoing rows; no coverage claim",
     },
     rows: [
       {
@@ -152,6 +152,13 @@ export async function bankReviewFixture(
         date: "2026-10-03",
         description: "BG EXEMPEL KONTORSSERVICE",
         amountMinor: "-125000",
+      },
+      {
+        rowOrdinal: 2,
+        providerId: null,
+        date: "2026-10-03",
+        description: "SYNTHETIC CONCURRENT PARTIAL PAYMENT",
+        amountMinor: "-50000",
       },
     ],
   };
@@ -199,7 +206,7 @@ export async function bankReviewFixture(
       legs: [
         {
           statementId: statement.statement.id,
-          rowOrdinal: 1,
+          rowOrdinal: 2,
           voucherId: candidate.voucherId,
           lineId: candidate.lineId,
           amountMinor: "-50000",

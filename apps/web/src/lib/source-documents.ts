@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sources from "@open-erp/contracts/source-intake";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
@@ -17,10 +18,14 @@ export const EnteredExpenseEvidence = Schema.Struct({
 });
 
 export function enteredExpenseSource(content: string) {
+  return enteredExpenseDocument(content)?.source ?? null;
+}
+
+export function enteredExpenseDocument(content: string) {
   try {
     const parsed = Schema.decodeUnknownOption(EnteredExpenseEvidence)(JSON.parse(content));
 
-    return parsed._tag === "Some" ? parsed.value.source : null;
+    return Option.getOrNull(parsed);
   } catch {
     return null;
   }

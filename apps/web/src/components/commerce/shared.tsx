@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
-import { Button } from "@open-erp/ui/components/button";
+import { Button, type ButtonVariant } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -20,6 +20,11 @@ import {
 import type { Locale } from "@/paraglide/runtime";
 import { commerceCopy } from "./copy";
 import { useCommerceCommandRecovery } from "./command-recovery";
+import {
+  BankReviewFooter,
+  BankReviewCaption,
+  BankReviewSubmit,
+} from "@open-erp/ui/components/bank-evidence-review";
 
 export type CommerceProps = { book: typeof Accounting.Book.Type; locale: Locale };
 
@@ -174,7 +179,9 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     compact?: boolean;
-    presentation?: "focused";
+    presentation?: "focused" | "bank";
+    submitCaption?: ReactNode;
+    afterSubmit?: ReactNode;
     fullWidthSubmit?: boolean;
     variant?: "default" | "outline";
     recoveryId?: string;
@@ -247,8 +254,8 @@ export function CommandForm<
     <Box
       as="form"
       aria-label={props.label}
-      display="grid"
-      gap={props.presentation === "focused" ? "none" : "lg"}
+      {...commandFormLayout(props.presentation)}
+      gap={props.presentation ? "none" : "lg"}
       minWidth="zero"
       aria-describedby={errorId}
       onSubmit={(event) => {
@@ -288,7 +295,7 @@ export function CommandForm<
         key={formVersion}
         as="fieldset"
         disabled={!allowed || !recovery.ready || !!captured}
-        display="grid"
+        {...commandFormLayout(props.presentation)}
         gap="lg"
         minWidth="zero"
         borderWidth="none"
@@ -296,17 +303,18 @@ export function CommandForm<
         margin="none"
       >
         {!captured ? props.children : null}
-        <Box display="flex" flexWrap="wrap" gap="md">
-          <Button
-            type="submit"
-            size={props.compact ? "default" : "xl"}
-            variant={props.variant}
-            fullWidth={props.presentation === "focused" || props.fullWidthSubmit}
-            disabled={props.canSubmit === false}
-          >
-            {command.isPending ? (locale === "sv" ? "Sparar…" : "Saving…") : props.label}
-          </Button>
-        </Box>
+        <CommandSubmitAction
+          presentation={props.presentation}
+          caption={props.submitCaption}
+          afterSubmit={props.afterSubmit}
+          compact={props.compact}
+          variant={props.variant}
+          fullWidth={props.fullWidthSubmit}
+          disabled={props.canSubmit === false}
+          pending={command.isPending}
+          locale={locale}
+          label={props.label}
+        />
       </Box>
       {invalid ? (
         <Text id={errorId} role="alert">
@@ -429,4 +437,49 @@ function CommandRecoveryNotice({
       ) : null}
     </>
   );
+}
+
+function CommandSubmitAction(props: {
+  presentation?: "focused" | "bank";
+  caption?: ReactNode;
+  afterSubmit?: ReactNode;
+  compact?: boolean;
+  variant?: ButtonVariant;
+  fullWidth?: boolean;
+  disabled: boolean;
+  pending: boolean;
+  locale: Locale;
+  label: ReactNode;
+}) {
+  const Submit = props.presentation === "bank" ? BankReviewSubmit : Button;
+
+  const button = (
+    <Submit
+      type="submit"
+      size={props.presentation === "bank" ? "sm" : props.compact ? "default" : "xl"}
+      variant={props.variant}
+      fullWidth={props.presentation === "focused" || props.fullWidth}
+      disabled={props.disabled}
+    >
+      {props.pending ? (props.locale === "sv" ? "Sparar…" : "Saving…") : props.label}
+    </Submit>
+  );
+
+  return props.presentation === "bank" ? (
+    <BankReviewFooter>
+      {props.caption ? <BankReviewCaption>{props.caption}</BankReviewCaption> : null}
+      {button}
+      {props.afterSubmit}
+    </BankReviewFooter>
+  ) : (
+    <Box display="flex" flexWrap="wrap" gap="md">
+      {button}
+    </Box>
+  );
+}
+
+function commandFormLayout(presentation?: "focused" | "bank") {
+  return presentation === "bank"
+    ? ({ display: "flex", flexDirection: "column", flexGrow: true } as const)
+    : ({ display: "grid" } as const);
 }

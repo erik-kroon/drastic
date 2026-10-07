@@ -1,3 +1,4 @@
+import { BankReviewContext } from "@/components/bank-review-context";
 import { useRef, useState } from "react";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
@@ -271,7 +272,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
         <RecordSheet
           title={sv ? "Granska matchning" : "Review match"}
           presentation="bank-review"
-          context={<Text>{book.name}</Text>}
+          context={<BankReviewContext book={book} locale={locale} statementId={search.statement} />}
           closeLabel={sv ? "Stäng matchning" : "Close matching"}
           onClose={() => change(clearRecord)}
         >
@@ -283,6 +284,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
             planId={search.plan}
             reversalId={search.undo}
             accountId={search.account}
+            accountLabel={account ? `${account.code} ${account.name}` : undefined}
             onClose={() => change(clearRecord)}
             onPlan={(plan) => change({ ...search, plan })}
             onReversal={(undo) => change({ ...search, undo })}

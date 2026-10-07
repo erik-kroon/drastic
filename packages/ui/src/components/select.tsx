@@ -186,6 +186,7 @@ type SelectControlProps = {
   placeholder?: React.ReactNode;
   required?: boolean;
   styleX?: StyleXStyles;
+  indicator?: React.ReactNode;
   value?: string | null;
 };
 
@@ -205,9 +206,10 @@ function SelectValue({ className, styleX, ...props }: WithStyleX<SelectPrimitive
 function SelectTrigger({
   className,
   children,
+  indicator,
   styleX,
   ...props
-}: WithStyleX<SelectPrimitive.Trigger.Props>) {
+}: WithStyleX<SelectPrimitive.Trigger.Props> & { indicator?: React.ReactNode }) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -224,7 +226,9 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon {...stylex.props(styles.iconWrap)}>
-        <ChevronDownIcon aria-hidden="true" strokeWidth={1.75} {...stylex.props(styles.icon)} />
+        {indicator ?? (
+          <ChevronDownIcon aria-hidden="true" strokeWidth={1.75} {...stylex.props(styles.icon)} />
+        )}
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -364,6 +368,7 @@ function SelectControl({
   placeholder,
   required,
   styleX,
+  indicator,
   value,
 }: SelectControlProps) {
   return (
@@ -384,6 +389,7 @@ function SelectControl({
         aria-labelledby={ariaLabelledBy}
         className={className}
         id={id}
+        indicator={indicator}
         styleX={[
           styles.control,
           size === "comfortable" && styles.comfortable,

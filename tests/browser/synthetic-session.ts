@@ -29,7 +29,10 @@ async function publicSignIn(session: typeof SyntheticSession.Type): Promise<read
     signal: AbortSignal.timeout(15_000),
   });
 
-  if (!login.ok) throw new Error(`Synthetic sign-in failed: HTTP ${login.status}`);
+  if (!login.ok)
+    throw new Error(
+      `Synthetic sign-in failed: HTTP ${login.status}: ${(await login.text()).slice(0, 2000)}`,
+    );
 
   const cookies = login.headers.getSetCookie().map((header) => {
     const pair = header.split(";")[0];

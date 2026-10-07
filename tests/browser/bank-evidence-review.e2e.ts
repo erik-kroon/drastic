@@ -1,12 +1,25 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { test } from "@e2e-dev/web";
+import { test, type Browser } from "@e2e-dev/web";
 import { expect } from "e2e";
 import * as Accounting from "../../packages/contracts/src/accounting";
 import * as Settlement from "../../packages/contracts/src/settlements";
 import * as Candidates from "../../packages/contracts/src/bank-match-candidates";
 import * as Schema from "effect/Schema";
 import { bankReviewFixture } from "./bank-review-fixture";
+
+async function settleReviewTransitions(browser: Browser) {
+  const corner = await browser.evaluate<{ x: number; y: number }>(`() => {
+    const rect = document.querySelector('[role="dialog"]').getBoundingClientRect();
+    return { x: rect.left + 10, y: rect.top + 10 };
+  }`);
+
+  await browser.mouse.move(corner.x, corner.y);
+  await browser.evaluate(`async () => {
+    const animations = document.querySelector('[role="dialog"]')?.getAnimations({ subtree: true }) ?? [];
+    await Promise.all(animations.map(animation => animation.finished.catch(() => undefined)));
+  }`);
+}
 
 test("bank review compares the retained original and prepares without allocating or posting", async ({
   app,
@@ -30,24 +43,30 @@ test("bank review compares the retained original and prepares without allocating
 
   const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
 
-  await expect(review.getByRole("button", "Förbered matchning", { exact: true })).toHaveCount(0);
+  await expect(review.getByRole("button", "Förbered matchning", { exact: true })).toBeDisabled();
+  await expect(review.getByRole("article")).toHaveCount(2);
+  await expect(review.getByRole("img")).toHaveCount(0);
+
+  await expect(review.getByText("Exempel Kontorsservice AB, 3 okt", { exact: true })).toBeVisible();
+  await expect(review.getByText("Exempel Kontorsservice AB, 2 okt", { exact: true })).toBeVisible();
+
+  await settleReviewTransitions(browser);
 
   const ambiguity = await app.screenshot("bank-review-ambiguous-unselected");
 
-  const candidateIndex = observedCandidates.candidates.findIndex(
-    (item) =>
-      item.voucherId === fixture.candidate.voucherId && item.lineId === fixture.candidate.lineId,
-  );
-
-  const selectedVoucher = browser.waitForResponse(`**/vouchers/${fixture.candidate.voucherId}`);
-
+  expect(observedCandidates.eligibleCount).toBe(2);
   await review
-    .getByRole("table", "Bokförda transaktioner", { exact: true })
-    .getByRole("row")
-    .nth(candidateIndex + 1)
-    .getByRole("button", "Välj", { exact: true })
+    .getByRole(
+      "article",
+      `Verifikation ${fixture.vouchers[0]?.number}, ${fixture.candidate.description}`,
+      { exact: true },
+    )
+    .getByRole("button", "Granska", { exact: true })
     .click();
-  expect((await selectedVoucher).status).toBe(200);
+  await expect(review.getByRole("link", "Öppna verifikation", { exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`record=${fixture.candidate.voucherId}`),
+  );
   await expect(
     review.getByRole("img", "bank-review-original.pdf, sida 1", { exact: true }),
   ).toBeVisible();
@@ -55,6 +74,8 @@ test("bank review compares the retained original and prepares without allocating
   await agent.assert(
     "The retained outgoing bank row, the original supplier document, the proposed allocation and explicit uncertainty can be compared on this review screen. No match has been applied.",
   );
+
+  await settleReviewTransitions(browser);
 
   const initial = await app.screenshot("bank-review-original-pre-review");
 
@@ -67,10 +88,12 @@ test("bank review compares the retained original and prepares without allocating
   );
 
   await reason.fill(
-    "Leverantörsunderlaget avser kontorsmaterial för 1 250,00 SEK. Mottagare och belopp stämmer med bankraden.",
+    "Leverantörsunderlaget avser kontorsmaterial för 1\u00a0250,00\u00a0SEK. Mottagare och belopp stämmer med bankraden.",
   );
   await acknowledgment.check();
   await expect(review.getByRole("button", "Förbered matchning", { exact: true })).toBeEnabled();
+
+  await settleReviewTransitions(browser);
 
   const ready = await app.screenshot("bank-review-ready-to-prepare");
 
@@ -102,6 +125,8 @@ test("bank review compares the retained original and prepares without allocating
   await expect(
     review.getByRole("img", "bank-review-original.pdf, sida 1", { exact: true }),
   ).toBeVisible();
+
+  await settleReviewTransitions(browser);
 
   const prepared = await app.screenshot("bank-review-prepared-waiting-for-approval");
 
@@ -156,18 +181,22 @@ test("bank review refuses an original that differs from its retained expected ch
       item.voucherId === fixture.candidate.voucherId && item.lineId === fixture.candidate.lineId,
   );
 
-  const selectedVoucher = browser.waitForResponse(`**/vouchers/${fixture.candidate.voucherId}`);
-
   await review
     .getByRole("table", "Bokförda transaktioner", { exact: true })
     .getByRole("row")
     .nth(candidateIndex + 1)
     .getByRole("button", "Välj", { exact: true })
     .click();
-  expect((await selectedVoucher).status).toBe(200);
+  await expect(review.getByRole("link", "Öppna verifikation", { exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`record=${fixture.candidate.voucherId}`),
+  );
   await expect(review.getByText("Originalet kan inte visas", { exact: true })).toBeVisible();
   await expect(
-    review.getByText(`Sparad SHA-256 ${fixture.expectedHash}`, { exact: true }),
+    review.getByText(
+      `Sparad SHA-256 ${fixture.expectedHash.replace(/^sha256:/, "").slice(0, 8)}…${fixture.expectedHash.slice(-6)}`,
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(review.getByRole("img")).toHaveCount(0);
   await expect(review.getByRole("combobox", "Sida", { exact: true })).toHaveCount(0);
@@ -183,6 +212,8 @@ test("bank review refuses an original that differs from its retained expected ch
     "The original is explicitly refused and no substitute document is displayed. Preparing the match is blocked.",
     { vision: true },
   );
+
+  await settleReviewTransitions(browser);
 
   const screenshot = await app.screenshot("bank-review-checksum-refusal-after-retry");
 
@@ -231,20 +262,22 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
       item.voucherId === fixture.candidate.voucherId && item.lineId === fixture.candidate.lineId,
   );
 
-  const selectedVoucher = browser.waitForResponse(`**/vouchers/${fixture.candidate.voucherId}`);
-
   await review
     .getByRole("table", "Bokförda transaktioner", { exact: true })
     .getByRole("row")
     .nth(candidateIndex + 1)
     .getByRole("button", "Välj", { exact: true })
     .click();
-  expect((await selectedVoucher).status).toBe(200);
+  await expect(review.getByRole("link", "Öppna verifikation", { exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`record=${fixture.candidate.voucherId}`),
+  );
   await expect(
     review.getByRole("img", "bank-review-original.pdf, sida 1", { exact: true }),
   ).toBeVisible();
 
-  const reason = "Reviewed original before another real partial allocation";
+  const reason =
+    "Leverantörsunderlaget avser kontorsmaterial för 1\u00a0250,00\u00a0SEK. Mottagare och belopp stämmer med bankraden.";
 
   const acknowledgment = review.getByRole(
     "checkbox",
@@ -264,7 +297,7 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
   await browser.evaluate("() => window.dispatchEvent(new Event('visibilitychange'))");
   expect((await refreshed).status).toBe(200);
   await expect(review.getByRole("textbox", "Belopp att matcha, SEK", { exact: true })).toHaveValue(
-    "-1250,00",
+    "−1\u00a0250,00",
   );
   await expect(
     review.getByRole("textbox", "Varför hör transaktionerna ihop?", { exact: true }),
@@ -274,6 +307,8 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
   await agent.assert(
     "The remaining capacity is now 750 SEK, the old entered amount is refused, and the retained review needs acknowledgment again. Nothing has been prepared by this review.",
   );
+
+  await settleReviewTransitions(browser);
 
   const screenshot = await app.screenshot("bank-review-real-capacity-changed-draft-retained");
 

@@ -1,3 +1,4 @@
+import { Match } from "effect";
 import { useEffect, useId, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import * as stylex from "@stylexjs/stylex";
@@ -58,9 +59,37 @@ const styles = stylex.create({
   focusedZoomControl: { width: 72, minWidth: 72 },
   focusedTextAction: { marginInlineStart: "auto", color: tokens.primary },
   focusedViewport: { padding: 0, borderRadius: 0 },
-  bankViewport: { maxHeight: 480, backgroundColor: tokens.reviewSideSurface },
+  bankViewport: {
+    boxSizing: "border-box",
+    justifySelf: "center",
+    width: 595,
+    maxWidth: "100%",
+    height: 480,
+    maxHeight: 480,
+    overflowX: "hidden",
+    backgroundColor: tokens.card,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.border,
+  },
+  bankTextAction: {
+    paddingInline: 0,
+    paddingBlock: 0,
+    height: tokens.voucherHeaderHeight,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    cursor: "pointer",
+  },
+  bankToolbar: { minHeight: tokens.voucherHeaderHeight },
   bankHeading: { flexGrow: 1, fontWeight: tokens.fontWeightSemibold },
-  bankControl: { gap: 2, paddingInline: 6, fontSize: tokens.fontSizeControl },
+  bankControl: {
+    width: "auto",
+    minWidth: 0,
+    gap: 2,
+    paddingInline: 10,
+    fontSize: tokens.fontSizeControl,
+    height: tokens.voucherHeaderHeight,
+  },
   focusedTextPanel: {
     marginBlockStart: tokens.space4,
     borderBlockStartWidth: 1,
@@ -194,16 +223,36 @@ export function PdfViewer(props: {
   }, [props.onAvailabilityChange, ready]);
 
   return (
-    <Box display="grid" gap={props.presentation === "focused" ? "sm" : "md"} minWidth="zero">
-      <div {...stylex.props(styles.toolbar, focused && styles.focusedToolbar)}>
+    <Box
+      display="grid"
+      gap={Match.value(props.presentation).pipe(
+        Match.when("bank", () => "xl" as const),
+        Match.when("focused", () => "sm" as const),
+        Match.orElse(() => "md" as const),
+      )}
+      minWidth="zero"
+    >
+      <div
+        {...stylex.props(
+          styles.toolbar,
+          focused && styles.focusedToolbar,
+          props.presentation === "bank" && styles.bankToolbar,
+        )}
+      >
         {props.presentation === "bank" ? (
           <span {...stylex.props(styles.bankHeading)}>Original</span>
         ) : null}
-        <Box as="label" display="flex" alignItems="center" gap="sm">
+        <Box
+          as="label"
+          display="flex"
+          alignItems="center"
+          gap={props.presentation === "bank" ? "lg" : "sm"}
+        >
           {sv ? "Sida" : "Page"}
           <SelectControl
             aria-label={sv ? "Sida" : "Page"}
             size="compact"
+            indicator={props.presentation === "bank" ? "⌄" : undefined}
             styleX={[
               focused ? styles.focusedPageControl : styles.control,
               props.presentation === "bank" && styles.bankControl,
@@ -225,11 +274,17 @@ export function PdfViewer(props: {
             }}
           />
         </Box>
-        <Box as="label" display="flex" alignItems="center" gap="sm">
+        <Box
+          as="label"
+          display="flex"
+          alignItems="center"
+          gap={props.presentation === "bank" ? "lg" : "sm"}
+        >
           Zoom
           <SelectControl
             aria-label="Zoom"
             size="compact"
+            indicator={props.presentation === "bank" ? "⌄" : undefined}
             styleX={[
               focused ? styles.focusedZoomControl : styles.control,
               props.presentation === "bank" && styles.bankControl,
@@ -247,11 +302,14 @@ export function PdfViewer(props: {
         {focused ? (
           <Button
             type="button"
-            variant="ghost"
+            variant={props.presentation === "bank" ? "unstyled" : "ghost"}
             size="sm"
             aria-expanded={textOpen}
             aria-controls={textId}
-            styleX={styles.focusedTextAction}
+            styleX={[
+              styles.focusedTextAction,
+              props.presentation === "bank" && styles.bankTextAction,
+            ]}
             onClick={() => setTextOpen(!textOpen)}
           >
             {sv ? "Sidtext" : "Page text"}
