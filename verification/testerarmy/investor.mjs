@@ -223,9 +223,10 @@ try {
   await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", {
     mode: 0o600,
   });
+
   if (interrupted && manifest.verdict === "VERIFIED") {
     manifest.verdict = "NOT VERIFIED";
-    manifest.failure = `Interrupted by ${interrupted} during manifest write`;
+    manifest.failure = `Interrupted by ${String(interrupted)} during manifest write`;
     process.exitCode = 1;
     await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", {
       mode: 0o600,
