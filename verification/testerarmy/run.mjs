@@ -1,12 +1,20 @@
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { createWriteStream, existsSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
 import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
+import {
+  captureSources,
+  findTests,
+  requireNoSymlinkParents,
+  safeInside,
+  sha256,
+  tool,
+} from "../assurance/scripts/runtime.mjs";
 
 const run = promisify(execFile);
 
@@ -48,6 +56,52 @@ const groups = new Set();
 let stopping;
 
 let sessionDirectory;
+
+const sourceReceipt = {
+  status: "not_verified",
+  revision: null,
+  before: null,
+  after: null,
+  runnerExitCode: null,
+  exitCode: null,
+  limits:
+    "Revision plus exact input inventory; not clean-checkout qualification. Endpoint comparison detects retained changes, not transient edits reverted during execution.",
+};
+
+async function browserSources() {
+  const application = await captureSources(root);
+
+  if (application.files.some((file) => file.sha256 === null))
+    throw new Error("Missing application source input");
+
+  const paths = [
+    "e2e.config.ts",
+    "examples/synthetic-book.json",
+    ...(await findTests(root, "tests/browser", ".ts")),
+    ...(await findTests(root, "verification/testerarmy", ".mjs")),
+    ...(await findTests(root, "verification/testerarmy", ".pdf")),
+    ...(await findTests(root, "verification/paper", ".mjs")),
+    ...(await findTests(root, "verification/paper", ".pdf")),
+  ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+
+  const fixtures = [];
+
+  for (const path of paths) {
+    const full = safeInside(root, path);
+    await requireNoSymlinkParents(root, full);
+    fixtures.push({ path, sha256: sha256(await readFile(full)) });
+  }
+
+  return { application, fixtures, digest: sha256(JSON.stringify({ application, fixtures })) };
+}
+
+async function saveSourceReceipt() {
+  await writeFile(
+    resolve(output, "source-integrity.json"),
+    JSON.stringify(sourceReceipt, null, 2) + "\n",
+    { mode: 0o600 },
+  );
+}
 
 await mkdir(output, { recursive: true });
 
@@ -164,15 +218,41 @@ async function stop() {
   await stopping;
 }
 
+async function interrupt() {
+  sourceReceipt.status = "interrupted";
+  let code = 130;
+
+  try {
+    await stop();
+  } catch {
+    code = 1;
+    sourceReceipt.status = "cleanup_failed";
+  }
+
+  sourceReceipt.exitCode = code;
+
+  try {
+    await saveSourceReceipt();
+  } catch {
+    code = 1;
+  }
+
+  process.exit(code);
+}
+
 process.once("SIGINT", () => {
-  void stop().then(() => process.exit(130));
+  void interrupt();
 });
 
 process.once("SIGTERM", () => {
-  void stop().then(() => process.exit(130));
+  void interrupt();
 });
 
 try {
+  sourceReceipt.revision = tool("git", ["rev-parse", "HEAD"], { cwd: root });
+  sourceReceipt.before = await browserSources();
+  await saveSourceReceipt();
+
   await start(
     "uvx",
     [
@@ -226,7 +306,23 @@ try {
   groups.add(runner);
 
   const [code] = await once(runner, "exit");
-  process.exitCode = code ?? 1;
+  sourceReceipt.runnerExitCode = code ?? 1;
+  sourceReceipt.after = await browserSources();
+  sourceReceipt.status =
+    sourceReceipt.before.digest === sourceReceipt.after.digest ? "stable" : "changed_during_run";
+  process.exitCode = sourceReceipt.status === "stable" ? sourceReceipt.runnerExitCode : 1;
+
+  if (sourceReceipt.status !== "stable")
+    console.error("Browser source inputs changed during execution; results remain provisional.");
 } finally {
-  await stop();
+  try {
+    await stop();
+  } catch {
+    process.exitCode = 1;
+    sourceReceipt.status = "cleanup_failed";
+    console.error("Owned browser runtime cleanup failed.");
+  }
+
+  sourceReceipt.exitCode = process.exitCode ?? 1;
+  await saveSourceReceipt();
 }

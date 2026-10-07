@@ -52,3 +52,8 @@ PAPER_WORK_GROUP=1 bun run test:browser tests/browser/posting-work-group.e2e.ts
 ```
 
 The test retains `work-group-results.json`, interrupted/recovered screenshots and the runner's trace/report. A passing run must establish independent native receipts, original-key recovery, exclusion of changed/new supplier proposals and net 20000, input VAT 5000 and payable credit 25000 minor units.
+# Browser source-integrity contract
+
+Before wrapper implementation, 7 October 2026. A passing browser assertion is provisional if application, configuration, runtime launcher or fixture inputs changed during its run. Reuse the existing credential-free application source census and include the browser tests, pinned config, launcher scripts and retained fixture bytes. Record the committed revision and exact inventory separately; untracked or modified files prevent a clean-checkout claim.
+
+Missing or unreadable source, symlinked inputs, changed bytes, added/removed inputs and a failed final census must refuse qualification. Preserve a failing runner exit even when source is stable. An exception or interrupted startup must still clean up owned processes and retain a failure receipt when possible. Exclude sessions, environment values, database connection strings, cookies and raw traces from public receipts. Snapshot before any runtime starts and compare after the runner exits; do not silently replace the initial inventory. Test reports remain intact when the wrapper refuses source integrity.
