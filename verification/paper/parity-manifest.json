@@ -1,0 +1,251 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "pixelTolerance": 24,
+  "entries": [
+    {
+      "frame": "N1 Inköp: leverantörsfakturor",
+      "baseline": "03 Inköp/N1 Inköp_ leverantörsfakturor.png",
+      "path": "/purchases",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "O1 Bank: händelser och täckning",
+      "baseline": "04 Bank/O1 Bank_ händelser och täckning.png",
+      "path": "/accounts",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "P1 Dokument: arkiv",
+      "baseline": "05 Dokument/P1 Dokument_ arkiv.png",
+      "path": "/purchases?view=documents",
+      "maxDiffRatio": 0.01,
+      "selectText": "Nordhamn Studio AB, faktura 1048.pdf",
+      "headingText": "Nordhamn Studio AB, faktura 1048"
+    },
+    {
+      "frame": "Q1 Bokföring: verifikat",
+      "baseline": "06 Bokföring/Q1 Bokföring_ verifikat.png",
+      "path": "/books",
+      "maxDiffRatio": 0.01,
+      "selectText": "Nordhamn Studio AB, faktura 1048",
+      "fixture": "vouchers"
+    },
+    {
+      "frame": "R1 Skatt: moms",
+      "baseline": "07 Skatt och löner/R1 Skatt_ moms.png",
+      "path": "/tax",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "S2 Bokslut: perioder och checklista",
+      "baseline": "08 Rapporter och bokslut/S2 Bokslut_ perioder och checklista.png",
+      "path": "/closing",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "L1 Att göra: kö med förhandsvisning",
+      "baseline": "01 Att göra och granskning/L1 Att göra_ kö med förhandsvisning.png",
+      "path": "",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "Sidebar (shared shell)",
+      "baseline": "02 Försäljning/M12 Order och offerter.png",
+      "path": "/sales?view=orders",
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 900
+      },
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "M1 Fakturor: register med flikar",
+      "baseline": "02 Försäljning/M1 Fakturor_ register med flikar.png",
+      "path": "/sales",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "M12 Order och offerter",
+      "baseline": "02 Försäljning/M12 Order och offerter.png",
+      "path": "/sales?view=orders",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "M3 Kunder: register och detalj",
+      "selectText": "Fjällgården Fjällhotell & Konferens AB",
+      "baseline": "02 Försäljning/M3 Kunder_ register och detalj.png",
+      "path": "/sales?view=parties",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "M5 Artiklar",
+      "baseline": "02 Försäljning/M5 Artiklar.png",
+      "path": "/sales?view=articles",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "U32 Start: hur vill du börja",
+      "baseline": "10 Start, konto och setup/U32 Start_ hur vill du börja.png",
+      "path": "/setup?view=start",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "U33 Företagsprofil: fakta med källa",
+      "baseline": "10 Start, konto och setup/U33 Företagsprofil_ fakta med källa.png",
+      "path": "/setup?view=profile",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "U34 Kompatibilitet: vad stöds",
+      "baseline": "10 Start, konto och setup/U34 Kompatibilitet_ vad stöds.png",
+      "path": "/setup?view=compatibility",
+      "maxDiffRatio": 0.01
+    },
+    {
+      "frame": "U35 Setup-arbetsyta",
+      "baseline": "10 Start, konto och setup/U35 Setup-arbetsyta.png",
+      "path": "/setup?view=workspace",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-review",
+      "requiredTexts": [
+        "421 av 428 verifikat klara",
+        "391 av 403 original bevarade",
+        "7 undantag i historisk import"
+      ]
+    },
+    {
+      "frame": "U36 Källor: inventering",
+      "baseline": "10 Start, konto och setup/U36 Källor_ inventering.png",
+      "path": "/setup?view=sources",
+      "maxDiffRatio": 0.025,
+      "headingText": "Källor",
+      "requiredTexts": [
+        "34 st, 4 obetalda",
+        "83 st, 3 obetalda",
+        "391 bevarade original av 403 förväntade",
+        "4 st"
+      ],
+      "fixture": "onboarding-history"
+    },
+    {
+      "frame": "U37 Import: granskning",
+      "baseline": "10 Start, konto och setup/U37 Import_ granskning.png",
+      "path": "/setup?view=import",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-review",
+      "requiredTexts": [
+        "Vinter & Co AB faktura 882 finns redan."
+      ]
+    },
+    {
+      "frame": "U38 Mappningsundantag: konto 2999",
+      "baseline": "10 Start, konto och setup/U38 Mappningsundantag_ konto 2999.png",
+      "path": "/setup?view=mapping",
+      "maxDiffRatio": 0.025,
+      "headingText": "Konto 2999 saknas i kontoplanen",
+      "requiredText": "Förekommer i 73 poster, från 14 jan till 29 sep.",
+      "fixture": "onboarding-review"
+    },
+    {
+      "frame": "U39 Ingående balanser",
+      "baseline": "10 Start, konto och setup/U39 Ingående balanser.png",
+      "path": "/setup?view=opening",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-history",
+      "headingText": "Ingående balanser per 31 aug 2026",
+      "requiredText": "3 öppna fakturor, 42 500,00"
+    },
+    {
+      "frame": "U40 Verifiera bokföringen",
+      "baseline": "10 Start, konto och setup/U40 Verifiera bokföringen.png",
+      "path": "/setup?view=verification",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-verification",
+      "headingText": "Verifiera bokföringen",
+      "requiredTexts": [
+        "4 kontroller stämmer, 2 begränsningar accepterade. Skattekonto blockerar.",
+        "! Accepterad bankbegränsning, inte avstämd",
+        "! Accepterad dokumentbegränsning"
+      ]
+    },
+    {
+      "frame": "U41 Ansvar",
+      "baseline": "10 Start, konto och setup/U41 Ansvar.png",
+      "path": "/setup?view=responsibilities",
+      "maxDiffRatio": 0.025,
+      "headingText": "Vem gör vad?",
+      "fixture": "onboarding-pending"
+    },
+    {
+      "frame": "U42 Redo för övergång",
+      "baseline": "10 Start, konto och setup/U42 Redo för övergång.png",
+      "path": "/setup?view=cutover",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-cutover",
+      "headingText": "Övergång till OpenERP",
+      "requiredTexts": [
+        "Säkerhetskopia gjord",
+        "Slutlig deltaimport"
+      ]
+    },
+    {
+      "frame": "U43 Slutlig deltaimport",
+      "baseline": "10 Start, konto och setup/U43 Slutlig deltaimport.png",
+      "path": "/setup?view=delta",
+      "maxDiffRatio": 0.025,
+      "fixture": "onboarding-delta",
+      "headingText": "Slutlig deltaimport, granska före import",
+      "requiredTexts": [
+        "6 nya, 2 ändrade, 0 borttagna. 428 + 6 = 434 verifikat efter import."
+      ]
+    },
+    {
+      "frame": "U44 Bekräfta övergång",
+      "baseline": "10 Start, konto och setup/U44 Bekräfta övergång.png",
+      "path": "/setup?view=confirmation",
+      "maxDiffRatio": 0.025,
+      "headingText": "Bekräfta övergång 1 okt 2026",
+      "requiredTexts": [
+        "Elin Sund bekräftar",
+        "Sara Lind bekräftar",
+        "! Väntar",
+        "Väntar på Sara Lind",
+        "Slutlig deltaimport gjord, 434 verifikat"
+      ],
+      "fixture": "onboarding-pending"
+    },
+    {
+      "frame": "U45 Aktiveringskvitto",
+      "baseline": "10 Start, konto och setup/U45 Aktiveringskvitto.png",
+      "path": "/setup?view=activation",
+      "maxDiffRatio": 0.025,
+      "requiredTexts": [
+        "434 verifikat",
+        "34 kundfakturor",
+        "83 leverantörsfakturor",
+        "612 bankhändelser",
+        "391 original",
+        "4 anläggningstillgångar",
+        "September 2026, verifierad med 4 accepterade begränsningar"
+      ]
+    },
+    {
+      "frame": "U46 Första perioden under OpenERP",
+      "baseline": "10 Start, konto och setup/U46 Första perioden under OpenERP.png",
+      "path": "/setup?view=first-period",
+      "maxDiffRatio": 0.025,
+      "headingText": "Första perioden, oktober 2026",
+      "requiredTexts": [
+        "Aktuell till 2 okt, historisk bankbegränsning i kvittot",
+        "✓ Oktober: inga luckor, historiska undantag i kvittot",
+        "! 2 förslag väntar",
+        "Oktober 2026, ej stängd"
+      ]
+    }
+  ]
+}
