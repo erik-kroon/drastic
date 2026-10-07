@@ -55,6 +55,8 @@ const groups = new Set();
 
 let stopping;
 
+let interrupted = false;
+
 let sessionDirectory;
 
 const sourceReceipt = {
@@ -107,7 +109,12 @@ await mkdir(output, { recursive: true });
 
 console.log(`Reports and startup logs: ${runDirectory}`);
 
+function requireActive() {
+  if (interrupted) throw new Error("Browser run interrupted");
+}
+
 async function start(executable, args, name, ready) {
+  requireActive();
   const log = createWriteStream(resolve(output, `${name}.log`), { flags: "w", mode: 0o600 });
 
   logs.push(log);
@@ -218,39 +225,19 @@ async function stop() {
   await stopping;
 }
 
-async function interrupt() {
-  sourceReceipt.status = "interrupted";
-  let code = 130;
-
-  try {
-    await stop();
-  } catch {
-    code = 1;
-    sourceReceipt.status = "cleanup_failed";
-  }
-
-  sourceReceipt.exitCode = code;
-
-  try {
-    await saveSourceReceipt();
-  } catch {
-    code = 1;
-  }
-
-  process.exit(code);
+function interrupt() {
+  interrupted = true;
+  void stop().catch(() => {});
 }
 
-process.once("SIGINT", () => {
-  void interrupt();
-});
+process.once("SIGINT", interrupt);
 
-process.once("SIGTERM", () => {
-  void interrupt();
-});
+process.once("SIGTERM", interrupt);
 
 try {
   sourceReceipt.revision = tool("git", ["rev-parse", "HEAD"], { cwd: root });
   sourceReceipt.before = await browserSources();
+  requireActive();
   await saveSourceReceipt();
 
   await start(
@@ -286,6 +273,8 @@ try {
 
   console.log(`Reports and startup logs: ${runDirectory}`);
 
+  requireActive();
+
   const runner = spawn("npx", ["--no-install", "e2e", "run", ...process.argv.slice(2)], {
     cwd: root,
     env: {
@@ -308,21 +297,41 @@ try {
   const [code] = await once(runner, "exit");
   sourceReceipt.runnerExitCode = code ?? 1;
   sourceReceipt.after = await browserSources();
+  requireActive();
   sourceReceipt.status =
     sourceReceipt.before.digest === sourceReceipt.after.digest ? "stable" : "changed_during_run";
   process.exitCode = sourceReceipt.status === "stable" ? sourceReceipt.runnerExitCode : 1;
 
   if (sourceReceipt.status !== "stable")
     console.error("Browser source inputs changed during execution; results remain provisional.");
+} catch (error) {
+  process.exitCode = interrupted ? 130 : 1;
+
+  if (!interrupted) console.error(error);
 } finally {
+  let cleanupFailed = false;
+
   try {
     await stop();
   } catch {
+    cleanupFailed = true;
     process.exitCode = 1;
     sourceReceipt.status = "cleanup_failed";
     console.error("Owned browser runtime cleanup failed.");
   }
 
+  if (interrupted && !cleanupFailed) {
+    process.exitCode = 130;
+    sourceReceipt.status = "interrupted";
+  }
+
   sourceReceipt.exitCode = process.exitCode ?? 1;
   await saveSourceReceipt();
+
+  if (interrupted && !cleanupFailed && sourceReceipt.status !== "interrupted") {
+    process.exitCode = 130;
+    sourceReceipt.status = "interrupted";
+    sourceReceipt.exitCode = 130;
+    await saveSourceReceipt();
+  }
 }
