@@ -154,6 +154,22 @@ try {
       assert.equal(interrupted, undefined, "An interrupted chapter cannot pass");
       assert.equal(code, 0, `${chapter} must complete`);
       assert.ok(run.directory, "The runtime must retain its result directory");
+      const report = await receipt(run.directory, "report.json");
+
+      const expectedTests = chapter === "document-question-posting" ? 1 : 4;
+
+      assert.equal(report.run.summary.selected, expectedTests);
+      assert.equal(report.run.summary.executed, expectedTests);
+      assert.equal(report.run.summary.passed, expectedTests);
+
+      for (const status of ["failed", "interrupted", "flaky", "skipped"])
+        assert.equal(
+          report.run.summary[status],
+          0,
+          "Every selected case must pass without retries or skips",
+        );
+
+      run.summary = report.run.summary;
       const source = await receipt(run.directory, "source-integrity.json");
 
       assert.equal(source.status, "stable");
@@ -215,6 +231,11 @@ try {
   }
 
   assert.equal(interrupted, undefined);
+  assert.equal(
+    tool("git", ["rev-parse", "HEAD"], { cwd: root }).trim(),
+    manifest.revision,
+    "Revision must remain fixed through the final chapter",
+  );
   manifest.verdict = "VERIFIED";
 } catch (error) {
   manifest.failure = error instanceof Error ? error.message : "Investor rehearsal failed";
