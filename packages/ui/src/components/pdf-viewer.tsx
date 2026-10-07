@@ -89,6 +89,7 @@ export function PdfViewer(props: {
   view: PdfView;
   onViewChange: (view: PdfView) => void;
   presentation?: "focused";
+  onAvailabilityChange?: (available: boolean) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [documentState, setDocumentState] = useState<DocumentState>({ status: "loading" });
@@ -183,6 +184,10 @@ export function PdfViewer(props: {
     pageState.zoom === view.zoom;
 
   const failed = documentState.status === "error" || pageState.status === "error";
+
+  useEffect(() => {
+    props.onAvailabilityChange?.(ready);
+  }, [props.onAvailabilityChange, ready]);
 
   return (
     <Box display="grid" gap={props.presentation === "focused" ? "sm" : "md"} minWidth="zero">

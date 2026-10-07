@@ -34,6 +34,7 @@ import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/n
 import { mutationOptions } from "@/lib/accounting-api";
 import { WorkQuestionsEntry } from "./work-questions";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { BankMatchOriginal, useBankMatchOriginal } from "@/components/bank-match-original";
 
 type Props = CommerceProps & {
   statementId?: string;
@@ -392,6 +393,18 @@ function MatchChoice(
   );
 
   const [acknowledged, setAcknowledged] = useState(false);
+  const [originalReady, setOriginalReady] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const original = useBankMatchOriginal({
+    book: props.book,
+    locale,
+    selection: candidate,
+  });
+
+  const originalAvailable =
+    original.isSuccess && !original.isFetching && (original.data === null || originalReady);
+
   const chosen = data.candidates.filter((item) => `${item.voucherId}:${item.lineId}` in amounts);
 
   const legs = chosen.map((item) => ({
@@ -441,6 +454,16 @@ function MatchChoice(
             : "Choose one or more lines and enter an amount for each."
         }
       />
+      {candidate ? (
+        <BankMatchOriginal
+          key={`${candidate.voucherId}:${candidate.lineId}`}
+          book={props.book}
+          locale={locale}
+          query={original}
+          onAvailabilityChange={setOriginalReady}
+        />
+      ) : null}
+      {candidate ? <MatchExplanation candidate={candidate} sv={sv} /> : null}
       <CommandForm
         {...props}
         compact
@@ -450,7 +473,7 @@ function MatchChoice(
         output={Settlement.BankAllocationPlan}
         label={sv ? "Förbered matchning" : "Prepare match"}
         allowed={props.current && data.source.eligible}
-        canSubmit={valid && acknowledged}
+        canSubmit={valid && acknowledged && !!reason.trim() && (!candidate || originalAvailable)}
         input={(fields) => ({
           accountId: data.window.accountId,
           reason: fields.get("reason"),
@@ -476,9 +499,16 @@ function MatchChoice(
             sv ? "Varför hör transaktionerna ihop?" : "Why do these transactions belong together?"
           }
           name="reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
           required
           maxLength={2000}
         />
+        <PageCaption>
+          {sv
+            ? "Förberedelsen bokför inget. Planen granskas och godkänns separat."
+            : "Preparation posts nothing. The plan is reviewed and approved separately."}
+        </PageCaption>
         <InputField
           label={
             sv
@@ -491,6 +521,47 @@ function MatchChoice(
         />
       </CommandForm>
     </RecordSection>
+  );
+}
+
+function MatchExplanation({
+  candidate,
+  sv,
+}: {
+  candidate: typeof Candidates.BankMatchCandidate.Type;
+  sv: boolean;
+}) {
+  return (
+    <Box display="grid" gap="sm">
+      <Text>{sv ? "Varför visas förslaget?" : "Why is this suggested?"}</Text>
+      {candidate.equalRemainingAmount ? (
+        <Text>{sv ? "Återstående belopp är lika." : "Remaining amounts are equal."}</Text>
+      ) : null}
+      {candidate.dayDistance === 0 ? (
+        <Text>
+          {sv
+            ? "Bokföringsdatum och bankdatum är samma dag."
+            : "Posting date and bank date are the same day."}
+        </Text>
+      ) : null}
+      <Text>
+        {sv
+          ? "Lika belopp och datum bevisar inte samma transaktion."
+          : "Equal amounts and dates do not prove the same transaction."}
+      </Text>
+      {candidate.referenceComparison === "unavailable" ? (
+        <PageCaption>
+          {sv
+            ? "Ingen jämförbar fakturareferens finns."
+            : "No comparable invoice reference is available."}
+        </PageCaption>
+      ) : null}
+      <PageCaption>
+        {sv
+          ? "Granska underlaget. Källtäckning är inte fastställd."
+          : "Review the evidence. Source coverage is not established."}
+      </PageCaption>
+    </Box>
   );
 }
 

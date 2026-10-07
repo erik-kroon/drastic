@@ -851,6 +851,18 @@ test("a retained original returns through questions, explicit review, posting an
     .click();
   const matchingForm = matching.getByRole("form", "Förbered matchning", { exact: true });
 
+  await expect(matching.getByRole("img", `${filename}, sida 1`, { exact: true })).toBeVisible();
+  await expect(
+    matching.getByText("Lika belopp och datum bevisar inte samma transaktion.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    matchingForm.getByRole("button", "Förbered matchning", { exact: true }),
+  ).toBeDisabled();
+
+  const explanationScreenshot = await app.screenshot(
+    "document-question-bank-original-and-explanation",
+  );
+
   await matchingForm
     .getByLabel("Varför hör transaktionerna ihop?", { exact: true })
     .fill("The same reviewed original produced this retained posted bank line");
@@ -949,6 +961,7 @@ test("a retained original returns through questions, explicit review, posting an
           postingScreenshot,
           recoveryScreenshot,
           bankEvidenceScreenshot,
+          explanationScreenshot,
           statementScreenshot,
           bankScreenshot,
         ],
