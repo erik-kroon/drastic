@@ -329,3 +329,151 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
     ),
   );
 });
+
+test("bank review retains original zoom and visible keyboard review without financial effects", async ({
+  app,
+  browser,
+  screen,
+  agent,
+}) => {
+  const fixture = await bankReviewFixture(browser, app.baseUrl);
+
+  const output = process.env.OPENERP_E2E_OUTPUT;
+
+  if (!output) throw new Error("Use the disposable synthetic browser launcher");
+
+  await app.open(fixture.workspace);
+
+  const discovery = browser.waitForResponse("**/bank-match-candidates");
+
+  await app.open(fixture.path);
+
+  const observedCandidates = Schema.decodeUnknownSync(Candidates.BankMatchCandidates)(
+    await (await discovery).json(),
+  );
+
+  const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
+
+  const candidateIndex = observedCandidates.candidates.findIndex(
+    (item) =>
+      item.voucherId === fixture.candidate.voucherId && item.lineId === fixture.candidate.lineId,
+  );
+
+  await review
+    .getByRole("table", "Bokförda transaktioner", { exact: true })
+    .getByRole("row")
+    .nth(candidateIndex + 1)
+    .getByRole("button", "Välj", { exact: true })
+    .click();
+
+  const original = review.getByRole("img", "bank-review-original.pdf, sida 1", { exact: true });
+
+  await expect(original).toBeVisible();
+
+  const zoom = review.getByRole("combobox", "Zoom", { exact: true });
+
+  await zoom.focus();
+
+  await zoom.press("Enter");
+
+  await screen.getByRole("option", "125 %", { exact: true }).press("Enter");
+
+  await expect(zoom).toHaveText("125 % ⌄");
+
+  await expect(original).toBeVisible();
+
+  const viewport = await browser.evaluate<{
+    width: number;
+    scrollWidth: number;
+    overflowX: string;
+  }>(`() => {
+    const element = document.querySelector('canvas[role="img"]').parentElement;
+    return { width: element.clientWidth, scrollWidth: element.scrollWidth, overflowX: getComputedStyle(element).overflowX };
+  }`);
+
+  expect(viewport.scrollWidth).toBeGreaterThan(viewport.width);
+
+  expect(viewport.overflowX).toBe("auto");
+
+  const reason = review.getByRole("textbox", "Varför hör transaktionerna ihop?", { exact: true });
+
+  await reason.fill("Kontrollerat originalets belopp och mottagare med bibehållen förstoring.");
+
+  await reason.focus();
+
+  const focus = await browser.evaluate<{ inside: boolean; shadow: string }>(`() => {
+    const element = document.activeElement;
+    return { inside: !!element.closest('[role="dialog"]'), shadow: getComputedStyle(element).boxShadow };
+  }`);
+
+  expect(focus.inside).toBe(true);
+
+  expect(focus.shadow).not.toBe("none");
+
+  await reason.press("Tab");
+
+  await browser.keyboard.press("Space");
+
+  await expect(review.getByRole("checkbox")).toBeChecked();
+
+  await browser.keyboard.press("Tab");
+
+  const active = await browser.evaluate<string>("() => document.activeElement.textContent");
+
+  expect(active).toBe("Förbered matchning");
+
+  await expect(review.getByRole("button", "Förbered matchning", { exact: true })).toBeEnabled();
+
+  await expect(zoom).toHaveText("125 % ⌄");
+
+  await expect(review.getByRole("combobox", "Sida", { exact: true })).toHaveText("1 av 1 ⌄");
+
+  await review.getByRole("button", "Sidtext", { exact: true }).focus();
+
+  await browser.keyboard.press("Enter");
+
+  await expect(
+    review.getByText(
+      /EXEMPELDATA.*Exempel Kontorsservice AB.*Leverantörsunderlag.*DEMO-2026-0037/s,
+    ),
+  ).toBeVisible();
+
+  await agent.assert(
+    "Zoom displays 125 percent and Sidtext is open for the original supplier document. The reason textbox retains the entered reason, and the enabled Förbered matchning button remains visible.",
+  );
+
+  await expect(review.getByRole("button", "Granska planen", { exact: true })).toHaveCount(0);
+
+  const candidates = await fixture.call("/bank-match-candidates", Candidates.BankMatchCandidates, {
+    statementId: fixture.statement.statement.id,
+    rowOrdinal: 1,
+  });
+
+  expect(candidates.source.remainingMinor).toBe("-125000");
+
+  expect(await fixture.call("/ledger", Accounting.LedgerSnapshot)).toEqual(fixture.ledger);
+
+  const screenshot = await app.screenshot("bank-review-keyboard-original-zoom-retained");
+
+  await writeFile(
+    join(output, "bank-review-access.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        originalHash: fixture.expectedHash,
+        page: 1,
+        zoom: 125,
+        viewport,
+        focus,
+        active,
+        source: candidates.source,
+        ledger: fixture.ledger,
+        screenshot,
+        remaining:
+          "Multi-page bank originals, native browser zoom, reduced motion, full accessibility and parity remain open.",
+      },
+      null,
+      2,
+    ),
+  );
+});

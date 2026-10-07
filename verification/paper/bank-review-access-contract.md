@@ -1,0 +1,5 @@
+# Bank original controls and keyboard review
+
+Before changes, retain these failures. A zoomed original must not clip its right edge without a reachable horizontal scroll area. The selected page and zoom must survive editing the amount/reason and acknowledgment. Keyboard focus must remain visible and inside the review; Tab must reach acknowledgment and the prepare action after a valid reason. Keyboard activation must not prepare or approve a plan without that explicit action. Sidtext must expose the same verified original, not a substitute. The public ledger and candidate capacity must remain unchanged throughout this bounded inspection.
+
+Use the existing one-page synthetic bank fixture. Page continuity here means page 1 remains selected; it cannot establish multi-page bank-original behavior. Native browser 200% zoom, reduced motion, narrow layout and full workflow accessibility remain separate obligations. Preserve a screenshot and machine-readable source, view, focus and financial controls. This bounded result cannot complete DRA-106, DRA-130 or DRA-102.

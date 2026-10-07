@@ -22,6 +22,7 @@ type PageState =
   | { status: "ready"; page: number; zoom: number; width: number; height: number; text: string };
 
 const styles = stylex.create({
+  bankZoomedViewport: { overflowX: "auto" },
   toolbar: {
     display: "flex",
     flexWrap: "wrap",
@@ -321,6 +322,7 @@ export function PdfViewer(props: {
           styles.viewport,
           focused && styles.focusedViewport,
           props.presentation === "bank" && styles.bankViewport,
+          props.presentation === "bank" && view.zoom > 100 && styles.bankZoomedViewport,
         )}
       >
         <canvas
