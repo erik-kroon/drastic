@@ -86,6 +86,12 @@ test("document attention preserves acquisition identity and supplier handoff bef
 
   expect(intake.total).toBe("2");
   expect(intake.items.map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
+  const firstRoot = intake.items.find((item) => item.id === first.id)?.questionRoot;
+  const secondRoot = intake.items.find((item) => item.id === second.id)?.questionRoot;
+
+  expect(firstRoot).toMatchObject({ kind: "document", recordId: first.id, rowOrdinal: null });
+  expect(secondRoot).toMatchObject({ kind: "document", recordId: second.id, rowOrdinal: null });
+  expect(firstRoot?.key).not.toBe(secondRoot?.key);
   expect(
     intake.items.every(
       (item) =>
@@ -190,6 +196,12 @@ test("document attention preserves acquisition identity and supplier handoff bef
     state: "open",
   });
   expect(afterHandoff.items.some((item) => item.id === first.id)).toBe(false);
+  expect(
+    afterHandoff.items.filter((item) => item.questionRoot?.key === firstRoot?.key),
+  ).toHaveLength(1);
+  expect(afterHandoff.items.find((item) => item.id === handoff.draft.id)?.questionRoot).toEqual(
+    firstRoot,
+  );
 
   const completed = await decoded(
     await request(book, "/attention?kind=document&status=completed"),
@@ -223,6 +235,10 @@ test("document attention preserves acquisition identity and supplier handoff bef
     draftId: handoff.draft.id,
     reviewId: acceptance.id,
   });
+  expect(prepared.items.filter((item) => item.questionRoot?.key === firstRoot?.key)).toHaveLength(
+    1,
+  );
+  expect(prepared.items.find((item) => item.kind === "journal")?.questionRoot).toEqual(firstRoot);
 
   const context = await post(
     book,
@@ -270,6 +286,12 @@ test("document attention preserves acquisition identity and supplier handoff bef
 
   const afterRevision = await decoded(await request(book, "/attention"), Workspace.AttentionPage);
   expect(afterRevision.total).toBe("2");
+  expect(
+    afterRevision.items.filter((item) => item.questionRoot?.key === firstRoot?.key),
+  ).toHaveLength(1);
+  expect(afterRevision.items.find((item) => item.id === revised.id)?.questionRoot).toEqual(
+    firstRoot,
+  );
   expect(afterRevision.items.find((item) => item.id === revised.id)).toMatchObject({
     kind: "supplier",
     reason: "supplier_draft",
