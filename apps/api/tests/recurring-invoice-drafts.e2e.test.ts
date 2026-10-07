@@ -1302,8 +1302,6 @@ test("commercial drafts remain admissible after 200 retained records", async () 
     if (index === 24) {
       const ordered = [...durations].sort((left, right) => left - right);
 
-      // Parent p95 and the accepted bound are retained in docs/plans/evidence/recurring-commercial-drafts.md.
-      expect(ordered[23]).toBeLessThanOrEqual(79.6235);
       await writeFile(
         join(environment().artifacts, "basic-draft-performance.json"),
         JSON.stringify(
@@ -1320,6 +1318,7 @@ test("commercial drafts remain admissible after 200 retained records", async () 
           2,
         ),
       );
+      expect(ordered[23]).toBeLessThanOrEqual(79.6235);
     }
   }
 
