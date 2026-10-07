@@ -1,6 +1,10 @@
 # Internal trial balance
 
-`trial_balance_v1` is a synthetic internal report, not a statutory balance sheet, tax return or period close certificate.
+`trial_balance_v1` is an internal recorded-ledger report for `synthetic-core-v1`
+and `company-setup-v1` books, not a statutory balance sheet, tax return or period
+close certificate. Capturing it does not admit company facts, activate posting,
+establish source completeness or qualify mapped statements. An empty recorded
+ledger is not evidence of zero company balances.
 
 POST `.../report-snapshots` with `kind`, `startsOn`, `endsOn` and a stable Idempotency-Key. The command locks the book, freezes its committed sequence and account labels, and stores full-scope account totals atomically with the receipt. Repeating the command returns the same snapshot; create a new command for a new cutoff. Inactive accounts remain visible.
 
@@ -25,5 +29,5 @@ not reviewed openings, statutory comparatives or financial-close readiness.
 deterministic profit-and-loss and balance-sheet snapshot derived from retained ledger facts under
 one reviewed mapping release, with an explicit virtual untransferred result, a topological subtotal
 graph, retained row and contribution membership, and separate arithmetic and coverage statuses. It
-is a new artifact beside the synthetic trial-balance and role-bucket family reports above, not a
+is a new artifact beside the internal trial-balance and synthetic role-bucket family reports above, not a
 recalculation of them.

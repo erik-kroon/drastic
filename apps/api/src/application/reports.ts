@@ -162,7 +162,10 @@ export const prepareReport = Effect.fn("reports.prepare")(function* (
 
       if (!book) return yield* failure("NotFound");
 
-      if (command.input.kind !== "trial_balance_v1" || book.profile !== "synthetic-core-v1") {
+      if (
+        command.input.kind !== "trial_balance_v1" ||
+        (book.profile !== "synthetic-core-v1" && book.profile !== "company-setup-v1")
+      ) {
         return yield* unsupported();
       }
 
@@ -206,7 +209,9 @@ export const prepareReport = Effect.fn("reports.prepare")(function* (
         balanced: debit === credit,
         coverage: "not_established",
         warnings: [
-          "Internal synthetic trial balance only; not a statutory financial statement.",
+          book.profile === "synthetic-core-v1"
+            ? "Internal synthetic trial balance only; not a statutory financial statement."
+            : "Internal ledger trial balance only; not a statutory financial statement.",
           "A balanced ledger does not establish complete source records, tax correctness or period readiness.",
           "Opening balances include all earlier postings; no fiscal-year profit transfer is inferred.",
         ],
