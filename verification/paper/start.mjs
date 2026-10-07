@@ -208,8 +208,36 @@ let web;
 
 let cleaning;
 
+async function closeRuntimeArtifacts() {
+  const failures = [];
+
+  const actions = [
+    () => recurringFixture?.close(),
+    () => worker?.close(),
+    () => processorFixture?.close(),
+    () => peppolFixture?.close(),
+    () => writeFile(join(artifacts, "web.log"), webLog, { mode: 0o600 }),
+    () =>
+      worker &&
+      writeFile(join(artifacts, "worker.json"), JSON.stringify(worker.getLogs(), null, 2), {
+        mode: 0o600,
+      }),
+  ];
+
+  for (const action of actions) {
+    try {
+      await action();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (failures.length) throw new AggregateError(failures, "Synthetic runtime cleanup failed");
+}
+
 async function cleanup() {
   if (cleaning) return cleaning;
+
   cleaning = (async () => {
     try {
       if (web?.pid && web.exitCode === null) {
@@ -228,20 +256,7 @@ async function cleanup() {
       }
     } finally {
       try {
-        await writeFile(join(artifacts, "web.log"), webLog, { mode: 0o600 });
-
-        if (worker)
-          await writeFile(
-            join(artifacts, "worker.json"),
-            JSON.stringify(worker.getLogs(), null, 2),
-            {
-              mode: 0o600,
-            },
-          );
-        await recurringFixture?.close();
-        await worker?.close();
-        await processorFixture?.close();
-        await peppolFixture?.close();
+        await closeRuntimeArtifacts();
       } finally {
         try {
           if (postgresStarted)
@@ -266,13 +281,19 @@ process.on("SIGUSR2", () => {
       );
 });
 
-process.once("SIGINT", () => {
-  void cleanup().then(() => process.exit(0));
-});
+function shutdown() {
+  void cleanup().then(
+    () => process.exit(0),
+    (error) => {
+      console.error(error);
+      process.exit(1);
+    },
+  );
+}
 
-process.once("SIGTERM", () => {
-  void cleanup().then(() => process.exit(0));
-});
+process.once("SIGINT", shutdown);
+
+process.once("SIGTERM", shutdown);
 
 try {
   await writeFile(passwordFile, pgPassword, { mode: 0o600 });
@@ -738,6 +759,5 @@ try {
   console.log(JSON.stringify({ ready: true, url, sessionFile, artifacts }));
   await once(web, "exit");
 } finally {
-  await writeFile(join(artifacts, "web.log"), webLog);
   await cleanup();
 }
