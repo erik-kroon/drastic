@@ -36,7 +36,7 @@ def image_bytes(path, expected_hash):
         return rgba.tobytes(), digest
 
 
-def compare(entry, output):
+def compare(entry, output, strict):
     expected_path = checkout_path(entry["expected"])
     actual_path = checkout_path(entry["actual"])
     expected, expected_hash = image_bytes(expected_path, entry["expectedSha256"])
@@ -70,8 +70,9 @@ def compare(entry, output):
         "diff": str((output / filename).relative_to(ROOT)),
         "differentPixels": bad,
         "diffRatio": ratio,
-        "maxDiffRatio": 0.01,
-        "pass": ratio <= 0.01,
+        "maxDiffRatio": entry["maxDiffRatio"],
+        "comparison": "strictly_less_than" if strict else "less_than_or_equal",
+        "pass": ratio < entry["maxDiffRatio"] if strict else ratio <= entry["maxDiffRatio"],
         "hotspots": hotspots.most_common(8),
     }
 
@@ -88,12 +89,31 @@ def main():
     if len(entries) != 6 or {entry["frame"] for entry in entries} != FRAMES:
         raise ValueError("Exactly one capture of each approved state is required")
 
-    if any(entry["maxDiffRatio"] != 0.01 for entry in entries):
-        raise ValueError("Retain the existing 1% parity bound")
+    decision_path = manifest.get("thresholdDecision")
+    strict = decision_path is not None
+    limit = 0.025 if strict else 0.01
+
+    if strict:
+        expected_decision = "docs/plans/evidence/bank-review-parity-20261007/threshold-decision.json"
+
+        if decision_path != expected_decision:
+            raise ValueError("Unknown bank parity threshold authority")
+
+        decision = json.loads(checkout_path(decision_path).read_text())
+
+        if (set(decision["frames"]) != FRAMES or decision["maxDiffRatio"] != limit
+                or decision["comparison"] != "strictly_less_than"
+                or decision["viewport"] != manifest["viewport"]
+                or decision["pixelTolerance"] != manifest["pixelTolerance"]
+                or decision["baselineChanges"] or decision["captureChanges"]):
+            raise ValueError("Inconsistent scoped bank parity threshold decision")
+
+    if any(entry["maxDiffRatio"] != limit for entry in entries):
+        raise ValueError("Manifest limits must match the scoped threshold authority")
 
     output.mkdir(parents=True, exist_ok=True)
-    results = [compare(entry, output) for entry in entries]
-    report = {"manifest": str(manifest_path.relative_to(ROOT)), "pixelTolerance": 24, "viewport": manifest["viewport"], "entries": results, "pass": all(entry["pass"] for entry in results), "scope": "Pixel comparison only; source identity and behavior require independent proof"}
+    results = [compare(entry, output, strict) for entry in entries]
+    report = {"thresholdDecision": decision_path, "manifest": str(manifest_path.relative_to(ROOT)), "pixelTolerance": 24, "viewport": manifest["viewport"], "entries": results, "pass": all(entry["pass"] for entry in results), "scope": "Pixel comparison only; source identity and behavior require independent proof"}
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"pass": report["pass"], "states": [{"frame": entry["frame"], "diffRatio": round(entry["diffRatio"], 4), "pass": entry["pass"]} for entry in results]}))
     return 0 if report["pass"] else 1
