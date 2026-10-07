@@ -613,6 +613,7 @@ export function insertOccurrenceIssue(
     readonly chargeComponentKey: string;
     readonly draftId: string;
     readonly invoiceIssueId: string;
+    readonly invoiceIssueOwner: "internal" | "legal";
     readonly registerInvoiceId: string;
     readonly documentNumber: string;
     readonly postingReceiptId: string;
@@ -625,11 +626,11 @@ export function insertOccurrenceIssue(
     sql`
       insert into openerp.recurring_invoice_occurrence_issues
         (book_id, id, occurrence_id, agreement_id, cycle_ordinal, charge_component_key, draft_id,
-          invoice_issue_id, register_invoice_id, document_number, posting_receipt_id, body, digest,
+          invoice_issue_id, invoice_issue_owner, register_invoice_id, document_number, posting_receipt_id, body, digest,
           created_at)
       values (${row.bookId}, ${row.id}, ${row.occurrenceId}, ${row.agreementId},
         ${row.cycleOrdinal}::bigint, ${row.chargeComponentKey}, ${row.draftId}, ${row.invoiceIssueId},
-        ${row.registerInvoiceId}, ${row.documentNumber}, ${row.postingReceiptId},
+        ${row.invoiceIssueOwner}, ${row.registerInvoiceId}, ${row.documentNumber}, ${row.postingReceiptId},
         ${JSON.stringify(row.body)}::jsonb, ${row.digest}, ${row.createdAt})
     `,
     "objects",

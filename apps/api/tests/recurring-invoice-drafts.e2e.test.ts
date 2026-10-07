@@ -65,6 +65,40 @@ const AgreementPage = Schema.Struct({
 
 type Context = Awaited<ReturnType<typeof legalFixture>>;
 
+async function economicState(admin: Awaited<ReturnType<typeof database>>, bookId: string) {
+  const result = await admin.query<{
+    drafts: number;
+    legalIssues: number;
+    internalIssues: number;
+    legalNumbers: string;
+    internalNumbers: string;
+    postings: number;
+    vouchers: number;
+    deliveryRequests: number;
+    deliveryAttempts: number;
+  }>(
+    `SELECT
+    (SELECT count(*)::int FROM openerp.invoice_drafts WHERE book_id=$1) AS drafts,
+    (SELECT count(*)::int FROM openerp.ar_legal_issues WHERE book_id=$1) AS "legalIssues",
+    (SELECT count(*)::int FROM openerp.invoice_issues WHERE book_id=$1) AS "internalIssues",
+    COALESCE((SELECT sum(last_number) FROM openerp.ar_legal_issue_counters WHERE book_id=$1),0)::text AS "legalNumbers",
+    COALESCE((SELECT sum(last_number) FROM openerp.invoice_issue_counters WHERE book_id=$1),0)::text AS "internalNumbers",
+    (SELECT count(*)::int FROM openerp.execution_receipts WHERE book_id=$1) AS postings,
+    (SELECT count(*)::int FROM openerp.vouchers WHERE book_id=$1) AS vouchers,
+    ((SELECT count(*) FROM openerp.ar_legal_delivery_requests WHERE book_id=$1) +
+      (SELECT count(*) FROM openerp.invoice_delivery_requests WHERE book_id=$1))::int AS "deliveryRequests",
+    ((SELECT count(*) FROM openerp.ar_legal_delivery_attempts WHERE book_id=$1) +
+      (SELECT count(*) FROM openerp.invoice_delivery_attempts WHERE book_id=$1))::int AS "deliveryAttempts"`,
+    [bookId],
+  );
+
+  const value = result.rows[0];
+
+  if (value === undefined) throw new Error("Missing retained economic state");
+
+  return value;
+}
+
 function commercialTemplate(
   context: Context,
 ): typeof Recurring.CommercialRecurringTemplateInput.Type {
@@ -326,6 +360,8 @@ test("confirmed commercial schedules create exact ordinary drafts through the du
     );
   }
 
+  const admin = await database();
+  const financialBefore = await economicState(admin, context.book.bookId);
   const enrollment = await enroll(context, recurring.path, "1");
   expect(enrollment).toMatchObject({
     firstAutomaticCycle: "1",
@@ -334,7 +370,6 @@ test("confirmed commercial schedules create exact ordinary drafts through the du
     requestedBy: context.author.actorId,
   });
 
-  const admin = await database();
   await admin.query(
     "UPDATE openerp_auth.session SET expires_at = now() - interval '1 second' WHERE token = $1",
     [context.author.token],
@@ -346,7 +381,9 @@ test("confirmed commercial schedules create exact ordinary drafts through the du
 
   try {
     finished = await waitFor(observer, recurring.path, (value) =>
-      value.history.some((item) => item.cycleOrdinal === "2" && item.state === "drafted"),
+      ["1", "2"].every((cycle) =>
+        value.history.some((item) => item.cycleOrdinal === cycle && item.state === "drafted"),
+      ),
     );
   } finally {
     await stop(first.child);
@@ -399,10 +436,19 @@ test("confirmed commercial schedules create exact ordinary drafts through the du
 
   expect(counts.rows[0]?.drafts).toBe(counts.rows[0]?.occurrences);
   expect(counts.rows[0]?.issues).toBe(0);
+  const financialAfter = await economicState(admin, context.book.bookId);
+  expect(financialAfter).toEqual({
+    ...financialBefore,
+    drafts: financialBefore.drafts + (counts.rows[0]?.occurrences ?? 0),
+  });
   await admin.end();
   await writeFile(
     join(environment().artifacts, "recurring-exact-journey.json"),
-    JSON.stringify({ enrollment, finished, occurrences, draft }, null, 2),
+    JSON.stringify(
+      { enrollment, finished, occurrences, draft, financialBefore, financialAfter },
+      null,
+      2,
+    ),
   );
 });
 
@@ -540,19 +586,274 @@ test("paused cycles and manual future occupancy remain explicit without catch-up
   );
 
   expect(issueReview.totals).toEqual({ netMinor: "3005", taxMinor: "751", grossMinor: "3756" });
-  await event(context, recurring, "pause", "6");
-  await failure(
-    await request(context.author, "/commerce/ar-legal-issue-reviews", {
-      method: "POST",
-      body: JSON.stringify(issueInput),
-    }),
-    409,
-    "StaleDependency",
+  const approvalInput = { version: 1, digest: issueReview.digest, acknowledgeLimitedProfile: true };
+
+  const approval = await post(
+    context.reviewer,
+    `/commerce/ar-legal-issue-reviews/${issueReview.id}/approvals`,
+    approvalInput,
+    Ar.ArLegalIssueApproval,
   );
-  await writeFile(
-    join(environment().artifacts, "recurring-gaps.json"),
-    JSON.stringify({ finished, recovered, issueReview }, null, 2),
-  );
+
+  const admin = await database();
+
+  try {
+    const beforePause = await economicState(admin, context.book.bookId);
+    await event(context, recurring, "pause", "6");
+    await failure(
+      await request(
+        context.reviewer,
+        `/commerce/ar-legal-issue-reviews/${issueReview.id}/execute`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ...approvalInput, approvalId: approval.id }),
+        },
+      ),
+      409,
+      "StaleDependency",
+    );
+    await failure(
+      await request(context.author, "/commerce/ar-legal-issue-reviews", {
+        method: "POST",
+        body: JSON.stringify(issueInput),
+      }),
+      409,
+      "StaleDependency",
+    );
+    expect(await economicState(admin, context.book.bookId)).toEqual(beforePause);
+
+    const ordinary = await agreement(context, "P08 ordinary issue admission pause", "2026-09-01");
+
+    const ordinaryOccurrence = await post(
+      context.author,
+      `${ordinary.path}/occurrences`,
+      { cycleOrdinal: "1", reason: "Explicit ordinary occurrence for human issue review" },
+      Recurring.RecurringOccurrence,
+    );
+
+    const ordinaryDraft = await decoded(
+      await request(context.author, `/commerce/invoice-drafts/${ordinaryOccurrence.draftId}`),
+      Drafts.InvoiceDraftView,
+    );
+
+    if (ordinaryDraft.record.purpose !== "commercial")
+      throw new Error("Ordinary recurrence must retain a commercial draft");
+
+    const ordinaryRevision = await post(
+      context.author,
+      `/commerce/invoice-drafts/${ordinaryDraft.record.id}/revisions`,
+      {
+        expectedRevision: ordinaryDraft.record.revision,
+        expectedDigest: ordinaryDraft.record.digest,
+        reason: "Human review resolves ordinary recurring legal issue dates",
+        commercial: {
+          ...ordinaryDraft.record.commercialInput,
+          customer: context.original.draftSnapshot.content.customer,
+          plannedIssueDate: context.today,
+          supplyDate: context.today,
+          dueDate: context.today,
+        },
+      },
+      Drafts.InvoiceDraftRevision,
+    );
+
+    const ordinaryIssueInput = {
+      ...issueInput,
+      draftId: ordinaryRevision.id,
+      expectedRevision: ordinaryRevision.revision,
+      expectedDigest: ordinaryRevision.digest,
+      reason: "Review the ordinary recurring occurrence",
+    };
+
+    const ordinaryReview = await post(
+      context.author,
+      "/commerce/ar-legal-issue-reviews",
+      ordinaryIssueInput,
+      Ar.ArLegalIssueReview,
+    );
+
+    const ordinaryApprovalInput = { ...approvalInput, digest: ordinaryReview.digest };
+
+    const ordinaryApproval = await post(
+      context.reviewer,
+      `/commerce/ar-legal-issue-reviews/${ordinaryReview.id}/approvals`,
+      ordinaryApprovalInput,
+      Ar.ArLegalIssueApproval,
+    );
+
+    const beforeOrdinaryPause = await economicState(admin, context.book.bookId);
+    await event(context, ordinary, "pause", "1");
+    await failure(
+      await request(
+        context.reviewer,
+        `/commerce/ar-legal-issue-reviews/${ordinaryReview.id}/execute`,
+        {
+          method: "POST",
+          body: JSON.stringify({ ...ordinaryApprovalInput, approvalId: ordinaryApproval.id }),
+        },
+      ),
+      409,
+      "StaleDependency",
+    );
+    expect(await economicState(admin, context.book.bookId)).toEqual(beforeOrdinaryPause);
+
+    await event(context, ordinary, "resume", "1");
+
+    const resumedReview = await post(
+      context.author,
+      "/commerce/ar-legal-issue-reviews",
+      { ...ordinaryIssueInput, reason: "Review after explicit recurring resume" },
+      Ar.ArLegalIssueReview,
+    );
+
+    const resumedApprovalInput = { ...approvalInput, digest: resumedReview.digest };
+
+    const resumedApproval = await post(
+      context.reviewer,
+      `/commerce/ar-legal-issue-reviews/${resumedReview.id}/approvals`,
+      resumedApprovalInput,
+      Ar.ArLegalIssueApproval,
+    );
+
+    const executeInput = { ...resumedApprovalInput, approvalId: resumedApproval.id };
+    const issueKey = `p08_resume_issue_${ordinary.record.id}`;
+
+    const issued = await decoded(
+      await request(
+        context.reviewer,
+        `/commerce/ar-legal-issue-reviews/${resumedReview.id}/execute`,
+        {
+          method: "POST",
+          headers: { "idempotency-key": issueKey },
+          body: JSON.stringify(executeInput),
+        },
+      ),
+      Ar.ArLegalIssueReceipt,
+    );
+
+    expect(issued).toMatchObject({
+      draftId: ordinaryOccurrence.draftId,
+      issued: true,
+      delivered: false,
+      totals: { netMinor: "3005", taxMinor: "751", grossMinor: "3756" },
+    });
+
+    const coverage = await admin.query<{
+      invoiceIssueId: string;
+      invoiceIssueOwner: string;
+      internalInvoiceIssueId: string | null;
+      legalInvoiceIssueId: string | null;
+      documentNumber: string;
+      postingReceiptId: string;
+      body: Schema.JsonObject;
+    }>(
+      `SELECT invoice_issue_id AS "invoiceIssueId",invoice_issue_owner AS "invoiceIssueOwner",
+      internal_invoice_issue_id AS "internalInvoiceIssueId",legal_invoice_issue_id AS "legalInvoiceIssueId",
+      document_number AS "documentNumber",posting_receipt_id AS "postingReceiptId",body
+      FROM openerp.recurring_invoice_occurrence_issues WHERE book_id=$1 AND agreement_id=$2 AND cycle_ordinal=1`,
+      [context.book.bookId, ordinary.record.id],
+    );
+
+    expect(coverage.rows).toHaveLength(1);
+    expect(coverage.rows[0]).toMatchObject({
+      invoiceIssueId: issued.id,
+      invoiceIssueOwner: "legal",
+      internalInvoiceIssueId: null,
+      legalInvoiceIssueId: issued.id,
+      documentNumber: issued.legalDocumentNumber,
+      postingReceiptId: issued.postingReceipt.id,
+      body: { invoiceIssueOwner: "legal", invoiceIssueId: issued.id },
+    });
+
+    const issuedOccurrence = await decoded(
+      await request(context.author, `${ordinary.path}/occurrences/1`),
+      Recurring.RecurringOccurrenceView,
+    );
+
+    expect(issuedOccurrence.coverage).toHaveLength(1);
+    expect(issuedOccurrence.coverage[0]).toMatchObject({
+      invoiceIssueOwner: "legal",
+      invoiceIssueId: issued.id,
+      documentNumber: issued.legalDocumentNumber,
+      postingReceiptId: issued.postingReceipt.id,
+    });
+
+    const replayedIssue = await decoded(
+      await request(
+        context.reviewer,
+        `/commerce/ar-legal-issue-reviews/${resumedReview.id}/execute`,
+        {
+          method: "POST",
+          headers: { "idempotency-key": issueKey },
+          body: JSON.stringify(executeInput),
+        },
+      ),
+      Ar.ArLegalIssueReceipt,
+    );
+
+    expect(replayedIssue).toEqual(issued);
+    const afterIssue = await economicState(admin, context.book.bookId);
+    expect(afterIssue).toEqual({
+      ...beforeOrdinaryPause,
+      legalIssues: beforeOrdinaryPause.legalIssues + 1,
+      legalNumbers: (BigInt(beforeOrdinaryPause.legalNumbers) + 1n).toString(),
+      postings: beforeOrdinaryPause.postings + 1,
+      vouchers: beforeOrdinaryPause.vouchers + 1,
+    });
+    await failure(
+      await request(context.author, `${ordinary.path}/schedules`, {
+        method: "POST",
+        body: JSON.stringify({
+          expectedAgreementRevision: ordinary.record.revision,
+          expectedAgreementDigest: ordinary.record.digest,
+          effectiveFromCycle: "2",
+          schedule: {
+            ...ordinary.record.schedule,
+            cadence: { ...ordinary.record.schedule.cadence, monthInterval: "3" },
+          },
+          reason: "Refuse a quarterly cadence that changes already billed service dates",
+        }),
+      }),
+      422,
+      "UnsupportedProfile",
+    );
+    expect(await economicState(admin, context.book.bookId)).toEqual(afterIssue);
+
+    const unchanged = await decoded(
+      await request(context.author, ordinary.path),
+      Recurring.RecurringAgreementView,
+    );
+
+    expect(unchanged.schedules).toHaveLength(1);
+    await writeFile(
+      join(environment().artifacts, "recurring-gaps.json"),
+      JSON.stringify(
+        {
+          finished,
+          recovered,
+          issueReview,
+          approval,
+          beforePause,
+          ordinaryOccurrence,
+          ordinaryReview,
+          ordinaryApproval,
+          beforeOrdinaryPause,
+          resumedReview,
+          resumedApproval,
+          issued,
+          issuedOccurrence,
+          replayedIssue,
+          coverage: coverage.rows,
+          afterIssue,
+          unchanged,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await admin.end();
+  }
 });
 
 test("full lifecycle witness fences admitted jobs and revocation remains visible", async () => {
@@ -1001,6 +1302,8 @@ test("commercial drafts remain admissible after 200 retained records", async () 
     if (index === 24) {
       const ordered = [...durations].sort((left, right) => left - right);
 
+      // Parent p95 and the accepted bound are retained in docs/plans/evidence/recurring-commercial-drafts.md.
+      expect(ordered[23]).toBeLessThanOrEqual(79.6235);
       await writeFile(
         join(environment().artifacts, "basic-draft-performance.json"),
         JSON.stringify(
@@ -1009,6 +1312,8 @@ test("commercial drafts remain admissible after 200 retained records", async () 
             fixtures: 25,
             p50Ms: ordered[12],
             p95Ms: ordered[23],
+            acceptedP95Ms: 79.6235,
+            baselineSource: "docs/plans/evidence/recurring-commercial-drafts.md",
             feature: "existing commercial draft admission",
           },
           null,
@@ -1326,8 +1631,22 @@ test("a killed runner between queue enqueue and application acknowledgement reco
   const context = await legalFixture();
   const recurring = await agreement(context, "P08 enqueue acknowledgement crash", "2026-09-01");
 
+  const fenced: Array<{
+    kind: "disabled" | "ended" | "template" | "schedule";
+    recurring: Awaited<ReturnType<typeof agreement>>;
+    enrollment: typeof Scheduling.Type;
+  }> = [];
+
   await enroll(context, recurring.path, "1");
+
+  for (const kind of ["disabled", "ended", "template", "schedule"] as const) {
+    const selected = await agreement(context, `P08 admitted ${kind} fence`, "2026-08-01");
+    const enrollment = await enroll(context, selected.path, "2");
+    fenced.push({ kind, recurring: selected, enrollment });
+  }
+
   const admin = await database();
+  const financialBefore = await economicState(admin, context.book.bookId);
   let first: ReturnType<typeof runner> | undefined;
   let second: ReturnType<typeof runner> | undefined;
 
@@ -1350,20 +1669,138 @@ test("a killed runner between queue enqueue and application acknowledgement reco
         },
         { timeout: 15000 },
       )
-      .toBe(1);
+      .toBeGreaterThanOrEqual(1);
 
-    const before = await admin.query<{ id: string; dispatched_at: string | null }>(
-      "SELECT id,dispatched_at FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1",
+    await expect
+      .poll(
+        async () => {
+          const sleeping = await admin.query<{ count: number }>(
+            "SELECT count(*)::int AS count FROM pg_stat_activity WHERE application_name='open-erp-preparation-application' AND wait_event='PgSleep'",
+          );
+
+          return sleeping.rows[0]?.count;
+        },
+        { timeout: 15000 },
+      )
+      .toBeGreaterThanOrEqual(1);
+
+    const before = await admin.query<{
+      id: string;
+      agreementId: string;
+      cycleOrdinal: string;
+      state: string;
+      admitted: Schema.JsonObject;
+      dispatched_at: string | null;
+    }>(
+      `SELECT id,agreement_id AS "agreementId",cycle_ordinal::text AS "cycleOrdinal",state,admitted,dispatched_at
+      FROM openerp.recurring_invoice_draft_jobs WHERE book_id=$1`,
       [context.book.bookId],
     );
 
-    expect(before.rows[0]?.dispatched_at).toBe(null);
+    expect(before.rows).toHaveLength(5);
+    expect(before.rows.every((job) => job.state === "ready" && job.dispatched_at === null)).toBe(
+      true,
+    );
+
+    for (const selected of fenced) {
+      expect(
+        before.rows.find((job) => job.agreementId === selected.recurring.record.id),
+      ).toMatchObject({
+        cycleOrdinal: "2",
+        admitted: { templateDigest: selected.recurring.template.digest, scheduleRevision: "1" },
+      });
+    }
+
     const killed = once(first.child, "exit");
 
     first.child.kill("SIGKILL");
     await killed;
     await admin.query("DROP TRIGGER p08_hold_dispatch ON openerp.recurring_invoice_draft_jobs");
     await admin.query("DROP FUNCTION openerp.p08_hold_dispatch()");
+    expect(await economicState(admin, context.book.bookId)).toEqual(financialBefore);
+    const changedSources: Array<{ kind: string; source: unknown }> = [];
+
+    for (const selected of fenced) {
+      const retained = selected.recurring;
+
+      switch (selected.kind) {
+        case "disabled": {
+          const source = await post(
+            context.author,
+            `${retained.path}/scheduling`,
+            {
+              expectedGeneration: selected.enrollment.generation,
+              enabled: false,
+              firstAutomaticCycle: "2",
+              duePolicy: "local_calendar_date_v1",
+              confirmFirstAutomaticCycle: true,
+              reason: "Disable an admitted occurrence before execution",
+            },
+            Scheduling,
+          );
+
+          expect(source).toMatchObject({ enabled: false, generation: "2" });
+          changedSources.push({ kind: selected.kind, source });
+          break;
+        }
+
+        case "ended": {
+          const source = await event(context, retained, "end", "2");
+          expect(source).toMatchObject({ kind: "end", effectiveCycle: "2" });
+          changedSources.push({ kind: selected.kind, source });
+          break;
+        }
+
+        case "template": {
+          const source = await post(
+            context.author,
+            `${retained.path}/template-revisions`,
+            {
+              ...retained.input,
+              effectiveFromCycle: "2",
+              template: {
+                ...retained.input.template,
+                lines: retained.input.template.lines.map((line) => ({
+                  ...line,
+                  unitPriceMinor: "2001",
+                })),
+              },
+              reason: "Amend the selected unmaterialized commercial cycle",
+            },
+            Recurring.RecurringTemplateRevision,
+          );
+
+          expect(source).toMatchObject({ revision: "2", effectiveFromCycle: "2" });
+          expect(source.digest).not.toBe(retained.template.digest);
+          changedSources.push({ kind: selected.kind, source });
+          break;
+        }
+
+        case "schedule": {
+          const source = await post(
+            context.author,
+            `${retained.path}/schedules`,
+            {
+              expectedAgreementRevision: retained.record.revision,
+              expectedAgreementDigest: retained.record.digest,
+              effectiveFromCycle: "2",
+              schedule: { ...retained.record.schedule, timeZone: "UTC" },
+              reason: "Amend the selected unmaterialized calendar revision",
+            },
+            Recurring.RecurringScheduleRevision,
+          );
+
+          expect(source).toMatchObject({
+            revision: "2",
+            effectiveFromCycle: "2",
+            schedule: { timeZone: "UTC" },
+          });
+          changedSources.push({ kind: selected.kind, source });
+          break;
+        }
+      }
+    }
+
     second = runner(context);
 
     const recovered = await waitFor(context, recurring.path, (value) =>
@@ -1377,9 +1814,173 @@ test("a killed runner between queue enqueue and application acknowledgement reco
 
     expect(occurrence.rows[0]?.count).toBe(1);
     expect(recovered.history.filter((job) => job.cycleOrdinal === "1")).toHaveLength(1);
+    const stopped = [];
+
+    for (const selected of fenced) {
+      const scheduling = await waitFor(context, selected.recurring.path, (value) =>
+        value.history.some(
+          (job) =>
+            job.cycleOrdinal === "2" && job.state === "failed" && job.reason === "StaleDependency",
+        ),
+      );
+
+      expect(scheduling.history.find((job) => job.cycleOrdinal === "2")).toMatchObject({
+        generation: "1",
+        state: "failed",
+        reason: "StaleDependency",
+        draftId: null,
+      });
+
+      const occurrences = await decoded(
+        await request(context.author, `${selected.recurring.path}/occurrences`),
+        Recurring.RecurringOccurrenceList,
+      );
+
+      expect(occurrences).toMatchObject({ count: 0, items: [] });
+      stopped.push({ kind: selected.kind, scheduling, occurrences });
+    }
+
+    const financialStopped = await economicState(admin, context.book.bookId);
+    expect(financialStopped).toEqual({ ...financialBefore, drafts: financialBefore.drafts + 1 });
+    const retried = [];
+
+    for (const selected of fenced) {
+      const retained = selected.recurring;
+      let current = await state(context, retained.path);
+
+      const input = {
+        expectedGeneration: current.generation,
+        cycleOrdinals: ["2"],
+        confirmCatchUp: true,
+        reason: "Explicitly review the changed source after stale admission refusal",
+      };
+
+      if (selected.kind === "ended") {
+        await failure(
+          await request(context.author, `${retained.path}/scheduling/catch-up`, {
+            method: "POST",
+            body: JSON.stringify(input),
+          }),
+          409,
+          "StaleDependency",
+        );
+        continue;
+      }
+
+      if (selected.kind === "disabled") {
+        await failure(
+          await request(context.author, `${retained.path}/scheduling/catch-up`, {
+            method: "POST",
+            body: JSON.stringify(input),
+          }),
+          409,
+          "StaleDependency",
+        );
+        current = await post(
+          context.author,
+          `${retained.path}/scheduling`,
+          {
+            expectedGeneration: current.generation,
+            enabled: true,
+            firstAutomaticCycle: "2",
+            duePolicy: "local_calendar_date_v1",
+            confirmFirstAutomaticCycle: true,
+            reason: "Explicitly restore automatic enrollment before selecting the missed cycle",
+          },
+          Scheduling,
+        );
+      }
+
+      const catchUpInput = { ...input, expectedGeneration: current.generation };
+      const idempotencyKey = `p08_fence_retry_${retained.record.id}`;
+
+      const admitted = await decoded(
+        await request(context.author, `${retained.path}/scheduling/catch-up`, {
+          method: "POST",
+          headers: { "idempotency-key": idempotencyKey },
+          body: JSON.stringify(catchUpInput),
+        }),
+        Scheduling,
+      );
+
+      const completed = await waitFor(context, retained.path, (value) =>
+        value.history.some(
+          (job) => job.cycleOrdinal === "2" && job.generation === "2" && job.state === "drafted",
+        ),
+      );
+
+      const replayed = await decoded(
+        await request(context.author, `${retained.path}/scheduling/catch-up`, {
+          method: "POST",
+          headers: { "idempotency-key": idempotencyKey },
+          body: JSON.stringify(catchUpInput),
+        }),
+        Scheduling,
+      );
+
+      expect(replayed).toEqual(admitted);
+
+      const selectedOccurrence = await decoded(
+        await request(context.author, `${retained.path}/occurrences/2`),
+        Recurring.RecurringOccurrenceView,
+      );
+
+      expect(selectedOccurrence.occurrence).toMatchObject({
+        cycleOrdinal: "2",
+        selectedTemplateRevision: selected.kind === "template" ? "2" : "1",
+        selectedScheduleRevision: selected.kind === "schedule" ? "2" : "1",
+      });
+
+      const draft = await decoded(
+        await request(
+          context.author,
+          `/commerce/invoice-drafts/${selectedOccurrence.occurrence.draftId}`,
+        ),
+        Drafts.InvoiceDraftView,
+      );
+
+      expect(draft.record.totals).toMatchObject(
+        selected.kind === "template"
+          ? { netMinor: "6005", taxMinor: "1501", grossMinor: "7506" }
+          : { netMinor: "3005", taxMinor: "751", grossMinor: "3756" },
+      );
+
+      const unique = await admin.query<{ occurrences: number; drafts: number }>(
+        `SELECT count(*)::int AS occurrences,count(DISTINCT draft_id)::int AS drafts
+        FROM openerp.recurring_invoice_occurrences WHERE book_id=$1 AND agreement_id=$2`,
+        [context.book.bookId, retained.record.id],
+      );
+
+      expect(unique.rows[0]).toEqual({ occurrences: 1, drafts: 1 });
+      retried.push({
+        kind: selected.kind,
+        admitted,
+        completed,
+        replayed,
+        occurrence: selectedOccurrence,
+        draft,
+      });
+    }
+
+    const financialAfter = await economicState(admin, context.book.bookId);
+    expect(financialAfter).toEqual({ ...financialBefore, drafts: financialBefore.drafts + 4 });
     await writeFile(
       join(environment().artifacts, "recurring-enqueue-crash.json"),
-      JSON.stringify({ before: before.rows, recovered, queueLog: first.log() }, null, 2),
+      JSON.stringify(
+        {
+          before: before.rows,
+          changedSources,
+          recovered,
+          stopped,
+          retried,
+          financialBefore,
+          financialStopped,
+          financialAfter,
+          queueLog: first.log(),
+        },
+        null,
+        2,
+      ),
     );
   } finally {
     if (first) await stop(first.child);

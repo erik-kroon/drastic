@@ -261,6 +261,7 @@ export const RecurringCoverageConsumption = Schema.Struct({
   serviceInterval: ServiceInterval,
   draftId: Accounting.Identifier,
   invoiceIssueId: Accounting.Identifier,
+  invoiceIssueOwner: Schema.optional(Schema.Literals(["internal", "legal"])),
   registerInvoiceId: Accounting.Identifier,
   documentNumber: Schema.String,
   postingReceiptId: Accounting.Identifier,

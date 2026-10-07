@@ -544,6 +544,7 @@ export const executeArLegalIssue = Effect.fn("commerce.legalIssue.execute")(func
           occurrence,
           {
             id: result.id,
+            owner: "legal",
             registerInvoiceId: result.registerInvoiceId,
             documentNumber: result.legalDocumentNumber,
             postingReceiptId: postingReceipt.id,

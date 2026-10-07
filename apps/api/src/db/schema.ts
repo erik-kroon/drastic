@@ -1713,6 +1713,16 @@ export const recurringInvoiceOccurrenceIssues = openerp.table(
     chargeComponentKey: text("charge_component_key").notNull(),
     draftId: text("draft_id").notNull(),
     invoiceIssueId: text("invoice_issue_id").notNull(),
+    invoiceIssueOwner: text("invoice_issue_owner")
+      .$type<"internal" | "legal">()
+      .notNull()
+      .default("internal"),
+    internalInvoiceIssueId: text("internal_invoice_issue_id").generatedAlwaysAs(
+      sql`CASE WHEN invoice_issue_owner = 'internal' THEN invoice_issue_id END`,
+    ),
+    legalInvoiceIssueId: text("legal_invoice_issue_id").generatedAlwaysAs(
+      sql`CASE WHEN invoice_issue_owner = 'legal' THEN invoice_issue_id END`,
+    ),
     registerInvoiceId: text("register_invoice_id").notNull(),
     documentNumber: text("document_number").notNull(),
     postingReceiptId: text("posting_receipt_id").notNull(),

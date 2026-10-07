@@ -1186,6 +1186,7 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
           occurrence,
           {
             id: result.id,
+            owner: "internal",
             registerInvoiceId,
             documentNumber: result.internalDocumentNumber,
             postingReceiptId: posting.id,

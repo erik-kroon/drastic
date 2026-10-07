@@ -36,6 +36,7 @@ type IssuedOccurrence = {
 
 type IssuedInvoice = {
   readonly id: string;
+  readonly owner: "internal" | "legal";
   readonly registerInvoiceId: string;
   readonly documentNumber: string;
   readonly postingReceiptId: string;
@@ -223,6 +224,7 @@ export function consumeOccurrenceCoverage(
         },
         draftId: occurrence.draftId,
         invoiceIssueId: invoice.id,
+        invoiceIssueOwner: invoice.owner,
         registerInvoiceId: invoice.registerInvoiceId,
         documentNumber: invoice.documentNumber,
         postingReceiptId: invoice.postingReceiptId,
@@ -250,6 +252,7 @@ export function consumeOccurrenceCoverage(
         chargeComponentKey: component.chargeComponentKey,
         draftId: occurrence.draftId,
         invoiceIssueId: invoice.id,
+        invoiceIssueOwner: invoice.owner,
         registerInvoiceId: invoice.registerInvoiceId,
         documentNumber: invoice.documentNumber,
         postingReceiptId: invoice.postingReceiptId,

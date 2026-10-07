@@ -108,6 +108,14 @@ if (supplierExpiryHook !== undefined && supplierExpiryHook !== "0" && supplierEx
 const supplierExpirySeed =
   supplierExpiryHook === "1" ? await import("./seed-supplier-expiry.mjs") : undefined;
 
+const recurringHook = process.env.PAPER_RECURRING;
+
+if (recurringHook !== undefined && recurringHook !== "0" && recurringHook !== "1")
+  throw new Error("PAPER_RECURRING must be 0 or 1");
+
+const recurringSeed =
+  recurringHook === "1" ? await import("../testerarmy/recurring-fixture.mjs") : undefined;
+
 const workGroupHook = process.env.PAPER_WORK_GROUP;
 
 if (workGroupHook !== undefined && workGroupHook !== "0" && workGroupHook !== "1")
@@ -190,6 +198,8 @@ let processorFixture;
 
 let peppolFixture;
 
+let recurringFixture;
+
 let webLog = "";
 
 let postgresStarted = false;
@@ -228,6 +238,7 @@ async function cleanup() {
               mode: 0o600,
             },
           );
+        await recurringFixture?.close();
         await worker?.close();
         await processorFixture?.close();
         await peppolFixture?.close();
@@ -481,6 +492,16 @@ try {
     });
     throw new Error(`Synthetic workspace readiness failed: HTTP ${workspaceReadiness.status}`);
   }
+
+  if (recurringSeed)
+    recurringFixture = await recurringSeed.seedRecurring({
+      api,
+      apiUrl: listening.url.origin,
+      adminUrl,
+      runtimeUrl,
+      accessToken,
+      artifacts,
+    });
 
   if (supplierExpirySeed)
     console.log(
