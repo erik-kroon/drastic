@@ -27,6 +27,7 @@ export type WorkReturn = typeof WorkQueueQuery.Type;
 export const WorkHomeQuery = Schema.Struct({
   status: Schema.optional(Schema.Literals(["open", "completed", "watch"])),
   task: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512))),
+  stage: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256))),
 });
 
 export function decodeWorkReturn(search: string | undefined) {

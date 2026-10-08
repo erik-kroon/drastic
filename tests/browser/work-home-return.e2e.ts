@@ -7,6 +7,7 @@ import * as Inbox from "../../packages/contracts/src/supplier-inbox";
 import * as Workspace from "../../packages/contracts/src/workspace";
 import * as Accounting from "../../packages/contracts/src/accounting";
 import * as Commerce from "../../packages/contracts/src/commerce";
+import * as Acceptance from "../../packages/contracts/src/supplier-acceptance";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
 import { signInSyntheticOperator } from "./synthetic-session";
@@ -52,7 +53,7 @@ test("home retains the selected original and scoped keyboard return after reload
   };
 
   const before = await call("/ledger", Accounting.LedgerSnapshot);
-  const originals = [];
+  const originals: Array<typeof Source.SourceOccurrence.Type> = [];
 
   for (const filename of ["home-original-first.pdf", "home-original-selected.pdf"]) {
     const occurrence = await call("/source-occurrences", Source.SourceOccurrence, {
@@ -114,7 +115,7 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(screen.getByRole("img", `${original.filename}, sida 1`)).toBeVisible();
   await agent.assert(
     "The home work list has the selected original home-original-selected.pdf highlighted, with its retained original page available in the detail. Return the configured JSON judgment.",
-    { timeout: 30000 },
+    { timeout: 30000, vision: true },
   );
 
   const returnedScreenshot = await app.screenshot("home-returned-selected-original-focused");
@@ -232,11 +233,146 @@ test("home retains the selected original and scoped keyboard return after reload
   const after = await call("/ledger", Accounting.LedgerSnapshot);
 
   expect(after).toEqual(before);
+
+  const plan = await call(
+    "/commerce/supplier-acceptance-reviews",
+    Acceptance.SupplierAcceptanceReview,
+    {
+      profile: "synthetic-manual-supplier-v1",
+      draftId: handoff.draft.id,
+      expectedRevision: handoff.draft.revision,
+      expectedDigest: handoff.draft.digest,
+      controlAccountId: "account_clearing",
+      debitAccountId: "account_bank",
+      accountingPeriodId: "period_synthetic_2026",
+      series: "A",
+      reason: "Synthetic completed-history qualification",
+      acknowledgeSyntheticOnly: true,
+    },
+  );
+
+  const approval = await call(
+    `/commerce/supplier-acceptance-reviews/${plan.id}/approvals`,
+    Acceptance.SupplierAcceptanceApproval,
+    { version: plan.version, digest: plan.digest, acknowledgeSyntheticOnly: true },
+  );
+
+  const receipt = await call(
+    `/commerce/supplier-acceptance-reviews/${plan.id}/execute`,
+    Acceptance.SupplierAcceptanceReceipt,
+    {
+      version: plan.version,
+      digest: plan.digest,
+      approvalId: approval.id,
+      acknowledgeSyntheticOnly: true,
+    },
+  );
+
+  const completedAttention = await call(
+    "/attention?status=completed&sort=oldest",
+    Workspace.AttentionPage,
+  );
+
+  const completedStage = completedAttention.items.find((item) => item.id === handoff.draft.id);
+
+  if (!completedStage) throw new Error("The registered supplier stage must remain readable");
+
+  expect(completedStage.questionRoot).toEqual(task);
+  expect(
+    completedAttention.items.filter((item) => item.questionRoot?.key === task.key).length,
+  ).toBeGreaterThan(1);
+  await app.open(`${workspace}/?status=completed&task=${encodeURIComponent(task.key)}`);
+
+  const completedRow = screen
+    .getByRole("button", /Synthetic selected home draft/)
+    .filter({ hasText: "Leverantörsfaktura registrerad" });
+
+  await expect(completedRow).toBeVisible();
+  await completedRow.focus();
+  await completedRow.press("Enter");
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("stage"))
+    .toBe(completedStage.key);
+  await expect(completedRow).toHaveAttribute("aria-pressed", "true");
+  await browser.reload();
+  await expect(completedRow).toHaveAttribute("aria-pressed", "true");
+  await expect(completedRow).toBeFocused();
+
+  const completedScreenshot = await app.screenshot("home-exact-completed-supplier-stage-focused");
+
+  const postedStage = completedAttention.items.find((item) => item.id === plan.postingPlan.id);
+
+  if (!postedStage) throw new Error("The posted native journal stage must remain readable");
+
+  expect(postedStage.questionRoot).toEqual(task);
+
+  const postedRow = screen
+    .getByRole("button", /Synthetic selected home draft/)
+    .filter({ hasText: "Bokfört" });
+
+  await postedRow.focus();
+  await postedRow.press("Enter");
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("stage"))
+    .toBe(postedStage.key);
+  await expect(postedRow).toHaveAttribute("aria-pressed", "true");
+  await screen.getByRole("link", "Bokfört", { exact: true }).click();
+  await expect(screen.getByRole("status").filter({ hasText: "Bokförd" })).toBeVisible();
+  await screen.getByRole("link", "Att göra /", { exact: true }).focus();
+  await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("stage"))
+    .toBe(postedStage.key);
+  await expect(postedRow).toHaveAttribute("aria-pressed", "true");
+  await expect(postedRow).toBeFocused();
+
+  const postedReturnScreenshot = await app.screenshot("home-returned-exact-posted-stage-focused");
+
+  await app.open(
+    `${workspace}/?status=completed&task=${encodeURIComponent(task.key)}&stage=document_unavailable_stage`,
+  );
+  await expect(completedRow).toHaveAttribute("aria-pressed", "false");
+  await expect(postedRow).toHaveAttribute("aria-pressed", "false");
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(screen.getByRole("heading", "Att göra", { exact: true })).toBeFocused();
+
+  const missingStageScreenshot = await app.screenshot(
+    "home-unavailable-completed-stage-heading-focused",
+  );
+
+  const otherRoot = attention.items.find((item) => item.id === originals[0]?.id)?.questionRoot;
+
+  if (!otherRoot) throw new Error("The independent original root is required");
+
+  await app.open(
+    `${workspace}/?status=completed&task=${encodeURIComponent(otherRoot.key)}&stage=${encodeURIComponent(postedStage.key)}`,
+  );
+  await expect(completedRow).toHaveAttribute("aria-pressed", "false");
+  await expect(postedRow).toHaveAttribute("aria-pressed", "false");
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(screen.getByRole("heading", "Att göra", { exact: true })).toBeFocused();
+
+  const mismatchedStageScreenshot = await app.screenshot("home-other-root-stage-refused");
+
+  const afterCompletion = await call("/ledger", Accounting.LedgerSnapshot);
+
+  expect(BigInt(afterCompletion.sequence) - BigInt(before.sequence)).toBe(1n);
+  expect(
+    afterCompletion.accounts.map(({ accountId, debitMinor, creditMinor }) => ({
+      accountId,
+      debitMinor,
+      creditMinor,
+    })),
+  ).toEqual([
+    { accountId: "account_bank", debitMinor: "10000", creditMinor: "0" },
+    { accountId: "account_clearing", debitMinor: "0", creditMinor: "10000" },
+  ]);
   await writeFile(
     join(output, "work-home-return.json"),
     JSON.stringify(
       {
-        scope: "synthetic original home selection, reload and keyboard return only",
+        scope:
+          "synthetic original and completed supplier stage selection, reload and keyboard return",
         original,
         task,
         ownerReturn,
@@ -249,6 +385,17 @@ test("home retains the selected original and scoped keyboard return after reload
         handoffScreenshot,
         missingTask,
         missingScreenshot,
+        plan,
+        approval,
+        receipt,
+        completedStage,
+        completedScreenshot,
+        postedStage,
+        postedReturnScreenshot,
+        missingStageScreenshot,
+        otherRoot,
+        mismatchedStageScreenshot,
+        afterCompletion,
       },
       null,
       2,

@@ -31,7 +31,7 @@ import {
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
-import { workQueueHref, type WorkReturn } from "@/lib/work-return";
+import { workQueueHref, type WorkReturn, type WorkHomeQuery } from "@/lib/work-return";
 import { AccountingStatus } from "./accounting-status";
 import { OriginalDocument } from "./original-document";
 import { WorkGroupReview, WorkGroupEntry } from "./work-group-review";
@@ -68,7 +68,7 @@ export function WorkHome() {
 
   const rows = homeRows(work, page?.items ?? [], status, kind, filters);
 
-  const selected = search.task ? rows.find((item) => item.selectionKey === search.task) : rows[0];
+  const { selected, focusKey } = homeSelection(rows, search);
 
   const groups = [...new Set(rows.map((item) => item.group))];
 
@@ -91,7 +91,7 @@ export function WorkHome() {
         detailSize="wide"
         headingSpacing="work"
         headingFocusKey={
-          !selected && activeQuery.isSuccess && !activeQuery.isFetching ? search.task : undefined
+          !selected && activeQuery.isSuccess && !activeQuery.isFetching ? focusKey : undefined
         }
         title={sv ? "Att göra" : "To do"}
         tabs={
@@ -168,10 +168,14 @@ export function WorkHome() {
                   state={item.state}
                   amount={item.amount}
                   selected={selected?.key === item.key}
-                  autoFocus={search.task === item.selectionKey}
+                  autoFocus={Boolean(search.task) && selected?.key === item.key}
                   onSelect={() => {
                     void navigate({
-                      search: { status, task: item.selectionKey },
+                      search: {
+                        status,
+                        task: item.selectionKey,
+                        stage: status === "completed" ? item.key : undefined,
+                      },
                       resetScroll: false,
                     });
                   }}
@@ -397,6 +401,25 @@ function rowStatus(item: typeof Workspace.AttentionItem.Type): RegisterStatus {
   return "pending";
 }
 
+function homeSelection(rows: ReturnType<typeof homeRows>, search: typeof WorkHomeQuery.Type) {
+  const requested = search.task ?? search.stage;
+
+  const focusKey = requested
+    ? `${search.status ?? "open"}/${search.task ?? ""}/${search.stage ?? ""}`
+    : undefined;
+
+  if (!search.task) return { selected: search.stage ? undefined : rows[0], focusKey };
+
+  const stage = search.status === "completed" ? search.stage : undefined;
+
+  return {
+    selected: rows.find(
+      (item) => item.selectionKey === search.task && (!stage || item.key === stage),
+    ),
+    focusKey,
+  };
+}
+
 function homeRows(
   work: CompanyWork,
   items: readonly (typeof Workspace.AttentionItem.Type)[],
@@ -450,7 +473,11 @@ function homeRows(
           action: copy[item.reason],
           href: attentionPath(book, item, filters, {
             owner: "home",
-            search: { status, task: item.questionRoot?.key ?? item.key },
+            search: {
+              status,
+              task: item.questionRoot?.key ?? item.key,
+              stage: status === "completed" ? item.key : undefined,
+            },
           }),
           documentId: item.kind === "document" ? item.id : null,
         }));
