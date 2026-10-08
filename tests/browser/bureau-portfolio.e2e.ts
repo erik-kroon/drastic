@@ -112,11 +112,20 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
 
   const selected = screen.getByRole("row").filter({ hasText: "Synthetic bureau 001" });
 
+  await expect(screen.getByRole("columnheader", "Nästa avstämning", { exact: true })).toBeVisible();
+  await expect(selected.getByRole("cell", "Ingen period", { exact: true })).toHaveCount(2);
+  await expect(selected).toContainText("2026-10-01");
   await selected.getByRole("button", "Lämna över", { exact: true }).click();
   await screen.getByRole("combobox", "Klientansvarig", { exact: true }).click();
   await screen.getByRole("option", "Ingen ansvarig", { exact: true }).click();
   await screen.getByRole("button", "Spara klient", { exact: true }).click();
   await expect(names).toHaveCount(4);
+  expect(await names.allTextContents()).toEqual([
+    "Synthetic bureau 003",
+    "Synthetic bureau 005",
+    "Synthetic bureau 007",
+    "Synthetic bureau 009",
+  ]);
   await expect(screen.getByRole("link", "Synthetic bureau 001", { exact: true })).toBeHidden();
   await expect
     .poll(async () => new URL(await browser.url()).searchParams.get("q"))
@@ -138,7 +147,21 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
 
   expect(final.clients).toHaveLength(50);
   expect(final.clients.filter((client) => client.leadId === actor.actorId)).toHaveLength(24);
-  expect(final.clients.find((client) => client.book.id === first.scope.bookId)?.leadId).toBeNull();
+  const initialTarget = initial.clients.find((client) => client.book.id === first.scope.bookId);
+  const finalTarget = final.clients.find((client) => client.book.id === first.scope.bookId);
+
+  if (!initialTarget || !finalTarget) throw new Error("Both target revisions must be retained");
+
+  expect(finalTarget.revision).toBeGreaterThan(initialTarget.revision);
+  expect(finalTarget).toEqual({
+    ...initialTarget,
+    leadId: null,
+    leadAvailable: false,
+    revision: finalTarget.revision,
+  });
+  expect(final.clients.filter((client) => client.book.id !== first.scope.bookId)).toEqual(
+    initial.clients.filter((client) => client.book.id !== first.scope.bookId),
+  );
   expect(final.clients.map((client) => client.book)).toEqual(
     initial.clients.map((client) => client.book),
   );
