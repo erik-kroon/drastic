@@ -323,9 +323,9 @@ test("portfolio retains period and declared deadline while incomplete bank and c
     JSON.stringify(
       {
         scope:
-          "Public HTTP composed portfolio with real native period and retained synthetic deadline",
+          "Public HTTP composed portfolio and real browser next-deadline display, ordering, public revision/reload and missing-obligation placement",
         limits:
-          "No V1 browser/parity, bank signing, successful closing, statutory rule certification or company-setup acceptance. Native ledger and obligation are synthetic fixture preparation; company facts remain unknown.",
+          "Next-deadline consumer only, not full V1 composition/parity, fulfilled-obligation removal, time-zone date-boundary qualification, bank signing, successful closing, statutory rule certification or company-setup acceptance. Native ledger and obligation are synthetic fixture preparation; company facts remain unknown.",
         native,
         deadline,
         revised,
