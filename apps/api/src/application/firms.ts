@@ -148,7 +148,17 @@ function recordFirm(
 ) {
   return Effect.gen(function* () {
     const result = yield* decode(CommandSchema, { firmId, revision });
-    yield* Db.insertCommand(transaction, { actorId, key, firmId, operation, payload, result });
+
+    const inserted = yield* Db.insertCommand(transaction, {
+      actorId,
+      key,
+      firmId,
+      operation,
+      payload,
+      result,
+    });
+
+    if (inserted.length === 0) return yield* failure("IdempotencyConflict");
 
     return result;
   });
@@ -268,7 +278,6 @@ export const saveFirmAccessRequest = Effect.fn("firms.saveAccessRequest")(functi
 ) {
   return yield* withHuman(token, function* (transaction, actorId) {
     yield* requireAccess(transaction);
-    yield* lockActor(transaction, actorId);
 
     const firm = yield* readFirmRole(transaction, command.firmId, actorId, {
       lock: "update",

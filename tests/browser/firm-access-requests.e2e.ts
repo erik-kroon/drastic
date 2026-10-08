@@ -154,6 +154,50 @@ test("firm access requests retain local scoped metadata without accounting power
 
   expect(reactivate.status).toBe(422);
   expect(await read(`/firms/${firm.firmId}`)).toEqual(final);
+
+  const otherCreate = await request("/firms", { name: "Synthetic separate request scope" });
+
+  expect(otherCreate.status).toBe(200);
+
+  const otherFirm = Schema.decodeUnknownSync(Firms.CommandResult)(await otherCreate.json());
+
+  expect(await read(`/firms/${otherFirm.firmId}`)).toMatchObject({
+    clients: [],
+    accessRequests: [],
+  });
+
+  const raceKey = randomUUID();
+
+  const [clientRace, requestRace] = await Promise.all([
+    request(
+      `/firms/${firm.firmId}/clients`,
+      {
+        scope: actor.scope,
+        leadId: null,
+        nextReviewOn: null,
+        note: "Synthetic command-key race",
+        expectedRevision: 0,
+      },
+      raceKey,
+    ),
+    request(`/firms/${otherFirm.firmId}/access-requests`, input, raceKey),
+  ]);
+
+  expect([clientRace.status, requestRace.status].sort()).toEqual([200, 409]);
+
+  const raceClientState = Schema.decodeUnknownSync(Firms.Workspace)(
+    await read(`/firms/${firm.firmId}`),
+  );
+
+  const raceRequestState = Schema.decodeUnknownSync(Firms.Workspace)(
+    await read(`/firms/${otherFirm.firmId}`),
+  );
+
+  expect(raceClientState.clients).toHaveLength(clientRace.status === 200 ? 1 : 0);
+  expect(raceRequestState.accessRequests).toHaveLength(requestRace.status === 200 ? 1 : 0);
+  expect(raceClientState.accessRequests).toEqual(
+    Schema.decodeUnknownSync(Firms.Workspace)(final).accessRequests,
+  );
   expect(await read(`${scopePath}/ledger`)).toEqual(before);
 
   const booksAfter = await request("/books");
@@ -172,6 +216,8 @@ test("firm access requests retain local scoped metadata without accounting power
         final,
         saved,
         revoked,
+        raceClientState,
+        raceRequestState,
         books,
         before,
         failureStatuses: {
@@ -180,6 +226,8 @@ test("firm access requests retain local scoped metadata without accounting power
           foreign: foreign.status,
           extra: extra.status,
           missingLead: missingLead.status,
+          clientRace: clientRace.status,
+          requestRace: requestRace.status,
         },
       },
       null,

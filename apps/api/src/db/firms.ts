@@ -407,11 +407,13 @@ export function insertCommand(
     readonly result: JsonObject;
   },
 ) {
-  return transaction.execute(
+  return transaction.execute<{ readonly key: string }>(
     sql`
       insert into openerp.firm_commands (actor_id, key, firm_id, operation, payload, result)
       values (${row.actorId}, ${row.key}, ${row.firmId}, ${row.operation},
         ${JSON.stringify(row.payload)}::jsonb, ${JSON.stringify(row.result)}::jsonb)
+      on conflict (actor_id, key) do nothing
+      returning key
     `,
     "objects",
   );
