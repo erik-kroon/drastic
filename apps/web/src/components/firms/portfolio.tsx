@@ -14,6 +14,7 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { ClientPeriod } from "./client-period";
 import { ClientDialog } from "./client-dialog";
+import { PortfolioPagination, portfolioPageSize } from "./portfolio-pagination";
 import { rememberPortfolio } from "./portfolio-return";
 import { workspacePath } from "@/lib/book-context";
 import type { Books } from "@/lib/accounting-api";
@@ -56,8 +57,12 @@ export function FirmPortfolio(props: {
       a.book.name.localeCompare(b.book.name, locale),
   );
 
-  const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / 10) - 1));
-  const visible = sorted.slice(currentPage * 10, (currentPage + 1) * 10);
+  const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / portfolioPageSize) - 1));
+
+  const visible = sorted.slice(
+    currentPage * portfolioPageSize,
+    (currentPage + 1) * portfolioPageSize,
+  );
 
   const portfolioHref = portfolioPath(workspace.firm.id, search, view, currentPage);
 
@@ -222,27 +227,13 @@ export function FirmPortfolio(props: {
       ) : (
         <EmptyPortfolio sv={sv} hasClients={workspace.clients.length > 0} />
       )}
-      {sorted.length > 10 ? (
-        <Box display="flex" gap="md" alignItems="center">
-          <Button
-            variant="outline"
-            disabled={currentPage === 0}
-            onClick={() => setFilters({ ...props.filters, page: currentPage - 1 })}
-          >
-            {sv ? "Föregående" : "Previous"}
-          </Button>
-          <PageCaption>
-            {currentPage * 10 + 1}–{Math.min((currentPage + 1) * 10, sorted.length)} /{" "}
-            {sorted.length}
-          </PageCaption>
-          <Button
-            variant="outline"
-            disabled={(currentPage + 1) * 10 >= sorted.length}
-            onClick={() => setFilters({ ...props.filters, page: currentPage + 1 })}
-          >
-            {sv ? "Nästa" : "Next"}
-          </Button>
-        </Box>
+      {visible.length ? (
+        <PortfolioPagination
+          total={sorted.length}
+          page={currentPage}
+          locale={locale}
+          onPage={(next) => setFilters({ ...props.filters, page: next })}
+        />
       ) : null}
       <PageCaption>
         {sv
