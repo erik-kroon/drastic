@@ -6,6 +6,7 @@ import * as Source from "../../packages/contracts/src/source-intake";
 import * as Inbox from "../../packages/contracts/src/supplier-inbox";
 import * as Workspace from "../../packages/contracts/src/workspace";
 import * as Accounting from "../../packages/contracts/src/accounting";
+import * as Commerce from "../../packages/contracts/src/commerce";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
 import { signInSyntheticOperator } from "./synthetic-session";
@@ -43,7 +44,9 @@ test("home retains the selected original and scoped keyboard return after reload
       signal: AbortSignal.timeout(20000),
     });
 
-    expect(response.status).toBe(200);
+    if (response.status !== 200) {
+      throw new Error(`Synthetic ${path} returned ${response.status}: ${await response.text()}`);
+    }
 
     return Schema.decodeUnknownSync(schema)(await response.json());
   };
@@ -115,11 +118,107 @@ test("home retains the selected original and scoped keyboard return after reload
   );
 
   const returnedScreenshot = await app.screenshot("home-returned-selected-original-focused");
+
+  const evidence = await call("/evidence", Accounting.Evidence, {
+    title: "Synthetic home handoff original",
+    origin: "Local canonical home qualification",
+    mediaType: "application/json",
+    content: JSON.stringify({
+      kind: "supplier_invoice_source_v1",
+      source: { occurrenceId: original.id, sha256: original.sha256, filename: original.filename },
+    }),
+  });
+
+  const party = await call("/commerce/counterparties", Commerce.CounterpartyRevision, {
+    kind: "synthetic_counterparty_v1",
+    externalKey: `home_${randomUUID()}`,
+    role: "supplier",
+    displayName: "Synthetic home supplier",
+    evidenceId: evidence.id,
+    reason: "Synthetic handoff fixture",
+  });
+
+  const identity = {
+    legalName: "Synthetic home identity",
+    registrationId: "5560000000",
+    taxId: null,
+    address: "Synthetic street 1",
+    countryCode: "SE",
+    evidenceId: evidence.id,
+  };
+
+  const handoff = await call(
+    `/commerce/supplier-inbox/${original.id}/review`,
+    Inbox.SupplierInboxReview,
+    {
+      draft: {
+        draftKey: `home_${randomUUID()}`,
+        content: {
+          title: "Synthetic selected home draft",
+          counterpartyId: party.id,
+          counterpartyRevision: party.revision,
+          supplier: identity,
+          buyer: identity,
+          sourceEvidenceId: evidence.id,
+          supplierDocumentNumber: "HOME-001",
+          currency: "SEK",
+          currencyScale: 2,
+          documentDate: "2026-10-03",
+          supplyDate: "2026-10-03",
+          dueDate: "2026-10-14",
+          paymentTerms: "Synthetic terms",
+          sourceTotalMinor: "10000",
+          lines: [
+            {
+              id: "synthetic_service",
+              description: "Synthetic service",
+              quantity: "1",
+              unitPriceMinor: "10000",
+              baseMinor: "10000",
+              discountMinor: "0",
+              chargeMinor: "0",
+              taxMinor: "0",
+              taxDescription: "Synthetic zero tax",
+              taxEvidenceId: evidence.id,
+              sourceGrossMinor: "10000",
+            },
+          ],
+        },
+      },
+      reviewReason: "Synthetic public API handoff, not approval or posting",
+      reviewAttemptId: null,
+    },
+  );
+
+  const handedOffAttention = await call(
+    "/attention?status=open&sort=oldest",
+    Workspace.AttentionPage,
+  );
+
+  const stage = handedOffAttention.items.find((item) => item.id === handoff.draft.id);
+
+  expect(stage?.questionRoot).toEqual(task);
+  expect(
+    handedOffAttention.items.filter((item) => item.questionRoot?.key === task.key),
+  ).toHaveLength(1);
+  expect(handedOffAttention.total).toBe(attention.total);
+  await app.open(`${workspace}/?status=open&task=${encodeURIComponent(task.key)}`);
+
+  const draftRow = screen.getByRole("button", /Synthetic selected home draft/);
+
+  await expect(draftRow).toHaveAttribute("aria-pressed", "true");
+  await expect(draftRow).toBeFocused();
+  await expect(row).toHaveCount(0);
+  await browser.reload();
+  await expect(draftRow).toHaveAttribute("aria-pressed", "true");
+  await expect(draftRow).toBeFocused();
+
+  const handoffScreenshot = await app.screenshot("home-same-root-new-supplier-stage");
   const missingTask = `document:${randomUUID()}`;
 
   await app.open(`${workspace}/?status=open&task=${encodeURIComponent(missingTask)}`);
-  await expect(row).toBeVisible();
-  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(draftRow).toBeVisible();
+  await expect(draftRow).toHaveAttribute("aria-pressed", "false");
   await expect(screen.getByRole("button", /home-original-first\.pdf/)).toHaveAttribute(
     "aria-pressed",
     "false",
@@ -145,6 +244,9 @@ test("home retains the selected original and scoped keyboard return after reload
         after,
         selectedScreenshot,
         returnedScreenshot,
+        handoff,
+        stage,
+        handoffScreenshot,
         missingTask,
         missingScreenshot,
       },
