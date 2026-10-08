@@ -13,6 +13,7 @@ import {
   removeFirmClient,
   saveFirmClient,
   saveFirmMember,
+  saveFirmAccessRequest,
 } from "../firms";
 
 export const companyFirmCapabilities = {
@@ -29,4 +30,8 @@ export const companyFirmCapabilities = {
   firm_save_client: effectCapability(Capabilities.firm_save_client, saveFirmClient),
   firm_remove_client: effectCapability(Capabilities.firm_remove_client, removeFirmClient),
   firm_save_member: effectCapability(Capabilities.firm_save_member, saveFirmMember),
+  firm_save_access_request: effectCapability(
+    Capabilities.firm_save_access_request,
+    saveFirmAccessRequest,
+  ),
 };

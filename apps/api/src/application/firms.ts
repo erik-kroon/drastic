@@ -8,6 +8,7 @@ import { failure } from "./failures";
 import { newId } from "./posting";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/firms";
+import * as Requests from "../db/firm-access-requests";
 import { admitHumanActor, lockActor, readAdmission, requireHumanSession } from "../db/human-actor";
 import { withTransaction, databaseFailure, type Transaction } from "../db/transaction";
 import { readTableAccess } from "../db/commerce/access";
@@ -56,7 +57,7 @@ function decodeFirmList(value: typeof FirmListSchema.Type) {
 }
 
 function requireAccess(transaction: Transaction) {
-  const tables = [...Db.firmTables];
+  const tables = [...Db.firmTables, "firm_access_requests"];
 
   return readTableAccess(transaction, tables).pipe(
     Effect.flatMap((rows) => {
@@ -219,9 +220,14 @@ export const getFirm = Effect.fn("firms.get")(function* (
 
     if (clients.length > maximumFirmClients) return yield* unsupported();
 
+    const accessRequests = yield* Requests.readAccessRequests(transaction, command.firmId);
+
+    if (accessRequests.length > maximumFirmClients) return yield* unsupported();
+
     return yield* decode(WorkspaceSchema, {
       firm: { id: command.firmId, name: firm.name, role: firm.role },
       actorId,
+      accessRequests,
       members: team.map((row) => ({
         actorId: row.actorId,
         name: row.name,
@@ -249,6 +255,111 @@ export const getFirm = Effect.fn("firms.get")(function* (
         revision: row.revision,
       })),
     });
+  });
+});
+
+export const saveFirmAccessRequest = Effect.fn("firms.saveAccessRequest")(function* (
+  token: string,
+  command: {
+    firmId: string;
+    idempotencyKey: string;
+    input: typeof FirmContract.SaveAccessRequest.Type;
+  },
+) {
+  return yield* withHuman(token, function* (transaction, actorId) {
+    yield* requireAccess(transaction);
+
+    const firm = yield* readFirmRole(transaction, command.firmId, actorId, {
+      lock: "update",
+      adminOnly: false,
+    });
+
+    const payload = yield* toJsonObject(command.input);
+
+    const previous = yield* replayFirm(
+      transaction,
+      actorId,
+      command.idempotencyKey,
+      command.firmId,
+      "save_access_request",
+      payload,
+    );
+
+    if (previous) return yield* decode(CommandSchema, previous);
+
+    yield* exactKeys(payload, [
+      "id",
+      "clientName",
+      "organizationNumber",
+      "leadId",
+      "state",
+      "expectedRevision",
+    ]);
+
+    const input = command.input;
+    const name = input.clientName.trim();
+
+    if (!name) return yield* failure("InvalidJournal");
+
+    const current = (yield* Requests.lockAccessRequest(transaction, command.firmId, input.id))[0];
+
+    if (current && current.requestedBy !== actorId && firm.role !== "admin") {
+      return yield* failure("Forbidden");
+    }
+
+    if ((current?.revision ?? 0) !== input.expectedRevision) {
+      return yield* failure("StaleDependency");
+    }
+
+    if (current?.state === "revoked" || (!current && input.state !== "requested")) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (input.leadId !== null) {
+      const member = (yield* Db.readFirmMembership(
+        transaction,
+        command.firmId,
+        input.leadId,
+        "share",
+      ))[0];
+
+      const admission = (yield* readAdmission(transaction, input.leadId))[0];
+
+      if (!member?.active || admission?.enabled === false) return yield* failure("InvalidJournal");
+    }
+
+    if (
+      !current &&
+      (yield* Requests.countAccessRequests(transaction, command.firmId))[0]!.total >=
+        maximumFirmClients
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const revision = (yield* Db.nextFirmRevision(transaction, command.firmId))[0]?.revision;
+
+    if (revision === undefined) return yield* failure("NotFound");
+
+    yield* Requests.saveAccessRequest(transaction, {
+      firmId: command.firmId,
+      id: input.id,
+      clientName: name,
+      organizationNumber: input.organizationNumber,
+      leadId: input.leadId,
+      requestedBy: actorId,
+      state: input.state,
+      revision,
+    });
+
+    return yield* recordFirm(
+      transaction,
+      actorId,
+      command.idempotencyKey,
+      command.firmId,
+      "save_access_request",
+      payload,
+      revision,
+    );
   });
 });
 

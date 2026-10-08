@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -35,11 +35,36 @@ export const Client = Schema.Struct({
   eligibleLeadIds: Schema.Array(Accounting.Identifier),
 });
 
+export const AccessRequestState = Schema.Literals(["requested", "revoked"]);
+
+export const AccessRequest = Schema.Struct({
+  id: Accounting.Identifier,
+  clientName: Schema.String,
+  organizationNumber: Schema.NullOr(Schema.String),
+  leadId: Schema.NullOr(Accounting.Identifier),
+  leadAvailable: Schema.Boolean,
+  requestedBy: Accounting.Identifier,
+  state: AccessRequestState,
+  revision: Revision,
+  createdAt: Schema.String,
+  updatedAt: Schema.String,
+});
+
+export const SaveAccessRequest = Schema.Struct({
+  id: Accounting.Identifier,
+  clientName: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  organizationNumber: Schema.NullOr(Schema.String.check(Schema.isPattern(/^\d{10}$/))),
+  leadId: Schema.NullOr(Accounting.Identifier),
+  state: AccessRequestState,
+  expectedRevision: Revision,
+});
+
 export const Workspace = Schema.Struct({
   firm: Firm,
   actorId: Accounting.Identifier,
   clients: Schema.Array(Client).check(Schema.isMaxLength(200)),
   members: Schema.Array(Member).check(Schema.isMaxLength(100)),
+  accessRequests: Schema.Array(AccessRequest).check(Schema.isMaxLength(200)),
 });
 
 export const CreateFirm = Schema.Struct({
@@ -114,6 +139,14 @@ export const FirmCapabilities = {
     output: CommandResult,
     readOnly: false,
   },
+  firm_save_access_request: {
+    description:
+      "Record or revoke a local declared client-access request for a human firm member. Sends no invitation, reveals no accounting facts and grants no book permissions. Requires the current revision; revoked requests are terminal.",
+    input: Schema.Struct({ ...command, input: SaveAccessRequest }),
+    output: CommandResult,
+    readOnly: false,
+    agentCallable: false,
+  },
 };
 
 export const FirmApi = HttpApiGroup.make("firms").add(
@@ -150,6 +183,13 @@ export const FirmApi = HttpApiGroup.make("firms").add(
     success: CommandResult,
     error: accountingErrors,
   }),
+  HttpApiEndpoint.post("saveFirmAccessRequest", "/v1/firms/:firmId/access-requests", {
+    params: path,
+    headers: Accounting.IdempotencyHeaders,
+    payload: SaveAccessRequest,
+    success: CommandResult,
+    error: accountingErrors,
+  }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
 );
 
 export const FirmSearch = Schema.Struct({

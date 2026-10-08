@@ -136,6 +136,17 @@ test("firm access requests retain local scoped metadata without accounting power
     clients: [],
     accessRequests: [{ id: input.id, state: "revoked", revision: revoked.revision }],
   });
+
+  const oldReplay = await request(path, input, key);
+
+  expect(oldReplay.status).toBe(200);
+  expect(await oldReplay.json()).toEqual(saved);
+  expect(await read(`/firms/${firm.firmId}`)).toEqual(final);
+
+  const reactivate = await request(path, { ...input, expectedRevision: revoked.revision });
+
+  expect(reactivate.status).toBe(422);
+  expect(await read(`/firms/${firm.firmId}`)).toEqual(final);
   expect(await read(`${scopePath}/ledger`)).toEqual(before);
 
   const booksAfter = await request("/books");

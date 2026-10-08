@@ -44,5 +44,14 @@ export const FirmHandlers = HttpApiBuilder.group(Api, "firms", (handlers) =>
           input: payload,
         }),
       ),
+    )
+    .handle("saveFirmAccessRequest", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Firms.saveFirmAccessRequest(token, {
+          firmId: params.firmId,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     ),
 );

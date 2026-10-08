@@ -88,6 +88,7 @@ const writeClasses = {
   firm_save_client: "administration",
   firm_remove_client: "administration",
   firm_save_member: "administration",
+  firm_save_access_request: "administration",
   company_create: "administration",
   company_save_setup: "administration",
   company_initialize_native_ledger: "administration",
