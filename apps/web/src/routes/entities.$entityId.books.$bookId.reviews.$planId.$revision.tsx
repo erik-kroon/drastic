@@ -100,7 +100,7 @@ function Review() {
                       ? "draft"
                       : "pending"
               }
-              href={attentionPath(book, item, filters)}
+              href={attentionPath(book, item, filters, owner)}
               detail={
                 item.amountMinor !== null && item.currencyScale !== null
                   ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? book.currency}`
