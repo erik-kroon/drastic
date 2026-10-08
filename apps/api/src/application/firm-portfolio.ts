@@ -9,7 +9,7 @@ import { listAttention } from "./workspace";
 import { listObligations } from "./closing/deadlines";
 import { closingReadiness } from "./closing/proposals";
 import { bankWorkspace } from "./banking/workspace";
-import { listBankSignoffs, getBankSignoff } from "./banking/signoffs";
+import { listBankInventorySignoffs, getBankInventorySignoff } from "./banking/inventory-signoffs";
 import { failure } from "./failures";
 
 function observedTime() {
@@ -32,7 +32,8 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
         openTasks: null,
         deadlines,
         bank: null,
-        bankSignoffs: [],
+        bankObservations: [],
+        bankInventorySignoffs: [],
         closing: null,
       } satisfies typeof Firms.PortfolioClientFacts.Type;
     }
@@ -44,9 +45,47 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
       input: { startsOn: period.startsOn, endsOn: period.endsOn },
     });
 
-    const history = yield* listBankSignoffs(token, { scope });
+    if (bank.accounts.length > 100) return yield* failure("UnsupportedProfile");
 
-    const bankSignoffs = yield* Effect.forEach(
+    const bankObservations = yield* Effect.forEach(
+      bank.accounts.filter(
+        (account) =>
+          account.statementDate !== null &&
+          account.statementDate >= period.startsOn &&
+          account.statementDate <= period.endsOn,
+      ),
+      (account) =>
+        Effect.gen(function* () {
+          const endsOn = account.statementDate;
+
+          if (endsOn === null) return yield* failure("InternalError");
+
+          const observation =
+            endsOn === period.endsOn
+              ? bank
+              : yield* bankWorkspace(token, {
+                  scope,
+                  input: { startsOn: period.startsOn, endsOn },
+                });
+
+          const observed = observation.accounts.find((candidate) => candidate.id === account.id);
+
+          if (!observed || observed.statementId !== account.statementId) {
+            return yield* failure("StaleDependency");
+          }
+
+          return {
+            startsOn: period.startsOn,
+            endsOn,
+            checkedAt: observation.checkedAt,
+            account: observed,
+          };
+        }),
+    );
+
+    const history = yield* listBankInventorySignoffs(token, { scope });
+
+    const bankInventorySignoffs = yield* Effect.forEach(
       history.items.filter(
         (item) =>
           item.signedAt !== null &&
@@ -55,14 +94,19 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
       ),
       (item) =>
         Effect.gen(function* () {
-          const view = yield* getBankSignoff(token, { scope, planId: item.id });
+          const view = yield* getBankInventorySignoff(token, { scope, planId: item.id });
 
           return {
             ...item,
+            accountIds: view.plan.inventory.bankAccountIds,
             dependenciesCurrent: view.dependenciesCurrent,
             reviewScope: view.plan.reviewScope,
             coverage: view.plan.coverage,
+            companyCompleteness: view.plan.companyCompleteness,
             financialCloseReady: view.plan.financialCloseReady,
+            signedArtifact: view.signedArtifact
+              ? { sha256: view.signedArtifact.sha256, byteLength: view.signedArtifact.byteLength }
+              : null,
           };
         }),
     );
@@ -76,7 +120,8 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
       openTasks: work.counts.open,
       deadlines,
       bank,
-      bankSignoffs,
+      bankObservations,
+      bankInventorySignoffs,
       closing,
     } satisfies typeof Firms.PortfolioClientFacts.Type;
   });

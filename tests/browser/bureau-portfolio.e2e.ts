@@ -84,7 +84,8 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
       openTasks: null,
       deadlines: [],
       bank: null,
-      bankSignoffs: [],
+      bankObservations: [],
+      bankInventorySignoffs: [],
       closing: null,
     })),
   );

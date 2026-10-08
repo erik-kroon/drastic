@@ -4,8 +4,8 @@ import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { CompanySetup } from "./company-setup";
 import { DeadlineList } from "./deadlines";
-import { BankWorkspace } from "./bank-workspace";
-import { BankSignoffList } from "./bank-signoffs";
+import { BankWorkspace, BankWorkspaceAccount } from "./bank-workspace";
+import { BankInventorySignoffList } from "./bank-inventory-signoffs";
 import { ClosingReadiness } from "./closing";
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
@@ -79,13 +79,26 @@ export const PortfolioClientFacts = Schema.Struct({
   openTasks: Schema.NullOr(Accounting.MinorUnits),
   deadlines: DeadlineList,
   bank: Schema.NullOr(BankWorkspace),
-  bankSignoffs: Schema.Array(
+  bankObservations: Schema.Array(
     Schema.Struct({
-      ...BankSignoffList.fields.items.value.fields,
+      startsOn: Accounting.AccountingDate,
+      endsOn: Accounting.AccountingDate,
+      checkedAt: Schema.String,
+      account: BankWorkspaceAccount,
+    }),
+  ).check(Schema.isMaxLength(100)),
+  bankInventorySignoffs: Schema.Array(
+    Schema.Struct({
+      ...BankInventorySignoffList.fields.items.value.fields,
+      accountIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
       dependenciesCurrent: Schema.Boolean,
-      reviewScope: Schema.Literal("selected_declared_bank_account"),
-      coverage: Schema.Literal("not_established"),
+      reviewScope: Schema.Literal("whole_declared_bank_inventory"),
+      coverage: Schema.Literal("declared_inventory_only"),
+      companyCompleteness: Schema.Literal("not_established"),
       financialCloseReady: Schema.Literal(false),
+      signedArtifact: Schema.NullOr(
+        Schema.Struct({ sha256: Accounting.Digest, byteLength: Schema.Int }),
+      ),
     }),
   ).check(Schema.isMaxLength(200)),
   closing: Schema.NullOr(ClosingReadiness),
