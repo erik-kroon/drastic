@@ -14,6 +14,7 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { ClientPeriod } from "./client-period";
 import { ClientBank } from "./client-bank";
+import { ClientClosing } from "./client-closing";
 import { ClientDeadline, nextClientDeadline, compareClientDeadlines } from "./client-deadline";
 import { ClientDialog } from "./client-dialog";
 import { PortfolioPagination, portfolioPageSize } from "./portfolio-pagination";
@@ -137,6 +138,7 @@ export function FirmPortfolio(props: {
             { id: "lead", label: sv ? "Klientansvarig" : "Responsible accountant" },
             { id: "review", label: sv ? "Nästa avstämning" : "Next review" },
             { id: "deadline", label: sv ? "Nästa deadline" : "Next deadline" },
+            { id: "status", label: "Status" },
             { id: "work", label: sv ? "Att granska" : "To review", numeric: true },
             { id: "details", label: sv ? "Klient" : "Client" },
           ]}
@@ -189,6 +191,13 @@ export function FirmPortfolio(props: {
                   key="deadline"
                   deadline={deadlines.get(client.book.id) ?? null}
                   locale={locale}
+                />,
+                <ClientClosing
+                  key="status"
+                  book={client.book}
+                  closing={facts.closing}
+                  locale={locale}
+                  onOpen={() => rememberPortfolio(client.book, portfolioHref)}
                 />,
                 period && facts.openTasks !== null ? (
                   <Box key="work" display="grid" gap="sm" alignItems="end">
