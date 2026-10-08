@@ -539,6 +539,12 @@ test("a retained original returns through questions, explicit review, posting an
   await expect(screen.getByRole("img", `${filename}, sida 2`)).toBeVisible();
   await screen.getByText("Sidtext", { exact: true }).click();
   await expect(screen.getByText("Independent original page two", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("combobox", "Zoom", { exact: true })).toContainText("100 %");
+
+  const focusedReferenceScreenshot = await app.screenshot(
+    "document-question-focused-reference-100-percent-before-acknowledgment",
+  );
+
   await screen
     .getByRole(
       "checkbox",
@@ -965,6 +971,7 @@ test("a retained original returns through questions, explicit review, posting an
           questionPane.attachmentScreenshot,
           questionPane.narrowScreenshot,
           desktopScreenshot,
+          focusedReferenceScreenshot,
           narrowScreenshot,
           postingScreenshot,
           recoveryScreenshot,
