@@ -28,5 +28,14 @@ export const CompanySetupHandlers = HttpApiBuilder.group(Api, "companySetup", (h
           input: payload,
         }),
       ),
+    )
+    .handle("initializeNativeLedger", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        CompanySetup.initializeNativeLedger(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     ),
 );

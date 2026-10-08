@@ -13,6 +13,7 @@ import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { DimensionSettings } from "@/components/dimension-settings";
 import { PayrollFoundation } from "@/components/payroll-foundation";
+import { NativeLedgerSetup } from "@/components/company-setup/native-ledger";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/settings")({
   validateSearch: Schema.decodeUnknownSync(
@@ -72,6 +73,11 @@ function Settings() {
       ) : null}
       {section === "accounting" ? (
         <>
+          {book.profile === "company-setup-v1" &&
+          setup.accounts.length === 0 &&
+          setup.periods.length === 0 ? (
+            <NativeLedgerSetup />
+          ) : null}
           <DimensionSettings book={book} locale={locale} />
           <RecordSection title={copy.journal_periods}>
             <DataTable

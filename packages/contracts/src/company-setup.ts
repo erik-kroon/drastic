@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -82,6 +82,41 @@ export const SaveCompanySetup = Schema.Struct({
   details: CompanyDetails,
 });
 
+const NativeAccountDefinition = Schema.Struct({
+  code: Schema.String.check(Schema.isPattern(/^\d{4}$/)),
+  name: Schema.String.check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(200),
+    Schema.makeFilter((value) => value.trim().length > 0 || "Enter the account name."),
+  ),
+});
+
+export const InitializeNativeLedger = Schema.Struct({
+  expectedRevision: Revision,
+  startsOn: SetupDate,
+  endsOn: SetupDate,
+  accounts: Schema.Array(NativeAccountDefinition).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(100),
+  ),
+});
+
+const NativeCalendarEntry = Schema.Struct({
+  id: Accounting.Identifier,
+  startsOn: SetupDate,
+  endsOn: SetupDate,
+});
+
+export const NativeLedgerSetup = Schema.Struct({
+  scope: Accounting.Scope,
+  fiscalYear: NativeCalendarEntry,
+  periods: Schema.Array(NativeCalendarEntry).check(Schema.isMinLength(1), Schema.isMaxLength(18)),
+  accounts: Schema.Array(
+    Schema.Struct({ id: Accounting.Identifier, ...NativeAccountDefinition.fields }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(100)),
+  setupRevision: Revision,
+});
+
 const key = Accounting.IdempotencyHeaders.fields["idempotency-key"];
 
 export const CompanySetupCapabilities = {
@@ -106,6 +141,18 @@ export const CompanySetupCapabilities = {
     output: CompanySetup,
     readOnly: false,
   },
+  company_initialize_native_ledger: {
+    description:
+      "Initialize an empty native company setup book with explicit account definitions and a monthly fiscal calendar. Requires a human operator session. Creates no opening balances, financial effects, BAS adoption or accounting activation.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: key,
+      input: InitializeNativeLedger,
+    }),
+    output: NativeLedgerSetup,
+    readOnly: false,
+    agentCallable: false,
+  },
 };
 
 const path = "/v1/entities/:entityId/books/:bookId/company-setup";
@@ -129,4 +176,11 @@ export const CompanySetupApi = HttpApiGroup.make("companySetup").add(
     success: CompanySetup,
     error: accountingErrors,
   }),
+  HttpApiEndpoint.post("initializeNativeLedger", `${path}/native-ledger`, {
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
+    payload: InitializeNativeLedger,
+    success: NativeLedgerSetup,
+    error: accountingErrors,
+  }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
 );

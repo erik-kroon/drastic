@@ -90,6 +90,7 @@ const writeClasses = {
   firm_save_member: "administration",
   company_create: "administration",
   company_save_setup: "administration",
+  company_initialize_native_ledger: "administration",
   company_record_fact: "administration",
   company_review_fact: "human_review",
   company_bind_role: "administration",

@@ -7,7 +7,8 @@ import { failure } from "./failures";
 import { newId } from "./posting";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/company-setup";
-import { admitHumanActor, lockActor } from "../db/human-actor";
+import * as LedgerSetupDb from "../db/company-ledger-setup";
+import { admitHumanActor, lockActor, requireHumanSession } from "../db/human-actor";
 import { withTransaction, databaseFailure, type Transaction } from "../db/transaction";
 import { readTableAccess } from "../db/commerce/access";
 
@@ -201,11 +202,135 @@ function replaySetup(
       return yield* failure("IdempotencyConflict");
     }
 
-    if (operation === "save" && row.bookId !== bookId) return yield* failure("IdempotencyConflict");
+    if (operation !== "create" && row.bookId !== bookId)
+      return yield* failure("IdempotencyConflict");
 
     return row.result;
   });
 }
+
+function nativeMonthlyCalendar(input: typeof CompanySetupContract.InitializeNativeLedger.Type) {
+  return Effect.gen(function* () {
+    const start = new Date(`${input.startsOn}T00:00:00.000Z`);
+    const end = new Date(`${input.endsOn}T00:00:00.000Z`);
+    const afterEnd = new Date(end);
+    afterEnd.setUTCDate(afterEnd.getUTCDate() + 1);
+
+    if (start > end || afterEnd.getUTCDate() !== 1) return yield* failure("InvalidJournal");
+
+    const anniversary = new Date(start);
+    anniversary.setUTCDate(1);
+    anniversary.setUTCMonth(anniversary.getUTCMonth() + 18);
+
+    const lastAnniversaryDay = new Date(anniversary);
+    lastAnniversaryDay.setUTCMonth(lastAnniversaryDay.getUTCMonth() + 1, 0);
+    anniversary.setUTCDate(Math.min(start.getUTCDate(), lastAnniversaryDay.getUTCDate()));
+
+    if (end >= anniversary) return yield* failure("InvalidJournal");
+
+    const calendar: Array<{ id: string; startsOn: string; endsOn: string }> = [];
+    const cursor = new Date(start);
+
+    while (cursor <= end) {
+      const monthEnd = new Date(cursor);
+      monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 0);
+      const periodEnd = monthEnd > end ? end : monthEnd;
+      calendar.push({
+        id: newId("period"),
+        startsOn: cursor.toISOString().slice(0, 10),
+        endsOn: periodEnd.toISOString().slice(0, 10),
+      });
+      cursor.setTime(periodEnd.getTime());
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    return calendar;
+  });
+}
+
+export const initializeNativeLedger = Effect.fn("companySetup.initializeNativeLedger")(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    idempotencyKey: string;
+    input: typeof CompanySetupContract.InitializeNativeLedger.Type;
+  },
+) {
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      yield* requireHumanSession(principal);
+      yield* requireAccess(transaction);
+      const actorId = principal.actorId;
+      yield* lockActor(transaction, actorId);
+
+      const payload = yield* toJsonObject(command.input);
+
+      const input = yield* Schema.decodeUnknownEffect(CompanySetupContract.InitializeNativeLedger)(
+        payload,
+        { onExcessProperty: "error" },
+      ).pipe(Effect.mapError((cause) => failure("InvalidRequest", cause)));
+
+      const previous = yield* replaySetup(
+        transaction,
+        actorId,
+        command.idempotencyKey,
+        "native_ledger",
+        command.scope.bookId,
+        payload,
+      );
+
+      if (previous) return yield* decode(CompanySetupContract.NativeLedgerSetup, previous);
+
+      const book = (yield* Db.readSetupBook(transaction, command.scope.bookId))[0];
+      const setup = (yield* Db.readSetup(transaction, command.scope.bookId, true))[0];
+
+      if (!book || !setup) return yield* failure("UnsupportedProfile");
+
+      if (setup.revision !== input.expectedRevision) return yield* failure("StaleDependency");
+
+      const ledger = (yield* LedgerSetupDb.readInitialLedgerState(
+        transaction,
+        command.scope.bookId,
+      ))[0];
+
+      if (book.profile !== "company-setup-v1" || ledger?.authority !== "native" || !ledger.empty)
+        return yield* failure("UnsupportedProfile");
+
+      if (new Set(input.accounts.map((account) => account.code)).size !== input.accounts.length)
+        return yield* failure("InvalidJournal");
+
+      const result = yield* Schema.decodeEffect(CompanySetupContract.NativeLedgerSetup)({
+        scope: command.scope,
+        fiscalYear: { id: newId("year"), startsOn: input.startsOn, endsOn: input.endsOn },
+        periods: yield* nativeMonthlyCalendar(input),
+        accounts: input.accounts.map((account) => ({
+          id: newId("account"),
+          code: account.code,
+          name: account.name.trim(),
+        })),
+        setupRevision: setup.revision,
+      }).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
+
+      yield* LedgerSetupDb.insertFiscalYear(transaction, result);
+      yield* LedgerSetupDb.insertMonthlyPeriods(transaction, result);
+      yield* LedgerSetupDb.insertNativeAccounts(transaction, result);
+      yield* Db.insertCommand(transaction, {
+        actorId,
+        key: command.idempotencyKey,
+        bookId: command.scope.bookId,
+        operation: "native_ledger",
+        payload,
+        result: yield* toJsonObject(result),
+      });
+
+      return result;
+    },
+    "update",
+  );
+});
 
 export const createCompany = Effect.fn("companySetup.create")(function* (
   token: string,
