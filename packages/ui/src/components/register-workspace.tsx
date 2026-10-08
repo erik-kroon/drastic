@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Circle, CircleCheck } from "lucide-react";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
@@ -431,6 +432,7 @@ export function RegisterWorkspace({
   detail,
   detailSize = "standard",
   headingSpacing = "standard",
+  headingFocusKey,
 }: {
   title: string;
   tabs?: ReactNode;
@@ -441,7 +443,18 @@ export function RegisterWorkspace({
   detail?: ReactNode;
   detailSize?: "standard" | "wide" | "invoice";
   headingSpacing?: "standard" | "work";
+  headingFocusKey?: string;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusedKey = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (headingFocusKey && focusedKey.current !== headingFocusKey) {
+      heading.current?.focus();
+      focusedKey.current = headingFocusKey;
+    }
+  }, [headingFocusKey]);
+
   return (
     <div
       {...stylex.props(
@@ -454,7 +467,13 @@ export function RegisterWorkspace({
       <section {...stylex.props(styles.main)}>
         <header {...stylex.props(styles.header)}>
           <div {...stylex.props(styles.heading, headingSpacing === "work" && styles.workHeading)}>
-            <Heading level={1} size="page" styleX={styles.title}>
+            <Heading
+              ref={heading}
+              tabIndex={headingFocusKey ? -1 : undefined}
+              level={1}
+              size="page"
+              styleX={styles.title}
+            >
               {title}
             </Heading>
             {tabs}

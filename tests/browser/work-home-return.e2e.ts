@@ -114,6 +114,22 @@ test("home retains the selected original and scoped keyboard return after reload
     { timeout: 30000 },
   );
 
+  const returnedScreenshot = await app.screenshot("home-returned-selected-original-focused");
+  const missingTask = `document:${randomUUID()}`;
+
+  await app.open(`${workspace}/?status=open&task=${encodeURIComponent(missingTask)}`);
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(screen.getByRole("button", /home-original-first\.pdf/)).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(screen.getByRole("heading", "Att göra", { exact: true })).toBeFocused();
+  await expect(screen.getByRole("link", "Granska original", { exact: true })).toHaveCount(0);
+  expect(new URL(await browser.url()).searchParams.get("task")).toBe(missingTask);
+
+  const missingScreenshot = await app.screenshot("home-missing-root-heading-focused");
+
   const after = await call("/ledger", Accounting.LedgerSnapshot);
 
   expect(after).toEqual(before);
@@ -128,7 +144,9 @@ test("home retains the selected original and scoped keyboard return after reload
         before,
         after,
         selectedScreenshot,
-        returnedScreenshot: await app.screenshot("home-returned-selected-original-focused"),
+        returnedScreenshot,
+        missingTask,
+        missingScreenshot,
       },
       null,
       2,

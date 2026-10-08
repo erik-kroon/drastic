@@ -90,6 +90,9 @@ export function WorkHome() {
       <RegisterWorkspace
         detailSize="wide"
         headingSpacing="work"
+        headingFocusKey={
+          !selected && activeQuery.isSuccess && !activeQuery.isFetching ? search.task : undefined
+        }
         title={sv ? "Att göra" : "To do"}
         tabs={
           <RegisterTabs
