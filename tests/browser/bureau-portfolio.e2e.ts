@@ -100,14 +100,14 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   const names = screen.getByRole("link", /^Synthetic bureau \d{3}$/);
   const observed: string[] = [];
 
-  for (let page = 0; page < 5; page++) {
-    await expect(names).toHaveCount(10);
+  for (let page = 0; page < 4; page++) {
+    await expect(names).toHaveCount(Math.min(15, 50 - page * 15));
     await expect(names.nth(0)).toHaveText(
-      `Synthetic bureau ${String(page * 10 + 1).padStart(3, "0")}`,
+      `Synthetic bureau ${String(page * 15 + 1).padStart(3, "0")}`,
     );
     observed.push(...(await names.allTextContents()));
 
-    if (page < 4) await screen.getByRole("button", "Nästa", { exact: true }).click();
+    if (page < 3) await screen.getByRole("button", "Nästa", { exact: true }).click();
   }
 
   expect(observed).toEqual(
@@ -117,6 +117,15 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
     ),
   );
   await expect(screen.getByRole("button", "Nästa", { exact: true })).toBeDisabled();
+
+  await expect(screen.getByText("15 per sida", { exact: true })).toBeVisible();
+  await expect(screen.getByText("Sida 4 av 4", { exact: true })).toBeVisible();
+  await expect(screen.getByText("46–50 av 50 klienter", { exact: true })).toBeVisible();
+  await screen.getByRole("button", "Föregående", { exact: true }).click();
+  await expect(names).toHaveCount(15);
+  await expect(names.nth(0)).toHaveText("Synthetic bureau 031");
+  await screen.getByRole("button", "Nästa", { exact: true }).click();
+  await expect(names).toHaveCount(5);
 
   const lastPageScreenshot = await app.screenshot("bureau-fifty-clients-last-page");
 
@@ -194,7 +203,7 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
       {
         scope: "Native existing portfolio owner with fifty synthetic setup clients",
         limits:
-          "Not V1 approval/parity, statutory deadlines, access-request projection, permission revocation, stale-revision recovery or 200-client qualification. Company creation/linking are public-API fixture setup; browser pagination, filtering, reload and assignment are exercised.",
+          "Fifteen-row paging only, not full V1 composition/parity, statutory deadlines, access-request projection, permission revocation, stale-revision recovery or 200-client qualification. Company creation/linking are public-API fixture setup; browser pagination, filtering, reload and assignment are exercised.",
         firm: firm.firmId,
         observed,
         initial,
