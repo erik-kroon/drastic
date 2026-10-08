@@ -162,12 +162,6 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   await expect
     .poll(async () => new URL(await browser.url()).searchParams.get("firm"))
     .toBe(firm.firmId);
-  await agent.assert(
-    "The client portfolio remains filtered to Synthetic bureau 00 and clients assigned to the current accountant. Synthetic bureau 001 is absent after clearing its responsible accountant, while the remaining four matching clients are visible. Return the configured JSON judgment.",
-    { timeout: 30000, vision: true },
-  );
-
-  const assignedScreenshot = await app.screenshot("bureau-scoped-assignment-filter-retained");
   const final = await call(`/firms/${firm.firmId}`, Firms.Workspace);
   const after = await call(`${scopePath}/ledger`, Accounting.LedgerSnapshot);
   const first = clients[0];
@@ -196,6 +190,13 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   );
   expect(after).toEqual(before);
   expect(final.clients.every((client) => client.book.sequence === "0")).toBe(true);
+
+  await agent.assert(
+    "Check the current visible portfolio only: the search contains Synthetic bureau 00, Jag är ansvarig is selected, and the four visible clients are Synthetic bureau 003, 005, 007 and 009. Synthetic bureau 001 is absent. Do not infer how the current state was reached; assignment persistence is checked separately through retained owner revisions. Return the configured JSON judgment.",
+    { timeout: 30000, vision: true },
+  );
+
+  const assignedScreenshot = await app.screenshot("bureau-scoped-assignment-filter-retained");
 
   await writeFile(
     join(output, "bureau-portfolio.json"),
