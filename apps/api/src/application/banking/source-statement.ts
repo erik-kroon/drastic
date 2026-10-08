@@ -100,7 +100,7 @@ function rowsAreAdmissible(source: Source) {
 }
 
 // The caller holds current authority and the book write lock for the entire admission.
-export function admitReviewedStatement(
+function admitReviewedStatement(
   transaction: Transaction,
   scope: Scope,
   actorId: string,
@@ -123,7 +123,13 @@ export function admitReviewedStatement(
     const book = (yield* BankDb.lockBook(transaction, scope.bookId, "update"))[0];
 
     if (!book) return yield* failure("Forbidden");
-    yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
+    if (
+      book.authority !== "native" ||
+      (book.profile !== Shared.bankProfile && book.profile !== "company-setup-v1") ||
+      (book.profile === "company-setup-v1" && input.existingMatches.length > 0)
+    )
+      return yield* failure("UnsupportedProfile");
     const source = statementSourceOf(input);
     const account = (yield* BankDb.readAccount(transaction, scope.bookId, source.accountId))[0];
 
@@ -236,6 +242,75 @@ export function admitReviewedStatement(
   });
 }
 
+export const importStatementInTransaction = Effect.fn("banking.statement.importInTransaction")(
+  function* (
+    transaction: Transaction,
+    scope: Scope,
+    actorId: string,
+    idempotencyKey: string,
+    input: typeof Bank.ImportBankStatement.Type,
+  ) {
+    yield* Shared.requireTables(transaction, statementTables, statementInserts, statementUpdates);
+    yield* Shared.requireColumns(transaction, Shared.accountColumns);
+
+    const admission = yield* admitReviewedStatement(
+      transaction,
+      scope,
+      actorId,
+      idempotencyKey,
+      input,
+    );
+
+    if (admission.previous) return admission.previous;
+
+    if (!admission.admitted) return yield* failure("InternalError");
+    const statement = admission.admitted;
+
+    for (const match of input.existingMatches) {
+      yield* addMatch(
+        transaction,
+        scope.bookId,
+        actorId,
+        {
+          statementId: statement.id,
+          rowOrdinal: match.rowOrdinal,
+          voucherId: match.voucherId,
+          lineId: match.lineId,
+        },
+        "imported",
+      );
+    }
+
+    const matches = (yield* StatementDb.readStatementMatches(
+      transaction,
+      scope.bookId,
+      statement.id,
+    ))[0]?.matches;
+
+    const checkpoint = yield* Shared.readCheckpoint(transaction, scope.bookId, statement.accountId);
+
+    const body = yield* Shared.toJsonObject({
+      statement: Shared.statementBody(statement),
+      matches: Array.isArray(matches) ? matches : [],
+      checkpoint,
+      receipt: Shared.receipt(idempotencyKey, "import_bank_statement", actorId),
+    } satisfies JsonObject);
+
+    const receipt = yield* Shared.decode(ReceiptSchema, body);
+    yield* saveCommand(
+      transaction,
+      scope,
+      idempotencyKey,
+      admission.request.expected,
+      "import_bank_statement",
+      actorId,
+      body,
+    );
+
+    return receipt;
+  },
+);
+
 export const importBankStatement = Effect.fn("banking.statement.import")(function* (
   token: string,
   command: {
@@ -245,70 +320,13 @@ export const importBankStatement = Effect.fn("banking.statement.import")(functio
   },
 ) {
   return yield* Shared.withBook(token, command.scope, false, "update", (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, statementTables, statementInserts, statementUpdates);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-
-      const admission = yield* admitReviewedStatement(
-        transaction,
-        command.scope,
-        principal.actorId,
-        command.idempotencyKey,
-        command.input,
-      );
-
-      if (admission.previous) return admission.previous;
-
-      if (!admission.admitted) return yield* failure("InternalError");
-      const statement = admission.admitted;
-
-      for (const match of command.input.existingMatches) {
-        yield* addMatch(
-          transaction,
-          command.scope.bookId,
-          principal.actorId,
-          {
-            statementId: statement.id,
-            rowOrdinal: match.rowOrdinal,
-            voucherId: match.voucherId,
-            lineId: match.lineId,
-          },
-          "imported",
-        );
-      }
-
-      const matches = (yield* StatementDb.readStatementMatches(
-        transaction,
-        command.scope.bookId,
-        statement.id,
-      ))[0]?.matches;
-
-      const checkpoint = yield* Shared.readCheckpoint(
-        transaction,
-        command.scope.bookId,
-        statement.accountId,
-      );
-
-      const body = yield* Shared.toJsonObject({
-        statement: Shared.statementBody(statement),
-        matches: Array.isArray(matches) ? matches : [],
-        checkpoint,
-        receipt: Shared.receipt(command.idempotencyKey, "import_bank_statement", principal.actorId),
-      } satisfies JsonObject);
-
-      const receipt = yield* Shared.decode(ReceiptSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        admission.request.expected,
-        "import_bank_statement",
-        principal.actorId,
-        body,
-      );
-
-      return receipt;
-    }),
+    importStatementInTransaction(
+      transaction,
+      command.scope,
+      principal.actorId,
+      command.idempotencyKey,
+      command.input,
+    ),
   );
 });
 

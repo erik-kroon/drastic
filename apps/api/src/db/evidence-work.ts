@@ -252,6 +252,7 @@ export function readInlineContent(transaction: Transaction, bookId: string, sha2
 export type InterpretationRow = {
   readonly accountReady: boolean;
   readonly profileReady: boolean;
+  readonly companySetup: boolean;
   readonly overlapping: boolean;
   readonly conflicting: boolean;
   readonly existingProviderIds: ReadonlyArray<string>;
@@ -278,8 +279,12 @@ export function readInterpretationContext(
         ) as "accountReady",
         exists (
           select 1 from openerp.books b
-          where b.id = ${bookId} and b.profile = 'synthetic-core-v1' and b.authority = 'native'
+          where b.id = ${bookId} and b.profile in ('synthetic-core-v1', 'company-setup-v1') and b.authority = 'native'
         ) as "profileReady",
+        exists (
+          select 1 from openerp.books b
+          where b.id = ${bookId} and b.profile = 'company-setup-v1'
+        ) as "companySetup",
         exists (
           select 1 from openerp.bank_statements s
           where s.book_id = ${bookId} and s.account_id = ${accountId}

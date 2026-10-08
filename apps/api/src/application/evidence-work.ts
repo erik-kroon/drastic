@@ -1,4 +1,4 @@
-import { admitReviewedStatement } from "./banking/source-statement";
+import { importStatementInTransaction } from "./banking/source-statement";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -1535,7 +1535,7 @@ function buildStatement(
       [
         context === undefined || !context.profileReady,
         "admission_profile",
-        "Current bank admission supports only native synthetic-core-v1 books. Retention and diagnostics do not activate a real company.",
+        "Bank observation intake supports native company-setup-v1 and synthetic-core-v1 books. Retention and diagnostics do not establish company qualification.",
       ],
       [
         context?.overlapping === true,
@@ -1559,7 +1559,7 @@ function buildStatement(
     }
 
     const statement = yield* toJsonObject({
-      kind: "synthetic_bank_statement_v1",
+      kind: context?.companySetup ? "bank_statement_v1" : "synthetic_bank_statement_v1",
       statementIdentifier: occurrence.id,
       sourceBankAccountId: occurrence.sourceAccountId,
       accountId: input.accountId,
@@ -1934,7 +1934,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
         },
       });
 
-      const imported = yield* admitReviewedStatement(
+      const imported = yield* importStatementInTransaction(
         transaction,
         command.scope,
         principal.actorId,

@@ -34,7 +34,7 @@ export const ExistingBankMatch = Schema.Struct({
 });
 
 export const StatementSource = Schema.Struct({
-  kind: Schema.Literal("synthetic_bank_statement_v1"),
+  kind: Schema.Literals(["synthetic_bank_statement_v1", "bank_statement_v1"]),
   statementIdentifier: SourceKey,
   sourceBankAccountId: SourceKey,
   accountId: Accounting.Identifier,
