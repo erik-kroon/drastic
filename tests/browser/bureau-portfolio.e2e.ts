@@ -100,13 +100,13 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
 
   const lastPageScreenshot = await app.screenshot("bureau-fifty-clients-last-page");
 
-  await screen.getByRole("textbox", "Sök klienter", { exact: true }).fill("Synthetic bureau 00");
-  await screen.getByRole("combobox", "Visa klienter", { exact: true }).selectOption("mine");
+  await screen.getByRole("searchbox", "Sök klienter", { exact: true }).fill("Synthetic bureau 00");
+  await screen.getByRole("button", "Jag är ansvarig", { exact: true }).click();
   await expect(names).toHaveCount(5);
   await expect.poll(async () => new URL(await browser.url()).searchParams.get("view")).toBe("mine");
   await browser.reload();
   await expect(names).toHaveCount(5);
-  await expect(screen.getByRole("textbox", "Sök klienter", { exact: true })).toHaveValue(
+  await expect(screen.getByRole("searchbox", "Sök klienter", { exact: true })).toHaveValue(
     "Synthetic bureau 00",
   );
 
