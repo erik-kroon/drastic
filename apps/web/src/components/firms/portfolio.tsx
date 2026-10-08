@@ -13,6 +13,7 @@ import {
   RegisterChoices,
 } from "@open-erp/ui/components/accounting-page";
 import { ClientPeriod } from "./client-period";
+import { ClientBank } from "./client-bank";
 import { ClientDeadline, nextClientDeadline, compareClientDeadlines } from "./client-deadline";
 import { ClientDialog } from "./client-dialog";
 import { PortfolioPagination, portfolioPageSize } from "./portfolio-pagination";
@@ -132,6 +133,7 @@ export function FirmPortfolio(props: {
           columns={[
             { id: "company", label: sv ? "Företag" : "Company" },
             { id: "period", label: sv ? "Senaste period" : "Latest period" },
+            { id: "bank", label: sv ? "Bankavstämning" : "Bank reconciliation" },
             { id: "lead", label: sv ? "Klientansvarig" : "Responsible accountant" },
             { id: "review", label: sv ? "Nästa avstämning" : "Next review" },
             { id: "deadline", label: sv ? "Nästa deadline" : "Next deadline" },
@@ -171,6 +173,7 @@ export function FirmPortfolio(props: {
                   locale={locale}
                   onOpen={() => rememberPortfolio(client.book, portfolioHref)}
                 />,
+                <ClientBank key="bank" facts={facts} locale={locale} />,
                 client.leadAvailable ? lead?.name : sv ? "Ingen ansvarig" : "Unassigned",
                 client.nextReviewOn ? (
                   <Box key="date" display="grid" gap="sm">
