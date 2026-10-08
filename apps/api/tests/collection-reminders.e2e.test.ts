@@ -1411,6 +1411,7 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
 
   const baseline = process.env.OPENERP_REMINDER_BASELINE === "1";
   let baselineRevision: string | null = null;
+  let baselineCompatibilityRevision: string | null = null;
 
   async function sampleWorklist(fetch: () => Promise<Response>) {
     for (let index = 0; index < 35; index += 1) {
@@ -1433,6 +1434,7 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
   if (baseline) {
     await withPinnedReminderApi("3776363e^", async (api) => {
       baselineRevision = api.revision;
+      baselineCompatibilityRevision = api.compatibilityRevision;
       await sampleWorklist(() => api.fetch(context.book, "/commerce/collections/worklist"));
       await failure(
         await api.fetch(context.author, base, {
@@ -1561,6 +1563,7 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
     },
     feature: baseline ? "absent" : "present",
     baselineRevision,
+    baselineCompatibilityRevision,
     existingWorklist: summary(readSamples),
     exactPreview: summary(previewSamples),
     admittedToObservation: summary(dispatchSamples),
@@ -1965,11 +1968,19 @@ test("the retained reminder route reloads an unknown worker outcome and reconcil
         );
         await page.getByRole("button", { name: "Godkänn utskick", exact: true }).click();
         await page.getByRole("button", { name: "Skicka påminnelsen", exact: true }).click();
-        await page.getByText("Påminnelsens utfall är okänt", { exact: true }).waitFor();
+        await page
+          .getByText("? Okänt utfall. Mejlet kan ha skickats. Utred innan du försöker igen.", {
+            exact: true,
+          })
+          .waitFor();
         expect(transport.wires).toHaveLength(1);
         const externalIdentity = transport.wires[0]?.externalIdentity;
         await page.reload();
-        await page.getByText("Påminnelsens utfall är okänt", { exact: true }).waitFor();
+        await page
+          .getByText("? Okänt utfall. Mejlet kan ha skickats. Utred innan du försöker igen.", {
+            exact: true,
+          })
+          .waitFor();
         await page.getByRole("button", { name: "Visa godkänt meddelande", exact: true }).click();
         expect(await page.locator("pre").first().innerText()).toBe(message.plainText);
         expect(

@@ -57,3 +57,19 @@ The test retains `work-group-results.json`, interrupted/recovered screenshots an
 Before wrapper implementation, 7 October 2026. A passing browser assertion is provisional if application, configuration, runtime launcher or fixture inputs changed during its run. Reuse the existing credential-free application source census and include the browser tests, pinned config, launcher scripts and retained fixture bytes. Record the committed revision and exact inventory separately; untracked or modified files prevent a clean-checkout claim.
 
 Missing or unreadable source, symlinked inputs, changed bytes, added/removed inputs and a failed final census must refuse qualification. Preserve a failing runner exit even when source is stable. An exception or interrupted startup must still clean up owned processes and retain a failure receipt when possible. Exclude sessions, environment values, database connection strings, cookies and raw traces from public receipts. Snapshot before any runtime starts and compare after the runner exits; do not silently replace the initial inventory. Test reports remain intact when the wrapper refuses source integrity.
+
+## Reminder native zoom
+
+Run the reminder parity/behavior journey first:
+
+```sh
+PAPER_REMINDERS=1 bun run test:browser tests/browser/reminder-payment-refusal.e2e.ts
+```
+
+Then run the separate native200% keyboard check, without overlapping either job:
+
+```sh
+OPENERP_REMINDER_NATIVE_ZOOM=1 PAPER_REMINDERS=1 bun run test:browser tests/browser/reminder-native-review.e2e.ts --headed
+```
+
+The second recipe leases a fresh dedicated local Chromium through TesterArmy's supported attempt BrowserProvider. It uses the browser dependency already locked under @e2e-dev/web and a disposable profile's native per-host zoom preference for127.0.0.1. It does not change user profiles, CSS zoom, device scale or the1440x900 viewport. [Chromium's zoom preference owner](https://chromium.googlesource.com/chromium/src/+/114.0.5735.90/chrome/browser/ui/zoom/chrome_zoom_level_prefs.cc) initializes the per-host browser zoom map from this preference. The test measures blank100% versus actual200% DPR and CSS width, reviews the exact message with Luna, uses Tab and Enter for approval, reloads the retained state and asserts zero fixture POST/GET. The normal browser suite explicitly skips this dedicated check unless its provider is selected; that skip is not zoom qualification. Retain native-reminder-browser.json, native-reminder-review.json, screenshots and the source-integrity report. The provider closes only its acquired browser and removes its scratch profile.

@@ -33,12 +33,14 @@ export function DocumentThumbnail(props: {
   label: string;
   children?: ReactNode;
   compact?: boolean;
+  busy?: boolean;
 }) {
   return (
     <div {...stylex.props(styles.frame, props.compact && styles.compact)}>
       <canvas
         ref={props.canvasRef}
         role="img"
+        aria-busy={props.busy ?? false}
         aria-label={props.label}
         {...stylex.props(styles.page, styles.dimensions(props.width, props.height))}
       />

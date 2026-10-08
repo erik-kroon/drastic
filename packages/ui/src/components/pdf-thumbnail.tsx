@@ -83,6 +83,7 @@ export function PdfThumbnail(props: {
     <>
       <DocumentThumbnail
         compact={props.compact}
+        busy={state.status === "loading"}
         canvasRef={canvas}
         width={state.width}
         height={state.height}

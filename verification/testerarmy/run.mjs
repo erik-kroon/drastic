@@ -78,7 +78,12 @@ async function browserSources() {
 
   const paths = [
     "e2e.config.ts",
+    "verification/testerarmy/native-reminder-browser.d.mts",
+    "tests/browser/tsconfig.json",
     "examples/synthetic-book.json",
+    ...(
+      await findTests(root, "verification/paper/domain-owners/collections-reminders", ".png")
+    ).filter((path) => path.endsWith("/reference.png")),
     ...(await findTests(root, "tests/browser", ".ts")),
     ...(await findTests(root, "verification/testerarmy", ".mjs")),
     ...(await findTests(root, "verification/testerarmy", ".pdf")),

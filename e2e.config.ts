@@ -1,5 +1,6 @@
 import type { E2EConfig } from "e2e";
 import { web } from "@e2e-dev/web";
+import { nativeReminderBrowser } from "./verification/testerarmy/native-reminder-browser.mjs";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 const appUrl = process.env.OPENERP_E2E_APP_URL;
@@ -26,8 +27,9 @@ export default {
     {
       name: "synthetic-chromium",
       engine: web({
-        locale: "sv-SE",
-        timezoneId: "Europe/Stockholm",
+        ...(process.env.OPENERP_REMINDER_NATIVE_ZOOM === "1"
+          ? { browser: nativeReminderBrowser() }
+          : { locale: "sv-SE", timezoneId: "Europe/Stockholm" }),
         viewport: { width: 1440, height: 900 },
       }),
       app: { url: appUrl, environment: "test" },
