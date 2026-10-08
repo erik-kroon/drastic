@@ -5,7 +5,7 @@ import { accountingErrors } from "./accounting-errors";
 import { CompanySetup } from "./company-setup";
 import { DeadlineList } from "./deadlines";
 import { BankWorkspace, BankWorkspaceAccount } from "./bank-workspace";
-import { BankInventorySignoffList } from "./bank-inventory-signoffs";
+import { BankInventorySignoffList, BankInventorySignoffView } from "./bank-inventory-signoffs";
 import { ClosingReadiness } from "./closing";
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
@@ -97,7 +97,10 @@ export const PortfolioClientFacts = Schema.Struct({
       companyCompleteness: Schema.Literal("not_established"),
       financialCloseReady: Schema.Literal(false),
       signedArtifact: Schema.NullOr(
-        Schema.Struct({ sha256: Accounting.Digest, byteLength: Schema.Int }),
+        Schema.Struct({
+          sha256: BankInventorySignoffView.fields.preparedArtifact.fields.sha256,
+          byteLength: BankInventorySignoffView.fields.preparedArtifact.fields.byteLength,
+        }),
       ),
     }),
   ).check(Schema.isMaxLength(200)),

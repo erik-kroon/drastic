@@ -283,7 +283,7 @@ export function insertObligation(transaction: Transaction, row: BasisRow) {
           jurisdiction, statutory_basis, required_environment)
       values (${row.bookId}, ${row.id}, ${row.title}, ${row.periodId}, ${row.responsibleActorId},
         ${row.dueAt}::timestamptz, ${row.timeZone}, ${row.sourceReference}, ${row.sourceRevision},
-        ${row.overrideReason}, ${row.outcomeKind}, ${row.jurisdiction}, ${row.statutoryBasis},
+        ${row.overrideReason}, ${row.outcomeKind}, ${row.jurisdiction}, ${JSON.stringify(row.statutoryBasis)}::jsonb,
         ${row.requiredEnvironment})
     `,
     "objects",
@@ -299,7 +299,7 @@ export function updateBasis(transaction: Transaction, row: BasisRow) {
         time_zone = ${row.timeZone}, source_reference = ${row.sourceReference},
         source_revision = ${row.sourceRevision}, override_reason = ${row.overrideReason},
         outcome_kind = ${row.outcomeKind}, jurisdiction = ${row.jurisdiction},
-        statutory_basis = ${row.statutoryBasis}, required_environment = ${row.requiredEnvironment},
+        statutory_basis = ${JSON.stringify(row.statutoryBasis)}::jsonb, required_environment = ${row.requiredEnvironment},
         revision = revision + 1, updated_at = now()
       where book_id = ${row.bookId} and id = ${row.id}
     `,

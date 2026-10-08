@@ -47,6 +47,8 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
 
     if (bank.accounts.length > 100) return yield* failure("UnsupportedProfile");
 
+    const cutoffObservations = new Map([[period.endsOn, bank]]);
+
     const bankObservations = yield* Effect.forEach(
       bank.accounts.filter(
         (account) =>
@@ -60,13 +62,15 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
 
           if (endsOn === null) return yield* failure("InternalError");
 
-          const observation =
-            endsOn === period.endsOn
-              ? bank
-              : yield* bankWorkspace(token, {
-                  scope,
-                  input: { startsOn: period.startsOn, endsOn },
-                });
+          let observation = cutoffObservations.get(endsOn);
+
+          if (!observation) {
+            observation = yield* bankWorkspace(token, {
+              scope,
+              input: { startsOn: period.startsOn, endsOn },
+            });
+            cutoffObservations.set(endsOn, observation);
+          }
 
           const observed = observation.accounts.find((candidate) => candidate.id === account.id);
 

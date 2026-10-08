@@ -79,21 +79,23 @@ test("portfolio retains period and declared deadline while incomplete bank and c
     basisDueAt: dueAt,
   };
 
+  const deadlineInput = {
+    title: "Synthetic retained VAT deadline",
+    periodId: period.id,
+    responsibleActorId: workspace.actorId,
+    dueAt,
+    timeZone: "Europe/Stockholm",
+    sourceReference: "Synthetic test declaration, not a reviewed statutory release",
+    sourceRevision: "synthetic_v1",
+    jurisdiction: "SE",
+    statutoryBasis,
+    requiredEnvironment: "sandbox",
+    outcomeKind: "prepared",
+  };
+
   const deadline = await call(`${path}/deadlines/deadline_portfolio`, Deadlines.Deadline, {
     expectedRevision: null,
-    input: {
-      title: "Synthetic retained VAT deadline",
-      periodId: period.id,
-      responsibleActorId: workspace.actorId,
-      dueAt,
-      timeZone: "Europe/Stockholm",
-      sourceReference: "Synthetic test declaration, not a reviewed statutory release",
-      sourceRevision: "synthetic_v1",
-      jurisdiction: "SE",
-      statutoryBasis,
-      requiredEnvironment: "sandbox",
-      outcomeKind: "prepared",
-    },
+    input: deadlineInput,
   });
 
   await call(`/firms/${firm.firmId}/clients`, Firms.CommandResult, {
@@ -117,7 +119,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   expect(observed.company.details.organizationNumber).toBe(null);
   expect(observed.deadlines).toEqual([deadline]);
   expect(deadline.statutory_basis).toEqual(statutoryBasis);
-  expect(deadline.due_at).toBe(dueAt);
+  expect(new Date(deadline.due_at).toISOString()).toBe(dueAt);
   expect(facts.workspace.clients[0]?.nextReviewOn).toBe("2026-10-01");
   expect(deadline.required_environment).toBe("sandbox");
   expect(deadline.current_outcome).toBe(null);
@@ -126,24 +128,51 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   expect(observed.bankInventorySignoffs).toEqual([]);
   expect(observed.closing?.technicalCloseAllowed).toBe(false);
   expect(observed.closing?.statutoryReady).toBe(false);
-  expect(observed.closing?.checks.find((check) => check.code === "SyntheticNativeProfile")).toEqual({
-    code: "SyntheticNativeProfile",
-    passed: false,
-    detail: "Only the native synthetic profile supports this technical lock.",
-  });
+  expect(observed.closing?.checks.find((check) => check.code === "SyntheticNativeProfile")).toEqual(
+    {
+      code: "SyntheticNativeProfile",
+      passed: false,
+      detail: "Only the native synthetic profile supports this technical lock.",
+    },
+  );
   expect(observed.closing?.statutoryBlockers.length).toBeGreaterThan(0);
+
+  const revisedDueAt = "2026-11-13T12:00:00.000Z";
+  const revisedBasis = { ...statutoryBasis, basisDueAt: revisedDueAt };
+
+  const revised = await call(`${path}/deadlines/deadline_portfolio`, Deadlines.Deadline, {
+    expectedRevision: deadline.revision,
+    input: {
+      ...deadlineInput,
+      dueAt: revisedDueAt,
+      statutoryBasis: revisedBasis,
+      sourceRevision: "synthetic_v2",
+      overrideReason: "Synthetic declared source revision correction",
+    },
+  });
+
+  expect(revised.revision).toBe(deadline.revision + 1);
+  expect(revised.statutory_basis).toEqual(revisedBasis);
+  expect(new Date(revised.due_at).toISOString()).toBe(revisedDueAt);
+  expect(revised.current_outcome).toBe(null);
+  const revisedFacts = await call(`/firms/${firm.firmId}/portfolio`, Firms.Portfolio);
+
+  expect(revisedFacts.clients[0]?.deadlines).toEqual([revised]);
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
 
   await writeFile(
     join(output, "firm-portfolio-facts.json"),
     JSON.stringify(
       {
-        scope: "Public HTTP composed portfolio with real native period and retained synthetic deadline",
+        scope:
+          "Public HTTP composed portfolio with real native period and retained synthetic deadline",
         limits:
           "No V1 browser/parity, bank statement/difference/signing, successful closing, statutory rule certification or company-setup acceptance. Native ledger and obligation are synthetic fixture preparation; company facts remain unknown.",
         native,
         deadline,
+        revised,
         facts,
+        revisedFacts,
         before,
       },
       null,
