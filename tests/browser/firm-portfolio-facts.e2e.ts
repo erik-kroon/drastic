@@ -6,6 +6,7 @@ import * as Firms from "../../packages/contracts/src/firms";
 import * as Company from "../../packages/contracts/src/company-setup";
 import * as Accounting from "../../packages/contracts/src/accounting";
 import * as Deadlines from "../../packages/contracts/src/deadlines";
+import * as Bank from "../../packages/contracts/src/reconciliation";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
 import { signInSyntheticOperator } from "./synthetic-session";
@@ -169,6 +170,57 @@ test("portfolio retains period and declared deadline while incomplete bank and c
         Date.parse(revisedDueAt) < Date.parse(revisedFacts.observedFrom) ? "overdue" : "upcoming",
     },
   ]);
+  const account = native.accounts[0];
+
+  if (!account) throw new Error("The retained synthetic bank account must exist");
+
+  const source = {
+    kind: "synthetic_bank_statement_v1",
+    statementIdentifier: randomUUID(),
+    sourceBankAccountId: "portfolio_dated_difference",
+    accountId: account.id,
+    currency: "SEK",
+    startsOn: "2026-09-01",
+    endsOn: "2026-09-28",
+    openingMinor: "0",
+    closingMinor: "10000",
+    completeness: { declaredComplete: true, basis: "Synthetic source without a ledger posting" },
+    rows: [
+      {
+        rowOrdinal: 1,
+        providerId: null,
+        date: "2026-09-20",
+        description: "Synthetic unmatched receipt",
+        amountMinor: "10000",
+      },
+    ],
+  };
+
+  const original = await call(`${path}/evidence`, Accounting.Evidence, {
+    title: "Synthetic dated bank difference",
+    mediaType: "application/json",
+    content: JSON.stringify(source),
+    origin: "Synthetic portfolio qualification",
+  });
+
+  const imported = await call(`${path}/bank-statements`, Bank.StatementImportReceipt, {
+    ...source,
+    evidenceId: original.id,
+    existingMatches: [],
+  });
+
+  const datedFacts = await call(`/firms/${firm.firmId}/portfolio`, Firms.Portfolio);
+
+  expect(datedFacts.clients[0]?.bank?.accounts[0]?.differenceMinor).toBe(null);
+  expect(datedFacts.clients[0]?.bankObservations).toHaveLength(1);
+  expect(datedFacts.clients[0]?.bankObservations[0]?.endsOn).toBe("2026-09-28");
+  expect(datedFacts.clients[0]?.bankObservations[0]?.account.statementId).toBe(
+    imported.statement.id,
+  );
+  expect(datedFacts.clients[0]?.bankObservations[0]?.account.ledgerBalanceMinor).toBe("0");
+  expect(datedFacts.clients[0]?.bankObservations[0]?.account.differenceMinor).toBe("10000");
+  expect(datedFacts.clients[0]?.bankInventorySignoffs).toEqual([]);
+
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
 
   await writeFile(
@@ -178,12 +230,14 @@ test("portfolio retains period and declared deadline while incomplete bank and c
         scope:
           "Public HTTP composed portfolio with real native period and retained synthetic deadline",
         limits:
-          "No V1 browser/parity, bank statement/difference/signing, successful closing, statutory rule certification or company-setup acceptance. Native ledger and obligation are synthetic fixture preparation; company facts remain unknown.",
+          "No V1 browser/parity, bank signing, successful closing, statutory rule certification or company-setup acceptance. Native ledger and obligation are synthetic fixture preparation; company facts remain unknown.",
         native,
         deadline,
         revised,
         facts,
         revisedFacts,
+        imported,
+        datedFacts,
         before,
       },
       null,
