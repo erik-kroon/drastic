@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
+import { defaultStringifySearch, useSearch, useNavigate } from "@tanstack/react-router";
 import * as Collections from "@open-erp/contracts/collections";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Crm from "@open-erp/contracts/crm-master";
@@ -22,6 +22,7 @@ export function ReminderReview({
 }: CommerceProps & {
   readonly initialReminderId?: string;
 }) {
+  const navigate = useNavigate();
   const sv = locale === "sv";
   const [issueEntry, setIssueEntry] = useState("");
   const [issueId, setIssueId] = useState("");
@@ -162,6 +163,10 @@ export function ReminderReview({
             onSuccess={(result) => {
               setMessage(result);
               setReminderId(result.id);
+              void navigate({
+                to: `${workspacePath(book)}/sales`,
+                search: { view: "collections", reminder: result.id },
+              });
             }}
           />
         </Box>
@@ -239,7 +244,11 @@ export function ReminderPreview({
       <Box overflow="auto" minWidth="zero">
         <pre>{message.html}</pre>
       </Box>
-      <Text>{sv ? "Inga bilagor." : "No attachments."}</Text>
+      <Text>
+        {message.attachments
+          .map((attachment) => `${attachment.filename}, ${attachment.byteLength} bytes`)
+          .join(", ") || (sv ? "Uppgift saknas" : "Unavailable")}
+      </Text>
       <Text role="status">{reminderStatus(view, locale, statuses)}</Text>
       {view?.currentOutstandingMinor !== null && view?.currentOutstandingMinor !== undefined ? (
         <Text>
@@ -272,6 +281,18 @@ export function ReminderPreview({
             messageDigest: message.digest,
             acknowledgeExactMessage: true,
           })}
+        />
+      ) : null}
+      {view?.status === "approved" && view.approvalUsable && !view.attempt ? (
+        <CommandForm
+          book={book}
+          locale={locale}
+          path={`${base}/${message.id}/dispatch`}
+          schema={Collections.ReminderCommand}
+          output={Collections.ReminderView}
+          allowed={book.role === "operator"}
+          label={sv ? "Skicka påminnelsen" : "Send reminder"}
+          input={() => ({ messageDigest: message.digest })}
         />
       ) : null}
       <ReminderCancellation book={book} locale={locale} message={message} view={view} />

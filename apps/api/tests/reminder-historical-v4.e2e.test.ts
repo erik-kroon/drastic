@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as Collections from "@open-erp/contracts/collections";
 import { legalFixture } from "./support/legal-commerce";
+import { withPinnedReminderApi } from "./support/pinned-reminder-api";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { environment, post } from "./support/fixtures";
 
@@ -26,25 +27,29 @@ test("a fresh representable API runtime produces an authentic absent-0091 V4 bun
     Collections.ReminderRecipientReference,
   );
 
-  const message = await post(
-    context.author,
-    "/commerce/collections/reminders",
-    {
-      issueId: context.original.id,
-      recipient,
-    },
-    Collections.ReminderMessage,
-  );
+  const { message, approved } = await withPinnedReminderApi("6be48263", async (legacy) => {
+    const message = await legacy.post(
+      context.author,
+      "/commerce/collections/reminders",
+      {
+        issueId: context.original.id,
+        recipient,
+      },
+      Collections.ReminderMessage,
+    );
 
-  const approved = await post(
-    context.author,
-    `/commerce/collections/reminders/${message.id}/approvals`,
-    {
-      messageDigest: message.digest,
-      acknowledgeExactMessage: true,
-    },
-    Collections.ReminderView,
-  );
+    const approved = await legacy.post(
+      context.author,
+      `/commerce/collections/reminders/${message.id}/approvals`,
+      {
+        messageDigest: message.digest,
+        acknowledgeExactMessage: true,
+      },
+      Collections.ReminderView,
+    );
+
+    return { message, approved };
+  });
 
   const recoveries = await proveReminderRecovery(context.book.bookId, [7, 4]);
 

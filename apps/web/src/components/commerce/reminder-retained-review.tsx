@@ -21,7 +21,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { loanDate } from "../treasury-loan-format";
-import { ReminderPreview } from "./reminder-review";
+import { ReminderMessageWorkspace } from "./reminder-message-workspace";
 import { checkScope, CommandForm, commerceKey, commercePath } from "./shared";
 
 export function ReminderRetainedWorkspace({ id }: { id: string }) {
@@ -113,7 +113,7 @@ function ReminderRetainedReview(props: {
     current.outstandingMinor === null ? "Uppgift saknas" : format(current.outstandingMinor);
 
   if (!approval || view.attempt || !changed || !view.refusal?.reasons.includes("amount_changed"))
-    return <ReminderPreview book={book} locale={locale} message={message} view={view} />;
+    return <ReminderMessageWorkspace view={view} refresh={props.refresh} />;
 
   const recipientChanged = view.approvalBlockers.includes("recipient_changed");
   const disputeChanged = view.approvalBlockers.includes("dispute_changed");

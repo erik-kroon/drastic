@@ -61,6 +61,15 @@ export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (han
         }),
       ),
     )
+    .handle("requestReminderDispatch", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.requestReminderDispatch(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          input: payload,
+        }),
+      ),
+    )
     .handle("cancelReminder", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Reminders.cancelReminder(token, {

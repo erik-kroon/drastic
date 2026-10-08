@@ -2031,6 +2031,7 @@ export const reminderOutbox = openerp.table("reminder_outbox", {
   messageId: text("message_id").notNull(),
   state: text({
     enum: [
+      "awaiting_dispatch",
       "approved",
       "admitted",
       "reconciling",

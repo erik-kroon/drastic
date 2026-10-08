@@ -3,7 +3,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": [],
+    "types": ["./src/pdf-worker"],
     "paths": {
       "@open-erp/ui/*": ["./src/*"]
     }

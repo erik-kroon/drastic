@@ -5,7 +5,12 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 type PreviewState = { status: "loading" | "ready" | "error"; width: number; height: number };
 
-export function PdfThumbnail(props: { content: string; filename: string; locale: "sv" | "en" }) {
+export function PdfThumbnail(props: {
+  content: string;
+  filename: string;
+  locale: "sv" | "en";
+  compact?: boolean;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<PreviewState>({ status: "loading", width: 170, height: 230 });
   const sv = props.locale === "sv";
@@ -37,7 +42,12 @@ export function PdfThumbnail(props: { content: string; filename: string; locale:
 
       if (cancelled) return;
       const original = page.getViewport({ scale: 1 });
-      const scale = Math.min(170 / original.width, 230 / original.height);
+
+      const scale = Math.min(
+        (props.compact ? 80 : 170) / original.width,
+        (props.compact ? 112 : 230) / original.height,
+      );
+
       const viewport = page.getViewport({ scale: scale * 2 });
       const target = canvas.current;
 
@@ -67,11 +77,12 @@ export function PdfThumbnail(props: { content: string; filename: string; locale:
       cancelled = true;
       dispose();
     };
-  }, [props.content]);
+  }, [props.content, props.compact]);
 
   return (
     <>
       <DocumentThumbnail
+        compact={props.compact}
         canvasRef={canvas}
         width={state.width}
         height={state.height}

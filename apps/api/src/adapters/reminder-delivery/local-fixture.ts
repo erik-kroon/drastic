@@ -9,6 +9,9 @@ export type ReminderWireMessage = {
   readonly subject: string;
   readonly plainText: string;
   readonly html: string;
+  readonly attachments: readonly (typeof Collections.ReminderAttachment.Type & {
+    readonly contentBase64: string;
+  })[];
 };
 
 export interface ReminderDelivery {

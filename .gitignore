@@ -6,7 +6,10 @@ docs/design/*
 .codex/*
 .codex/
 .codex
+verification/paper/*
+./verification/paper/*
 verification/paper/
+
 .agents/
 .agents/*
 .agents

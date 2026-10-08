@@ -236,6 +236,15 @@ export const ReminderResolution = Schema.Union([
   }),
 ]);
 
+export const ReminderAttachment = Schema.Struct({
+  captureId: Accounting.Identifier,
+  captureDigest: Accounting.Digest,
+  filename: Schema.String,
+  mediaType: Schema.Literal("application/pdf"),
+  byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 2097152 })),
+  sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+});
+
 export const ReminderMessage = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -256,11 +265,13 @@ export const ReminderMessage = Schema.Struct({
   }),
   preparedAt: Schema.String,
   preparedBy: Accounting.Identifier,
+  preparedByName: Schema.optional(Schema.String),
+  senderName: Schema.optional(Schema.String),
   subject: Schema.String,
   plainText: Schema.String,
   html: Schema.String,
   encoding: Schema.Literal("UTF-8"),
-  attachments: Schema.Array(Schema.Never),
+  attachments: Schema.Array(ReminderAttachment).check(Schema.isMaxLength(1)),
   feeMinor: Schema.Literal("0"),
   interestMinor: Schema.Literal("0"),
   bankCoverage: Schema.Literal("not_qualified"),
@@ -305,6 +316,7 @@ export const ReminderApproval = Schema.Struct({
   messageId: Accounting.Identifier,
   messageDigest: Accounting.Digest,
   approvedBy: Accounting.Identifier,
+  approvedByName: Schema.optional(Schema.String),
   approvedAt: Schema.String,
   expiresAt: Schema.String,
   digest: Accounting.Digest,
@@ -345,6 +357,7 @@ export const ReminderView = Schema.Struct({
   approval: Schema.NullOr(ReminderApproval),
   attempt: Schema.NullOr(ReminderAttempt),
   observations: Schema.Array(ReminderObservation),
+  outcomeCheck: Schema.NullOr(Schema.Struct({ checkpoint: Schema.Int, checkedAt: Schema.String })),
   status: Schema.Literals([
     "prepared",
     "approved",
@@ -477,6 +490,15 @@ export const CollectionsApi = HttpApiGroup.make("collections")
       headers: Accounting.IdempotencyHeaders,
       error: accountingErrors,
       payload: ApproveReminder,
+      success: ReminderView,
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
+  )
+  .add(
+    HttpApiEndpoint.post("requestReminderDispatch", `${base}/reminders/:id/dispatch`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: ReminderCommand,
       success: ReminderView,
     }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )

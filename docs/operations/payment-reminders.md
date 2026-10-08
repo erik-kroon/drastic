@@ -4,7 +4,7 @@ Working design for P09. This document is not runtime evidence or provider qualif
 
 ## Delivery contract
 
-The collections workspace prepares an exact reminder from an issued Swedish SEK accrual invoice, its current canonical residual and a reviewed customer recipient revision. The caller names sources, never an amount or raw destination. No fee, interest or attachment is included in this first profile. A browser operator approves the exact plain text and HTML bytes, recipient and retained source basis. Approval and durable outbox intent commit together.
+The collections workspace prepares an exact reminder from an issued Swedish SEK accrual invoice, its current canonical residual and a reviewed customer recipient revision. The caller names sources, never an amount or raw destination. No fee or interest is included. The original invoice PDF is sealed by the legal-PDF owner; its capture identity, digest, filename, media type, size and SHA-256 belong to the exact reminder digest. A browser operator approves the exact plain text and HTML bytes, recipient and retained source basis. Approval and a non-runnable awaiting-dispatch intent commit together. A separate human dispatch command rechecks current facts and makes that intent runnable. The worker checks them again before retaining an attempt. Historical approvals without an attempt are fenced by migration 0101 and require explicit dispatch.
 
 Historical collection actions keep `sendAuthorized: false`. A reminder message, approval, admitted attempt and authenticated provider observation are separate retained records. Provider acceptance does not establish delivery. The local fixture is the only available transport. Live provider selection, credentials, customer contact and production release remain unavailable.
 
@@ -63,7 +63,7 @@ The dedicated reminder owner was selected over a generic notification engine. In
 
 The independent root challenge retained five constraints. Observations after admission may be retained even after approval expiry, session expiry or payment. Unknown or absent reconciliation cannot authorize a new POST. Current authority precedes command replay, while a stale current residual blocks new admission without rewriting old attempts. The fixture is explicit, authenticated, loopback only and disabled by default. Recovery inventory must include all five reminder families and mutable outbox progress before integrated backup proof.
 
-Effect 4 HTTP parsing is qualified separately from schema metadata. `HttpApiBuilder` merges API/group/endpoint Context annotations and passes the `HttpApi.PayloadParseOptions` slot to the payload decoder. The schema's `annotate({ parseOptions })` metadata does not establish excess-key refusal. Only the four reminder mutation endpoints receive the supported strict payload annotation; existing collection endpoints keep their declared transport policy. The public unknown-field expectation was authored before this correction and remains `400/InvalidRequest`. Runtime observation is still required.
+Effect 4 HTTP parsing is qualified separately from schema metadata. `HttpApiBuilder` merges API/group/endpoint Context annotations and passes the `HttpApi.PayloadParseOptions` slot to the payload decoder. The schema's `annotate({ parseOptions })` metadata does not establish excess-key refusal. All reminder mutation endpoints receive the supported strict payload annotation; existing collection endpoints keep their declared transport policy. The public unknown-field expectation was authored before this correction and remains `400/InvalidRequest`. Runtime observation is still required.
 
 ## Recovery inventory obligation
 
@@ -77,3 +77,11 @@ The performance baseline uses the owned detached pre-feature checkout and `OPENE
 ## Source verification checkpoint
 
 The initial public journey failed at the absent reminder route after valid legal issuance and reviewed-recipient prerequisites. Production source checkpoint `d9e31ec` subsequently passed the fast/full changed-file gates and the current primary strict type-aware lint with warnings denied. The supported web build generated its required modules and passed. This establishes source checks only. Newly authored concurrency/authentication/default-disabled E2E cases and the first v4 inventory expectation have not run. Persistent runner, crash recovery, complete v4 qualification, browser behavior and timing remain open.
+
+## Explicit dispatch and original PDF, 8 October 2026
+
+The authenticated `local-fixture-v1` rejection means no message was accepted or created for that external identity. This terminal fixture contract is the only rejection authority used for replacement. A rejected attempt with no accepted/delivered observation may authorize a fresh unapproved proposal after current-source checks. Its original observations and failed state remain readable; once replaced, its reconciliation command returns that retained state and cannot reopen dispatch authority. Unknown or accepted attempts cannot authorize replacement. This contract does not qualify a live provider under DRA-110.
+
+Missing, malformed, foreign or changed retained PDF material refuses admission with retained `source_changed` evidence and zero provider contact. Existing admitted attachment-free attempts remain read-only reconciliation identities. New preparation materializes the existing legal-PDF owner before sealing a reminder, and dispatch uses those retained bytes without rendering a replacement.
+
+The disposable Paper reminder fixture starts a loopback authenticated transport and the real preparation runner only when `PAPER_REMINDERS=1`. It records one submission, an inconclusive same-identity read, and a later same-identity acceptance. Shutdown stops the runner and transport before deleting the PostgreSQL runtime. No live delivery is enabled.

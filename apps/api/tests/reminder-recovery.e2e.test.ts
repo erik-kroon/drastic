@@ -5,6 +5,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Collections from "@open-erp/contracts/collections";
 import { legalFixture } from "./support/legal-commerce";
+import { withPinnedReminderApi } from "./support/pinned-reminder-api";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { environment, journal, post } from "./support/fixtures";
 
@@ -28,164 +29,174 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
     Collections.ReminderRecipientReference,
   );
 
-  const original = await post(
-    context.author,
-    "/commerce/collections/reminders",
-    {
-      issueId: context.original.id,
-      recipient,
-    },
-    Collections.ReminderMessage,
-  );
-
-  const approved = await post(
-    context.author,
-    `/commerce/collections/reminders/${original.id}/approvals`,
-    {
-      messageDigest: original.digest,
-      acknowledgeExactMessage: true,
-    },
-    Collections.ReminderView,
-  );
-
-  const evidence = await post(
-    context.book,
-    "/evidence",
-    {
-      title: "Synthetic reminder recovery payment",
-      mediaType: "text/plain",
-      content: "Synthetic 4000-minor invoice settlement",
-      origin: "M60 disposable recovery proof",
-    },
-    Accounting.Evidence,
-  );
-
-  const plan = await post(
-    context.book,
-    "/change-sets",
-    {
-      ...journal(evidence.id, "4000"),
-      postingDate: context.today,
-      lines: [
+  const { original, approved, checked, replacement, cancelled } = await withPinnedReminderApi(
+    "3a3b2093",
+    async (legacy) => {
+      const original = await legacy.post(
+        context.author,
+        "/commerce/collections/reminders",
         {
-          accountId: "account_bank",
-          debitMinor: "4000",
-          creditMinor: "0",
-          description: "Synthetic payment",
+          issueId: context.original.id,
+          recipient,
         },
+        Collections.ReminderMessage,
+      );
+
+      const approved = await legacy.post(
+        context.author,
+        `/commerce/collections/reminders/${original.id}/approvals`,
         {
-          accountId: "account_ar",
-          debitMinor: "0",
-          creditMinor: "4000",
-          description: "Synthetic settlement",
+          messageDigest: original.digest,
+          acknowledgeExactMessage: true,
         },
-      ],
+        Collections.ReminderView,
+      );
+
+      const evidence = await post(
+        context.book,
+        "/evidence",
+        {
+          title: "Synthetic reminder recovery payment",
+          mediaType: "text/plain",
+          content: "Synthetic 4000-minor invoice settlement",
+          origin: "M60 disposable recovery proof",
+        },
+        Accounting.Evidence,
+      );
+
+      const plan = await post(
+        context.book,
+        "/change-sets",
+        {
+          ...journal(evidence.id, "4000"),
+          postingDate: context.today,
+          lines: [
+            {
+              accountId: "account_bank",
+              debitMinor: "4000",
+              creditMinor: "0",
+              description: "Synthetic payment",
+            },
+            {
+              accountId: "account_ar",
+              debitMinor: "0",
+              creditMinor: "4000",
+              description: "Synthetic settlement",
+            },
+          ],
+        },
+        Accounting.ChangeSet,
+      );
+
+      const paymentApproval = await post(
+        context.book,
+        `/change-sets/${plan.id}/approvals`,
+        {
+          version: plan.version,
+          planDigest: plan.planDigest,
+        },
+        Accounting.Approval,
+      );
+
+      const payment = await post(
+        context.book,
+        `/change-sets/${plan.id}/execute`,
+        {
+          version: plan.version,
+          planDigest: plan.planDigest,
+          approvalId: paymentApproval.id,
+        },
+        Accounting.ExecutionReceipt,
+      );
+
+      const line = plan.groups[0]?.actions[0]?.lines.find(
+        (item) => item.accountId === "account_ar",
+      );
+
+      if (!line) throw new Error("Synthetic settlement line missing");
+
+      const allocation = await post(
+        context.book,
+        "/commerce/allocation-plans",
+        {
+          voucherId: payment.voucherId,
+          lineId: line.lineId,
+          evidenceId: evidence.id,
+          rationale: "Synthetic reminder recovery settlement",
+          allocations: [{ invoiceId: context.original.registerInvoiceId, amountMinor: "4000" }],
+        },
+        Commerce.AllocationPlan,
+      );
+
+      const allocationInput = { version: 1, planDigest: allocation.digest };
+
+      const allocationApproval = await post(
+        context.book,
+        `/commerce/allocation-plans/${allocation.id}/approvals`,
+        allocationInput,
+        Commerce.AllocationApproval,
+      );
+
+      const allocationReceipt = await post(
+        context.book,
+        `/commerce/allocation-plans/${allocation.id}/apply`,
+        {
+          ...allocationInput,
+          approvalId: allocationApproval.id,
+        },
+        Commerce.AllocationReceipt,
+      );
+
+      const checked = await legacy.post(
+        context.author,
+        `/commerce/collections/reminders/${original.id}/checks`,
+        {
+          messageDigest: original.digest,
+        },
+        Collections.ReminderView,
+      );
+
+      expect(original.outstandingMinor).toBe("12500");
+      expect(checked.current.outstandingMinor).toBe("8500");
+      expect(checked.refusal?.current.outstandingMinor).toBe("8500");
+      expect(checked.refusal?.admission).toBe("not_admitted");
+      expect(checked.refusal?.current.settlements.map((item) => item.receiptId)).toContain(
+        allocationReceipt.id,
+      );
+      expect(checked.message).toEqual(original);
+      expect(checked.approval).toEqual(approved.approval);
+      expect(checked.attempt).toBe(null);
+
+      const replacement = await legacy.post(
+        context.author,
+        `/commerce/collections/reminders/${original.id}/replacement`,
+        {
+          messageDigest: original.digest,
+          recipient,
+        },
+        Collections.ReminderReplacement,
+      );
+
+      const cancelled = await legacy.post(
+        context.author,
+        `/commerce/collections/reminders/${replacement.message.id}/cancel`,
+        {
+          messageDigest: replacement.message.digest,
+        },
+        Collections.ReminderView,
+      );
+
+      expect(replacement.message.outstandingMinor).toBe("8500");
+      expect(replacement.message.id).not.toBe(original.id);
+      expect(replacement.resolution.kind).toBe("replaced");
+      expect(cancelled.cancellation?.kind).toBe("cancelled");
+      expect(cancelled.approval).toBe(null);
+      expect(cancelled.attempt).toBe(null);
+
+      return { original, approved, checked, replacement, cancelled };
     },
-    Accounting.ChangeSet,
   );
 
-  const paymentApproval = await post(
-    context.book,
-    `/change-sets/${plan.id}/approvals`,
-    {
-      version: plan.version,
-      planDigest: plan.planDigest,
-    },
-    Accounting.Approval,
-  );
-
-  const payment = await post(
-    context.book,
-    `/change-sets/${plan.id}/execute`,
-    {
-      version: plan.version,
-      planDigest: plan.planDigest,
-      approvalId: paymentApproval.id,
-    },
-    Accounting.ExecutionReceipt,
-  );
-
-  const line = plan.groups[0]?.actions[0]?.lines.find((item) => item.accountId === "account_ar");
-
-  if (!line) throw new Error("Synthetic settlement line missing");
-
-  const allocation = await post(
-    context.book,
-    "/commerce/allocation-plans",
-    {
-      voucherId: payment.voucherId,
-      lineId: line.lineId,
-      evidenceId: evidence.id,
-      rationale: "Synthetic reminder recovery settlement",
-      allocations: [{ invoiceId: context.original.registerInvoiceId, amountMinor: "4000" }],
-    },
-    Commerce.AllocationPlan,
-  );
-
-  const allocationInput = { version: 1, planDigest: allocation.digest };
-
-  const allocationApproval = await post(
-    context.book,
-    `/commerce/allocation-plans/${allocation.id}/approvals`,
-    allocationInput,
-    Commerce.AllocationApproval,
-  );
-
-  const allocationReceipt = await post(
-    context.book,
-    `/commerce/allocation-plans/${allocation.id}/apply`,
-    {
-      ...allocationInput,
-      approvalId: allocationApproval.id,
-    },
-    Commerce.AllocationReceipt,
-  );
-
-  const checked = await post(
-    context.author,
-    `/commerce/collections/reminders/${original.id}/checks`,
-    {
-      messageDigest: original.digest,
-    },
-    Collections.ReminderView,
-  );
-
-  expect(original.outstandingMinor).toBe("12500");
-  expect(checked.current.outstandingMinor).toBe("8500");
-  expect(checked.refusal?.current.outstandingMinor).toBe("8500");
-  expect(checked.refusal?.admission).toBe("not_admitted");
-  expect(checked.refusal?.current.settlements.map((item) => item.receiptId)).toContain(
-    allocationReceipt.id,
-  );
-  expect(checked.message).toEqual(original);
-  expect(checked.approval).toEqual(approved.approval);
-  expect(checked.attempt).toBe(null);
-
-  const replacement = await post(
-    context.author,
-    `/commerce/collections/reminders/${original.id}/replacement`,
-    {
-      messageDigest: original.digest,
-      recipient,
-    },
-    Collections.ReminderReplacement,
-  );
-
-  const cancelled = await post(
-    context.author,
-    `/commerce/collections/reminders/${replacement.message.id}/cancel`,
-    {
-      messageDigest: replacement.message.digest,
-    },
-    Collections.ReminderView,
-  );
-
-  expect(replacement.message.outstandingMinor).toBe("8500");
-  expect(replacement.message.id).not.toBe(original.id);
-  expect(replacement.resolution.kind).toBe("replaced");
-  expect(cancelled.cancellation?.kind).toBe("cancelled");
-  expect(cancelled.approval).toBe(null);
-  expect(cancelled.attempt).toBe(null);
   const recoveries = await proveReminderRecovery(context.book.bookId);
   expect(recoveries.map((recovery) => recovery.version)).toEqual([7, 6]);
   let v4Refusal: string | null = null;
@@ -322,6 +333,7 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
         command: "bun run test:e2e apps/api/tests/reminder-recovery.e2e.test.ts",
         scope: original.scope,
         original,
+        approved,
         checked,
         replacement,
         cancelled,

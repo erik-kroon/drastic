@@ -15,6 +15,7 @@ const styles = stylex.create({
     borderRadius: tokens.radiusSm,
     overflow: "hidden",
   },
+  compact: { width: 96, height: 128, flexShrink: 0, backgroundColor: tokens.card },
   page: {
     backgroundColor: tokens.card,
     borderWidth: 1,
@@ -31,9 +32,10 @@ export function DocumentThumbnail(props: {
   height: number;
   label: string;
   children?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div {...stylex.props(styles.frame)}>
+    <div {...stylex.props(styles.frame, props.compact && styles.compact)}>
       <canvas
         ref={props.canvasRef}
         role="img"

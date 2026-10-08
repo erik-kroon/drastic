@@ -242,17 +242,9 @@ async function restoreHistoricalData(
 
   const nonempty = new Set<string>();
   const projections = [];
+  const emptyRecurringColumnChanges: Array<{ table: string; columns: HistoricalColumn[] }> = [];
 
   for (const table of tables) {
-    const projection = await requireHistoricalColumns(
-      donor,
-      table.name,
-      table.columns,
-      donorTables.get(table.name),
-    );
-
-    if (projection) projections.push(projection);
-
     const identifier = table.name
       .split(".")
       .map((name) => donor.escapeIdentifier(name))
@@ -263,6 +255,41 @@ async function restoreHistoricalData(
     ).rows[0]?.count;
 
     if (count === undefined) throw new Error("Historical table count missing");
+
+    const current = donorTables.get(table.name);
+
+    const added = current?.filter(
+      (column) => !table.columns.some((old) => old.name === column.name),
+    );
+
+    const recurringColumns = [
+      "invoice_issue_owner",
+      "internal_invoice_issue_id",
+      "legal_invoice_issue_id",
+    ];
+
+    if (
+      table.name === "openerp.recurring_invoice_occurrence_issues" &&
+      count === "0" &&
+      added?.length === 3 &&
+      added.every(
+        (column) =>
+          recurringColumns.includes(column.name) &&
+          column.type === "text" &&
+          column.identity === "" &&
+          (column.name === "invoice_issue_owner"
+            ? column.generated === "" && !column.nullable && column.expression === null
+            : column.generated === "s" && column.nullable && column.expression !== null),
+      ) &&
+      JSON.stringify(current?.filter((column) => !recurringColumns.includes(column.name))) ===
+        JSON.stringify(table.columns)
+    ) {
+      emptyRecurringColumnChanges.push({ table: table.name, columns: added });
+    } else {
+      const projection = await requireHistoricalColumns(donor, table.name, table.columns, current);
+
+      if (projection) projections.push(projection);
+    }
 
     if (count !== "0") nonempty.add(table.name);
   }
@@ -319,13 +346,15 @@ async function restoreHistoricalData(
     if (sequence && sequences.has(`${sequence[1]}.${sequence[2]}`)) sequenceEntries.push(entry);
   }
 
-  const selected = ordered.map((name) => {
-    const entry = tableEntries.get(name);
+  const selected = ordered
+    .filter((name) => !emptyRecurringColumnChanges.some((entry) => entry.table === name))
+    .map((name) => {
+      const entry = tableEntries.get(name);
 
-    if (!entry) throw new Error(`Captured API state omits historical table ${name}`);
+      if (!entry) throw new Error(`Captured API state omits historical table ${name}`);
 
-    return entry;
-  });
+      return entry;
+    });
 
   if (sequenceEntries.length !== sequences.size)
     throw new Error("Historical sequence state is incomplete");
@@ -382,6 +411,7 @@ async function restoreHistoricalData(
     donorProjectedTables,
     projections,
     donorOnlyEmptyTables,
+    emptyRecurringColumnChanges,
   };
 }
 

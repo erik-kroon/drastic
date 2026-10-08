@@ -376,6 +376,7 @@ export const RecoveryWorkInventoryV4 = Schema.Struct({
       bookId: Schema.String,
       messageId: Schema.String,
       state: Schema.Literals([
+        "awaiting_dispatch",
         "approved",
         "admitted",
         "reconciling",

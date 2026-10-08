@@ -200,6 +200,8 @@ let peppolFixture;
 
 let recurringFixture;
 
+let reminderFixture;
+
 let webLog = "";
 
 let postgresStarted = false;
@@ -212,6 +214,7 @@ async function closeRuntimeArtifacts() {
   const failures = [];
 
   const actions = [
+    () => reminderFixture?.close(),
     () => recurringFixture?.close(),
     () => worker?.close(),
     () => processorFixture?.close(),
@@ -240,7 +243,7 @@ async function cleanup() {
 
   cleaning = (async () => {
     try {
-      if (web?.pid && web.exitCode === null) {
+      if (web?.pid && web.exitCode === null && web.signalCode === null) {
         const exited = once(web, "exit");
         process.kill(-web.pid, "SIGTERM");
 
@@ -574,6 +577,16 @@ try {
         }),
       ),
     );
+
+  if (reminderSeed) {
+    const { startReminderDeliveryFixture } = await import("./reminder-delivery-fixture.mjs");
+    reminderFixture = await startReminderDeliveryFixture({
+      runtimeUrl,
+      accessToken,
+      artifacts,
+      api,
+    });
+  }
 
   if (claimsSeed)
     console.log(

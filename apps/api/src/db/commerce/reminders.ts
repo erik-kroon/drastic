@@ -178,9 +178,14 @@ export function insertOutbox(
   messageId: string,
   checkedAt: string,
 ) {
-  return tx
-    .insert(reminderOutbox)
-    .values({ bookId, messageId, state: "approved", checkpoint: 0, cancelVersion: 0, checkedAt });
+  return tx.insert(reminderOutbox).values({
+    bookId,
+    messageId,
+    state: "awaiting_dispatch",
+    checkpoint: 0,
+    cancelVersion: 0,
+    checkedAt,
+  });
 }
 
 export function advanceOutbox(
@@ -217,6 +222,13 @@ export function readPending(tx: Transaction, actorId: string) {
     where o.state in ('approved','admitted','reconciling')
     order by o.checked_at, o.book_id, o.message_id limit 20
   `,
+    "objects",
+  );
+}
+
+export function readActorName(tx: Transaction, actorId: string) {
+  return tx.execute<{ readonly name: string }>(
+    sql`select name from openerp.actors where id=${actorId}`,
     "objects",
   );
 }

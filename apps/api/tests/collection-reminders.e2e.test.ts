@@ -10,7 +10,9 @@ import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Collections from "@open-erp/contracts/collections";
+import * as LegalPdf from "@open-erp/contracts/legal-invoice-pdf";
 import { withWorkspaceBrowser } from "./support/workspace-browser";
+import { withPinnedReminderApi } from "./support/pinned-reminder-api";
 import { legalFixture } from "./support/legal-commerce";
 import { captureWorkInventory } from "../scripts/operations/durable-work";
 import { tableFingerprints } from "../scripts/operations/snapshot";
@@ -47,6 +49,7 @@ const Message = Schema.Struct({
   subject: Schema.String,
   plainText: Schema.String,
   html: Schema.String,
+  attachments: Schema.Array(Collections.ReminderAttachment),
   digest: Accounting.Digest,
 });
 
@@ -73,6 +76,234 @@ const View = Schema.Struct({
 });
 
 const base = "/commerce/collections/reminders";
+
+test("the original invoice PDF is sealed into approval and transported without regeneration", async () => {
+  const context = await legalFixture();
+
+  const message = await prepare(context, await reviewed(context));
+
+  const full = await decoded(
+    await request(context.author, `${base}/${message.id}`),
+    Collections.ReminderView,
+  );
+
+  expect(full.message.attachments).toHaveLength(1);
+
+  const attachment = full.message.attachments[0];
+
+  if (!attachment) throw new Error("Invoice attachment missing");
+
+  const pdf = await decoded(
+    await request(context.author, `/commerce/legal-invoice-pdfs/${attachment.captureId}`),
+    LegalPdf.LegalInvoicePdfView,
+  );
+
+  expect(pdf.capture.issueId).toBe(context.original.id);
+
+  expect(pdf.artifact?.sha256).toBe(attachment.sha256);
+
+  const transport = await fixtureTransport();
+
+  await approve(context, message);
+
+  await send(context, message);
+
+  const worker = runner(context, transport);
+
+  try {
+    const accepted = await waitStatus(context, message, "provider_accepted");
+
+    expect(transport.wires).toHaveLength(1);
+
+    expect(transport.wires[0]?.attachments).toEqual([
+      { ...attachment, contentBase64: pdf.artifact?.contentBase64 },
+    ]);
+
+    expect(
+      createHash("sha256")
+        .update(Buffer.from(pdf.artifact?.contentBase64 ?? "", "base64"))
+        .digest("hex"),
+    ).toBe(attachment.sha256);
+
+    await writeFile(
+      join(environment().artifacts, "reminder-pdf-attachment.json"),
+      JSON.stringify({ attachment, accepted, wire: transport.wires[0] }, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 60000);
+
+test("a missing retained PDF refuses admission durably without contacting the transport", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  await approve(context, message);
+  await send(context, message);
+  const attachment = message.attachments[0];
+
+  if (!attachment) throw new Error("Retained PDF missing");
+  const admin = await database();
+
+  try {
+    await admin.query("begin");
+    await admin.query("set local session_replication_role=replica");
+    await admin.query(
+      "delete from openerp.ar_legal_pdf_artifacts where book_id=$1 and capture_id=$2",
+      [context.book.bookId, attachment.captureId],
+    );
+    await admin.query("commit");
+  } finally {
+    await admin.end();
+  }
+
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport);
+
+  try {
+    await waitStatus(context, message, "refused");
+
+    const retained = await decoded(
+      await request(context.author, `${base}/${message.id}`),
+      Collections.ReminderView,
+    );
+
+    expect(retained.refusal?.reasons).toContain("source_changed");
+    expect(retained.attempt).toBeNull();
+    expect(transport.wires).toHaveLength(0);
+    await writeFile(
+      join(environment().artifacts, "reminder-missing-pdf-refusal.json"),
+      JSON.stringify(retained, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 60000);
+
+test("only definitive non-acceptance permits a separately unapproved replacement and preserves the original attempt", async () => {
+  for (const mode of ["rejected", "unknown", "accepted"] as const) {
+    const context = await legalFixture();
+
+    const recipient = await reviewed(context);
+
+    const message = await prepare(context, recipient);
+
+    await approve(context, message);
+
+    await send(context, message);
+
+    const transport = await fixtureTransport(mode);
+
+    const worker = runner(context, transport);
+
+    try {
+      const original = await waitStatus(
+        context,
+        message,
+        Match.value(mode).pipe(
+          Match.when("rejected", () => "failed"),
+          Match.when("unknown", () => "outcome_unknown"),
+          Match.orElse(() => "provider_accepted"),
+        ),
+      );
+
+      const response = await request(context.author, `${base}/${message.id}/replacement`, {
+        method: "POST",
+        headers: { "idempotency-key": key() },
+        body: JSON.stringify({
+          messageDigest: message.digest,
+          recipient: {
+            partyId: recipient.partyId,
+            revision: recipient.revision,
+            digest: recipient.digest,
+          },
+        }),
+      });
+
+      if (mode !== "rejected") {
+        await failure(response, 409, "StaleDependency");
+      } else {
+        const replacement = await decoded(response, Collections.ReminderReplacement);
+
+        const child = await decoded(
+          await request(context.author, `${base}/${replacement.message.id}`),
+          Collections.ReminderView,
+        );
+
+        expect(child.approval).toBeNull();
+
+        expect(child.attempt).toBeNull();
+
+        const frozen = await post(
+          context.author,
+          `${base}/${message.id}/reconcile`,
+          { messageDigest: message.digest },
+          Collections.ReminderView,
+        );
+
+        expect(frozen.status).toBe("failed");
+
+        if (!original.attempt) throw new Error("Original attempt missing");
+
+        expect(frozen.attempt).toMatchObject(original.attempt);
+        expect(transport.reads).toHaveLength(0);
+
+        expect(child.status).toBe("prepared");
+
+        const retained = await read(context, message);
+
+        expect(retained.attempt).toEqual(original.attempt);
+
+        expect(retained.observations).toEqual(original.observations);
+
+        expect(retained.status).toBe("failed");
+
+        await writeFile(
+          join(environment().artifacts, "reminder-definitive-rejection-replacement.json"),
+          JSON.stringify({ original, replacement, child, retained }, null, 2),
+        );
+      }
+
+      expect(transport.wires).toHaveLength(1);
+    } finally {
+      await stop(worker);
+      await transport.close();
+    }
+  }
+}, 90000);
+
+test("approval alone never dispatches and explicit send converges on one attempt", async () => {
+  const context = await legalFixture();
+  const recipient = await reviewed(context);
+  const message = await prepare(context, recipient);
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport);
+
+  try {
+    const approved = await approve(context, message);
+    expect(approved.status).toBe("approved");
+    expect(approved.attempt).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(transport.wires).toMatchObject([]);
+    expect((await read(context, message)).attempt).toBeNull();
+
+    const outcomes = await Promise.all([send(context, message), send(context, message)]);
+    expect(outcomes.every((outcome) => outcome.message.digest === message.digest)).toBe(true);
+    const accepted = await waitStatus(context, message, "provider_accepted");
+    expect(transport.wires).toHaveLength(1);
+    expect(accepted.attempt?.messageDigest).toBe(message.digest);
+    expect((await send(context, message)).attempt).toEqual(accepted.attempt);
+    expect(transport.wires).toHaveLength(1);
+    await writeFile(
+      join(environment().artifacts, "reminder-explicit-send.json"),
+      JSON.stringify({ approved, accepted, wires: transport.wires }, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 60000);
 
 test("M60 retains changed-payment refusal, cancellation and a separate current-balance proposal", async () => {
   const context = await legalFixture();
@@ -229,6 +460,9 @@ const WireSchema = Schema.Struct({
   subject: Schema.String,
   plainText: Schema.String,
   html: Schema.String,
+  attachments: Schema.Array(
+    Schema.Struct({ ...Collections.ReminderAttachment.fields, contentBase64: Schema.String }),
+  ),
 });
 
 type Wire = typeof WireSchema.Type;
@@ -275,6 +509,15 @@ async function approve(context: Context, message: typeof Message.Type) {
     context.author,
     `${base}/${message.id}/approvals`,
     { messageDigest: message.digest, acknowledgeExactMessage: true },
+    View,
+  );
+}
+
+async function send(context: Context, message: typeof Message.Type) {
+  return post(
+    context.author,
+    `${base}/${message.id}/dispatch`,
+    { messageDigest: message.digest },
     View,
   );
 }
@@ -599,13 +842,20 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
     "StaleDependency",
   );
   expect(message.outstandingMinor).toBe("12500");
+
+  const due = new Intl.DateTimeFormat("sv", {
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Stockholm",
+  }).format(new Date(`${context.original.draftSnapshot.content.dueDate}T12:00:00Z`));
+
   expect(message.subject).toBe(
-    `Payment reminder for invoice ${context.original.legalDocumentNumber}`,
+    `Påminnelse: faktura ${context.original.legalDocumentNumber}, förföll ${due}`,
   );
   expect(message.plainText).toBe(
-    `Payment reminder\nInvoice: ${context.original.legalDocumentNumber}\nDue date: ${context.original.draftSnapshot.content.dueDate}\nOutstanding as of ${message.preparedAt}: 125.00 SEK\nNo reminder fee or interest is included.\nIf you have already paid, please contact us so we can review the payment.`,
+    `Hej,\n\nfaktura ${context.original.legalDocumentNumber} på 125,00 kr förföll den ${due}. Vi ser att den ännu inte är betald. Betala gärna snarast, uppgifterna finns på den bifogade fakturan.\n\nHör av dig om fakturan redan är betald eller om något är oklart.\n\nVänliga hälsningar\n${context.original.policySnapshot.candidate.input.sellerIdentity.legalName}`,
   );
-  expect(message.html).toContain("125.00 SEK");
+  expect(message.html).toContain("125,00 kr");
   expect(await prepare(context, recipient, prepareKey)).toEqual(message);
 
   for (const action of ["approvals", "cancel", "reconcile"] as const) {
@@ -733,6 +983,7 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
   await failure(await request(other, `${base}/${message.id}`), 404, "NotFound");
   const approvals = await Promise.all([approve(context, message), approve(context, message)]);
   expect(approvals.map((view) => view.status)).toEqual(["approved", "approved"]);
+  await send(context, message);
   const transport = await fixtureTransport();
   const worker = runner(context, transport);
 
@@ -740,7 +991,7 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
     const accepted = await waitStatus(context, message, "provider_accepted");
     expect(accepted.delivered).toBe(false);
     expect(accepted.attempt?.messageDigest).toBe(message.digest);
-    expect(transport.wires).toEqual([
+    expect(transport.wires).toMatchObject([
       {
         externalIdentity: accepted.attempt?.externalIdentity,
         messageDigest: message.digest,
@@ -846,6 +1097,7 @@ test("payment, holds, recipient withdrawal, cancellation and approval expiry ref
     const recipient = await reviewed(context);
     const message = await prepare(context, recipient);
     await approve(context, message);
+    await send(context, message);
 
     if (blocker === "payment") await settle(context, "4000");
 
@@ -969,7 +1221,7 @@ test("payment, holds, recipient withdrawal, cancellation and approval expiry ref
 
       expect(refused.attempt).toBe(null);
       expect(refused.currentOutstandingMinor).toBe(blocker === "payment" ? "8500" : "12500");
-      expect(transport.wires).toEqual([]);
+      expect(transport.wires).toMatchObject([]);
     } finally {
       await stop(worker);
       await transport.close();
@@ -981,6 +1233,7 @@ test("a lost post-acceptance response survives persistent runner restart using t
   const context = await legalFixture();
   const message = await prepare(context, await reviewed(context));
   await approve(context, message);
+  await send(context, message);
   const transport = await fixtureTransport("crash");
   let worker = runner(context, transport);
   transport.onAccepted(() => worker.child.kill("SIGKILL"));
@@ -1012,6 +1265,7 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
     const context = await legalFixture();
     const message = await prepare(context, await reviewed(context));
     await approve(context, message);
+    await send(context, message);
     const transport = await fixtureTransport(mode);
     let worker = runner(context, transport);
 
@@ -1101,27 +1355,28 @@ test("the collections caller reviews recipient and exact bytes before a browser 
         await page.getByLabel("Issued invoice ID", { exact: true }).press("Tab");
         await page.keyboard.press("Enter");
         await page.getByRole("button", { name: "Prepare exact reminder", exact: true }).click();
-        await page
-          .getByRole("button", { name: "Approve exact message for local transport", exact: true })
-          .waitFor();
+        await page.getByRole("button", { name: "Godkänn utskick", exact: true }).waitFor();
         expect(await page.getByText("billing@example.invalid", { exact: true }).count()).toBe(1);
         expect(
-          await page.locator("pre:visible").filter({ hasText: "125.00 SEK" }).first().innerText(),
-        ).toContain("125.00 SEK");
-        expect(transport.wires).toEqual([]);
+          await page.locator("pre:visible").filter({ hasText: "125,00 kr" }).first().innerText(),
+        ).toContain("125,00 kr");
+        expect(transport.wires).toMatchObject([]);
         await page.screenshot({
           path: join(environment().artifacts, "reminder-exact-review.png"),
           fullPage: true,
         });
 
         const approval = page.getByRole("button", {
-          name: "Approve exact message for local transport",
+          name: "Godkänn utskick",
           exact: true,
         });
 
         await approval.focus();
         await page.keyboard.press("Enter");
-        await page.getByText("Accepted by local transport", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Skicka påminnelsen", exact: true }).click();
+        await page
+          .getByRole("heading", { name: "E-posttjänsten har accepterat påminnelsen", exact: true })
+          .waitFor();
         expect(transport.wires.length).toBe(1);
         expect(transport.wires[0]?.destination).toBe("billing@example.invalid");
         await page.screenshot({
@@ -1154,44 +1409,56 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
   const recipient = await reviewed(context);
   const readSamples: number[] = [];
 
-  for (let index = 0; index < 35; index += 1) {
-    const started = performance.now();
+  const baseline = process.env.OPENERP_REMINDER_BASELINE === "1";
+  let baselineRevision: string | null = null;
 
-    const worklist = await decoded(
-      await request(context.book, "/commerce/collections/worklist"),
-      Schema.Struct({
-        items: Schema.Array(Schema.Struct({ residualMinor: Schema.NullOr(Schema.String) })),
-      }),
-    );
+  async function sampleWorklist(fetch: () => Promise<Response>) {
+    for (let index = 0; index < 35; index += 1) {
+      const started = performance.now();
 
-    const durationMs = performance.now() - started;
-    expect(worklist.items[0]?.residualMinor).toBe("12500");
+      const worklist = await decoded(
+        await fetch(),
+        Schema.Struct({
+          items: Schema.Array(Schema.Struct({ residualMinor: Schema.NullOr(Schema.String) })),
+        }),
+      );
 
-    if (index >= 5) readSamples.push(durationMs);
+      const durationMs = performance.now() - started;
+      expect(worklist.items[0]?.residualMinor).toBe("12500");
+
+      if (index >= 5) readSamples.push(durationMs);
+    }
   }
 
-  const baseline = process.env.OPENERP_REMINDER_BASELINE === "1";
+  if (baseline) {
+    await withPinnedReminderApi("3776363e^", async (api) => {
+      baselineRevision = api.revision;
+      await sampleWorklist(() => api.fetch(context.book, "/commerce/collections/worklist"));
+      await failure(
+        await api.fetch(context.author, base, {
+          method: "POST",
+          body: JSON.stringify({
+            issueId: context.original.id,
+            recipient: {
+              partyId: recipient.partyId,
+              revision: recipient.revision,
+              digest: recipient.digest,
+            },
+          }),
+        }),
+        404,
+        "NotFound",
+      );
+    });
+  } else {
+    await sampleWorklist(() => request(context.book, "/commerce/collections/worklist"));
+  }
+
   const previewSamples: number[] = [];
   const dispatchSamples: number[] = [];
   const queueWaitSamples: number[] = [];
 
-  if (baseline) {
-    await failure(
-      await request(context.author, base, {
-        method: "POST",
-        body: JSON.stringify({
-          issueId: context.original.id,
-          recipient: {
-            partyId: recipient.partyId,
-            revision: recipient.revision,
-            digest: recipient.digest,
-          },
-        }),
-      }),
-      404,
-      "NotFound",
-    );
-  } else {
+  if (!baseline) {
     const transport = await fixtureTransport();
     const worker = runner(context, transport);
 
@@ -1201,6 +1468,7 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
         const message = await prepare(context, recipient);
         const previewMs = performance.now() - started;
         const approved = await approve(context, message);
+        await send(context, message);
         const accepted = await waitStatus(context, message, "provider_accepted");
         expect(message.outstandingMinor).toBe("12500");
         const admin = await database();
@@ -1283,8 +1551,16 @@ test("fixed reminder fixtures retain five warmups and thirty public-boundary tim
     existingBudgetMs,
     warmups: 5,
     measuredSamples: 30,
-    fixture: { issuedInvoices: 1, currency: "SEK", residualMinor: "12500", attachmentBytes: 0 },
+    fixture: {
+      issuedInvoices: 1,
+      currency: "SEK",
+      residualMinor: "12500",
+      attachmentBytes: baseline
+        ? 0
+        : (await prepare(context, recipient)).attachments[0]?.byteLength,
+    },
     feature: baseline ? "absent" : "present",
+    baselineRevision,
     existingWorklist: summary(readSamples),
     exactPreview: summary(previewSamples),
     admittedToObservation: summary(dispatchSamples),
@@ -1330,6 +1606,7 @@ test("a 10000-minor reminder refuses a pre-admission 4000 payment and a newly ap
   const stale = await prepare(context, recipient);
   expect(stale.outstandingMinor).toBe("10000");
   await approve(context, stale);
+  await send(context, stale);
   await settle(context, "4000");
   const transport = await fixtureTransport();
   const worker = runner(context, transport);
@@ -1338,11 +1615,12 @@ test("a 10000-minor reminder refuses a pre-admission 4000 payment and a newly ap
     const refused = await waitStatus(context, stale, "refused");
     expect(refused.attempt).toBe(null);
     expect(refused.currentOutstandingMinor).toBe("6000");
-    expect(transport.wires).toEqual([]);
+    expect(transport.wires).toMatchObject([]);
     const fresh = await prepare(context, recipient);
     expect(fresh.outstandingMinor).toBe("6000");
-    expect(fresh.plainText).toContain("60.00 SEK");
+    expect(fresh.plainText).toContain("60,00 kr");
     await approve(context, fresh);
+    await send(context, fresh);
     const accepted = await waitStatus(context, fresh, "provider_accepted");
     expect(accepted.delivered).toBe(false);
     expect(transport.wires.length).toBe(1);
@@ -1362,6 +1640,7 @@ test("two persistent runners racing cancellation retain either a cancelled inten
   const message = await prepare(context, await reviewed(context));
   const approvals = await Promise.all([approve(context, message), approve(context, message)]);
   expect(approvals[0].approval).toEqual(approvals[1].approval);
+  await send(context, message);
   const transport = await fixtureTransport();
   const first = runner(context, transport);
   const second = runner(context, transport);
@@ -1378,7 +1657,7 @@ test("two persistent runners racing cancellation retain either a cancelled inten
 
     if (expected === "cancelled") {
       expect(retained.attempt).toBe(null);
-      expect(transport.wires).toEqual([]);
+      expect(transport.wires).toMatchObject([]);
     } else {
       expect(retained.attempt?.messageDigest).toBe(message.digest);
       expect(transport.wires).toHaveLength(1);
@@ -1412,6 +1691,7 @@ test("an unauthenticated fixture outcome cannot establish acceptance or delivery
   const context = await legalFixture();
   const message = await prepare(context, await reviewed(context));
   await approve(context, message);
+  await send(context, message);
   const transport = await fixtureTransport();
   transport.deliver();
   const worker = runner(context, { ...transport, secret: randomBytes(32).toString("hex") });
@@ -1421,7 +1701,7 @@ test("an unauthenticated fixture outcome cannot establish acceptance or delivery
     expect(retained.attempt).not.toBe(null);
     expect(retained.observations).toEqual([]);
     expect(retained.delivered).toBe(false);
-    expect(transport.wires).toEqual([]);
+    expect(transport.wires).toMatchObject([]);
     expect(transport.reads).toEqual([]);
     await writeFile(
       join(environment().artifacts, "reminder-unauthenticated-outcome.json"),
@@ -1437,6 +1717,7 @@ test("an actual persistent runner without a delivery profile leaves an approval 
   const context = await legalFixture();
   const message = await prepare(context, await reviewed(context));
   await approve(context, message);
+  await send(context, message);
   const transport = await fixtureTransport();
   const worker = runner(context, transport, false);
   const admin = await database();
@@ -1461,7 +1742,7 @@ test("an actual persistent runner without a delivery profile leaves an approval 
     expect(retained.status).toBe("approved");
     expect(retained.attempt).toBe(null);
     expect(retained.observations).toEqual([]);
-    expect(transport.wires).toEqual([]);
+    expect(transport.wires).toMatchObject([]);
     expect(transport.reads).toEqual([]);
     await writeFile(
       join(environment().artifacts, "reminder-disabled-by-default.json"),
@@ -1478,6 +1759,7 @@ test("recovery v4 binds all five reminder families and preserves complete older 
   const context = await legalFixture();
   const message = await prepare(context, await reviewed(context));
   await approve(context, message);
+  await send(context, message);
   const transport = await fixtureTransport();
   const worker = runner(context, transport);
   const admin = await database();
@@ -1629,6 +1911,7 @@ test("the persistent runner refuses a fixture origin without an explicit port be
   const context = await legalFixture();
   const message = await prepare(context, await reviewed(context));
   await approve(context, message);
+  await send(context, message);
   const transport = await fixtureTransport();
   const worker = runner(context, { ...transport, endpoint: "http://127.0.0.1" });
 
@@ -1638,7 +1921,7 @@ test("the persistent runner refuses a fixture origin without an explicit port be
     const retained = await read(context, message);
     expect(retained.status).toBe("approved");
     expect(retained.attempt).toBe(null);
-    expect(transport.wires).toEqual([]);
+    expect(transport.wires).toMatchObject([]);
     expect(transport.reads).toEqual([]);
     await writeFile(
       join(environment().artifacts, "reminder-explicit-fixture-port.json"),
@@ -1680,29 +1963,27 @@ test("the retained reminder route reloads an unknown worker outcome and reconcil
         await page.goto(
           `${workspace}/sales?view=collections&reminder=${encodeURIComponent(message.id)}`,
         );
-        await page
-          .getByRole("button", { name: "Approve exact message for local transport", exact: true })
-          .click();
-        await page.getByText("Outcome unknown", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Godkänn utskick", exact: true }).click();
+        await page.getByRole("button", { name: "Skicka påminnelsen", exact: true }).click();
+        await page.getByText("Påminnelsens utfall är okänt", { exact: true }).waitFor();
         expect(transport.wires).toHaveLength(1);
         const externalIdentity = transport.wires[0]?.externalIdentity;
         await page.reload();
-        await page.getByText("Outcome unknown", { exact: true }).waitFor();
+        await page.getByText("Påminnelsens utfall är okänt", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Visa godkänt meddelande", exact: true }).click();
         expect(await page.locator("pre").first().innerText()).toBe(message.plainText);
         expect(
           await page
-            .getByRole("button", { name: "Check the same dispatch attempt", exact: true })
+            .getByRole("button", { name: "Kontrollera samma utskick", exact: true })
             .count(),
         ).toBe(1);
         await page.screenshot({
           path: join(environment().artifacts, "reminder-unknown-reloaded.png"),
           fullPage: true,
         });
-        await page
-          .getByRole("button", { name: "Check the same dispatch attempt", exact: true })
-          .click();
+        await page.getByRole("button", { name: "Kontrollera samma utskick", exact: true }).click();
         await expect.poll(() => transport.reads.length, { timeout: 25000 }).toBeGreaterThan(0);
-        await page.getByText("Outcome unknown", { exact: true }).waitFor();
+        await page.getByRole("heading", { name: "? Utredningen pågår", exact: true }).waitFor();
         expect(transport.reads).toContain(externalIdentity);
         expect(transport.wires).toHaveLength(1);
         const retainedPath = page.url();
@@ -1723,9 +2004,7 @@ test("the retained reminder route reloads an unknown worker outcome and reconcil
           .first()
           .waitFor();
         expect(
-          await page
-            .getByRole("button", { name: "Approve exact message for local transport", exact: true })
-            .count(),
+          await page.getByRole("button", { name: "Godkänn utskick", exact: true }).count(),
         ).toBe(0);
         expect(transport.wires).toHaveLength(1);
         await writeFile(
