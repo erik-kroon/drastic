@@ -192,13 +192,7 @@ export function FirmPortfolio(props: {
                   deadline={deadlines.get(client.book.id) ?? null}
                   locale={locale}
                 />,
-                <ClientClosing
-                  key="status"
-                  book={client.book}
-                  closing={facts.closing}
-                  locale={locale}
-                  onOpen={() => rememberPortfolio(client.book, portfolioHref)}
-                />,
+                <ClientClosing key="status" closing={facts.closing} locale={locale} />,
                 period && facts.openTasks !== null ? (
                   <Box key="work" display="grid" gap="sm" alignItems="end">
                     <Link
