@@ -24,6 +24,11 @@ export const WorkQueueQuery = Schema.Struct({
 
 export type WorkReturn = typeof WorkQueueQuery.Type;
 
+export const WorkHomeQuery = Schema.Struct({
+  status: Schema.optional(Schema.Literals(["open", "completed", "watch"])),
+  task: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512))),
+});
+
 export function decodeWorkReturn(search: string | undefined) {
   if (!search) return undefined;
 
@@ -124,6 +129,7 @@ const SalesOwnerQuery = Schema.Struct({
 });
 
 export const OwnerReturn = Schema.Union([
+  Schema.Struct({ owner: Schema.Literal("home"), search: WorkHomeQuery }),
   Schema.Struct({ owner: Schema.Literal("sales"), search: SalesOwnerQuery }),
   Schema.Struct({ owner: Schema.Literal("documents"), search: DocumentQuery }),
   Schema.Struct({ owner: Schema.Literal("purchases"), search: PurchasesOwnerQuery }),
@@ -156,6 +162,8 @@ export function encodeOwnerReturn(owner: OwnerReturn) {
 
 export function ownerReturnDestination(base: string, owner: OwnerReturn) {
   switch (owner.owner) {
+    case "home":
+      return { to: `${base}/`, search: owner.search };
     case "sales":
       return { to: `${base}/sales`, search: owner.search };
     case "documents":

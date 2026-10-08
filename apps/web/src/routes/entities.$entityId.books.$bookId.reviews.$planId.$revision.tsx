@@ -48,6 +48,7 @@ function Review() {
           bank: "Bank /",
           sales: "Försäljning /",
           work: "Att göra /",
+          home: "Att göra /",
         }
       : {
           purchases: "Purchases /",
@@ -55,6 +56,7 @@ function Review() {
           bank: "Bank /",
           sales: "Sales /",
           work: "To do /",
+          home: "To do /",
         };
 
   return (

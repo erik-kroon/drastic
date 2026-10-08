@@ -558,6 +558,7 @@ export function RegisterRow({
   selected,
   onSelect,
   stateSize = "standard",
+  autoFocus = false,
 }: {
   id?: string;
   prefix?: string;
@@ -568,9 +569,15 @@ export function RegisterRow({
   selected: boolean;
   onSelect: () => void;
   stateSize?: "standard" | "compact";
+  autoFocus?: boolean;
 }) {
   return (
-    <RegisterRowSurface data-sales-id={id} selected={selected} onClick={onSelect}>
+    <RegisterRowSurface
+      data-sales-id={id}
+      selected={selected}
+      onClick={onSelect}
+      autoFocus={autoFocus}
+    >
       <span
         {...stylex.props(
           styles.symbol,

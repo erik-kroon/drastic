@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as Workspace from "@open-erp/contracts/workspace";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -45,13 +46,13 @@ export function WorkHome() {
 
   const copy = attentionCopy(locale);
 
-  const [status, setStatus] = useState<"open" | "completed" | "watch">("open");
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/" });
+  const navigate = useNavigate({ from: "/entities/$entityId/books/$bookId/" });
+  const status = search.status ?? "open";
 
   const kind = "all";
 
   const [groupReview, setGroupReview] = useState(false);
-
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const sort = "oldest";
 
@@ -67,7 +68,7 @@ export function WorkHome() {
 
   const rows = homeRows(work, page?.items ?? [], status, kind, filters);
 
-  const selected = rows.find((item) => item.key === selectedKey) ?? rows[0];
+  const selected = search.task ? rows.find((item) => item.selectionKey === search.task) : rows[0];
 
   const groups = [...new Set(rows.map((item) => item.group))];
 
@@ -98,8 +99,7 @@ export function WorkHome() {
             options={homeStatusOptions(locale, page?.counts.open, work.sales.data?.counts.overdue)}
             onChange={(value) => {
               if (value === "open" || value === "completed" || value === "watch") {
-                setStatus(value);
-                setSelectedKey(null);
+                void navigate({ search: { status: value }, resetScroll: false });
               }
             }}
           />
@@ -165,7 +165,13 @@ export function WorkHome() {
                   state={item.state}
                   amount={item.amount}
                   selected={selected?.key === item.key}
-                  onSelect={() => setSelectedKey(item.key)}
+                  autoFocus={search.task === item.selectionKey}
+                  onSelect={() => {
+                    void navigate({
+                      search: { status, task: item.selectionKey },
+                      resetScroll: false,
+                    });
+                  }}
                 />
               ))}
             </Box>
@@ -415,6 +421,7 @@ function homeRows(
           : []
         ).map((item) => ({
           key: `invoice:${item.id}`,
+          selectionKey: `invoice:${item.id}`,
           group: sv ? "Förfallna kundfakturor" : "Overdue customer invoices",
           title: `${item.customer}, ${item.number ?? item.title}`,
           state: sv ? "Förfallen" : "Overdue",
@@ -430,6 +437,7 @@ function homeRows(
         }))
       : items.map((item) => ({
           key: item.key,
+          selectionKey: item.questionRoot?.key ?? item.key,
           group: attentionGroup(item, locale),
           title: item.title,
           state: attentionState(item, locale),
@@ -437,7 +445,10 @@ function homeRows(
           amount: amount(item),
           caption: [item.currency, item.date].filter(Boolean).join(", "),
           action: copy[item.reason],
-          href: attentionPath(book, item, filters),
+          href: attentionPath(book, item, filters, {
+            owner: "home",
+            search: { status, task: item.questionRoot?.key ?? item.key },
+          }),
           documentId: item.kind === "document" ? item.id : null,
         }));
 
@@ -445,6 +456,7 @@ function homeRows(
     for (const account of work.bank.data.accounts.filter((item) => item.unmatchedCount > 0)) {
       rows.push({
         key: `bank:${account.id}`,
+        selectionKey: `bank:${account.id}`,
         group: sv ? "Bankhändelser" : "Bank events",
         title: account.name,
         state: `${account.unmatchedCount} ${sv ? "att matcha" : "to match"}`,

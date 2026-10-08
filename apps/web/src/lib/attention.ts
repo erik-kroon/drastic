@@ -4,7 +4,12 @@ import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
 import { reviewPath, workspacePath } from "./book-context";
-import { workReturnHref, type WorkReturn } from "./work-return";
+import {
+  encodeOwnerReturn,
+  workReturnHref,
+  type OwnerReturn,
+  type WorkReturn,
+} from "./work-return";
 import type { Locale } from "@/paraglide/runtime";
 
 // Only the fields the attention read filters on. The carried selection is part
@@ -67,24 +72,27 @@ export function attentionPath(
   book: typeof Accounting.Book.Type,
   item: typeof Workspace.AttentionItem.Type,
   work: WorkReturn,
+  owner?: OwnerReturn,
 ) {
+  const reviewSearch = owner ? { ...work, returnTo: encodeOwnerReturn(owner) } : work;
+
   if (item.supplierReview)
-    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
+    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(reviewSearch)}`;
 
   if (item.kind === "recurring" && item.recurringAgreementId)
-    return `${workReturnHref(`${workspacePath(book)}/sales`, "recurring", work)}&record=${encodeURIComponent(item.recurringAgreementId)}&job=${encodeURIComponent(item.id)}`;
+    return `${workReturnHref(`${workspacePath(book)}/sales`, "recurring", work, owner)}&record=${encodeURIComponent(item.recurringAgreementId)}&job=${encodeURIComponent(item.id)}`;
 
   if (item.kind === "journal")
-    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
+    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(reviewSearch)}`;
 
   if (item.kind === "document" || item.kind === "supplier") {
     const selection = item.kind === "document" ? "occurrence" : "record";
 
-    return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&${selection}=${encodeURIComponent(item.id)}`;
+    return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work, owner)}&${selection}=${encodeURIComponent(item.id)}`;
   }
 
   const base = `${workspacePath(book)}/${item.kind === "invoice" ? "sales" : "purchases"}`;
-  const area = workReturnHref(base, item.kind === "invoice" ? "drafts" : "expenses", work);
+  const area = workReturnHref(base, item.kind === "invoice" ? "drafts" : "expenses", work, owner);
 
   return `${area}&record=${encodeURIComponent(item.id)}`;
 }
