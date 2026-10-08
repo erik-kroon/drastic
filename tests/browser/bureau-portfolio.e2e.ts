@@ -113,7 +113,8 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   const selected = screen.getByRole("row").filter({ hasText: "Synthetic bureau 001" });
 
   await selected.getByRole("button", "Lämna över", { exact: true }).click();
-  await screen.getByRole("combobox", "Klientansvarig", { exact: true }).selectOption("");
+  await screen.getByRole("combobox", "Klientansvarig", { exact: true }).click();
+  await screen.getByRole("option", "Ingen ansvarig", { exact: true }).click();
   await screen.getByRole("button", "Spara klient", { exact: true }).click();
   await expect(names).toHaveCount(4);
   await expect(screen.getByRole("link", "Synthetic bureau 001", { exact: true })).toBeHidden();
