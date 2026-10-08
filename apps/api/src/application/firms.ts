@@ -268,6 +268,7 @@ export const saveFirmAccessRequest = Effect.fn("firms.saveAccessRequest")(functi
 ) {
   return yield* withHuman(token, function* (transaction, actorId) {
     yield* requireAccess(transaction);
+    yield* lockActor(transaction, actorId);
 
     const firm = yield* readFirmRole(transaction, command.firmId, actorId, {
       lock: "update",

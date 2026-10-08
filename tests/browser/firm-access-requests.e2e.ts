@@ -70,11 +70,18 @@ test("firm access requests retain local scoped metadata without accounting power
     expectedRevision: 0,
   };
 
-  const save = await request(path, input, key);
+  const [save, simultaneousReplay] = await Promise.all([
+    request(path, input, key),
+    request(path, input, key),
+  ]);
 
   expect(save.status).toBe(200);
+  expect(simultaneousReplay.status).toBe(200);
 
   const saved = Schema.decodeUnknownSync(Firms.CommandResult)(await save.json());
+
+  expect(await simultaneousReplay.json()).toEqual(saved);
+
   const replay = await request(path, input, key);
 
   expect(replay.status).toBe(200);
