@@ -1,0 +1,7 @@
+(
+    <div style={{ backgroundColor: '#FFFFFF', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSize: '12px', height: '375px', lineHeight: '16px', overflow: 'clip', position: 'relative', width: '375px' }}>
+      <svg width="375" height="375" viewBox="0 0 375 375" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', top: '0px', right: '0px', bottom: '0px', left: '0px', width: '375px', height: '375px', display: 'inline-block' }}>
+        <polygon points="37.5,45 122.5,45 122.5,67.5 37.5,67.5" fill="#CFE0FB" />
+      </svg>
+    </div>
+  )

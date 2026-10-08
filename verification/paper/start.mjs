@@ -769,6 +769,38 @@ try {
   }
 
   if (!ready) throw new Error(`Web readiness timed out\n${webLog}`);
+
+  if (process.env.PAPER_DOCUMENT_INTELLIGENCE === "1") {
+    const documentInput = join(scratch, "document-intelligence-input.json");
+
+    await writeFile(
+      documentInput,
+      JSON.stringify({
+        databaseUrl: runtimeUrl,
+        token: accessToken,
+        authSecret: workerSecrets.BETTER_AUTH_SECRET,
+        origin: url,
+        email,
+        password: loginPassword,
+        output: artifacts,
+      }),
+      { mode: 0o600 },
+    );
+
+    try {
+      await run("bun", ["scripts/document-inspection/seed-browser.ts", documentInput], {
+        cwd: api,
+      });
+    } finally {
+      await rm(documentInput, { force: true });
+    }
+  } else if (
+    process.env.PAPER_DOCUMENT_INTELLIGENCE &&
+    process.env.PAPER_DOCUMENT_INTELLIGENCE !== "0"
+  ) {
+    throw new Error("PAPER_DOCUMENT_INTELLIGENCE must be 0 or 1");
+  }
+
   console.log(JSON.stringify({ ready: true, url, sessionFile, artifacts }));
   await once(web, "exit");
 } finally {

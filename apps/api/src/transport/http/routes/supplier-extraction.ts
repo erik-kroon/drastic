@@ -9,6 +9,7 @@ import {
   getSupplierExtractionState,
   prepareSupplierExtractionReview,
   requestSupplierExtraction,
+  studySupplierExtractionDiagnostics,
 } from "../../../application/purchases/extraction";
 
 export const SupplierExtractionHandlers = HttpApiBuilder.group(
@@ -16,6 +17,17 @@ export const SupplierExtractionHandlers = HttpApiBuilder.group(
   "supplierExtraction",
   (handlers) =>
     handlers
+      .handle("studySupplierExtractionDiagnostics", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          studySupplierExtractionDiagnostics(token, {
+            scope: scopeFromPath(params),
+            occurrenceId: params.id,
+            requestId: params.requestId,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
       .handle("requestSupplierExtraction", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           requestSupplierExtraction(token, {

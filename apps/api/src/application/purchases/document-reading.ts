@@ -1,6 +1,26 @@
 import * as Schema from "effect/Schema";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import { isCalendarDate } from "@open-erp/domain/values";
+import type { DocumentInspection } from "../../adapters/document-reading/inspection";
+
+export class DocumentReadingError extends Error {
+  constructor(
+    readonly code:
+      | "reader_page_coverage"
+      | "reader_page_span"
+      | "reader_page_overlap"
+      | "reader_field_span"
+      | "reader_field_quote"
+      | "reader_geometry_page"
+      | "reader_geometry_bounds"
+      | "reader_geometry_empty"
+      | "reader_diagnostic_limit"
+      | "reader_retained_size"
+      | "reader_output_schema",
+  ) {
+    super(code);
+  }
+}
 
 const Offset = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 16000 }));
 
@@ -9,13 +29,21 @@ const Span = Schema.Struct({ offset: Offset, length: Offset });
 const Spans = Schema.Array(Span).check(Schema.isMinLength(1), Schema.isMaxLength(8));
 
 const Regions = Schema.Array(
-  Schema.Struct({ pageNumber: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })) }),
+  Schema.Struct({
+    pageNumber: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
+    polygon: Schema.optional(
+      Schema.Array(Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))).check(
+        Schema.isBetweenLength(8, 8),
+      ),
+    ),
+  }),
 ).check(Schema.isMinLength(1), Schema.isMaxLength(8));
 
 const Field = Schema.Struct({
   content: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1000)),
   spans: Spans,
   boundingRegions: Regions,
+  confidence: Schema.optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
 });
 
 const Item = Schema.Struct({ valueObject: Schema.Record(Schema.String, Schema.Unknown) });
@@ -33,6 +61,9 @@ const Result = Schema.Struct({
       Schema.Struct({
         pageNumber: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
         spans: Spans,
+        width: Schema.optional(Schema.Finite.check(Schema.isGreaterThan(0))),
+        height: Schema.optional(Schema.Finite.check(Schema.isGreaterThan(0))),
+        unit: Schema.optional(Schema.Literals(["inch", "pixel"])),
       }),
     ).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
     documents: Schema.Array(
@@ -66,16 +97,35 @@ function amount(quote: string) {
   return BigInt(digits).toString();
 }
 
-export function interpretDocument(value: unknown, physicalPages: number) {
+export function interpretDocument(
+  value: unknown,
+  physicalPages: number,
+  inspection: DocumentInspection,
+) {
   const { analyzeResult: result } = Schema.decodeUnknownSync(Result)(value);
   const pages = new Map(result.pages.map((page) => [page.pageNumber, page]));
 
   if (pages.size !== result.pages.length || [...pages.keys()].some((page) => page > physicalPages))
-    throw new Error("reader_page_coverage");
+    throw new DocumentReadingError("reader_page_coverage");
 
   for (const page of pages.values()) {
     if (page.spans.some((span) => span.offset + span.length > result.content.length))
-      throw new Error("reader_page_span");
+      throw new DocumentReadingError("reader_page_span");
+
+    for (const other of pages.values()) {
+      if (other.pageNumber === page.pageNumber) continue;
+
+      if (
+        page.spans.some((span) =>
+          other.spans.some(
+            (otherSpan) =>
+              span.offset < otherSpan.offset + otherSpan.length &&
+              otherSpan.offset < span.offset + span.length,
+          ),
+        )
+      )
+        throw new DocumentReadingError("reader_page_overlap");
+    }
   }
 
   const diagnostics: Diagnostic[] = [];
@@ -87,7 +137,7 @@ export function interpretDocument(value: unknown, physicalPages: number) {
   ): ExtractedField => {
     // A field is supported only when its exact quote belongs to one physical page.
     if (parsed.spans.length !== 1 || parsed.boundingRegions.length !== 1)
-      throw new Error("reader_field_span");
+      throw new DocumentReadingError("reader_field_span");
     const span = parsed.spans[0]!;
     const page = parsed.boundingRegions[0]!.pageNumber;
 
@@ -102,8 +152,55 @@ export function interpretDocument(value: unknown, physicalPages: number) {
             span.offset + span.length <= region.offset + region.length,
         )
     )
-      throw new Error("reader_field_quote");
+      throw new DocumentReadingError("reader_field_quote");
     let proposedValue: string | null = parsed.content;
+    const pageEvidence = pages.get(page)!;
+    const originalPage = inspection.pages[page - 1]!;
+    const polygon = parsed.boundingRegions[0]!.polygon;
+    let region: (typeof Extraction.DocumentSourceLocator.Type)["region"];
+
+    if (polygon) {
+      if (
+        !pageEvidence.width ||
+        !pageEvidence.height ||
+        pageEvidence.unit !== inspection.unit ||
+        Math.abs(pageEvidence.width - originalPage.width) > originalPage.width * 0.02 ||
+        Math.abs(pageEvidence.height - originalPage.height) > originalPage.height * 0.02
+      )
+        throw new DocumentReadingError("reader_geometry_page");
+
+      const normalized = polygon.map(
+        (point, index) => point / (index % 2 === 0 ? pageEvidence.width! : pageEvidence.height!),
+      );
+
+      if (normalized.some((point) => point < 0 || point > 1))
+        throw new DocumentReadingError("reader_geometry_bounds");
+
+      const area = Math.abs(
+        normalized.reduce(
+          (sum, point, index) =>
+            index % 2 === 0
+              ? sum +
+                point * normalized[(index + 3) % 8]! -
+                normalized[(index + 2) % 8]! * normalized[index + 1]!
+              : sum,
+          0,
+        ),
+      );
+
+      if (area < 0.000001) throw new DocumentReadingError("reader_geometry_empty");
+      region = {
+        scale: 1000000000,
+        polygon: normalized.map((point) => Math.round(point * 1000000000)),
+      };
+    } else {
+      diagnostics.push({
+        code: "source_highlight_unavailable",
+        lineOrdinal,
+        fieldKey,
+        detail: "Only a page and quote were supplied. No exact source highlight is available.",
+      });
+    }
 
     if (fieldKey.endsWith("Minor")) proposedValue = amount(parsed.content);
 
@@ -121,20 +218,30 @@ export function interpretDocument(value: unknown, physicalPages: number) {
         detail: "The printed value does not match the selected reading profile.",
       });
 
-    return {
-      lineOrdinal,
-      fieldKey,
-      proposedValue,
-      sourceLocators: [
-        {
-          kind: "document_quote",
-          page,
-          quote: parsed.content,
-          textOffset: span.offset,
-          textLength: span.length,
-        },
-      ],
+    if (parsed.confidence === undefined || parsed.confidence < 0.8) {
+      diagnostics.push({
+        code:
+          parsed.confidence === undefined ? "reader_confidence_unknown" : "reader_low_confidence",
+        lineOrdinal,
+        fieldKey,
+        detail:
+          "Reader confidence is unknown or low. Check the printed value against the original.",
+      });
+
+      if (parsed.confidence !== undefined) proposedValue = null;
+    }
+
+    const locator: typeof Extraction.DocumentSourceLocator.Type = {
+      kind: "document_quote",
+      page,
+      quote: parsed.content,
+      textOffset: span.offset,
+      textLength: span.length,
     };
+
+    const sourceLocator = region ? { ...locator, region } : locator;
+
+    return { lineOrdinal, fieldKey, proposedValue, sourceLocators: [sourceLocator] };
   };
 
   const source = result.documents[0]!.fields;
@@ -151,6 +258,26 @@ export function interpretDocument(value: unknown, physicalPages: number) {
       ? []
       : [field(Schema.decodeUnknownSync(Field)(source[name]), key, 0)],
   );
+
+  for (const [name, key] of headers) {
+    if (source[name] === undefined)
+      diagnostics.push({
+        code: "source_field_missing",
+        lineOrdinal: 0,
+        fieldKey: key,
+        detail: "No value was read. Supply this fact only after reviewing the original.",
+      });
+  }
+
+  for (const name of Object.keys(source)) {
+    if (name !== "Items" && !headers.some(([supported]) => supported === name))
+      diagnostics.push({
+        code: "reader_field_unsupported",
+        lineOrdinal: 0,
+        fieldKey: name.slice(0, 64),
+        detail: "The reader returned a field outside the supported extraction vocabulary.",
+      });
+  }
 
   const lineKeys: ReadonlyArray<readonly [string, FieldKey]> = [
     ["Description", "description"],
@@ -172,6 +299,26 @@ export function interpretDocument(value: unknown, physicalPages: number) {
         : [field(Schema.decodeUnknownSync(Field)(item.valueObject[name]), key, index + 1)],
     );
 
+    for (const [name, key] of lineKeys) {
+      if (item.valueObject[name] === undefined)
+        diagnostics.push({
+          code: "source_field_missing",
+          lineOrdinal: index + 1,
+          fieldKey: key,
+          detail: "No value was read. The line remains incomplete until reviewed.",
+        });
+    }
+
+    for (const name of Object.keys(item.valueObject)) {
+      if (!lineKeys.some(([supported]) => supported === name))
+        diagnostics.push({
+          code: "reader_field_unsupported",
+          lineOrdinal: index + 1,
+          fieldKey: name.slice(0, 64),
+          detail: "The reader returned an unsupported line field. It was not applied.",
+        });
+    }
+
     return {
       candidateLineId: `document_line_${index + 1}`,
       fields: values,
@@ -189,7 +336,7 @@ export function interpretDocument(value: unknown, physicalPages: number) {
       detail: "The reading does not cover every original page. Review the whole original.",
     });
 
-  if (diagnostics.length > 64) throw new Error("reader_diagnostic_limit");
+  if (diagnostics.length > 64) throw new DocumentReadingError("reader_diagnostic_limit");
 
   return {
     fields,

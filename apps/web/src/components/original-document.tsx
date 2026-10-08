@@ -14,6 +14,7 @@ import { sourceDocumentOptions } from "@/lib/source-documents";
 import type { CommerceProps } from "@/components/commerce/shared";
 import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { workspacePath } from "@/lib/book-context";
+import type * as Extraction from "@open-erp/contracts/supplier-extraction";
 
 export function OriginalDocument(
   props: CommerceProps & {
@@ -24,7 +25,7 @@ export function OriginalDocument(
     archive?: boolean;
     view?: PdfView;
     onViewChange?: (view: PdfView) => void;
-    quote?: { page: number; quote: string };
+    quote?: Pick<typeof Extraction.DocumentSourceLocator.Type, "page" | "quote" | "region">;
   },
 ) {
   const work = useWorkReturn();
@@ -58,6 +59,11 @@ export function OriginalDocument(
       {props.quote && props.quote.page === props.view?.page ? (
         <PageCaption>
           {sv ? "Sida" : "Page"} {props.quote.page}: “{props.quote.quote}”
+          {!props.quote.region
+            ? sv
+              ? " Källmarkering saknas."
+              : " Source highlight unavailable."
+            : null}
         </PageCaption>
       ) : null}
       {!props.compact ? (
@@ -105,32 +111,13 @@ export function OriginalDocument(
       ) : null}
       {source && !query.isError && !mismatch ? (
         <>
-          {props.archive && source.occurrence.mediaType === "application/pdf" ? (
-            <PdfThumbnail
-              key={source.occurrence.id}
-              content={source.contentBase64}
-              filename={source.occurrence.filename}
-              locale={props.locale}
-            />
-          ) : source.occurrence.mediaType === "application/pdf" ? (
-            <OriginalPdf
-              key={`${props.book.entityId}/${props.book.id}/${props.id}/${source.occurrence.sha256}`}
-              content={source.contentBase64}
-              filename={source.occurrence.filename}
-              locale={props.locale}
-              view={props.view}
-              onViewChange={props.onViewChange}
-              presentation={props.presentation}
-            />
-          ) : (
-            <DocumentPreview
-              compact={props.compact}
-              archive={props.archive}
-              content={source.contentBase64}
-              mediaType={source.occurrence.mediaType}
-              filename={source.occurrence.filename}
-            />
-          )}
+          <OriginalPreview
+            key={`${props.book.entityId}/${props.book.id}/${props.id}/${source.occurrence.sha256}`}
+            {...props}
+            content={source.contentBase64}
+            mediaType={source.occurrence.mediaType}
+            filename={source.occurrence.filename}
+          />
           {props.presentation === "focused" ? (
             <Box display="grid" gap="lg" minWidth="zero">
               {actions}
@@ -144,25 +131,56 @@ export function OriginalDocument(
   );
 }
 
-function OriginalPdf(props: {
+function OriginalPreview(props: {
   content: string;
+  mediaType: string;
   filename: string;
   locale: "sv" | "en";
+  compact?: boolean;
+  archive?: boolean;
   view?: PdfView;
   onViewChange?: (view: PdfView) => void;
   presentation?: "focused";
+  quote?: Pick<typeof Extraction.DocumentSourceLocator.Type, "page" | "quote" | "region">;
 }) {
   const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
 
+  if (props.mediaType === "application/pdf") {
+    if (props.archive)
+      return (
+        <PdfThumbnail content={props.content} filename={props.filename} locale={props.locale} />
+      );
+
+    return (
+      <PdfViewer
+        workerUrl={workerUrl}
+        content={props.content}
+        filename={props.filename}
+        locale={props.locale}
+        view={props.view ?? view}
+        onViewChange={props.onViewChange ?? setView}
+        presentation={props.presentation}
+        highlight={
+          props.quote?.region
+            ? { page: props.quote.page, region: props.quote.region, quote: props.quote.quote }
+            : undefined
+        }
+      />
+    );
+  }
+
   return (
-    <PdfViewer
-      workerUrl={workerUrl}
-      content={props.content}
-      filename={props.filename}
-      locale={props.locale}
-      view={props.view ?? view}
-      onViewChange={props.onViewChange ?? setView}
-      presentation={props.presentation}
+    <DocumentPreview
+      {...props}
+      highlight={
+        props.quote?.region && props.quote.page === 1
+          ? {
+              region: props.quote.region,
+              quote: props.quote.quote,
+              label: props.locale === "sv" ? "Källmarkering" : "Source highlight",
+            }
+          : undefined
+      }
     />
   );
 }

@@ -61,6 +61,14 @@ export const DocumentSourceLocator = Schema.Struct({
   // UTF-16 offsets address the retained reader transcript, never original PDF bytes.
   textOffset: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000000 })),
   textLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 1000 })),
+  region: Schema.optional(
+    Schema.Struct({
+      scale: Schema.Literal(1000000000),
+      polygon: Schema.Array(
+        Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000000000 })),
+      ).check(Schema.isBetweenLength(8, 8)),
+    }),
+  ),
 });
 
 export const SourceLocator = Schema.Union([
@@ -307,9 +315,39 @@ export const SupplierExtractionCancelResult = Schema.Struct({
   request: SupplierExtractionRequest,
 });
 
+export const RequestSupplierDiagnosticStudy = Schema.Struct({
+  attemptId: Accounting.Identifier,
+  mode: Schema.Literals(["off", "shadow"]),
+});
+
+export const SupplierDiagnosticStudy = Schema.Struct({
+  scope: Accounting.Scope,
+  occurrenceId: Accounting.Identifier,
+  requestId: Accounting.Identifier,
+  attemptId: Accounting.Identifier,
+  sourceHash: Accounting.Digest,
+  mode: Schema.Literals(["off", "shadow"]),
+  draftId: Schema.NullOr(Accounting.Identifier),
+  draftRevision: Schema.NullOr(Commerce.Version),
+  draftDigest: Schema.NullOr(Accounting.Digest),
+  diagnostics: Schema.Array(ExtractionDiagnostic).check(Schema.isMaxLength(465)),
+  createdAt: Schema.String,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-inbox/:id/extraction";
 
 export const SupplierExtractionApi = HttpApiGroup.make("supplierExtraction")
+  .add(
+    HttpApiEndpoint.post("studySupplierExtractionDiagnostics", `${path}/:requestId/diagnostics`, {
+      params: Schema.Struct({ ...Accounting.ChangePath.fields, requestId: Accounting.Identifier }),
+      headers: Accounting.IdempotencyHeaders,
+      payload: RequestSupplierDiagnosticStudy.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: SupplierDiagnosticStudy,
+      error: accountingErrors,
+    }),
+  )
   .add(
     HttpApiEndpoint.post("requestSupplierExtraction", path, {
       params: Accounting.ChangePath,

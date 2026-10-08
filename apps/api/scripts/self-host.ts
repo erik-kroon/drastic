@@ -1,3 +1,4 @@
+import { inspectDocument } from "./document-inspection/inspection";
 import { configuredDocumentDelivery } from "../src/adapters/documents/local-fixture";
 import { configuredPeppolAccessPoint } from "../src/adapters/peppol/local-fixture";
 import { configuredProcessorFeed } from "../src/adapters/processor/local-fixture";
@@ -46,6 +47,7 @@ if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
   throw new Error("Document reading requires a configured preparation runner token.");
 
 const bindings: Bindings = {
+  DOCUMENT_INSPECTOR: inspectDocument,
   DATABASE_URL: databaseUrl,
   DOCUMENT_READER: documentReader,
   PEPPOL_EXCHANGE: configuredPeppolAccessPoint({

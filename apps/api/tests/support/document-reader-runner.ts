@@ -1,3 +1,4 @@
+import { inspectDocument } from "../../scripts/document-inspection/inspection";
 import * as PgClient from "@effect/sql-pg/PgClient";
 import { Worker } from "effect-mq";
 import { DrizzleJobStore } from "effect-mq/drizzle-postgres";
@@ -25,6 +26,11 @@ import { filesystemObjectStore } from "../../src/adapters/storage/filesystem-obj
 import api from "../../src/index";
 
 const Input = Schema.Union([
+  Schema.Struct({
+    action: Schema.Literal("parallel"),
+    scope: Accounting.Scope,
+    requestIds: Schema.Array(Accounting.Identifier).check(Schema.isBetweenLength(2, 2)),
+  }),
   Schema.Struct({
     action: Schema.Literals(["run", "queue"]),
     scope: Accounting.Scope,
@@ -54,6 +60,7 @@ if (endpoint && new URL(endpoint).hostname !== "127.0.0.1")
   throw new Error("Fixture must use loopback.");
 
 const bindings: Bindings = {
+  DOCUMENT_INSPECTOR: inspectDocument,
   DATABASE_URL: connectionString,
   OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
   DOCUMENT_READER: configuredDocumentReader({
@@ -91,34 +98,47 @@ if (input.action === "api") {
     Layer.succeed(RequestEnvironment, { bindings, url: new URL("http://localhost/") }),
   );
 
-  const queueStore = DrizzleJobStore.layer({
-    jobs,
-    attempts: jobAttempts,
-    dedupe: jobDedupe,
-    flowChildren: jobFlowChildren,
-    flowOutbox: jobFlowOutbox,
-    queues: jobQueues,
-    schedules: jobSchedules,
-  });
+  if (input.action === "parallel") {
+    const result = await Effect.runPromise(
+      Effect.all(
+        input.requestIds.map((requestId) => runSupplierExtraction(input.scope, requestId)),
+        { concurrency: 2 },
+      ).pipe(Effect.provide(services)),
+    );
 
-  const worker = ExtractionQueue.toLayer(handleExtraction, { concurrency: 1 }).pipe(
-    Layer.provideMerge(Worker.layer({ concurrency: 1 })),
-    Layer.provideMerge(queueStore),
-    Layer.provideMerge(services),
-    Layer.provide(PgClient.layer({ url: Redacted.make(connectionString), maxConnections: 3 })),
-  );
-
-  const direct = runSupplierExtraction(input.scope, input.requestId).pipe(Effect.provide(services));
-
-  const queued = Effect.gen(function* () {
-    const jobId = yield* ExtractionQueue.enqueue({
-      scope: input.scope,
-      requestId: input.requestId,
+    process.stdout.write(JSON.stringify({ result }));
+  } else {
+    const queueStore = DrizzleJobStore.layer({
+      jobs,
+      attempts: jobAttempts,
+      dedupe: jobDedupe,
+      flowChildren: jobFlowChildren,
+      flowOutbox: jobFlowOutbox,
+      queues: jobQueues,
+      schedules: jobSchedules,
     });
 
-    return yield* ExtractionQueue.awaitResult(jobId);
-  }).pipe(Effect.provide(worker), Effect.scoped);
+    const worker = ExtractionQueue.toLayer(handleExtraction, { concurrency: 1 }).pipe(
+      Layer.provideMerge(Worker.layer({ concurrency: 1 })),
+      Layer.provideMerge(queueStore),
+      Layer.provideMerge(services),
+      Layer.provide(PgClient.layer({ url: Redacted.make(connectionString), maxConnections: 3 })),
+    );
 
-  const result = await Effect.runPromise(input.action === "queue" ? queued : direct);
-  process.stdout.write(JSON.stringify({ result }));
+    const direct = runSupplierExtraction(input.scope, input.requestId).pipe(
+      Effect.provide(services),
+    );
+
+    const queued = Effect.gen(function* () {
+      const jobId = yield* ExtractionQueue.enqueue({
+        scope: input.scope,
+        requestId: input.requestId,
+      });
+
+      return yield* ExtractionQueue.awaitResult(jobId);
+    }).pipe(Effect.provide(worker), Effect.scoped);
+
+    const result = await Effect.runPromise(input.action === "queue" ? queued : direct);
+    process.stdout.write(JSON.stringify({ result }));
+  }
 }

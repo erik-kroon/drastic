@@ -1,0 +1,45 @@
+(
+    <div style={{ borderLeftColor: 'var(--color-k26-rule)', borderLeftStyle: 'solid', borderLeftWidth: '1px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: '0', fontFamily: 'var(--font-k26-ui)', fontSynthesis: 'none', gap: '16px', MozOsxFontSmoothing: 'grayscale', overflowWrap: 'anywhere', paddingBlock: '20px', paddingInline: '24px', WebkitFontSmoothing: 'antialiased', width: '420px' }}>
+      <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-section)', fontWeight: 600, lineHeight: '20px' }}>
+        Förslag från originalet
+      </div>
+      <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+        Kontrollera varje förslag mot originalet innan du använder det. Fyll i saknade uppgifter själv.
+      </div>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Fakturanummer: 1048
+        </div>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-action)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Sida 1: “1048”
+        </div>
+        <div style={{ alignItems: 'center', alignSelf: 'start', borderColor: 'var(--color-k26-control)', borderRadius: 'var(--radius-k26-control)', borderStyle: 'solid', borderWidth: '1px', boxSizing: 'border-box', display: 'flex', flexShrink: '0', height: 'var(--spacing-k26-button-height)', paddingInline: '12px' }}>
+          <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', display: 'flex', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+            Använd fakturanummer
+          </div>
+        </div>
+      </div>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Total enligt fakturan: Behöver granskas
+        </div>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-action)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Sida 1: “12 500,00”
+        </div>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Total enligt fakturan: Läsaren är osäker. Kontrollera värdet mot originalet.
+        </div>
+      </div>
+      <div style={{ boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px', whiteSpace: 'pre-wrap' }}>
+          Fakturadatum: En uppgift saknas i läsningen. Kontrollera och fyll i den själv.<br />Förfallodatum: En uppgift saknas i läsningen. Kontrollera och fyll i den själv.
+        </div>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          En uppgift från läsaren stöds inte och har inte använts.
+        </div>
+        <div style={{ boxSizing: 'border-box', color: 'var(--color-k26-text)', fontFamily: 'var(--font-k26-ui)', fontSize: 'var(--text-k26-body)', lineHeight: '16px' }}>
+          Rad 1. Beskrivning: Källmarkering saknas. Kontrollera den citerade texten på sidan.
+        </div>
+      </div>
+    </div>
+  )

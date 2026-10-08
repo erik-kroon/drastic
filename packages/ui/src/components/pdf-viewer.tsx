@@ -8,6 +8,7 @@ import { SelectControl } from "@open-erp/ui/components/select";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+import { SourceHighlight, type SourceRegion } from "./source-highlight";
 
 export type PdfView = { page: number; zoom: number };
 
@@ -38,6 +39,7 @@ const styles = stylex.create({
     minWidth: 0,
   },
   page: { display: "block", backgroundColor: tokens.card, marginInline: "auto" },
+  pageFrame: { position: "relative", marginInline: "auto", width: "fit-content" },
   hidden: { display: "none" },
   dimensions: (width: number, height: number) => ({ width, height }),
   text: {
@@ -123,6 +125,7 @@ export function PdfViewer(props: {
   onViewChange: (view: PdfView) => void;
   presentation?: "focused" | "bank";
   onAvailabilityChange?: (available: boolean) => void;
+  highlight?: { readonly page: number; readonly region: SourceRegion; readonly quote: string };
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [documentState, setDocumentState] = useState<DocumentState>({ status: "loading" });
@@ -325,17 +328,25 @@ export function PdfViewer(props: {
           props.presentation === "bank" && view.zoom > 100 && styles.bankZoomedViewport,
         )}
       >
-        <canvas
-          ref={canvas}
-          role="img"
-          aria-label={`${props.filename}, ${sv ? "sida" : "page"} ${view.page}`}
-          hidden={!ready}
-          {...stylex.props(
-            styles.page,
-            !ready && styles.hidden,
-            pageState.status === "ready" && styles.dimensions(pageState.width, pageState.height),
-          )}
-        />
+        <div {...stylex.props(styles.pageFrame)}>
+          <canvas
+            ref={canvas}
+            role="img"
+            aria-label={`${props.filename}, ${sv ? "sida" : "page"} ${view.page}`}
+            hidden={!ready}
+            {...stylex.props(
+              styles.page,
+              !ready && styles.hidden,
+              pageState.status === "ready" && styles.dimensions(pageState.width, pageState.height),
+            )}
+          />
+          {ready && props.highlight?.page === view.page ? (
+            <SourceHighlight
+              region={props.highlight.region}
+              label={`${sv ? "Källmarkering" : "Source highlight"}: ${props.highlight.quote}`}
+            />
+          ) : null}
+        </div>
       </div>
       {!ready && !failed ? (
         <PageCaption role="status">{sv ? "Visar sidan…" : "Rendering page…"}</PageCaption>

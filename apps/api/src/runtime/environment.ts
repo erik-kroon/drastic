@@ -5,6 +5,7 @@ import * as Context from "effect/Context";
 import type { RetainedObjectStore } from "../adapters/storage/retained-objects";
 
 import type { DocumentReader } from "../adapters/document-reading/azure";
+import type { DocumentInspection } from "../adapters/document-reading/inspection";
 
 import type { ProcessorFeed } from "../adapters/processor/local-fixture";
 
@@ -27,6 +28,10 @@ export interface Bindings {
   readonly OPENERP_PROCESSOR_SECRET?: string;
   readonly REMINDER_DELIVERY?: ReminderDelivery;
   readonly DOCUMENT_READER?: DocumentReader;
+  readonly DOCUMENT_INSPECTOR?: (
+    bytes: Uint8Array,
+    mediaType: string,
+  ) => Promise<DocumentInspection>;
   readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;
   readonly EVIDENCE_STORE?: RetainedObjectStore;

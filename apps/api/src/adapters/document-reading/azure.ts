@@ -1,4 +1,3 @@
-import { PDFDocument } from "pdf-lib";
 import { assertUniqueJsonKeys } from "../json-keys";
 
 export class DocumentOutputError extends Error {}
@@ -7,36 +6,6 @@ export interface DocumentReader {
   readonly identity: string;
   submit(bytes: Uint8Array): Promise<string>;
   poll(operation: string): Promise<unknown>;
-}
-
-// Inspection precedes disclosure. This bounded prototype supports whole originals
-// only; hostile-document process isolation remains a live-qualification gate.
-export async function physicalPageCount(bytes: Uint8Array, mediaType: string) {
-  if (bytes.length < 1 || bytes.length > 5 * 1024 * 1024) throw new Error("document_size");
-  let count: number;
-
-  if (mediaType === "application/pdf") {
-    if (new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-")
-      throw new Error("pdf_signature");
-    const pdf = await PDFDocument.load(bytes, { throwOnInvalidObject: true });
-    count = pdf.getPageCount();
-  } else {
-    const pdf = await PDFDocument.create();
-
-    const image =
-      mediaType === "image/png"
-        ? await pdf.embedPng(bytes)
-        : mediaType === "image/jpeg"
-          ? await pdf.embedJpg(bytes)
-          : null;
-
-    if (image === null || image.width * image.height > 25000000) throw new Error("image_profile");
-    count = 1;
-  }
-
-  if (count < 1 || count > 20) throw new Error("page_limit");
-
-  return count;
 }
 
 async function boundedJson(response: Response) {

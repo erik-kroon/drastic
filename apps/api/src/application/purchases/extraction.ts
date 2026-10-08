@@ -4,8 +4,9 @@ import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
-import { DocumentOutputError, physicalPageCount } from "../../adapters/document-reading/azure";
-import { interpretDocument } from "./document-reading";
+import * as Result from "effect/Result";
+import { DocumentOutputError } from "../../adapters/document-reading/azure";
+import { DocumentReadingError, interpretDocument } from "./document-reading";
 import { requireOriginalEvidence } from "./inbox";
 
 import {
@@ -833,6 +834,112 @@ function proposalState(
     retainedDecisions: retained,
   });
 }
+
+export const studySupplierExtractionDiagnostics = Effect.fn("purchases.extraction.diagnostics")(
+  function* (
+    token: string,
+    command: {
+      readonly scope: Scope;
+      readonly occurrenceId: string;
+      readonly requestId: string;
+      readonly idempotencyKey: string;
+      readonly input: typeof Extraction.RequestSupplierDiagnosticStudy.Type;
+    },
+  ) {
+    return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
+      Effect.gen(function* () {
+        yield* requireExtractionAccess(transaction);
+
+        const replayed = yield* replay(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          "study_supplier_extraction_diagnostics",
+          principal.actorId,
+          {
+            occurrenceId: command.occurrenceId,
+            requestId: command.requestId,
+            input: yield* Shared.toJsonObject(command.input),
+          },
+          Extraction.SupplierDiagnosticStudy,
+        );
+
+        if (replayed.previous) return replayed.previous;
+
+        const basis = yield* readReviewBasis(
+          transaction,
+          command.scope.bookId,
+          command.occurrenceId,
+          command.requestId,
+          command.input.attemptId,
+          previewExpectations,
+        );
+
+        const attempt = yield* Shared.decode(
+          Extraction.SupplierExtractionAttempt,
+          attemptBody(basis.attempt, command.requestId),
+        );
+
+        const diagnostics: Array<typeof Extraction.ExtractionDiagnostic.Type> = [];
+
+        if (command.input.mode === "shadow") {
+          diagnostics.push(...attempt.diagnostics);
+
+          const merge = proposalState(
+            basis.base ?? {},
+            basis.current?.content ?? {},
+            attemptBody(basis.attempt, command.requestId),
+            [],
+            [],
+          );
+
+          for (const field of merge.fields) {
+            diagnostics.push({
+              code: `shadow_${field.state}`,
+              lineOrdinal: field.lineOrdinal,
+              fieldKey: field.fieldKey,
+              detail: "Diagnostic comparison only. No suggestion or reviewed fact was changed.",
+            });
+          }
+
+          if (basis.current === null)
+            diagnostics.push({
+              code: "shadow_no_reviewed_draft",
+              lineOrdinal: 0,
+              fieldKey: "",
+              detail: "No reviewed draft exists. Agreement with a human-reviewed value is unknown.",
+            });
+        }
+
+        const result = yield* Shared.decode(Extraction.SupplierDiagnosticStudy, {
+          scope: command.scope,
+          occurrenceId: command.occurrenceId,
+          requestId: command.requestId,
+          attemptId: attempt.attemptId,
+          sourceHash: attempt.sourceHash,
+          mode: command.input.mode,
+          draftId: basis.current?.id ?? null,
+          draftRevision: basis.current?.revision ?? null,
+          draftDigest: basis.current?.digest ?? null,
+          diagnostics,
+          createdAt: yield* isoNow(transaction),
+        });
+
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          replayed.expected,
+          "study_supplier_extraction_diagnostics",
+          principal.actorId,
+          yield* Shared.toJsonObject(result),
+        );
+
+        return result;
+      }),
+    );
+  },
+);
 
 // The base facts extraction has no vocabulary for. With no reviewed draft there
 // is nothing to merge against, so the preview names what a reviewer must supply
@@ -1837,14 +1944,29 @@ function runDocumentReader(
       Number(request.originalBytes),
     );
 
-    const physicalPages = yield* Effect.tryPromise({
-      try: () => physicalPageCount(bytes, mediaType),
-      catch: () =>
-        new Accounting.AccountingError({
-          code: "InvalidJournal",
-          message: "Original is outside the document profile.",
-        }),
-    });
+    const inspector = (yield* RequestEnvironment).bindings.DOCUMENT_INSPECTOR;
+
+    if (!inspector)
+      return failedReading(
+        "inspection_isolation_unavailable",
+        "Isolated document inspection is unavailable.",
+      );
+
+    const inspection = yield* Effect.tryPromise({
+      try: () => inspector(bytes, mediaType),
+      catch: (error) => (error instanceof Error ? error.message : "inspection_failed"),
+    }).pipe(Effect.result);
+
+    if (Result.isFailure(inspection)) {
+      if (inspection.failure === "inspection_capacity") return null;
+
+      return failedReading(
+        inspection.failure,
+        "Inspection could not complete. Review the retained original manually. An earlier reader submission may exist.",
+      );
+    }
+
+    const physicalPages = inspection.success.pages.length;
 
     const claimed = yield* Shared.withBook(token, scope, false, "update", (transaction) =>
       Effect.gen(function* () {
@@ -1933,7 +2055,7 @@ function runDocumentReader(
           : ("poll_unavailable" as const),
     }).pipe(Effect.result);
 
-    if (polled._tag === "Failure")
+    if (Result.isFailure(polled))
       return polled.failure === "invalid_output"
         ? {
             ...failedReading(
@@ -1959,18 +2081,17 @@ function runDocumentReader(
 
     return yield* Effect.try({
       try: () => {
-        const parsed = interpretDocument(polled.success, physicalPages);
+        const parsed = interpretDocument(polled.success, physicalPages, inspection.success);
 
         if (Shared.byteLength(JSON.stringify(parsed)) > 48000)
-          throw new Error("reader_retained_size");
+          throw new DocumentReadingError("reader_retained_size");
 
         return parsed;
       },
-      catch: () =>
-        new Accounting.AccountingError({
-          code: "InvalidJournal",
-          message: "Reader output rejected.",
-        }),
+      catch: (error) =>
+        error instanceof DocumentReadingError
+          ? error
+          : new DocumentReadingError("reader_output_schema"),
     }).pipe(
       Effect.flatMap((parsed) =>
         Effect.gen(function* () {
@@ -1999,15 +2120,27 @@ function runDocumentReader(
           } satisfies ExtractedReading;
         }),
       ),
-      Effect.catch(() =>
-        Effect.succeed({
-          ...failedReading(
-            "reader_output_rejected",
-            "The response could not be matched to bounded page evidence.",
-          ),
+      Effect.catch((error) => {
+        const rejected = failedReading(
+          "reader_output_rejected",
+          "The response could not be matched to bounded page evidence.",
+        );
+
+        return Effect.succeed({
+          ...rejected,
+          diagnostics: [
+            ...rejected.diagnostics,
+            {
+              code: error instanceof DocumentReadingError ? error.code : "reader_output_schema",
+              lineOrdinal: 0,
+              fieldKey: "",
+              detail:
+                "The reader response failed this evidence or capacity check. Review the original manually.",
+            },
+          ],
           result: "rejected_output" as const,
-        }),
-      ),
+        });
+      }),
     );
   }).pipe(
     Effect.catch(() =>

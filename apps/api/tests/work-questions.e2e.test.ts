@@ -180,7 +180,7 @@ test("a question follows one original through draft and review, and blocks posti
 
   expect(brokenAnswer.question.state).toBe("open");
   expect(brokenAnswer.question.waitingOn).toBe(book.actorId);
-  expect(brokenAnswer.question.events.at(-1)?.attachments[0]?.availability).toBe("unreadable");
+  expect(brokenAnswer.question.events.at(-1)?.attachments[0]?.availability).toBe("unavailable");
   await failure(
     await request(book, `/workspace/questions/${asked.question.id}/close`, {
       method: "POST",

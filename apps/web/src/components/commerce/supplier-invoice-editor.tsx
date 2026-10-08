@@ -16,6 +16,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { OriginalDocument } from "@/components/original-document";
 import type { PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { SourceLocators } from "./supplier-extraction";
+import { ExtractionDiagnostics } from "./extraction-diagnostics";
 import { sourceDocumentOptions } from "@/lib/source-documents";
 import { readAccounting } from "@/lib/accounting-api";
 import {
@@ -496,31 +497,37 @@ function ReadingSuggestions(
         attempt.fields.map((field) => {
           const name = names.find((item) => item.field === field.fieldKey);
 
-          if (!name || field.proposedValue === null) return null;
+          if (!name) return null;
 
           const value =
-            field.fieldKey === "sourceTotalMinor"
-              ? minorToDecimal(field.proposedValue, props.scale)
-              : field.proposedValue;
+            field.proposedValue === null
+              ? null
+              : field.fieldKey === "sourceTotalMinor"
+                ? minorToDecimal(field.proposedValue, props.scale)
+                : field.proposedValue;
 
           return (
             <Box key={field.fieldKey} display="grid" gap="sm">
               <Text>
-                {name.label}: {value}
-                {field.fieldKey === "sourceTotalMinor" ? ` ${props.book.currency}` : ""}
+                {name.label}: {value ?? (sv ? "Behöver granskas" : "Needs review")}
+                {value !== null && field.fieldKey === "sourceTotalMinor"
+                  ? ` ${props.book.currency}`
+                  : ""}
               </Text>
               <SourceLocators
                 locators={field.sourceLocators}
                 locale={props.locale}
                 onQuote={props.onQuote}
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => props.onUse(name.name, value, attempt.attemptId)}
-              >
-                {sv ? "Använd" : "Use"} {name.label.toLocaleLowerCase(props.locale)}
-              </Button>
+              {value !== null ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => props.onUse(name.name, value, attempt.attemptId)}
+                >
+                  {sv ? "Använd" : "Use"} {name.label.toLocaleLowerCase(props.locale)}
+                </Button>
+              ) : null}
             </Box>
           );
         })
@@ -531,6 +538,9 @@ function ReadingSuggestions(
             : "No completed suggestions are available. You can complete the draft manually."}
         </Text>
       )}
+      {attempt ? (
+        <ExtractionDiagnostics diagnostics={attempt.diagnostics} locale={props.locale} />
+      ) : null}
     </RecordSection>
   );
 }

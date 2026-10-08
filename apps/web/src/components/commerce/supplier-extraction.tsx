@@ -10,6 +10,7 @@ import { formatMinorAmount, signedDecimalToMinor } from "@/lib/workspace-api";
 import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { CommandForm, commercePath, type CommerceProps } from "./shared";
+import { ExtractionDiagnostics } from "./extraction-diagnostics";
 
 type State = typeof Extraction.SupplierExtractionState.Type;
 
@@ -564,8 +565,8 @@ function ExtractionAttempts(
               : "Missing pages — review the whole original"}
           .{" "}
           {locale === "sv"
-            ? "Hänvisningarna visar sida och citerad text, inte en exakt markering i originalet."
-            : "References show the page and quoted text, not an exact highlight in the original."}
+            ? "Öppna källhänvisningen för att kontrollera förslaget mot originalet. Källmarkering visas bara när läsaren har lämnat sidpositionen."
+            : "Open the source reference to check the suggestion against the original. A source highlight appears only when the reader supplied a page location."}
         </Text>
       ) : null}
       {extraction.attempt.fields.map((field) => (
@@ -586,11 +587,7 @@ function ExtractionAttempts(
       {extraction.attempt.diagnostics.length > 0 ? (
         <Box display="grid" gap="sm" minWidth="zero">
           <Heading>{text.diagnostics}</Heading>
-          {extraction.attempt.diagnostics.map((item, index) => (
-            <Text key={index}>
-              {item.code}, {item.lineOrdinal}, {item.fieldKey} {item.detail}
-            </Text>
-          ))}
+          <ExtractionDiagnostics diagnostics={extraction.attempt.diagnostics} locale={locale} />
         </Box>
       ) : null}
       {extraction.attempt.candidateLines.map((line) => (

@@ -6,7 +6,7 @@ import type { Transaction } from "../db/transaction";
 import * as Db from "../db/work-questions";
 import * as WorkspaceDb from "../db/workspace";
 import { readCandidateSource } from "../db/banking/candidates";
-import { physicalPageCount } from "../adapters/document-reading/azure";
+import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "./failures";
 import { digest, isoNow, newId, replay, saveCommand } from "./posting";
 import {
@@ -218,12 +218,27 @@ export function requireResolvedSupplierQuestions(tx: Transaction, scope: Scope, 
 
 function inspectContent(bytes: Uint8Array, mediaType: string) {
   if (["application/pdf", "image/png", "image/jpeg"].includes(mediaType))
-    return Effect.tryPromise({
-      try: () => physicalPageCount(bytes, mediaType),
-      catch: () => "unreadable" as const,
-    }).pipe(
-      Effect.as("readable" as const),
-      Effect.orElseSucceed(() => "unreadable" as const),
+    return Effect.flatMap(RequestEnvironment, ({ bindings }) =>
+      Effect.tryPromise({
+        try: () =>
+          bindings.DOCUMENT_INSPECTOR
+            ? bindings.DOCUMENT_INSPECTOR(bytes, mediaType)
+            : Promise.reject(new Error("inspection_isolation_unavailable")),
+        catch: (error) => (error instanceof Error ? error.message : "inspection_failed"),
+      }).pipe(
+        Effect.as("readable" as const),
+        Effect.orElseSucceed((code) =>
+          [
+            "document_invalid",
+            "pdf_signature",
+            "image_profile",
+            "page_limit",
+            "document_size",
+          ].includes(code)
+            ? ("unreadable" as const)
+            : ("unavailable" as const),
+        ),
+      ),
     );
 
   if (["text/plain", "text/csv", "application/json", "application/xml"].includes(mediaType))

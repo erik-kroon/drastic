@@ -175,12 +175,14 @@ async function documentFixture(
         Schema.fromJsonString(Schema.Struct({ base64Source: Schema.String })),
       )(Buffer.concat(chunks).toString());
 
+      const signatures = {
+        "application/pdf": "255044462d",
+        "image/png": "89504e470d",
+        "image/jpeg": "ffd8ffe000",
+      };
+
       expect(Buffer.from(body.base64Source, "base64").subarray(0, 5).toString("hex")).toBe(
-        mediaType === "application/pdf"
-          ? "255044462d"
-          : mediaType === "image/png"
-            ? "89504e470d"
-            : "ffd8ffe000",
+        signatures[mediaType],
       );
 
       if (loseSubmission) {
@@ -262,18 +264,19 @@ async function documentFixture(
     if (page === 0) sheet.drawText("1250,00 SEK", { x: 50, y: 650 });
   }
 
-  const bytes =
-    mediaType === "application/pdf"
-      ? await pdf.save()
-      : mediaType === "image/png"
-        ? Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=",
-            "base64",
-          )
-        : Buffer.from(
-            "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=",
-            "base64",
-          );
+  let bytes: Uint8Array;
+
+  if (mediaType === "application/pdf") bytes = await pdf.save();
+  else if (mediaType === "image/png")
+    bytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=",
+      "base64",
+    );
+  else
+    bytes = Buffer.from(
+      "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=",
+      "base64",
+    );
 
   const source = await decoded(
     await apiCall("/source-occurrences", {
@@ -381,6 +384,313 @@ function invoiceResponse(pages: number[] = [1, 2]) {
     },
   };
 }
+
+function geometricInvoiceResponse() {
+  const response = invoiceResponse();
+
+  return {
+    ...response,
+    analyzeResult: {
+      ...response.analyzeResult,
+      pages: response.analyzeResult.pages.map((page) => ({
+        ...page,
+        unit: "inch",
+        width: 595.28 / 72,
+        height: 841.89 / 72,
+      })),
+      documents: [
+        {
+          docType: "prebuilt:invoice",
+          fields: {
+            InvoiceId: {
+              ...response.analyzeResult.documents[0]!.fields.InvoiceId,
+              confidence: 0.95,
+              boundingRegions: [
+                {
+                  pageNumber: 1,
+                  polygon: [50, 130, 135, 130, 135, 145, 50, 145].map((point) => point / 72),
+                },
+              ],
+            },
+            InvoiceTotal: {
+              ...response.analyzeResult.documents[0]!.fields.InvoiceTotal,
+              confidence: 0.2,
+              boundingRegions: [
+                {
+                  pageNumber: 1,
+                  polygon: [50, 180, 130, 180, 130, 195, 50, 195].map((point) => point / 72),
+                },
+              ],
+            },
+            VendorName: { content: "Unsupported synthetic supplier" },
+          },
+        },
+      ],
+    },
+  };
+}
+
+test("retains geometric evidence, uncertainty and separate off/shadow diagnostics without changing review", async () => {
+  const ctx = await documentFixture();
+
+  try {
+    ctx.setResponse(geometricInvoiceResponse());
+    const admitted = await ctx.request();
+
+    await ctx.run(admitted.request.id);
+    const before = await decoded(await ctx.apiCall(ctx.path), Extraction.SupplierExtractionState);
+    const attempt = before.attempt;
+
+    expect(attempt?.result).toBe("succeeded");
+    expect(attempt?.sourceHash).toBe(ctx.source.sha256);
+    expect(
+      attempt?.fields.find((field) => field.fieldKey === "sourceTotalMinor")?.proposedValue,
+    ).toBeNull();
+    expect(
+      attempt?.fields.find((field) => field.fieldKey === "supplierDocumentNumber")?.sourceLocators,
+    ).toEqual([
+      {
+        kind: "document_quote",
+        page: 1,
+        quote: "SYNTHETIC-1",
+        textOffset: 0,
+        textLength: 11,
+        region: {
+          scale: 1000000000,
+          polygon: [
+            50 / 595.28,
+            130 / 841.89,
+            135 / 595.28,
+            130 / 841.89,
+            135 / 595.28,
+            145 / 841.89,
+            50 / 595.28,
+            145 / 841.89,
+          ].map((value) => Math.round(value * 1000000000)),
+        },
+      },
+    ]);
+    expect(attempt?.diagnostics.map((item) => item.code)).toContain("reader_low_confidence");
+    expect(attempt?.diagnostics).toContainEqual({
+      code: "reader_field_unsupported",
+      lineOrdinal: 0,
+      fieldKey: "VendorName",
+      detail: "The reader returned a field outside the supported extraction vocabulary.",
+    });
+    expect(
+      attempt?.diagnostics.some(
+        (item) => item.code === "source_field_missing" && item.fieldKey === "documentDate",
+      ),
+    ).toBe(true);
+
+    if (!attempt) throw new Error("Retained attempt required");
+    const studyPath = `${ctx.path}/${admitted.request.id}/diagnostics`;
+
+    const shadow = await decoded(
+      await ctx.apiCall(studyPath, { attemptId: attempt.attemptId, mode: "shadow" }),
+      Extraction.SupplierDiagnosticStudy,
+    );
+
+    const off = await decoded(
+      await ctx.apiCall(studyPath, { attemptId: attempt.attemptId, mode: "off" }),
+      Extraction.SupplierDiagnosticStudy,
+    );
+
+    expect(shadow.sourceHash).toBe(ctx.source.sha256);
+    expect(shadow.draftId).toBeNull();
+    expect(shadow.diagnostics.map((item) => item.code)).toContain("shadow_no_reviewed_draft");
+    expect(off.mode).toBe("off");
+    expect(off.diagnostics).toEqual([]);
+    const after = await decoded(await ctx.apiCall(ctx.path), Extraction.SupplierExtractionState);
+
+    expect(after).toEqual(before);
+    expect(ctx.counts()).toEqual({ submissions: 1, polls: 1 });
+    await writeFile(
+      join(environment().artifacts, "document-reader-diagnostics.json"),
+      JSON.stringify(
+        {
+          synthetic: true,
+          expectedSourceHash: ctx.source.sha256,
+          before,
+          shadow,
+          off,
+          after,
+          provider: ctx.counts(),
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await ctx.close();
+  }
+});
+
+test(
+  "rejects false geometry, overlapping page evidence and diagnostic overflow without another reader",
+  { timeout: 90000 },
+  async () => {
+    const ctx = await documentFixture();
+
+    const observations: Array<{
+      defect: string;
+      state: typeof Extraction.SupplierExtractionState.Type;
+    }> = [];
+
+    try {
+      for (const defect of [
+        "outside_page",
+        "wrong_dimensions",
+        "empty_polygon",
+        "overlapping_pages",
+        "diagnostic_overflow",
+      ]) {
+        const response = geometricInvoiceResponse();
+
+        if (defect === "outside_page")
+          response.analyzeResult.documents[0]!.fields.InvoiceId.boundingRegions[0]!.polygon[0] = 1000;
+
+        if (defect === "wrong_dimensions") response.analyzeResult.pages[0]!.width = 1000;
+
+        if (defect === "empty_polygon")
+          response.analyzeResult.documents[0]!.fields.InvoiceId.boundingRegions[0]!.polygon.fill(0);
+
+        if (defect === "overlapping_pages")
+          response.analyzeResult.pages[1]!.spans = [{ offset: 0, length: 11 }];
+
+        const fields =
+          defect === "diagnostic_overflow"
+            ? {
+                ...response.analyzeResult.documents[0]!.fields,
+                Items: { valueArray: Array.from({ length: 50 }, () => ({ valueObject: {} })) },
+              }
+            : response.analyzeResult.documents[0]!.fields;
+
+        ctx.setResponse({
+          ...response,
+          analyzeResult: {
+            ...response.analyzeResult,
+            documents: [{ docType: "prebuilt:invoice", fields }],
+          },
+        });
+
+        const admitted = await ctx.request();
+
+        await ctx.run(admitted.request.id);
+
+        const state = await decoded(
+          await ctx.apiCall(ctx.path),
+          Extraction.SupplierExtractionState,
+        );
+
+        expect(state.attempt?.result).toBe("rejected_output");
+        expect(state.attempt?.fields).toEqual([]);
+        expect(state.attempt?.diagnostics[0]?.code).toBe("reader_output_rejected");
+
+        const reasons = new Map([
+          ["outside_page", "reader_geometry_bounds"],
+          ["wrong_dimensions", "reader_geometry_page"],
+          ["empty_polygon", "reader_geometry_empty"],
+          ["overlapping_pages", "reader_page_overlap"],
+          ["diagnostic_overflow", "reader_diagnostic_limit"],
+        ]);
+
+        expect(state.attempt?.diagnostics[1]?.code).toBe(reasons.get(defect));
+        observations.push({ defect, state });
+      }
+
+      expect(ctx.counts()).toEqual({ submissions: 5, polls: 5 });
+      await writeFile(
+        join(environment().artifacts, "document-reader-capacity.json"),
+        JSON.stringify(
+          {
+            synthetic: true,
+            expectedResult: "rejected_output",
+            observations,
+            provider: ctx.counts(),
+          },
+          null,
+          2,
+        ),
+      );
+    } finally {
+      await ctx.close();
+    }
+  },
+);
+
+test(
+  "inspection contention preserves a ready request and retries without duplicate disclosure",
+  { timeout: 90000 },
+  async () => {
+    const ctx = await documentFixture();
+
+    try {
+      ctx.setResponse(invoiceResponse());
+      const first = await ctx.request();
+      const secondSource = await original(ctx.book, ctx.bytes, "application/pdf");
+      const secondPath = `/commerce/supplier-inbox/${secondSource.id}/extraction`;
+
+      const second = await decoded(
+        await ctx.apiCall(secondPath, {
+          engineRelease: "azure-invoice-v1",
+          pageSelection: "all",
+          amountProfile: "sv-SE-SEK",
+          dataUsePolicy: "retain_output",
+        }),
+        Extraction.SupplierExtractionRequestResult,
+      );
+
+      const input = join(environment().scratch, `parallel-${key()}.json`);
+
+      await writeFile(
+        input,
+        JSON.stringify({
+          action: "parallel",
+          scope: { entityId: ctx.book.entityId, bookId: ctx.book.bookId },
+          requestIds: [first.request.id, second.request.id],
+        }),
+      );
+      await run("bun", ["tests/support/document-reader-runner.ts", input], {
+        cwd: apiDirectory,
+        env: {
+          ...process.env,
+          DATABASE_URL: environment().runtimeUrl,
+          OPENERP_PREPARATION_TOKEN: ctx.runnerToken,
+          EVIDENCE_STORE_ROOT: join(environment().scratch, "document-objects"),
+          DOCUMENT_READER_FIXTURE: ctx.endpoint,
+        },
+      });
+
+      const before = await Promise.all(
+        [ctx.path, secondPath].map(async (path) =>
+          decoded(await ctx.apiCall(path), Extraction.SupplierExtractionState),
+        ),
+      );
+
+      expect(before.filter((state) => state.attempt === null)).toHaveLength(1);
+      expect(before.filter((state) => state.requests[0]?.state === "ready")).toHaveLength(1);
+      expect(ctx.counts()).toEqual({ submissions: 1, polls: 1 });
+      await ctx.run(first.request.id);
+      await ctx.run(second.request.id);
+
+      const after = await Promise.all(
+        [ctx.path, secondPath].map(async (path) =>
+          decoded(await ctx.apiCall(path), Extraction.SupplierExtractionState),
+        ),
+      );
+
+      expect(after.every((state) => state.attempt?.result === "succeeded")).toBe(true);
+      expect(ctx.counts()).toEqual({ submissions: 2, polls: 2 });
+      await writeFile(
+        join(environment().artifacts, "document-reader-inspection-retry.json"),
+        JSON.stringify({ synthetic: true, before, after, provider: ctx.counts() }, null, 2),
+      );
+    } finally {
+      await ctx.close();
+    }
+  },
+);
 
 test(
   "PDF reading retains page evidence, resumes polling and never repeats submission",
@@ -562,6 +872,29 @@ test(
 
       expect(after.currentDigest).toBe(edited.digest);
 
+      const shadow = await decoded(
+        await local.apiCall(`${local.path}/${next.request.id}/diagnostics`, {
+          attemptId: nextState.attempt!.attemptId,
+          mode: "shadow",
+        }),
+        Extraction.SupplierDiagnosticStudy,
+      );
+
+      expect(shadow.draftDigest).toBe(edited.digest);
+      expect(shadow.draftRevision).toBe(edited.revision);
+      expect(
+        shadow.diagnostics.some(
+          (item) => item.fieldKey === "supplierDocumentNumber" && item.code.startsWith("shadow_"),
+        ),
+      ).toBe(true);
+
+      const afterShadow = await decoded(
+        await request(local.book, `/commerce/supplier-invoice-drafts/${current.id}`),
+        SupplierDrafts.SupplierInvoiceDraftView,
+      );
+
+      expect(afterShadow).toEqual(after);
+
       const inboxList = await decoded(
         await local.apiCall("/commerce/supplier-inbox"),
         Inbox.SupplierInboxPage,
@@ -578,7 +911,7 @@ test(
 
       await writeFile(
         join(environment().artifacts, "document-reader-review.json"),
-        JSON.stringify({ created, edited, conflict, after }, null, 2),
+        JSON.stringify({ created, edited, conflict, after, shadow, afterShadow }, null, 2),
       );
 
       if (process.env.DOCUMENT_BROWSER_PROOF === "1") {

@@ -1,0 +1,15 @@
+{
+  "styles": {
+    "37KK-0": {
+      "display": "flex",
+      "overflow": "clip",
+      "width": "375px",
+      "height": "375px",
+      "position": "absolute",
+      "left": "7600px",
+      "top": "0px",
+      "flexDirection": "column",
+      "backgroundColor": "#FFFFFF"
+    }
+  }
+}

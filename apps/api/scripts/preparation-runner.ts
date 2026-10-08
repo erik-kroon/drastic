@@ -1,3 +1,4 @@
+import { inspectDocument } from "./document-inspection/inspection";
 import {
   RecurringDraftQueue,
   handleRecurringDraft,
@@ -73,6 +74,7 @@ const evidenceStore = process.env.OPENERP_OBJECT_DIRECTORY
     : undefined;
 
 const bindings: Bindings = {
+  DOCUMENT_INSPECTOR: inspectDocument,
   OPENERP_PREPARATION_TOKEN: token,
   REMINDER_DELIVERY: configuredReminderDelivery({
     OPENERP_REMINDER_DELIVERY: process.env.OPENERP_REMINDER_DELIVERY,

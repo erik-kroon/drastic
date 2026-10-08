@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+import { SourceHighlight, type SourceRegion } from "./source-highlight";
 
 const styles = stylex.create({
   frame: {
@@ -11,6 +12,7 @@ const styles = stylex.create({
     backgroundColor: tokens.muted,
   },
   image: {
+    display: "block",
     maxWidth: "100%",
     maxHeight: 800,
     objectFit: "contain",
@@ -19,6 +21,7 @@ const styles = stylex.create({
     outlineColor: tokens.imageOutline,
     borderRadius: tokens.radiusMd,
   },
+  imageFrame: { position: "relative", width: "fit-content", maxWidth: "100%" },
   text: {
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
@@ -53,14 +56,17 @@ export function DocumentPreview({
   filename,
   compact = false,
   archive = false,
+  highlight,
 }: {
   content: string;
   mediaType: string;
   filename: string;
   compact?: boolean;
   archive?: boolean;
+  highlight?: { readonly region: SourceRegion; readonly quote: string; readonly label: string };
 }) {
   const [url, setUrl] = useState("");
+  const [image, setImage] = useState<{ url: string; width: number; height: number } | null>(null);
   useEffect(() => {
     const bytes = Uint8Array.from(atob(content), (char) => char.charCodeAt(0));
     const next = URL.createObjectURL(new Blob([bytes], { type: mediaType }));
@@ -86,15 +92,32 @@ export function DocumentPreview({
 
   if (mediaType === "image/png" || mediaType === "image/jpeg")
     return (
-      <img
-        src={url}
-        alt={filename}
-        {...stylex.props(
-          styles.image,
-          (compact || archive) && styles.compact,
-          archive && styles.archive,
-        )}
-      />
+      <div {...stylex.props(styles.imageFrame)}>
+        <img
+          src={url}
+          alt={filename}
+          onLoad={(event) =>
+            setImage({
+              url,
+              width: event.currentTarget.naturalWidth,
+              height: event.currentTarget.naturalHeight,
+            })
+          }
+          {...stylex.props(
+            styles.image,
+            (compact || archive) && styles.compact,
+            archive && styles.archive,
+          )}
+        />
+        {highlight && image?.url === url ? (
+          <SourceHighlight
+            region={highlight.region}
+            label={`${highlight.label}: ${highlight.quote}`}
+            width={image.width}
+            height={image.height}
+          />
+        ) : null}
+      </div>
     );
 
   if (
