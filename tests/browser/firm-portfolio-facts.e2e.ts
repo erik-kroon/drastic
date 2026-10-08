@@ -265,21 +265,50 @@ test("portfolio retains period and declared deadline while incomplete bank and c
     expectedRevision: 0,
   });
   const portfolioUrl = `${origin}/firms?firm=${firm.firmId}&tab=clients`;
+  const undatedCompany = await call("/companies", Company.CompanySetup, {
+    name: "0 synthetic missing deadline",
+  });
+
+  await call(`/firms/${firm.firmId}/clients`, Firms.CommandResult, {
+    scope: undatedCompany.scope,
+    leadId: workspace.actorId,
+    nextReviewOn: "2026-08-01",
+    note: "Missing obligation is not an accountant review date",
+    expectedRevision: 0,
+  });
 
   await app.open(portfolioUrl);
   await expect(screen.getByRole("columnheader", "Nästa deadline", { exact: true })).toBeVisible();
-  const names = screen.getByRole("link", /^(Synthetic bureau source observations|A synthetic later deadline)$/);
+  const names = screen.getByRole(
+    "link",
+    /^(Synthetic bureau source observations|A synthetic later deadline|0 synthetic missing deadline)$/,
+  );
 
-  await expect(names).toHaveCount(2);
+  await expect(names).toHaveCount(3);
   await expect(names.nth(0)).toHaveText("Synthetic bureau source observations");
+  await expect(names.nth(2)).toHaveText("0 synthetic missing deadline");
   await expect(screen.getByText("Synthetic retained VAT deadline", { exact: true })).toBeVisible();
   await expect(screen.getByText("13 nov. 2026", { exact: true })).toBeVisible();
+  const moved = await call(`${path}/deadlines/deadline_portfolio`, Deadlines.Deadline, {
+    expectedRevision: revised.revision,
+    input: {
+      ...deadlineInput,
+      dueAt: "2026-12-02T12:00:00.000Z",
+      statutoryBasis: { ...statutoryBasis, basisDueAt: "2026-12-02T12:00:00.000Z" },
+      sourceRevision: "synthetic_v3",
+      overrideReason: "Synthetic public owner revision for browser reload",
+    },
+  });
+
   await app.open(portfolioUrl);
-  await expect(names.nth(0)).toHaveText("Synthetic bureau source observations");
-  await expect(screen.getByText("13 nov. 2026", { exact: true })).toBeVisible();
+  await expect(names.nth(0)).toHaveText("A synthetic later deadline");
+  await expect(names.nth(1)).toHaveText("Synthetic bureau source observations");
+  await expect(names.nth(2)).toHaveText("0 synthetic missing deadline");
+  await expect(screen.getByText("2 dec. 2026", { exact: true })).toBeVisible();
+  await expect(screen.getByText("13 nov. 2026", { exact: true })).toHaveCount(0);
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
   await agent.assert(
-    "The portfolio shows a next-deadline column with the retained synthetic VAT deadline and the later synthetic deadline. The client with the November deadline precedes the client with the December deadline. This is a synthetic observation, not statutory certification.",
+    "The portfolio shows a next-deadline column with retained synthetic obligations. A synthetic later deadline precedes Synthetic bureau source observations, and the client named 0 synthetic missing deadline is last. This is a synthetic observation, not statutory certification.",
   );
   const deadlineScreenshot = await app.screenshot("portfolio-retained-deadline-order");
 
@@ -299,6 +328,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
         imported,
         datedFacts,
         deadlineScreenshot,
+        moved,
         before,
       },
       null,

@@ -13,6 +13,7 @@ import {
   RegisterChoices,
 } from "@open-erp/ui/components/accounting-page";
 import { ClientPeriod } from "./client-period";
+import { ClientDeadline, nextClientDeadline, compareClientDeadlines } from "./client-deadline";
 import { ClientDialog } from "./client-dialog";
 import { PortfolioPagination, portfolioPageSize } from "./portfolio-pagination";
 import { rememberPortfolio } from "./portfolio-return";
@@ -47,14 +48,19 @@ export function FirmPortfolio(props: {
   const [editing, setEditing] = useState<{ client: typeof Firms.Client.Type | null } | null>(null);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
 
+  const deadlines = new Map(
+    props.portfolio.clients.map((facts) => [facts.scope.bookId, nextClientDeadline(facts)]),
+  );
+
   const filtered = workspace.clients.filter((client) =>
     matchesPortfolio(client, workspace.actorId, search, view, today, locale),
   );
 
   const sorted = [...filtered].sort(
     (a, b) =>
-      (a.nextReviewOn ?? "9999").localeCompare(b.nextReviewOn ?? "9999") ||
-      a.book.name.localeCompare(b.book.name, locale),
+      compareClientDeadlines(deadlines.get(a.book.id) ?? null, deadlines.get(b.book.id) ?? null) ||
+      a.book.name.localeCompare(b.book.name, locale) ||
+      a.book.id.localeCompare(b.book.id),
   );
 
   const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / portfolioPageSize) - 1));
@@ -128,6 +134,7 @@ export function FirmPortfolio(props: {
             { id: "period", label: sv ? "Senaste period" : "Latest period" },
             { id: "lead", label: sv ? "Klientansvarig" : "Responsible accountant" },
             { id: "review", label: sv ? "Nästa avstämning" : "Next review" },
+            { id: "deadline", label: sv ? "Nästa deadline" : "Next deadline" },
             { id: "work", label: sv ? "Att granska" : "To review", numeric: true },
             { id: "details", label: sv ? "Klient" : "Client" },
           ]}
@@ -175,6 +182,11 @@ export function FirmPortfolio(props: {
                 ) : (
                   "—"
                 ),
+                <ClientDeadline
+                  key="deadline"
+                  deadline={deadlines.get(client.book.id) ?? null}
+                  locale={locale}
+                />,
                 period && facts.openTasks !== null ? (
                   <Box key="work" display="grid" gap="sm" alignItems="end">
                     <Link
