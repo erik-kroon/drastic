@@ -126,7 +126,9 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   const portfolioUrl = `/firms?firm=${encodeURIComponent(firm.firmId)}&tab=clients`;
 
   await app.open(portfolioUrl);
-  await expect(screen.getByRole("columnheader", { name: "Bankavstämning", exact: true })).toBeVisible();
+  await expect(
+    screen.getByRole("columnheader", { name: "Bankavstämning", exact: true }),
+  ).toBeVisible();
   await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
   await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
 
@@ -286,7 +288,9 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   await app.open(portfolioUrl);
   await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
   await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
-  await agent.assert("The client portfolio shows an unknown bank reconciliation state, with no reconciled label. Do not infer company completeness or financial closing readiness from the zero-activity synthetic account.");
+  await agent.assert(
+    "The client portfolio shows an unknown bank reconciliation state, with no reconciled label. Do not infer company completeness or financial closing readiness from the zero-activity synthetic account.",
+  );
   await app.screenshot("portfolio-stale-bank-inventory");
 
   await writeFile(
