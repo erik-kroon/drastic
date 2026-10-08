@@ -117,7 +117,12 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   expect(observed.openTasks).toBe("0");
   expect(observed.company.details.accountingMethod).toBe(null);
   expect(observed.company.details.organizationNumber).toBe(null);
-  expect(observed.deadlines).toEqual([deadline]);
+  expect(observed.deadlines).toEqual([
+    {
+      ...deadline,
+      status: Date.parse(dueAt) < Date.parse(facts.observedFrom) ? "overdue" : "upcoming",
+    },
+  ]);
   expect(deadline.statutory_basis).toEqual(statutoryBasis);
   expect(new Date(deadline.due_at).toISOString()).toBe(dueAt);
   expect(facts.workspace.clients[0]?.nextReviewOn).toBe("2026-10-01");
@@ -157,7 +162,13 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   expect(revised.current_outcome).toBe(null);
   const revisedFacts = await call(`/firms/${firm.firmId}/portfolio`, Firms.Portfolio);
 
-  expect(revisedFacts.clients[0]?.deadlines).toEqual([revised]);
+  expect(revisedFacts.clients[0]?.deadlines).toEqual([
+    {
+      ...revised,
+      status:
+        Date.parse(revisedDueAt) < Date.parse(revisedFacts.observedFrom) ? "overdue" : "upcoming",
+    },
+  ]);
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
 
   await writeFile(
