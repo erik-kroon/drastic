@@ -30,6 +30,8 @@ const families = [
 test("portfolio preserves dated bank observations and signed whole-inventory identity through invalidation", async ({
   app,
   browser,
+  screen,
+  agent,
 }) => {
   const output = process.env.OPENERP_E2E_OUTPUT;
 
@@ -120,6 +122,13 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   expect(historicalFacts.bankObservations[0]?.account.statementId).toBe(early.statement.id);
   expect(historicalFacts.bankObservations[0]?.account.differenceMinor).toBe("0");
   expect(historicalFacts.bankInventorySignoffs).toEqual([]);
+
+  const portfolioUrl = `/firms?firm=${encodeURIComponent(firm.firmId)}&tab=clients`;
+
+  await app.open(portfolioUrl);
+  await expect(screen.getByRole("columnheader", { name: "Bankavstämning", exact: true })).toBeVisible();
+  await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
+  await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
 
   const finalStatement = await importStatement("2026-09-29", "2026-12-31");
 
@@ -237,6 +246,10 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
     view.signedArtifact.sha256,
   );
 
+  await app.open(portfolioUrl);
+  await expect(screen.getByText("Avstämd", { exact: true })).toBeVisible();
+  await app.screenshot("portfolio-current-bank-inventory");
+
   const replacementEvidence = await evidence(
     "Synthetic replacement inventory review",
     JSON.stringify({ synthetic: true, replaces: inventory.id }),
@@ -270,6 +283,12 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   });
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
 
+  await app.open(portfolioUrl);
+  await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
+  await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
+  await agent.assert("The client portfolio shows an unknown bank reconciliation state, with no reconciled label. Do not infer company completeness or financial closing readiness from the zero-activity synthetic account.");
+  await app.screenshot("portfolio-stale-bank-inventory");
+
   await writeFile(
     join(output, "firm-portfolio-bank.json"),
     JSON.stringify(
@@ -277,7 +296,7 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
         scope:
           "Real public synthetic statement/coverage/account/whole-inventory signing and retained portfolio observations",
         limits:
-          "No V1 browser/parity, nonzero bank difference, multi-account or whole-company completeness, financial close or live provider qualification",
+          "Bank cell browser/currentness only; no full V1 parity, nonzero bank difference, multi-account or whole-company completeness, financial close or live provider qualification",
         before,
         early,
         finalStatement,
