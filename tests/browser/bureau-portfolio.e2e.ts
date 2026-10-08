@@ -197,6 +197,7 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
         firm: firm.firmId,
         observed,
         initial,
+        facts,
         final,
         before,
         after,

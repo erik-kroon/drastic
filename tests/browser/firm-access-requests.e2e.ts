@@ -104,6 +104,17 @@ test("firm access requests retain local scoped metadata without accounting power
     ],
   });
 
+  const portfolio = Schema.decodeUnknownSync(Firms.Portfolio)(
+    await read(`/firms/${firm.firmId}/portfolio`),
+  );
+
+  expect(portfolio.workspace).toEqual(initial);
+  expect(portfolio.clients).toEqual([]);
+
+  const foreignPortfolio = await request("/firms/firm_unavailable/portfolio");
+
+  expect(foreignPortfolio.status).toBe(403);
+
   const conflict = await request(path, { ...input, clientName: "Changed declaration" }, key);
   const stale = await request(path, { ...input, state: "revoked" });
   const foreign = await request("/firms/firm_unavailable/access-requests", input);
@@ -213,6 +224,7 @@ test("firm access requests retain local scoped metadata without accounting power
         limits:
           "No browser request UI, external invitation delivery, owner access grant, other human actor, inactive member or inventory-boundary qualification. Requests declare metadata only and contain no financial facts.",
         initial,
+        portfolio,
         final,
         saved,
         revoked,
@@ -224,6 +236,7 @@ test("firm access requests retain local scoped metadata without accounting power
           conflict: conflict.status,
           stale: stale.status,
           foreign: foreign.status,
+          foreignPortfolio: foreignPortfolio.status,
           extra: extra.status,
           missingLead: missingLead.status,
           clientRace: clientRace.status,

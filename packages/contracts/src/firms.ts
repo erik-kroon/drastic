@@ -2,6 +2,11 @@ import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
+import { CompanySetup } from "./company-setup";
+import { DeadlineList } from "./deadlines";
+import { BankWorkspace } from "./bank-workspace";
+import { BankSignoffList } from "./bank-signoffs";
+import { ClosingReadiness } from "./closing";
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
 
@@ -67,6 +72,32 @@ export const Workspace = Schema.Struct({
   accessRequests: Schema.Array(AccessRequest).check(Schema.isMaxLength(200)),
 });
 
+export const PortfolioClientFacts = Schema.Struct({
+  scope: Accounting.Scope,
+  company: CompanySetup,
+  period: Schema.NullOr(Accounting.BookSetup.fields.periods.value),
+  openTasks: Schema.NullOr(Accounting.MinorUnits),
+  deadlines: DeadlineList,
+  bank: Schema.NullOr(BankWorkspace),
+  bankSignoffs: Schema.Array(
+    Schema.Struct({
+      ...BankSignoffList.fields.items.value.fields,
+      dependenciesCurrent: Schema.Boolean,
+      reviewScope: Schema.Literal("selected_declared_bank_account"),
+      coverage: Schema.Literal("not_established"),
+      financialCloseReady: Schema.Literal(false),
+    }),
+  ).check(Schema.isMaxLength(200)),
+  closing: Schema.NullOr(ClosingReadiness),
+});
+
+export const Portfolio = Schema.Struct({
+  workspace: Workspace,
+  observedFrom: Schema.String,
+  observedUntil: Schema.String,
+  clients: Schema.Array(PortfolioClientFacts).check(Schema.isMaxLength(200)),
+});
+
 export const CreateFirm = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
 });
@@ -111,6 +142,14 @@ export const FirmCapabilities = {
     output: Workspace,
     readOnly: true,
   },
+  firm_get_portfolio: {
+    description:
+      "Read permitted client observations from company, canonical work, deadline, bank and closing owners. Pending access metadata contains no accounting facts. This live observation interval is not an atomic multi-book snapshot, verified company readiness or an access grant.",
+    input: path,
+    output: Portfolio,
+    readOnly: true,
+    agentCallable: false,
+  },
   firm_create: {
     description:
       "Create a firm workspace for the current provisioned human, without granting any accounting permissions.",
@@ -154,6 +193,11 @@ export const FirmApi = HttpApiGroup.make("firms").add(
   HttpApiEndpoint.get("getFirm", "/v1/firms/:firmId", {
     params: path,
     success: Workspace,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("getFirmPortfolio", "/v1/firms/:firmId/portfolio", {
+    params: path,
+    success: Portfolio,
     error: accountingErrors,
   }),
   HttpApiEndpoint.post("createFirm", "/v1/firms", {

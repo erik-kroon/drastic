@@ -1,5 +1,6 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
+import { getFirmPortfolio } from "../firm-portfolio";
 import {
   createCompany,
   getCompanySetup,
@@ -26,6 +27,7 @@ export const companyFirmCapabilities = {
   ),
   firm_list: effectCapability(Capabilities.firm_list, (token) => listFirms(token)),
   firm_get: effectCapability(Capabilities.firm_get, getFirm),
+  firm_get_portfolio: effectCapability(Capabilities.firm_get_portfolio, getFirmPortfolio),
   firm_create: effectCapability(Capabilities.firm_create, createFirm),
   firm_save_client: effectCapability(Capabilities.firm_save_client, saveFirmClient),
   firm_remove_client: effectCapability(Capabilities.firm_remove_client, removeFirmClient),

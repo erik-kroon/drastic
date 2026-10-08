@@ -3,12 +3,16 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import * as Firms from "../../../application/firms";
+import { getFirmPortfolio } from "../../../application/firm-portfolio";
 
 export const FirmHandlers = HttpApiBuilder.group(Api, "firms", (handlers) =>
   handlers
     .handle("listFirms", () => Effect.flatMap(authenticate, (token) => Firms.listFirms(token)))
     .handle("getFirm", ({ params }) =>
       Effect.flatMap(authenticate, (token) => Firms.getFirm(token, { firmId: params.firmId })),
+    )
+    .handle("getFirmPortfolio", ({ params }) =>
+      Effect.flatMap(authenticate, (token) => getFirmPortfolio(token, params)),
     )
     .handle("createFirm", ({ headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
