@@ -73,6 +73,25 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   expect(initial.clients).toHaveLength(50);
   expect(initial.clients.filter((client) => client.leadId === actor.actorId)).toHaveLength(25);
 
+  const facts = await call(`/firms/${firm.firmId}/portfolio`, Schema.JsonObject);
+
+  expect(facts.workspace).toEqual(initial);
+  expect(facts.clients).toEqual(
+    initial.clients.map((client) => ({
+      scope: { entityId: client.book.entityId, bookId: client.book.id },
+      company: clients.find((company) => company.scope.bookId === client.book.id),
+      period: null,
+      openTasks: null,
+      deadlines: [],
+      bank: null,
+      bankSignoffs: [],
+      closing: null,
+    })),
+  );
+
+  expect(typeof facts.observedFrom).toBe("string");
+  expect(typeof facts.observedUntil).toBe("string");
+
   const portfolio = `${origin}/firms?firm=${firm.firmId}&tab=clients`;
 
   await app.open(portfolio);
