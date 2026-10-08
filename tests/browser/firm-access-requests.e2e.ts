@@ -183,7 +183,7 @@ test("firm access requests retain local scoped metadata without accounting power
     request(`/firms/${otherFirm.firmId}/access-requests`, input, raceKey),
   ]);
 
-  expect([clientRace.status, requestRace.status].sort()).toEqual([200, 409]);
+  expect([clientRace.status, requestRace.status].sort((a, b) => a - b)).toEqual([200, 409]);
 
   const raceClientState = Schema.decodeUnknownSync(Firms.Workspace)(
     await read(`/firms/${firm.firmId}`),
