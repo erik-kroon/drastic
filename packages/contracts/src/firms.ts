@@ -112,7 +112,33 @@ export const Portfolio = Schema.Struct({
   observedFrom: Schema.String,
   observedUntil: Schema.String,
   clients: Schema.Array(PortfolioClientFacts).check(Schema.isMaxLength(200)),
-});
+}).check(
+  Schema.makeFilter(
+    (portfolio) =>
+      (portfolio.clients.length === portfolio.workspace.clients.length &&
+        portfolio.workspace.clients.every(
+          (client) =>
+            portfolio.clients.filter(
+              (facts) =>
+                facts.scope.entityId === client.book.entityId &&
+                facts.scope.bookId === client.book.id,
+            ).length === 1,
+        ) &&
+        portfolio.clients.every(
+          (facts) =>
+            facts.company.scope.entityId === facts.scope.entityId &&
+            facts.company.scope.bookId === facts.scope.bookId &&
+            facts.deadlines.every((deadline) => deadline.book_id === facts.scope.bookId) &&
+            (facts.bank === null ||
+              (facts.bank.scope.entityId === facts.scope.entityId &&
+                facts.bank.scope.bookId === facts.scope.bookId)) &&
+            (facts.closing === null ||
+              (facts.closing.scope.entityId === facts.scope.entityId &&
+                facts.closing.scope.bookId === facts.scope.bookId)),
+        )) ||
+      "Portfolio observations must match exactly the permitted client population and scope.",
+  ),
+);
 
 export const CreateFirm = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100)),

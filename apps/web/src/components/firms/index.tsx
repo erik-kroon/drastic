@@ -41,41 +41,7 @@ export function FirmsWorkspace(props: {
   const sv = locale === "sv";
   const [creating, setCreating] = useState(false);
 
-  const firms = useQuery({
-    queryKey: ["accounting", "firms"],
-    queryFn: ({ signal }) => readAccounting("/api/v1/firms", Firms.FirmList, { signal }),
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: "always",
-    gcTime: 0,
-  });
-
-  const current = props.firmId ?? firms.data?.[0]?.id;
-  const listed = firms.data?.some((firm) => firm.id === current) ?? false;
-
-  const workspace = useQuery({
-    queryKey: ["accounting", "firms", current],
-    enabled: Boolean(current) && listed && firms.isSuccess,
-    queryFn: ({ signal }) =>
-      readAccounting(`/api/v1/firms/${current}`, Firms.Workspace, { signal }),
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: "always",
-    gcTime: 0,
-  });
-
-  const known = firms.isSuccess && firms.isFetchedAfterMount;
-
-  const ready =
-    known &&
-    listed &&
-    !firms.isFetching &&
-    workspace.isSuccess &&
-    workspace.isFetchedAfterMount &&
-    !workspace.isFetching &&
-    workspace.data.firm.id === current;
+  const reads = useFirmReads(props);
 
   return (
     <Workspace
@@ -102,12 +68,18 @@ export function FirmsWorkspace(props: {
       }
     >
       <WorkspaceHeader
-        title={ready ? workspace.data.firm.name : sv ? "Byrå" : "Firm"}
+        title={
+          reads.ready && reads.currentWorkspace
+            ? reads.currentWorkspace.firm.name
+            : sv
+              ? "Byrå"
+              : "Firm"
+        }
         action={
-          known ? (
+          reads.known && reads.firms.data ? (
             <FirmPicker
-              firms={firms.data}
-              current={current}
+              firms={reads.firms.data}
+              current={reads.current}
               locale={locale}
               onSelect={(firmId) => props.onNavigate(firmId, "clients")}
               onCreate={() => setCreating(true)}
@@ -117,18 +89,23 @@ export function FirmsWorkspace(props: {
       />
       <FirmMain
         {...props}
-        current={current}
-        known={known}
-        listed={listed}
-        ready={ready}
-        workspace={ready ? workspace.data : undefined}
-        pending={firms.isPending || firms.isFetching || (known && listed && workspace.isFetching)}
-        error={firms.error ?? (current ? workspace.error : null)}
-        canRetry={firms.isError || Boolean(current && workspace.isError)}
+        current={reads.current}
+        known={reads.known}
+        listed={reads.listed}
+        ready={reads.ready}
+        workspace={reads.ready ? reads.currentWorkspace : undefined}
+        portfolio={reads.ready && props.tab === "clients" ? reads.portfolio.data : undefined}
+        pending={
+          reads.firms.isPending ||
+          reads.firms.isFetching ||
+          (reads.known && reads.listed && reads.currentRead.isFetching)
+        }
+        error={reads.firms.error ?? (reads.current ? reads.currentRead.error : null)}
+        canRetry={reads.firms.isError || Boolean(reads.current && reads.currentRead.isError)}
         onRetry={() => {
-          void firms.refetch();
+          void reads.firms.refetch();
 
-          if (current) void workspace.refetch();
+          if (reads.current) void reads.currentRead.refetch();
         }}
       />
       {creating ? (
@@ -149,6 +126,7 @@ function FirmMain(
     listed: boolean;
     ready: boolean;
     workspace?: typeof Firms.Workspace.Type;
+    portfolio?: typeof Firms.Portfolio.Type;
     pending: boolean;
     error: Error | null;
     canRetry: boolean;
@@ -199,13 +177,15 @@ function FirmMain(
             <TabsTrigger value="team">Team</TabsTrigger>
           </TabsList>
           <TabsContent value="clients">
-            <FirmPortfolio
-              workspace={workspace}
-              books={props.books}
-              locale={props.locale}
-              filters={props.filters}
-              onFilters={props.onFilters}
-            />
+            {props.portfolio ? (
+              <FirmPortfolio
+                portfolio={props.portfolio}
+                books={props.books}
+                locale={props.locale}
+                filters={props.filters}
+                onFilters={props.onFilters}
+              />
+            ) : null}
           </TabsContent>
           <TabsContent value="team">
             <FirmTeam workspace={workspace} locale={props.locale} />
@@ -272,4 +252,58 @@ function CreateFirmDialog(props: {
       </PageCaption>
     </FirmForm>
   );
+}
+
+function useFirmReads(props: { firmId?: string; tab: "clients" | "team" }) {
+  const firms = useQuery({
+    queryKey: ["accounting", "firms"],
+    queryFn: ({ signal }) => readAccounting("/api/v1/firms", Firms.FirmList, { signal }),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    gcTime: 0,
+  });
+
+  const current = props.firmId ?? firms.data?.[0]?.id;
+  const listed = firms.data?.some((firm) => firm.id === current) ?? false;
+
+  const workspace = useQuery({
+    queryKey: ["accounting", "firms", current],
+    enabled: Boolean(current) && listed && firms.isSuccess && props.tab === "team",
+    queryFn: ({ signal }) =>
+      readAccounting(`/api/v1/firms/${current}`, Firms.Workspace, { signal }),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    gcTime: 0,
+  });
+
+  const portfolio = useQuery({
+    queryKey: ["accounting", "firms", current, "portfolio"],
+    enabled: Boolean(current) && listed && firms.isSuccess && props.tab === "clients",
+    queryFn: ({ signal }) =>
+      readAccounting(`/api/v1/firms/${current}/portfolio`, Firms.Portfolio, { signal }),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    gcTime: 0,
+  });
+
+  const currentRead = props.tab === "clients" ? portfolio : workspace;
+  const currentWorkspace = props.tab === "clients" ? portfolio.data?.workspace : workspace.data;
+  const known = firms.isSuccess && firms.isFetchedAfterMount;
+
+  const ready =
+    known &&
+    listed &&
+    !firms.isFetching &&
+    currentRead.isSuccess &&
+    currentRead.isFetchedAfterMount &&
+    !currentRead.isFetching &&
+    currentWorkspace?.firm.id === current;
+
+  return { firms, current, listed, portfolio, currentRead, currentWorkspace, known, ready };
 }

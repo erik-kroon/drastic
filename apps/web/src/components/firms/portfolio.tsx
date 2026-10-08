@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQueries } from "@tanstack/react-query";
 import * as Firms from "@open-erp/contracts/firms";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -13,10 +12,9 @@ import {
   RegisterSearch,
   RegisterChoices,
 } from "@open-erp/ui/components/accounting-page";
-import { ClientPeriod, clientPeriodQueryOptions, latestClientPeriod } from "./client-period";
+import { ClientPeriod } from "./client-period";
 import { ClientDialog } from "./client-dialog";
 import { rememberPortfolio } from "./portfolio-return";
-import { attentionQueryOptions } from "@/lib/attention";
 import { workspacePath } from "@/lib/book-context";
 import type { Books } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -29,13 +27,14 @@ export type PortfolioFilters = {
 };
 
 export function FirmPortfolio(props: {
-  workspace: typeof Firms.Workspace.Type;
+  portfolio: typeof Firms.Portfolio.Type;
   books: typeof Books.Type;
   locale: Locale;
   filters: PortfolioFilters;
   onFilters: (filters: PortfolioFilters) => void;
 }) {
-  const { workspace, locale } = props;
+  const { locale } = props;
+  const workspace = props.portfolio.workspace;
   const sv = locale === "sv";
   const search = props.filters.q ?? "";
   const view = props.filters.view ?? "all";
@@ -59,21 +58,6 @@ export function FirmPortfolio(props: {
 
   const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / 10) - 1));
   const visible = sorted.slice(currentPage * 10, (currentPage + 1) * 10);
-
-  const periods = useQueries({
-    queries: visible.map((client) => clientPeriodQueryOptions(client.book)),
-  });
-
-  const work = useQueries({
-    queries: visible.map((client, index) => {
-      const period = periods[index]?.data ? latestClientPeriod(periods[index].data) : undefined;
-
-      return {
-        ...attentionQueryOptions(client.book, { status: "open", period: period?.id }),
-        enabled: Boolean(period),
-      };
-    }),
-  });
 
   const portfolioHref = portfolioPath(workspace.firm.id, search, view, currentPage);
 
@@ -142,12 +126,16 @@ export function FirmPortfolio(props: {
             { id: "work", label: sv ? "Att granska" : "To review", numeric: true },
             { id: "details", label: sv ? "Klient" : "Client" },
           ]}
-          rows={visible.map((client, index) => {
-            const tasks = work[index];
+          rows={visible.map((client) => {
+            const facts = props.portfolio.clients.find(
+              (item) =>
+                item.scope.entityId === client.book.entityId &&
+                item.scope.bookId === client.book.id,
+            );
 
-            const period = periods[index]?.data
-              ? latestClientPeriod(periods[index].data)
-              : undefined;
+            if (!facts) throw new Error("The permitted client observation is missing");
+
+            const period = facts.period;
 
             const lead = workspace.members.find((member) => member.actorId === client.leadId);
             const manage = client.book.role === "operator";
@@ -167,6 +155,7 @@ export function FirmPortfolio(props: {
                 <ClientPeriod
                   key="period"
                   book={client.book}
+                  period={period}
                   locale={locale}
                   onOpen={() => rememberPortfolio(client.book, portfolioHref)}
                 />,
@@ -181,29 +170,23 @@ export function FirmPortfolio(props: {
                 ) : (
                   "—"
                 ),
-                period && tasks?.isSuccess ? (
+                period && facts.openTasks !== null ? (
                   <Box key="work" display="grid" gap="sm" alignItems="end">
                     <Link
                       href={`${workspacePath(client.book)}/work?status=open&period=${encodeURIComponent(period.id)}`}
                       onClick={() => rememberPortfolio(client.book, portfolioHref)}
                     >
-                      {tasks.data.counts.open}
+                      {facts.openTasks}
                     </Link>
                     <PageCaption>
                       {sv ? "Läst" : "Checked"}{" "}
                       {new Intl.DateTimeFormat(locale, {
                         hour: "2-digit",
                         minute: "2-digit",
-                      }).format(new Date(tasks.data.checkedAt))}
+                      }).format(new Date(props.portfolio.observedUntil))}
                     </PageCaption>
                   </Box>
-                ) : periods[index]?.isError || tasks?.isError ? (
-                  sv ? (
-                    "Ej tillgängligt"
-                  ) : (
-                    "Unavailable"
-                  )
-                ) : !period && periods[index]?.isSuccess ? (
+                ) : !period ? (
                   sv ? (
                     "Ingen period"
                   ) : (
@@ -267,7 +250,12 @@ export function FirmPortfolio(props: {
           : "You see clients whose books you can access. To review covers journal proposals, invoice drafts and expense reviews."}
       </PageCaption>
       {editing ? (
-        <ClientDialog {...props} client={editing.client} onClose={() => setEditing(null)} />
+        <ClientDialog
+          {...props}
+          workspace={workspace}
+          client={editing.client}
+          onClose={() => setEditing(null)}
+        />
       ) : null}
     </Box>
   );
