@@ -647,6 +647,8 @@ test("a retained original returns through questions, explicit review, posting an
   await expect(screen.getByRole("status").filter({ hasText: "Bokförd" })).toBeVisible();
   await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
 
+  await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible();
+
   const recoveryScreenshot = await app.screenshot(
     "document-question-lost-response-reloaded-receipt",
   );
@@ -688,6 +690,8 @@ test("a retained original returns through questions, explicit review, posting an
 
   expect(completed.owner.completed).toBe(true);
   expect(completed.questions[0]).toEqual(closed.question);
+  await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible();
+
   const postingScreenshot = await app.screenshot("document-question-frozen-original-posted");
 
   const statementSource = {
