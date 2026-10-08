@@ -228,7 +228,9 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   const laterCompany = await call("/companies", Company.CompanySetup, {
     name: "A synthetic later deadline",
   });
+
   const laterPath = `/entities/${laterCompany.scope.entityId}/books/${laterCompany.scope.bookId}`;
+
   const laterNative = await call(
     `${laterPath}/company-setup/native-ledger`,
     Company.NativeLedgerSetup,
@@ -239,6 +241,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
       accounts: [{ code: "1930", name: "Synthetic later bank" }],
     },
   );
+
   const laterPeriod = laterNative.periods[0];
 
   if (!laterPeriod) throw new Error("The second synthetic period must exist");
@@ -265,6 +268,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
     expectedRevision: 0,
   });
   const portfolioUrl = `${origin}/firms?firm=${firm.firmId}&tab=clients`;
+
   const undatedCompany = await call("/companies", Company.CompanySetup, {
     name: "0 synthetic missing deadline",
   });
@@ -279,6 +283,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
 
   await app.open(portfolioUrl);
   await expect(screen.getByRole("columnheader", "Nästa deadline", { exact: true })).toBeVisible();
+
   const names = screen.getByRole(
     "link",
     /^(Synthetic bureau source observations|A synthetic later deadline|0 synthetic missing deadline)$/,
@@ -289,6 +294,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   await expect(names.nth(2)).toHaveText("0 synthetic missing deadline");
   await expect(screen.getByText("Synthetic retained VAT deadline", { exact: true })).toBeVisible();
   await expect(screen.getByText("13 nov. 2026", { exact: true })).toBeVisible();
+
   const moved = await call(`${path}/deadlines/deadline_portfolio`, Deadlines.Deadline, {
     expectedRevision: revised.revision,
     input: {
