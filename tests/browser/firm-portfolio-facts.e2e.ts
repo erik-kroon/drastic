@@ -144,7 +144,9 @@ test("portfolio retains period and declared deadline while incomplete bank and c
     },
   );
   expect(observed.closing?.statutoryBlockers.length).toBeGreaterThan(0);
-  expect(observed.closing?.checks.filter((check) => !check.passed).map((check) => check.code)).toEqual([
+  expect(
+    observed.closing?.checks.filter((check) => !check.passed).map((check) => check.code),
+  ).toEqual([
     "DeclaredBankInventory",
     "SyntheticNativeProfile",
     "CurrentTrialBalance",
@@ -291,13 +293,18 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   await app.open(portfolioUrl);
   await expect(screen.getByRole("columnheader", "Nästa deadline", { exact: true })).toBeVisible();
   await expect(screen.getByRole("columnheader", { name: "Status", exact: true })).toBeVisible();
-  const incompleteRow = screen.getByRole("row").filter({ hasText: "Synthetic bureau source observations" });
-  const missingPeriodRow = screen.getByRole("row").filter({ hasText: "0 synthetic missing deadline" });
+
+  const incompleteRow = screen
+    .getByRole("row")
+    .filter({ hasText: "Synthetic bureau source observations" });
+
+  const missingPeriodRow = screen
+    .getByRole("row")
+    .filter({ hasText: "0 synthetic missing deadline" });
 
   await expect(incompleteRow.getByText("5 hinder för bokslut", { exact: true })).toBeVisible();
   await expect(missingPeriodRow.getByRole("cell").nth(6)).toHaveText("Okänt");
   await expect(screen.getByText("Inga hinder", { exact: true })).toHaveCount(0);
-
 
   const names = screen.getByRole(
     "link",
