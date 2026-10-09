@@ -5,7 +5,7 @@ a read-only archive. Keep company facts, Book Zero originals and funding
 documents in the private `drastic-hq` workspace. Port useful historical work
 against current application owners rather than maintaining both codebases.
 
-Read `docs/README.md`, `docs/domain.md` and `apps/api/README.md` before changing accounting behavior. Keep route files thin; compose owned components using StyleX and existing UI tokens. Reuse application operations across HTTP, MCP and browser clients.
+Read `docs/README.md`, `docs/domain.md` and `apps/api/README.md` before changing accounting behavior. Keep route files thin; compose owned components using StyleX and existing UI tokens. Build new and reworked screens from `@open-erp/ui/kanon/*` as described in `docs/design-system.md`. Reuse application operations across HTTP, MCP and browser clients.
 
 - Read authoritative financial amounts from stored records, not client input.
 - Preserve current authority checks, exact approval binding, atomic receipts and immutable posted history.

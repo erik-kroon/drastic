@@ -4,6 +4,8 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Link } from "@open-erp/ui/components/link";
+import { ForecastLines, Waterfall } from "@open-erp/ui/kanon/charts";
+import { KanonCopyProvider } from "@open-erp/ui/kanon/copy";
 import { RecordFact, RecordSection, RecordSummary } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
@@ -252,6 +254,7 @@ function AvailableCashForecast({
           </RecordFact>
         </RecordSummary>
       </RecordSection>
+      <ForecastCharts forecast={forecast} result={result} />
       <RecordSection title={sv ? "Saldo per dag" : "Daily balances"}>
         <DataTable
           title={sv ? "Saldo per dag" : "Daily balances"}
@@ -280,6 +283,68 @@ function AvailableCashForecast({
         </Text>
       </RecordSection>
     </Box>
+  );
+}
+
+function ForecastCharts({
+  forecast,
+  result,
+}: {
+  forecast: typeof Cash.CashForecastSnapshot.Type;
+  result: Extract<typeof Cash.CashForecastSnapshot.Type.result, { status: "available" }>;
+}) {
+  const { locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const amount = (minor: string) => formatMinorAmount(minor, 2, locale);
+
+  const day = new Intl.DateTimeFormat(sv ? "sv-SE" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+
+  const inflow = result.days.reduce((sum, entry) => sum + BigInt(entry.inflowMinor), 0n);
+  const outflow = result.days.reduce((sum, entry) => sum + BigInt(entry.outflowMinor), 0n);
+  // The bridge is shown only when the stored days reconcile to the stored closing.
+  const reconciles = BigInt(result.openingMinor) + inflow - outflow === BigInt(result.closingMinor);
+
+  return (
+    <KanonCopyProvider locale={locale}>
+      <ForecastLines
+        title={sv ? "Saldo framåt" : "Balance ahead"}
+        description={
+          sv
+            ? "Kända poster. Företagets täckning är ofullständig."
+            : "Known items. Company coverage is incomplete."
+        }
+        points={result.days.map((entry) => ({
+          on: entry.on,
+          label: day.format(new Date(`${entry.on}T00:00:00Z`)),
+          closing: entry.closingMinor,
+          low: entry.conservativeLowMinor,
+        }))}
+        labels={{
+          closing: sv ? "Vid dagens slut" : "End of day",
+          low: sv ? "Lägst under dagen" : "Intraday low",
+          reserve: sv ? "Din gräns" : "Your reserve",
+        }}
+        reserve={forecast.input.bufferMinor}
+        format={amount}
+      />
+      {reconciles ? (
+        <Waterfall
+          title={sv ? "Från öppning till slut" : "From opening to closing"}
+          description={`${forecast.asOf} ${sv ? "till" : "to"} ${forecast.endsOn}`}
+          steps={[
+            { label: sv ? "Öppning" : "Opening", amount: result.openingMinor, kind: "total" },
+            { label: "In", amount: inflow.toString(), kind: "change" },
+            { label: sv ? "Ut" : "Out", amount: (-outflow).toString(), kind: "change" },
+            { label: sv ? "Slut" : "Closing", amount: result.closingMinor, kind: "total" },
+          ]}
+          format={amount}
+        />
+      ) : null}
+    </KanonCopyProvider>
   );
 }
 

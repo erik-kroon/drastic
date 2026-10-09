@@ -19,6 +19,8 @@ import { NavIcon } from "@open-erp/ui/components/nav-icon";
 import { BookNavigation } from "@/components/book-navigation";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
+import { audiences, showsDestination, useAudience, type Audience } from "@/lib/audience";
+import { themes, useTheme } from "@/lib/theme";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
 import { portfolioReturn } from "@/components/firms/portfolio-return";
@@ -65,6 +67,58 @@ function BookSwitcher({
   );
 }
 
+const audienceLabels = {
+  sv: { bureau: "Visa som byrå", client: "Visa som klient", founder: "Visa som företagare" },
+  en: { bureau: "View as bureau", client: "View as client", founder: "View as founder" },
+} satisfies Record<Locale, Record<Audience, string>>;
+
+// Changes which destinations the shell lists. It never changes what the
+// signed-in user may read or do (ADR 0019).
+function AudienceSwitcher({
+  audience,
+  locale,
+  onChange,
+}: {
+  audience: Audience;
+  locale: Locale;
+  onChange: (audience: Audience) => void;
+}) {
+  return (
+    <SelectControl
+      aria-label={locale === "sv" ? "Vy" : "View"}
+      value={audience}
+      options={audiences.map((value) => ({ value, label: audienceLabels[locale][value] }))}
+      onValueChange={(value) => {
+        const selected = audiences.find((item) => item === value);
+
+        if (selected) onChange(selected);
+      }}
+    />
+  );
+}
+
+const themeLabels = {
+  sv: { system: "Utseende: system", light: "Utseende: ljust", dark: "Utseende: mörkt" },
+  en: { system: "Appearance: system", light: "Appearance: light", dark: "Appearance: dark" },
+} satisfies Record<Locale, Record<(typeof themes)[number], string>>;
+
+function ThemeSwitcher({ locale }: { locale: Locale }) {
+  const [theme, setTheme] = useTheme();
+
+  return (
+    <SelectControl
+      aria-label={locale === "sv" ? "Utseende" : "Appearance"}
+      value={theme}
+      options={themes.map((value) => ({ value, label: themeLabels[locale][value] }))}
+      onValueChange={(value) => {
+        const selected = themes.find((item) => item === value);
+
+        if (selected) setTheme(selected);
+      }}
+    />
+  );
+}
+
 function PortfolioLink({ book, locale }: { book: typeof Accounting.Book.Type; locale: Locale }) {
   const navigate = useNavigate();
 
@@ -85,6 +139,76 @@ function PortfolioLink({ book, locale }: { book: typeof Accounting.Book.Type; lo
   );
 }
 
+function AccountMenu(props: {
+  book: typeof Accounting.Book.Type;
+  books: typeof Books.Type;
+  locale: Locale;
+  audience: Audience;
+  onAudienceChange: (audience: Audience) => void;
+}) {
+  const { book, locale, audience } = props;
+  const base = workspacePath(book);
+  const labels = frontendCopy(locale);
+  const copy = accountingCopy(locale);
+
+  return (
+    <>
+      {props.books.length > 1 ? (
+        <BookSwitcher book={book} books={props.books} label={copy.journal_book} />
+      ) : null}
+      <AudienceSwitcher audience={audience} locale={locale} onChange={props.onAudienceChange} />
+      <ThemeSwitcher locale={locale} />
+      <Link href={`${base}/settings`}>{labels.settings}</Link>
+      <Link href="/companies">{copy.workspace_switch}</Link>
+      {showsDestination(audience, "portfolio") ? (
+        <PortfolioLink book={book} locale={locale} />
+      ) : null}
+      {showsDestination(audience, "tools") ? (
+        <Link href={`${base}/tools`}>{labels.tools}</Link>
+      ) : null}
+    </>
+  );
+}
+
+function mobileItems({
+  base,
+  pathname,
+  labels,
+  audience,
+}: {
+  base: string;
+  pathname: string;
+  labels: ReturnType<typeof frontendCopy>;
+  audience: Audience;
+}) {
+  const items = [
+    {
+      label: labels.todo,
+      href: `${base}/`,
+      active: isTodoPath(pathname, base),
+      icon: <CheckSquare size={20} strokeWidth={1.5} aria-hidden="true" />,
+    },
+  ];
+
+  if (showsDestination(audience, "bank"))
+    items.push({
+      label: labels.accounts,
+      href: `${base}/accounts`,
+      active: pathname === `${base}/accounts`,
+      icon: <Building2 size={20} strokeWidth={1.5} aria-hidden="true" />,
+    });
+
+  if (showsDestination(audience, "bookkeeping"))
+    items.push({
+      label: labels.bookkeeping,
+      href: `${base}/books`,
+      active: pathname === `${base}/books`,
+      icon: <BookOpen size={20} strokeWidth={1.5} aria-hidden="true" />,
+    });
+
+  return items;
+}
+
 export function BookWorkspace({
   book,
   books,
@@ -101,6 +225,7 @@ export function BookWorkspace({
   const search = useLocation({ select: (location) => location.searchStr });
   const base = workspacePath(book);
   const [scopeBlocked, setScopeBlocked] = useState(true);
+  const [audience, setAudience] = useAudience(book);
 
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
@@ -150,6 +275,7 @@ export function BookWorkspace({
       pathname={pathname}
       search={search}
       locale={locale}
+      audience={audience}
       book={book}
       setup={setup.data && !scopeBlocked && !scopeUnavailable ? setup.data : undefined}
     />
@@ -165,13 +291,13 @@ export function BookWorkspace({
             : "Account"
       }
     >
-      {books.length > 1 ? (
-        <BookSwitcher book={book} books={books} label={copy.journal_book} />
-      ) : null}
-      <Link href={`${base}/settings`}>{labels.settings}</Link>
-      <Link href="/companies">{copy.workspace_switch}</Link>
-      <PortfolioLink book={book} locale={locale} />
-      <Link href={`${base}/tools`}>{labels.tools}</Link>
+      <AccountMenu
+        book={book}
+        books={books}
+        locale={locale}
+        audience={audience}
+        onAudienceChange={setAudience}
+      />
       <SignOut locale={locale} />
     </WorkspaceAccount>
   );
@@ -196,7 +322,7 @@ export function BookWorkspace({
         </Button>
       ) : null}
       {setup.data && !setup.isError && !scopeBlocked && !scopeUnavailable ? (
-        <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
+        <BookContext value={{ book, setup: setup.data, locale, audience }}>{children}</BookContext>
       ) : null}
     </>
   );
@@ -242,26 +368,7 @@ export function BookWorkspace({
         <WorkspaceMobileNavigation
           label={labels.menu}
           closeLabel={labels.close}
-          items={[
-            {
-              label: labels.todo,
-              href: `${base}/`,
-              active: isTodoPath(pathname, base),
-              icon: <CheckSquare size={20} strokeWidth={1.5} aria-hidden="true" />,
-            },
-            {
-              label: labels.accounts,
-              href: `${base}/accounts`,
-              active: pathname === `${base}/accounts`,
-              icon: <Building2 size={20} strokeWidth={1.5} aria-hidden="true" />,
-            },
-            {
-              label: labels.bookkeeping,
-              href: `${base}/books`,
-              active: pathname === `${base}/books`,
-              icon: <BookOpen size={20} strokeWidth={1.5} aria-hidden="true" />,
-            },
-          ]}
+          items={mobileItems({ base, pathname, labels, audience })}
         >
           {navigation}
           {account}

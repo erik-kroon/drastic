@@ -181,10 +181,14 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
     `.tsconfig.changed-${invocationId}.tsbuildinfo`,
   );
 
+  // Generated, gitignored route trees register typed routes; scoped checks need them too.
+  const routeTree = path.join(projectDirectory, "src", "routeTree.gen.ts");
+  const scopedFiles = existsSync(routeTree) ? [...files, routeTree] : files;
+
   const scopedConfig = {
     extends: `./${path.relative(projectDirectory, projectConfig)}`,
     include: [],
-    files: files.map((file) => path.relative(projectDirectory, file)),
+    files: scopedFiles.map((file) => path.relative(projectDirectory, file)),
   };
 
   writeFileSync(temporaryConfig, `${JSON.stringify(scopedConfig, undefined, 2)}\n`);
