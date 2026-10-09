@@ -170,7 +170,13 @@ export function ConfirmDialog(props: {
             {props.facts !== undefined && <FactCard facts={props.facts} />}
           </div>
           <div {...stylex.props(styles.footer)}>
-            <AlertDialog.Close render={<Action kind="secondary">{props.cancelLabel}</Action>} />
+            <AlertDialog.Close
+              render={
+                <Action kind="secondary" besidePrimary>
+                  {props.cancelLabel}
+                </Action>
+              }
+            />
             <Action
               kind={props.risky === true ? "confirmRisky" : "primary"}
               onClick={props.onConfirm}
@@ -184,7 +190,10 @@ export function ConfirmDialog(props: {
   );
 }
 
-/** Settings that belong to what is on screen. 400 px from the right; the footer stays put. */
+/**
+ * Settings that belong to what is on screen. 400 px from the right; the footer stays put.
+ * `footer` holds a secondary with `besidePrimary`, then the primary.
+ */
 export function Drawer(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;

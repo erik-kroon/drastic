@@ -28,7 +28,7 @@ Top bar: `AreaBar` (title, `BarTab`s with counts, one action) inside an area, `D
 | A confirmed or doubtful fact | `CheckRow` | Icon plus one sentence, under the card it checks |
 | Something blocks the decision | `Banner` | `unknown` or `blocked`; title names the state, body says what to do |
 | Who did what | `ActivityList` | Newest first; the agent is its own actor |
-| Buttons | `Action`, `InlineAction` | Size follows kind; disabled only through `blockedBy`, which shows the reason |
+| Buttons | `Action`, `InlineAction` | Size follows kind; `besidePrimary` matches a footer row; disabled only through `blockedBy`, which shows the reason |
 | Irreversible or external step | `ConfirmDialog` | Repeats the facts; the confirm label names the effect and amount |
 | Settings for what is on screen | `Drawer` | 400 px from the right, fixed footer |
 | Feedback after an action | `Toaster` once at the root, `useNotify` | Bottom left, six seconds, at most one action |
@@ -40,7 +40,7 @@ Amounts arrive preformatted with `formatMinorAmount`; parts only align and use t
 1. One primary action per view, named after its effect: "Godkänn och bokför 12 500,00".
 2. The amount is the figure in the panel header.
 3. Panel order: header, evidence, what will happen, checks, activity, actions at the bottom.
-4. Every list row has a status icon.
+4. Every row of work has a status icon. Registers of posted records, such as vouchers, have none.
 5. Beside a detail panel, lists and tables run edge to edge with a 32 px inner gutter. Without one, they sit in a card inside the page gutter; on focus pages, inside the 1000 px column.
 6. Colour means status: green done, amber needs you, red wrong or overdue, blue action. Never decoration.
 7. A blocked action says why.

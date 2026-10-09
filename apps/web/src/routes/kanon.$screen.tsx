@@ -397,7 +397,7 @@ function FocusScreen() {
         title="Fakturainställningar"
         footer={
           <>
-            <Action kind="secondary" onClick={() => setDrawerOpen(false)}>
+            <Action kind="secondary" besidePrimary onClick={() => setDrawerOpen(false)}>
               Avbryt
             </Action>
             <Action kind="primary" onClick={() => setDrawerOpen(false)}>

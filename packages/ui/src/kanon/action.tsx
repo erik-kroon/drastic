@@ -95,13 +95,15 @@ type ActionProps = {
   blockedBy?: string;
   /** Top bars, list rows and file rows use the 28 px size. */
   compact?: boolean;
+  /** In a footer row beside the primary, as in dialogs and drawers: match its 36 px height. */
+  besidePrimary?: boolean;
   /** Stretch to the container, as in the detail panel's action area. */
   fill?: boolean;
 };
 
 export function Action(props: ActionProps) {
   const { kind, blockedBy, compact } = props;
-  const prominent = kind === "primary" || kind === "confirmRisky";
+  const prominent = kind === "primary" || kind === "confirmRisky" || props.besidePrimary === true;
   const height = compact === true ? styles.compact : prominent ? styles.tall : styles.regular;
 
   return (
