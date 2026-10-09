@@ -362,13 +362,86 @@ test("SIE partition migrates scoped years, original dimensions, history and fenc
   const book = await setup();
   await catalogue(book);
   const source = await retain(book, true);
+  const input = partitionInput(source, true);
+  const partitionKey = key();
+  const partitionObserver = await database();
+  let partitionRows: unknown;
 
-  const partition = await post(
-    book,
-    "/sie-partitions",
-    partitionInput(source, true),
+  try {
+    await failure(
+      await request(book, "/sie-partitions", {
+        method: "POST",
+        body: JSON.stringify({
+          ...input,
+          fiscalMappings: [
+            { sourceYear: "-1", fiscalYearId: "fy_2026" },
+            { sourceYear: "0", fiscalYearId: "fy_2025" },
+          ],
+        }),
+      }),
+      422,
+      "InvalidJournal",
+    );
+    expect(
+      (
+        await partitionObserver.query(
+          "select count(*)::text as count from openerp.sie_source_year_partitions where book_id=$1",
+          [book.bookId],
+        )
+      ).rows,
+    ).toEqual([{ count: "0" }]);
+  } finally {
+    await partitionObserver.end();
+  }
+
+  const partition = await decoded(
+    await request(book, "/sie-partitions", {
+      method: "POST",
+      headers: { "idempotency-key": partitionKey },
+      body: JSON.stringify(input),
+    }),
     Partitions.Partition,
   );
+
+  const partitionRead = await decoded(
+    await request(book, `/sie-partitions/${partition.id}`),
+    Partitions.Partition,
+  );
+
+  const partitionReplay = await decoded(
+    await request(book, "/sie-partitions", {
+      method: "POST",
+      headers: { "idempotency-key": partitionKey },
+      body: JSON.stringify(input),
+    }),
+    Partitions.Partition,
+  );
+
+  expect(partitionRead).toEqual(partition);
+  expect(partitionReplay).toEqual(partition);
+  await failure(
+    await request(book, "/sie-partitions", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+    409,
+    "AlreadyPosted",
+  );
+  const partitionDatabase = await database();
+
+  try {
+    partitionRows = (
+      await partitionDatabase.query(
+        "select id,digest from openerp.sie_source_year_partitions where book_id=$1",
+        [book.bookId],
+      )
+    ).rows;
+    expect(partitionRows).toEqual([{ id: partition.id, digest: partition.digest }]);
+  } finally {
+    await partitionDatabase.end();
+  }
+
+  expect((await ledger(book)).sequence).toBe("0");
 
   expect(partition.vouchers.map((row) => row.scopedIdentity)).toEqual(["0/A/1", "1/A/1"]);
   expect(
@@ -585,6 +658,13 @@ test("SIE partition migrates scoped years, original dimensions, history and fenc
     JSON.stringify(
       {
         partition,
+        partitionRead,
+        partitionReplay,
+        partitionRows,
+        partitionRefusals: [
+          { status: 422, code: "InvalidJournal", retainedPartitions: "0" },
+          { status: 409, code: "AlreadyPosted", retainedPartitions: "1" },
+        ],
         paused,
         resumed,
         committed,
