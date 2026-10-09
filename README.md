@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="drastic" width="100%">
+  <img src="docs/assets/icon.png" alt="Drastic" width="72" height="72">
 </p>
+
+<h1 align="center">Drastic</h1>
 
 Open-source accounting software for Swedish aktiebolag. Double-entry bookkeeping where every posting is traceable to its source and approved by a person before it hits the ledger, built to be operated by you, your accountant or your AI agent.
 
