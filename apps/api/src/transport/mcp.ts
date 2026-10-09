@@ -39,7 +39,7 @@ const tools = Object.entries(capabilities)
 const catalog = tools.map(({ name, capability }) => ({
   name,
   description: capability.description,
-  inputSchema: Tool.getJsonSchemaFromSchema(capability.input),
+  inputSchema: { ...Tool.getJsonSchemaFromSchema(capability.input), type: "object" },
   outputSchema: Tool.getJsonSchemaFromSchema(Schema.Struct({ result: capability.output })),
   annotations: {
     readOnlyHint: capability.readOnly,

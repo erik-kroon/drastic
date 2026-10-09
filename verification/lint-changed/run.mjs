@@ -36,8 +36,8 @@ function git(...args) {
   return result.output.trim();
 }
 
-function check(name, base, expected, diagnostic) {
-  const before = readFileSync(path.join(sandbox, "fixture.js"), "utf8");
+function check(name, base, expected, diagnostic, input = "fixture.js") {
+  const before = readFileSync(path.join(sandbox, input), "utf8");
 
   const result = command("bun", ["run", "lint:changed", base]);
 
@@ -47,16 +47,13 @@ function check(name, base, expected, diagnostic) {
     passed: result.status === expected && (!diagnostic || result.output.includes(diagnostic)),
     ...result,
     fixtureSha256: createHash("sha256").update(before).digest("hex"),
+    input,
   });
   assert.equal(result.status, expected, `${name}: ${result.output}`);
 
   if (diagnostic) assert.ok(result.output.includes(diagnostic), `${name}: ${result.output}`);
 
-  assert.equal(
-    readFileSync(path.join(sandbox, "fixture.js"), "utf8"),
-    before,
-    "Lint rewrote input",
-  );
+  assert.equal(readFileSync(path.join(sandbox, input), "utf8"), before, "Lint rewrote input");
 }
 
 try {
@@ -143,6 +140,59 @@ try {
     'import { Data, Effect, Match, Predicate } from "effect";\n\nexport const ready = Data.tagged("Ready")({ value: 1 });\n\nexport const isReady = Predicate.isTagged("Ready");\n\nexport const label = (value) => Match.value(value).pipe(Match.tag("Ready", () => "ready"), Match.orElse(() => "other"));\n\nexport const recover = Effect.catchTag("Missing", () => Effect.void);\n',
   );
   check("supported Effect patterns", base, 0);
+
+  const route = "apps/web/src/routes/work.tsx";
+
+  mkdirSync(path.dirname(path.join(sandbox, route)), { recursive: true });
+
+  const routeFailures = [
+    [
+      "aliased route query",
+      'import { useQuery as read } from "@tanstack/react-query";\n\nexport const value = read;\n',
+    ],
+    [
+      "namespace route query",
+      'import * as queries from "@tanstack/react-query";\n\nexport const value = queries;\n',
+    ],
+    [
+      "route API adapter",
+      'import { readAccounting as read } from "@/lib/accounting-api";\n\nexport const value = read;\n',
+    ],
+    ["route global fetch", 'export const load = () => fetch("/api/v1/books");\n'],
+    ["route namespaced fetch", 'export const load = () => globalThis["fetch"]("/api/v1/books");\n'],
+    ["route dynamic query import", 'export const load = () => import("@tanstack/react-query");\n'],
+  ];
+
+  for (const [name, code] of routeFailures) {
+    writeFileSync(path.join(sandbox, route), code);
+    check(name, base, 1, "no-route-data-access", route);
+  }
+
+  writeFileSync(
+    path.join(sandbox, route),
+    'import type { QueryClient } from "@tanstack/react-query";\n\nexport type Client = QueryClient;\n',
+  );
+  check("route type-only import", base, 0, undefined, route);
+  writeFileSync(
+    path.join(sandbox, route),
+    'import { ReviewWorkspace } from "@/components/reviews/workspace";\n\nexport const component = ReviewWorkspace;\n',
+  );
+  check("route owner composition", base, 0, undefined, route);
+  writeFileSync(
+    path.join(sandbox, route),
+    "export const label = (fetch: () => string) => fetch();\n",
+  );
+  check("local fetch name is not an HTTP request", base, 0, undefined, route);
+
+  rmSync(path.join(sandbox, route));
+  const owner = "apps/web/src/components/reviews/query.ts";
+
+  mkdirSync(path.dirname(path.join(sandbox, owner)), { recursive: true });
+  writeFileSync(
+    path.join(sandbox, owner),
+    'import { useQuery } from "@tanstack/react-query";\n\nexport const query = useQuery;\n',
+  );
+  check("owner may own its query", base, 0, undefined, owner);
   check("invalid base", "missing-base-revision", 1, "missing-base-revision");
 } finally {
   const directory = path.join(root, "test-results/lint-changed");

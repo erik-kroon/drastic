@@ -18,5 +18,6 @@ Read `docs/README.md`, `docs/domain.md` and `apps/api/README.md` before changing
 - Prefer real application E2E workflows with repeatable artifacts. Before building an isolated system, list its failure cases. Never write unit tests after implementation.
 - New browser E2E tests use Vitest or TesterArmy with Luna (`gpt-6-luna`). Follow `verification/testerarmy/README.md`, reuse `tests/browser/synthetic-session.ts`, and run `bun run check:browser` after test changes.
 - Use `bun run test:browser` for the pinned local Codex proxy and fresh synthetic PostgreSQL/API/web runtime. If Luna, authentication or the proxy is unavailable, report the blocker and unverified behavior rather than changing providers or claiming mocked verification.
+- MCP catalog, schema, transport and tool-description changes require `bun run test:mcp` and `bun run test:mcp:eval`. Follow `verification/mcpjam/README.md`; local model evals use the pinned Codex proxy. The OpenAI CI eval step stays disabled until its key and enable variable are configured.
 
 The public repository does not require access to the private planning tracker or design workspace. Retained historical references are context; executable contracts and current application owners define the code boundary. Distinguish implementation, check results and production qualification in every handoff.

@@ -1,7 +1,7 @@
 import { SignInConfiguration } from "@open-erp/contracts/identity";
 import { useRef, useState, type ReactNode } from "react";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { useHydrated } from "@tanstack/react-router";
+import { useHydrated, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -76,6 +76,11 @@ export function AccountingAccess({
 function Login({ locale }: { locale: Locale }) {
   const sv = locale === "sv";
 
+  const signInFailed = useSearch({
+    strict: false,
+    select: (search) => "authError" in search,
+  });
+
   const configuration = useQuery({
     queryKey: ["sign-in-configuration"],
     queryFn: ({ signal }) =>
@@ -137,7 +142,7 @@ function Login({ locale }: { locale: Locale }) {
           </Button>
         </Box>
       ) : null}
-      {new URL(window.location.href).searchParams.has("authError") ? (
+      {signInFailed ? (
         <Text role="alert">
           {sv
             ? "Inloggningen slutfördes inte. Försök igen eller kontakta administratören för åtkomst."

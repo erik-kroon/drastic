@@ -27,11 +27,14 @@ const sourceRoots = [
   "jurisdictions/se",
   "packages/config",
   "verification/peppol",
+  "verification/mcpjam",
   "config",
   "patches",
   "package.json",
   "bun.lock",
   "vite.config.ts",
+  "mcpjam.config.ts",
+  "doctor.config.json",
   "tsconfig.json",
 ];
 

@@ -1,0 +1,9 @@
+{
+  "projects": ["apps/web", "packages/ui"],
+  "scope": "full",
+  "blocking": "error",
+  "noScore": true,
+  "share": false,
+  "adoptExistingLintConfig": false,
+  "supplyChain": { "enabled": false }
+}

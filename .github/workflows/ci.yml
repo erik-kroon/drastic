@@ -74,6 +74,17 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
         run: bun run check:owners
+      - name: React Doctor full-project error gate
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: bun run check:react
+      - name: Upload React Doctor diagnostics
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: react-doctor-evidence
+          path: test-results/react-doctor/report.json
+          if-no-files-found: error
 
   # The E2E suite is the only place the application is proven against a real
   # PostgreSQL: it applies every migration, provisions the restricted runtime
@@ -153,6 +164,19 @@ jobs:
           OPENERP_E2E_ARTIFACTS: test-results/domain-owners
         run: bun run test:domain-owners
 
+      - name: MCPJam real PostgreSQL workflows
+        timeout-minutes: 10
+        env:
+          OPENERP_E2E_ARTIFACTS: test-results/mcpjam-protocol
+        run: bun run test:mcp
+
+      - name: MCPJam Luna behavior gate (enable after adding the key)
+        if: ${{ vars.MCPJAM_MODEL_EVALS == 'enabled' }}
+        timeout-minutes: 15
+        env:
+          MCPJAM_OPENAI_API_KEY: ${{ secrets.MCPJAM_OPENAI_API_KEY }}
+        run: bun run test:mcp:eval --ci
+
       - name: Run checkpoint and restricted restore workflow
         timeout-minutes: 10
         env:
@@ -171,5 +195,7 @@ jobs:
             test-results/domain-owner-declarations/
             test-results/domain-owners/
             test-results/domain-rehearsal/
+            test-results/mcpjam-protocol/
+            test-results/mcpjam/
           if-no-files-found: warn
           retention-days: 14

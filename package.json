@@ -50,6 +50,9 @@
     "test:domain-owners": "vp test run apps/api/tests/collection-reminders.e2e.test.ts apps/api/tests/asset-valuations.e2e.test.ts apps/api/tests/asset-disposals.e2e.test.ts apps/api/tests/treasury-loans.e2e.test.ts apps/api/tests/foreign-cash.e2e.test.ts apps/api/tests/processor-clearing.e2e.test.ts apps/api/tests/payroll-inputs.e2e.test.ts apps/api/tests/payroll-runs.e2e.test.ts apps/api/tests/payroll-settlements.e2e.test.ts apps/api/tests/sie-historical-owners.e2e.test.ts apps/api/tests/document-signing-filing.e2e.test.ts apps/api/tests/peppol-exchange.e2e.test.ts",
     "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit",
     "check:owners": "bun scripts/check-owners.ts",
+    "check:react": "react-doctor --yes --json --json-out test-results/react-doctor/report.json",
+    "test:mcp": "MCPJAM_TELEMETRY_DISABLED=1 vp test run apps/api/tests/mcp.e2e.test.ts apps/api/tests/mcpjam.e2e.test.ts",
+    "test:mcp:eval": "node verification/mcpjam/run.mjs",
     "test:browser": "node verification/testerarmy/run.mjs",
     "check:browser": "tsc --project tests/browser/tsconfig.json --noEmit",
     "setup:browser": "node verification/testerarmy/setup.mjs"
@@ -60,6 +63,7 @@
     "@effect/platform-bun": "4.0.0",
     "@effect/platform-node-shared": "4.0.0",
     "@effect/tsgo": "0.41.0",
+    "@mcpjam/sdk": "9.1.0",
     "@open-erp/config": "workspace:*",
     "@oxlint/plugins": "1.79.0",
     "@stylexjs/eslint-plugin": "0.19.0",
@@ -72,6 +76,7 @@
     "oxfmt": "^0.64.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
+    "react-doctor": "0.9.17",
     "typescript": "catalog:",
     "vite-plus": "0.2.9",
     "vitest": "4.1.10"

@@ -226,6 +226,18 @@ await run(typeAware ? "oxlint (type-aware)" : "oxlint", "oxlint", [
   ...toolFiles,
 ]);
 
+if (
+  !lintOnly &&
+  toolFiles.some((file) => file.startsWith("apps/web/") || file.startsWith("packages/ui/"))
+) {
+  await run("React Doctor", "react-doctor", [
+    "--yes",
+    "--json",
+    "--json-out",
+    "test-results/react-doctor/report.json",
+  ]);
+}
+
 if (!lintOnly) {
   for (const [projectConfig, files] of typeCheckGroups) {
     await typeCheckProject(projectConfig, files);
