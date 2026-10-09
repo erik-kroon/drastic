@@ -1,0 +1,34 @@
+{
+  "runId": "9b6695bb-2eb9-4f30-8de3-770f08cd8392",
+  "command": "PAPER_SUPPLIER_EXPIRY=1 OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/posting-supplier-expiry.e2e.ts",
+  "sourceStatus": "stable",
+  "baseRevision": "8c8b937a4774df7934e5b84eb1b9fe7788d7da24",
+  "workingTreeCandidate": true,
+  "beforeDigest": "a71e4c94726ea0a663445891b9bee7e0d29c7828269f8a57809650e0ce05fdf9",
+  "afterDigest": "a71e4c94726ea0a663445891b9bee7e0d29c7828269f8a57809650e0ce05fdf9",
+  "exitCode": 0,
+  "sourceHashes": {
+    "verification/paper/start.mjs": "cd74166ae6c3e44bc9ae7288de4b2f7a2de4ebe5f6ecddf807d3d3bcdf321274",
+    "verification/paper/seed-supplier-expiry.mjs": "baf6a9985693994f31f869a9bad3bdb17678ca687693bfad352510666201c87c",
+    "tests/browser/posting-supplier-expiry.e2e.ts": "22c9c9967df1a06b963a5e81e0188fc15ec0cd9086106edbd86928daf10187ca",
+    "apps/api/tests/support/supplier-expiry-browser.ts": "4151747e2556d1f2260f235c84985bdca211d36932b5f9b8dc706aaeeac063fc",
+    "apps/web/src/components/work-home.tsx": "c5c02da70847320b991b65738f12040d76d2373a52fb1daeabfb81c15fc5d693",
+    "apps/web/src/components/work-supplier-preview.tsx": "1ab63d326bf3001518258b888442a4429dda251b883fe4b9b85aa41db2aef790",
+    "apps/web/src/components/commerce/supplier-approval-expiry.tsx": "3225776d04ab1e174ed35bd6eb1bf776092ea9be8ceea1c47da140d9dbbe54ba",
+    "packages/ui/src/kanon/detail-panel.tsx": "cb8f38bb541b1c69d6601124a7cf532f6ea24a43e888f53161a7f309f7aa5fb4",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e"
+  },
+  "runtimeCleaned": true,
+  "model": "codex.chat/gpt-6-luna",
+  "modelCalls": 1,
+  "historicalApprovalOrdinal": 1,
+  "firstRenewalOrdinal": 2,
+  "mountedTimingOrdinal": 3,
+  "mountedRenewalOrdinal": 4,
+  "authorityAuthenticationOmitted": true,
+  "limitations": [
+    "Synthetic historical timing with current captured native authority, not past-authentication qualification",
+    "Donor approval remains unexecuted and immutable",
+    "Behavior qualification only; no baseline match or production qualification"
+  ]
+}

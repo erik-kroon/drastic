@@ -587,6 +587,7 @@ try {
           accessToken,
           fixture,
           artifacts,
+          scratch,
         }),
       ),
     );
