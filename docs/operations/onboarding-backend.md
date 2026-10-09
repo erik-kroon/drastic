@@ -50,6 +50,14 @@ human operator admission.
 | `GET /onboarding/revisions` | Retained configuration history, paged by `before` revision |
 | `POST /onboarding/sources` | Link a retained occurrence ID and category; metadata comes from intake |
 | `GET /company-facts` | Immutable facts with their retained reviews, paged by `after` ID |
+| `POST /onboarding/controls` | Qualify independent controls from retained source bytes |
+| `POST /onboarding/responsibilities` | Retain capability responsibility policies |
+| `POST /onboarding/snapshots` | Capture a review bound to current dependencies |
+| `POST /onboarding/decisions` | Record acceptance or refusal for an exact snapshot |
+| `POST /onboarding/activation-intents` | Request activation against an accepted snapshot |
+| `POST /onboarding/first-period-completions` | Retain completion against a current closing certificate |
+| `GET /onboarding/lifecycle` | Current controls, responsibilities, decisions and activation state |
+| `GET /onboarding/activation-artifact` | Retained activation and first-period receipts |
 
 Workspace source/import pages use `sourceAfter` and `importAfter`. A page is not
 complete coverage: use the returned cursors and distinguish the inventory count
@@ -70,8 +78,9 @@ coverage. Native payroll remains deferred.
 Onboarding remains a coordinator around the existing accounting owners. The
 lifecycle adds retained control qualification, review snapshots, responsibility
 policies, acceptance decisions, activation intents, operational proof and durable
-receipts. These names describe the work in progress; they do not establish a
-passed delivery gate before the executable evidence is recorded.
+receipts. The HTTP/database E2E workflows exercise these retained owners with
+synthetic data. Actual-company acceptance and production qualification remain
+separate from this implementation.
 
 Independent comparisons read retained source bytes and retained accounting
 records inside the owning transaction. A request names sources and reviewers;
@@ -85,31 +94,35 @@ credentials cannot insert operational proof or promote writer authority. Local
 synthetic restore and writer-fence evidence does not establish a production
 provider outcome or authorize Drastic's cutover.
 
-The UI delivery covers U32 through U46 in Paper's Enthusiastic lantern file.
 Setup is the persistent workspace. Inventory, parsing, import, reconciliation
 and acceptance remain distinct, and first-live-period completion requires a
 current closing certificate rather than a setup checkbox.
 
-## Remaining delivery gates
+## Qualification limits
 
-The workspace currently retains setup and shows truthful blockers. It does not
-yet implement acceptance decisions for independent opening/control comparisons,
-capability responsibility policies, final-delta acceptance, restore/single-writer
-proof, authorized promotion, activation receipts or first-live-period closure.
-Those rows therefore cannot be completed by a client flag. Cutover `ready` remains
-false and authority remains `not_established`; the candidate date is intent only.
+The implementation retains independent controls, responsibility policies, exact
+review snapshots, acceptance decisions and final-delta reviews. Activation
+requires a current snapshot, named confirmations and retained operational proof.
+The maintenance executor supports isolated synthetic local systems only.
+Activation and first-period receipts retain `statutoryReady: false`.
+First-period completion requires a current closing certificate.
+
+The workspace currently reports `cutover.ready: false`; authority becomes
+`native` after a retained activation receipt. A candidate date remains intent.
+These mechanisms do not establish actual-company acceptance or production
+qualification, and a client flag cannot complete a retained gate.
 
 A complete historical scope requires history bounds as well as opening,
 acceptance and candidate dates, plus detailed-history start unless opening-only.
-Drastic AB's actual fiscal-year start, reviewed facts and private source material
-must supply these values. None is derived from the example dates or defaults.
+The company's reviewed fiscal-year facts and private source material must supply
+these values. None is derived from the example dates or defaults.
 
 ## Focused verification
 
 Run the HTTP/database E2E journey with disposable synthetic data:
 
 ```sh
-OPENERP_E2E_ARTIFACTS=test-results/onboarding-backend bun run test:e2e apps/api/tests/onboarding.e2e.test.ts apps/api/tests/company-profile-admission.e2e.test.ts
+OPENERP_E2E_ARTIFACTS=test-results/onboarding-backend bun run test:e2e apps/api/tests/onboarding.e2e.test.ts apps/api/tests/onboarding-lifecycle.e2e.test.ts apps/api/tests/onboarding-mappings.e2e.test.ts apps/api/tests/onboarding-deltas.e2e.test.ts apps/api/tests/company-profile-admission.e2e.test.ts
 ```
 
 The run retains its environment/source manifest and sanitized journeys. It is
