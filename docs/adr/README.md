@@ -27,4 +27,6 @@ The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-
 
 Create an ADR when an unresolved choice materially changes invariants, ownership, public contracts or operations. Do not create one for every class or library call. Record context, choice, alternatives, consequences, source evidence and the proof that would validate the choice.
 
+[0018](0018-public-product-repository.md) records the accepted ownership decision. Product development belongs to public Drastic, private company material belongs to drastic-hq, and openERP is a read-only archive.
+
 Historical planning links and captures omitted from this source distribution remain in the private working archive.

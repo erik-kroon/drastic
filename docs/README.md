@@ -9,4 +9,10 @@ Start with [local development](local-development.md) or [self-hosting](../infra/
 - [Application-owned accounting](adr/0010-application-owned-accounting-replacement.md), [exact approval](adr/0002-exact-posting-and-approval.md) and [background jobs](adr/0009-effect-mq-background-jobs.md): selected engineering decisions.
 - [API E2E](../apps/api/tests/README.md) and [browser verification](../verification/testerarmy/README.md): execution recipes and saved artifacts.
 
-Detailed delivery planning, company qualification, design exports and historical execution evidence remain in the private working archive. Historical decisions describe their dated scope, not production readiness or fresh verification. Public source contains the owner declaration and permission matrix consumed by repository checks.
+Product development belongs to `erik-kroon/drastic`. The private `openERP`
+repository is a read-only archive. Company facts, Book Zero originals, funding
+documents and private qualification evidence belong to `drastic-hq`.
+
+Historical decisions describe their dated scope, not production readiness or
+fresh verification. Public source contains the owner declaration and permission
+matrix consumed by repository checks. See the [repository ownership decision](adr/0018-public-product-repository.md).

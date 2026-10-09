@@ -1,5 +1,10 @@
 # Drastic contributor and agent instructions
 
+Develop product code in `erik-kroon/drastic`. The private `openERP` repository is
+a read-only archive. Keep company facts, Book Zero originals and funding
+documents in the private `drastic-hq` workspace. Port useful historical work
+against current application owners rather than maintaining both codebases.
+
 Read `docs/README.md`, `docs/domain.md` and `apps/api/README.md` before changing accounting behavior. Keep route files thin; compose owned components using StyleX and existing UI tokens. Reuse application operations across HTTP, MCP and browser clients.
 
 - Read authoritative financial amounts from stored records, not client input.
