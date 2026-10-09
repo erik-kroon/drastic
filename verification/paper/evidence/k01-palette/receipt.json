@@ -1,0 +1,103 @@
+{
+  "scope": "K-01 named palette and existing theme persistence only; no visual parity or production qualification",
+  "command": "bun run test:browser tests/browser/dark-theme.e2e.ts",
+  "sourceRevision": "0ad21554d7f68993b6175724cbf2265237a3cd36",
+  "branch": "parity-foundations",
+  "dirtyDuringRun": true,
+  "runId": "01a12290-7383-77c1-a7a8-a1e128525a5d",
+  "status": "passed",
+  "exitCode": 0,
+  "startedAt": "2026-10-09T21:27:35.243Z",
+  "finishedAt": "2026-10-09T21:27:50.197Z",
+  "runner": {
+    "name": "e2e",
+    "version": "0.17.0"
+  },
+  "selectedTests": [
+    {
+      "file": "tests/browser/dark-theme.e2e.ts",
+      "title": [
+        "the K-01 palette switches appearance and survives reload"
+      ],
+      "status": "passed",
+      "durationMs": 14276
+    }
+  ],
+  "conditions": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "locale": "sv-SE",
+    "timezone": "Europe/Stockholm",
+    "fixture": "examples/synthetic-book.json",
+    "routes": [
+      "/entities/$entityId/books/$bookId/overview",
+      "/entities/$entityId/books/$bookId/books"
+    ],
+    "modelConfigured": "gpt-6-luna",
+    "modelCalls": "No agent steps in this deterministic recipe; no Luna judgment is claimed",
+    "engine": {
+      "name": "web",
+      "version": "0.12.0",
+      "spiVersion": 1
+    }
+  },
+  "sourceIntegrity": {
+    "status": "stable",
+    "beforeDigest": "bb57292e2491747240f2bf54ca43184e9c3777628d810ab8d216d810e8437c29",
+    "afterDigest": "bb57292e2491747240f2bf54ca43184e9c3777628d810ab8d216d810e8437c29",
+    "applicationDigest": "071b8637b309083252d9d36ac6615dcfc5b93b5e781c6d4e0fc9025329e16119",
+    "receiptSha256": "a44ad31a62d7ea8924576f1d2273082567480f8e32295c341a7736e31a726039",
+    "limits": "Revision plus exact input inventory; not clean-checkout qualification. Endpoint comparison detects retained changes, not transient edits reverted during execution."
+  },
+  "sourceHashes": {
+    "packages/ui/src/styles/globals.css": "cabd7ab25d3df34c9024f38a3a622fada9cfb3dd71dc9c05cb600c05098d6d6f",
+    "packages/ui/src/theme/kanon.stylex.ts": "02fe3fa44e11e34acd10cdbd562bdfb2d3430c4f6d9eb322ef8ee14724512f6f",
+    "apps/web/src/lib/theme.ts": "4e508e8a4eed7ab02027c07a47cdcf552906805524dbf3ebfb8b7554d19d45ea",
+    "apps/web/src/lib/preference.ts": "14a459f68140ddb8d65fb3e79f21ac2f891fa994e3ec0e53e1181179a2733d43",
+    "apps/web/src/routes/__root.tsx": "7f6a982de2ab057dd7631c0b33713a9b06b941f4522b0c92ceb50e3b97281d72",
+    "apps/web/src/components/book-workspace.tsx": "e0d1ec5e680c065ff29f8327bfdf7b2c7116e9b5d8547002eedacf053057b99d",
+    "e2e.config.ts": "444bac77109744f3dd2e394d74f1567cc78cbd77a11a7b0c9296627d488e5eeb",
+    "tests/browser/dark-theme.e2e.ts": "68b6125c8a5b2e7b8a1a8dcaa69c6661d2e135b6af0cccf758f986b6db93828f",
+    "tests/browser/synthetic-session.ts": "6ee20aa35971570293639f12b916316fd35f620ec0d2c5fd57e4a13c8eb0783d",
+    "verification/testerarmy/run.mjs": "ae1e8c41e8a52735bc0083192ff21062138015949ba52f630465d15fc121ee00",
+    "verification/paper/start.mjs": "f4281d2be2e9adbd94d2a3cebb1f4b35c99a5960b5078380032b05cefef071cd",
+    "examples/synthetic-book.json": "ad6c50dd155747b9f24c2f5f9d3e253a9c02338a76a5d3edc28ff4024b0cc778"
+  },
+  "palette": {
+    "path": "palette.json",
+    "sha256": "ff90918a1118241533a59f7e0dfd72e2d39bc30f4718a8859c04d6546eca9fd1"
+  },
+  "screenshots": [
+    {
+      "path": "screenshots/001-theme-light-overview.png",
+      "sha256": "dc036032ccca2fc4dcf396703c60763d7a5ed528e6dce3bc2655c13ed8f13051",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "screenshots/002-theme-dark-overview.png",
+      "sha256": "763714d7329b1ac672e1cdcc7bc33038e2c406075608436caf827d5b36f2bc59",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "screenshots/003-theme-dark-bookkeeping.png",
+      "sha256": "ea64d7b8cb073267b2b3c0e8370562dc957bbcc9c638602e3c2e3bc758cf6451",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "screenshots/004-theme-light-restored.png",
+      "sha256": "34d8e56600e4758b08f32c0f56711772196d38e70bf6f7f8650e2c978961eae1",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "reviewer": "Codex GPT-6.1-Sol; palette assertions and synthetic screenshot inspection",
+  "visualComparison": {
+    "performed": false,
+    "reason": "K-01 has no adopted specimen comparison policy; screenshots show product-route theme states including pending reads"
+  }
+}

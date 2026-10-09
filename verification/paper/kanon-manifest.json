@@ -746,7 +746,8 @@
       "baselineSha256": "b7a30521ca6f77bb956bcd8e3808ecbd3a31819cbcf2c3e4d059ed4dfbcb84b0",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-01.jsx.json",
       "files": [
-        "packages/ui/src/theme/kanon.stylex.ts"
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "packages/ui/src/styles/globals.css"
       ],
       "route": "/kanon/list",
       "audience": "bureau",
@@ -769,7 +770,8 @@
       ],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Named light and dark palette verification uses the real synthetic overview appearance menu, reload and bookkeeping route. Contract and browser evidence live in verification/paper/evidence/k01-palette/. No specimen comparison or full K-10/K-11 qualification is claimed; visual status remains unverified."
     },
     {
       "id": "K-02",

@@ -28,7 +28,7 @@ Generated from [kanon-manifest.json](../../verification/paper/kanon-manifest.jso
 | K-31 Påminnelse, beloppet ändrades | /entities/$entityId/books/$bookId/sales | apps/web/src/components/commerce/reminder-retained-review.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-31.png) |
 | K-32 Påminnelse, okänt utfall | /entities/$entityId/books/$bookId/sales | apps/web/src/components/commerce/reminder-message-workspace.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-32.png) |
 | K-00 Så bygger du en skärm | Mapping pending | docs/design-system.md | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-00.png) |
-| K-01 Tokens | /kanon/list | packages/ui/src/theme/kanon.stylex.ts | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-01.png) |
+| K-01 Tokens | /kanon/list | packages/ui/src/theme/kanon.stylex.ts, packages/ui/src/styles/globals.css | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-01.png) |
 | K-02 Knappar och fält | /kanon/focus | packages/ui/src/kanon/action.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-02.png) |
 | K-03 Listor och tabeller | /kanon/list | packages/ui/src/kanon/work-list.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-03.png) |
 | K-04 Status och återkoppling | /kanon/review | packages/ui/src/kanon/status.tsx, packages/ui/src/kanon/feedback.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-04.png) |
