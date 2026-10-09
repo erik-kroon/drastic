@@ -129,11 +129,23 @@ jobs:
           node verification/peppol/setup.mjs
           .cache/peppol-validator/bin/python verification/peppol/check.e2e.py
 
+      - name: Build applications
+        timeout-minutes: 5
+        run: bun run build
+
+      - name: Install pinned Chromium for browser workflows
+        timeout-minutes: 5
+        run: bun run --cwd apps/api playwright install --with-deps chromium
+
       - name: Verify ownership declaration admission
         timeout-minutes: 2
         env:
           DOMAIN_OWNER_CHECK_ARTIFACTS: test-results/domain-owner-declarations
         run: node verification/domain-owners/check.e2e.mjs
+
+      - name: Install Chromium for browser workflows
+        timeout-minutes: 5
+        run: bun run --cwd apps/api playwright install --with-deps chromium
 
       - name: Run domain owner public workflows
         timeout-minutes: 20
