@@ -8,7 +8,7 @@
 | Pure calculation, INK2 field mapping, SRU writer and re-parse | [application/tax/corporate-basis.ts](../src/application/tax/corporate-basis.ts)                                                                                                                                                             |
 | Tx-passing reads and DML                                      | [db/tax/corporate.ts](../src/db/tax/corporate.ts)                                                                                                                                                                                           |
 | Shared contracts, capabilities and HTTP group                 | [contracts/corporate-tax.ts](../../../packages/contracts/src/corporate-tax.ts), [capabilities/corporate-tax.ts](../src/application/capabilities/corporate-tax.ts), [routes/corporate-tax.ts](../src/transport/http/routes/corporate-tax.ts) |
-| Typed tables, constraints and grants                          | [migrations/0013-next-22.sql](../../migrations/0013-next-22.sql), [db/schema.ts](../src/db/schema.ts)                                                                                                                                       |
+| Typed tables, constraints and grants                          | migrations/0013-next-22.sql, [db/schema.ts](../src/db/schema.ts)                                                                                                                                       |
 | Company admission family                                      | [company-profile-basis.ts](../src/application/company-profile-basis.ts), `corporate_tax` family on the `taxPeriodOn` selector date                                                                                                          |
 
 ## Three deliverables, three records, three transactions
@@ -292,7 +292,7 @@ runner credential, `OPENERP_PREPARATION_TOKEN` and a delivery endpoint, per ADR 
 
 ## Verification state
 
-See [the programme verification limits](../../../docs/plans/next-packet-progress.md). In
+See the programme verification limits. In
 short: the packet's synthetic 20% vector was evaluated in a throwaway `bun` process against
 the exported pure functions and every obligation held — pre-tax 1000000, before loss
 1030000, current tax 206000, projected after tax 794000, form total 794000 + 206000 + 30000 =
@@ -306,3 +306,5 @@ plain objects. It therefore did **not** exercise contract decoding, and it misse
 defects that decoding would have caught — the digest envelope and the record-marker
 pattern, both fixed in the follow-up commit. Vector evidence must not be read as evidence
 that a wire shape decodes.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

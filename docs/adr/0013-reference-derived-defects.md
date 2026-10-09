@@ -14,7 +14,7 @@ There is a second, subtler pressure. A defect register invites scope creep: the 
 
 ## Decision
 
-Record reference-derived findings that are wrong **now** in a separate [defect register](../plans/13-reference-derived-defects.md), and keep them separate from forward scope in the [parity backlog](../plans/11-parity-backlog.md). The distinction is by kind, not by severity: a defect is something already shipped that is wrong or unsafe; a backlog packet is something not built.
+Record reference-derived findings that are wrong **now** in a separate defect register, and keep them separate from forward scope in the parity backlog. The distinction is by kind, not by severity: a defect is something already shipped that is wrong or unsafe; a backlog packet is something not built.
 
 Fix every defect by **forward migration or forward packet**. Never edit `0001-schema.sql`, `0002-integrity.sql` or `0003-roles.sql`.
 
@@ -53,3 +53,5 @@ Where a finding is genuinely uncertain, it stays in the register as *observed bu
 ## Implementation and proof
 
 This decision places work; it performs none. Proof that it was followed is that the three baseline files are unchanged at the revision where this decision was taken, that every register row citing a baseline line has a corresponding forward migration, and that `python3 docs/plans/check-plan.py` still passes. Proof that any individual defect is fixed is that defect's own acceptance, which is out of scope here.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

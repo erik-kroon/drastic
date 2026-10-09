@@ -4,7 +4,7 @@ Status: adopted working design following the user's confirmation on 2026-09-24. 
 
 ## Context and authority
 
-The [supplied proposal](../plans/evidence/financial-contract-proposal.md) provides the detailed equations, compatibility requirements, examples and acceptance scenarios adopted here. Its historical “proposed” status and pinned-source observations are retained as provenance; this ADR records adoption. Sections 3–6 define the selected technical contract, subject to the boundaries below. Its embedded handoff instructions do not independently authorize implementation, tests or external actions.
+The supplied proposal provides the detailed equations, compatibility requirements, examples and acceptance scenarios adopted here. Its historical “proposed” status and pinned-source observations are retained as provenance; this ADR records adoption. Sections 3–6 define the selected technical contract, subject to the boundaries below. Its embedded handoff instructions do not independently authorize implementation, tests or external actions.
 
 The current source reconciliation confirmed the employee foundation in migration 9050, the `legal_ar_recognition` purpose, and migration 4500's refusal of supported actual-company VAT totals. Migration 4500 also retains `bookSequence` in the VAT basis. These are source observations, not assembled-database or runtime proof. Reconcile later replacements before implementation. The proposal's legal-source observations have not been independently revalidated in this adoption task; D-04/D-08 still govern profile applicability and qualification.
 
@@ -62,6 +62,8 @@ Rejected: reducing original cost, hiding impairment in ordinary depreciation, po
 
 ## Delivery and acceptance
 
-The [financial-contract delivery section](../plans/05-vat-payroll-assets-fx.md#adopted-financial-contract-delivery) names owners, stages and observable exits. Detailed scenarios in the retained proposal are acceptance requirements, not executed tests or permission to add tests. Preserve five statuses per slice: design adoption, implementation, runtime proof, company applicability and external outcome.
+The financial-contract delivery section names owners, stages and observable exits. Detailed scenarios in the retained proposal are acceptance requirements, not executed tests or permission to add tests. Preserve five statuses per slice: design adoption, implementation, runtime proof, company applicability and external outcome.
 
 D-01–D-10 retain their relevant gates. Seek actual provider specifications and sandbox access early; invented interfaces and local fakes cannot establish external behavior. Company readiness requires implemented behavior, qualified rules, established facts, processed real material and independent reconciliation. This ADR requires no Rust extraction, second ledger or new service boundary.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

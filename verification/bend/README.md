@@ -1,4 +1,4 @@
-# OpenERP Bend verification kit
+# Drastic Bend verification kit
 
 Offline models for exact arithmetic, ledger/allocation invariants, Swedish VAT
 monetary projection and bounded covering-set search. This directory is outside
@@ -15,7 +15,7 @@ npm --prefix verification/bend run demo
 npm --prefix verification/bend run solve -- fixtures/cover-ambiguous.json
 ```
 
-From an OpenERP checkout with its normal dependencies installed, run the complete
+From an Drastic checkout with its normal dependencies installed, run the complete
 local lane (including the current owner):
 
 ```sh
@@ -78,7 +78,7 @@ The current-owner gate follows `actual.ts` into the real shared
 `purchasing.roundRational` implementation, using temporary Node resolution hooks
 and test-only exports in memory. Application source is not edited.
 
-The original floor patch under `patches/` is historical: OpenERP commit
+The original floor patch under `patches/` is historical: Drastic commit
 `b0e2fcbe473c1620a1da8848a0d9ceb2763e086a` already repaired that bug. Historical
 excerpt checks retain the old failure; they are labelled separately from current
 owner comparisons.

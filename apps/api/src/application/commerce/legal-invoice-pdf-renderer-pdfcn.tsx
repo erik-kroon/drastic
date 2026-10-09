@@ -202,7 +202,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
       footer: <PageFooter leftText={`${text(seller.legalName)} · ${number}`} />,
       metadata: {
         title: `Faktura ${issue.legalDocumentNumber}`,
-        creator: "OpenERP",
+        creator: "Drastic",
         creationDate: `${issue.issuedOn}T00:00:00`,
       },
     }),

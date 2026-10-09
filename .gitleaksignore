@@ -1,0 +1,10 @@
+# Reviewed synthetic fixture identifiers only; see SECURITY.md.
+9d54d84032db922d42b5cf7f0881c42cf129c763:apps/api/tests/credit-document.e2e.test.ts:generic-api-key:1034
+aaf67a4d9fa5fdae2d0321bc3fae7b62658ac2f9:verification/paper/seed-peppol.mjs:generic-api-key:24
+ac61a4ba009c28a396ae5de930852b110e724b6e:apps/api/tests/support/legal-commerce.ts:generic-api-key:62
+apps/api/tests/credit-document.e2e.test.ts:generic-api-key:824
+apps/api/tests/support/legal-commerce.ts:generic-api-key:62
+apps/api/tests/support/peppol-legal.ts:generic-api-key:63
+cf398dcfecaeb557401a688a8959cebe0fb6bb4a:verification/paper/asset-fixture-clients.mjs:generic-api-key:175
+ddf11b90cb4415c38d66a7cee294ba69da455a63:apps/api/tests/credit-document.e2e.test.ts:generic-api-key:79
+df98346ab1bfe27bb5587caddeaea03d073ad1c8:apps/api/tests/support/peppol-legal.ts:generic-api-key:62

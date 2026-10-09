@@ -1,10 +1,10 @@
 # Product scope
 
-Status: working product requirements. Company facts and applicable obligations remain open in [D-04](open-decisions.md).
+Status: working product requirements. Company facts and applicable obligations remain open in D-04.
 
-OpenERP should turn retained evidence into explicit accounting decisions, approved financial changes, reconciled books and reproducible outputs. The first useful product milestone is a complete, reconciled period using the company's existing matched material. A synthetic kernel demonstration is a prerequisite to that milestone.
+Drastic should turn retained evidence into explicit accounting decisions, approved financial changes, reconciled books and reproducible outputs. The first useful product milestone is a complete, reconciled period using the company's existing matched material. A synthetic kernel demonstration is a prerequisite to that milestone.
 
-The initial candidate profile is one Swedish AB. Its actual legal form, accounting method, financial year, registrations, reporting framework and obligations must be established from records ([D-04](open-decisions.md)). “Swedish AB,” “K2,” calendar-year accounting and payroll are not defaults to invent.
+The initial candidate profile is one Swedish AB. Its actual legal form, accounting method, financial year, registrations, reporting framework and obligations must be established from records (D-04). “Swedish AB,” “K2,” calendar-year accounting and payroll are not defaults to invent.
 
 ## Adopted commercial priority — 2026-10-03
 
@@ -12,13 +12,13 @@ The initial candidate profile is one Swedish AB. Its actual legal form, accounti
 
 Use bounded bulk approval for familiar supported work, individual review for exceptions, and exact-action approval for payments, messages and filings. Financial approval and receipts remain immutable; automatic posting is not adopted. Live bank feeds, Peppol, direct VAT filing and BankID are target capabilities after their own qualification gates, with manual/file fallbacks retained.
 
-Native payroll is deferred from the commercial wedge in favor of evaluating a specialist integration. Quotes/orders, incoming orders, recurring-billing and currency extensions, ROT/RUT, advanced assets/dimensions and Cash follow the core loop. Required import, corrections, reconciliation, reporting and closing remain in scope. Actual unsupported company transactions block their dependent release until a qualified treatment or handoff exists. Adopt visible assistant explanations, a bank-to-document-to-review onboarding/demo loop and the [success measures](plans/product-focus-review.md#success-measures). Choose a qualified replacement for the provisional public name before launch.
+Native payroll is deferred from the commercial wedge in favor of evaluating a specialist integration. Quotes/orders, incoming orders, recurring-billing and currency extensions, ROT/RUT, advanced assets/dimensions and Cash follow the core loop. Required import, corrections, reconciliation, reporting and closing remain in scope. Actual unsupported company transactions block their dependent release until a qualified treatment or handoff exists. Adopt visible assistant explanations, a bank-to-document-to-review onboarding/demo loop and the success measures. Choose a qualified replacement for the provisional public name before launch.
 
 ## Book Zero product priority
 
-The [Book Zero plan](plans/15-book-zero-workflow-cash.md) organizes the first delivery around Drastic AB: independently review a real historical period, finish routine work through the ordinary interface, with read-only Drastic Cash sequenced later under ADR 0017. Extend acceptance to the first financial year, a new real period and a separately approved single-writer transition. Work belongs in the first delivery when the actual company or the core accounting journey needs it; Cash coverage requirements govern the later Cash slice.
+The Book Zero plan organizes the first delivery around Drastic AB: independently review a real historical period, finish routine work through the ordinary interface, with read-only Drastic Cash sequenced later under ADR 0017. Extend acceptance to the first financial year, a new real period and a separately approved single-writer transition. Work belongs in the first delivery when the actual company or the core accounting journey needs it; Cash coverage requirements govern the later Cash slice.
 
-The source reports SEB and a first financial year of 2025-05-17–2026-04-30; these remain [company inputs to qualify](open-decisions.md#book-zero-company-and-review-inputs). Reconstruction from raw evidence and migration of old accounting are separate trials. A successful migration cannot by itself prove new accounting treatment.
+The source reports SEB and a first financial year of 2025-05-17–2026-04-30; these remain company inputs to qualify. Reconstruction from raw evidence and migration of old accounting are separate trials. A successful migration cannot by itself prove new accounting treatment.
 
 Cash uses qualified opening observations and remaining payment obligations to show daily balances, the minimum and its date, and headroom after an explicit buffer. It supports 30 days, 90 days and 13 weeks (91 days), with frozen scenarios, contribution drilldown and visible missing/stale data. It neither owns ledger balances nor initiates payments. It is separate from NEXT-45's historical cash-flow statement.
 
@@ -33,7 +33,7 @@ Lending, factoring, cards, credit decisions and the broader financial platform a
 | Reviewer            | Trace a report amount through its calculation and ledger entries to decisions and original evidence.                                 |
 | Operator            | Restore books, evidence and receipts together; establish which system is the active writer.                                          |
 
-The [customer frontend plan](frontend.md) turns these outcomes into starting views for founders, in-house finance and accountants working across clients. [ADR 0006](adr/0006-customer-workspaces.md) selects one application with shared records and different entry hierarchy/density. Audience preferences confer no accounting authority; firm membership and assignments require their owning contracts.
+The customer frontend plan turns these outcomes into starting views for founders, in-house finance and accountants working across clients. [ADR 0006](adr/0006-customer-workspaces.md) selects one application with shared records and different entry hierarchy/density. Audience preferences confer no accounting authority; firm membership and assignments require their owning contracts.
 
 ## Requirements
 
@@ -62,8 +62,10 @@ Hosted multi-entity operation and self-hosting are target design directions. Pre
 
 Local development uses explicitly synthetic records until actual data and its permitted use are supplied. No company import, production posting, deployment, cutover, payment, filing or provider purchase is implied by this documentation task.
 
-The [supplemental capability backlog](plans/capability-backlog.md) adds collections, quotes/orders, catalog and webshop intake, dimensions, mileage claims and a bounded extension lifecycle to the planned product scope. These reuse the accounting core; general CRM, inventory/warehouse management and a plugin marketplace remain excluded.
+The supplemental capability backlog adds collections, quotes/orders, catalog and webshop intake, dimensions, mileage claims and a bounded extension lifecycle to the planned product scope. These reuse the accounting core; general CRM, inventory/warehouse management and a plugin marketplace remain excluded.
 
 ## Three separate completion claims
 
 **Software:** a named capability works in a named environment under specified scenarios. **Company books:** the actual profile and sources are covered and the selected period is reconciled. **External obligations:** the required artifact, signature and acceptance evidence exist. None implies the other two.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

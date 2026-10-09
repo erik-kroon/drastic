@@ -1,4 +1,4 @@
-// OpenERP's fixed pdfcn theme uses the bundled, qualified document fonts.
+// Drastic's fixed pdfcn theme uses the bundled, qualified document fonts.
 export const pdfcnTheme = {
   colors: {
     foreground: "#18181b",

@@ -170,7 +170,7 @@ export function OnboardingSources({
         <SetupTitle>Källor</SetupTitle>
       </SetupBlock>
       <SetupText as="p" layout={["subtitle"]}>
-        Det här är underlaget OpenERP har fått. Inget är ännu en bokföringsändring.
+        Det här är underlaget Drastic har fått. Inget är ännu en bokföringsändring.
       </SetupText>
       <SetupBlock layout={["columns", "section"]}>
         <SetupTable
@@ -475,7 +475,7 @@ function UploadSource({
       );
 
       save.mutate(
-        Schema.decodeUnknownSync(Intake.RetainSource)({
+        Schema.decodeSync(Intake.RetainSource)({
           sourceSystem,
           sourceAccountId: account,
           occurrenceKey: crypto.randomUUID(),

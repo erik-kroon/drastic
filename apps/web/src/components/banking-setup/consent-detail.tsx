@@ -320,8 +320,8 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
       >
         <Text>
           {sv
-            ? "Stoppa nya underlag i OpenERP. Detta återkallar inte samtycket hos banken eller leverantören."
-            : "Stop new records in OpenERP. This does not revoke consent with the bank or provider."}
+            ? "Stoppa nya underlag i Drastic. Detta återkallar inte samtycket hos banken eller leverantören."
+            : "Stop new records in Drastic. This does not revoke consent with the bank or provider."}
         </Text>
         <form.Field name="reason">
           {(field) => (

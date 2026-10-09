@@ -1,6 +1,6 @@
 # Licensing
 
-OpenERP's project-owned source and documentation are licensed under the **GNU Affero General Public License, version 3 only** (`AGPL-3.0-only`). The complete license is in [LICENSE](LICENSE).
+Drastic's project-owned source and documentation are licensed under the **GNU Affero General Public License, version 3 only** (`AGPL-3.0-only`). The complete license is in [LICENSE](LICENSE).
 
 This choice applies throughout the application, accounting calculations, SQL migrations, jurisdiction implementations, REST/MCP layer, agent workflows, public synthetic evaluation material and project-owned contracts/SDKs. There is no separate permissive exception for contracts or a future Rust library. A future exception requires an explicit maintainer decision and the necessary rights; it is not implied by a package's role.
 
@@ -10,7 +10,7 @@ Copyright remains with the respective authors and contributors. Package manifest
 
 Dependencies and any separately identified third-party files retain their own licenses, copyright notices and conditions. This project license does not relicense upstream source, remove notices, or grant rights to third-party datasets, charts, taxonomies, trademarks or credentials. Check provenance and compatible terms before copying code or fixtures. Architectural reference use alone does not establish that code has been incorporated.
 
-For distributed releases, retain required third-party notices and record the dependency lockfile and exact source revision. Verify copied/adapted files individually. Do not describe the repository's historical reference corpus as newly licensed OpenERP code.
+For distributed releases, retain required third-party notices and record the dependency lockfile and exact source revision. Verify copied/adapted files individually. Do not describe the repository's historical reference corpus as newly licensed Drastic code.
 
 ## Hosted operation and managed services
 

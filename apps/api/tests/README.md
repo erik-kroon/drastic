@@ -42,7 +42,7 @@ The failure cases below precede the test implementation. Tests drive HTTP into t
 
 Current cases cover credential, Better Auth session and approver-membership revocation, plus receipt replay after approval consumption or expiry. The review regressions add supplier extraction, draft acceptance/history/pagination and a browser journey for Stockholm dates and supplier listing. Actual-company acceptance remains separate.
 
-The FWD journeys add native synthetic invoice issue/document/allocation/reference matching, explicit MCP exposure and approved execution/recovery, and run-manifest source identity. Their failure contracts and limits are in [the execution record](../../../docs/plans/16-comparison-reconciliation.md#execution-record). A passing selected journey does not qualify every feature in the catalog.
+The FWD journeys add native synthetic invoice issue/document/allocation/reference matching, explicit MCP exposure and approved execution/recovery, and run-manifest source identity. Their failure contracts and limits are in the execution record. A passing selected journey does not qualify every feature in the catalog.
 
 Run `bun run test:e2e` from the repository root. PostgreSQL 17 binaries (`initdb`, `pg_ctl`, `pg_config`), its `pg_stat_statements` extension and Bun must be available. Set `PG_BINDIR` when the binaries are outside PATH. Install the pinned browser with `bun run --cwd apps/api playwright install chromium` (CI/Linux may also need Playwright's system dependencies). Each invocation owns a fresh temporary PostgreSQL cluster; it never uses ambient database credentials. Missing prerequisites fail the run.
 
@@ -104,3 +104,5 @@ removed.
 - Worker, migration and PostgreSQL logs support diagnosis. Fixture access tokens are disposable and are excluded from saved artifacts.
 
 The manifest identifies declared repository inputs, not dependency-directory bytes or a deployed bundle. Use the frozen lockfile and separate deployment checks for those boundaries. These synthetic tests are not Swedish accounting compliance certification.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

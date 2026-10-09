@@ -126,7 +126,7 @@ function capabilities(workspace: Workspace, lifecycle: Lifecycle): Capability[] 
           state: "not_supported",
           tone: "blocked",
           detail:
-            "Du kan fortsätta använda OpenERP för bokföring och fakturor. Den här delen aktiveras inte.",
+            "Du kan fortsätta använda Drastic för bokföring och fakturor. Den här delen aktiveras inte.",
         }
       : {
           id: "corporate_tax",
@@ -150,7 +150,7 @@ export function OnboardingCompatibility({
 
   return (
     <SetupPageContent styleX={setupLayoutStyles(["page"])}>
-      <SetupTitle>Vad OpenERP stöder för {book.name}</SetupTitle>
+      <SetupTitle>Vad Drastic stöder för {book.name}</SetupTitle>
       <SetupBlock layout={["section"]}>
         <SetupTable
           title="Kompatibilitet"

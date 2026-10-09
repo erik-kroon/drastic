@@ -147,7 +147,7 @@ function originalValueKey(
   return null;
 }
 
-type BucketState = (typeof ValueTotal.Type)["state"];
+type BucketState = ValueTotal["state"];
 
 type Bucket = {
   dimensionCode: string;

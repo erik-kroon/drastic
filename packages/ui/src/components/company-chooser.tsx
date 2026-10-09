@@ -96,7 +96,7 @@ export function CompanyChooser({
   return (
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header)}>
-        <strong>OpenERP</strong>
+        <strong>Drastic</strong>
         {headerActions}
       </header>
       <section {...stylex.props(styles.content)}>

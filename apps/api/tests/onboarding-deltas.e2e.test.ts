@@ -116,7 +116,7 @@ test("final source delta retains review intent without manufacturing financial e
       filename: "october.se",
       mediaType: "application/octet-stream",
       contentBase64: Buffer.from(
-        '#FLAGGA 0\n#FORMAT UTF8\n#SIETYP 4\n#RAR 0 20260101 20261231\n#KONTO 1930 "Bank"\n#KONTO 2999 "Clearing"\n#VER A 2 20261001 "OpenERP authority period"\n{\n#TRANS 1930 {} 125.00\n#TRANS 2999 {} -125.00\n}\n',
+        '#FLAGGA 0\n#FORMAT UTF8\n#SIETYP 4\n#RAR 0 20260101 20261231\n#KONTO 1930 "Bank"\n#KONTO 2999 "Clearing"\n#VER A 2 20261001 "Drastic authority period"\n{\n#TRANS 1930 {} 125.00\n#TRANS 2999 {} -125.00\n}\n',
       ).toString("base64"),
     },
     Intake.SourceOccurrence,

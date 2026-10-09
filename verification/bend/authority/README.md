@@ -1,4 +1,4 @@
-# OpenERP Bend authority upgrade
+# Drastic Bend authority upgrade
 
 An **additive, isolated successor** to the kit already integrated under `verification/bend/`.
 Integrated as **`verification/bend/authority/`**, alongside the parent's offline verification lane.
@@ -18,7 +18,7 @@ The child contains a candidate snapshot of the Bend models plus new proofs and i
 Node 22.16 or later. No npm dependency installation is needed.
 
 ```sh
-# From the OpenERP root after installing the child:
+# From the Drastic root after installing the child:
 npm --prefix verification/bend/authority run verify:local
 
 # Your original command remains unchanged:

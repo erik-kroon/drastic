@@ -1,4 +1,4 @@
-name: OpenERP CI
+name: Drastic CI
 
 on:
   pull_request:

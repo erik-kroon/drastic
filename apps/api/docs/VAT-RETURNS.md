@@ -63,4 +63,6 @@ Independent vector: sale net/VAT `10000`/`2500`, credit `2000`/`500`, owner sour
 
 Cases cover zero-tax credit with only two journal lines, exact original linkage, missing/ambiguous/withdrawn original refusal, cross-period refusal, invalid monthly window, duplicate-source blocking, source-versus-deduction amounts, and unchanged saved returns after later facts. The monthly vector is exercised; quarterly/yearly window rules are source-inspected, not separately qualified company journeys.
 
-Run `bun run test:e2e` and inspect `test-results/e2e/owned-vat-journey.json` with the manifest, source-integrity result and test report. Read the [packet record](../../../docs/plans/16-comparison-reconciliation.md) for current verification status. Company qualification, filing, assessment and payment remain separate gates. Old SQL dispatcher instructions and migration-1000 installation steps are superseded; Git history retains them.
+Run `bun run test:e2e` and inspect `test-results/e2e/owned-vat-journey.json` with the manifest, source-integrity result and test report. Read the packet record for current verification status. Company qualification, filing, assessment and payment remain separate gates. Old SQL dispatcher instructions and migration-1000 installation steps are superseded; Git history retains them.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

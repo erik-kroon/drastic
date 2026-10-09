@@ -1,7 +1,7 @@
 const en = {
   title: "SIE 4I transaction transfer",
   warning:
-    "Synthetic preparation only. This is not a full-book export, opening balance, statutory filing or certified importer compatibility. Importing the file elsewhere can create duplicate transactions. Review the destination before importing; OpenERP sends nothing.",
+    "Synthetic preparation only. This is not a full-book export, opening balance, statutory filing or certified importer compatibility. Importing the file elsewhere can create duplicate transactions. Review the destination before importing; Drastic sends nothing.",
   selection:
     "Includes every complete movement voucher in this saved pack. Opening and excluded later entries are not included. Account and source text must be representable in CP437; control characters and literal backslashes are refused.",
   legalName: "Explicit legal company name for this synthetic transfer",
@@ -38,7 +38,7 @@ const en = {
 const sv: typeof en = {
   title: "SIE 4I-transaktionsöverföring",
   warning:
-    "Endast syntetisk förberedelse. Detta är inte en fullständig bokföringsexport, ingående balans, myndighetsinlämning eller certifierad importkompatibilitet. Import i ett annat system kan skapa dubbla transaktioner. Granska mottagaren före import; OpenERP skickar ingenting.",
+    "Endast syntetisk förberedelse. Detta är inte en fullständig bokföringsexport, ingående balans, myndighetsinlämning eller certifierad importkompatibilitet. Import i ett annat system kan skapa dubbla transaktioner. Granska mottagaren före import; Drastic skickar ingenting.",
   selection:
     "Alla fullständiga periodverifikationer i det sparade paketet ingår. Ingående och senare exkluderade poster ingår inte. Konto- och källtext måste kunna kodas i CP437; kontrolltecken och omvända snedstreck avvisas.",
   legalName: "Uttryckligt juridiskt företagsnamn för den syntetiska överföringen",

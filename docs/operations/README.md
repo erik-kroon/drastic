@@ -1,11 +1,11 @@
 # Operations documentation
 
-Use [work status and backlog](../work-status.md) for delivery status and remaining qualification. These documents own workflow contracts and operating procedures.
+Use work status and backlog for delivery status and remaining qualification. These documents own workflow contracts and operating procedures.
 
 | Document | Responsibility |
 | --- | --- |
 | [Onboarding backend](onboarding-backend.md) | Retained setup, company-fact provenance, import progress and cutover gates |
-| [Private company sources](private-company-source.md) | Configurable private source root, capture and September acceptance prerequisites |
+| Private company sources | Configurable private source root, capture and September acceptance prerequisites |
 | [Payment reminders](payment-reminders.md) | Exact review/approval, durable attempts, fixture transport and outcome recovery |
 | [Evaluation contracts](evaluation-contracts.md) | Operator capture/read, immutable input identity and later evaluation units |
 | [Local recovery](local-recovery.md) | Backup, inspect and quarantined restore commands |
@@ -16,4 +16,6 @@ Use [work status and backlog](../work-status.md) for delivery status and remaini
 | [Isolated rehearsal](ops02-isolated-rehearsal.md) | Revision-scoped restore observations and remaining OPS-02 gates |
 | [Cloudflare](cloudflare.md) | Hosted runtime, private originals, stage isolation and deployment proof |
 
-Distribution setup also lives in [self-host](../../infra/self-host/README.md). The [operations requirements](../operations.md), [OPS packet contracts](../plans/07-restore-operations-cutover.md) and [D-register](../open-decisions.md) retain authority, custody and external-action boundaries.
+Distribution setup also lives in [self-host](../../infra/self-host/README.md). The operations requirements, OPS packet contracts and D-register retain authority, custody and external-action boundaries.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

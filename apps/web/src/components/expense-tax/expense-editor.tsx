@@ -94,7 +94,7 @@ export function ExpenseEditor(
       canSubmit={!documentId || (!!source && !document.isFetching)}
       source={(fields) => ({
         title: fieldText(fields, "description") ?? "Expense",
-        origin: source ? `Entered from ${source.filename}` : "Expense details entered in OpenERP",
+        origin: source ? `Entered from ${source.filename}` : "Expense details entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({
           kind: "expense_entry_v1",

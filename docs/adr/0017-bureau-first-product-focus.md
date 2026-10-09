@@ -14,9 +14,9 @@ Adopt connected execution after approval as the commercial target: live bank fee
 
 Make assistant reasoning visible through concise account/treatment explanations, source basis and explicit uncertainty. Show a learned preference only when an authorized retained rule changes, with its scope and undo path. Personal assistants over the API remain advanced features. Onboarding should reach bank connection → invoice intake → explainable proposals matched to bank evidence, with conservative review defaults and detailed assistant policy later. Adopt the synthetic demo and guided tour for this same loop.
 
-Measure document-to-booking time, unchanged approval share, month-close time and human touches per transaction, with correction rates, outstanding work and coverage alongside them. Definitions are in the [adoption record](../plans/product-focus-review.md#success-measures); no numeric success target or measured improvement is claimed.
+Measure document-to-booking time, unchanged approval share, month-close time and human touches per transaction, with correction rates, outstanding work and coverage alongside them. Definitions are in the adoption record; no numeric success target or measured improvement is claimed.
 
-OpenERP remains an internal provisional name. Choose and qualify a replacement before public branding; no replacement or name clearance is established.
+Drastic remains an internal provisional name. Choose and qualify a replacement before public branding; no replacement or name clearance is established.
 
 ## Scope and precedence
 
@@ -36,3 +36,5 @@ A mature-incumbent feature surface as the first commercial milestone; owner appr
 Use the [adoption backlog](../ui-design-checklist.md#product-direction-adoption-backlog--2026-10-03) before resuming the inherited screen order. Preserve prior static review records, then review changed jobs one screen and flow at a time in Paper. Existing frames do not establish coverage of this decision.
 
 Future implementation must prove through synthetic, repeatable public-boundary journeys: one task resolved consistently across filtered views; accountant posting within book authority while owner-only payment powers remain protected; exact batch approval with changed-item exclusion and independent receipts; provenance and retained rule changes; the onboarding loop; and connected-adapter interruption/recovery without invented external outcomes. Produce retained E2E artifacts. Provider acceptance requires separate observed evidence under D-10. This documentation change runs no provider or product journey.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

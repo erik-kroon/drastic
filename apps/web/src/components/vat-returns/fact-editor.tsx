@@ -57,7 +57,7 @@ export function VatFactEditor(props: Props) {
       onSuccess={(fact) => props.onSaved(fact.factId)}
       source={(fields) => ({
         title: nullable(fields, "description") ?? "",
-        origin: "VAT assessment entered in OpenERP",
+        origin: "VAT assessment entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({
           kind: "vat_assessment_entry_v1",

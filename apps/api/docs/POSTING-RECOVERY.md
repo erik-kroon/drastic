@@ -6,7 +6,7 @@ Application operations live in [application/posting-recovery.ts](../src/applicat
 
 ### Current saved-request retry boundary — DF-04
 
-The [2026-09-30 repair](../../../docs/plans/evidence/df-04-saved-request-retry.md)
+The 2026-09-30 repair
 supersedes the historical **all refusals are terminal** rule below. Current runs
 append immutable `posting_request_attempts` under forward `0043`. Old outcomes
 remain readable and immutable. Pure posting-line validation proves a content
@@ -227,3 +227,5 @@ Source SHA-256 inventory (this document excluded to avoid a self-referential has
 | `apps/web/src/components/posting-recovery/review.tsx`         | `66ef2658f2591164b784acf54574b94b7bcf93f94d56bf0d51a5836e5877bcf6` |
 | `apps/web/src/components/posting-recovery/saved-requests.tsx` | `7df92b267bbb35fb668b37cf8158ae93f2fb60881ce01c72429ce70697865eb7` |
 | `apps/api/migrations/0310-saved-posting-requests.sql`         | `d8e0b4b5fefe3752db81402d27bcc000fe48a834dcbeda8ed39fa4f92208daec` |
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

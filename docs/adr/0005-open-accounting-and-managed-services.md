@@ -4,7 +4,7 @@ Status: accepted product direction from the user's setup request. The user expli
 
 ## Decision
 
-Keep the accounting system open and self-hostable: ledger, exact arithmetic, approvals/corrections, source import, reconciliation, reports, jurisdiction rules and calculation, API/MCP, agent skills/workflows, capability schemas, adapters and public synthetic evaluations. Core accounting must work without a hosted OpenERP account, paid entitlement check or managed-provider credential. Access control and accounting-profile readiness still apply equally to local and hosted users.
+Keep the accounting system open and self-hostable: ledger, exact arithmetic, approvals/corrections, source import, reconciliation, reports, jurisdiction rules and calculation, API/MCP, agent skills/workflows, capability schemas, adapters and public synthetic evaluations. Core accounting must work without a hosted Drastic account, paid entitlement check or managed-provider credential. Access control and accounting-profile readiness still apply equally to local and hosted users.
 
 Self-hosting means operating the application with an operator-owned database, identity/session configuration and retained evidence. It does not promise free hardware, bank access, certificates, legal review or a complete production accounting release today. Supported local capabilities must match the same capability/profile contracts used by hosted operation.
 
@@ -32,4 +32,6 @@ Any future kernel takes immutable values and returns values, with no HTTP, SQL, 
 
 A closed accounting core would prevent independent inspection and make self-hosting depend on a paid service; reject it. Moving the backend to Rust now would add a second toolchain before the domain is stable; defer it. Building an empty multi-package ecosystem would add maintenance without callers; retain current ownership. One license avoids contradictory grants across the initial workspaces, with explicit provenance handling for upstream material.
 
-The first portability increment must start locally, serve the built UI and existing API, and reach an isolated PostgreSQL database using a restricted runtime login. Clean installation, migration refusal, restart, shutdown, origin checks and retained data have separate proof obligations. Full release still needs the existing archive, restore, identity, domain and provider acceptance gates. See [self-host instructions](../../infra/self-host/README.md) and [the architecture follow-up](../architecture-followup.md).
+The first portability increment must start locally, serve the built UI and existing API, and reach an isolated PostgreSQL database using a restricted runtime login. Clean installation, migration refusal, restart, shutdown, origin checks and retained data have separate proof obligations. Full release still needs the existing archive, restore, identity, domain and provider acceptance gates. See [self-host instructions](../../infra/self-host/README.md) and the architecture follow-up.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

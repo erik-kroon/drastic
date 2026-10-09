@@ -10,7 +10,7 @@ Official source checking, reproducible JS builds, generated-artifact assertions 
 
 A complete universal refinement proof is still absent for several arithmetic dependencies. Runtime mathematical checks and tests improve assurance but are not represented as such proofs.
 
-## Current OpenERP
+## Current Drastic
 
 The parent comparison remains separate evidence. The authority adapter imports the public `actualVatMonetary` seam and exercises the actual capture/sealing/read workflow in Bun with PostgreSQL. A synthetic journal checks the shared HTTP approval/execution boundary. This does not establish actual-company VAT submission or a complete VAT control-reclassification journey.
 

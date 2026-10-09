@@ -1,10 +1,10 @@
-# Self-hosting OpenERP
+# Self-hosting Drastic
 
 Run the current application and accounting API using Bun and PostgreSQL without a Cloudflare account. The same API implementation, contracts and readiness checks serve both runtimes. The Bun HTTP entrypoint serves the existing prerendered web build; background preparation runs in a separate process. [ADR 0010](../../docs/adr/0010-application-owned-accounting-replacement.md) selects application-owned accounting and a clean three-file baseline; the wider replacement remains in progress.
 
 [ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects a separate persistent Bun process using effect-mq and PostgreSQL for background jobs in both hosted and self-host installations. The listener belongs to that process only; it is not a financial transaction session. The preparation runner is available; full job-path and deployment recovery proof remain open.
 
-This is a development distribution of the current capabilities, not a production-ready accounting release. Object retention, durable outbox delivery, full statutory behavior and production recovery remain governed by the [delivery plan](../../docs/plans/README.md). Container execution must be qualified on the release platform; see [verification](../../docs/verification.md).
+This is a development distribution of the current capabilities, not a production-ready accounting release. Object retention, durable outbox delivery, full statutory behavior and production recovery remain governed by the delivery plan. Container execution must be qualified on the release platform; see [verification](../../docs/verification.md).
 
 ## Container setup
 
@@ -118,7 +118,9 @@ does not enable reading. Credentials are server-only and must not enter the web
 build or a committed environment file. Hosted Worker deployment is not configured
 by these self-host settings.
 
-The [delivery record](../../docs/plans/document-intelligence-delivery.md) owns
+The delivery record owns
 scope and evidence. PDF/PNG/JPEG originals use the bounded whole-document Swedish
 SEK profile. Reading proposes values; users must check and explicitly use them,
 complete missing facts and save a draft. It never posts or pays an invoice.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

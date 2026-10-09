@@ -1,6 +1,6 @@
 # Local recovery: snapshot closure and fenced restore
 
-Status: recovery package v2 and durable-work inventory v2 pass the [application-owned replacement rehearsal](../plans/evidence/application-owned-replacement-complete.md), including posted receipts, retained originals, effect-mq tables and queue sequences. Restricted read-only application recovery, custody and hosted/production recovery remain separate gates. Restore does not grant writer or provider activation.
+Status: recovery package v2 and durable-work inventory v2 pass the application-owned replacement rehearsal, including posted receipts, retained originals, effect-mq tables and queue sequences. Restricted read-only application recovery, custody and hosted/production recovery remain separate gates. Restore does not grant writer or provider activation.
 
 This is not an encrypted archive, statutory retention service, company-readiness decision or production cutover tool. Private permissions are not encryption. A checksum is not authenticity or proof of successful recovery. D-07 remains open.
 
@@ -119,3 +119,5 @@ be treated as permission to resume. Ready jobs remain ready in the retained data
 runtime/provider is started and `resumeAllowed` is alwaysfalse. Current outbox counters
 are not per-attempt provider receipts. The inventory binds all seven effect-mq table fingerprints, including claims, leases, retries and attempt history in the dump, and the exact positions of its two owned sequences. Sequence ownership, configuration and ACLs participate in schema review; unrelated sequences remain refused. Queue writers must be stopped during capture because sequence state is not MVCC. A changed sequence position between inventory and completed dump refuses the backup. Restore compares sequence positions and queue fingerprints before issuing a receipt. Financial counters remain transactional table rows.
 The restricted-read application boundary and every existing promotion gate remain blocked.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

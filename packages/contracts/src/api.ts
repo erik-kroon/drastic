@@ -315,7 +315,7 @@ export class Api extends HttpApi.make("open-erp")
   .prefix("/api")
   .annotateMerge(
     OpenApi.annotations({
-      title: "OpenERP API",
+      title: "Drastic API",
       version: "1.0.0",
       transform: describeAuthentication,
     }),

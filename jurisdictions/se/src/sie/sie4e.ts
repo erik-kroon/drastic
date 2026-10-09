@@ -678,7 +678,7 @@ export function renderSie4E(
 
   const records = [
     "#FLAGGA 0",
-    `#PROGRAM ${quoted("OpenERP")} ${quoted(capture.rendererRelease.version)}`,
+    `#PROGRAM ${quoted("Drastic")} ${quoted(capture.rendererRelease.version)}`,
     "#FORMAT PC8",
     `#GEN ${date(capture.generationDate)}`,
     "#SIETYP 4",
@@ -834,7 +834,7 @@ function checkHeader(capture: Capture, parsed: Sie4EParsed, note: Note) {
 
   const program = singleRecord(parsed, "PROGRAM");
 
-  if (program?.fields[0] !== "OpenERP" || program?.fields[1] !== capture.rendererRelease.version)
+  if (program?.fields[0] !== "Drastic" || program?.fields[1] !== capture.rendererRelease.version)
     note("#PROGRAM does not name the captured renderer release.");
 
   const gen = singleRecord(parsed, "GEN");

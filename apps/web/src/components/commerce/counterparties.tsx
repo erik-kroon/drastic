@@ -442,7 +442,7 @@ function Annotations({
               operation: "create_evidence",
               input: {
                 title: input.label,
-                origin: "Directory annotation entered in OpenERP",
+                origin: "Directory annotation entered in Drastic",
                 mediaType: "application/json",
                 content: JSON.stringify(input),
               },

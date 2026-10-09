@@ -1,6 +1,6 @@
 # Asset disposals with proceeds
 
-Owner is [DRA-150](https://linear.app/drastic-dev/issue/DRA-150/integrate-owned-asset-disposals-with-retained-cash-and-invoice). Requirements are [NEXT-19](../specs/next-01-25/packets/NEXT-19.md) and the [retained valuation owner](../plans/asset-valuation-owner.md). This is a local synthetic owner. Actual-company asset-sale tax qualification remains a D-04/D-08 gate.
+Owner is DRA-150. Requirements are NEXT-19 and the retained valuation owner. This is a local synthetic owner. Actual-company asset-sale tax qualification remains a D-04/D-08 gate.
 
 ## Failure vectors specified before implementation
 
@@ -51,3 +51,5 @@ An existing legal invoice line with net 450000 and VAT 112500 can retire an asse
 ## Legal invoice fixture date boundary
 
 A legal issue retains its issued date from the current synthetic database UTC date. Invoice disposal fixtures must use that retained `issue.issuedOn`, because a fixed earlier disposal date becomes invalid across midnight. A public prepare request dated before the retained issue must return `StaleDependency` and leave financial and preparation records unchanged. Correcting the fixture date does not relax the owner's refusal.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

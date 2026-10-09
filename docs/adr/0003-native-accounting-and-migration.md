@@ -4,7 +4,7 @@ Status: working decision. Actual company source, history scope and cutover evide
 
 ## Context and decision
 
-OpenERP owns its accounting operations and PostgreSQL ledger. No live previous accounting-system connection or actual company export has been established for migration. Build the native product around the existing module boundaries and shared contracts.
+Drastic owns its accounting operations and PostgreSQL ledger. No live previous accounting-system connection or actual company export has been established for migration. Build the native product around the existing module boundaries and shared contracts.
 
 The undeployed schema admits only `native` book authority. Exact bank matches and reviewed partial allocations are both native paths; reversal targets name the former `exact_match`. No deployed database or client requires an older identifier.
 
@@ -20,4 +20,6 @@ Before cutover, independently reconcile the final source delta and fence the old
 
 ## Proof
 
-[D-06](../open-decisions.md) owns source and history inputs. The [import plan](../plans/03-imports-matching-reconciliation.md) owns preservation and reconciliation; the [operations plan](../plans/07-restore-operations-cutover.md) owns restore and writer promotion. E-12/E-14/E-16/E-21 cover their acceptance. A synthetic import or a balanced total cannot establish actual-company migration completeness.
+D-06 owns source and history inputs. The import plan owns preservation and reconciliation; the operations plan owns restore and writer promotion. E-12/E-14/E-16/E-21 cover their acceptance. A synthetic import or a balanced total cannot establish actual-company migration completeness.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

@@ -38,7 +38,7 @@ Contract TypeScript compilation, targeted formatter/lint and source review passe
 
 `synthetic-gross-cost-supplier-credit-v1` takes an explicitly asserted `taxMinor` and a source credit note. A partial credit reverses gross cost/payable only. The source tax on all posted credits cannot exceed the accepted invoice's sealed asserted tax; each credit amount cannot exceed its current unpaid residual. Its tax field is an assertion for review, **not** a VAT recovery or report fact. Exported payment files still block credit. Payment allocation still requires a separate posted payment source, approval and capacity; neither export nor a reported provider status settles an invoice.
 
-[Local HTTP proof](../../../docs/plans/evidence/ap-gross-cost-http.md) covers a positive source-tax invoice, partial credit, posted synthetic payment and rejected excess-tax credit. Actual VAT deductibility, Swedish treatment review, statutory credit notes, refunds and provider-confirmed settlement remain separate gates.
+Local HTTP proof covers a positive source-tax invoice, partial credit, posted synthetic payment and rejected excess-tax credit. Actual VAT deductibility, Swedish treatment review, statutory credit notes, refunds and provider-confirmed settlement remain separate gates.
 
 ### Reviewed Swedish purchase posting (forward 8760)
 
@@ -50,12 +50,14 @@ This is still a synthetic-book journal profile. `taxAssessment=not_applicable`, 
 
 ### Reviewed line purchase source path (forward 8760)
 
-`swedish-purchase-v1` currently runs only on a synthetic SEK book. It reviews explicit line expense accounts and 0/6/12/25 rates against evidenced source amounts, then posts net expense, input VAT (2641) and the supplier payable (2440) atomically. `swedish-purchase-full-credit-v1` reverses the exact original net/tax/payable **only while the whole original remains unpaid**. The [local HTTP observation](../../../docs/plans/evidence/ap-swedish-purchase-http.md) covers invoice recognition, full credit, a separate partial payment allocation and paid-principal credit rejection. The review still discloses `tax_profile_not_activated`; this is not authority to use actual company VAT facts or claim statutory completeness.
+`swedish-purchase-v1` currently runs only on a synthetic SEK book. It reviews explicit line expense accounts and 0/6/12/25 rates against evidenced source amounts, then posts net expense, input VAT (2641) and the supplier payable (2440) atomically. `swedish-purchase-full-credit-v1` reverses the exact original net/tax/payable **only while the whole original remains unpaid**. The local HTTP observation covers invoice recognition, full credit, a separate partial payment allocation and paid-principal credit rejection. The review still discloses `tax_profile_not_activated`; this is not authority to use actual company VAT facts or claim statutory completeness.
 
 ### Partial reviewed line credits (forward 8770–8771)
 
-`swedish-purchase-partial-credit-v1` reviews exact credit-note net/tax for each selected original line. It verifies the original rate, cumulative original-line net/tax capacity and the invoice's live unpaid residual under the book lock. Execution reverses only the reviewed payable, expense and input-VAT portions; existing payment allocations remain immutable. [Local HTTP proof](../../../docs/plans/evidence/ap-partial-line-credit-http.md) includes two partial credits after a payment, a rate mismatch and exhausted-capacity refusal. No paid-principal refund or real-company VAT activation is implied.
+`swedish-purchase-partial-credit-v1` reviews exact credit-note net/tax for each selected original line. It verifies the original rate, cumulative original-line net/tax capacity and the invoice's live unpaid residual under the book lock. Execution reverses only the reviewed payable, expense and input-VAT portions; existing payment allocations remain immutable. Local HTTP proof includes two partial credits after a payment, a rate mismatch and exhausted-capacity refusal. No paid-principal refund or real-company VAT activation is implied.
 
 ### One payment source across supplier invoices
 
-[Local split-allocation HTTP proof](../../../docs/plans/evidence/ap-split-payment-http.md) exercises a separately posted synthetic payable-control payment line across two accepted purchase invoices, including invoice/payment overcapacity refusals and same-key replay. It does not turn an offline export or provider report into a posted payment.
+Local split-allocation HTTP proof exercises a separately posted synthetic payable-control payment line across two accepted purchase invoices, including invoice/payment overcapacity refusals and same-key replay. It does not turn an offline export or provider report into a posted payment.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

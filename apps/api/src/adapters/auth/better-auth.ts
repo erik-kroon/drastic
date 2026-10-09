@@ -32,7 +32,7 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
 
     // Better Auth expects Promise queries. Its official adapter shares our scoped pg lifecycle.
     return betterAuth({
-      appName: "OpenERP",
+      appName: "Drastic",
       baseURL: url.origin,
       basePath: "/api/auth",
       secret,

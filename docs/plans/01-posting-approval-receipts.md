@@ -70,7 +70,7 @@ A later standing mandate is a separate human-authorized record, never inferred f
 
 The review screen displays currency/scale, date/period, source evidence, exact lines, rationale, rule identity, dependency changes and approval scope. Hide technical hashes behind inspectable details while keeping the actual decision clear. Recovery must be keyboard reachable and must not require copying a key from developer tools.
 
-[DF-04 saved-request retry](evidence/df-04-saved-request-retry.md) implements the
+DF-04 saved-request retry implements the
 PST-03 refusal boundary: pure request-content failures remain terminal, while
 referenced-state refusals permit an explicit unchanged retry under the original
 saved and kernel keys. Immutable attempts retain refusal-to-success history;
@@ -112,3 +112,5 @@ non-ready run conditions keep their original reasons and precedence. Authorizati
 order, terminal/old-step recovery, checkpoint/result/audit handling and advancement keys
 are unchanged. Independent source review found no extra behavioral change.
 See [automation](../../apps/api/docs/AUTOMATION.md). No SQL/runtime execution was performed.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

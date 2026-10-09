@@ -124,8 +124,8 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
     >
       <Text>
         {sv
-          ? "Registrera ett befintligt samtycke och det konto som ska användas i bokföringen. Detta ger inte OpenERP åtkomst till banken."
-          : "Record existing consent and its ledger account mapping. This does not grant OpenERP access to the bank."}
+          ? "Registrera ett befintligt samtycke och det konto som ska användas i bokföringen. Detta ger inte Drastic åtkomst till banken."
+          : "Record existing consent and its ledger account mapping. This does not grant Drastic access to the bank."}
       </Text>
       {fields.map(({ name, label, hint }) => (
         <Box key={name} display="grid" gap="xs">

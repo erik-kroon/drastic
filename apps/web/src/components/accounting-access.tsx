@@ -5,7 +5,12 @@ import { useHydrated } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { AccessPage, AccessForm, AccessSubmit } from "@open-erp/ui/components/access-page";
+import {
+  AccessPage,
+  AccessForm,
+  AccessSubmit,
+  AccessSignOutButton,
+} from "@open-erp/ui/components/access-page";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -13,23 +18,6 @@ import { Books, booksKey, readAccounting } from "@/lib/accounting-api";
 import { authClient } from "@/lib/auth-client";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
-import * as stylex from "@stylexjs/stylex";
-import { tokens } from "@open-erp/ui/theme/tokens.stylex";
-
-const styles = stylex.create({
-  compactLogout: {
-    display: "inline-flex",
-    alignItems: "center",
-    padding: 0,
-    borderWidth: 0,
-    backgroundColor: tokens.transparent,
-    color: tokens.captionForeground,
-    fontSize: tokens.fontSizeControl,
-    lineHeight: tokens.lineHeight16Px,
-    cursor: "pointer",
-    ":focus-visible": { outline: tokens.setupControlFocus, outlineOffset: 2 },
-  },
-});
 
 export function AccountingAccess({
   locale,
@@ -121,7 +109,7 @@ function Login({ locale }: { locale: Locale }) {
 
   return (
     <Box display="grid" gap="lg">
-      <Heading level={1}>{sv ? "Logga in på OpenERP" : "Sign in to OpenERP"}</Heading>
+      <Heading level={1}>{sv ? "Logga in på Drastic" : "Sign in to Drastic"}</Heading>
       <Text tone="muted">
         {sv
           ? "Fortsätt med ditt organisationskonto för att öppna dina företag och klienter."
@@ -276,16 +264,13 @@ export function SignOut({ locale, compact = false }: { locale: Locale; compact?:
 
   return (
     <Box display="grid" gap="sm">
-      <Button
-        static
-        size={compact ? "sm" : "xl"}
-        variant={compact ? "unstyled" : "ghost"}
-        styleX={compact && styles.compactLogout}
+      <AccessSignOutButton
+        compact={compact}
         disabled={logout.isPending}
         onClick={() => logout.mutate()}
       >
         {copy.journal_logout}
-      </Button>
+      </AccessSignOutButton>
       {logout.error ? <Text role="alert">{logout.error.message}</Text> : null}
     </Box>
   );

@@ -2,7 +2,7 @@
 
 ## Current ownership
 
-Application operations live in [application/invoice-documents.ts](../src/application/invoice-documents.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
+Application operations live in application/invoice-documents.ts, with shared dispatch in [capabilities](../src/application/capabilities/).
 
 ## Historical implementation notes
 
@@ -134,3 +134,5 @@ Only source reads/edits were performed. No tests, test edits, fixtures, checks, 
 ### Root source integration
 
 Shared contracts exports, API/capability catalogs, fixed statements and HTTP handlers are connected. All four public capabilities call the owning Effect application workflow; no caller-byte seal operation is exposed. Issued review success views mount InvoiceDocumentPanel, including historical read-only issue views. Root source review traced renderer text-only escaping, deterministic exact-string monetary formatting, source admission against1400, scoped capture/seal recovery and unchanged financial authority. Independent source security review found no concrete defect in the reviewed public-call, renderer, seal and download paths. This is not executed security proof. No artifact was executed or browser/runtime-verified.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

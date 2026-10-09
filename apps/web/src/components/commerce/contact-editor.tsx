@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
@@ -50,7 +51,7 @@ export function ContactEditor(
           operation: "create_evidence",
           input: {
             title: input.displayName,
-            origin: "Contact entered in OpenERP",
+            origin: "Contact entered in Drastic",
             mediaType: "application/json",
             content: JSON.stringify(input),
           },
@@ -122,9 +123,9 @@ export function ContactEditor(
           reason: fields.get("reason") || (sv ? "Kontakt tillagd" : "Contact added"),
         });
 
-        setInvalid(parsed._tag === "None");
+        setInvalid(Option.isNone(parsed));
 
-        if (parsed._tag === "Some") save.mutate(parsed.value);
+        if (Option.isSome(parsed)) save.mutate(parsed.value);
       }}
     >
       <Box

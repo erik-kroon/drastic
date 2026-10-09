@@ -1,12 +1,12 @@
 # Verification plan
 
-Status: acceptance scenarios designed; partial implementation, existing synthetic suites and bounded runtime evidence exist, but complete phase gates remain open. This file is a reviewable plan, not test code. [ADR 0010](adr/0010-application-owned-accounting-replacement.md) adds the clean-baseline, application-transaction, caller-cutover and effect-mq proof gates without changing the financial scenario IDs. [AGENTS.md](../AGENTS.md) requires explicit approval for test additions ([D-09](open-decisions.md)); inspect the relevant implementation task's actual authorization before changing tests. Examples alone do not establish acceptance.
+Status: acceptance scenarios designed; partial implementation, existing synthetic suites and bounded runtime evidence exist, but complete phase gates remain open. This file is a reviewable plan, not test code. [ADR 0010](adr/0010-application-owned-accounting-replacement.md) adds the clean-baseline, application-transaction, caller-cutover and effect-mq proof gates without changing the financial scenario IDs. [AGENTS.md](../AGENTS.md) requires explicit approval for test additions (D-09); inspect the relevant implementation task's actual authorization before changing tests. Examples alone do not establish acceptance.
 
-The [seven-area acceptance plan](plans/09-acceptance.md) adds concrete fixture outcomes, packet traceability and required artifacts without adding test code or claiming an existing suite covers every scenario.
+The seven-area acceptance plan adds concrete fixture outcomes, packet traceability and required artifacts without adding test code or claiming an existing suite covers every scenario.
 
 Prefer E2E through the public operation, real PostgreSQL and the actual runtime. Drive the human flow in a browser where identity, rendering and interaction matter. Define independently expected outcomes before implementation and before writing approved tests. Do not calculate expected journal results with the production calculator. No unit tests are to be added after code.
 
-The [verification strategy](verification-strategy.md) defines runner ownership, fixtures, runtime isolation, CI gates and evidence artifacts. The scenarios below remain the acceptance criteria; detailed [failure cases](plans/09-acceptance.md#additional-failure-cases) refine them.
+The verification strategy defines runner ownership, fixtures, runtime isolation, CI gates and evidence artifacts. The scenarios below remain the acceptance criteria; detailed failure cases refine them.
 
 ## Foundation and posting scenarios
 
@@ -41,7 +41,7 @@ The [verification strategy](verification-strategy.md) defines runner ownership, 
 
 ## Book Zero acceptance
 
-The [Book Zero plan](plans/15-book-zero-workflow-cash.md) adds the source PRD's AT-01–AT-45 as unexecuted acceptance obligations. These identifiers refer to the [preserved Book Zero source, section 14](specs/book-zero-v1/PRD_openERP_Book_Zero_Workflow_Drastic_Cash_v1.md); they are not the broader platform's ES-AT cases. The source retains each setup, independent expectation and requirement reference. Its inline requirement acceptance and priority journeys also apply; importing the list does not execute it or change E-01–E-21 status.
+The Book Zero plan adds the source PRD's AT-01–AT-45 as unexecuted acceptance obligations. These identifiers refer to the preserved Book Zero source, section 14; they are not the broader platform's ES-AT cases. The source retains each setup, independent expectation and requirement reference. Its inline requirement acceptance and priority journeys also apply; importing the list does not execute it or change E-01–E-21 status.
 
 | Book Zero cases | Real boundary and decisive result | Existing owner/scenarios |
 | --- | --- | --- |
@@ -86,3 +86,5 @@ Record scenario IDs, independently specified expected outcomes, code/schema/rule
 The artifact must let another developer repeat the scenario from a known starting state. For UI work, capture the action and durable result as well as meaningful screen states. Record actual keyboard, narrow-width, 200% browser zoom, contrast and reduced-motion checks separately; viewport emulation does not establish browser zoom or screen-reader coverage.
 
 Use the lowest-cost real surface that proves the claim. A mocked store cannot prove database atomicity; Bun alone cannot prove workerd; a passing schema cannot prove legal treatment; a screenshot cannot prove a committed voucher. Existing repository checks remain necessary but cannot replace these gates.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

@@ -160,7 +160,7 @@ export async function renderCreditDocumentPdf(
       footer: <PageFooter leftText={`${text(document.seller.legalName)} · ${number}`} />,
       metadata: {
         title: `Kreditnota ${document.documentNumber}`,
-        creator: "OpenERP",
+        creator: "Drastic",
         creationDate: `${document.creditDate}T00:00:00`,
       },
     }),

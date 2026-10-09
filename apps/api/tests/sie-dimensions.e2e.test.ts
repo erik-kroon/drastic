@@ -892,7 +892,7 @@ test.each(["openerp-sie4e-v1", "openerp-sie4e-v2"] as const)(
 
     expect(resumed.capture.rendererRelease.version).toBe(version);
     expect(parsed.records.find((entry) => entry.tag === "PROGRAM")?.fields).toEqual([
-      "OpenERP",
+      "Drastic",
       version,
     ]);
     expect(parsed.records.some((entry) => entry.tag === "OIB" || entry.tag === "OUB")).toBe(false);

@@ -16,4 +16,6 @@ The gate then reloads with `?natural=1` to remove all previews and checks keyboa
 
 The [failure contract](failure-contract.md) retains admission and proof requirements. Static parity does not establish keyboard interaction, runtime accessibility, narrow layout or parity of any product screen. New browser E2E qualification uses the repository's pinned TesterArmy and Luna recipe separately.
 
-The retained [2026-10-05 report](proof/report.json) passed at 0.7591% difference, with the local font loaded, zero browser errors and all bounded native visual states passing. The [actual image](proof/k23.actual.png), [diff image](proof/k23.diff.png), [native input focus](proof/k23.focus.png), [invalid input](proof/k23.invalid.png), [ghost hover](proof/k23.hover.png), [row focus](proof/k23.row-focus.png) and imported-source hashes record that run. Repository checks and full interaction qualification are separate obligations in the [DRA-127 evidence](../../../docs/plans/evidence/dra-127-component-board-2026-10-05.md).
+The retained 2026-10-05 report passed at 0.7591% difference, with the local font loaded, zero browser errors and all bounded native visual states passing. The actual image, diff image, native input focus, invalid input, ghost hover, row focus and imported-source hashes record that run. Repository checks and full interaction qualification are separate obligations in the DRA-127 evidence.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

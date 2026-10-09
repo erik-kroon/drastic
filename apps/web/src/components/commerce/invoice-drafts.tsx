@@ -414,7 +414,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       )}
       source={(fields) => ({
         title: inputText(fields, "title") ?? labels.invoiceDrafts,
-        origin: "Invoice details entered in OpenERP",
+        origin: "Invoice details entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({ kind: "invoice_entry_v1", fields: Object.fromEntries(fields) }),
       })}

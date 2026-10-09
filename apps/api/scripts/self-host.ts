@@ -153,7 +153,7 @@ const server = Bun.serve({
 });
 
 console.info(
-  `OpenERP self-host listening on ${server.hostname}:${server.port}; public origin ${origin.origin}`,
+  `Drastic self-host listening on ${server.hostname}:${server.port}; public origin ${origin.origin}`,
 );
 
 async function shutdown() {

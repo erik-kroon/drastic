@@ -4,7 +4,7 @@ Status: accepted design, 2026-09-25, selected by the user. The first queue adapt
 
 ## Context
 
-The [application-owned accounting plan](../archive/completed/application-owned-accounting.md) moves workflows into Effect application operations. Preparation previously used Cloudflare Workflows and a Cron dispatcher. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
+The application-owned accounting plan moves workflows into Effect application operations. Preparation previously used Cloudflare Workflows and a Cron dispatcher. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
 
 Source inspection found that effect-mq uses our Drizzle Effect driver family and compatible declared Effect 4 peer ranges. Its persistent worker and PostgreSQL listener fit a Bun process. A regular API Worker invocation does not own that process lifetime. The installed package is `0.7.0` at source revision `b5898fbae56fe926c28768a5a8ff9ad74f1e57a0`; its store started against our pinned dependencies on disposable PostgreSQL 17.
 
@@ -49,9 +49,9 @@ Use concrete job definitions calling application functions. Do not build a gener
 
 ## Implementation and proof
 
-The following paragraph records the initial adapter checkpoint; the [replacement completion](../plans/evidence/application-owned-replacement-complete.md) supersedes its unfinished application-port status and adds a two-observation preparation/cancellation/restart check.
+The following paragraph records the initial adapter checkpoint; the replacement completion supersedes its unfinished application-port status and adds a two-observation preparation/cancellation/restart check.
 
-The first adapter uses the existing committed `preparation_jobs` row as durable dispatch intent. The queue identity includes job ID and checkpoint; dispatch rediscovers ready records after an enqueue/ack crash. The handler still invokes the pre-cutover SQL preparation operation until that application slice moves. A dedicated application outbox row and hosted process deployment remain open. The new queue DDL applied on disposable PostgreSQL 17 and the runner started a bounded listener pool under a non-owner login. A fresh migration through `9300-effect-mq.sql` passed with the concurrent FX syntax fix and supporting-slice migration present in the shared checkout. Synthetic API admission, queue dispatch, one checkpoint, persisted completion, API recovery read, runner restart after admission, idempotent replay and submitter revocation after admission passed. Those runs selected zero observations and did not exercise financial posting. The observations and limits are recorded in [the proof artifact](../plans/evidence/preparation-queue-main.json).
+The first adapter uses the existing committed `preparation_jobs` row as durable dispatch intent. The queue identity includes job ID and checkpoint; dispatch rediscovers ready records after an enqueue/ack crash. The handler still invokes the pre-cutover SQL preparation operation until that application slice moves. A dedicated application outbox row and hosted process deployment remain open. The new queue DDL applied on disposable PostgreSQL 17 and the runner started a bounded listener pool under a non-owner login. A fresh migration through `9300-effect-mq.sql` passed with the concurrent FX syntax fix and supporting-slice migration present in the shared checkout. Synthetic API admission, queue dispatch, one checkpoint, persisted completion, API recovery read, runner restart after admission, idempotent replay and submitter revocation after admission passed. Those runs selected zero observations and did not exercise financial posting. The observations and limits are recorded in the proof artifact.
 
 Required observations include rollback before admission; crashes before/after enqueue acknowledgment; duplicate delivery; kill/restart and lost claims; current-authority and cancellation changes; stale handlers; history pruning followed by replay; disconnected notification recovery; bounded connections; graceful shutdown; and backup/restore followed by pending-work rediscovery. Financial effects must remain unique and atomic throughout. Sanitize library errors, persisted exits and logs before allowing raw database causes or credentials to cross their boundary.
 
@@ -65,3 +65,5 @@ This decision supersedes Cloudflare-specific background-runner choices for the p
 - [PostgreSQL store implementation](https://github.com/TeamWarp/effect-mq/blob/b5898fbae56fe926c28768a5a8ff9ad74f1e57a0/packages/effect-mq/src/drizzle-postgres/DrizzleJobStore.ts).
 - [Worker lifecycle and delivery](https://github.com/TeamWarp/effect-mq/blob/b5898fbae56fe926c28768a5a8ff9ad74f1e57a0/docs/guide/workers.md).
 - [Current preparation adapter](../../apps/api/src/application/preparation-jobs.ts) and [Cloudflare runtime](../../apps/api/src/runtime/cloudflare.ts).
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

@@ -89,7 +89,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
             canSubmit={setup.isSuccess}
             source={(fields) => ({
               title: `${sv ? "Kredit" : "Credit"} ${textField(fields, "supplierCreditNumber")}`,
-              origin: "Supplier credit captured in OpenERP",
+              origin: "Supplier credit captured in Drastic",
               mediaType: "application/json",
               content: JSON.stringify({
                 kind: "supplier_credit_source_v1",

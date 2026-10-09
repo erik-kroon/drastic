@@ -19,7 +19,7 @@ Separately, the mandated delivery index is a reviewed artifact: 53 packets, a va
 
 ## Decision
 
-Record reference-parity findings as **supplemental** work, outside the mandated index, in [the parity backlog](../plans/11-parity-backlog.md) under a distinct `PRY-nn` namespace. Neither namespace is renumbered to merge them. Where a parity packet must complete a mandated packet, the mandated packet is named as a prerequisite; where a parity packet is a prerequisite **of** a mandated packet, that is recorded as a blocking note on the mandated packet. The mandated index keeps its count, its edges and its denominator, and the backlog states explicitly that it is not part of the completion denominator.
+Record reference-parity findings as **supplemental** work, outside the mandated index, in the parity backlog under a distinct `PRY-nn` namespace. Neither namespace is renumbered to merge them. Where a parity packet must complete a mandated packet, the mandated packet is named as a prerequisite; where a parity packet is a prerequisite **of** a mandated packet, that is recorded as a blocking note on the mandated packet. The mandated index keeps its count, its edges and its denominator, and the backlog states explicitly that it is not part of the completion denominator.
 
 Require every adopted rule to be classified before implementation, in one of three classes:
 
@@ -60,3 +60,5 @@ Do not adopt the reference's architecture, storage model, tenancy, transport or 
 ## Implementation and proof
 
 This decision is a planning artifact. Proof of the decision is that `python3 docs/plans/check-plan.py` still passes, that the mandated index is unchanged in count, edges and denominator, and that every preserved rule in the backlog names a class and its source module. Proof of any packet is that packet's own acceptance, which is out of scope here.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

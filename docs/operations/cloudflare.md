@@ -1,6 +1,6 @@
 # Cloudflare delivery and verification
 
-This page describes the current source implementation. [ADR 0009](../adr/0009-effect-mq-background-jobs.md) selects effect-mq on a persistent Bun worker for preparation, and [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) selects the application-owned accounting boundary and clean baseline. The queue adapter exists in source and the [application-owned replacement has bounded local cutover evidence](../plans/evidence/application-owned-replacement-complete.md). Hosted Bun placement and company/deployment qualification remain open; use [the work register](../work-status.md) for current remaining scope.
+This page describes the current source implementation. [ADR 0009](../adr/0009-effect-mq-background-jobs.md) selects effect-mq on a persistent Bun worker for preparation, and [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) selects the application-owned accounting boundary and clean baseline. The queue adapter exists in source and the application-owned replacement has bounded local cutover evidence. Hosted Bun placement and company/deployment qualification remain open; use the work register for current remaining scope.
 
 The hosted composition is web Worker → API service binding → uncached Hyperdrive → PostgreSQL, with a separate persistent Bun process for queued preparation. The API also owns a private R2 bucket. Alchemy derives Worker and bucket names from the stack/stage/resource identity but does not provision the Bun process. A stage must still use its own PostgreSQL database, runtime login, browser origin, authentication secret and preparation credential. Resource naming cannot isolate a shared database.
 
@@ -57,3 +57,5 @@ The repeatable hosted journey must use the public web origin and a synthetic boo
 Keep a private receipt recording revision, account/stage, public origin, resource names, synthetic book, command/receipt IDs, before/after sequence, document hashes and restore manifest digest. Exclude credentials and raw documents. None of these observations has been produced by this change.
 
 References: [Cloudflare Workflow API](https://developers.cloudflare.com/workflows/build/workers-api/), [R2 S3 API](https://developers.cloudflare.com/r2/api/s3/api/), [Bun S3](https://bun.sh/docs/runtime/s3). The comparison repository was [every-app/open-seo](https://github.com/every-app/open-seo/tree/0ffff93101043aad7600a3b6a499a0cd2887ef49); its stage naming and durable work patterns are useful references, while its SEO storage/workload decisions do not determine accounting authority here.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

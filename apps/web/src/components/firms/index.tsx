@@ -47,7 +47,7 @@ export function FirmsWorkspace(props: {
     <Workspace
       pageKey="firms"
       mobileNavigation={null}
-      brand={<WorkspaceBrand icon={<BookOpen size={20} strokeWidth={1.5} />} name="OpenERP" />}
+      brand={<WorkspaceBrand icon={<BookOpen size={20} strokeWidth={1.5} />} name="Drastic" />}
       navigation={
         <>
           <WorkspaceNavLink href="/companies">

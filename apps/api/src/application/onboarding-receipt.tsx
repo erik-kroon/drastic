@@ -24,7 +24,7 @@ export async function renderOnboardingReceipt(receipt: typeof O.OnboardingActiva
         <PageHeader
           title="Aktiveringskvitto"
           subtitle={name}
-          rightText="OpenERP"
+          rightText="Drastic"
           rightSubText={receipt.activatedAt}
         />
         <Section>
@@ -109,7 +109,7 @@ export async function renderOnboardingReceipt(receipt: typeof O.OnboardingActiva
       footer: <PageFooter leftText={name} />,
       metadata: {
         title: `Aktiveringskvitto, ${name}`,
-        creator: "OpenERP",
+        creator: "Drastic",
         creationDate: receipt.activatedAt.slice(0, 19),
       },
     }),

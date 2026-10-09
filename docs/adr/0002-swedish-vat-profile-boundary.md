@@ -2,8 +2,8 @@
 
 - Status: research decision; candidate scope only. No approved compliance profile.
 - Research date: 2026-09-22 UTC.
-- Source manifest: [`sweden-vat-sources.json`](../sources/sweden-vat-sources.json).
-- Design context: [compliance and interoperability](../compliance.md) and [profile delivery](../plans/05-vat-payroll-assets-fx.md).
+- Source manifest: `sweden-vat-sources.json`.
+- Design context: compliance and interoperability and profile delivery.
 
 ## Decision
 
@@ -124,3 +124,5 @@ The bounded scope can guide preparation-only development. It does not clear the 
 5. Separately authorize and validate any production posting, filing/export or payment integration. Nothing here grants that authorization.
 
 Until then, keep profile approval and effective dates unset. Do not advertise the system as Swedish VAT compliant, mark a return filed, accept business facts, or enable posting from this document. No application code, tests, database data or external submission is changed by this research.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

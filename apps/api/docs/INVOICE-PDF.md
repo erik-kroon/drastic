@@ -8,11 +8,11 @@ Application operations live in [application/commerce/documents.ts](../src/applic
 
 The current renderer is `openerp-se-invoice-pdfcn-v1`. The owner selected pdfcn on 2026-09-30 and confirmed that no existing customer artifacts, customers or real database require compatibility with the synthetic Takumi templates. Those templates have been replaced directly by [the pdfcn invoice renderer](../src/application/commerce/legal-invoice-pdf-renderer-pdfcn.tsx).
 
-The [owned pdfcn adapter](../src/adapters/pdf/pdfcn/UPSTREAM.md) retains pinned upstream provenance and its MIT notice. React document components render through Takumi 0.11.3, with a fixed OpenERP theme, bundled IBM Plex Mono fonts, point-based sizing and actual page counters. The invoice consumes the immutable issue and reviewed policy snapshots. Exact minor-unit strings supply every displayed amount; presentation does not calculate VAT or issue another number. Missing facts, unsupported characters and output above 2 MiB fail visibly.
+The [owned pdfcn adapter](../src/adapters/pdf/pdfcn/UPSTREAM.md) retains pinned upstream provenance and its MIT notice. React document components render through Takumi 0.11.3, with a fixed Drastic theme, bundled IBM Plex Mono fonts, point-based sizing and actual page counters. The invoice consumes the immutable issue and reviewed policy snapshots. Exact minor-unit strings supply every displayed amount; presentation does not calculate VAT or issue another number. Missing facts, unsupported characters and output above 2 MiB fail visibly.
 
 Under `/api/v1/entities/:entityId/books/:bookId/commerce`, POST `/legal-invoice-pdfs` accepts an idempotency key and `{issueId, issueDigest, rendererVersion: "openerp-se-invoice-pdfcn-v1"}`. GET `/legal-invoice-pdfs/:id`, POST `/legal-invoice-pdfs/:id/render` and GET `/legal-invoice-issues/:id/pdfs` retain their current capture, seal, recovery and authority behavior. Rendering does not imply delivery.
 
-Run `bun run test:e2e apps/api/tests/pdfcn.e2e.test.ts apps/api/tests/credit-document.e2e.test.ts`. The [adoption record](../../../docs/plans/pdfcn-adoption.md) owns implementation and verification status. Its E2E failure contract covers exact large amounts, frozen parties, literal text, fifty-row pagination, unsupported glyphs, replay and scope. Inspect the retained PDF files, independently extracted text/coordinates, journey receipts, manifest and source-integrity result. Historical observations below describe superseded renderers and do not qualify the pdfcn output.
+Run `bun run test:e2e apps/api/tests/pdfcn.e2e.test.ts apps/api/tests/credit-document.e2e.test.ts`. The adoption record owns implementation and verification status. Its E2E failure contract covers exact large amounts, frozen parties, literal text, fifty-row pagination, unsupported glyphs, replay and scope. Inspect the retained PDF files, independently extracted text/coordinates, journey receipts, manifest and source-integrity result. Historical observations below describe superseded renderers and do not qualify the pdfcn output.
 
 ## Historical implementation notes
 
@@ -339,7 +339,7 @@ replaced that function without editing an applied migration. The same request th
 returned a sealed, 9,997-byte PDF whose decoded bytes matched its stored SHA-256.
 Same-key retry, GET, and render-resume returned identical records; the database
 retained one issue, capture and artifact. The real-Worker PDF image was reviewed.
-[Reproduction steps, exact hashes and PDF/PNG evidence](../../../docs/plans/evidence/wave2-legal-pdf-worker.md)
+Reproduction steps, exact hashes and PDF/PNG evidence
 keep this synthetic proof distinct from actual-company acceptance. No provider send,
 recipient delivery, deployed Worker limit or long-document pagination was proven.
 
@@ -351,7 +351,7 @@ resume returned the same 10,047-byte PDF and descriptor. A different-key v1 requ
 for that issue failed rather than replacing its immutable capture. A second fresh
 database sealed v1 after `8600`; its 9,997 PDF bytes matched the pre-v2 v1 artifact
 byte for byte. The one-page real-Worker v2 PDF and the separate 50-line page images
-were inspected. [Exact hashes, reproduction and PDF/PNG evidence](../../../docs/plans/evidence/wave2-legal-pdf-worker-v2.md)
+were inspected. Exact hashes, reproduction and PDF/PNG evidence
 cover this local synthetic claim only. Extra-tall rows, repeated table headings on
 continuation pages, screen-reader tagging and deployed Worker limits remain open;
 no provider call, real tenant or customer receipt was observed.
@@ -365,8 +365,10 @@ unknown request identity before any traffic, same-key replay, block while unknow
 mock confirmed-not-sent retry with a distinct request ID, terminal accepted/rejected
 classification, Peppol payload refusal and cross-book access denial held. One PDF
 capture/artifact and four intents/approvals/attempts plus three reconciliations
-were retained. [Token-free reproduction, statuses and sealed bytes](../../../docs/plans/evidence/wave2-legal-delivery-e2e/README.md)
+were retained. Token-free reproduction, statuses and sealed bytes
 record this local synthetic observation. All `delivered` values remained false
 and all `externalTrafficProven` values false. The accepted/rejected/not-sent
 labels were explicitly mock operator classifications, **not** provider evidence;
 no external request, customer receipt or actual-company authority was verified.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

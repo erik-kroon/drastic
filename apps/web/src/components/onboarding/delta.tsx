@@ -198,7 +198,7 @@ export function OnboardingDelta({
         <SetupBlock layout={["banner", "section24"]}>
           <SetupText>Importen är accepterad, {formatMoment(snapshot.capturedAt)}.</SetupText>
           <SetupText>
-            Bokföring till {formatDate(snapshot.asOf)}. Oktober hanteras i OpenERP.
+            Bokföring till {formatDate(snapshot.asOf)}. Oktober hanteras i Drastic.
           </SetupText>
         </SetupBlock>
       ) : (
@@ -250,7 +250,7 @@ export function OnboardingDelta({
             Visar {Math.min(4, changes.length)} av {changes.length} ändringar. Samma källidentiteter
             och mappningar. Från{" "}
             {formatDate(workspace.case.configuration.dates.candidateLiveOn, false)} hör allt till
-            OpenERP.
+            Drastic.
           </SetupText>
         </SetupBlock>
       )}
@@ -373,7 +373,7 @@ function DeltaCompletionExample({
         <br />
         September kontrollerad igen, accepterade begränsningar kvar.
         <br />
-        Bokföring till 30 sep. Oktober hanteras i OpenERP.
+        Bokföring till 30 sep. Oktober hanteras i Drastic.
       </SetupText>
     </SetupBlock>
   );

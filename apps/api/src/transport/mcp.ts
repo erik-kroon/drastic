@@ -2,6 +2,7 @@ import { AccountingError, failureRecovery } from "@open-erp/contracts/accounting
 import { AccountingErrorStatus } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
+import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as McpSchema from "effect/ai/McpSchema";
 import * as Tool from "effect/ai/Tool";
@@ -128,7 +129,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
         return yield* call.pipe(
           Effect.match({
             onFailure: (error) => {
-              if (error._tag === "SchemaError")
+              if (Predicate.isTagged(error, "SchemaError"))
                 return rpcError(id, -32602, "Invalid tool arguments.");
 
               return rpcResult(id, {
@@ -229,7 +230,7 @@ function rpcAuthenticationError(error: AccountingError) {
         status: AccountingErrorStatus[error.code],
         headers:
           error.code === "Unauthorized"
-            ? { "www-authenticate": 'Bearer realm="OpenERP"' }
+            ? { "www-authenticate": 'Bearer realm="Drastic"' }
             : undefined,
       },
     ),

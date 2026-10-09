@@ -4,6 +4,18 @@ import { Button } from "@open-erp/ui/components/button";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
+  compactLogout: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: tokens.transparent,
+    color: tokens.captionForeground,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    cursor: "pointer",
+    ":focus-visible": { outline: tokens.setupControlFocus, outlineOffset: 2 },
+  },
   page: {
     minHeight: "100dvh",
     display: "grid",
@@ -54,8 +66,8 @@ export function AccessPage({ children }: { children: ReactNode }) {
   return (
     <main {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.card)}>
-        <span aria-label="OpenERP" {...stylex.props(styles.mark)}>
-          OE
+        <span aria-label="Drastic" {...stylex.props(styles.mark)}>
+          D
         </span>
         {children}
       </section>
@@ -78,4 +90,21 @@ export function AccessForm({
 
 export function AccessSubmit(props: Omit<ComponentProps<typeof Button>, "styleX" | "size">) {
   return <Button {...props} type="submit" styleX={styles.submit} />;
+}
+
+export function AccessSignOutButton({
+  compact = false,
+  ...props
+}: Omit<ComponentProps<typeof Button>, "styleX" | "size" | "variant" | "static"> & {
+  compact?: boolean;
+}) {
+  return (
+    <Button
+      {...props}
+      static
+      size={compact ? "sm" : "xl"}
+      variant={compact ? "unstyled" : "ghost"}
+      styleX={compact && styles.compactLogout}
+    />
+  );
 }

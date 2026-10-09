@@ -224,7 +224,7 @@ export function OnboardingImport({
       <SetupBlock layout={["note"]}>
         <SetupCaption>
           {run?.financialState === "posted"
-            ? "Historiken är inlagd. OpenERP blir gällande först efter bekräftad övergång."
+            ? "Historiken är inlagd. Drastic blir gällande först efter bekräftad övergång."
             : "Inget har gjorts gällande. Ingenting bokförs förrän du godkänner öppningsläget."}
         </SetupCaption>
       </SetupBlock>
@@ -427,7 +427,7 @@ export function OnboardingMapping({
           {model.sie.mappings.data?.proposedDefaults.some(
             (entry) => entry.sourceAccount === model.account && entry.accountId === model.choice,
           )
-            ? "Förslag från OpenERP. Du bestämmer."
+            ? "Förslag från Drastic. Du bestämmer."
             : "Du bestämmer."}
         </SetupCaption>
       </SetupBlock>

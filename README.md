@@ -1,140 +1,121 @@
-# OpenERP
+<p align="center">
+  <img src="docs/assets/banner.png" alt="drastic" width="100%">
+</p>
 
-[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE) [![CI](https://github.com/erik-kroon/openERP/actions/workflows/ci.yml/badge.svg)](https://github.com/erik-kroon/openERP/actions/workflows/ci.yml)
+Open-source accounting software for Swedish aktiebolag. Double-entry bookkeeping where every posting is traceable to its source and approved by a person before it hits the ledger, built to be operated by you, your accountant or your AI agent.
 
-**Open-source accounting for the daily work of Swedish aktiebolag.**
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-2448A5.svg)](LICENSE) [![CI](https://github.com/erik-kroon/drastic/actions/workflows/ci.yml/badge.svg)](https://github.com/erik-kroon/drastic/actions/workflows/ci.yml)
 
-Invoicing, suppliers, bank reconciliation, VAT prep, payroll prep, close and reports — every posting traceable to its source evidence and approved before posting, with cash you can explain. Built to be operated by you or your AI agent. Run it yourself, work with your accountant, and keep control of what gets posted.
+[Self-host](infra/self-host/README.md) | [Documentation](docs/README.md) | [Architecture](docs/architecture.md) | [Connect an agent](apps/api/docs/MCP.md) | [Contribute](CONTRIBUTING.md)
 
-[Self-host](#self-hosting) · [Documentation](docs/README.md) · [Roadmap and proof](#proof) · [Connect an agent](apps/api/docs/MCP.md) · [Contribute](CONTRIBUTING.md)
+> **Development software.** Modules have different levels of implementation and verification. Drastic is not yet qualified for live company books or statutory filing. Evaluate it with synthetic data.
 
-## Why OpenERP?
+## Why Drastic?
 
-**Built to run daily.** One workspace for owner, finance and accountant: work queue, review, approval-before-posting, receipts and recovery. Follow a report total back to its journal entries and original documents, and correct mistakes through linked corrections without rewriting history.
+**Approve the exact effect.** Software prepares the work; a person approves it. Approval binds to a stored revision, and execution rechecks authority and current state, so a change after approval invalidates it instead of slipping through. Posted history is immutable and corrected through linked corrections.
 
-**Agent-native.** Book-scoped MCP tools let your agent gather evidence, draft entries and reconcile transactions through the same accounting engine as the web app. Work is staged as prepare–approve–execute: you approve the posting; the agent cannot approve its own work.
+**Recover uncertain results.** When an outcome is unknown, such as a posting whose response was lost or a reminder whose email provider never answered, Drastic records it as unknown and blocks the retry until the original attempt is checked. Retries recover the original receipt instead of duplicating effects.
 
-**Yours to run, with cash you can explain.** AGPL-3.0-only, self-hostable with Docker, Bun and PostgreSQL. The accounting core and agent interface require no paid service or Cloudflare account. A read-only cash forecast reads the same qualified data — opening, remaining receivables/payables, minimum with date and headroom — and never invents payments.
+**Agent-native.** Web, REST and MCP clients call the same application operations. Book-scoped MCP tools let an agent gather evidence, draft entries and reconcile transactions; the agent proposes, a person approves.
+
+**Yours to run.** AGPL-3.0-only and self-hostable with Docker, Bun and PostgreSQL. The accounting core and agent interface need no paid service.
+
+## Collections, designed for what goes wrong
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/assets/reminder.png" alt="Reminder approval: recipient, message and attachment approved together, with sending as a separate step"></td>
+    <td width="33%"><img src="docs/assets/reminder-unknown.png" alt="Unknown reminder outcome: the email service did not respond, so sending again stays locked until the original send is checked"></td>
+    <td width="33%"><img src="docs/assets/payment-change.png" alt="Changed payment: a payment arrived after approval, so the reminder was refused and a new one is offered for the current amount"></td>
+  </tr>
+  <tr>
+    <td><b>Approve exact content.</b> Recipient, text and attachment are approved together; sending is a separate step.</td>
+    <td><b>Unknown outcome.</b> The provider never answered, so resending stays locked until the first send is checked.</td>
+    <td><b>Changed payment.</b> A payment after approval invalidates the reminder instead of chasing the wrong amount.</td>
+  </tr>
+</table>
+
+<sub>Product designs with synthetic data.</sub>
 
 ## Features
 
-The development build includes:
-
-- **Double-entry bookkeeping** — Chart of accounts, sequential voucher numbering, exact amounts and approval before posting.
-- **Invoicing** — Customer invoice drafts, PDF generation, credit notes and payment tracking.
-- **Recurring invoices** — Versioned agreements and templates create reviewable drafts, with pauses, explicit missing-period handling and retry/restart recovery.
-- **Collections and reminders** — Exact message review, separate approval and dispatch, changed-payment refusal and durable attempt recovery; live delivery qualification remains separate.
-- **Sales orders and catalog** — Customer orders, reusable articles and invoice handoff.
-- **Supplier invoices** — Document inbox, invoice review, purchase recognition, credits and payment batches.
-- **Bank reconciliation** — Statement imports, match candidates, transaction matching and reconciliation sign-offs.
-- **VAT preparation** — Reviewed VAT facts, return calculations and ledger controls for supported rule profiles.
-- **Corporate tax preparation** — Accounting-to-tax adjustments, current-tax calculations and INK2/SRU export preparation.
-- **Skattekonto** — Tax-account transactions matched to ledger entries, with reconciliation and correction history.
-- **Financial reports** — Profit and loss, balance sheets, trial balances and general ledger, with drilldown to source entries.
-- **Fixed assets** — Asset registers, depreciation schedules, impairment and disposal workflows.
-- **Foreign currencies** — Reviewed exchange rates, receivable and payable settlements, fees and exchange differences.
-- **Owner expenses and funding** — Owner-paid purchases, reimbursements, shareholder loans and capital contributions.
-- **Payroll preparation** — Employment records and gross-to-net calculation drafts using reviewed payroll rules.
-- **Period closing** — Readiness checks, outstanding obligations, period locks and accountant review packs.
-- **SIE import/export** — Historical bookkeeping imports, transaction exports and complete-book export preparation.
-- **Document history** — Retained source documents, content hashes and links from evidence to posted entries.
-- **Accountant workspaces** — Multiple client books, team assignments, access controls and due-work views.
-- **Agent access (MCP)** — Book-scoped tools for preparation, reconciliation, reports and execution of human-approved postings; REST and OpenAPI for integrations.
-
-> **Under active development.** Modules have different levels of implementation and verification, and availability depends on company setup and reviewed rule profiles. OpenERP is not yet validated for live company books or statutory filing. Current focus: the bureau-led documents, bank, invoicing and VAT loop, with a reviewer-accepted first period (Book Zero). Cash follows that loop. See [current work status](docs/work-status.md), the [product focus decision](docs/adr/0017-bureau-first-product-focus.md) and the [roadmap](docs/roadmap.md).
-
-## Proof
-
-Repeatable evidence is linked with its scope and limits:
-
-![Implemented reminder review with synthetic invoice data](verification/paper/domain-owners/collections-reminders/M31/actual.png)
-
-*Actual application capture: exact message review before approval, with dispatch in a separate step. [Saved comparison](verification/paper/domain-owners/collections-reminders/M31/report.json).*
-
-- [Document and bank rehearsal, 8 October 2026](docs/plans/evidence/investor-rehearsals-20261007/qualified-20261008/README.md): repeated synthetic document/question/posting/recovery/allocation and bank-review chapters, with identical input hashes and stable source receipts. These are separate chapters, not a continuous recorded demo.
-- [Recurring drafts, 7 October 2026](docs/plans/evidence/recurring-20261007/README.md): 17 native PostgreSQL/workerd/Bun cases, 1,000 synthetic drafts and a 320px browser recovery journey. Functional qualification is complete for this scope; recurring screen parity remains open.
-- [Collections and reminders, 8 October 2026](docs/plans/evidence/domain-frontend-reminders/validation/20261008/README.md): 18 public API cases, isolated recovery, browser/native keyboard review and 11 saved whole-frame diffs at 0.94–2.21% under the configured 2.5% limit. The reviewed local reminder baseline is accepted; live delivery remains separate.
-- Acceptance requirements: [roadmap](docs/roadmap.md), [verification scenarios](docs/verification.md) and [Book Zero](docs/plans/15-book-zero-workflow-cash.md).
-
-For a deeper account of the domains, engineering decisions, verification and upcoming work, read the [technical overview](docs/technical-overview.md).
+- **Double-entry bookkeeping** with sequential voucher numbering, exact amounts and approval before posting
+- **Invoicing** with drafts, PDF generation, credit notes and payment tracking
+- **Recurring invoices** from versioned agreements, with pauses, missed-period handling and restart recovery
+- **Collections and reminders** with exact message review, separate approval and dispatch, and changed-payment refusal
+- **Supplier invoices** with a document inbox, review, purchase recognition and payment batches
+- **Bank reconciliation** with statement imports, match candidates and reconciliation sign-offs
+- **VAT preparation** with reviewed VAT facts, return calculations and ledger controls
+- **Corporate tax preparation** with tax adjustments and INK2/SRU export preparation
+- **Skattekonto** transactions matched to ledger entries
+- **Financial reports** with drilldown from every total to its source entries
+- **Foreign currencies** with reviewed exchange rates, settlements and exchange differences
+- **Payroll preparation, fixed assets and period closing**
+- **SIE import and export**
+- **Accountant workspaces** with multiple client books, assignments and access control
+- **Agent access (MCP)** with book-scoped tools, plus REST and OpenAPI for integrations
 
 ## Self-hosting
 
-Requirements: the Bun version pinned in [`package.json`](package.json), Docker Engine and Docker Compose v2. From the repository root:
+Install the Bun version pinned in [`package.json`](package.json), Docker Engine and Docker Compose v2, then run:
 
 ```bash
+git clone https://github.com/erik-kroon/drastic.git
+cd drastic
 bun infra/self-host/setup.ts
 docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml up --build -d
 ```
 
-The app runs at [http://localhost:3000](http://localhost:3000). Follow the [self-hosting guide](infra/self-host/README.md) to create your first account and book, configure background jobs and manage upgrades.
+Open <http://localhost:3000>. The [self-hosting guide](infra/self-host/README.md) covers creating your first book and account; there are no default credentials.
 
-## Local development
+## Development
 
-Requirements: the pinned Bun version and an isolated PostgreSQL 17 database.
+Prerequisites: Bun (version pinned in [`package.json`](package.json)) and PostgreSQL 17. See [local development](docs/local-development.md).
 
 ```bash
 bun install --frozen-lockfile
+bun run dev                  # API and web app
+bun run build                # Production build
+bun run check:changed        # Lint and types for changed files
+bun run check:changed:full   # Full changed-file gate
 ```
 
-Follow the [local setup guide](docs/local-development.md) to migrate the database, configure the application login and create a development book and sign-in account. Then start the web app and API:
+Tests favour real workflows: the [API E2E suite](apps/api/tests/README.md) runs against real PostgreSQL, and [browser tests](verification/testerarmy/README.md) run against a fresh synthetic runtime.
 
-```bash
-bun run dev
-```
+## Tech stack
 
-Open [http://localhost:3000](http://localhost:3000). Background preparation uses a [separate Bun runner](docs/local-development.md#5-run-durable-preparation-work).
+- **Language**: TypeScript (strict) across frontend and backend
+- **Backend**: Effect, Effect Schema, PostgreSQL with Drizzle, effect-mq background jobs
+- **Frontend**: React, TanStack Start and Query, StyleX, Base UI
+- **Runtimes**: Bun/Docker self-hosting and Cloudflare Workers
+- **Interfaces**: REST with OpenAPI, and MCP for agents
 
-## Connect an agent or integration
-
-Connect to `/api/mcp` with a book-scoped API token. The [MCP guide](apps/api/docs/MCP.md) covers authentication, tool discovery and the prepare–approve–execute workflow. REST clients can use the generated schema at `/api/openapi.json`.
-
-## Architecture
-
-- **Web:** React, TanStack Start, TanStack Query and StyleX.
-- **API:** TypeScript and Effect, running on Bun or Cloudflare Workers.
-- **Data:** PostgreSQL with Drizzle's native Effect adapter; Better Auth for browser authentication.
-- **Background jobs:** effect-mq in a separate Bun process.
-
-Accounting logic lives in the application; PostgreSQL enforces record integrity and preserves posted history. See the [architecture guide](docs/architecture.md), [API layout](apps/api/README.md) and [accounting guarantees](docs/domain.md).
-
-### Repository map
+## Repository map
 
 | Path | Purpose |
 | --- | --- |
-| [`apps/web`](apps/web) | Product routes, accounting workspaces and review screens |
-| [`apps/api`](apps/api) | Effect workflows, REST/MCP, database access and runtime adapters |
-| [`packages/domain`](packages/domain) | Accounting models, exact amounts and domain errors |
-| [`packages/contracts`](packages/contracts) | Shared API schemas and capability contracts |
-| [`jurisdictions/se`](jurisdictions/se) | Swedish VAT calculations and SIE formats |
-| [`packages/ui`](packages/ui) | Reusable components, StyleX tokens and global styles |
-| [`infra/self-host`](infra/self-host) | Bun and PostgreSQL self-hosting |
-| [`infra/alchemy`](infra/alchemy) | Cloudflare deployment |
-| [`docs`](docs/README.md) | Product scope, architecture, delivery plans and verification |
+| [`apps/api/src/application`](apps/api/src/application) | Application workflows and financial transaction owners |
+| [`apps/api/src/transport`](apps/api/src/transport) | HTTP and MCP admission |
+| [`apps/api/src/db`](apps/api/src/db) | Scoped persistence and PostgreSQL access |
+| [`apps/web`](apps/web) | React/TanStack workspaces |
+| [`packages/domain`](packages/domain) | Exact financial values and calculations |
+| [`packages/contracts`](packages/contracts) | Shared API schemas |
+| [`packages/ui`](packages/ui) | Shared components and StyleX tokens |
+| [`jurisdictions/se`](jurisdictions/se) | Swedish VAT and SIE formats |
+| [`infra`](infra) | Self-hosting and deployment |
 
-## Community
+## Design decisions
 
-Found a bug or have an idea? [Open an issue](https://github.com/erik-kroon/openERP/issues). Keep customer books, credentials and private data out of issues.
+- [Application-owned accounting](docs/adr/0010-application-owned-accounting-replacement.md): one owner for policy, authorization and transactions across all clients
+- [Exact posting and approval](docs/adr/0002-exact-posting-and-approval.md): integer minor units, revision-bound approval and recoverable receipts
+- [Background jobs](docs/adr/0009-effect-mq-background-jobs.md): jobs schedule work but never own balances
+
+More in the [documentation index](docs/README.md) and the [API map](apps/api/README.md).
 
 ## Contributing
 
-Start with the [contributing guide](CONTRIBUTING.md). For local changes, run:
-
-```bash
-bun run check:changed
-bun run check:changed:full
-```
-
-`bun run build` builds the web app and bundles the API without deploying it. The existing end-to-end suite runs with `bun run test:e2e`; its [guide](apps/api/tests/README.md) covers prerequisites and repeatable artifacts.
-
-## Documentation
-
-- [Documentation index](docs/README.md) — guides organized by task.
-- [Product scope](docs/product.md) — users, outcomes and delivery boundaries.
-- [Local development](docs/local-development.md) and [self-hosting](infra/self-host/README.md) — run OpenERP yourself.
-- [MCP](apps/api/docs/MCP.md) and [authentication](apps/api/docs/AUTH.md) — connect agents and manage access.
-- [Roadmap](docs/roadmap.md) — progress, verification and remaining work.
+Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) first. Report security issues as described in [SECURITY.md](SECURITY.md), never in a public issue.
 
 ## License
 
-[AGPL-3.0-only](LICENSE). See the [licensing policy](LICENSING.md) for scope, third-party material and hosted-operation requirements.
+[AGPL-3.0-only](LICENSE). Third-party material keeps its own notices; see [LICENSING.md](LICENSING.md). Drastic was previously developed as OpenERP.

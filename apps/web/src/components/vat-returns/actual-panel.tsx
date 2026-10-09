@@ -75,8 +75,8 @@ export function ActualVatReturnsPanel(props: { recordId: string; onOpen: (id: st
         ).map((label) => ({ label, amount: "—" }))}
         notice={
           sv
-            ? "Momsbelopp och deklarationsperiod är inte verifierade. Förbered en period för att granska underlaget. OpenERP deklarerar eller betalar inte."
-            : "VAT amounts and the filing period are not verified. Prepare a period to review the basis. OpenERP does not submit returns or pay."
+            ? "Momsbelopp och deklarationsperiod är inte verifierade. Förbered en period för att granska underlaget. Drastic deklarerar eller betalar inte."
+            : "VAT amounts and the filing period are not verified. Prepare a period to review the basis. Drastic does not submit returns or pay."
         }
       >
         <Box display="grid" gap="md">

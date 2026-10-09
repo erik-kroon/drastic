@@ -122,7 +122,7 @@ export function OnboardingCutover({
           open={open}
         />
         <SetupBlock layout={["title"]}>
-          <SetupTitle>Övergång till OpenERP</SetupTitle>
+          <SetupTitle>Övergång till Drastic</SetupTitle>
         </SetupBlock>
         <SetupBlock layout={["authority", "section24"]}>
           <SetupBlock as="section" layout={["authorityCard", "authorityIncumbent"]}>
@@ -135,7 +135,7 @@ export function OnboardingCutover({
           </SetupBlock>
           <SetupBlock as="section" layout={["authorityCard", "authorityCandidate"]}>
             <SetupText as="h2" layout={["authorityTitle"]}>
-              OpenERP
+              Drastic
             </SetupText>
             <SetupText as="p" layout={["secondary"]}>
               {lifecycle.activation ? "Gällande från" : "Verifierar, gällande från"}{" "}
@@ -274,7 +274,7 @@ function ActivationConfirmation({
         Det här händer
       </SetupText>
       <SetupBlock layout={["dialogCopy", "tableSpace"]}>
-        <SetupText as="p">OpenERP blir gällande från {formatDate(date, false)}.</SetupText>
+        <SetupText as="p">Drastic blir gällande från {formatDate(date, false)}.</SetupText>
         <SetupText as="p">Tidigare system blir skrivskyddat.</SetupText>
         <SetupText as="p">
           {month.charAt(0).toUpperCase() + month.slice(1)} och accepterade begränsningar sparas i
@@ -635,7 +635,7 @@ export function OnboardingActivation({
       </SetupBlock>
       <SetupText as="p" layout={["subtitle", "mappingSubtitle"]}>
         Exempeldata. Sparad övergång: tidigare system till{" "}
-        {receipt ? formatDate(receipt.snapshot.asOf, false) : "—"}, OpenERP från{" "}
+        {receipt ? formatDate(receipt.snapshot.asOf, false) : "—"}, Drastic från{" "}
         {receipt ? formatDate(receipt.authoritativeFrom, false) : "—"}.
       </SetupText>
       <SetupBlock layout={["facts", "section20"]}>

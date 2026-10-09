@@ -188,7 +188,7 @@ function SupplierEditorForm(
           title: original?.filename ?? content?.title ?? "Supplier invoice",
           origin: original
             ? `Original document: ${original.filename}`
-            : "Supplier invoice details revised in OpenERP",
+            : "Supplier invoice details revised in Drastic",
           mediaType: "application/json",
           content: JSON.stringify(
             original

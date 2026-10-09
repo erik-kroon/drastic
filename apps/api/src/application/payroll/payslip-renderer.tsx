@@ -100,7 +100,7 @@ export async function renderPayslipPdf(document: typeof Runs.PayrollPayslipDocum
       footer: <PageFooter leftText={text(document.id)} />,
       metadata: {
         title: "Lönebesked",
-        creator: "OpenERP",
+        creator: "Drastic",
         creationDate: `${document.expectedPaymentOn}T00:00:00`,
       },
     }),

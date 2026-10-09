@@ -59,7 +59,7 @@ Deployment paths and fixture rows above are illustrative. The real application s
 
 ## 5. Bind calculation, approval and execution
 
-When retaining an authoritative calculation, use `kernel.prepare({ operation, context, input })`. The resulting immutable envelope carries exact input/output data, rule/profile/dependency references and build identity. Its internal digest is not OpenERP's canonicalization format and is not an approval token.
+When retaining an authoritative calculation, use `kernel.prepare({ operation, context, input })`. The resulting immutable envelope carries exact input/output data, rule/profile/dependency references and build identity. Its internal digest is not Drastic's canonicalization format and is not an approval token.
 
 Attach the envelope to the application's normal immutable proposal/report record. Include its exact bytes or digest in the EXISTING canonical sealing and approval mechanism. Do not change an existing canonicalization version, idempotency namespace or stored-record meaning merely to accommodate the child.
 

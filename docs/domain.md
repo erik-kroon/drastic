@@ -38,7 +38,7 @@ Posted lines retain paired `debitMinor` and `creditMinor` canonical nonnegative 
 
 Book-currency scale belongs to versioned book/profile metadata. Rates, quantities and intermediate calculations use separate exact decimal/rational values until a named rounding boundary. Original-currency amounts remain available; they do not redefine the book-currency balance invariant. UI formatting does not participate in arithmetic.
 
-Storage must reject fractional minor units before coercion. A `NUMERIC(38,0)` column alone can round incoming fractional values; use a validated integer boundary and an exact database constraint that checks the original value. See [PostgreSQL's numeric semantics](https://www.postgresql.org/docs/18/datatype-numeric.html). Bounds and the new canonicalization are selected in the shared plan; independent codec/canonicalization vectors remain an acceptance prerequisite ([D-03](open-decisions.md)). The clean replacement does not interpret or migrate old digests.
+Storage must reject fractional minor units before coercion. A `NUMERIC(38,0)` column alone can round incoming fractional values; use a validated integer boundary and an exact database constraint that checks the original value. See [PostgreSQL's numeric semantics](https://www.postgresql.org/docs/18/datatype-numeric.html). Bounds and the new canonicalization are selected in the shared plan; independent codec/canonicalization vectors remain an acceptance prerequisite (D-03). The clean replacement does not interpret or migrate old digests.
 
 Use civil dates for documents, economic occurrence/service interval, accounting, tax point and settlement. Use UTC instants for ingestion, recording, approvals and provider events. Fiscal-year boundaries are explicit and need not follow the calendar year. Retrying a command preserves its selected accounting date.
 
@@ -48,7 +48,7 @@ Supplier credits may be partial, but their retained gross amounts together must
 not exceed the original supplier invoice amount. Every retained credit consumes
 capacity. The separate invoice-cancellation workflow reverses the full original
 amount and therefore retains its one-cancellation-per-invoice identity; it is not
-the partial-credit record. See [DF-09 proof](plans/evidence/df-09-supplier-credit-cap.md).
+the partial-credit record. See DF-09 proof.
 
 | ID   | Invariant                                                                                                                                  | Enforcement owner                                                             |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ Use stable source IDs when available. Otherwise retain file identity and row occ
 
 ## Forecasts and knowledge boundaries
 
-The [Cash requirements](plans/15-book-zero-workflow-cash.md#cash-basis-and-payment-identity) extend the read model without changing I-01–I-12. A forecast binds an authorized entity/book, reviewed account set, common economic `asOf`, knowledge `recordedCutoff`, source revisions and explicit assumptions. Later evidence cannot rewrite an older forecast. A period assessment likewise binds its ledger and source coverage; a technical lock alone does not prove completeness.
+The Cash requirements extend the read model without changing I-01–I-12. A forecast binds an authorized entity/book, reviewed account set, common economic `asOf`, knowledge `recordedCutoff`, source revisions and explicit assumptions. Later evidence cannot rewrite an older forecast. A period assessment likewise binds its ledger and source coverage; a technical lock alone does not prove completeness.
 
 One economic payment can have invoice, instruction, bank, allocation and voucher evidence. Remaining amounts come from the owning register; opening inclusion and supersession/settlement relations decide whether a contribution belongs in the future. Equal amounts/dates cannot prove identity. A reservation, recurring estimate, payroll cost or tax declaration must not repeat the same cash effect through another representation.
 
@@ -98,3 +98,5 @@ The working balance model is `approved OpeningSet for year + movements within th
 Reports distinguish ordinary activity, adjustments and mechanical result transfers so closing entries do not erase the income statement's activity. Pin the opening version, ledger cutoff, relevant source/subledger revisions, rule/mapping versions and non-ledger disclosures. Generate readable and machine-readable outputs from that semantic snapshot.
 
 A zero difference with missing statement items is incomplete. A historical report can remain valid evidence of what was produced while being outdated for current books. Neither condition may be shown as current readiness.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

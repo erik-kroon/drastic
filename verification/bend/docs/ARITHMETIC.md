@@ -18,13 +18,13 @@ A rational uses a signed numerator and nonnegative denominator representation. `
 
 The library implements exact, toward-zero, floor, ceiling, half-even and half-away-from-zero rounding. Each successful round returns the chosen integer, denominator and signed residual numerator. A residual is not silently discarded. Exact mode returns `Inexact` when division has a remainder.
 
-The host's `half_up` alias preserves the current OpenERP implementation's meaning, which rounds magnitude ties upward then restores the sign. It is not an assertion that every external system gives that name the same semantics.
+The host's `half_up` alias preserves the current Drastic implementation's meaning, which rounds magnitude ties upward then restores the sign. It is not an assertion that every external system gives that name the same semantics.
 
 ## Decimal conversion and wire bounds
 
 `Decimal.bend` converts between binary naturals and typed decimal-digit lists. It uses binary arithmetic, not floating point. The JS boundary separately validates canonical strings and constructs digits or binary terms.
 
-Posted-money inputs retain OpenERP's maximum 38 decimal digits. A multiplication intermediate can therefore exceed that bound. Returning an intermediate to a posting contract still requires that contract's range check; the arithmetic library does not silently clamp or round it.
+Posted-money inputs retain Drastic's maximum 38 decimal digits. A multiplication intermediate can therefore exceed that bound. Returning an intermediate to a posting contract still requires that contract's range check; the arithmetic library does not silently clamp or round it.
 
 Rates and intermediate fractions do not inherit an implicit currency scale. A filing unit or rounding denominator must be explicitly supplied by the relevant caller.
 

@@ -67,7 +67,7 @@ export function SetupWorkspace({ account, children }: { account: ReactNode; chil
   return (
     <div {...stylex.props(styles.workspace)}>
       <header {...stylex.props(styles.topbar)}>
-        <span {...stylex.props(styles.brand)}>OpenERP</span>
+        <span {...stylex.props(styles.brand)}>Drastic</span>
         <div {...stylex.props(styles.account)}>{account}</div>
       </header>
       {children}
@@ -85,14 +85,27 @@ export function SetupContent({
   styleX?: StyleXStyles;
   layout?: SetupLayout;
 }) {
-  return <form {...props} {...stylex.props(styles.content, focused && styles.focused, styleX, setupLayoutStyles(layout))} />;
+  return (
+    <form
+      {...props}
+      {...stylex.props(
+        styles.content,
+        focused && styles.focused,
+        styleX,
+        setupLayoutStyles(layout),
+      )}
+    />
+  );
 }
 
 export function SetupPageContent({
   styleX,
   layout,
   ...props
-}: Omit<ComponentProps<"main">, "style" | "className"> & { styleX?: StyleXStyles; layout?: SetupLayout }) {
+}: Omit<ComponentProps<"main">, "style" | "className"> & {
+  styleX?: StyleXStyles;
+  layout?: SetupLayout;
+}) {
   return <main {...props} {...stylex.props(styles.content, styleX, setupLayoutStyles(layout))} />;
 }
 
@@ -109,5 +122,12 @@ export function SetupActions({ children }: { children: ReactNode }) {
 }
 
 export function SetupButton({ styleX, layout, ...props }: ButtonProps & { layout?: SetupLayout }) {
-  return <Button static size="sm" {...props} styleX={[styles.button, styleX, setupLayoutStyles(layout)]} />;
+  return (
+    <Button
+      static
+      size="sm"
+      {...props}
+      styleX={[styles.button, styleX, setupLayoutStyles(layout)]}
+    />
+  );
 }

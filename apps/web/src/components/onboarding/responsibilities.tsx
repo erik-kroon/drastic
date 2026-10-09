@@ -229,7 +229,7 @@ export function OnboardingResponsibilities({
           </SetupBlock>
         ))}
         <SetupBlock layout={["responsibilityRow", "responsibilityLastRow"]}>
-          <SetupText layout={["name", "medium"]}>OpenERP</SetupText>
+          <SetupText layout={["name", "medium"]}>Drastic</SetupText>
           <SetupText layout={["secondary"]}>läser underlag och förbereder förslag</SetupText>
         </SetupBlock>
       </SetupBlock>

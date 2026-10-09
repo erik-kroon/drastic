@@ -1,10 +1,10 @@
 # ADR 0010: application-owned accounting replacement
 
-Status: implemented and locally verified, 2026-09-26. Application dispatch, domain operations, effect-mq composition and the three-file baseline are complete. [Completion evidence](../plans/evidence/application-owned-replacement-complete.md) records the final boundary, runtime checks and recovery rehearsal. Company and hosted-provider acceptance remain separate release gates.
+Status: implemented and locally verified, 2026-09-26. Application dispatch, domain operations, effect-mq composition and the three-file baseline are complete. Completion evidence records the final boundary, runtime checks and recovery rehearsal. Company and hosted-provider acceptance remain separate release gates.
 
 ## Context
 
-OpenERP has no users or deployed accounting data to preserve. At the decision date, most capabilities bound a name and string parameters to `db/query.ts`; several HTTP handlers called it directly; and each call created a new database layer. Hosted preparation used a Cloudflare Workflow with a Cron dispatcher, while the self-host entrypoint had no connected background runner. These are the superseded boundaries that motivated this decision.
+Drastic has no users or deployed accounting data to preserve. At the decision date, most capabilities bound a name and string parameters to `db/query.ts`; several HTTP handlers called it directly; and each call created a new database layer. Hosted preparation used a Cloudflare Workflow with a Cron dispatcher, while the self-host entrypoint had no connected background runner. These are the superseded boundaries that motivated this decision.
 
 The replacement must retain the financial requirements in [ADR 0002](0002-exact-posting-and-approval.md), [ADR 0004](0004-complete-accounting-delivery-contract.md) and [ADR 0008](0008-financial-fx-vat-impairment.md), but change where those rules live. It must also cover more than the HTTP surface: the same operations are reached by the MCP catalogue, web query and mutation clients, Worker jobs, Bun entrypoints, provider scripts, recovery controls and operator commands. A partial move would leave two accounting authorities or transactions that cannot share one connection.
 
@@ -123,7 +123,7 @@ The delete row is a cutover obligation, not permission to leave a half-migrated 
 
 ## Proof gates
 
-The [completion evidence](../plans/evidence/application-owned-replacement-complete.md) records the observed local checks against the completed replacement, including baseline integrity, domain ports, browser/Bun execution, durable work and quarantined restore. The table distinguishes those engineering checks from company and hosted-provider acceptance.
+The completion evidence records the observed local checks against the completed replacement, including baseline integrity, domain ports, browser/Bun execution, durable work and quarantined restore. The table distinguishes those engineering checks from company and hosted-provider acceptance.
 
 | Gate | Required observation |
 | --- | --- |
@@ -135,4 +135,6 @@ The [completion evidence](../plans/evidence/application-owned-replacement-comple
 | Operations and recovery | Backup/restore captures the new baseline and queue/application work inventories, keeps the database quarantined and does not claim provider acceptance or promotion. |
 | Browser and company gates | Approved browser journeys, applicable Swedish profiles, real-company facts and provider receipts remain separate evidence. Synthetic success cannot activate a company or statutory profile. |
 
-Implementation and observed results are recorded separately in the [replacement plan](../archive/completed/application-owned-accounting.md) and its dated evidence. Local replacement verification does not establish company, statutory-profile or hosted-provider acceptance.
+Implementation and observed results are recorded separately in the replacement plan and its dated evidence. Local replacement verification does not establish company, statutory-profile or hosted-provider acceptance.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

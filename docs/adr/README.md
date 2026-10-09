@@ -1,6 +1,6 @@
 # Architecture decision records
 
-The status describes a decision's authority, not implementation progress. “Established” means the current repository settles it. “Working decision” means the product design selects it; it remains revisable. Unresolved prerequisites live in [open decisions](../open-decisions.md).
+The status describes a decision's authority, not implementation progress. “Established” means the current repository settles it. “Working decision” means the product design selects it; it remains revisable. Unresolved prerequisites live in open decisions.
 
 | ADR                                                      | Status                          | Decision                                                                                                     |
 | -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -26,3 +26,5 @@ The status describes a decision's authority, not implementation progress. “Est
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 
 Create an ADR when an unresolved choice materially changes invariants, ownership, public contracts or operations. Do not create one for every class or library call. Record context, choice, alternatives, consequences, source evidence and the proof that would validate the choice.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

@@ -2,7 +2,7 @@
 
 ## Scope and failure contract recorded before implementation
 
-The completed application-owned baseline includes application outbox intent, preparation jobs/run checkpoints, saved posting outcomes and the pinned effect-mq store. Backup and restore compare their complete inventories and keep database quarantine separate from external worker/provider state. The [completion rehearsal](../plans/evidence/application-owned-replacement-complete.md) exercises this path with retained originals, posted receipts and real queue work. Recovery commands never claim, resume, stop or rewrite a job.
+The completed application-owned baseline includes application outbox intent, preparation jobs/run checkpoints, saved posting outcomes and the pinned effect-mq store. Backup and restore compare their complete inventories and keep database quarantine separate from external worker/provider state. The completion rehearsal exercises this path with retained originals, posted receipts and real queue work. Recovery commands never claim, resume, stop or rewrite a job.
 
 ```text
 one exported snapshot -> private durable-work inventory -> manifest file hash
@@ -128,3 +128,5 @@ Version1 work inventories predate queue closure and cannot satisfy the replaceme
 ### Integrated runtime proof
 
 The completion rehearsal ran the real capture-release, preflight, backup, inspect and restore commands on a disposable PostgreSQL 17 cluster. All 266 tables, migration files, schema/grants, original objects, financial receipts, application work and queue state matched. The finalizer confirmed disabled connections and connection limit zero. The artifact records counts, hashes, controls and the suspension report. No provider or writer was promoted; read-only application recovery and external custody remain separate gates.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

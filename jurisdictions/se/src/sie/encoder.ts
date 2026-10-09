@@ -129,7 +129,7 @@ export function renderSie(capture: Capture): Uint8Array<ArrayBuffer> {
 
   const records = [
     "#FLAGGA 0",
-    '#PROGRAM "OpenERP" "openerp-sie4i-v1"',
+    '#PROGRAM "Drastic" "openerp-sie4i-v1"',
     "#FORMAT PC8",
     `#GEN ${date(capture.generatedOn)}`,
     "#SIETYP 4",

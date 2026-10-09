@@ -91,7 +91,7 @@ See [case context](../../apps/api/docs/CASES.md).
 The 2026-10-05 browser follow-up replaces the hardcoded standalone handoff in both
 proposal review routes with the current `Cases.ReviewResolution` owner. Correction
 children open the complete aggregate; mismatched child or bundle digests refuse review
-actions. The retained [synthetic browser proof](evidence/correction-child-review-20261005/README.md)
+actions. The retained synthetic browser proof
 covers both child entries, incorrect revision refusal, lost-response recovery and exact
 replay. This resolves that handoff gap, without claiming the new Q45–Q47 presentation or
 register-compensation acceptance.
@@ -104,13 +104,15 @@ transaction. Invoice expense reclassification retains issued content, original r
 allocation residual and payment capacity. Ordinary occurrence compensation retains its
 ordinal and history and requires an explicit preserved remaining plan. Effective invoice
 recognition and schedule controls reconcile at their stored posting cutoff. Seven
-[synthetic native journeys](evidence/correction-registers-20261005/README.md) prove exact
+synthetic native journeys prove exact
 replay, concurrent alternatives, late-fault rollback and ownership integrity. Commercial,
 tax/control, amount-changing plan, payroll, disposal and filed-report treatments remain
 owned workflows outside these bounded generic correction permissions.
 
 ### Complete bundle workspace qualification — 2026-10-06
 
-COR-01/COR-02 now integrate UI preparation, immutable consequence review, one aggregate approval/execution and durable receipt recovery in Bokföring. Both child review links resolve the aggregate and retained digest. A stale or unavailable basis refuses approval and requires fresh preparation. The [complete synthetic journey](evidence/correction-workspace-20261006/README.md) preserves independent expected amounts, original identity, exact execution authority and receipt/ledger assertions, with stable source qualification and full checks. Q45/Q46/Q47 presentation passes the unchanged parity gate with retained actual/diff/report and a [screen crosswalk](screen-delivery-ledger.json).
+COR-01/COR-02 now integrate UI preparation, immutable consequence review, one aggregate approval/execution and durable receipt recovery in Bokföring. Both child review links resolve the aggregate and retained digest. A stale or unavailable basis refuses approval and requires fresh preparation. The complete synthetic journey preserves independent expected amounts, original identity, exact execution authority and receipt/ledger assertions, with stable source qualification and full checks. Q45/Q46/Q47 presentation passes the unchanged parity gate with retained actual/diff/report and a screen crosswalk.
 
 This closes the bounded generic correction implementation and synthetic proof obligations of DRA-88/DRA-89. The previously qualified eleven native authority/rollback cases and seven supported-register cases remain separate financial evidence. Unsupported allocation/commercial/tax/payroll/disposal compensation remains COR-03. Q46's filed VAT facts are read-only synthetic presentation witnesses; live filing acknowledgement, impact-case creation and independently approved reopening remain COR-04. Company/provider readiness is not established by these local results.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

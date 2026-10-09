@@ -24,10 +24,12 @@ Controlled reopening is a separate, explicitly authorized and recorded workflow,
 
 Reopening the original period for every correction is rejected as the default. Elevated-authority writes into a still-locked period are rejected. Automatically dating every correction today or always reversing the entire run is also rejected.
 
-The HRMS source trace at revision `727f3a4` observed correction documents and Journal Entry creation using the Payroll Entry posting date. That observation does not establish that every retroactive correction requires rerunning the original period, nor that HRMS lacks an alternative mechanism. The earlier conversational claim that it has “no third mechanism” is withdrawn; this decision does not depend on it. The [ERPNext/Frappe review](../plans/17-erpnext-reference-review.md) remains reference input, not Swedish treatment evidence.
+The HRMS source trace at revision `727f3a4` observed correction documents and Journal Entry creation using the Payroll Entry posting date. That observation does not establish that every retroactive correction requires rerunning the original period, nor that HRMS lacks an alternative mechanism. The earlier conversational claim that it has “no third mechanism” is withdrawn; this decision does not depend on it. The ERPNext/Frappe review remains reference input, not Swedish treatment evidence.
 
 ## Required proof before release
 
 Retain repeatable end-to-end evidence for an August correction posted on an authorized open September date: August's original bytes and ledger remain unchanged; the adjustment and original components are linked; both reader views reconcile. Also demonstrate locked-date refusal, a period closing after preparation, fresh approval after changing the date, exact-key recovery without duplicate effects, and atomic failure without partial payroll/register effects. Verify a partial adjustment without unnecessary full reversal and the qualified full-reversal case separately. A posting must not change declaration state; reporting attribution and any amendment need independent reviewed examples and retained original artifacts.
 
 These are acceptance obligations, not newly added tests or claims of executed proof.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

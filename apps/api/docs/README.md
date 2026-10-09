@@ -10,4 +10,6 @@ Effect operations in [application](../src/application/) own commands and reads. 
 
 All slices share three DDL owners: [schema](../migrations/0001-schema.sql), [integrity](../migrations/0002-integrity.sql) and [roles](../migrations/0003-roles.sql). Install them with the [documented migrator](../../../docs/local-development.md). The old chain is superseded, not an upgrade source.
 
-Feature notes with a **Historical implementation notes** section preserve the earlier design, integration instructions and observed results. Migration names, SQL entrypoints and EXECUTE-only grants in those sections describe the removed implementation. Each note links to its current application owner and the baseline above. Current completion limits and verification are in the [API layout](../README.md) and [baseline evidence](../../../docs/plans/evidence/application-owned-baseline-cutover.md).
+Feature notes with a **Historical implementation notes** section preserve the earlier design, integration instructions and observed results. Migration names, SQL entrypoints and EXECUTE-only grants in those sections describe the removed implementation. Each note links to its current application owner and the baseline above. Current completion limits and verification are in the [API layout](../README.md) and baseline evidence.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

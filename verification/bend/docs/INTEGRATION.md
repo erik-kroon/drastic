@@ -1,4 +1,4 @@
-# OpenERP integration
+# Drastic integration
 
 ## Keep the first change isolated
 
@@ -28,7 +28,7 @@ Compare the Bend rows with `boxRows` while the existing owner stays authoritativ
 
 ## PRY-33 contract
 
-The host accepts at most 64 candidates and a maximum 100,000-node search budget. Exceeding the pool limit is an input refusal, not truncation. These are research-adapter safety bounds, not OpenERP's product limits.
+The host accepts at most 64 candidates and a maximum 100,000-node search budget. Exceeding the pool limit is an input refusal, not truncation. These are research-adapter safety bounds, not Drastic's product limits.
 
 Every candidate carries its resource ID, immutable revision, entity, book, snapshot, currency, scale, direction and remaining minor-unit amount. All must agree with the request's scope. Amounts are strictly positive magnitudes; direction is a separate field. The adapter rejects duplicates and zero capacities.
 

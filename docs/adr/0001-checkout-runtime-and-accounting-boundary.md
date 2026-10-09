@@ -18,4 +18,6 @@ The runtime ownership remains valid, but the earlier function-only accounting co
 
 ## Evidence and remaining gates
 
-The [architecture](../architecture.md) describes current ownership. The [roadmap](../archive/history/roadmap-through-2026-10-04.md) records historical static checks and bounded runtime observations. Trusted production identity and fixed-revision runtime proof remain D-01/D-02 in [open decisions](../open-decisions.md); source presence does not close those gates.
+The [architecture](../architecture.md) describes current ownership. The roadmap records historical static checks and bounded runtime observations. Trusted production identity and fixed-revision runtime proof remain D-01/D-02 in open decisions; source presence does not close those gates.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

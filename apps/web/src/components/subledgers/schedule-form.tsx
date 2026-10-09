@@ -69,7 +69,7 @@ export function ScheduleForm(props: {
       stickyFooter
       source={(fields) => ({
         title: fieldText(fields, "name"),
-        origin: "Schedule assessment entered in OpenERP",
+        origin: "Schedule assessment entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({
           sourceKey,

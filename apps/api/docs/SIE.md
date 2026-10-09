@@ -1,8 +1,8 @@
 # SIE exports
 
-OpenERP has separate synthetic SIE4I transaction-transfer and SIE4E selected-book exports. Both retain exact CP437 bytes. Neither establishes company qualification, SIE certification or recipient acceptance.
+Drastic has separate synthetic SIE4I transaction-transfer and SIE4E selected-book exports. Both retain exact CP437 bytes. Neither establishes company qualification, SIE certification or recipient acceptance.
 
-The [source review](../../../docs/sources/sie-4c-review.md) pins SIE 4C, edition 2025-08-06, SHA-256 `96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1`. It covers types 1–4, not SIE 5.
+The source review pins SIE 4C, edition 2025-08-06, SHA-256 `96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1`. It covers types 1–4, not SIE 5.
 
 ## Owners
 
@@ -83,7 +83,7 @@ bun run test:e2e apps/api/tests/sie-dimensions.e2e.test.ts
 
 It creates original postings, catalogue revisions and opening-basis selection through the real workerd API against disposable PostgreSQL. The test-only Wrangler environment supplies local R2 storage for retained SIE source bytes. It checks both opening representations, exact large integers, signed/zero object balances, all non-value assignment states, archive changes, backdated activity, authority, replay, altered bytes, unsupported text and nominal-opening refusals. Compatibility fixtures install read-only v1/v2 captures over API-created ledgers and exercise resume and byte recovery; they do not seed financial records.
 
-The runner retains `test-results/e2e/sie-dimensions.SE`, `sie-dimensions-journey.json`, and paired `.SE`/`-journey.json` artifacts for `sie-prior_native_balance` and `sie-opening_set_voucher`. Each journey binds the capture, membership, parsed file and expected object controls. The source manifest, integrity result and suite reports identify the tested source. Prior runs move to `test-results/e2e-history/`. See the [FWD-09 completion record](../../../docs/plans/16-comparison-reconciliation.md#fwd-09--local-opening-object-completion) for current evidence.
+The runner retains `test-results/e2e/sie-dimensions.SE`, `sie-dimensions-journey.json`, and paired `.SE`/`-journey.json` artifacts for `sie-prior_native_balance` and `sie-opening_set_voucher`. Each journey binds the capture, membership, parsed file and expected object controls. The source manifest, integrity result and suite reports identify the tested source. Prior runs move to `test-results/e2e-history/`. See the FWD-09 completion record for current evidence.
 
 These are local synthetic observations. The user selected local completion first. Actual recipient import remains blocked on a named system/version and an authorized test company. Actual-company source completeness, browser behavior, prior-year record coverage and statutory acceptance are separate gates.
 
@@ -96,3 +96,5 @@ These are local synthetic observations. The user selected local completion first
 5. Compare account controls: account 1930 opens at **125.00**, moves **125.00**, and closes at **250.00**; account 2999 opens at **-125.00**, moves **-125.00**, and closes at **-250.00**.
 6. Compare every `expectedObjectControls` entry. On 1930, Department/0012 opens and closes at 125.00; Department/New opens at 0.00 and closes at 125.00; Project/Case-A opens at 125.00 and closes at 250.00. On 2999, Department/0012 and Project/Case-A each open and close at -125.00. The current unassigned credit remains in the account total without an invented object.
 7. Retain the import log and receiving-system account, object and voucher reports, linked to the exact file hash. Any ignored dimension, recoded object, altered label, duplicate movement or amount difference keeps acceptance open. Record acceptance only for the observed product/version/profile.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

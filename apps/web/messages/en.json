@@ -1,6 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "app_title": "OpenERP",
+  "app_title": "Drastic",
   "seo_description": "Review and approve exact journal plans before posting. Synthetic accounting core; not for statutory compliance.",
   "skip_to_content": "Skip to content",
   "language_label": "Language",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
-  "app_title": "OpenERP",
+  "app_title": "Drastic",
   "seo_description": "Granska och godkänn exakta bokföringsplaner före bokföring. Syntetisk bokföringskärna; inte för lagstadgad regelefterlevnad.",
   "skip_to_content": "Hoppa till innehållet",
   "language_label": "Språk",

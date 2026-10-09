@@ -20,7 +20,7 @@ export function renderDeadlineCalendar(feed: typeof Deadlines.FeedEvents.Type) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//OpenERP//Deadlines//EN",
+    "PRODID:-//Drastic//Deadlines//EN",
     "CALSCALE:GREGORIAN",
   ];
 

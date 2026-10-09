@@ -14,7 +14,7 @@ An owner relationship requires retained evidence with a known source-reference k
 
 The opaque cursor binds normalized filters, scope, retained cutoff and a validated original anchor. Uploads after that cutoff stay outside the traversal. Owner revisions remain live, explicitly reported as `live_owner_revisions`; this is not a frozen financial snapshot. `/source-archive/export` uses the same filtered page and cutoff, returns byte-identical originals, and refuses if any selected original is unavailable. Metadata listing does not check bytes. Exact-original detail metadata uses `occurrenceId` rather than the legacy capped purchase-link listing. Browser owner links retain revision selections and the Documents return context.
 
-Migration `0064-document-library-source-evidence.sql` indexes the measured supplier revision evidence lookup. The [P05 delivery evidence](../../../docs/plans/evidence/product-p05/remainder-checkpoint.md) records backend, browser navigation and comparable performance observations with their integration and zoom limits.
+Migration `0064-document-library-source-evidence.sql` indexes the measured supplier revision evidence lookup. The P05 delivery evidence records backend, browser navigation and comparable performance observations with their integration and zoom limits.
 
 ## Historical implementation notes
 
@@ -364,3 +364,5 @@ Owned formatting/lint and source inspection are static checks only. Runtime obse
 pending for lost inline/object-retention responses, duplicate existing occurrences with new
 actor/key provenance, pending and late uploads, unrelated/foreign keys and unavailable storage.
 No tests, SQL compilation/application, provider operations or runtime observations were run.
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

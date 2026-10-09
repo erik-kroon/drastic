@@ -4,17 +4,17 @@ Status: accepted planning and process decision, 2026-09-28. Selected by the repo
 
 ## Context
 
-The repository had accumulated a large body of unresolved planning input without a mechanism to resolve it. Five externally produced NEXT dossiers ([ADR 0012](0012-next-implementation-dossier.md)) supplied implementation-level design for 125 work items. Two externally produced plan reviews proposed replacements for the accepted parity backlog and test plan, and [14-plan-review-adoption.md](../plans/14-plan-review-adoption.md) recorded five adoption questions as pending. The D-register carried ten rows whose framing assumed a standing maintainer, accounting department and security team who would resolve them later.
+The repository had accumulated a large body of unresolved planning input without a mechanism to resolve it. Five externally produced NEXT dossiers ([ADR 0012](0012-next-implementation-dossier.md)) supplied implementation-level design for 125 work items. Two externally produced plan reviews proposed replacements for the accepted parity backlog and test plan, and 14-plan-review-adoption.md recorded five adoption questions as pending. The D-register carried ten rows whose framing assumed a standing maintainer, accounting department and security team who would resolve them later.
 
 That model was wrong for this repository. There is one owner/operator. Questions addressed to an accounting department or security team were not pending decisions; they were decisions that had not been made, and no amount of additional planning would settle them. The unresolved register grew to 34 product-scope items and 10 process rows, and its growth was itself a risk: an unowned item list becomes an unowned product.
 
-The owner/operator has now made those decisions. The decision pass is recorded in [the vendored decision record](../specs/decision-pass-2026-09-28/README.md), and [the open-decisions register](../open-decisions.md) is the authority after this integration. This ADR records what was decided, what was deliberately not decided, and the boundaries that hold regardless.
+The owner/operator has now made those decisions. The decision pass is recorded in the vendored decision record, and the open-decisions register is the authority after this integration. This ADR records what was decided, what was deliberately not decided, and the boundaries that hold regardless.
 
 Four properties of the incoming decision pass shaped how it was integrated, and each is recorded because it changes what the decisions mean:
 
 1. **It is a decision, not evidence.** Every gate in it carries `independently_verified_by_this_pass: false`. It changes permissions and sequencing. It proves no runtime behaviour, no monetary result and no company fact.
-2. **Its scope register was one wave behind.** It dispositions 23 product-scope capabilities covering 24 `NEXT-nn` identifiers. The fifth dossier, vendored the same day, introduced 11 further unowned lifecycles that the pass does not mention. Those 11 are carried forward as open in [the dossier plan](../plans/12-next-implementation-dossier.md); they are **not** closed by this ADR.
-3. **It is partly redundant with decisions this repository already made.** NEXT-121, bounded standing posting mandates, is design for a contract [the operations plan](../operations.md) had already adopted, including the rule that a mandate never implicitly authorizes payment, closure, signature or filing. And ADOPT-5, the register validator, is substantially already satisfied by `docs/plans/check-plan.py`, which validates known identifiers, owners, dependency cycles, conditional-gate references, traceability coverage, counters and link/anchor integrity. Neither was built again.
+2. **Its scope register was one wave behind.** It dispositions 23 product-scope capabilities covering 24 `NEXT-nn` identifiers. The fifth dossier, vendored the same day, introduced 11 further unowned lifecycles that the pass does not mention. Those 11 are carried forward as open in the dossier plan; they are **not** closed by this ADR.
+3. **It is partly redundant with decisions this repository already made.** NEXT-121, bounded standing posting mandates, is design for a contract the operations plan had already adopted, including the rule that a mandate never implicitly authorizes payment, closure, signature or filing. And ADOPT-5, the register validator, is substantially already satisfied by `docs/plans/check-plan.py`, which validates known identifiers, owners, dependency cycles, conditional-gate references, traceability coverage, counters and link/anchor integrity. Neither was built again.
 4. **Its strongest claims are about authority, not engineering.** The release-gate change and the test permission are the parts that unblock the most work. They are also the parts where a careless integration could quietly weaken a control, so each is bounded explicitly below.
 
 ## Decision
@@ -36,7 +36,7 @@ Actual original documents
 
 Three limits are part of the decision, not caveats added to it:
 
-- **This is an engineering gate, not a legal one.** Statutory audit and reporting obligations, where they apply to the company, are unaffected. Nothing in this repository states, implies or is permitted to imply that a product decision waives them. [docs/compliance.md](../compliance.md) is unchanged and remains the compliance authority.
+- **This is an engineering gate, not a legal one.** Statutory audit and reporting obligations, where they apply to the company, are unaffected. Nothing in this repository states, implies or is permitted to imply that a product decision waives them. docs/compliance.md is unchanged and remains the compliance authority.
 - **"Independent" is redefined for acceptance, and only for acceptance.** It means independent inputs and independently derived expectations — computed from primary rule sources and the source documents, not by calling the production function or a second model. It does not mean professional certification, and the word must not be used interchangeably with certification anywhere in the maintained documents.
 - **Owner approval is a real human act.** The owner remains the person who confirms business facts and authorizes real company actions. A guessed registration, a synthesized signature or a simulated bank payment is not evidence, and the product must keep refusing to treat it as such.
 
@@ -95,10 +95,10 @@ The distinctions that matter are preserved rather than flattened:
 | Revised parity backlog | Adopt the corrected ownership, evidence and per-rule safety model. Reconcile against current source; preserve later valid requirements and stable `PRY-nn` identifiers. No wholesale old-file overwrite, no verbatim unsafe recipe. |
 | Revised ADR 0011 | Adopt the separation of design coverage, implementation, observed evidence and selected-release readiness. Retain the core historical denominator; derive a separate selected-scope release result. |
 | Revised test plan | Adopt the corrected observable-business cases and bounded conformance testing, retain real-PostgreSQL/workerd integration, reject HARNESS-1. Derive current expected behaviour from accepted contracts and primary-source facts rather than copying an older patch. |
-| Companion D-register edits | Applied through this ADR and the rewritten [open-decisions register](../open-decisions.md). No parallel authoritative register. |
+| Companion D-register edits | Applied through this ADR and the rewritten open-decisions register. No parallel authoritative register. |
 | Register validator | **Already substantially satisfied** by `docs/plans/check-plan.py`. No second validator is built. |
 
-Adoption of a decision is not adoption of the old file's bytes. A 1,503-line plan replaced by a 235-line document is a rewrite, not an import, and [14-plan-review-adoption.md](../plans/14-plan-review-adoption.md) records the textual reconciliation as remaining integration work. A test-plan error is not a proven runtime defect, and a planning defect is not automatically a code defect.
+Adoption of a decision is not adoption of the old file's bytes. A 1,503-line plan replaced by a 235-line document is a rewrite, not an import, and 14-plan-review-adoption.md records the textual reconciliation as remaining integration work. A test-plan error is not a proven runtime defect, and a planning defect is not automatically a code defect.
 
 ## Boundaries that hold regardless of this decision
 
@@ -137,6 +137,8 @@ Adoption of a decision is not adoption of the old file's bytes. A 1,503-line pla
 
 ## Implementation and proof
 
-This decision is a planning and process artifact. Its proof is that the maintained registers state it rather than contradict it: that `AGENTS.md` carries the bounded permission instead of the blanket prohibition, that the D-register separates chosen design from remaining evidence, that [14-plan-review-adoption.md](../plans/14-plan-review-adoption.md) records the five adoptions with honest integration status, that the dossier plan carries the 23 dispositions and the 11 open items, and that `python3 docs/plans/check-plan.py` still passes with the mandated index unchanged in count, edges and denominator.
+This decision is a planning and process artifact. Its proof is that the maintained registers state it rather than contradict it: that `AGENTS.md` carries the bounded permission instead of the blanket prohibition, that the D-register separates chosen design from remaining evidence, that 14-plan-review-adoption.md records the five adoptions with honest integration status, that the dossier plan carries the 23 dispositions and the 11 open items, and that `python3 docs/plans/check-plan.py` still passes with the mandated index unchanged in count, edges and denominator.
 
 Proof that any workflow, monetary result or company profile is correct is that workflow's own acceptance under the authorisation in force. **No runtime, database, browser or provider workflow was executed to produce this decision, and this ADR verifies none.**
+
+Historical planning links and captures omitted from this source distribution remain in the private working archive.

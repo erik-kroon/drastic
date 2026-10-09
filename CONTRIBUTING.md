@@ -1,4 +1,4 @@
-# Contributing to OpenERP
+# Contributing to Drastic
 
 Start with [the documentation index](docs/README.md), [repository instructions](AGENTS.md) and [architecture](docs/architecture.md). The product is under development; supported synthetic behavior, production accounting and externally accepted filings are different claims.
 

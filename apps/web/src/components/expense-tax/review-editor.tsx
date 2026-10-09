@@ -34,7 +34,7 @@ export function ExpenseReviewForm(
       onSuccess={props.onSaved}
       source={(fields) => ({
         title: source.current.facts.description,
-        origin: "Expense review entered in OpenERP",
+        origin: "Expense review entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({
           kind: "expense_review_entry_v1",

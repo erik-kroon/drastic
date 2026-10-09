@@ -32,7 +32,7 @@ function IntakePage() {
         alignItems="center"
         gap="lg"
       >
-        <Link href="/">OpenERP, {copy.home}</Link>
+        <Link href="/">Drastic, {copy.home}</Link>
         <Box display="flex" flexWrap="wrap" gap="sm">
           <Button
             size="xl"

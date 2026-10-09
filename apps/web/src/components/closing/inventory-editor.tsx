@@ -82,7 +82,7 @@ export function PeriodInventoryEditor({
       }
       source={() => ({
         title: `${sv ? "Periodgranskning" : "Period review"}, ${basis.startsOn} – ${basis.endsOn}`,
-        origin: "Period scope entered in OpenERP",
+        origin: "Period scope entered in Drastic",
         mediaType: "application/json",
         content: JSON.stringify({ periodId: basis.periodId, bankAccountIds: accounts, decisions }),
       })}
