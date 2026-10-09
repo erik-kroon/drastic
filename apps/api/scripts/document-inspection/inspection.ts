@@ -77,6 +77,30 @@ export async function inspectDocument(bytes: Uint8Array, mediaType: string) {
   }
 }
 
+let inspectionTail = Promise.resolve();
+
+let pendingInspections = 0;
+
+export async function inspectQueuedDocument(bytes: Uint8Array, mediaType: string) {
+  if (bytes.length < 1 || bytes.length > 5 * 1024 * 1024)
+    throw new DocumentInspectionError("document_size");
+
+  if (pendingInspections >= 8) throw new DocumentInspectionError("inspection_capacity");
+
+  pendingInspections++;
+  const inspection = inspectionTail.then(() => inspectDocument(bytes, mediaType));
+  inspectionTail = inspection.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  try {
+    return await inspection;
+  } finally {
+    pendingInspections--;
+  }
+}
+
 export function runIsolatedDocumentWorker(
   script: string,
   node: string,

@@ -1,4 +1,4 @@
-import { inspectDocument } from "../../scripts/document-inspection/inspection";
+import { inspectQueuedDocument } from "../../scripts/document-inspection/inspection";
 import * as PgClient from "@effect/sql-pg/PgClient";
 import { Worker } from "effect-mq";
 import { DrizzleJobStore } from "effect-mq/drizzle-postgres";
@@ -60,7 +60,7 @@ if (endpoint && new URL(endpoint).hostname !== "127.0.0.1")
   throw new Error("Fixture must use loopback.");
 
 const bindings: Bindings = {
-  DOCUMENT_INSPECTOR: inspectDocument,
+  DOCUMENT_INSPECTOR: inspectQueuedDocument,
   DATABASE_URL: connectionString,
   OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
   DOCUMENT_READER: configuredDocumentReader({

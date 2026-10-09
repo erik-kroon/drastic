@@ -55,7 +55,11 @@ test("home retains the selected original and scoped keyboard return after reload
   const before = await call("/ledger", Accounting.LedgerSnapshot);
   const originals: Array<typeof Source.SourceOccurrence.Type> = [];
 
-  for (const filename of ["home-original-first.pdf", "home-original-selected.pdf"]) {
+  for (const filename of [
+    ...Array.from({ length: 50 }, (_, index) => `home-page-first-${index}.pdf`),
+    "home-original-first.pdf",
+    "home-original-selected.pdf",
+  ]) {
     const occurrence = await call("/source-occurrences", Source.SourceOccurrence, {
       sourceSystem: "synthetic-home-return",
       sourceAccountId: "synthetic_originals",
@@ -74,16 +78,36 @@ test("home retains the selected original and scoped keyboard return after reload
     originals.push(occurrence);
   }
 
-  const original = originals[1];
+  const original = originals.at(-1);
 
   if (!original) throw new Error("The selected original is required");
 
   const attention = await call("/attention?status=open&sort=oldest", Workspace.AttentionPage);
-  const task = attention.items.find((item) => item.id === original.id)?.questionRoot;
+
+  expect(attention.items).toHaveLength(50);
+  expect(attention.next).not.toBeNull();
+  const continuation = attention.next;
+
+  if (!continuation) throw new Error("The retained originals require a second page");
+
+  const secondPage = await call(
+    `/attention?status=open&sort=oldest&after=${continuation}`,
+    Workspace.AttentionPage,
+  );
+
+  const task = secondPage.items.find((item) => item.id === original.id)?.questionRoot;
 
   if (!task) throw new Error("The application must expose the retained task root");
 
   await app.open(`${workspace}/`);
+  await expect(screen.getByRole("button", /home-original-selected\.pdf/)).toHaveCount(0);
+  await screen.getByRole("link", "Nästa sida", { exact: true }).click();
+  await expect
+    .poll(async () => new URL(await browser.url()).pathname)
+    .toBe(new URL(workspace).pathname);
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("after"))
+    .toBe(continuation);
 
   const row = screen.getByRole("button", /home-original-selected\.pdf/);
 
@@ -94,6 +118,9 @@ test("home retains the selected original and scoped keyboard return after reload
     .poll(async () => new URL(await browser.url()).searchParams.get("task"))
     .toBe(task.key);
   await browser.reload();
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("after"))
+    .toBe(continuation);
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
@@ -110,6 +137,9 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect
     .poll(async () => new URL(await browser.url()).pathname)
     .toBe(new URL(workspace).pathname);
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("after"))
+    .toBe(continuation);
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
   await expect(screen.getByRole("img", `${original.filename}, sida 1`)).toBeVisible();
@@ -192,7 +222,7 @@ test("home retains the selected original and scoped keyboard return after reload
   );
 
   const handedOffAttention = await call(
-    "/attention?status=open&sort=oldest",
+    `/attention?status=open&sort=oldest&after=${continuation}`,
     Workspace.AttentionPage,
   );
 
@@ -203,7 +233,9 @@ test("home retains the selected original and scoped keyboard return after reload
     handedOffAttention.items.filter((item) => item.questionRoot?.key === task.key),
   ).toHaveLength(1);
   expect(handedOffAttention.total).toBe(attention.total);
-  await app.open(`${workspace}/?status=open&task=${encodeURIComponent(task.key)}`);
+  await app.open(
+    `${workspace}/?status=open&after=${continuation}&task=${encodeURIComponent(task.key)}`,
+  );
 
   const draftRow = screen.getByRole("button", /Synthetic selected home draft/);
 
@@ -217,7 +249,9 @@ test("home retains the selected original and scoped keyboard return after reload
   const handoffScreenshot = await app.screenshot("home-same-root-new-supplier-stage");
   const missingTask = `document:${randomUUID()}`;
 
-  await app.open(`${workspace}/?status=open&task=${encodeURIComponent(missingTask)}`);
+  await app.open(
+    `${workspace}/?status=open&after=${continuation}&task=${encodeURIComponent(missingTask)}`,
+  );
   await expect(draftRow).toBeVisible();
   await expect(draftRow).toHaveAttribute("aria-pressed", "false");
   await expect(screen.getByRole("button", /home-original-first\.pdf/)).toHaveAttribute(
@@ -374,6 +408,7 @@ test("home retains the selected original and scoped keyboard return after reload
         scope:
           "synthetic original and completed supplier stage selection, reload and keyboard return",
         original,
+        pagination: { continuation, first: attention, second: secondPage },
         task,
         ownerReturn,
         before,

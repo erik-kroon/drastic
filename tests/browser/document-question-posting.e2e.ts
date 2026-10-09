@@ -308,6 +308,19 @@ test("a retained original returns through questions, explicit review, posting an
   await writeFile(replacementFile, originalBytes);
   const before = await call("/ledger", Accounting.LedgerSnapshot);
 
+  for (let index = 0; index < 50; index++) {
+    await call("/source-occurrences", Source.SourceOccurrence, {
+      sourceSystem: "synthetic-question-pages",
+      sourceAccountId: "synthetic_originals",
+      occurrenceKey: randomUUID(),
+      sourceRevision: "1",
+      filename: `question-page-${index}-${suffix}.txt`,
+      mediaType: "text/plain",
+      contentBase64: Buffer.from("Retained synthetic unfinished original").toString("base64"),
+      destination: "supplier_inbox",
+    });
+  }
+
   await app.open(`${workspace}/purchases?view=supplier-drafts`);
   await expect(screen.getByRole("button", "Ladda upp original", { exact: true })).toBeVisible({
     timeout: 90000,
@@ -317,9 +330,26 @@ test("a retained original returns through questions, explicit review, posting an
 
   expect(occurrence.sha256).toBe(hash(originalBytes));
 
-  const queue = `${workspace}/work?kind=document&status=open&q=${encodeURIComponent(filename)}`;
+  const firstQueue = `${workspace}/work?kind=all&status=open&sort=oldest&q=${encodeURIComponent(suffix)}`;
 
-  await app.open(queue);
+  const firstPage = await call(
+    `/attention?kind=all&status=open&sort=oldest&q=${encodeURIComponent(suffix)}`,
+    Workspace.AttentionPage,
+  );
+
+  expect(firstPage.items).toHaveLength(50);
+  expect(firstPage.items.some((item) => item.id === occurrence.id)).toBe(false);
+
+  if (!firstPage.next) throw new Error("The original must be beyond the first page");
+
+  const queue = `${firstQueue}&after=${firstPage.next}`;
+
+  await app.open(firstQueue);
+  await screen.getByRole("button", "Nästa sida", { exact: true }).click();
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("after"))
+    .toBe(firstPage.next);
+  await browser.reload();
   await expect(screen.getByRole("button", "Tilldela", { exact: true })).toBeVisible();
   await screen.getByRole("button", "Tilldela", { exact: true }).click();
   await screen
@@ -407,6 +437,17 @@ test("a retained original returns through questions, explicit review, posting an
   });
 
   expect(paneQuestions.questions[0]).toEqual(answered.question);
+
+  const simultaneousReads = await Promise.all(
+    Array.from({ length: 3 }, () =>
+      call("/workspace/questions/read", Workspace.WorkQuestionsView, {
+        kind: "document",
+        recordId: occurrence.id,
+      }),
+    ),
+  );
+
+  for (const view of simultaneousReads) expect(view.questions[0]).toEqual(answered.question);
   expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
 
   const closure = questionDialog.getByRole("form", "Markera som löst", { exact: true });
@@ -508,12 +549,9 @@ test("a retained original returns through questions, explicit review, posting an
     },
   );
 
-  await app.open(
-    `${workspace}/purchases?view=supplier-drafts&record=${handoff.draft.id}&review=${plan.id}`,
-  );
-  await expect(screen.getByRole("link", "Granska", { exact: true })).toBeVisible();
-  await screen.getByRole("link", "Granska", { exact: true }).focus();
-  await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
+  await app.open(queue);
+  await screen.getByRole("link", filename, { exact: true }).focus();
+  await screen.getByRole("link", filename, { exact: true }).press("Enter");
 
   const canonicalPath =
     new URL(workspace).pathname +
@@ -531,7 +569,7 @@ test("a retained original returns through questions, explicit review, posting an
     reviewDigest: plan.digest,
     draftId: handoff.draft.id,
   });
-  expect(new URL(await browser.url()).searchParams.get("returnTo")).not.toBe(null);
+  expect(new URL(await browser.url()).searchParams.get("after")).toBe(firstPage.next);
   await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible();
   await expect(screen.getByRole("combobox", "Sida", { exact: true })).toHaveCount(1);
   await screen.getByRole("combobox", "Sida", { exact: true }).click();
@@ -699,6 +737,26 @@ test("a retained original returns through questions, explicit review, posting an
   await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible();
 
   const postingScreenshot = await app.screenshot("document-question-frozen-original-posted");
+
+  await screen.getByRole("link", "Att göra /", { exact: true }).focus();
+  await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
+  await expect
+    .poll(async () => new URL(await browser.url()).searchParams.get("after"))
+    .toBe(firstPage.next);
+  await expect.poll(async () => new URL(await browser.url()).searchParams.get("q")).toBe(suffix);
+  await browser.reload();
+  await expect(screen.getByRole("link", filename, { exact: true })).toHaveCount(0);
+  await expect(screen.getByRole("button", "Första sidan", { exact: true })).toBeEnabled();
+
+  const returnedPage = await call(
+    `/attention?kind=all&status=open&sort=oldest&q=${encodeURIComponent(suffix)}&after=${firstPage.next}`,
+    Workspace.AttentionPage,
+  );
+
+  expect(
+    returnedPage.items.some((item) => item.questionRoot?.key === asked.question.root.key),
+  ).toBe(false);
+  const returnScreenshot = await app.screenshot("document-question-posted-return-page-two");
 
   const statementSource = {
     kind: "synthetic_bank_statement_v1",
@@ -933,10 +991,11 @@ test("a retained original returns through questions, explicit review, posting an
         setup:
           "Public synthetic supplier identity and native synthetic-manual review preparation; upload, draft handoff, questions, closure, approval, posting and bank allocation use actual UI commands",
         occurrence,
+        pagination: { firstPage, returnedPage, queue },
         malformed,
         readable,
         answeredQuestion: answered.question,
-        questionPane: { ...questionPane, view: paneQuestions, operator },
+        questionPane: { ...questionPane, view: paneQuestions, simultaneousReads, operator },
         question: closed.question,
         rootAfterDraft: questions.root,
         handoff,
@@ -975,6 +1034,7 @@ test("a retained original returns through questions, explicit review, posting an
           narrowScreenshot,
           postingScreenshot,
           recoveryScreenshot,
+          returnScreenshot,
           bankEvidenceScreenshot,
           explanationScreenshot,
           statementScreenshot,

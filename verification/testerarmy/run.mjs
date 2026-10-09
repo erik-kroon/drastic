@@ -130,6 +130,7 @@ async function start(executable, args, name, ready) {
       ...process.env,
       PAPER_PORT: String(webPort),
       PAPER_ARTIFACTS: resolve(output, "runtime"),
+      OPENERP_E2E_API_MODE: "native",
       PAPER_PAYROLL: "0",
       PAPER_ONBOARDING: "0",
       E2E_TELEMETRY_DISABLED: "1",

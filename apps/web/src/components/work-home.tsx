@@ -31,7 +31,12 @@ import {
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
-import { workQueueHref, type WorkReturn, type WorkHomeQuery } from "@/lib/work-return";
+import {
+  workQueueHref,
+  type WorkReturn,
+  type WorkHomeQuery,
+  ownerReturnHref,
+} from "@/lib/work-return";
 import { AccountingStatus } from "./accounting-status";
 import { OriginalDocument } from "./original-document";
 import { WorkGroupReview, WorkGroupEntry } from "./work-group-review";
@@ -60,6 +65,7 @@ export function WorkHome() {
     status: status === "watch" ? "open" : status,
     kind,
     sort,
+    after: status === "watch" ? undefined : search.after,
   };
 
   const query = useQuery(attentionQueryOptions(book, filters));
@@ -173,6 +179,7 @@ export function WorkHome() {
                     void navigate({
                       search: {
                         status,
+                        after: search.after,
                         task: item.selectionKey,
                         stage: status === "completed" ? item.key : undefined,
                       },
@@ -189,15 +196,53 @@ export function WorkHome() {
             <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
           </Box>
         ) : null}
-        {status !== "watch" && page?.next ? (
-          <Box padding="lg">
-            <PageAction quiet href={workQueueHref(base, { ...filters, after: page.next })}>
-              {copy.next}
-            </PageAction>
-          </Box>
+        {status !== "watch" ? (
+          <HomePagination
+            base={base}
+            status={status}
+            after={search.after}
+            next={page?.next}
+            locale={locale}
+          />
         ) : null}
       </RegisterWorkspace>
     </>
+  );
+}
+
+function HomePagination(props: {
+  base: string;
+  status: "open" | "completed";
+  after: string | undefined;
+  next: string | null | undefined;
+  locale: CompanyWork["locale"];
+}) {
+  const copy = attentionCopy(props.locale);
+
+  if (!props.after && !props.next) return null;
+
+  return (
+    <Box padding="lg" display="flex" gap="md">
+      {props.after ? (
+        <PageAction
+          quiet
+          href={ownerReturnHref(props.base, { owner: "home", search: { status: props.status } })}
+        >
+          {copy.first}
+        </PageAction>
+      ) : null}
+      {props.next ? (
+        <PageAction
+          quiet
+          href={ownerReturnHref(props.base, {
+            owner: "home",
+            search: { status: props.status, after: props.next },
+          })}
+        >
+          {copy.next}
+        </PageAction>
+      ) : null}
+    </Box>
   );
 }
 
@@ -475,6 +520,7 @@ function homeRows(
             owner: "home",
             search: {
               status,
+              after: filters.after,
               task: item.questionRoot?.key ?? item.key,
               stage: status === "completed" ? item.key : undefined,
             },

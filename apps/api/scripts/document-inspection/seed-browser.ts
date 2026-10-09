@@ -13,7 +13,7 @@ import { RequestEnvironment, type Bindings } from "../../src/runtime/environment
 import { databaseLayer } from "../../src/db/connection";
 import { runSupplierExtraction } from "../../src/application/purchases/extraction";
 import api from "../../src/index";
-import { inspectDocument } from "./inspection";
+import { inspectQueuedDocument } from "./inspection";
 
 const Input = Schema.Struct({
   databaseUrl: Schema.String,
@@ -172,7 +172,7 @@ try {
     BETTER_AUTH_SECRET: input.authSecret,
     BETTER_AUTH_URL: input.origin,
     OPENERP_PREPARATION_TOKEN: input.token,
-    DOCUMENT_INSPECTOR: inspectDocument,
+    DOCUMENT_INSPECTOR: inspectQueuedDocument,
     DOCUMENT_READER: configuredDocumentReader({
       OPENERP_DOCUMENT_READER: "local-azure-fixture",
       OPENERP_DOCUMENT_READER_ENDPOINT: endpoint,

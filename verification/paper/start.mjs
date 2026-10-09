@@ -7,6 +7,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { nativeApi } from "../testerarmy/native-api.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 
@@ -31,6 +32,11 @@ const databaseName = process.env.PAPER_DATABASE ?? "postgres";
 const commitTimestamps = process.env.OPENERP_E2E_TRACK_COMMIT_TIMESTAMPS;
 
 const webMode = process.env.OPENERP_E2E_WEB_MODE ?? "development";
+
+const apiMode = process.env.OPENERP_E2E_API_MODE ?? "workerd";
+
+if (apiMode !== "workerd" && apiMode !== "native")
+  throw new Error("OPENERP_E2E_API_MODE must be workerd or native");
 
 if (webMode !== "development" && webMode !== "built")
   throw new Error("OPENERP_E2E_WEB_MODE must be development or built");
@@ -275,7 +281,7 @@ async function cleanup() {
 }
 
 process.on("SIGUSR2", () => {
-  if (worker)
+  if (worker && apiMode === "workerd")
     void worker
       .update((options) => ({ ...options }))
       .then(
@@ -492,16 +498,27 @@ try {
       OPENERP_PEPPOL_SECRET: peppolFixture.secret,
     });
 
-  worker = createTestHarness({
-    root: api,
-    workers: [
-      {
-        configPath: "wrangler.jsonc",
-        env: "e2e",
-        secrets: workerSecrets,
-      },
-    ],
-  });
+  if (apiMode === "native") {
+    const objects = join(scratch, "objects");
+    await mkdir(objects, { mode: 0o700 });
+    worker = nativeApi(root, {
+      PATH: process.env.PATH,
+      HOME: process.env.HOME,
+      ...workerSecrets,
+      OPENERP_OBJECT_DIRECTORY: objects,
+    });
+  } else {
+    worker = createTestHarness({
+      root: api,
+      workers: [
+        {
+          configPath: "wrangler.jsonc",
+          env: "e2e",
+          secrets: workerSecrets,
+        },
+      ],
+    });
+  }
 
   const listening = await worker.listen();
 
@@ -802,7 +819,17 @@ try {
   }
 
   console.log(JSON.stringify({ ready: true, url, sessionFile, artifacts }));
-  await once(web, "exit");
+
+  if (apiMode === "native") {
+    await Promise.race([
+      once(web, "exit"),
+      worker.exited.then(() => {
+        throw new Error("Native browser API exited during the run");
+      }),
+    ]);
+  } else {
+    await once(web, "exit");
+  }
 } finally {
   await cleanup();
 }
