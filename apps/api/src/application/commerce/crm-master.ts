@@ -5,7 +5,14 @@ import { customerDirectoryFinancials } from "./customer-directory";
 import { newId, replay, saveCommand } from "../posting";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
-import { decode, exactKeys, requireTableAccess, withBook, type Scope } from "./support";
+import {
+  decode,
+  exactKeys,
+  requireTableAccess,
+  withBook,
+  type JsonObject,
+  type Scope,
+} from "./support";
 
 const DirectoryPageSchema = Crm.DirectoryPage;
 
