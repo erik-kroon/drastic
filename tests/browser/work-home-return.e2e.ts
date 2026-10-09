@@ -124,6 +124,29 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
+  const previewHeader = () =>
+    browser.evaluate(() => {
+      const header = document.querySelector("main aside[aria-label='Nästa steg'] header");
+      const figure = header?.querySelector("p");
+      const title = header?.querySelector("h2");
+
+      return {
+        figure: figure?.textContent ?? null,
+        title: title?.textContent ?? null,
+        figureSize: figure ? getComputedStyle(figure).fontSize : null,
+        figureWhiteSpace: figure ? getComputedStyle(figure).whiteSpace : null,
+      };
+    });
+
+  await expect.poll(previewHeader).toEqual({
+    figure: "Okänt",
+    title: "home-original-selected.pdf",
+    figureSize: "32px",
+    figureWhiteSpace: "nowrap",
+  });
+
+  const selectedHeader = await previewHeader();
+
   const selectedConditions = await browser.evaluate(async () => {
     await document.fonts.ready;
 
@@ -303,6 +326,15 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(draftRow).toHaveAttribute("aria-pressed", "true");
   await expect(draftRow).toBeFocused();
 
+  await expect.poll(previewHeader).toEqual({
+    figure: "100,00",
+    title: "Synthetic selected home draft",
+    figureSize: "32px",
+    figureWhiteSpace: "nowrap",
+  });
+
+  const handoffHeader = await previewHeader();
+
   const handoffScreenshot = await app.screenshot("home-same-root-new-supplier-stage");
   const missingTask = `document:${randomUUID()}`;
 
@@ -470,6 +502,8 @@ test("home retains the selected original and scoped keyboard return after reload
         ownerReturn,
         before,
         after,
+        selectedHeader,
+        handoffHeader,
         selectedConditions,
         selectedScreenshot,
         narrow,

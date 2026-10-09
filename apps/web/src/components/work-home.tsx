@@ -1,23 +1,22 @@
 import { useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as Workspace from "@open-erp/contracts/workspace";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import {
-  WorkHeaderAction,
-  WorkSource,
-  WorkPreviewActions,
-} from "@open-erp/ui/components/work-controls";
+import { WorkHeaderAction } from "@open-erp/ui/components/work-controls";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
-import {
-  RegisterDetailHeading,
-  RegisterDetailLines,
-} from "@open-erp/ui/components/register-workspace";
+import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { AreaBar, BarTab, ListDetailPage } from "@open-erp/ui/kanon/layouts";
 import { WorkList, WorkGroup, WorkRow } from "@open-erp/ui/kanon/work-list";
-import { DetailPanelSurface } from "@open-erp/ui/kanon/detail-panel";
+import {
+  DetailPanelSurface,
+  DetailPanelHeader,
+  DetailPanelActions,
+  PanelSection,
+} from "@open-erp/ui/kanon/detail-panel";
+import { Action } from "@open-erp/ui/kanon/action";
 import type { Status } from "@open-erp/ui/kanon/status";
 import { useCompanyWork, type CompanyWork } from "@/lib/company-work";
 import {
@@ -288,21 +287,30 @@ function WorkHomeDetail({
 }) {
   const heading = (
     <>
-      <RegisterDetailHeading
-        title={selected.title}
-        amount={selected.amount === "—" ? undefined : selected.amount}
-        caption={selected.state}
+      <DetailPanelHeader
+        kicker={{ status: selected.status, text: selected.state }}
+        figure={
+          selected.amount === "—" ? (work.locale === "sv" ? "Okänt" : "Unknown") : selected.amount
+        }
+        subtitle={selected.title}
+        subtitleAs="h2"
       />
       {selected.caption ? <PageCaption>{selected.caption}</PageCaption> : null}
     </>
   );
 
   const actions = (
-    <WorkPreviewActions
-      href={selected.href}
-      label={selected.action}
-      secondaryHref={workQueueHref(work.base, filters)}
-      secondaryLabel={work.locale === "sv" ? "Visa i arbetslistan" : "Show in work queue"}
+    <DetailPanelActions
+      primary={
+        <Action kind="primary" fill render={<Link to={selected.href} />}>
+          {selected.action}
+        </Action>
+      }
+      secondary={
+        <Action kind="quiet" fill render={<Link to={workQueueHref(work.base, filters)} />}>
+          {work.locale === "sv" ? "Visa i arbetslistan" : "Show in work queue"}
+        </Action>
+      }
     />
   );
 
@@ -315,7 +323,7 @@ function WorkHomeDetail({
     <>
       {heading}
       {selected.documentId ? (
-        <WorkSource>
+        <PanelSection label="Original">
           <OriginalDocument
             compact
             key={selected.documentId}
@@ -323,7 +331,7 @@ function WorkHomeDetail({
             locale={work.locale}
             id={selected.documentId}
           />
-        </WorkSource>
+        </PanelSection>
       ) : null}
       <WorkProposalPreview work={work} page={page} selected={selected} />
       {actions}

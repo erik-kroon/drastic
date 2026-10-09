@@ -112,6 +112,7 @@ export function Action(props: ActionProps) {
       onClick={props.onClick}
       render={props.render}
       nativeButton={props.render === undefined}
+      role={props.render === undefined ? undefined : "link"}
       disabled={blockedBy !== undefined}
       focusableWhenDisabled={blockedBy !== undefined}
       {...stylex.props(
@@ -153,6 +154,7 @@ export function InlineAction(props: {
       onClick={props.onClick}
       render={props.render}
       nativeButton={props.render === undefined}
+      role={props.render === undefined ? undefined : "link"}
       {...stylex.props(inlineStyles.inline)}
     >
       {props.children}

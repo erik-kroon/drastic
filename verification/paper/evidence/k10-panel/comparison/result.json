@@ -1,0 +1,60 @@
+{
+  "scope": "K-10",
+  "sourceRevision": "911bca844aa34d62751c4f1bfd9be2d9b28181ca",
+  "comparatorRevision": "911bca844aa34d62751c4f1bfd9be2d9b28181ca",
+  "referenceSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
+  "actualSha256": "ad8827fe77a92c0cc8b94fb8232601555c7ddec4422fdb414d9c3d24c5db0392",
+  "diffSha256": "b342844bb2b18e587d31f43601f6fff039607dde46655e330341b568a60b2030",
+  "sourceHashes": {
+    "apps/web/src/components/book-workspace.tsx": "e0053e9d76dd79e09b094f03f8b26d89bf9feaae087665a345bc6f8cf6b7bfc7",
+    "apps/web/src/components/commerce/supplier-approval-expiry.tsx": "3225776d04ab1e174ed35bd6eb1bf776092ea9be8ceea1c47da140d9dbbe54ba",
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "c5c02da70847320b991b65738f12040d76d2373a52fb1daeabfb81c15fc5d693",
+    "apps/web/src/components/work-supplier-preview.tsx": "1ab63d326bf3001518258b888442a4429dda251b883fe4b9b85aa41db2aef790",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
+    "packages/ui/src/kanon/detail-panel.tsx": "cb8f38bb541b1c69d6601124a7cf532f6ea24a43e888f53161a7f309f7aa5fb4",
+    "packages/ui/src/kanon/layouts.tsx": "23d02bda87b915d93101e015b0e36b1414ca888b1d105faf0cdad5fa2e835f73",
+    "packages/ui/src/kanon/work-list.tsx": "5b7a2266b60de66a81601e41a4c27cde443cc0061c1a741567aec768f919a468",
+    "packages/ui/src/kanon/workspace.tsx": "cd695bb1757ce852e29e5a2f684cd999ce67ccd7d051cf0f8e75983eae46c32a",
+    "tests/browser/work-home-return.e2e.ts": "5c2000dcb872db1b88a63f2f87eaa9241edd1788fd4dcb3ef1ad0b4d77d16234"
+  },
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/work-home-return.e2e.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-parity-foundations/verification/paper/compare.mjs K-10 verification/paper/evidence/k10-panel/capture.json verification/paper/evidence/k10-panel/comparison",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T22:13:16.532Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_e5f77769c86d408182b10fff282e0015&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_d48d235cb4eb427a8809900bc7914a6c%2F",
+    "route": "/entities/$entityId/books/$bookId/",
+    "fixture": {
+      "recipe": "tests/browser/work-home-return.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; measured full frame with fixture/clock limitations retained",
+  "difference": 0.04380787037037037,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/k10-panel/comparison/actual.png",
+  "diff": "verification/paper/evidence/k10-panel/comparison/diff.png",
+  "passed": false
+}
