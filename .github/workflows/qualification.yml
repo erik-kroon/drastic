@@ -1,9 +1,10 @@
-name: CI
+# The long scoped qualification suite and browser proof. Runs nightly and on
+# demand so every push gets a fast CI signal.
+name: Qualification
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,71 +19,14 @@ defaults:
     shell: bash
 
 jobs:
-  validate:
-    name: Format, lint and types
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-      - name: Install locked dependencies
-        id: install
-        timeout-minutes: 5
-        run: bun install --frozen-lockfile
-      - name: Build applications and generate frontend types
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 5
-        run: bun run build
-      - name: Check formatting
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 2
-        run: bun run format:check
-      - name: Lint changed files
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
-        timeout-minutes: 5
-        env:
-          LINT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: bun run lint:changed "$LINT_BASE_SHA"
-      - name: Verify changed-file lint gate
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 3
-        run: node verification/lint-changed/run.mjs
-      - name: Upload changed-file lint evidence
-        if: ${{ always() && steps.install.outcome == 'success' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: lint-changed-evidence
-          path: test-results/lint-changed/results.json
-          if-no-files-found: error
-      - name: Lint with type information
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 5
-        run: bun run lint
-      - name: Check workspace types
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 5
-        run: bun run check-types
-      - name: Check domain leaf application owners
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 2
-        run: bun run check:owners
-
   # The E2E suite is the only place the application is proven against a real
   # PostgreSQL: it applies every migration, provisions the restricted runtime
   # role, and asserts trigger, grant and exact-money behaviour. It needs the
   # server binaries because the harness runs initdb/pg_ctl itself.
-  e2e:
-    name: End-to-end (PostgreSQL)
+  qualification:
+    name: Scoped qualification
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       PG_BINDIR: /usr/lib/postgresql/17/bin
 
@@ -129,6 +73,14 @@ jobs:
           node verification/peppol/setup.mjs
           .cache/peppol-validator/bin/python verification/peppol/check.e2e.py
 
+      - name: Build applications for self-host proof
+        timeout-minutes: 5
+        run: bun run build
+
+      - name: Install pinned Chromium for browser proof
+        timeout-minutes: 5
+        run: bun run --cwd apps/api playwright install --with-deps chromium
+
       - name: Verify ownership declaration admission
         timeout-minutes: 2
         env:
@@ -147,6 +99,14 @@ jobs:
           OPENERP_REHEARSAL_ARTIFACTS: test-results/domain-rehearsal
         run: bun apps/api/scripts/operations/rehearsal-e2e.ts
 
+      - name: Run scoped excellence qualification
+        id: e2e
+        timeout-minutes: 50
+        run: |
+          set -o pipefail
+          mkdir -p test-results/ci
+          node verification/assurance/excellence/scripts/run.mjs core 2>&1 | tee test-results/ci/e2e.log
+
       # The harness writes manifest.json (revision, worktree diff hash, lock hash,
       # per-migration SHA-256, postgres version) beside results.json and junit.xml.
       - name: Upload E2E evidence
@@ -155,9 +115,15 @@ jobs:
         with:
           name: e2e-evidence
           path: |
+            test-results/e2e/
+            test-results/excellence/
+            test-results/excellence-native/
+            test-results/assurance/
+            test-results/excellence-child-links/
             test-results/peppol-validation/
             test-results/domain-owner-declarations/
             test-results/domain-owners/
             test-results/domain-rehearsal/
-          if-no-files-found: warn
+            test-results/ci/e2e.log
+          if-no-files-found: error
           retention-days: 14
