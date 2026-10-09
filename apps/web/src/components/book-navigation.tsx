@@ -3,6 +3,7 @@ import type * as Accounting from "@open-erp/contracts/accounting";
 import { NavIcon } from "@open-erp/ui/components/nav-icon";
 import { WorkspaceNavigation, WorkspaceNavLink } from "@open-erp/ui/components/workspace";
 import { attentionQueryOptions } from "@/lib/attention";
+import { type Audience, type NavDestination, showsDestination } from "@/lib/audience";
 import { frontendCopy } from "@/lib/frontend-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -11,10 +12,12 @@ export function BookNavigation(props: {
   pathname: string;
   search: string;
   locale: Locale;
+  audience: Audience;
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type | undefined;
 }) {
   const { base, pathname, locale } = props;
+  const shows = (destination: NavDestination) => showsDestination(props.audience, destination);
   const client = useQueryClient();
   const copy = frontendCopy(locale);
   const home = pathname === base || pathname === `${base}/`;
@@ -60,6 +63,9 @@ export function BookNavigation(props: {
       .catch(() => undefined);
   };
 
+  const work = (["bank", "sales", "purchases", "documents"] as const).some(shows);
+  const accounting = (["bookkeeping", "tax", "reports", "closing"] as const).some(shows);
+
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>
@@ -77,70 +83,112 @@ export function BookNavigation(props: {
           {locale === "sv" ? "Översikt" : "Overview"}
         </WorkspaceNavLink>
       </WorkspaceNavigation>
-      <WorkspaceNavigation label={locale === "sv" ? "Arbete" : "Work"}>
-        <WorkspaceNavLink
-          href={`${base}/accounts`}
-          active={pathname === `${base}/accounts`}
-          selection={
-            ["foreign-cash", "processors"].includes(
-              new URLSearchParams(props.search).get("view") ?? "",
-            )
-              ? "neutral"
-              : undefined
-          }
-          onPointerEnter={preloadAccounts}
-          onFocus={preloadAccounts}
-        >
-          <NavIcon name="bank" />
-          Bank
-        </WorkspaceNavLink>
-        <WorkspaceNavLink
-          href={`${base}/sales`}
-          active={pathname === `${base}/sales`}
-          onPointerEnter={preloadSales}
-          onFocus={preloadSales}
-        >
-          <NavIcon name="sales" />
-          {locale === "sv" ? "Försäljning" : "Sales"}
-        </WorkspaceNavLink>
-        <WorkspaceNavLink
-          href={`${base}/purchases`}
-          active={pathname === `${base}/purchases` && !documents}
-        >
-          <NavIcon name="purchases" />
-          {copy.purchases}
-        </WorkspaceNavLink>
-        <WorkspaceNavLink
-          href={`${base}/purchases?view=documents`}
-          active={pathname === `${base}/purchases` && documents}
-        >
-          <NavIcon name="documents" />
-          {locale === "sv" ? "Dokument" : "Documents"}
-        </WorkspaceNavLink>
-      </WorkspaceNavigation>
-      <WorkspaceNavigation label={locale === "sv" ? "Redovisning" : "Accounting"}>
+      {work && (
+        <WorkspaceNavigation label={locale === "sv" ? "Arbete" : "Work"}>
+          {shows("bank") && (
+            <WorkspaceNavLink
+              href={`${base}/accounts`}
+              active={pathname === `${base}/accounts`}
+              selection={
+                ["foreign-cash", "processors"].includes(
+                  new URLSearchParams(props.search).get("view") ?? "",
+                )
+                  ? "neutral"
+                  : undefined
+              }
+              onPointerEnter={preloadAccounts}
+              onFocus={preloadAccounts}
+            >
+              <NavIcon name="bank" />
+              Bank
+            </WorkspaceNavLink>
+          )}
+          {shows("sales") && (
+            <WorkspaceNavLink
+              href={`${base}/sales`}
+              active={pathname === `${base}/sales`}
+              onPointerEnter={preloadSales}
+              onFocus={preloadSales}
+            >
+              <NavIcon name="sales" />
+              {locale === "sv" ? "Försäljning" : "Sales"}
+            </WorkspaceNavLink>
+          )}
+          {shows("purchases") && (
+            <WorkspaceNavLink
+              href={`${base}/purchases`}
+              active={pathname === `${base}/purchases` && !documents}
+            >
+              <NavIcon name="purchases" />
+              {copy.purchases}
+            </WorkspaceNavLink>
+          )}
+          {shows("documents") && (
+            <WorkspaceNavLink
+              href={`${base}/purchases?view=documents`}
+              active={pathname === `${base}/purchases` && documents}
+            >
+              <NavIcon name="documents" />
+              {locale === "sv" ? "Dokument" : "Documents"}
+            </WorkspaceNavLink>
+          )}
+        </WorkspaceNavigation>
+      )}
+      {accounting && (
+        <AccountingNavigation
+          base={base}
+          pathname={pathname}
+          locale={locale}
+          shows={shows}
+          bookkeeping={bookkeeping}
+          neutral={assets || loan || adoption}
+        />
+      )}
+    </>
+  );
+}
+
+function AccountingNavigation(props: {
+  base: string;
+  pathname: string;
+  locale: Locale;
+  shows: (destination: NavDestination) => boolean;
+  bookkeeping: boolean;
+  neutral: boolean;
+}) {
+  const { base, pathname, locale } = props;
+  const copy = frontendCopy(locale);
+
+  return (
+    <WorkspaceNavigation label={locale === "sv" ? "Redovisning" : "Accounting"}>
+      {props.shows("bookkeeping") && (
         <WorkspaceNavLink
           href={`${base}/books`}
-          active={bookkeeping}
-          selection={assets || loan || adoption ? "neutral" : undefined}
+          active={props.bookkeeping}
+          selection={props.neutral ? "neutral" : undefined}
         >
           <NavIcon name="bookkeeping" />
           {copy.bookkeeping}
         </WorkspaceNavLink>
-
+      )}
+      {props.shows("tax") && (
         <WorkspaceNavLink href={`${base}/tax`} active={pathname === `${base}/tax`}>
           <NavIcon name="tax" />
           {locale === "sv" ? "Skatt och löner" : "Tax and payroll"}
         </WorkspaceNavLink>
+      )}
+      {props.shows("reports") && (
         <WorkspaceNavLink href={`${base}/reports`} active={pathname === `${base}/reports`}>
           <NavIcon name="reports" />
           {copy.reports}
         </WorkspaceNavLink>
+      )}
+      {props.shows("closing") && (
         <WorkspaceNavLink href={`${base}/closing`} active={pathname === `${base}/closing`}>
           <NavIcon name="closing" />
           {copy.closing}
         </WorkspaceNavLink>
-      </WorkspaceNavigation>
-    </>
+      )}
+    </WorkspaceNavigation>
   );
 }
