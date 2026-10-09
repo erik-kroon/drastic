@@ -57,6 +57,11 @@ const payrollHook = process.env.PAPER_PAYROLL;
 
 const onboardingHook = process.env.PAPER_ONBOARDING;
 
+const firmRecoveryHook = process.env.PAPER_FIRM_RECOVERY;
+
+if (firmRecoveryHook !== undefined && firmRecoveryHook !== "0" && firmRecoveryHook !== "1")
+  throw new Error("PAPER_FIRM_RECOVERY must be 0 or 1");
+
 const assetHook = process.env.PAPER_ASSETS;
 
 const loanHook = process.env.PAPER_LOANS;
@@ -441,6 +446,35 @@ try {
       OPENERP_PASSWORD: loginPassword,
     },
   });
+
+  if (firmRecoveryHook === "1") {
+    const recoveryFixture = structuredClone(fixture);
+
+    recoveryFixture.entity.id = "entity_firm_recovery";
+    recoveryFixture.book.id = "book_firm_recovery";
+    recoveryFixture.actor.id = "actor_firm_recovery";
+    recoveryFixture.actor.name = "Synthetic departing accountant";
+    const recoveryManifest = join(scratch, "firm-recovery-book.json");
+
+    await writeFile(recoveryManifest, JSON.stringify(recoveryFixture), { mode: 0o600 });
+    await run("bun", ["scripts/provision.ts", recoveryManifest], {
+      cwd: api,
+      env: {
+        ...process.env,
+        DATABASE_ADMIN_URL: adminUrl,
+        OPENERP_ACCESS_TOKEN: randomBytes(32).toString("hex"),
+      },
+    });
+    await run("bun", ["scripts/create-user.ts", recoveryFixture.actor.id], {
+      cwd: api,
+      env: {
+        ...process.env,
+        DATABASE_ADMIN_URL: adminUrl,
+        OPENERP_EMAIL: "departing@example.test",
+        OPENERP_PASSWORD: loginPassword,
+      },
+    });
+  }
 
   if (processorSeed) {
     const bundledFixture = join(scratch, "processor-fixture.mjs");

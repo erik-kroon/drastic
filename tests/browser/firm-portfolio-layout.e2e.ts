@@ -18,6 +18,9 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
 
   if (!output) throw new Error("Use the disposable synthetic browser launcher");
 
+  if (process.env.PAPER_FIRM_RECOVERY !== "1")
+    throw new Error("Enable the disposable PAPER_FIRM_RECOVERY fixture");
+
   const workspace = await signInSyntheticOperator(browser, app.baseUrl);
   const origin = new URL(workspace).origin;
   const scopePath = new URL(workspace).pathname;
@@ -50,6 +53,19 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
   const firm = await call("/firms", Firms.CommandResult, { name: "Synthetic grouped bureau" });
   const other = await call("/firms", Firms.CommandResult, { name: "Synthetic other bureau" });
   const portfolioUrl = `/firms?firm=${firm.firmId}&tab=clients`;
+  const leadEmail = "departing@example.test";
+
+  const member = await call(`/firms/${firm.firmId}/members`, Firms.CommandResult, {
+    email: leadEmail,
+    role: "accountant",
+    active: true,
+    expectedRevision: 0,
+  });
+
+  const team = await call(`/firms/${firm.firmId}`, Firms.Workspace);
+  const lead = team.members.find((item) => item.email === leadEmail);
+
+  if (!lead?.signInEnabled) throw new Error("The independent synthetic human must be available");
 
   await browser.setViewport({ width: 1440, height: 900 });
   await app.open(portfolioUrl);
@@ -63,6 +79,8 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
   await dialog
     .getByRole("textbox", "Organisationsnummer (valfritt)", { exact: true })
     .fill("5599999999");
+  await dialog.getByRole("combobox", "Klientansvarig", { exact: true }).click();
+  await screen.getByRole("option", "Synthetic departing accountant", { exact: true }).click();
   await dialog.getByRole("button", "Begär åtkomst", { exact: true }).click();
   await expect(dialog).toBeHidden();
 
@@ -87,6 +105,8 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
   expect(created.workspace.accessRequests[0]).toMatchObject({
     clientName: "Synthetic pending client",
     organizationNumber: "5599999999",
+    leadId: lead.actorId,
+    leadAvailable: true,
     state: "requested",
   });
 
@@ -153,6 +173,22 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
   await app.open(`/firms?firm=${other.firmId}&tab=clients`);
   await expect(revisedRow).toBeHidden();
   await expect(details.getByText("Synthetic revised client", { exact: true })).toHaveCount(0);
+
+  await call(`/firms/${firm.firmId}/members`, Firms.CommandResult, {
+    email: leadEmail,
+    role: "accountant",
+    active: false,
+    expectedRevision: member.revision,
+  });
+
+  const unavailable = await call(`/firms/${firm.firmId}/portfolio`, Firms.Portfolio);
+
+  expect(unavailable.workspace.accessRequests[0]).toMatchObject({
+    leadId: lead.actorId,
+    leadAvailable: false,
+    state: "requested",
+  });
+
   await app.open(portfolioUrl);
   await revisedRow.click();
   await details.getByRole("button", "Återkalla förfrågan", { exact: true }).click();
@@ -166,6 +202,7 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
   expect(final.workspace.accessRequests).toHaveLength(1);
   expect(final.workspace.accessRequests[0]).toMatchObject({
     clientName: "Synthetic revised client",
+    leadId: null,
     state: "revoked",
   });
   expect(final.workspace.accessRequests[0]?.revision).toBeGreaterThan(
@@ -185,6 +222,7 @@ test("grouped portfolio keeps pending access metadata separate through edit, rev
           "No external invitation, access grant, company acceptance or whole-screen pixel-parity qualification.",
         created,
         final,
+        unavailable,
         unchanged,
         before,
         desktop,

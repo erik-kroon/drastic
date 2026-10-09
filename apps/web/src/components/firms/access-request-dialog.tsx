@@ -22,6 +22,7 @@ export function AccessRequestDialog(props: {
   const [id] = useState(() => `request_${crypto.randomUUID()}`);
   const request = editor.kind === "create" ? null : editor.request;
   const revoke = editor.kind === "revoke";
+  const retainedLead = request?.leadAvailable ? request.leadId : null;
 
   const label = revoke
     ? sv
@@ -47,7 +48,7 @@ export function AccessRequestDialog(props: {
         organizationNumber: revoke
           ? request?.organizationNumber
           : formText(fields, "organization").trim() || null,
-        leadId: revoke ? request?.leadId : formText(fields, "lead") || null,
+        leadId: revoke ? retainedLead : formText(fields, "lead") || null,
         state: revoke ? "revoked" : "requested",
         expectedRevision: request?.revision ?? 0,
       })}

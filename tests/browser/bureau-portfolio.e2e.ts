@@ -96,6 +96,9 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   const portfolio = `${origin}/firms?firm=${firm.firmId}&tab=clients`;
 
   await app.open(portfolio);
+  await expect(screen.getByRole("searchbox", "Sök klienter", { exact: true })).toBeVisible({
+    timeout: 30000,
+  });
 
   const names = screen.getByRole("button", /^Synthetic bureau \d{3}$/);
   const observed: string[] = [];

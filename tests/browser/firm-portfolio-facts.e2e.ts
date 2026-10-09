@@ -338,7 +338,7 @@ test("portfolio retains period and declared deadline while incomplete bank and c
   await expect(screen.getByText("13 nov. 2026", { exact: true })).toHaveCount(0);
   expect(await call(`${path}/ledger`, Accounting.LedgerSnapshot)).toEqual(before);
   await agent.assert(
-    "The grouped portfolio shows retained synthetic deadline dates beside the client names and the selected client's deadline in its details. A synthetic later deadline precedes Synthetic bureau source observations, and the client named 0 synthetic missing deadline is last. This is a synthetic observation, not statutory certification.",
+    'The row named "A synthetic later deadline" shows 1 dec. and appears above "Synthetic bureau source observations", which shows 2 dec. The row named "0 synthetic missing deadline" is last with an unknown deadline. The selected client details describe the retained synthetic VAT deadline without claiming statutory certification.',
   );
   const deadlineScreenshot = await app.screenshot("portfolio-retained-deadline-order");
 
