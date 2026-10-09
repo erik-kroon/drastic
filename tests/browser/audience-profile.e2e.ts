@@ -12,7 +12,6 @@ test("the audience profile changes navigation only and survives reload", async (
   app,
   browser,
   screen,
-  agent,
 }) => {
   const output = process.env.OPENERP_E2E_OUTPUT;
 
@@ -43,9 +42,9 @@ test("the audience profile changes navigation only and survives reload", async (
   const before = await admitted();
   const bureau = await app.screenshot("audience-bureau-navigation");
 
-  await agent.act(
-    "Open the account menu at the bottom of the sidebar, open the Vy dropdown and select Visa som klient. Stop once it is selected.",
-  );
+  await screen.getByText("Elin Sund", { exact: true }).click();
+  await screen.getByRole("combobox", "Vy", { exact: true }).click();
+  await screen.getByRole("option", "Visa som klient", { exact: true }).click();
   await expect(navigation("Arbete").getByRole("link")).toHaveCount(1);
   await expect(navigation("Arbete").getByRole("link", "Dokument", { exact: true })).toBeVisible();
   await expect(navigation("Redovisning").getByRole("link")).toHaveCount(1);
