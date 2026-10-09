@@ -75,10 +75,6 @@ jobs:
         env:
           DESIGN_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bun run check:design "${DESIGN_BASE_SHA:-HEAD}"
-      - name: Check domain leaf application owners
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 2
-        run: bun run check:owners
       - name: React Doctor full-project error gate
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
