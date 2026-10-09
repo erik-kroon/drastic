@@ -22,23 +22,6 @@ Open-source accounting software for Swedish aktiebolag. Double-entry bookkeeping
 
 **Yours to run.** AGPL-3.0-only and self-hostable with Docker, Bun and PostgreSQL. The accounting core and agent interface need no paid service.
 
-## Collections, designed for what goes wrong
-
-<table>
-  <tr>
-    <td width="33%"><img src="docs/assets/reminder.png" alt="Reminder approval: recipient, message and attachment approved together, with sending as a separate step"></td>
-    <td width="33%"><img src="docs/assets/reminder-unknown.png" alt="Unknown reminder outcome: the email service did not respond, so sending again stays locked until the original send is checked"></td>
-    <td width="33%"><img src="docs/assets/payment-change.png" alt="Changed payment: a payment arrived after approval, so the reminder was refused and a new one is offered for the current amount"></td>
-  </tr>
-  <tr>
-    <td><b>Approve exact content.</b> Recipient, text and attachment are approved together; sending is a separate step.</td>
-    <td><b>Unknown outcome.</b> The provider never answered, so resending stays locked until the first send is checked.</td>
-    <td><b>Changed payment.</b> A payment after approval invalidates the reminder instead of chasing the wrong amount.</td>
-  </tr>
-</table>
-
-<sub>Product designs with synthetic data.</sub>
-
 ## Features
 
 - **Double-entry bookkeeping** with sequential voucher numbering, exact amounts and approval before posting
