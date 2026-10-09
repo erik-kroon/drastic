@@ -246,6 +246,53 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
 
   const focusedScreenshot = await app.screenshot("supplier-canonical-frame-ready");
 
+  await browser.setViewport({ width: 375, height: 812 });
+  await expect(screen.getByRole("button", "Original", { exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).not.toBeVisible();
+  await screen.getByRole("button", "Beslut", { exact: true }).focus();
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(screen.getByRole("button", "Beslut", { exact: true })).toBeFocused();
+  await expect(screen.getByRole("button", "Beslut", { exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+
+  const narrowPanes = await browser.evaluate(() => {
+    const original = document.querySelectorAll("main section[aria-label='Original']");
+    const decisions = document.querySelectorAll("main section[aria-label='Beslut']");
+    const decision = decisions[0]?.getBoundingClientRect();
+
+    return {
+      originalCount: original.length,
+      decisionCount: decisions.length,
+      overflow: document.documentElement.scrollWidth > window.innerWidth,
+      decisionFits: Boolean(
+        decision &&
+        decision.width > 0 &&
+        decision.left >= 0 &&
+        decision.right <= window.innerWidth + 1,
+      ),
+    };
+  });
+
+  expect(narrowPanes).toEqual({
+    originalCount: 1,
+    decisionCount: 1,
+    overflow: false,
+    decisionFits: true,
+  });
+
+  const narrowScreenshot = await app.screenshot("supplier-review-decision-narrow");
+
+  await browser.setViewport({ width: 1440, height: 900 });
+  await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+
   const wrongDigest = `sha256:${"0".repeat(64)}`;
 
   expect(wrongDigest === renewed.plan.postingPlan.planDigest).toBe(false);
@@ -321,6 +368,16 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   await expect(execute).toBeVisible();
   await acknowledgment.focus();
   await acknowledgment.press("Space");
+  await expect(acknowledgment).toBeChecked();
+
+  await browser.setViewport({ width: 375, height: 812 });
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(acknowledgment).toBeChecked();
+  await screen.getByRole("button", "Original", { exact: true }).press("Enter");
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).not.toBeVisible();
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(acknowledgment).toBeChecked();
+  await browser.setViewport({ width: 1440, height: 900 });
   await expect(acknowledgment).toBeChecked();
 
   const renewedApprovalId = renewed.approval.id;
@@ -480,11 +537,14 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
           paid: false,
         },
         frame,
+        narrowPanes,
+        paneAcknowledgmentRetained: true,
         focusedRoute: focusedUrl,
         wrongDigestRefused: true,
         expiryWithoutRefresh: true,
         screenshots: {
           focusedScreenshot,
+          narrowScreenshot,
           expiredScreenshot,
           wrongDigestScreenshot,
           mountedExpiryScreenshot,

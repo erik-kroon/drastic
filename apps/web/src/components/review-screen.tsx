@@ -1,12 +1,6 @@
 import { Link, defaultStringifySearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  DetailBar,
-  ReviewFrame,
-  ReviewContent,
-  ReviewQueue,
-  QueueItem,
-} from "@open-erp/ui/kanon/layouts";
+import { DetailBar, ReviewFrame, ReviewQueue, QueueItem } from "@open-erp/ui/kanon/layouts";
 import { InlineAction } from "@open-erp/ui/kanon/action";
 import { type OwnerReviewQuery, decodeOwnerReturn, ownerReturnHref } from "@/lib/work-return";
 import {
@@ -120,17 +114,15 @@ export function ReviewScreen({
         </ReviewQueue>
       }
     >
-      <ReviewContent>
-        <ReviewOwner
-          key={`${planId}/${revision}`}
-          book={book}
-          setup={setup}
-          locale={locale}
-          planId={planId}
-          expectedDigest={revision}
-          returnSearch={defaultStringifySearch(filters)}
-        />
-      </ReviewContent>
+      <ReviewOwner
+        key={`${planId}/${revision}`}
+        book={book}
+        setup={setup}
+        locale={locale}
+        planId={planId}
+        expectedDigest={revision}
+        returnSearch={defaultStringifySearch(filters)}
+      />
     </ReviewFrame>
   );
 }

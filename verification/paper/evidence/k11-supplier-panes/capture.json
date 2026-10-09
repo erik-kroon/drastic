@@ -1,0 +1,46 @@
+{
+  "actual": "verification/paper/evidence/k11-supplier-panes/screenshots/003-supplier-canonical-frame-ready.png",
+  "command": "PAPER_SUPPLIER_EXPIRY=1 OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/posting-supplier-expiry.e2e.ts",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T22:42:35.888Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_04629d197442411f8a7456752848b191/sha256%3Ab9b47c6c35e817f51acd37079f651e0ef86bf5205244227b1b95e87ecf69e7a6?returnTo=owner%3A%257B%2522owner%2522%253A%2522purchases%2522%252C%2522search%2522%253A%257B%2522view%2522%253A%2522supplier-drafts%2522%252C%2522record%2522%253A%2522supplier_invoice_draft_ba7a753ace4f4e3484e051cc44e328c5%2522%252C%2522review%2522%253A%2522supplier_review_d659e2beaf2742aeba717d2c4891d8e7%2522%257D%257D",
+    "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+    "fixture": {
+      "recipe": "verification/paper/seed-supplier-expiry.mjs + tests/browser/posting-supplier-expiry.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; full frame with synthetic fixture and unpinned clock limits",
+  "sourceRevision": "659d2ad4188291bc525c91eb3eb5ea0a27e0a7ac",
+  "sourceHashes": {
+    "apps/web/src/components/review-owner.tsx": "c34df26c30b59866e18532ec8d3e2c8f2bc6ca91c48655b3633a74655d08a1fb",
+    "apps/web/src/components/review-screen.tsx": "36cc1841f33df3c04437064eafe59a34305da9ab1370442dd04cedc27e8ad99c",
+    "packages/ui/src/kanon/layouts.tsx": "2ea353a6c273488d53927c659a97710a361cc61a1c38d978ea4b0463eb80d9f2",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
+    "apps/web/src/components/commerce/supplier-focused-review.tsx": "571dec8235d8c016612e1cdb4651b509c0d57926ad35e6d319d75ba67802f2ae",
+    "packages/ui/src/kanon/detail-panel.tsx": "2e7935db5e149d244531c86585206f111efb10654df2a369302006bd4445685e",
+    "apps/web/src/components/book-workspace.tsx": "90b3bbed13259c0971b0f9f87dadace9ecda8a7e131a0a948fa40899db4fa751",
+    "tests/browser/posting-supplier-expiry.e2e.ts": "3e85072ca6f97c343e2412bd73380bb2c4e923bf0fd65f1dee4aedcd4f88497d"
+  },
+  "workingTreeCandidate": true
+}

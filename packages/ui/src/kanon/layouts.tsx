@@ -1,6 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 import { StatusIcon, statusTextStyle, type Status } from "@open-erp/ui/kanon/status";
 import { CountPill } from "@open-erp/ui/kanon/work-list";
@@ -106,6 +106,23 @@ const styles = stylex.create({
     fontSize: kanon.textCaption,
     lineHeight: kanon.leadingBody,
     overflowWrap: "anywhere",
+  },
+  panes: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    minHeight: 0,
+    minWidth: 0,
+  },
+  pane: { display: "contents" },
+  inactivePane: { "@media (max-width: 1023px)": { display: "none" } },
+  paneSwitch: {
+    display: "none",
+    "@media (max-width: 1023px)": {
+      display: "flex",
+      gap: kanon.space2,
+      padding: kanon.space3,
+    },
   },
   body: {
     display: "flex",
@@ -347,9 +364,59 @@ export function ReviewPage({
 }) {
   return (
     <ReviewFrame bar={bar} queue={queue}>
-      {original}
-      {panel}
+      <ReviewPanes original={original} decision={panel} />
     </ReviewFrame>
+  );
+}
+
+export function ReviewPanes(props: {
+  original: ReactNode;
+  decision: ReactNode;
+  paneLabels?: { original: string; decision: string };
+}) {
+  const [pane, setPane] = useState<"original" | "decision">("original");
+
+  return (
+    <div {...stylex.props(styles.panes)}>
+      {props.paneLabels !== undefined && (
+        <div {...stylex.props(styles.paneSwitch)}>
+          <ButtonPrimitive
+            type="button"
+            aria-pressed={pane === "original"}
+            onClick={() => setPane("original")}
+            {...stylex.props(styles.tab, pane === "original" && styles.tabActive)}
+          >
+            {props.paneLabels.original}
+          </ButtonPrimitive>
+          <ButtonPrimitive
+            type="button"
+            aria-pressed={pane === "decision"}
+            onClick={() => setPane("decision")}
+            {...stylex.props(styles.tab, pane === "decision" && styles.tabActive)}
+          >
+            {props.paneLabels.decision}
+          </ButtonPrimitive>
+        </div>
+      )}
+      <div {...stylex.props(styles.body)}>
+        <div
+          {...stylex.props(
+            styles.pane,
+            props.paneLabels !== undefined && pane !== "original" && styles.inactivePane,
+          )}
+        >
+          {props.original}
+        </div>
+        <div
+          {...stylex.props(
+            styles.pane,
+            props.paneLabels !== undefined && pane !== "decision" && styles.inactivePane,
+          )}
+        >
+          {props.decision}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -447,9 +514,23 @@ export function OriginalViewer({
   children: ReactNode;
 }) {
   return (
-    <section {...stylex.props(styles.viewer)}>
+    <OriginalViewerSurface>
       {toolbar}
       <div {...stylex.props(styles.paper)}>{children}</div>
+    </OriginalViewerSurface>
+  );
+}
+
+export function OriginalViewerSurface({
+  label,
+  children,
+}: {
+  label?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-label={label} {...stylex.props(styles.viewer)}>
+      {children}
     </section>
   );
 }

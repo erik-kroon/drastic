@@ -105,11 +105,19 @@ type DetailPanelProps = {
   label: string;
 };
 
-export function DetailPanelSurface({ label, children }: { label: string; children: ReactNode }) {
+export function DetailPanelSurface({
+  label,
+  children,
+  as: Surface = "aside",
+}: {
+  label: string;
+  children: ReactNode;
+  as?: "aside" | "section";
+}) {
   return (
-    <aside aria-label={label} {...stylex.props(styles.panel)}>
+    <Surface aria-label={label} {...stylex.props(styles.panel)}>
       {children}
-    </aside>
+    </Surface>
   );
 }
 

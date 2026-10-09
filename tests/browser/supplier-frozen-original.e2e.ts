@@ -7,6 +7,7 @@ import * as Commerce from "../../packages/contracts/src/commerce";
 import * as Source from "../../packages/contracts/src/source-intake";
 import * as Inbox from "../../packages/contracts/src/supplier-inbox";
 import * as Drafts from "../../packages/contracts/src/supplier-invoice-drafts";
+import * as Workspace from "../../packages/contracts/src/workspace";
 import * as Acceptance from "../../packages/contracts/src/supplier-acceptance";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
@@ -65,9 +66,7 @@ for (const changed of [false, true]) {
     await writeFile(file, bytes);
     await app.open(`${workspace}/purchases?view=supplier-drafts`);
     await expect(screen.getByRole("button", "Ladda upp original")).toBeVisible({ timeout: 90000 });
-    await agent.act(
-      "Open Ladda upp original. Stop when Dokument and Spara original are visible; do not choose a file.",
-    );
+    await screen.getByRole("button", "Ladda upp original", { exact: true }).click();
     await expect(screen.getByLabel("Dokument", { exact: true })).toBeVisible();
     await screen.getByLabel("Dokument", { exact: true }).setInputFiles(file);
 
@@ -259,25 +258,41 @@ for (const changed of [false, true]) {
     const workUrl = `${workspace}/work?${new URLSearchParams(workQuery).toString()}`;
 
     await app.open(workUrl);
-    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
-    await screen.getByRole("link", filename, { exact: true }).focus();
-    await screen.getByRole("link", filename, { exact: true }).press("Enter");
-    await expect(screen.getByRole("heading", "Granska: 1 kvar", { exact: true })).toBeVisible();
-    await browser.reload();
-    await expect(screen.getByRole("link", "Att göra /", { exact: true })).toBeVisible();
-    await screen.getByRole("link", "Att göra /", { exact: true }).focus();
-    await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
-    await expect
-      .poll(async () => {
-        const returned = new URL(await browser.url());
 
-        return {
-          path: returned.pathname,
-          search: Object.fromEntries(returned.searchParams),
-        };
-      })
-      .toEqual({ path: new URL(workUrl).pathname, search: workQuery });
-    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    const workQueue = await call(
+      `/attention?${new URLSearchParams(workQuery).toString()}`,
+      Workspace.AttentionPage,
+    );
+
+    if (changed) {
+      expect(workQueue.items.some((item) => item.id === plan.postingPlan.id)).toBe(false);
+      expect(workQueue.counts.open).toBe("0");
+      await expect(screen.getByRole("link", filename, { exact: true })).toHaveCount(0);
+      await expect(
+        screen.getByRole("heading", "Inget i den här vyn", { exact: true }),
+      ).toBeVisible();
+    } else {
+      await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+      await screen.getByRole("link", filename, { exact: true }).focus();
+      await screen.getByRole("link", filename, { exact: true }).press("Enter");
+      await expect(screen.getByRole("heading", "Granska: 1 kvar", { exact: true })).toBeVisible();
+      await browser.reload();
+      await expect(screen.getByRole("link", "Att göra /", { exact: true })).toBeVisible();
+      await screen.getByRole("link", "Att göra /", { exact: true }).focus();
+      await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
+      await expect
+        .poll(async () => {
+          const returned = new URL(await browser.url());
+
+          return {
+            path: returned.pathname,
+            search: Object.fromEntries(returned.searchParams),
+          };
+        })
+        .toEqual({ path: new URL(workUrl).pathname, search: workQuery });
+      await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    }
+
     expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
 
     await app.open(purchasesUrl);
@@ -381,6 +396,9 @@ for (const changed of [false, true]) {
           screenshot,
           nativeL2Screenshot,
           returnContext: { purchasesQuery, workQuery },
+          supersededReviewExcluded: changed
+            ? !workQueue.items.some((item) => item.id === plan.postingPlan.id)
+            : null,
         },
         null,
         2,
