@@ -1,0 +1,29 @@
+{
+  "runId": "02edaff6-9bf1-4990-8008-975ddda47b31",
+  "sourceStatus": "stable",
+  "baseRevision": "6eaf0829a36e816897a67be4d9980b4b3b782eda",
+  "workingTreeCandidate": true,
+  "beforeDigest": "d88e56d8b046738f7178a7fe9682aa2b52bf284d9d15dcf12127c4dd44ed1f6e",
+  "afterDigest": "d88e56d8b046738f7178a7fe9682aa2b52bf284d9d15dcf12127c4dd44ed1f6e",
+  "exitCode": 0,
+  "sourceHashes": {
+    "apps/web/src/components/review-owner.tsx": "47a10612a8bbb850c85f3a25628f71ac6dc10ba96e2d422f84198ab1eaaae25d",
+    "apps/web/src/components/review-screen.tsx": "0ef24fc7996e671115379c8641cc1aa832a9d30c6c33e606c3a8aa2bb399f974",
+    "packages/ui/src/kanon/layouts.tsx": "fd73aba8284f188ce817e94d5e99f63940b6bda29f9eda6738e3bebc5925b39b",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
+    "apps/web/src/components/book-workspace.tsx": "90b3bbed13259c0971b0f9f87dadace9ecda8a7e131a0a948fa40899db4fa751",
+    "apps/web/src/lib/attention.ts": "7d4d50a47abdd61b8eee4ea85969094c9049e7df5f6bda6bd01d02bbbb1c1bd6",
+    "tests/browser/posting-supplier-expiry.e2e.ts": "4c2396ced6529756371c67401b4d683e78e0dd3c8eff572387f4c3a61958ada5",
+    "verification/paper/seed-supplier-expiry.mjs": "baf6a9985693994f31f869a9bad3bdb17678ca687693bfad352510666201c87c"
+  },
+  "runtimeCleaned": true,
+  "model": "codex.chat/gpt-6-luna",
+  "modelCalls": 1,
+  "limitations": [
+    "No production qualification",
+    "Native 200% zoom and narrow frame unverified",
+    "Synthetic content differs from board",
+    "Clock not pinned",
+    "Full supplier original/decision composition retained for next slice"
+  ]
+}

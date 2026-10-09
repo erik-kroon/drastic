@@ -195,6 +195,57 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
   await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
 
+  await expect(screen.getByRole("link", "Bank", { exact: true })).toHaveAttribute(
+    "href",
+    `${new URL(workspace).pathname}/accounts`,
+  );
+
+  const frame = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    const header = document.querySelector("main header");
+
+    const selected = document.querySelector(
+      "main nav[aria-label='Granska och godkänn'] a[aria-current='page']",
+    );
+
+    return {
+      nativeHeading: header?.querySelector("h1")?.tagName ?? null,
+      routeHeadingCount: document.querySelectorAll("main h1").length,
+      bookIdentity: header?.textContent?.includes("Fjällby Konsult AB") ?? false,
+      nativeQueueLink: selected?.tagName ?? null,
+      selectedTitle: selected?.textContent?.startsWith("Vinter & Co AB, faktura 882") ?? false,
+      conditions: {
+        browser: navigator.userAgent,
+        deviceScaleFactor: window.devicePixelRatio,
+        fonts: {
+          family: getComputedStyle(document.body).fontFamily,
+          faces: Array.from(document.fonts).map((face) => ({
+            family: face.family,
+            weight: face.weight,
+            status: face.status,
+          })),
+        },
+        locale: navigator.language,
+        theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+        time: new Date().toISOString(),
+        clockPinned: false,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        resolvedRoute: `${window.location.pathname}${window.location.search}`,
+      },
+    };
+  });
+
+  expect(frame).toMatchObject({
+    nativeHeading: "H1",
+    routeHeadingCount: 1,
+    bookIdentity: true,
+    nativeQueueLink: "A",
+    selectedTitle: true,
+  });
+
+  const focusedScreenshot = await app.screenshot("supplier-canonical-frame-ready");
+
   const wrongDigest = `sha256:${"0".repeat(64)}`;
 
   expect(wrongDigest === renewed.plan.postingPlan.planDigest).toBe(false);
@@ -428,10 +479,12 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
           payableDeltaMinor: "-249000",
           paid: false,
         },
+        frame,
         focusedRoute: focusedUrl,
         wrongDigestRefused: true,
         expiryWithoutRefresh: true,
         screenshots: {
+          focusedScreenshot,
           expiredScreenshot,
           wrongDigestScreenshot,
           mountedExpiryScreenshot,

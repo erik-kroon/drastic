@@ -1,0 +1,57 @@
+{
+  "scope": "K-10",
+  "sourceRevision": "6eaf0829a36e816897a67be4d9980b4b3b782eda",
+  "comparatorRevision": "6eaf0829a36e816897a67be4d9980b4b3b782eda",
+  "referenceSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
+  "actualSha256": "dfbbb3f49f0a842c9dc4622c9709aefdbb2b79194ec2638394143e7a7ee029bd",
+  "diffSha256": "bf4f3c209e5d88247232cead52659d8d195635c55188feb66645b34ca04c9c28",
+  "sourceHashes": {
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "46a8d800d5c16568d483e4ea697e3381f2140d8753e2b41e2153c033a1a1a3a5",
+    "packages/ui/src/kanon/layouts.tsx": "fd73aba8284f188ce817e94d5e99f63940b6bda29f9eda6738e3bebc5925b39b",
+    "packages/ui/src/kanon/work-list.tsx": "5b7a2266b60de66a81601e41a4c27cde443cc0061c1a741567aec768f919a468",
+    "packages/ui/src/kanon/detail-panel.tsx": "cb8f38bb541b1c69d6601124a7cf532f6ea24a43e888f53161a7f309f7aa5fb4",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
+    "apps/web/src/lib/attention.ts": "7d4d50a47abdd61b8eee4ea85969094c9049e7df5f6bda6bd01d02bbbb1c1bd6",
+    "tests/browser/work-home-return.e2e.ts": "5c2000dcb872db1b88a63f2f87eaa9241edd1788fd4dcb3ef1ad0b4d77d16234"
+  },
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/work-home-return.e2e.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-parity-foundations/verification/paper/compare.mjs K-10 verification/paper/evidence/k10-review-frame/capture.json verification/paper/evidence/k10-review-frame",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T22:37:35.174Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_16a7cc983ee54e008c0b640ccfa7238d&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_07c574ca45fa4b4fa9860cffbdd258ab%2F",
+    "route": "/entities/$entityId/books/$bookId/",
+    "fixture": {
+      "recipe": "tests/browser/work-home-return.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; full frame with fixture and clock limitations",
+  "difference": 0.04364429012345679,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/k10-review-frame/actual.png",
+  "diff": "verification/paper/evidence/k10-review-frame/diff.png",
+  "passed": false
+}

@@ -17,14 +17,13 @@ import {
   PanelSection,
 } from "@open-erp/ui/kanon/detail-panel";
 import { Action } from "@open-erp/ui/kanon/action";
-import type { Status } from "@open-erp/ui/kanon/status";
 import { useCompanyWork, type CompanyWork } from "@/lib/company-work";
 import {
   attentionQueryOptions,
   attentionPath,
   attentionCopy,
   attentionState,
-  expiredSupplierApproval,
+  attentionStatus,
 } from "@/lib/attention";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -446,23 +445,6 @@ function HomeBankStatus({
   );
 }
 
-function rowStatus(item: typeof Workspace.AttentionItem.Type): Status {
-  if (item.state === "completed") return "done";
-
-  if (expiredSupplierApproval(item) !== null) return "needsYou";
-
-  if (item.reason === "document_reading_failed") return "unknown";
-
-  if (
-    item.reason === "invoice_draft" ||
-    item.reason === "supplier_draft" ||
-    item.reason === "document_review"
-  )
-    return "proposal";
-
-  return "needsYou";
-}
-
 function homeSelection(rows: ReturnType<typeof homeRows>, search: typeof WorkHomeQuery.Type) {
   const requested = search.task ?? search.stage;
 
@@ -529,7 +511,7 @@ function homeRows(
           group: attentionGroup(item, locale),
           title: item.title,
           state: attentionState(item, locale),
-          status: rowStatus(item),
+          status: attentionStatus(item),
           amount: amount(item),
           caption: [item.currency, item.date].filter(Boolean).join(", "),
           action: copy[item.reason],

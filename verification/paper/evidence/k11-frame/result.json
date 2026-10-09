@@ -1,0 +1,57 @@
+{
+  "scope": "K-11",
+  "sourceRevision": "6eaf0829a36e816897a67be4d9980b4b3b782eda",
+  "comparatorRevision": "6eaf0829a36e816897a67be4d9980b4b3b782eda",
+  "referenceSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
+  "actualSha256": "c27fe677d5031d1aa901e676a2716e9db456354e80907ed889f25aa77d35df55",
+  "diffSha256": "2c48b9826eb6c497fbaa406725f84a93936d18d7d542f3735bf2f75941d5ddf5",
+  "sourceHashes": {
+    "apps/web/src/components/review-owner.tsx": "47a10612a8bbb850c85f3a25628f71ac6dc10ba96e2d422f84198ab1eaaae25d",
+    "apps/web/src/components/review-screen.tsx": "0ef24fc7996e671115379c8641cc1aa832a9d30c6c33e606c3a8aa2bb399f974",
+    "packages/ui/src/kanon/layouts.tsx": "fd73aba8284f188ce817e94d5e99f63940b6bda29f9eda6738e3bebc5925b39b",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
+    "apps/web/src/components/book-workspace.tsx": "90b3bbed13259c0971b0f9f87dadace9ecda8a7e131a0a948fa40899db4fa751",
+    "apps/web/src/lib/attention.ts": "7d4d50a47abdd61b8eee4ea85969094c9049e7df5f6bda6bd01d02bbbb1c1bd6",
+    "tests/browser/posting-supplier-expiry.e2e.ts": "4c2396ced6529756371c67401b4d683e78e0dd3c8eff572387f4c3a61958ada5",
+    "verification/paper/seed-supplier-expiry.mjs": "baf6a9985693994f31f869a9bad3bdb17678ca687693bfad352510666201c87c"
+  },
+  "command": "PAPER_SUPPLIER_EXPIRY=1 OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/posting-supplier-expiry.e2e.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-parity-foundations/verification/paper/compare.mjs K-11 verification/paper/evidence/k11-frame/capture.json verification/paper/evidence/k11-frame",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T22:36:36.636Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_28754e80d2404ba785a99ecb3d78badc/sha256%3Ac6f3c52d5e775c575e3f8bf7d961d415452e2627c646d75d834efafac4064f6d?returnTo=owner%3A%257B%2522owner%2522%253A%2522purchases%2522%252C%2522search%2522%253A%257B%2522view%2522%253A%2522supplier-drafts%2522%252C%2522record%2522%253A%2522supplier_invoice_draft_9c445bc8d6ea4f63b46f3224288db01a%2522%252C%2522review%2522%253A%2522supplier_review_7cb31103ddef4af6be8adbd70f850507%2522%257D%257D",
+    "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+    "fixture": {
+      "recipe": "verification/paper/seed-supplier-expiry.mjs + tests/browser/posting-supplier-expiry.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; full frame comparison with synthetic fixture and unpinned clock limits",
+  "difference": 0.3393773148148148,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/k11-frame/actual.png",
+  "diff": "verification/paper/evidence/k11-frame/diff.png",
+  "passed": false
+}

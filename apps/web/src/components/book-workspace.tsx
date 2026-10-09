@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useMatch } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { BookOpen, CheckSquare, Building2 } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
@@ -146,6 +146,7 @@ function AccountMenu(props: {
   onAudienceChange: (audience: Audience) => void;
 }) {
   const { book, locale, audience } = props;
+
   const base = workspacePath(book);
   const labels = frontendCopy(locale);
   const copy = accountingCopy(locale);
@@ -208,6 +209,19 @@ function mobileItems({
   return items;
 }
 
+function useWorkspaceLayout(pathname: string, base: string) {
+  const digestReview = useMatch({
+    from: "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+    shouldThrow: false,
+  });
+
+  return {
+    contentInset:
+      isHomePath(pathname, base) || digestReview ? ("none" as const) : ("page" as const),
+    focused: !digestReview && pathname.startsWith(`${base}/reviews/`),
+  };
+}
+
 export function BookWorkspace({
   book,
   books,
@@ -222,6 +236,9 @@ export function BookWorkspace({
   const copy = accountingCopy(locale);
   const pathname = useLocation({ select: (location) => location.pathname });
   const search = useLocation({ select: (location) => location.searchStr });
+
+  const layout = useWorkspaceLayout(pathname, workspacePath(book));
+
   const base = workspacePath(book);
   const [scopeBlocked, setScopeBlocked] = useState(true);
   const [audience, setAudience] = useAudience(book);
@@ -346,8 +363,8 @@ export function BookWorkspace({
   return (
     <Workspace
       pageKey={pathname}
-      contentInset={isHomePath(pathname, base) ? "none" : "page"}
-      focused={pathname.startsWith(`${base}/reviews/`)}
+      contentInset={layout.contentInset}
+      focused={layout.focused}
       brand={
         <>
           <WorkspaceCompany name={book.name} href="/companies" />
