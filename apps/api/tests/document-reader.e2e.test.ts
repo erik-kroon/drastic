@@ -620,7 +620,7 @@ test(
 );
 
 test(
-  "inspection contention preserves a ready request and retries without duplicate disclosure",
+  "queued inspection completes concurrent requests and replays without duplicate disclosure",
   { timeout: 90000 },
   async () => {
     const ctx = await documentFixture();
@@ -668,9 +668,8 @@ test(
         ),
       );
 
-      expect(before.filter((state) => state.attempt === null)).toHaveLength(1);
-      expect(before.filter((state) => state.requests[0]?.state === "ready")).toHaveLength(1);
-      expect(ctx.counts()).toEqual({ submissions: 1, polls: 1 });
+      expect(before.every((state) => state.attempt?.result === "succeeded")).toBe(true);
+      expect(ctx.counts()).toEqual({ submissions: 2, polls: 2 });
       await ctx.run(first.request.id);
       await ctx.run(second.request.id);
 
@@ -680,7 +679,7 @@ test(
         ),
       );
 
-      expect(after.every((state) => state.attempt?.result === "succeeded")).toBe(true);
+      expect(after.map((state) => state.attempt)).toEqual(before.map((state) => state.attempt));
       expect(ctx.counts()).toEqual({ submissions: 2, polls: 2 });
       await writeFile(
         join(environment().artifacts, "document-reader-inspection-retry.json"),

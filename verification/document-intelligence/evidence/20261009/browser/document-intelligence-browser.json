@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "sourceId": "source_47eeda236c9142c1a3ce82450d5ab394",
+  "sourceHash": "sha256:d3f0c78149f4aec0fa307ad77d63a6dc33ed939b58490ced212c23026972a401",
+  "attemptId": "supplier_extraction_2c0e4f1b95944d0ab5bcc8949bfd0ae0",
+  "providerSubmissions": 1,
+  "attemptUnchanged": true,
+  "uncertainTotalNotSelectable": true,
+  "pageSelectionHidesOtherPageRegion": true,
+  "zoom": 125,
+  "geometry": {
+    "overlay": {
+      "x": 532.5,
+      "y": -428,
+      "width": 375,
+      "height": 375
+    },
+    "original": {
+      "x": 532.5,
+      "y": -428,
+      "width": 375,
+      "height": 375
+    },
+    "points": "0.1,0.12 0.326666667,0.12 0.326666667,0.18 0.1,0.18",
+    "fill": "rgb(207, 224, 251)"
+  },
+  "parity": {
+    "scope": "selected source-highlight SVG only, not the document screen or optical accuracy",
+    "width": 375,
+    "height": 375,
+    "channelTolerance": 24,
+    "gate": 0.01,
+    "changed": 0,
+    "ratio": 0,
+    "passed": true,
+    "expectedHash": "211725f5bb7271520b05a39607440d6583957e56b22cecb57cb6cf2ccba5d04a",
+    "actualHash": "52117a4c9384afac6dff00978b6a5c244afa394005b1f57e5544044273c67b29"
+  },
+  "screenshots": [
+    "screenshots/001-document-intelligence-selected-source.png",
+    "screenshots/002-document-intelligence-other-page.png",
+    "screenshots/004-document-intelligence-review-obligations.png"
+  ]
+}

@@ -69,9 +69,7 @@ test("retained source regions follow page and zoom while uncertain values requir
       { exact: true },
     ),
   ).toBeVisible();
-  await agent.act(
-    "In the invoice review, select the source quote DOC-113 to inspect its location on the original. Do not save or submit the invoice.",
-  );
+  await review.getByRole("button", "Sida 1: “DOC-113”", { exact: true }).click();
   await expect(review.getByRole("img", "Källmarkering: DOC-113", { exact: true })).toBeVisible();
   await review.getByRole("combobox", "Zoom", { exact: true }).click();
   await screen.getByRole("option", "125 %", { exact: true }).click();

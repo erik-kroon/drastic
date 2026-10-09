@@ -7,7 +7,12 @@ import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import * as Schema from "effect/Schema";
 import { PDFDocument, degrees } from "pdf-lib";
-import { inspectDocument, runIsolatedDocumentWorker } from "./inspection";
+import {
+  DocumentInspectionError,
+  inspectDocument,
+  inspectQueuedDocument,
+  runIsolatedDocumentWorker,
+} from "./inspection";
 
 const execute = promisify(execFile);
 
@@ -159,6 +164,29 @@ process.stdout.write(JSON.stringify(result));
     inspectDocument(bytes, "application/pdf"),
   );
   await first;
+
+  const queued = await Promise.allSettled(
+    Array.from({ length: 9 }, () => inspectQueuedDocument(bytes, "application/pdf")),
+  );
+
+  assert.equal(queued.filter((result) => result.status === "fulfilled").length, 8);
+  assert.equal(queued[8]?.status, "rejected");
+
+  const overflow = queued[8];
+
+  assert(overflow?.status === "rejected");
+  assert(overflow.reason instanceof DocumentInspectionError);
+  assert.equal(overflow.reason.message, "inspection_capacity");
+  assert.deepEqual(await inspectQueuedDocument(bytes, "application/pdf"), manifest);
+  observations.push({
+    case: "bounded queued admission and release",
+    expected: { completed: 8, overflow: "inspection_capacity", released: true },
+    observed: {
+      completed: queued.filter((result) => result.status === "fulfilled").length,
+      overflow: overflow.reason.message,
+      released: true,
+    },
+  });
   await writeFile(probe, "while (true) {}\n");
   await refuses("inspection deadline", "inspection_timeout", () =>
     runIsolatedDocumentWorker(probe, node, new Uint8Array(), ""),

@@ -1,0 +1,126 @@
+{
+  "synthetic": true,
+  "liveProvider": false,
+  "state": {
+    "currencyScale": 2,
+    "documentReaderAvailable": true,
+    "scope": {
+      "entityId": "entity_d4c32d09aa5a75ec",
+      "bookId": "book_d4c32d09aa5a75ec"
+    },
+    "occurrenceId": "source_f012a4a0757c4c5589f94b8fd0d7aebd",
+    "requests": [
+      {
+        "id": "supplier_extraction_request_eac53f51cc244ca985821c10709af2e1",
+        "occurrenceId": "source_f012a4a0757c4c5589f94b8fd0d7aebd",
+        "generation": 1,
+        "originalHash": "sha256:f0b45e44c5bc129ce84facb20b878117112cc13930a7b2a7e620c69034a37577",
+        "originalBytes": 1101,
+        "engineRelease": "azure-invoice-v1",
+        "attemptIdentity": "sha256:0c1e8b0e7c30ca449c7f7cbebe48316d7a9099d8148ce922fcb4cc5bff8b56f6",
+        "state": "completed",
+        "cancelVersion": 0,
+        "attemptsMade": 1,
+        "requestedBy": "operator_d4c32d09aa5a75ec",
+        "requestedAt": "2026-10-09T18:06:17.652000Z",
+        "digest": "sha256:55304d3400874a9d0907c07956c412298dda6ce93fb9daf88c8a8c411611cc88"
+      }
+    ],
+    "attempt": {
+      "requestId": "supplier_extraction_request_eac53f51cc244ca985821c10709af2e1",
+      "attemptId": "supplier_extraction_09d0d22d6a4c4ca592a58b3e901ea46e",
+      "engineRelease": "azure-invoice-v1",
+      "sourceHash": "sha256:f0b45e44c5bc129ce84facb20b878117112cc13930a7b2a7e620c69034a37577",
+      "originalHashUnchanged": true,
+      "result": "succeeded",
+      "textDigest": "sha256:f9d016ee7e7fa5571c8b619484a06887fbcef17c01885e78f61addf67c2800dd",
+      "textByteLength": 35,
+      "retainedOutputHash": "sha256:2fc67601794fa08193adbeeca2057c76f7c2b90b4512ffdca4a66d182d4e7c53",
+      "fields": [
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "proposedValue": "SYNTHETIC-1",
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "SYNTHETIC-1",
+              "textOffset": 0,
+              "textLength": 11
+            }
+          ]
+        },
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "proposedValue": "125000",
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "1250,00 SEK",
+              "textOffset": 12,
+              "textLength": 11
+            }
+          ]
+        }
+      ],
+      "candidateLines": [],
+      "diagnostics": [
+        {
+          "code": "source_highlight_unavailable",
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "detail": "Only a page and quote were supplied. No exact source highlight is available."
+        },
+        {
+          "code": "reader_confidence_unknown",
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "detail": "Reader confidence is unknown or low. Check the printed value against the original."
+        },
+        {
+          "code": "source_highlight_unavailable",
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "detail": "Only a page and quote were supplied. No exact source highlight is available."
+        },
+        {
+          "code": "reader_confidence_unknown",
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "detail": "Reader confidence is unknown or low. Check the printed value against the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "documentDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "dueDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        }
+      ],
+      "document": {
+        "physicalPages": 2,
+        "readPages": [
+          1,
+          2
+        ],
+        "coverage": "complete",
+        "apiVersion": "2024-11-30",
+        "modelId": "prebuilt-invoice",
+        "amountProfile": "sv-SE-SEK",
+        "transcript": "SYNTHETIC-1\n1250,00 SEK\nSecond page"
+      },
+      "createdAt": "2026-10-09T18:06:28.478Z"
+    },
+    "fieldDecisions": []
+  },
+  "submissions": 1,
+  "polls": 2
+}

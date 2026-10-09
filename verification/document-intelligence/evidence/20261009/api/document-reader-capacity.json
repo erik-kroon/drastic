@@ -1,0 +1,450 @@
+{
+  "synthetic": true,
+  "expectedResult": "rejected_output",
+  "observations": [
+    {
+      "defect": "outside_page",
+      "state": {
+        "currencyScale": 2,
+        "documentReaderAvailable": true,
+        "scope": {
+          "entityId": "entity_c4535d98bfa8e555",
+          "bookId": "book_c4535d98bfa8e555"
+        },
+        "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+        "requests": [
+          {
+            "id": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 1,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:40.018000Z",
+            "digest": "sha256:f3c5b58d6636d35625b5085178a86b0098af320231d7d69bb8d523d377e1791a"
+          }
+        ],
+        "attempt": {
+          "requestId": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+          "attemptId": "supplier_extraction_5ce5963edb5c47b18bdc369c281afeed",
+          "engineRelease": "azure-invoice-v1",
+          "sourceHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+          "originalHashUnchanged": true,
+          "result": "rejected_output",
+          "textDigest": null,
+          "textByteLength": 0,
+          "retainedOutputHash": "sha256:0370bf6b99c36247c8ceadb40aad23f618b960f53e2e03fef2f44147a2fa266d",
+          "fields": [],
+          "candidateLines": [],
+          "diagnostics": [
+            {
+              "code": "reader_output_rejected",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The response could not be matched to bounded page evidence."
+            },
+            {
+              "code": "reader_geometry_bounds",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The reader response failed this evidence or capacity check. Review the original manually."
+            }
+          ],
+          "createdAt": "2026-10-09T18:03:43.005Z"
+        },
+        "fieldDecisions": []
+      }
+    },
+    {
+      "defect": "wrong_dimensions",
+      "state": {
+        "currencyScale": 2,
+        "documentReaderAvailable": true,
+        "scope": {
+          "entityId": "entity_c4535d98bfa8e555",
+          "bookId": "book_c4535d98bfa8e555"
+        },
+        "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+        "requests": [
+          {
+            "id": "supplier_extraction_request_8be44eddf23840dbaf3961fdae987555",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 2,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:45.014000Z",
+            "digest": "sha256:804500353e3749408c8fbbe67dc971d4b3b776255c72bf137f5b37e6c14bac57"
+          },
+          {
+            "id": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 1,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:40.018000Z",
+            "digest": "sha256:f3c5b58d6636d35625b5085178a86b0098af320231d7d69bb8d523d377e1791a"
+          }
+        ],
+        "attempt": {
+          "requestId": "supplier_extraction_request_8be44eddf23840dbaf3961fdae987555",
+          "attemptId": "supplier_extraction_fe51b6f6393447d0b5af4e179c35cd56",
+          "engineRelease": "azure-invoice-v1",
+          "sourceHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+          "originalHashUnchanged": true,
+          "result": "rejected_output",
+          "textDigest": null,
+          "textByteLength": 0,
+          "retainedOutputHash": "sha256:ad4803c1462a19aebff253994872faec5bfb8aa532decefa15cf445b38ec9f74",
+          "fields": [],
+          "candidateLines": [],
+          "diagnostics": [
+            {
+              "code": "reader_output_rejected",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The response could not be matched to bounded page evidence."
+            },
+            {
+              "code": "reader_geometry_page",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The reader response failed this evidence or capacity check. Review the original manually."
+            }
+          ],
+          "createdAt": "2026-10-09T18:03:46.129Z"
+        },
+        "fieldDecisions": []
+      }
+    },
+    {
+      "defect": "empty_polygon",
+      "state": {
+        "currencyScale": 2,
+        "documentReaderAvailable": true,
+        "scope": {
+          "entityId": "entity_c4535d98bfa8e555",
+          "bookId": "book_c4535d98bfa8e555"
+        },
+        "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+        "requests": [
+          {
+            "id": "supplier_extraction_request_ec187a78c1fc47939cce53f71fb0c3fb",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 3,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:48.114000Z",
+            "digest": "sha256:232fc9d581e14685e31cfe0a8a8f6a79e885adbac752e2e129b55fbd9d552a4c"
+          },
+          {
+            "id": "supplier_extraction_request_8be44eddf23840dbaf3961fdae987555",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 2,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:45.014000Z",
+            "digest": "sha256:804500353e3749408c8fbbe67dc971d4b3b776255c72bf137f5b37e6c14bac57"
+          },
+          {
+            "id": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 1,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:40.018000Z",
+            "digest": "sha256:f3c5b58d6636d35625b5085178a86b0098af320231d7d69bb8d523d377e1791a"
+          }
+        ],
+        "attempt": {
+          "requestId": "supplier_extraction_request_ec187a78c1fc47939cce53f71fb0c3fb",
+          "attemptId": "supplier_extraction_4402995b7d14449c87fcad8747d10dc8",
+          "engineRelease": "azure-invoice-v1",
+          "sourceHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+          "originalHashUnchanged": true,
+          "result": "rejected_output",
+          "textDigest": null,
+          "textByteLength": 0,
+          "retainedOutputHash": "sha256:19ab1a1a1bd0fadccf935fc23f4962fd1fd274eb384a72e223102d3119df8fc2",
+          "fields": [],
+          "candidateLines": [],
+          "diagnostics": [
+            {
+              "code": "reader_output_rejected",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The response could not be matched to bounded page evidence."
+            },
+            {
+              "code": "reader_geometry_empty",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The reader response failed this evidence or capacity check. Review the original manually."
+            }
+          ],
+          "createdAt": "2026-10-09T18:03:49.285Z"
+        },
+        "fieldDecisions": []
+      }
+    },
+    {
+      "defect": "overlapping_pages",
+      "state": {
+        "currencyScale": 2,
+        "documentReaderAvailable": true,
+        "scope": {
+          "entityId": "entity_c4535d98bfa8e555",
+          "bookId": "book_c4535d98bfa8e555"
+        },
+        "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+        "requests": [
+          {
+            "id": "supplier_extraction_request_595e8f30329c4a69a2853adfe6c9f3a9",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 4,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:51.094000Z",
+            "digest": "sha256:8b318e272b1938b9bed7ded3d9e662f94dfc9e39d94da3911c6f1728ee79e87d"
+          },
+          {
+            "id": "supplier_extraction_request_ec187a78c1fc47939cce53f71fb0c3fb",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 3,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:48.114000Z",
+            "digest": "sha256:232fc9d581e14685e31cfe0a8a8f6a79e885adbac752e2e129b55fbd9d552a4c"
+          },
+          {
+            "id": "supplier_extraction_request_8be44eddf23840dbaf3961fdae987555",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 2,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:45.014000Z",
+            "digest": "sha256:804500353e3749408c8fbbe67dc971d4b3b776255c72bf137f5b37e6c14bac57"
+          },
+          {
+            "id": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 1,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:40.018000Z",
+            "digest": "sha256:f3c5b58d6636d35625b5085178a86b0098af320231d7d69bb8d523d377e1791a"
+          }
+        ],
+        "attempt": {
+          "requestId": "supplier_extraction_request_595e8f30329c4a69a2853adfe6c9f3a9",
+          "attemptId": "supplier_extraction_89917cde0b8e47f882f06203ce96b810",
+          "engineRelease": "azure-invoice-v1",
+          "sourceHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+          "originalHashUnchanged": true,
+          "result": "rejected_output",
+          "textDigest": null,
+          "textByteLength": 0,
+          "retainedOutputHash": "sha256:9b130c85f67ee4a4e6122fa6a664f2a62af44f646c9ca095ff1252b75b565483",
+          "fields": [],
+          "candidateLines": [],
+          "diagnostics": [
+            {
+              "code": "reader_output_rejected",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The response could not be matched to bounded page evidence."
+            },
+            {
+              "code": "reader_page_overlap",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The reader response failed this evidence or capacity check. Review the original manually."
+            }
+          ],
+          "createdAt": "2026-10-09T18:03:52.138Z"
+        },
+        "fieldDecisions": []
+      }
+    },
+    {
+      "defect": "diagnostic_overflow",
+      "state": {
+        "currencyScale": 2,
+        "documentReaderAvailable": true,
+        "scope": {
+          "entityId": "entity_c4535d98bfa8e555",
+          "bookId": "book_c4535d98bfa8e555"
+        },
+        "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+        "requests": [
+          {
+            "id": "supplier_extraction_request_674328efcac849efb0ea9779d2667aa8",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 5,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:53.938000Z",
+            "digest": "sha256:1544986d7cae009e3b559ae36b4816109c92ae81653410d88342185676326de3"
+          },
+          {
+            "id": "supplier_extraction_request_595e8f30329c4a69a2853adfe6c9f3a9",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 4,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:51.094000Z",
+            "digest": "sha256:8b318e272b1938b9bed7ded3d9e662f94dfc9e39d94da3911c6f1728ee79e87d"
+          },
+          {
+            "id": "supplier_extraction_request_ec187a78c1fc47939cce53f71fb0c3fb",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 3,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:48.114000Z",
+            "digest": "sha256:232fc9d581e14685e31cfe0a8a8f6a79e885adbac752e2e129b55fbd9d552a4c"
+          },
+          {
+            "id": "supplier_extraction_request_8be44eddf23840dbaf3961fdae987555",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 2,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:45.014000Z",
+            "digest": "sha256:804500353e3749408c8fbbe67dc971d4b3b776255c72bf137f5b37e6c14bac57"
+          },
+          {
+            "id": "supplier_extraction_request_1013718033a347648c6b7bc9dbb7c958",
+            "occurrenceId": "source_c84c72059eb146b0bb88317910a2f6c5",
+            "generation": 1,
+            "originalHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+            "originalBytes": 1101,
+            "engineRelease": "azure-invoice-v1",
+            "attemptIdentity": "sha256:99a11b5e36a15945cd572ce00bc37f1a89b57c742115b9f64700e1f1cdad17c0",
+            "state": "completed",
+            "cancelVersion": 0,
+            "attemptsMade": 0,
+            "requestedBy": "operator_c4535d98bfa8e555",
+            "requestedAt": "2026-10-09T18:03:40.018000Z",
+            "digest": "sha256:f3c5b58d6636d35625b5085178a86b0098af320231d7d69bb8d523d377e1791a"
+          }
+        ],
+        "attempt": {
+          "requestId": "supplier_extraction_request_674328efcac849efb0ea9779d2667aa8",
+          "attemptId": "supplier_extraction_232ef5af8bbc401995d9361e5e376a83",
+          "engineRelease": "azure-invoice-v1",
+          "sourceHash": "sha256:9ba55334c30ee8885cf789f6e272f75e1c0565b3a0c60cd6f81ffb0105bd28fa",
+          "originalHashUnchanged": true,
+          "result": "rejected_output",
+          "textDigest": null,
+          "textByteLength": 0,
+          "retainedOutputHash": "sha256:e94148a99f0dab5999942d2961049acedae27a90c68d38855fb1e34d8997b7b3",
+          "fields": [],
+          "candidateLines": [],
+          "diagnostics": [
+            {
+              "code": "reader_output_rejected",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The response could not be matched to bounded page evidence."
+            },
+            {
+              "code": "reader_diagnostic_limit",
+              "lineOrdinal": 0,
+              "fieldKey": "",
+              "detail": "The reader response failed this evidence or capacity check. Review the original manually."
+            }
+          ],
+          "createdAt": "2026-10-09T18:03:54.973Z"
+        },
+        "fieldDecisions": []
+      }
+    }
+  ],
+  "provider": {
+    "submissions": 5,
+    "polls": 5
+  }
+}

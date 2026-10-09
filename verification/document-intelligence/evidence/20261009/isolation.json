@@ -1,0 +1,91 @@
+{
+  "synthetic": true,
+  "platform": "darwin",
+  "status": "verified",
+  "memoryBoundary": "128 MiB JavaScript old-space; 256 MiB RSS threshold sampled every 50 ms, not a kernel RSS cap",
+  "observations": [
+    {
+      "case": "hostile boundary",
+      "expected": {
+        "file": true,
+        "metadata": true,
+        "environment": true,
+        "network": true,
+        "child": true,
+        "extraRequests": 0
+      },
+      "observed": {
+        "file": true,
+        "metadata": true,
+        "environment": true,
+        "network": true,
+        "child": true,
+        "extraRequests": 0
+      }
+    },
+    {
+      "case": "retained PDF inspection",
+      "expected": 1,
+      "observed": 1
+    },
+    {
+      "case": "cropped rotated PDF",
+      "expected": [
+        1.3888888888888888,
+        2.7777777777777777
+      ],
+      "observed": [
+        1.3888888888888888,
+        2.7777777777777777
+      ]
+    },
+    {
+      "case": "oversize",
+      "expected": "document_size",
+      "observed": "document_size"
+    },
+    {
+      "case": "corrupt PDF",
+      "expected": "document_invalid",
+      "observed": "document_invalid"
+    },
+    {
+      "case": "physical page cap",
+      "expected": "page_limit",
+      "observed": "page_limit"
+    },
+    {
+      "case": "concurrent capacity",
+      "expected": "inspection_capacity",
+      "observed": "inspection_capacity"
+    },
+    {
+      "case": "bounded queued admission and release",
+      "expected": {
+        "completed": 8,
+        "overflow": "inspection_capacity",
+        "released": true
+      },
+      "observed": {
+        "completed": 8,
+        "overflow": "inspection_capacity",
+        "released": true
+      }
+    },
+    {
+      "case": "inspection deadline",
+      "expected": "inspection_timeout",
+      "observed": "inspection_timeout"
+    },
+    {
+      "case": "resident memory threshold",
+      "expected": "inspection_memory_limit",
+      "observed": "inspection_memory_limit"
+    },
+    {
+      "case": "worker output cap",
+      "expected": "inspection_output_limit",
+      "observed": "inspection_output_limit"
+    }
+  ]
+}

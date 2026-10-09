@@ -1,0 +1,381 @@
+{
+  "synthetic": true,
+  "expectedSourceHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+  "before": {
+    "currencyScale": 2,
+    "documentReaderAvailable": true,
+    "scope": {
+      "entityId": "entity_1483709c22acf22f",
+      "bookId": "book_1483709c22acf22f"
+    },
+    "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+    "requests": [
+      {
+        "id": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+        "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+        "generation": 1,
+        "originalHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+        "originalBytes": 1102,
+        "engineRelease": "azure-invoice-v1",
+        "attemptIdentity": "sha256:ff974459de3b7e61f68c7eb46a138cf88b0ff546959c2c0408783bdce0b7eaa6",
+        "state": "completed",
+        "cancelVersion": 0,
+        "attemptsMade": 0,
+        "requestedBy": "operator_1483709c22acf22f",
+        "requestedAt": "2026-10-09T18:03:31.898000Z",
+        "digest": "sha256:8a6173db8a9c11fe64ca9364c8e65a77ab64943e5a67344bd95893b9ce293938"
+      }
+    ],
+    "attempt": {
+      "requestId": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+      "attemptId": "supplier_extraction_c3abd21e9c5647379dbec9a67bed28ec",
+      "engineRelease": "azure-invoice-v1",
+      "sourceHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+      "originalHashUnchanged": true,
+      "result": "succeeded",
+      "textDigest": "sha256:f9d016ee7e7fa5571c8b619484a06887fbcef17c01885e78f61addf67c2800dd",
+      "textByteLength": 35,
+      "retainedOutputHash": "sha256:c9d32930cb6c66ed38a1e65932b9f44a80fd6b59d91d7df8d34bec3278e6ed6c",
+      "fields": [
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "proposedValue": "SYNTHETIC-1",
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "SYNTHETIC-1",
+              "textOffset": 0,
+              "textLength": 11,
+              "region": {
+                "scale": 1000000000,
+                "polygon": [
+                  83994087,
+                  154414472,
+                  226784034,
+                  154414472,
+                  226784034,
+                  172231527,
+                  83994087,
+                  172231527
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "proposedValue": null,
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "1250,00 SEK",
+              "textOffset": 12,
+              "textLength": 11,
+              "region": {
+                "scale": 1000000000,
+                "polygon": [
+                  83994087,
+                  213804654,
+                  218384626,
+                  213804654,
+                  218384626,
+                  231621708,
+                  83994087,
+                  231621708
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "candidateLines": [],
+      "diagnostics": [
+        {
+          "code": "reader_low_confidence",
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "detail": "Reader confidence is unknown or low. Check the printed value against the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "documentDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "dueDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        },
+        {
+          "code": "reader_field_unsupported",
+          "lineOrdinal": 0,
+          "fieldKey": "VendorName",
+          "detail": "The reader returned a field outside the supported extraction vocabulary."
+        }
+      ],
+      "document": {
+        "physicalPages": 2,
+        "readPages": [
+          1,
+          2
+        ],
+        "coverage": "complete",
+        "apiVersion": "2024-11-30",
+        "modelId": "prebuilt-invoice",
+        "amountProfile": "sv-SE-SEK",
+        "transcript": "SYNTHETIC-1\n1250,00 SEK\nSecond page"
+      },
+      "createdAt": "2026-10-09T18:03:32.917Z"
+    },
+    "fieldDecisions": []
+  },
+  "shadow": {
+    "scope": {
+      "entityId": "entity_1483709c22acf22f",
+      "bookId": "book_1483709c22acf22f"
+    },
+    "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+    "requestId": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+    "attemptId": "supplier_extraction_c3abd21e9c5647379dbec9a67bed28ec",
+    "sourceHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+    "mode": "shadow",
+    "draftId": null,
+    "draftRevision": null,
+    "draftDigest": null,
+    "diagnostics": [
+      {
+        "code": "reader_low_confidence",
+        "lineOrdinal": 0,
+        "fieldKey": "sourceTotalMinor",
+        "detail": "Reader confidence is unknown or low. Check the printed value against the original."
+      },
+      {
+        "code": "source_field_missing",
+        "lineOrdinal": 0,
+        "fieldKey": "documentDate",
+        "detail": "No value was read. Supply this fact only after reviewing the original."
+      },
+      {
+        "code": "source_field_missing",
+        "lineOrdinal": 0,
+        "fieldKey": "dueDate",
+        "detail": "No value was read. Supply this fact only after reviewing the original."
+      },
+      {
+        "code": "reader_field_unsupported",
+        "lineOrdinal": 0,
+        "fieldKey": "VendorName",
+        "detail": "The reader returned a field outside the supported extraction vocabulary."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "title",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_proposed_change",
+        "lineOrdinal": 0,
+        "fieldKey": "supplierDocumentNumber",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "documentDate",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "supplyDate",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "dueDate",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "paymentTerms",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_unchanged",
+        "lineOrdinal": 0,
+        "fieldKey": "sourceTotalMinor",
+        "detail": "Diagnostic comparison only. No suggestion or reviewed fact was changed."
+      },
+      {
+        "code": "shadow_no_reviewed_draft",
+        "lineOrdinal": 0,
+        "fieldKey": "",
+        "detail": "No reviewed draft exists. Agreement with a human-reviewed value is unknown."
+      }
+    ],
+    "createdAt": "2026-10-09T18:03:34.731Z"
+  },
+  "off": {
+    "scope": {
+      "entityId": "entity_1483709c22acf22f",
+      "bookId": "book_1483709c22acf22f"
+    },
+    "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+    "requestId": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+    "attemptId": "supplier_extraction_c3abd21e9c5647379dbec9a67bed28ec",
+    "sourceHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+    "mode": "off",
+    "draftId": null,
+    "draftRevision": null,
+    "draftDigest": null,
+    "diagnostics": [],
+    "createdAt": "2026-10-09T18:03:35.699Z"
+  },
+  "after": {
+    "currencyScale": 2,
+    "documentReaderAvailable": true,
+    "scope": {
+      "entityId": "entity_1483709c22acf22f",
+      "bookId": "book_1483709c22acf22f"
+    },
+    "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+    "requests": [
+      {
+        "id": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+        "occurrenceId": "source_dc0c32130914476eb2d99550df219d99",
+        "generation": 1,
+        "originalHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+        "originalBytes": 1102,
+        "engineRelease": "azure-invoice-v1",
+        "attemptIdentity": "sha256:ff974459de3b7e61f68c7eb46a138cf88b0ff546959c2c0408783bdce0b7eaa6",
+        "state": "completed",
+        "cancelVersion": 0,
+        "attemptsMade": 0,
+        "requestedBy": "operator_1483709c22acf22f",
+        "requestedAt": "2026-10-09T18:03:31.898000Z",
+        "digest": "sha256:8a6173db8a9c11fe64ca9364c8e65a77ab64943e5a67344bd95893b9ce293938"
+      }
+    ],
+    "attempt": {
+      "requestId": "supplier_extraction_request_9ea6f5aade1f4c32b3b45c671e89b7c2",
+      "attemptId": "supplier_extraction_c3abd21e9c5647379dbec9a67bed28ec",
+      "engineRelease": "azure-invoice-v1",
+      "sourceHash": "sha256:a0f1045cf8c980f3762c0a42ad649d93c453f0953669dc49d0f5a5589895d98e",
+      "originalHashUnchanged": true,
+      "result": "succeeded",
+      "textDigest": "sha256:f9d016ee7e7fa5571c8b619484a06887fbcef17c01885e78f61addf67c2800dd",
+      "textByteLength": 35,
+      "retainedOutputHash": "sha256:c9d32930cb6c66ed38a1e65932b9f44a80fd6b59d91d7df8d34bec3278e6ed6c",
+      "fields": [
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "proposedValue": "SYNTHETIC-1",
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "SYNTHETIC-1",
+              "textOffset": 0,
+              "textLength": 11,
+              "region": {
+                "scale": 1000000000,
+                "polygon": [
+                  83994087,
+                  154414472,
+                  226784034,
+                  154414472,
+                  226784034,
+                  172231527,
+                  83994087,
+                  172231527
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "proposedValue": null,
+          "sourceLocators": [
+            {
+              "kind": "document_quote",
+              "page": 1,
+              "quote": "1250,00 SEK",
+              "textOffset": 12,
+              "textLength": 11,
+              "region": {
+                "scale": 1000000000,
+                "polygon": [
+                  83994087,
+                  213804654,
+                  218384626,
+                  213804654,
+                  218384626,
+                  231621708,
+                  83994087,
+                  231621708
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "candidateLines": [],
+      "diagnostics": [
+        {
+          "code": "reader_low_confidence",
+          "lineOrdinal": 0,
+          "fieldKey": "sourceTotalMinor",
+          "detail": "Reader confidence is unknown or low. Check the printed value against the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "documentDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        },
+        {
+          "code": "source_field_missing",
+          "lineOrdinal": 0,
+          "fieldKey": "dueDate",
+          "detail": "No value was read. Supply this fact only after reviewing the original."
+        },
+        {
+          "code": "reader_field_unsupported",
+          "lineOrdinal": 0,
+          "fieldKey": "VendorName",
+          "detail": "The reader returned a field outside the supported extraction vocabulary."
+        }
+      ],
+      "document": {
+        "physicalPages": 2,
+        "readPages": [
+          1,
+          2
+        ],
+        "coverage": "complete",
+        "apiVersion": "2024-11-30",
+        "modelId": "prebuilt-invoice",
+        "amountProfile": "sv-SE-SEK",
+        "transcript": "SYNTHETIC-1\n1250,00 SEK\nSecond page"
+      },
+      "createdAt": "2026-10-09T18:03:32.917Z"
+    },
+    "fieldDecisions": []
+  },
+  "provider": {
+    "submissions": 1,
+    "polls": 1
+  }
+}
