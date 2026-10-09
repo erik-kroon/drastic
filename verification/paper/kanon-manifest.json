@@ -10,14 +10,21 @@
       "baselineSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-10.jsx.json",
       "files": [
-        "apps/web/src/components/company-work-sections.tsx"
+        "apps/web/src/components/company-work-sections.tsx",
+        "apps/web/src/components/work-home.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "populated",
+        "selected",
+        "empty",
+        "loading",
+        "error"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -27,7 +34,12 @@
       "jsxSha256": "5b4f3b8588d1fb6945198e89dd1a886529c2d3213085fa75f983b1b4171af329",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-40",
@@ -66,12 +78,18 @@
       "files": [
         "apps/web/src/components/firms/portfolio.tsx"
       ],
-      "route": null,
+      "route": "/firms",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "populated",
+        "selected client",
+        "empty",
+        "filtered",
+        "access requested"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -81,7 +99,12 @@
       "jsxSha256": "12c0e0394197328a9139277879bf870ea18e3c49fec8292e8c524e79f5bb7fb6",
       "parts": [],
       "candidateRoute": "/firms",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-11",
@@ -93,12 +116,18 @@
       "files": [
         "apps/web/src/components/review-owner.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "ready to approve",
+        "changed source",
+        "missing original",
+        "approving",
+        "approved"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -108,7 +137,12 @@
       "jsxSha256": "31b432022b3bd367b14cb7ed6fa886f39e6f2769cc67ce05d12360a585b53a04",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-70",
@@ -250,13 +284,21 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-08.png",
       "baselineSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-08.jsx.json",
-      "files": [],
-      "route": null,
+      "files": [
+        "apps/web/src/components/company-overview.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/overview",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "populated",
+        "coverage gap",
+        "missing months",
+        "loading",
+        "error"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -266,7 +308,12 @@
       "jsxSha256": "090b72d312f7f48a1ebe87afdd6a5fa9dbfc5c72f3ebe16a5b15d2b874e2b6de",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/overview",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-50",
@@ -302,13 +349,20 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-90.png",
       "baselineSha256": "f772c8d3e8db9120c260d7977898fffe0048acd4d92b121f84ed623690ffa5cf",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-90.jsx.json",
-      "files": [],
-      "route": null,
+      "files": [
+        "apps/web/src/components/closing/workspace.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/closing",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "period list",
+        "ready to lock",
+        "lock refused",
+        "locked"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -318,7 +372,12 @@
       "jsxSha256": "7aae291deb7191a6f1b378bfbeee866f98edd229f1f22b5798034377a42955fc",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/closing",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-95",
@@ -436,12 +495,16 @@
       "files": [
         "apps/web/src/components/posting-recovery/work-recovery.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/work",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "unknown outcome",
+        "resolved as posted",
+        "resolved as not posted"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -451,7 +514,12 @@
       "jsxSha256": "d562947bedfdd22acf72107066d8727f32d480dc9ca25d218e236e8049052d2f",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-16",
@@ -463,12 +531,15 @@
       "files": [
         "apps/web/src/components/voucher-workspace.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/books",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "posted voucher selected",
+        "correction available"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -478,7 +549,12 @@
       "jsxSha256": "57646e701fb281f86e27cd766fedb0ccd0aa8847a9617c1f34f7f487c41874b1",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/books",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-20",
@@ -490,12 +566,17 @@
       "files": [
         "apps/web/src/components/banking-workspace.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "populated",
+        "coverage gap",
+        "empty",
+        "import error"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -505,7 +586,12 @@
       "jsxSha256": "ec41d00789117de99d7657f9b09ba1e82bf9b2950beb17f7047db02a7a30b4e9",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/accounts",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-21",
@@ -517,12 +603,17 @@
       "files": [
         "apps/web/src/components/bank-transaction-match.tsx"
       ],
-      "route": null,
+      "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "one candidate",
+        "several candidates",
+        "original unavailable",
+        "prepared awaiting approval"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -532,7 +623,12 @@
       "jsxSha256": "be7d35df35cea6ec6d937ec1f82b60ab312ca253615ffbaa8b774c1971b42279",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/accounts",
-      "comparison": null
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-30",
@@ -652,12 +748,15 @@
       "files": [
         "packages/ui/src/theme/kanon.stylex.ts"
       ],
-      "route": null,
+      "route": "/kanon/list",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "light",
+        "dark"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -669,7 +768,8 @@
         "kanon.stylex"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-02",
@@ -681,12 +781,17 @@
       "files": [
         "packages/ui/src/kanon/action.tsx"
       ],
-      "route": null,
+      "route": "/kanon/focus",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "default",
+        "hover",
+        "focus-visible",
+        "disabled with stated reason"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -698,7 +803,8 @@
         "action"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-03",
@@ -710,12 +816,17 @@
       "files": [
         "packages/ui/src/kanon/work-list.tsx"
       ],
-      "route": null,
+      "route": "/kanon/list",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "populated",
+        "selected",
+        "empty",
+        "loading"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -727,7 +838,8 @@
         "work-list"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-04",
@@ -740,12 +852,18 @@
         "packages/ui/src/kanon/status.tsx",
         "packages/ui/src/kanon/feedback.tsx"
       ],
-      "route": null,
+      "route": "/kanon/review",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "unknown",
+        "blocked",
+        "success",
+        "warning",
+        "error"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -758,7 +876,8 @@
         "feedback"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-05",
@@ -770,12 +889,16 @@
       "files": [
         "packages/ui/src/kanon/overlays.tsx"
       ],
-      "route": null,
+      "route": "/kanon/review",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "confirm dialog",
+        "drawer",
+        "toast"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -787,7 +910,8 @@
         "overlays"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-06",
@@ -800,12 +924,17 @@
         "packages/ui/src/kanon/layouts.tsx",
         "packages/ui/src/kanon/detail-panel.tsx"
       ],
-      "route": null,
+      "route": "/kanon/list",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "area bar",
+        "detail bar",
+        "detail panel",
+        "narrow width"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -818,7 +947,8 @@
         "detail-panel"
       ],
       "candidateRoute": null,
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     },
     {
       "id": "K-07",
@@ -830,12 +960,17 @@
       "files": [
         "packages/ui/src/kanon/charts.tsx"
       ],
-      "route": null,
+      "route": "/kanon/charts",
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "visual direction; exact route/state mapping requires review",
+      "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [],
+      "requiredStates": [
+        "chart",
+        "table fallback",
+        "light",
+        "dark"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -847,7 +982,8 @@
         "charts"
       ],
       "candidateRoute": "/kanon/charts",
-      "comparison": null
+      "comparison": null,
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
     }
   ]
 }
