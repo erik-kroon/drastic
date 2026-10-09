@@ -30,13 +30,12 @@ import { SetupWorkspace } from "@open-erp/ui/components/setup-workspace";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
+function isHomePath(pathname: string, base: string) {
+  return pathname === base || pathname === `${base}/`;
+}
+
 function isTodoPath(pathname: string, base: string) {
-  return (
-    pathname === base ||
-    pathname === `${base}/` ||
-    pathname.endsWith("/work") ||
-    pathname.includes("/reviews/")
-  );
+  return isHomePath(pathname, base) || pathname.endsWith("/work") || pathname.includes("/reviews/");
 }
 
 function BookSwitcher({
@@ -347,6 +346,7 @@ export function BookWorkspace({
   return (
     <Workspace
       pageKey={pathname}
+      contentInset={isHomePath(pathname, base) ? "none" : "page"}
       focused={pathname.startsWith(`${base}/reviews/`)}
       brand={
         <>

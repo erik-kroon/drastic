@@ -12,14 +12,13 @@ import {
 } from "@open-erp/ui/components/work-controls";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
-  RegisterWorkspace,
-  RegisterGroup,
-  RegisterRow,
-  RegisterTabs,
   RegisterDetailHeading,
   RegisterDetailLines,
-  type RegisterStatus,
 } from "@open-erp/ui/components/register-workspace";
+import { AreaBar, BarTab, ListDetailPage } from "@open-erp/ui/kanon/layouts";
+import { WorkList, WorkGroup, WorkRow } from "@open-erp/ui/kanon/work-list";
+import { DetailPanelSurface } from "@open-erp/ui/kanon/detail-panel";
+import type { Status } from "@open-erp/ui/kanon/status";
 import { useCompanyWork, type CompanyWork } from "@/lib/company-work";
 import {
   attentionQueryOptions,
@@ -93,119 +92,127 @@ export function WorkHome() {
           onClose={() => setGroupReview(false)}
         />
       ) : null}
-      <RegisterWorkspace
-        detailSize="wide"
-        headingSpacing="work"
-        headingFocusKey={
-          !selected && activeQuery.isSuccess && !activeQuery.isFetching ? focusKey : undefined
-        }
-        title={sv ? "Att göra" : "To do"}
-        tabs={
-          <RegisterTabs
-            spacing="work"
-            label={sv ? "Arbetsstatus" : "Work status"}
-            value={status}
-            options={homeStatusOptions(locale, page?.counts.open, work.sales.data?.counts.overdue)}
-            onChange={(value) => {
-              if (value === "open" || value === "completed" || value === "watch") {
-                void navigate({ search: { status: value }, resetScroll: false });
-              }
-            }}
-          />
-        }
-        action={
-          <Box display="flex" gap="sm">
-            <WorkGroupEntry
-              role={book.role}
-              status={status}
-              locale={locale}
-              onOpen={() => setGroupReview(true)}
-            />
-            <WorkHeaderAction href={workQueueHref(base, filters)}>
-              {sv ? "Granska alla" : "Review all"}
-            </WorkHeaderAction>
-          </Box>
-        }
-        detail={
-          selected ? (
-            <WorkHomeDetail work={work} page={page} selected={selected} filters={filters} />
-          ) : (
-            <PageCaption>
-              {sv ? "Välj en rad för att se nästa steg." : "Select a row to see the next step."}
-            </PageCaption>
-          )
-        }
-      >
-        {activeQuery.isPending || activeQuery.isError ? (
-          <Box padding="lg">
-            <AccountingStatus
-              locale={locale}
-              pending={activeQuery.isPending}
-              error={activeQuery.error}
-            />
-            {activeQuery.isError ? (
-              <Button
-                variant="outline"
-                disabled={activeQuery.isFetching}
-                onClick={() => {
-                  void activeQuery.refetch();
-                }}
-              >
-                {copy.refresh}
-              </Button>
-            ) : null}
-          </Box>
-        ) : null}
-        <HomeBankStatus work={work} status={status} kind={kind} />
-        {groups.map((group) => {
-          const items = rows.filter((item) => item.group === group);
-
-          if (!items.length) return null;
-
-          return (
-            <Box key={group}>
-              <RegisterGroup title={group} count={items.length} />
-              {items.map((item) => (
-                <RegisterRow
-                  stateSize="compact"
-                  key={item.key}
-                  title={item.title}
-                  status={item.status}
-                  state={item.state}
-                  amount={item.amount}
-                  selected={selected?.key === item.key}
-                  autoFocus={Boolean(search.task) && selected?.key === item.key}
-                  onSelect={() => {
-                    void navigate({
-                      search: {
-                        status,
-                        after: search.after,
-                        task: item.selectionKey,
-                        stage: status === "completed" ? item.key : undefined,
-                      },
-                      resetScroll: false,
-                    });
+      <ListDetailPage
+        bar={
+          <AreaBar
+            title={sv ? "Att göra" : "To do"}
+            headingFocusKey={
+              !selected && activeQuery.isSuccess && !activeQuery.isFetching ? focusKey : undefined
+            }
+            tabsLabel={sv ? "Arbetsstatus" : "Work status"}
+            tabs={homeStatusOptions(locale, page?.counts.open, work.sales.data?.counts.overdue).map(
+              (option) => (
+                <BarTab
+                  key={option.value}
+                  label={option.label}
+                  count={option.count}
+                  active={status === option.value}
+                  onClick={() => {
+                    void navigate({ search: { status: option.value }, resetScroll: false });
                   }}
                 />
-              ))}
-            </Box>
-          );
-        })}
-        {activeQuery.isSuccess && rows.length === 0 ? (
-          <Box padding="lg">
-            <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
-          </Box>
-        ) : null}
-        {status !== "watch" ? (
-          <HomePagination
-            base={base}
-            status={status}
-            after={search.after}
-            next={page?.next}
-            locale={locale}
+              ),
+            )}
+            action={
+              <Box display="flex" gap="sm">
+                <WorkGroupEntry
+                  role={book.role}
+                  status={status}
+                  locale={locale}
+                  onOpen={() => setGroupReview(true)}
+                />
+                <WorkHeaderAction href={workQueueHref(base, filters)}>
+                  {sv ? "Granska alla" : "Review all"}
+                </WorkHeaderAction>
+              </Box>
+            }
           />
-        ) : null}
-      </RegisterWorkspace>
+        }
+        panel={
+          <DetailPanelSurface label={sv ? "Nästa steg" : "Next step"}>
+            {selected ? (
+              <WorkHomeDetail work={work} page={page} selected={selected} filters={filters} />
+            ) : (
+              <PageCaption>
+                {sv ? "Välj en rad för att se nästa steg." : "Select a row to see the next step."}
+              </PageCaption>
+            )}
+          </DetailPanelSurface>
+        }
+        list={
+          <>
+            {activeQuery.isPending || activeQuery.isError ? (
+              <Box padding="lg">
+                <AccountingStatus
+                  locale={locale}
+                  pending={activeQuery.isPending}
+                  error={activeQuery.error}
+                />
+                {activeQuery.isError ? (
+                  <Button
+                    variant="outline"
+                    disabled={activeQuery.isFetching}
+                    onClick={() => {
+                      void activeQuery.refetch();
+                    }}
+                  >
+                    {copy.refresh}
+                  </Button>
+                ) : null}
+              </Box>
+            ) : null}
+            <HomeBankStatus work={work} status={status} kind={kind} />
+            <WorkList>
+              {groups.map((group, index) => {
+                const items = rows.filter((item) => item.group === group);
+
+                if (!items.length) return null;
+
+                return (
+                  <WorkGroup key={group} title={group} count={items.length} first={index === 0}>
+                    {items.map((item) => (
+                      <WorkRow
+                        key={item.key}
+                        title={item.title}
+                        status={item.status}
+                        state={item.state}
+                        amount={item.amount}
+                        selected={selected?.key === item.key}
+                        autoFocus={Boolean(search.task) && selected?.key === item.key}
+                        onSelect={() => {
+                          void navigate({
+                            search: {
+                              status,
+                              after: search.after,
+                              task: item.selectionKey,
+                              stage: status === "completed" ? item.key : undefined,
+                            },
+                            resetScroll: false,
+                          });
+                        }}
+                      />
+                    ))}
+                  </WorkGroup>
+                );
+              })}
+            </WorkList>
+            {activeQuery.isSuccess && rows.length === 0 ? (
+              <Box padding="lg">
+                <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
+              </Box>
+            ) : null}
+            {status !== "watch" ? (
+              <HomePagination
+                base={base}
+                status={status}
+                after={search.after}
+                next={page?.next}
+                locale={locale}
+              />
+            ) : null}
+          </>
+        }
+      />
     </>
   );
 }
@@ -256,14 +263,16 @@ function homeStatusOptions(
   return [
     {
       value: "open",
-      label: `${sv ? "Väntar på dig" : "Waiting for you"}${open === undefined ? "" : ` ${open}`}`,
+      label: sv ? "Väntar på dig" : "Waiting for you",
+      count: open,
     },
     {
       value: "watch",
-      label: `${sv ? "Bevakas" : "Watching"}${overdue === undefined ? "" : ` ${overdue}`}`,
+      label: sv ? "Bevakas" : "Watching",
+      count: overdue,
     },
-    { value: "completed", label: sv ? "Klart" : "Completed" },
-  ];
+    { value: "completed", label: sv ? "Klart" : "Completed", count: undefined },
+  ] as const;
 }
 
 function WorkHomeDetail({
@@ -429,21 +438,21 @@ function HomeBankStatus({
   );
 }
 
-function rowStatus(item: typeof Workspace.AttentionItem.Type): RegisterStatus {
-  if (item.state === "completed") return "completed";
+function rowStatus(item: typeof Workspace.AttentionItem.Type): Status {
+  if (item.state === "completed") return "done";
 
-  if (expiredSupplierApproval(item) !== null) return "warning";
+  if (expiredSupplierApproval(item) !== null) return "needsYou";
 
-  if (item.reason === "document_reading_failed") return "warning";
+  if (item.reason === "document_reading_failed") return "unknown";
 
   if (
     item.reason === "invoice_draft" ||
     item.reason === "supplier_draft" ||
     item.reason === "document_review"
   )
-    return "draft";
+    return "proposal";
 
-  return "pending";
+  return "needsYou";
 }
 
 function homeSelection(rows: ReturnType<typeof homeRows>, search: typeof WorkHomeQuery.Type) {
@@ -496,7 +505,7 @@ function homeRows(
           group: sv ? "Förfallna kundfakturor" : "Overdue customer invoices",
           title: `${item.customer}, ${item.number ?? item.title}`,
           state: sv ? "Förfallen" : "Overdue",
-          status: "warning" as const,
+          status: "overdue" as const,
           amount:
             item.outstandingMinor === null
               ? "—"
@@ -536,7 +545,7 @@ function homeRows(
         group: sv ? "Bankhändelser" : "Bank events",
         title: account.name,
         state: `${account.unmatchedCount} ${sv ? "att matcha" : "to match"}`,
-        status: "pending",
+        status: "needsYou",
         amount: "—",
         caption: `${work.from}–${work.to}`,
         action: sv ? "Matcha bankhändelser" : "Match bank events",

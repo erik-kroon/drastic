@@ -1,0 +1,29 @@
+{
+  "runId": "d7a978f9-0201-4da5-b0d9-eb4f021a9955",
+  "sourceStatus": "stable",
+  "baseRevision": "26f00b6a51ecd6069c7c5da2bbbdcaf5e97f0ea2",
+  "workingTreeCandidate": true,
+  "beforeDigest": "7b9908088d0c40037656d212f0f769e5953c66d496f9ae9fb8ac5a1f6c08e1d4",
+  "afterDigest": "7b9908088d0c40037656d212f0f769e5953c66d496f9ae9fb8ac5a1f6c08e1d4",
+  "exitCode": 0,
+  "sourceHashes": {
+    "apps/web/src/components/book-workspace.tsx": "e0053e9d76dd79e09b094f03f8b26d89bf9feaae087665a345bc6f8cf6b7bfc7",
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "f0fb16b97596b3167894107d1856f58ba4f995ff57fc3f7c033d5aff78bec42c",
+    "packages/ui/src/kanon/detail-panel.tsx": "be47d1da5d981d95cf36ae01eb4f0fd6ac8204a6b9391c7769ea0216ac410f46",
+    "packages/ui/src/kanon/layouts.tsx": "23d02bda87b915d93101e015b0e36b1414ca888b1d105faf0cdad5fa2e835f73",
+    "packages/ui/src/kanon/work-list.tsx": "5b7a2266b60de66a81601e41a4c27cde443cc0061c1a741567aec768f919a468",
+    "packages/ui/src/kanon/workspace.tsx": "cd695bb1757ce852e29e5a2f684cd999ce67ccd7d051cf0f8e75983eae46c32a",
+    "tests/browser/work-home-return.e2e.ts": "d0c9e98577e4fc64ce9d598e1101d7078a78a89664616d56274ed29948cf8a19"
+  },
+  "runtimeCleaned": true,
+  "model": "codex.chat/gpt-6-luna",
+  "modelCalls": 1,
+  "limitations": [
+    "No production qualification",
+    "Native 200% zoom unverified",
+    "Clock not pinned",
+    "Synthetic selected original fixture differs from board content",
+    "Detail bodies retain existing owners"
+  ]
+}

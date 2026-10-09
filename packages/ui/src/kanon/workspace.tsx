@@ -17,6 +17,17 @@ const styles = stylex.create({
   },
   focusedShell: { gridTemplateColumns: "minmax(0, 1fr)" },
   focusedContent: { paddingInline: 0, paddingBlockStart: 0, paddingBlockEnd: 0 },
+  fullPageContent: {
+    display: "flex",
+    flexDirection: "column",
+    height: { default: "100%", "@media (max-width: 767px)": "auto" },
+    paddingInline: 0,
+    paddingBlockStart: 0,
+    paddingBlockEnd: {
+      default: 0,
+      "@media (max-width: 767px)": "calc(88px + env(safe-area-inset-bottom))",
+    },
+  },
   sidebar: {
     display: { default: "flex", "@media (max-width: 767px)": "none" },
     flexDirection: "column",
@@ -294,6 +305,7 @@ export function Workspace(props: {
   pageKey: string;
   children: ReactNode;
   focused?: boolean;
+  contentInset?: "page" | "none";
 }) {
   const main = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -310,7 +322,13 @@ export function Workspace(props: {
         </aside>
       ) : null}
       <main ref={main} id="workspace-content" {...stylex.props(styles.body)}>
-        <div {...stylex.props(styles.content, props.focused && styles.focusedContent)}>
+        <div
+          {...stylex.props(
+            styles.content,
+            props.contentInset === "none" && styles.fullPageContent,
+            props.focused && styles.focusedContent,
+          )}
+        >
           {props.children}
         </div>
       </main>

@@ -124,7 +124,64 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
+  const selectedConditions = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    return {
+      browser: navigator.userAgent,
+      deviceScaleFactor: window.devicePixelRatio,
+      fonts: {
+        family: getComputedStyle(document.body).fontFamily,
+        faces: Array.from(document.fonts).map((face) => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })),
+      },
+      locale: navigator.language,
+      theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      time: new Date().toISOString(),
+      clockPinned: false,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      resolvedRoute: `${window.location.pathname}${window.location.search}`,
+    };
+  });
+
   const selectedScreenshot = await app.screenshot("home-selected-original-after-reload");
+
+  await browser.setViewport({ width: 375, height: 812 });
+
+  const narrowGeometry = () =>
+    browser.evaluate(() => {
+      const row = document.querySelector("main ul button[aria-pressed='true']");
+      const panel = document.querySelector("main aside[aria-label='Nästa steg']");
+
+      if (!row || !panel) throw new Error("The selected work row and preview must be present");
+
+      const rowBox = row.getBoundingClientRect();
+      const panelBox = panel.getBoundingClientRect();
+      const width = window.innerWidth;
+
+      return {
+        width,
+        overflow: document.documentElement.scrollWidth > width,
+        rowFits: rowBox.width > 0 && rowBox.left >= 0 && rowBox.right <= width + 1,
+        panelFits: panelBox.width > 0 && panelBox.left >= 0 && panelBox.right <= width + 1,
+        panelBelowRow: panelBox.top >= rowBox.bottom - 1,
+      };
+    });
+
+  await expect.poll(narrowGeometry).toEqual({
+    width: 375,
+    overflow: false,
+    rowFits: true,
+    panelFits: true,
+    panelBelowRow: true,
+  });
+  const narrow = await narrowGeometry();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  const narrowScreenshot = await app.screenshot("home-selected-original-narrow");
+  await browser.setViewport({ width: 1440, height: 900 });
 
   await screen.getByRole("link", "Granska original", { exact: true }).click();
   await expect(screen.getByRole("img", `${original.filename}, sida 1`)).toBeVisible();
@@ -413,7 +470,10 @@ test("home retains the selected original and scoped keyboard return after reload
         ownerReturn,
         before,
         after,
+        selectedConditions,
         selectedScreenshot,
+        narrow,
+        narrowScreenshot,
         returnedScreenshot,
         handoff,
         stage,

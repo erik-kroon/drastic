@@ -4,7 +4,7 @@ Generated from [kanon-manifest.json](../../verification/paper/kanon-manifest.jso
 
 | Board | Route / candidate | Candidate owner | Status | Reference |
 |---|---|---|---|---|
-| K-10 Att göra, kö | /entities/$entityId/books/$bookId/ | apps/web/src/components/company-work-sections.tsx, apps/web/src/components/work-home.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-10.png) |
+| K-10 Att göra, kö | /entities/$entityId/books/$bookId/ | apps/web/src/components/company-work-sections.tsx, apps/web/src/components/work-home.tsx, packages/ui/src/kanon/layouts.tsx, packages/ui/src/kanon/work-list.tsx, packages/ui/src/kanon/detail-panel.tsx | drifts | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-10.png) |
 | K-40 Fakturor | /entities/$entityId/books/$bookId/sales | apps/web/src/components/commerce/invoices.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-40.png) |
 | K-09 Byråportfölj | /firms | apps/web/src/components/firms/portfolio.tsx, apps/web/src/components/firms/index.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-09.png) |
 | K-11 Granska och godkänn | /entities/$entityId/books/$bookId/reviews/$planId/$revision | apps/web/src/components/review-owner.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-11.png) |

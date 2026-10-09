@@ -1,6 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import * as stylex from "@stylexjs/stylex";
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 
 import { StatusIcon, statusTextStyle, type Status } from "@open-erp/ui/kanon/status";
 import { CountPill } from "@open-erp/ui/kanon/work-list";
@@ -16,6 +16,7 @@ const styles = stylex.create({
     flexGrow: 1,
     height: "100%",
     minHeight: 0,
+    "@container (max-width: 60rem)": { height: "auto", minHeight: "100%" },
   },
   bar: {
     alignItems: "center",
@@ -28,7 +29,13 @@ const styles = stylex.create({
     fontFamily: kanon.fontUi,
     gap: kanon.space6,
     height: kanon.sizeBar,
+    minHeight: kanon.sizeBar,
     paddingInline: kanon.space8,
+    "@container (max-width: 60rem)": {
+      height: "auto",
+      flexWrap: "wrap",
+      paddingBlock: kanon.space2,
+    },
   },
   barTitle: {
     color: kanon.colorText,
@@ -36,8 +43,15 @@ const styles = stylex.create({
     fontWeight: kanon.weightSemibold,
     lineHeight: kanon.leadingPage,
     margin: 0,
+    ":focus-visible": { outline: "none", boxShadow: kanon.shadowFocus },
   },
-  tabs: { alignSelf: "stretch", display: "flex", gap: kanon.space5 },
+  tabs: {
+    alignSelf: "stretch",
+    display: "flex",
+    gap: kanon.space5,
+    maxWidth: "100%",
+    "@container (max-width: 60rem)": { flexWrap: "wrap" },
+  },
   tab: {
     alignItems: "center",
     backgroundColor: "transparent",
@@ -52,6 +66,7 @@ const styles = stylex.create({
     fontSize: kanon.textBody,
     gap: kanon.space2,
     lineHeight: kanon.leadingBody,
+    minHeight: kanon.sizeButton,
     paddingInline: 0,
     textDecoration: "none",
   },
@@ -81,8 +96,18 @@ const styles = stylex.create({
     fontSize: kanon.textBody,
     fontWeight: kanon.weightSemibold,
   },
-  body: { display: "flex", flexGrow: 1, minHeight: 0 },
-  scroll: { flexGrow: 1, minWidth: 0, overflowY: "auto" },
+  body: {
+    display: "flex",
+    flexGrow: 1,
+    minHeight: 0,
+    "@container (max-width: 60rem)": { flexDirection: "column" },
+  },
+  scroll: {
+    flexGrow: 1,
+    minWidth: 0,
+    overflowY: "auto",
+    "@container (max-width: 60rem)": { flexShrink: 0, overflowY: "visible" },
+  },
   focus: {
     display: "flex",
     flexDirection: "column",
@@ -154,44 +179,66 @@ const styles = stylex.create({
 });
 
 /** Top bar inside an area: title, tabs with counts, one action at the end. */
-export function AreaBar({
-  title,
-  tabs,
-  action,
-}: {
+export function AreaBar(props: {
   title: string;
   tabs?: ReactNode;
   action?: ReactNode;
+  tabsLabel?: string;
+  headingFocusKey?: string;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusedKey = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (props.headingFocusKey && focusedKey.current !== props.headingFocusKey) {
+      heading.current?.focus();
+      focusedKey.current = props.headingFocusKey;
+    }
+  }, [props.headingFocusKey]);
+
   return (
     <header {...stylex.props(styles.bar)}>
-      <h1 {...stylex.props(styles.barTitle)}>{title}</h1>
-      {tabs !== undefined && <nav {...stylex.props(styles.tabs)}>{tabs}</nav>}
-      {action !== undefined && <div {...stylex.props(styles.barEnd)}>{action}</div>}
+      <h1
+        ref={heading}
+        tabIndex={props.headingFocusKey ? -1 : undefined}
+        {...stylex.props(styles.barTitle)}
+      >
+        {props.title}
+      </h1>
+      {props.tabs !== undefined && (
+        <nav aria-label={props.tabsLabel} {...stylex.props(styles.tabs)}>
+          {props.tabs}
+        </nav>
+      )}
+      {props.action !== undefined && <div {...stylex.props(styles.barEnd)}>{props.action}</div>}
     </header>
   );
 }
 
-export function BarTab({
-  label,
-  count,
-  active,
-  render,
-}: {
+export function BarTab(props: {
   label: string;
-  count?: number;
+  count?: number | string;
   active: boolean;
-  render: Render;
+  render?: Render;
+  onClick?: () => void;
 }) {
   return (
     <ButtonPrimitive
-      render={render}
-      nativeButton={false}
-      aria-current={active ? "page" : undefined}
-      {...stylex.props(styles.tab, active && styles.tabActive)}
+      type="button"
+      render={props.render}
+      nativeButton={props.render === undefined}
+      onClick={props.onClick}
+      aria-pressed={props.render === undefined ? props.active : undefined}
+      aria-current={props.active ? "page" : undefined}
+      {...stylex.props(styles.tab, props.active && styles.tabActive)}
     >
-      {label}
-      {count !== undefined && <CountPill count={count} />}
+      {props.label}
+      {props.count !== undefined && (
+        <>
+          {" "}
+          <CountPill count={props.count} />
+        </>
+      )}
     </ButtonPrimitive>
   );
 }

@@ -15,9 +15,18 @@ const styles = stylex.create({
     flexShrink: 0,
     gap: kanon.space5,
     minHeight: 0,
+    minWidth: 0,
     overflowY: "auto",
     padding: kanon.space7,
     width: kanon.sizePanel,
+    "@container (max-width: 60rem)": {
+      width: "100%",
+      borderInlineStartWidth: 0,
+      borderBlockStartWidth: 1,
+      borderBlockStartStyle: "solid",
+      borderBlockStartColor: kanon.colorRule,
+      overflowY: "visible",
+    },
   },
   header: { display: "flex", flexDirection: "column", gap: kanon.space1 },
   kicker: {
@@ -94,11 +103,19 @@ type DetailPanelProps = {
   label: string;
 };
 
+export function DetailPanelSurface({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <aside aria-label={label} {...stylex.props(styles.panel)}>
+      {children}
+    </aside>
+  );
+}
+
 export function DetailPanel(props: DetailPanelProps) {
   const { kicker, secondary, note } = props;
 
   return (
-    <aside aria-label={props.label} {...stylex.props(styles.panel)}>
+    <DetailPanelSurface label={props.label}>
       <header {...stylex.props(styles.header)}>
         {typeof kicker === "string" ? (
           <span {...stylex.props(styles.kicker)}>{kicker}</span>
@@ -120,7 +137,7 @@ export function DetailPanel(props: DetailPanelProps) {
         {props.primary}
         {secondary !== undefined && <div {...stylex.props(styles.secondaryRow)}>{secondary}</div>}
       </div>
-    </aside>
+    </DetailPanelSurface>
   );
 }
 
