@@ -20,6 +20,7 @@ import { BookNavigation } from "@/components/book-navigation";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
 import { audiences, showsDestination, useAudience, type Audience } from "@/lib/audience";
+import { themes, useTheme } from "@/lib/theme";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
 import { portfolioReturn } from "@/components/firms/portfolio-return";
@@ -96,6 +97,28 @@ function AudienceSwitcher({
   );
 }
 
+const themeLabels = {
+  sv: { system: "Utseende: system", light: "Utseende: ljust", dark: "Utseende: mörkt" },
+  en: { system: "Appearance: system", light: "Appearance: light", dark: "Appearance: dark" },
+} satisfies Record<Locale, Record<(typeof themes)[number], string>>;
+
+function ThemeSwitcher({ locale }: { locale: Locale }) {
+  const [theme, setTheme] = useTheme();
+
+  return (
+    <SelectControl
+      aria-label={locale === "sv" ? "Utseende" : "Appearance"}
+      value={theme}
+      options={themes.map((value) => ({ value, label: themeLabels[locale][value] }))}
+      onValueChange={(value) => {
+        const selected = themes.find((item) => item === value);
+
+        if (selected) setTheme(selected);
+      }}
+    />
+  );
+}
+
 function PortfolioLink({ book, locale }: { book: typeof Accounting.Book.Type; locale: Locale }) {
   const navigate = useNavigate();
 
@@ -134,6 +157,7 @@ function AccountMenu(props: {
         <BookSwitcher book={book} books={props.books} label={copy.journal_book} />
       ) : null}
       <AudienceSwitcher audience={audience} locale={locale} onChange={props.onAudienceChange} />
+      <ThemeSwitcher locale={locale} />
       <Link href={`${base}/settings`}>{labels.settings}</Link>
       <Link href="/companies">{copy.workspace_switch}</Link>
       {showsDestination(audience, "portfolio") ? (

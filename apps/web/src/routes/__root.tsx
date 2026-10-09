@@ -1,12 +1,19 @@
 import type { ReactNode } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  ScriptOnce,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
 import * as stylex from "@stylexjs/stylex";
 import { LinkProvider } from "@open-erp/ui/components/link";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { SiteLink } from "@/components/site-link";
 import { seo } from "@/lib/seo";
+import { themeScript, useDarkTheme } from "@/lib/theme";
 import { usePageLocale } from "@/lib/use-page-locale";
 import { m } from "@/paraglide/messages";
 import { baseLocale } from "@/paraglide/runtime";
@@ -61,10 +68,13 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const locale = usePageLocale();
+  const dark = useDarkTheme();
 
   return (
-    <html lang={locale}>
+    // The pre-paint script may already have set the class the server cannot know.
+    <html lang={locale} className={dark ? "dark" : undefined} suppressHydrationWarning>
       <head>
+        <ScriptOnce>{themeScript}</ScriptOnce>
         <HeadContent />
         {import.meta.env.DEV && (
           <>
