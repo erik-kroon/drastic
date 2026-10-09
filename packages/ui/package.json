@@ -9,7 +9,8 @@
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./theme/*": "./src/theme/*.ts",
-    "./components/setup-parts": "./src/components/setup-parts.tsx"
+    "./components/setup-parts": "./src/components/setup-parts.tsx",
+    "./kanon/*": "./src/kanon/*.tsx"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

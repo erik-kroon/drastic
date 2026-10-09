@@ -3,6 +3,7 @@
 Start with [local development](local-development.md) or [self-hosting](../infra/self-host/README.md) to run the application with synthetic data.
 
 - [Architecture](architecture.md): application ownership, adapters and runtime boundaries.
+- [Design system](design-system.md): page 00 Kanon, the `kanon` parts and which to use for a screen.
 - [Accounting invariants](domain.md): amounts, approval, posting, receipts and corrections.
 - [API map](../apps/api/README.md): workflow owners and transport layout.
 - [Authentication](../apps/api/docs/AUTH.md) and [MCP](../apps/api/docs/MCP.md): browser and agent access.
