@@ -4,6 +4,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Schema from "effect/Schema";
 import * as Match from "effect/Match";
+import { Banner } from "@open-erp/ui/kanon/feedback";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Heading, Text } from "@open-erp/ui/components/typography";
@@ -48,14 +49,19 @@ export function SavedPostingOutcome({
   const copy = postingCopy(locale);
 
   return (
-    <Box role="status" display="grid" gap="sm" minWidth="zero">
-      <Text>
-        {saved.outcome === null
-          ? copy.savedUnknown
-          : saved.outcome.state === "committed"
-            ? copy.savedCommitted
-            : copy.savedRefused}
-      </Text>
+    <Box
+      role={saved.outcome === null ? undefined : "status"}
+      display="grid"
+      gap="sm"
+      minWidth="zero"
+    >
+      {saved.outcome === null ? (
+        <Banner kind="unknown" title={copy.savedUnknownTitle}>
+          {copy.savedUnknown}
+        </Banner>
+      ) : (
+        <Text>{saved.outcome.state === "committed" ? copy.savedCommitted : copy.savedRefused}</Text>
+      )}
       <Text>
         {copy.requestKey}: {saved.request.key}
       </Text>

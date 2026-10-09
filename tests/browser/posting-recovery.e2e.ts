@@ -105,12 +105,83 @@ test("saved posting survives a lost execution response and reload with one durab
   await screen.getByRole("button", "Återställ en begäran", { exact: true }).click();
   await expect(screen.getByRole("heading", "Återuppta sparat arbete")).toBeVisible();
   await expect(screen.getByRole("button", "Granska sparad begäran").first()).toBeVisible();
-  await agent.assert(
-    "The saved-work recovery section is open and offers Granska sparad begäran for a retained request. Its unknown-outcome message does not claim failure or posting. Return the configured JSON judgment.",
-  );
   await expect(screen.getByRole("heading", "Återuppta sparat arbete")).toBeVisible();
+  const selectedRequest = browser.waitForResponse(`${base}/saved-posting-requests/${prepareKey}`);
+
   await screen.getByRole("button", "Granska sparad begäran").first().click();
   await expect(screen.getByRole("heading", "Exakt sparat kommando")).toBeVisible();
+
+  const inspected = Schema.decodeUnknownSync(Recovery.SavedPostingRequest)(
+    await (await selectedRequest).json(),
+  );
+
+  expect(inspected.request.key).toBe(prepareKey);
+  expect(inspected.outcome).toBeNull();
+
+  const unknownStatus = screen.getByRole("status").filter({ hasText: "Okänt utfall" });
+
+  await expect(unknownStatus).toHaveCount(1);
+  await expect(unknownStatus).toContainText(
+    "Inget slutligt utfall har observerats. Begäran kan vara oprövad eller fortfarande på väg. Behåll dess identitet.",
+  );
+  await expect(unknownStatus).toBeVisible();
+
+  const inspectedMetadata = await browser.evaluate(() => {
+    const messages = Array.from(document.querySelectorAll("[role='status']")).filter((node) =>
+      node.textContent?.includes("Okänt utfall"),
+    );
+
+    const paragraphs = Array.from(messages[0]?.parentElement?.children ?? []).filter(
+      (node) => node.tagName === "P",
+    );
+
+    return {
+      messages: messages.length,
+      metadata: paragraphs.map((node) => node.textContent),
+      visible: paragraphs.every((node) => {
+        const bounds = node.getBoundingClientRect();
+
+        return bounds.width > 0 && bounds.height > 0;
+      }),
+    };
+  });
+
+  expect(inspectedMetadata).toEqual({
+    messages: 1,
+    metadata: [
+      `Ursprunglig idempotensnyckel: ${inspected.request.key}`,
+      `Kontrollerat: ${inspected.checkedAt}`,
+    ],
+    visible: true,
+  });
+  await agent.assert(
+    "The selected exact saved command has an Okänt utfall status. It says the request may be unattempted or still in flight, retains its original identity and offers the existing recovery controls. It does not claim failure or posting. Return the configured JSON judgment.",
+  );
+
+  const unknownConditions = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    return {
+      browser: navigator.userAgent,
+      deviceScaleFactor: window.devicePixelRatio,
+      fonts: {
+        family: getComputedStyle(document.body).fontFamily,
+        faces: Array.from(document.fonts).map((face) => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })),
+      },
+      locale: navigator.language,
+      theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      time: new Date().toISOString(),
+      clockPinned: false,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      resolvedRoute: `${window.location.pathname}${window.location.search}`,
+    };
+  });
+
+  const unknownScreenshot = await app.screenshot("posting-selected-saved-unknown-outcome");
   await expect(screen.getByRole("button", "Kör denna sparade begäran")).toBeDisabled();
   expect(Schema.decodeUnknownSync(Accounting.LedgerSnapshot)(await call("/ledger"))).toEqual(
     before,
@@ -263,7 +334,20 @@ test("saved posting survives a lost execution response and reload with one durab
   await writeFile(
     join(process.env.OPENERP_E2E_OUTPUT!, "posting-recovery-journey.json"),
     JSON.stringify(
-      { prepareKey, saved, prepared, committed, recovered, replayed, before, after },
+      {
+        prepareKey,
+        saved,
+        inspected,
+        inspectedMetadata,
+        unknownConditions,
+        unknownScreenshot,
+        prepared,
+        committed,
+        recovered,
+        replayed,
+        before,
+        after,
+      },
       null,
       2,
     ),

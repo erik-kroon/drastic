@@ -132,11 +132,14 @@
         "packages/ui/src/kanon/layouts.tsx",
         "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx",
         "apps/web/src/components/commerce/supplier-focused-review.tsx",
-        "packages/ui/src/kanon/detail-panel.tsx"
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "apps/web/src/components/posting-recovery/saved-requests.tsx",
+        "apps/web/src/components/posting-recovery/copy.ts",
+        "packages/ui/src/kanon/feedback.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
-      "status": "drifts",
+      "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -146,7 +149,7 @@
         "approving",
         "approved"
       ],
-      "evidence": "verification/paper/evidence/k11-supplier-panes/result.json",
+      "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -156,7 +159,8 @@
       "parts": [
         "layouts",
         "status",
-        "action"
+        "action",
+        "@open-erp/ui/kanon/feedback"
       ],
       "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "comparison": {
@@ -165,7 +169,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Actual canonical ReviewFrame/DetailBar/queue plus shared ReviewPanes/OriginalViewerSurface/section DetailPanelSurface. Matched saved supplier views use one pair; pending/refusal and standalone owners retain ReviewContent. Exact digest/review/frozen SHA, existing heading/lines/expiry/commands preserved. Native375px pane keyboard/mounted counts/acknowledgement retention, mounted expiry/renewal/refusal/one receipt, uploaded frozen source and superseded review exclusion, standalone interrupted recovery pass. Full-frame drift33.6807% exceeds2%; fixture differs from board and clock unpinned. Full header/card/action migration, dark/native200% and complete-state comparison remain open; no production qualification."
+      "notes": "Actual canonical ReviewFrame/DetailBar/queue plus shared ReviewPanes/OriginalViewerSurface/section DetailPanelSurface. Matched saved supplier views use one pair; pending/refusal and standalone owners retain ReviewContent. Exact digest/review/frozen SHA, existing heading/lines/expiry/commands preserved. Native375px pane keyboard/mounted counts/acknowledgement retention, mounted expiry/renewal/refusal/one receipt, uploaded frozen source and superseded review exclusion, standalone interrupted recovery pass. Full-frame drift33.6807% exceeds2%; fixture differs from board and clock unpinned. Full header/card/action migration, dark/native200% and complete-state comparison remain open; no production qualification. Shared SavedPostingOutcome maps only a decoded stored null outcome to canonical unknown Banner; exact request identity/time siblings, terminal diagnosis/details and recovery controls stay owned. Real consumers selected saved requests on Work and standalone review CommandOutcome; Books draft/Tools receive the shared passive presentation without whole-screen adoption. Supplier CommandForm is separate. New route proof required. Native posting-recovery journey qualifies the shared standalone consumer workflow with one receipt; previous supplier drift proof is retained separately. New shared source ownership keeps visual status unverified until a fresh corresponding K11 capture."
     },
     {
       "id": "K-70",
@@ -516,11 +520,14 @@
       "baselineSha256": "74b29783065706e20e9f2b4a4fc901f5beae32671ef181f3e40220e158322eec",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-15.jsx.json",
       "files": [
-        "apps/web/src/components/posting-recovery/work-recovery.tsx"
+        "apps/web/src/components/posting-recovery/work-recovery.tsx",
+        "apps/web/src/components/posting-recovery/saved-requests.tsx",
+        "apps/web/src/components/posting-recovery/copy.ts",
+        "packages/ui/src/kanon/feedback.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/work",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -528,21 +535,24 @@
         "resolved as posted",
         "resolved as not posted"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k15-saved-unknown-banner/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
       "jsxSha256": "d562947bedfdd22acf72107066d8727f32d480dc9ca25d218e236e8049052d2f",
-      "parts": [],
+      "parts": [
+        "@open-erp/ui/kanon/feedback"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Shared SavedPostingOutcome uses canonical unknown Banner only for an actual decoded null terminal outcome. Existing unattempted/in-flight wording, exact key/time siblings, terminal diagnosis/native details and all recovery controls remain. Real selected Work saved request proof validates exact native metadata, no inspection writes, disabled-until-reviewed replay, lost response/reload and one receipt. Stable source and runtime cleanup retained. Full-frame drift15.5944% exceeds2%; board content differs, clock unpinned and full Work composition remains legacy. English/refused/long-key/dark/native200% and complete-state parity unverified; no production qualification."
     },
     {
       "id": "K-16",
