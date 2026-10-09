@@ -28,6 +28,7 @@ import {
   failure,
   type BookFixture,
 } from "./support/fixtures";
+import { syntheticQualification } from "./support/rule-qualification";
 
 async function credit(
   context: Awaited<ReturnType<typeof legalFixture>>,
@@ -459,6 +460,7 @@ async function vatConfiguration(
           sourceManifest: "Synthetic fixture configuration only",
           qualificationStatus: "reviewed",
           recordClasses: ["actual_company"],
+          qualification: syntheticQualification(checksum, "2026-01-01", "2026-12-31"),
           vat: filing,
         },
       ],

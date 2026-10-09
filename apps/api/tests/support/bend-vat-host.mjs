@@ -170,6 +170,39 @@ try {
     sourceManifest: "Synthetic qualification",
     qualificationStatus: "reviewed",
     recordClasses: ["actual_company"],
+    qualification: {
+      releaseChecksum: "sha256:" + "1".repeat(64),
+      primarySources: [
+        {
+          publisherUrl: "https://example.invalid/synthetic-rule-release",
+          version: "synthetic-v1",
+          sha256: "sha256:" + "2".repeat(64),
+          retrievedAt: "2026-01-01T00:00:00.000Z",
+          effectiveFrom: "2026-01-01",
+          effectiveTo: "2026-12-31",
+        },
+      ],
+      reviewer: "Synthetic independent rule reviewer",
+      reviewedAt: "2026-01-01T00:00:00.000Z",
+      reviewArtifact: {
+        artifactId: "artifact_synthetic_review",
+        sha256: "sha256:" + "3".repeat(64),
+      },
+      examples: [
+        {
+          artifactId: "artifact_synthetic_example",
+          sha256: "sha256:" + "4".repeat(64),
+          releaseChecksum: "sha256:" + "1".repeat(64),
+        },
+      ],
+      counterexamples: [
+        {
+          artifactId: "artifact_synthetic_counterexample",
+          sha256: "sha256:" + "5".repeat(64),
+          releaseChecksum: "sha256:" + "1".repeat(64),
+        },
+      ],
+    },
     vat: filing,
   };
 

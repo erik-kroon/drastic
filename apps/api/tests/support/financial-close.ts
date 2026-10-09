@@ -7,6 +7,7 @@ import * as Statements from "@open-erp/contracts/report-statements";
 import * as Tax from "@open-erp/contracts/corporate-tax";
 import * as Schema from "effect/Schema";
 import { database, evidence, execute, fixture, journal, post, type BookFixture } from "./fixtures";
+import { syntheticQualification } from "./rule-qualification";
 
 export const closePath = "/closing/financial-years";
 
@@ -213,6 +214,7 @@ async function installTaxRelease() {
     sourceManifest: "Synthetic 1/5 vector; no statutory claim",
     qualificationStatus: "reviewed",
     recordClasses: ["actual_company", "synthetic"],
+    qualification: syntheticQualification(`sha256:${"1".repeat(64)}`, "2026-01-01", "2027-12-31"),
     corporateTax: {
       calculatorVersion: Tax.SupportedCalculatorVersion,
       bridge: {

@@ -32,6 +32,7 @@ import {
   environment,
   persisted,
 } from "./support/fixtures";
+import { syntheticQualification } from "./support/rule-qualification";
 
 // NEXT-37 focused journey: a sealed actual return with a rounding residual
 // drives a precision bridge that posts its exact delta, and an authority
@@ -137,6 +138,7 @@ export async function vatConfiguration(
           sourceManifest: "Synthetic fixture configuration only",
           qualificationStatus: "reviewed",
           recordClasses: ["actual_company"],
+          qualification: syntheticQualification(checksum, "2026-01-01", "2026-12-31"),
           vat: filing,
         },
         jurisdiction,

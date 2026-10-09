@@ -169,7 +169,9 @@ test("generic execution and stale payroll revisions refuse without owned effects
       description: "Synthetic attempted payroll event bypass",
       rationale: "Exercise alternate plan ownership admission",
       taxAssessment: "not_applicable",
-      lines: run.postingPlan.groups[0]?.actions[0]?.lines,
+      lines: run.postingPlan.groups[0]?.actions[0]?.lines.map(
+        ({ lineId: _lineId, ...line }) => line,
+      ),
     },
     Accounting.ChangeSet,
   );
