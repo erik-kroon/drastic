@@ -4,6 +4,7 @@ import { noChainedTypeAssertionsRule } from "./rules/no-chained-type-assertions.
 import { noConditionalEmptyObjectSpreadRule } from "./rules/no-conditional-empty-object-spread.ts";
 import { noDeprecatedZodApiRule } from "./rules/no-deprecated-zod-api.ts";
 import { noDuplicateCalendarDateRule } from "./rules/no-duplicate-calendar-date.ts";
+import { noNewLegacyUiImportsRule } from "./rules/no-new-legacy-ui-imports.ts";
 import { noDesignSystemEscapeHatchesRule } from "./rules/no-design-system-escape-hatches.ts";
 import { noHardcodedDesignValuesRule } from "./rules/no-hardcoded-design-values.ts";
 import { noFeatureReactHooksRule } from "./rules/no-feature-react-hooks.ts";
@@ -36,6 +37,7 @@ const antiSlopPlugin = eslintCompatPlugin({
     "no-deprecated-zod-api": noDeprecatedZodApiRule,
     "no-duplicate-calendar-date": noDuplicateCalendarDateRule,
     "no-design-system-escape-hatches": noDesignSystemEscapeHatchesRule,
+    "no-new-legacy-ui-imports": noNewLegacyUiImportsRule,
     "no-hardcoded-design-values": noHardcodedDesignValuesRule,
     "no-feature-react-hooks": noFeatureReactHooksRule,
     "no-known-value-widening": noKnownValueWideningRule,

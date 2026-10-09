@@ -21,3 +21,15 @@ Read `docs/README.md`, `docs/domain.md` and `apps/api/README.md` before changing
 - MCP catalog, schema, transport and tool-description changes require `bun run test:mcp` and `bun run test:mcp:eval`. Follow `verification/mcpjam/README.md`; local model evals use the pinned Codex proxy. The OpenAI CI eval step stays disabled until its key and enable variable are configured.
 
 The public repository does not require access to the private planning tracker or design workspace. Retained historical references are context; executable contracts and current application owners define the code boundary. Distinguish implementation, check results and production qualification in every handoff.
+
+## UI delivery
+
+Follow [the page 00 delivery contract](docs/design/parity.md) and
+[issue template](docs/design/ui-issue-template.md). Before UI implementation,
+name the screen, audience, adopted board/state, behavior source and missing decisions.
+Reconcile deleted Paper references; historical screenshots do not adopt product policy.
+Update verification/paper/kanon-manifest.json in the same change as the UI.
+Run bun run check:design against the PR base. Keep legacy import exceptions shrinking.
+Retain real-route browser behavior and visual baseline/actual/diff evidence separately.
+Unverified or design-pending is not parity completion. Baseline changes require
+explicit design adoption; never regenerate from candidate code to pass.

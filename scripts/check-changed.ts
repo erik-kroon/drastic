@@ -12,6 +12,14 @@ const lintOnly = args.includes("--lint-only");
 
 const baseRef = args.find((arg) => arg !== "--type-aware" && arg !== "--lint-only") ?? "HEAD";
 
+const designCheck = Bun.spawnSync(["node", "verification/paper/check.mjs", baseRef], {
+  cwd: repoRoot,
+  stdout: "inherit",
+  stderr: "inherit",
+});
+
+if (designCheck.exitCode !== 0) process.exit(designCheck.exitCode);
+
 const binDirectory = path.join(repoRoot, "node_modules", ".bin");
 
 const invocationId = randomUUID();

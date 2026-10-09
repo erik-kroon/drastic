@@ -1,0 +1,285 @@
+{
+  "boards": [
+    {
+      "id": "38MX-0",
+      "name": "K-10 Att göra, kö",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 0,
+      "worldY": 4400
+    },
+    {
+      "id": "3AEO-0",
+      "name": "K-40 Fakturor",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 3040,
+      "worldY": 5500
+    },
+    {
+      "id": "3CFR-0",
+      "name": "K-09 Byråportfölj",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 1520,
+      "worldY": 7700
+    },
+    {
+      "id": "386B-0",
+      "name": "K-11 Granska och godkänn",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 1520,
+      "worldY": 4400
+    },
+    {
+      "id": "3B8L-0",
+      "name": "K-70 Verifikationer",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 3040,
+      "worldY": 6600
+    },
+    {
+      "id": "3BDY-0",
+      "name": "K-80 Moms",
+      "childCount": 4,
+      "width": 1440,
+      "height": 900,
+      "worldX": 4560,
+      "worldY": 6600
+    },
+    {
+      "id": "3BKL-0",
+      "name": "K-99 Logga in",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 4560,
+      "worldY": 7700
+    },
+    {
+      "id": "3AV1-0",
+      "name": "K-41 Fakturautkast",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 4560,
+      "worldY": 5500
+    },
+    {
+      "id": "3B48-0",
+      "name": "K-60 Uppladdning",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 1520,
+      "worldY": 6600
+    },
+    {
+      "id": "3ANP-0",
+      "name": "K-08 Översikt",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 0,
+      "worldY": 7700
+    },
+    {
+      "id": "3AZV-0",
+      "name": "K-50 Betalfil",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 0,
+      "worldY": 6600
+    },
+    {
+      "id": "3BH2-0",
+      "name": "K-90 Bokslut",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 6080,
+      "worldY": 6600
+    },
+    {
+      "id": "3BL8-0",
+      "name": "K-95 Assistentpolicy",
+      "childCount": 4,
+      "width": 1440,
+      "height": 900,
+      "worldX": 3040,
+      "worldY": 7700
+    },
+    {
+      "id": "38T6-0",
+      "name": "K-12 Fråga klienten",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 3040,
+      "worldY": 4400
+    },
+    {
+      "id": "38XH-0",
+      "name": "K-13 Klienten svarar",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 4560,
+      "worldY": 4400
+    },
+    {
+      "id": "3917-0",
+      "name": "K-14 Svar hos bokföraren",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 6080,
+      "worldY": 4400
+    },
+    {
+      "id": "382P-0",
+      "name": "K-15 Okänt utfall",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 7600,
+      "worldY": 4400
+    },
+    {
+      "id": "395C-0",
+      "name": "K-16 Bokförd",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 9120,
+      "worldY": 4400
+    },
+    {
+      "id": "38CJ-0",
+      "name": "K-20 Bank, händelser",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 0,
+      "worldY": 5500
+    },
+    {
+      "id": "39FH-0",
+      "name": "K-21 Bankmatchning",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 1520,
+      "worldY": 5500
+    },
+    {
+      "id": "37KP-0",
+      "name": "K-30 Påminnelse, godkänn exakt innehåll",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 6080,
+      "worldY": 5500
+    },
+    {
+      "id": "37SY-0",
+      "name": "K-31 Påminnelse, beloppet ändrades",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 7600,
+      "worldY": 5500
+    },
+    {
+      "id": "37PT-0",
+      "name": "K-32 Påminnelse, okänt utfall",
+      "childCount": 2,
+      "width": 1440,
+      "height": 900,
+      "worldX": 9120,
+      "worldY": 5500
+    },
+    {
+      "id": "39P3-0",
+      "name": "K-00 Så bygger du en skärm",
+      "childCount": 3,
+      "width": 1440,
+      "height": null,
+      "worldX": 0,
+      "worldY": 0
+    },
+    {
+      "id": "39RU-0",
+      "name": "K-01 Tokens",
+      "childCount": 5,
+      "width": 1440,
+      "height": null,
+      "worldX": 1520,
+      "worldY": 0
+    },
+    {
+      "id": "39VI-0",
+      "name": "K-02 Knappar och fält",
+      "childCount": 4,
+      "width": 1440,
+      "height": null,
+      "worldX": 3040,
+      "worldY": 0
+    },
+    {
+      "id": "39YU-0",
+      "name": "K-03 Listor och tabeller",
+      "childCount": 4,
+      "width": 1440,
+      "height": null,
+      "worldX": 4560,
+      "worldY": 0
+    },
+    {
+      "id": "3A2L-0",
+      "name": "K-04 Status och återkoppling",
+      "childCount": 4,
+      "width": 1440,
+      "height": null,
+      "worldX": 6080,
+      "worldY": 0
+    },
+    {
+      "id": "3A69-0",
+      "name": "K-05 Dialoger och överlägg",
+      "childCount": 4,
+      "width": 1440,
+      "height": null,
+      "worldX": 7600,
+      "worldY": 0
+    },
+    {
+      "id": "3A8M-0",
+      "name": "K-06 Skal och detaljpanel",
+      "childCount": 3,
+      "width": 1440,
+      "height": null,
+      "worldX": 9120,
+      "worldY": 0
+    },
+    {
+      "id": "3W7W-0",
+      "name": "K-07 Diagram",
+      "childCount": 2,
+      "width": 1440,
+      "height": null,
+      "worldX": 10640,
+      "worldY": 0
+    }
+  ],
+  "fileId": "01M3M9A2DA2G08DSJA5K8ZE68S",
+  "pageId": "p-19-0"
+}

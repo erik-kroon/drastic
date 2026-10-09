@@ -1,0 +1,118 @@
+{
+  "scope": "Real repository design-contract and Oxlint integration; no browser or visual parity claim.",
+  "repeat": "python3 verification/paper/verify-guard.py",
+  "sources": {
+    "verification/paper/check.mjs": "c3dc65e89ae331c3207a21b43f5a70e39f8f1938fc296ca8c0783c8e914ff7e4",
+    "config/oxlint/anti-slop/rules/no-new-legacy-ui-imports.ts": "315d49c07e6b57722555f3cb24f73c0f8a8841e4afc85ad45d6b19f81277b4e0"
+  },
+  "results": [
+    {
+      "case": "baseline succeeds",
+      "passed": true,
+      "exitCode": 0,
+      "output": "Design contract passed; 0 measured matching screens. This is not a visual comparison.\n"
+    },
+    {
+      "case": "import fails Oxlint",
+      "passed": true,
+      "exitCode": 1,
+      "output": "apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:10: error eslint(no-unused-vars): Identifier 'Button' is imported but never used. help: Consider removing this import.\napps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:24: error anti-slop(no-new-legacy-ui-imports): Use kanon parts. This file/module pair is not in the shrinking legacy inventory.\n"
+    },
+    {
+      "case": "re-export fails Oxlint",
+      "passed": true,
+      "exitCode": 1,
+      "output": "apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:24: error anti-slop(no-new-legacy-ui-imports): Use kanon parts. This file/module pair is not in the shrinking legacy inventory.\n"
+    },
+    {
+      "case": "dynamic import fails Oxlint",
+      "passed": true,
+      "exitCode": 1,
+      "output": "apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:34: error anti-slop(no-new-legacy-ui-imports): Use kanon parts. This file/module pair is not in the shrinking legacy inventory.\n"
+    },
+    {
+      "case": "template import fails Oxlint",
+      "passed": true,
+      "exitCode": 1,
+      "output": "apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:34: error anti-slop(no-new-legacy-ui-imports): Use kanon parts. This file/module pair is not in the shrinking legacy inventory.\n"
+    },
+    {
+      "case": "require fails Oxlint",
+      "passed": true,
+      "exitCode": 1,
+      "output": "apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx:1:35: error anti-slop(no-new-legacy-ui-imports): Use kanon parts. This file/module pair is not in the shrinking legacy inventory.\n"
+    },
+    {
+      "case": "unmapped UI refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Changed UI file needs screen contract: apps/web/src/design-guard-b08d34d2d5d041f5badd847abdb11155.tsx\n"
+    },
+    {
+      "case": "changed reference refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Changed baseline: K-10\n"
+    },
+    {
+      "case": "duplicate screen refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Regenerate the human ledger with bun run check:design --write-ledger\nDuplicate screen ID: K-10\n"
+    },
+    {
+      "case": "unproved parity refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Regenerate the human ledger with bun run check:design --write-ledger\nMeasured status needs route and tracked evidence: K-10\n"
+    },
+    {
+      "case": "inventory growth refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Remove unused legacy exception: apps/web/src/fake.tsx:@open-erp/ui/components/button\nInitial legacy inventory changed without a committed ratchet baseline.\n"
+    },
+    {
+      "case": "removed board refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "Regenerate the human ledger with bun run check:design --write-ledger\nMissing retained board: K-07 Diagram\n"
+    },
+    {
+      "case": "unadopted comparison refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "file:///Users/admin/drastic/verification/paper/compare.mjs:21\n  throw new Error(\"Adopt the exact state and comparison policy before measuring parity\");\n        ^\n\nError: Adopt the exact state and comparison policy before measuring parity\n    at file:///Users/admin/drastic/verification/paper/compare.mjs:21:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.4.0\n"
+    },
+    {
+      "case": "identical image control passes comparator",
+      "passed": true,
+      "exitCode": 0,
+      "output": "{\"scope\":\"K-10\",\"sourceRevision\":\"35dea860f702f702f4179f136015ad3dd5f78d32\",\"comparatorRevision\":\"35dea860f702f702f4179f136015ad3dd5f78d32\",\"referenceSha256\":\"7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766\",\"actualSha256\":\"7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766\",\"diffSha256\":\"ff4eeb352cecf3c900bf02e9f5d5cd6295d0e35269b081bd2b92a2e7bf6705d2\",\"sourceHashes\":{\"apps/web/src/components/company-work-sections.tsx\":\"b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3\"},\"command\":\"synthetic comparator protocol verification\",\"comparisonCommand\":\"/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic/verification/paper/compare.mjs K-10 test-results/design-guard/comparator/capture.json test-results/design-guard/comparator/output\",\"conditions\":{\"browser\":\"synthetic control, not a browser capture\",\"deviceScaleFactor\":1,\"fonts\":\"Paper reference control\",\"locale\":\"sv-SE\",\"theme\":\"light\",\"time\":\"fixed synthetic control\",\"fixture\":\"comparator protocol only\",\"viewport\":{\"width\":1440,\"height\":900},\"route\":\"/synthetic-control\"},\"reviewer\":\"protocol verification; no UI approval\",\"difference\":0,\"tolerance\":0,\"channelTolerance\":0,\"adoptedBy\":\"synthetic protocol verification only\",\"actual\":\"test-results/design-guard/comparator/output/actual.png\",\"diff\":\"test-results/design-guard/comparator/output/diff.png\",\"passed\":true}\n"
+    },
+    {
+      "case": "controlled visual mismatch fails comparator",
+      "passed": true,
+      "exitCode": 1,
+      "output": "{\"scope\":\"K-10\",\"sourceRevision\":\"35dea860f702f702f4179f136015ad3dd5f78d32\",\"comparatorRevision\":\"35dea860f702f702f4179f136015ad3dd5f78d32\",\"referenceSha256\":\"7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766\",\"actualSha256\":\"3ee4518bbd2b5ef16783f915333858db5d10d68e15e081a11b3450e9c31143d6\",\"diffSha256\":\"26e0badb669c6e91819e5996cdb0870c0498ec578341d126915a96a36e31ced1\",\"sourceHashes\":{\"apps/web/src/components/company-work-sections.tsx\":\"b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3\"},\"command\":\"synthetic comparator protocol verification\",\"comparisonCommand\":\"/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic/verification/paper/compare.mjs K-10 test-results/design-guard/comparator/capture.json test-results/design-guard/comparator/output\",\"conditions\":{\"browser\":\"synthetic control, not a browser capture\",\"deviceScaleFactor\":1,\"fonts\":\"Paper reference control\",\"locale\":\"sv-SE\",\"theme\":\"light\",\"time\":\"fixed synthetic control\",\"fixture\":\"comparator protocol only\",\"viewport\":{\"width\":1440,\"height\":900},\"route\":\"/synthetic-control\"},\"reviewer\":\"protocol verification; no UI approval\",\"difference\":0.23071913580246914,\"tolerance\":0,\"channelTolerance\":0,\"adoptedBy\":\"synthetic protocol verification only\",\"actual\":\"test-results/design-guard/comparator/output/actual.png\",\"diff\":\"test-results/design-guard/comparator/output/diff.png\",\"passed\":false}\n"
+    },
+    {
+      "case": "wrong dimensions refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "file:///Users/admin/drastic/verification/paper/compare.mjs:86\n  throw new Error(\"Image dimensions differ; scaling/cropping is forbidden\");\n        ^\n\nError: Image dimensions differ; scaling/cropping is forbidden\n    at file:///Users/admin/drastic/verification/paper/compare.mjs:86:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.4.0\n"
+    },
+    {
+      "case": "changed source after capture refused",
+      "passed": true,
+      "exitCode": 1,
+      "output": "file:///Users/admin/drastic/verification/paper/compare.mjs:72\n    throw new Error(`Implementation changed after capture: ${file}`);\n          ^\n\nError: Implementation changed after capture: apps/web/src/components/company-work-sections.tsx\n    at file:///Users/admin/drastic/verification/paper/compare.mjs:72:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:447:25)\n    at async node:internal/modules/esm/loader:646:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.4.0\n"
+    },
+    {
+      "case": "restored baseline succeeds",
+      "passed": true,
+      "exitCode": 0,
+      "output": "Design contract passed; 0 measured matching screens. This is not a visual comparison.\n"
+    }
+  ]
+}

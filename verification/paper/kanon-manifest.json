@@ -1,0 +1,853 @@
+{
+  "version": 1,
+  "referenceRevision": "kanon-2026-10-09",
+  "entries": [
+    {
+      "id": "K-10",
+      "name": "K-10 Att göra, kö",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=38MX-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-10.png",
+      "baselineSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-10.jsx.json",
+      "files": [
+        "apps/web/src/components/company-work-sections.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "5b4f3b8588d1fb6945198e89dd1a886529c2d3213085fa75f983b1b4171af329",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/work",
+      "comparison": null
+    },
+    {
+      "id": "K-40",
+      "name": "K-40 Fakturor",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3AEO-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-40.png",
+      "baselineSha256": "0eec2bc36ffbfbc81682d2ad3aeea45c587aae7cf4f8d6bcb2c76d512864eed0",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-40.jsx.json",
+      "files": [
+        "apps/web/src/components/commerce/invoices.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "52350c47f0718e5752508d15a55c19fb31b8b08a05b445b7dbf3e43633c28d39",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales",
+      "comparison": null
+    },
+    {
+      "id": "K-09",
+      "name": "K-09 Byråportfölj",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3CFR-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-09.png",
+      "baselineSha256": "06b020d166c45f59b0f39ba49f14dad2ee8adff07a232a805bb595dd345cab78",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-09.jsx.json",
+      "files": [
+        "apps/web/src/components/firms/portfolio.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "12c0e0394197328a9139277879bf870ea18e3c49fec8292e8c524e79f5bb7fb6",
+      "parts": [],
+      "candidateRoute": "/firms",
+      "comparison": null
+    },
+    {
+      "id": "K-11",
+      "name": "K-11 Granska och godkänn",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=386B-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-11.png",
+      "baselineSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-11.jsx.json",
+      "files": [
+        "apps/web/src/components/review-owner.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "31b432022b3bd367b14cb7ed6fa886f39e6f2769cc67ce05d12360a585b53a04",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+      "comparison": null
+    },
+    {
+      "id": "K-70",
+      "name": "K-70 Verifikationer",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3B8L-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-70.png",
+      "baselineSha256": "c49e8b43dd1cacf0eb1f9b7bca542d654da7d58b1716ff98465fc376aed4f2e7",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-70.jsx.json",
+      "files": [
+        "apps/web/src/components/voucher-workspace.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "51a01065b846b0426ffafbc1e133b290b991e35c4bd45c0162f8e8ece52d986a",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/books",
+      "comparison": null
+    },
+    {
+      "id": "K-80",
+      "name": "K-80 Moms",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3BDY-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-80.png",
+      "baselineSha256": "214ee83fbd86d721a35e3013bcde78e8896cd6112055a49103947259e3a0495b",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-80.jsx.json",
+      "files": [
+        "apps/web/src/components/vat-returns/panel.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "12d599d3ef256d41bf7a64293f32e9c2d461914d91732d85832b955b0af66f38",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/tax",
+      "comparison": null
+    },
+    {
+      "id": "K-99",
+      "name": "K-99 Logga in",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3BKL-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-99.png",
+      "baselineSha256": "2ae67725ed5a2fc4448e3f393df46c9ca2cd16181a2cba614d5993680c9fb54c",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-99.jsx.json",
+      "files": [],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "7b7386525b0d9f5d9318ca01f82df31d0e17921726509b0f09c2bd792167dfd2",
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-41",
+      "name": "K-41 Fakturautkast",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3AV1-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-41.png",
+      "baselineSha256": "aa1286a8fed80c319317dbe2c31681c08c23b82478fad327a319ab6a96a30017",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-41.jsx.json",
+      "files": [
+        "apps/web/src/components/commerce/invoice-drafts.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "1bd08902ae61d3df3f9503650390cd0165fbff23ab461260ab4c9bf9843804fd",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales",
+      "comparison": null
+    },
+    {
+      "id": "K-60",
+      "name": "K-60 Uppladdning",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3B48-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-60.png",
+      "baselineSha256": "12e9778800d0539ded915697f23fd4f8680dd5773aae4e69782a315efdbcfeb6",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-60.jsx.json",
+      "files": [
+        "apps/web/src/components/source-intake/workspace.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "a2ea4532772bbd8bbc524ce8606f8e6607d0a7d459fb36947facffafa0f0b12e",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/purchases",
+      "comparison": null
+    },
+    {
+      "id": "K-08",
+      "name": "K-08 Översikt",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3ANP-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-08.png",
+      "baselineSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-08.jsx.json",
+      "files": [],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "090b72d312f7f48a1ebe87afdd6a5fa9dbfc5c72f3ebe16a5b15d2b874e2b6de",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/overview",
+      "comparison": null
+    },
+    {
+      "id": "K-50",
+      "name": "K-50 Betalfil",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3AZV-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-50.png",
+      "baselineSha256": "889e755cbf4e3b113310c6b61d4defca8b5e54a6ff7b88819adf917629f1d65b",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-50.jsx.json",
+      "files": [
+        "apps/web/src/components/settlements/review.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "3f42027a02a6779e579f6c38d35c4184dc055dd46079a2b35561e4a84f835250",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/purchases",
+      "comparison": null
+    },
+    {
+      "id": "K-90",
+      "name": "K-90 Bokslut",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3BH2-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-90.png",
+      "baselineSha256": "f772c8d3e8db9120c260d7977898fffe0048acd4d92b121f84ed623690ffa5cf",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-90.jsx.json",
+      "files": [],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "7aae291deb7191a6f1b378bfbeee866f98edd229f1f22b5798034377a42955fc",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/closing",
+      "comparison": null
+    },
+    {
+      "id": "K-95",
+      "name": "K-95 Assistentpolicy",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3BL8-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-95.png",
+      "baselineSha256": "ad7c444d859293045f083c8d5ae06a063434afff4335540d791c0300340d97d8",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-95.jsx.json",
+      "files": [],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "78b5d7e7ba068438a9331ce6bbdc91a018a835f3159f9604233dd56e5ba019ce",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/settings",
+      "comparison": null
+    },
+    {
+      "id": "K-12",
+      "name": "K-12 Fråga klienten",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=38T6-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-12.png",
+      "baselineSha256": "f5c5604b6a2cb3882f7e77dc3412cc4648da63dd93703f40b35403ebb5b06ce5",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-12.jsx.json",
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "3e741b80242a3df452d93c886c6f79fcce2fdadaa644650e20ccabb2be8321f2",
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-13",
+      "name": "K-13 Klienten svarar",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=38XH-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-13.png",
+      "baselineSha256": "b47f35bc2c0f6516248525bbba07461f4520541a0254a5794532f7149039d191",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-13.jsx.json",
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "8382cde5861e060a701cfa3a910ecc3c3e5d68f9ec8f87fa4657445f0a37800c",
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-14",
+      "name": "K-14 Svar hos bokföraren",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3917-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-14.png",
+      "baselineSha256": "7078a0e6660119817c34ae1c62c65a652f1a94689efb0494f5cf62882f0ced27",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-14.jsx.json",
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "d7445aff6a4649795535d93a250ece3f146d2a91de9b32b9ab1d63b99cdf7d8b",
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-15",
+      "name": "K-15 Okänt utfall",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=382P-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-15.png",
+      "baselineSha256": "74b29783065706e20e9f2b4a4fc901f5beae32671ef181f3e40220e158322eec",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-15.jsx.json",
+      "files": [
+        "apps/web/src/components/posting-recovery/work-recovery.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "d562947bedfdd22acf72107066d8727f32d480dc9ca25d218e236e8049052d2f",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/work",
+      "comparison": null
+    },
+    {
+      "id": "K-16",
+      "name": "K-16 Bokförd",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=395C-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-16.png",
+      "baselineSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-16.jsx.json",
+      "files": [
+        "apps/web/src/components/voucher-workspace.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "57646e701fb281f86e27cd766fedb0ccd0aa8847a9617c1f34f7f487c41874b1",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/books",
+      "comparison": null
+    },
+    {
+      "id": "K-20",
+      "name": "K-20 Bank, händelser",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=38CJ-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-20.png",
+      "baselineSha256": "4cd9998fc74bdb25a7d96441b347eb97f28725ee7275d1970b30ba1488314ed3",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-20.jsx.json",
+      "files": [
+        "apps/web/src/components/banking-workspace.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "ec41d00789117de99d7657f9b09ba1e82bf9b2950beb17f7047db02a7a30b4e9",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/accounts",
+      "comparison": null
+    },
+    {
+      "id": "K-21",
+      "name": "K-21 Bankmatchning",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=39FH-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-21.png",
+      "baselineSha256": "8b42550a3e81b89dec5059736c77314927876f74b32b5d98e914b0760d2c77d8",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-21.jsx.json",
+      "files": [
+        "apps/web/src/components/bank-transaction-match.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "be7d35df35cea6ec6d937ec1f82b60ab312ca253615ffbaa8b774c1971b42279",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/accounts",
+      "comparison": null
+    },
+    {
+      "id": "K-30",
+      "name": "K-30 Påminnelse, godkänn exakt innehåll",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=37KP-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-30.png",
+      "baselineSha256": "f808c7c2a7a22c12d3402011631e56808bb3ee45f10d2f916dc3f172d6210ff6",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-30.jsx.json",
+      "files": [
+        "apps/web/src/components/commerce/reminder-review.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "4730e3a097fb9aa5558686f60c402ee7a1f1d8394b6230a683a18fd15669dc10",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales",
+      "comparison": null
+    },
+    {
+      "id": "K-31",
+      "name": "K-31 Påminnelse, beloppet ändrades",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=37SY-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-31.png",
+      "baselineSha256": "7693521640041482188cbcd9c95ec2e245d74e665071a8bd78d5f80249982205",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-31.jsx.json",
+      "files": [
+        "apps/web/src/components/commerce/reminder-retained-review.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "377cf8287d4565725bd30add385490cdfa49c9bc6da12090ae14ae2ac49d84d4",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales",
+      "comparison": null
+    },
+    {
+      "id": "K-32",
+      "name": "K-32 Påminnelse, okänt utfall",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=37PT-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-32.png",
+      "baselineSha256": "1aa91cb3ba3051148e9f9f567aaf0ae182ce8614d19b2344749f53a4c5e48c8c",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-32.jsx.json",
+      "files": [
+        "apps/web/src/components/commerce/reminder-message-workspace.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "jsxSha256": "f9e68e50f3e7921ad96cd82fb054b09983a0a9ca791562182b28216f986afff4",
+      "parts": [],
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales",
+      "comparison": null
+    },
+    {
+      "id": "K-00",
+      "name": "K-00 Så bygger du en skärm",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=39P3-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-00.png",
+      "baselineSha256": "199eaca9e15bb514874324a91f8a07d242893f0546fb733418b67182f02672b9",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-00.jsx.json",
+      "files": [
+        "docs/design-system.md"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1089
+      },
+      "jsxSha256": "8e9a262e2b7dae9568d72d5f5e48f2abbdb52f76ef93518a27ca86ccc224536a",
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-01",
+      "name": "K-01 Tokens",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=39RU-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-01.png",
+      "baselineSha256": "b7a30521ca6f77bb956bcd8e3808ecbd3a31819cbcf2c3e4d059ed4dfbcb84b0",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-01.jsx.json",
+      "files": [
+        "packages/ui/src/theme/kanon.stylex.ts"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1708
+      },
+      "jsxSha256": "5490062e76f16d304b8677f3e9a658cad9ace4d1cc022c47e4e1e7da35daa641",
+      "parts": [
+        "kanon.stylex"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-02",
+      "name": "K-02 Knappar och fält",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=39VI-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-02.png",
+      "baselineSha256": "f285c4fb3514120103125b26a6e45df62bed6e06d02e0b5fc58dc8bab2f4dc09",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-02.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/action.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1117
+      },
+      "jsxSha256": "20839b166f9b690350b8a0bdd681ac8b4d76246b7e8923f65a90d62920d8e8d9",
+      "parts": [
+        "action"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-03",
+      "name": "K-03 Listor och tabeller",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=39YU-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-03.png",
+      "baselineSha256": "538c6cd79ad61e7b1ba2097131e2b13a942a1573802c07bc6f8a7f54a51c8bf4",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-03.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/work-list.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1222
+      },
+      "jsxSha256": "f685bd2612e38aff946b9eba87f8197c0bc83481ee29e2af8e0db21544c9aa0f",
+      "parts": [
+        "work-list"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-04",
+      "name": "K-04 Status och återkoppling",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3A2L-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-04.png",
+      "baselineSha256": "6d54942871f55a826a0311e1e84cf63e1ee230ea80765293701aec68b5333721",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-04.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/status.tsx",
+        "packages/ui/src/kanon/feedback.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 976
+      },
+      "jsxSha256": "09d24aafa378020a554b95c9b05e7f7d720d44c7c4a0334aa2e3e6ea209e5ca4",
+      "parts": [
+        "status",
+        "feedback"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-05",
+      "name": "K-05 Dialoger och överlägg",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3A69-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-05.png",
+      "baselineSha256": "d836d2eadab568719385ef24d502251d0c3d2dd549e3a0bfda1d7ebf6df7de33",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-05.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/overlays.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1538
+      },
+      "jsxSha256": "e4fb9dde0b275170cd5681fb8f7959209773c1bdac6bb5cf636c4208d386aa4a",
+      "parts": [
+        "overlays"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-06",
+      "name": "K-06 Skal och detaljpanel",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3A8M-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-06.png",
+      "baselineSha256": "a8b4ba27ad395ad3c091958039b64d33a21e986f99b12e141636e83e5cd77b2a",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-06.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/layouts.tsx",
+        "packages/ui/src/kanon/detail-panel.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 2139
+      },
+      "jsxSha256": "ce6cda5b0d9ed786d9b0ac118d05174fb7d95d3a828b5109275f2446e8209eca",
+      "parts": [
+        "layouts",
+        "detail-panel"
+      ],
+      "candidateRoute": null,
+      "comparison": null
+    },
+    {
+      "id": "K-07",
+      "name": "K-07 Diagram",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-19-0?node=3W7W-0",
+      "baseline": "verification/paper/baseline/kanon-2026-10-09/K-07.png",
+      "baselineSha256": "6e8884625ea95633a9553bb8efc87a186e64bace4b3a90968cc2ee1467cfc932",
+      "jsx": "verification/paper/baseline/kanon-2026-10-09/K-07.jsx.json",
+      "files": [
+        "packages/ui/src/kanon/charts.tsx"
+      ],
+      "route": null,
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "visual direction; exact route/state mapping requires review",
+      "behaviorSource": "docs/domain.md",
+      "requiredStates": [],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 1281
+      },
+      "jsxSha256": "c9c6526104e7ef67397ee7208f242a770c521dcf9f4ea48cbe561e1eeb52d5f7",
+      "parts": [
+        "charts"
+      ],
+      "candidateRoute": "/kanon/charts",
+      "comparison": null
+    }
+  ]
+}

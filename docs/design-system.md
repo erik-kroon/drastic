@@ -1,6 +1,6 @@
 # Design system
 
-Page `00 Kanon: designsystem och kärnskärmar` in the Paper file is the visual source. Boards K-00 to K-06 hold the rules and components; K-08 to K-99 show them composed into real screens. `@open-erp/ui/kanon/*` implements that page, and `/kanon/list`, `/kanon/review` and `/kanon/focus` render reference compositions built only from it.
+Page `00 Kanon: designsystem och kärnskärmar` in the Paper file is the visual source. Boards K-00 to K-07 hold the rules and components; K-08 to K-99 show them composed into real screens. `@open-erp/ui/kanon/*` implements that page, and `/kanon/list`, `/kanon/review` and `/kanon/focus` render reference compositions built only from it.
 
 Build new screens from `kanon` parts. Do not add colours, sizes or layouts in route files; when a screen needs something the parts cannot express, change page 00 and `theme/kanon.stylex.ts` first, then the part.
 
@@ -53,3 +53,5 @@ Amounts arrive preformatted with `formatMinorAmount`; parts only align and use t
 ## Verify
 
 Run `bun run --cwd apps/web build`, then compare the screen at 1440 × 900 with its page 00 frame. Parity baselines for migrated screens belong in `verification/paper/parity-manifest.json`.
+
+See [page 00 delivery and reference reconciliation](design/parity.md). The manifest records unverified screens honestly; a baseline capture alone is not parity.
