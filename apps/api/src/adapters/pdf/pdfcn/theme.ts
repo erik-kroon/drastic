@@ -1,4 +1,3 @@
-// Drastic's fixed pdfcn theme uses the bundled, qualified document fonts.
 export const pdfcnTheme = {
   colors: {
     foreground: "#18181b",
@@ -9,7 +8,7 @@ export const pdfcnTheme = {
     border: "#d4d4d8",
   },
   typography: {
-    fontFamily: "OpenERP Plex",
+    fontFamily: "Drastic Plex",
     body: 8,
     small: 7,
     caption: 6.5,

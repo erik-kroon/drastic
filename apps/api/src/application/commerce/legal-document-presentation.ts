@@ -12,28 +12,28 @@ const fontBytes = (source: string) =>
 export const legalDocumentFonts = [
   {
     name: "Plex Latin 400",
-    subsetOf: "OpenERP Plex",
+    subsetOf: "Drastic Plex",
     subsetRank: 0,
     weight: 400,
     data: fontBytes(plexLatin400),
   },
   {
     name: "Plex Latin 600",
-    subsetOf: "OpenERP Plex",
+    subsetOf: "Drastic Plex",
     subsetRank: 0,
     weight: 600,
     data: fontBytes(plexLatin600),
   },
   {
     name: "Plex Extended 400",
-    subsetOf: "OpenERP Plex",
+    subsetOf: "Drastic Plex",
     subsetRank: 1,
     weight: 400,
     data: fontBytes(plexExtended400),
   },
   {
     name: "Plex Extended 600",
-    subsetOf: "OpenERP Plex",
+    subsetOf: "Drastic Plex",
     subsetRank: 1,
     weight: 600,
     data: fontBytes(plexExtended600),
