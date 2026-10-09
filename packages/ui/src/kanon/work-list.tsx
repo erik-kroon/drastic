@@ -19,8 +19,6 @@ const styles = stylex.create({
     borderRadius: kanon.radiusCard,
     borderStyle: "solid",
     borderWidth: 1,
-    marginInline: "auto",
-    maxWidth: kanon.sizeFocused,
     overflow: "hidden",
     width: "100%",
   },
@@ -123,7 +121,7 @@ const styles = stylex.create({
 
 /**
  * A grouped work list. With a detail panel beside it, the list runs edge to edge (the default).
- * Without one, pass `carded` so few columns do not stretch across the whole page.
+ * Without one, pass `carded`: the card sits inside the page gutter, or the 1000 px FocusPage column.
  */
 export function WorkList({ children, carded = false }: { children: ReactNode; carded?: boolean }) {
   return <ul {...stylex.props(styles.list, carded && styles.carded)}>{children}</ul>;

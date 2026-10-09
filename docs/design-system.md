@@ -41,7 +41,7 @@ Amounts arrive preformatted with `formatMinorAmount`; parts only align and use t
 2. The amount is the figure in the panel header.
 3. Panel order: header, evidence, what will happen, checks, activity, actions at the bottom.
 4. Every list row has a status icon.
-5. Beside a detail panel, lists run edge to edge. Without one, they sit in a card no wider than 1000 px.
+5. Beside a detail panel, lists and tables run edge to edge with a 32 px inner gutter. Without one, they sit in a card inside the page gutter; on focus pages, inside the 1000 px column.
 6. Colour means status: green done, amber needs you, red wrong or overdue, blue action. Never decoration.
 7. A blocked action says why.
 8. An unknown outcome is its own state. Offer "Kontrollera", never "Försök igen".
