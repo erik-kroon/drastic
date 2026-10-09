@@ -7,12 +7,8 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { SelectControl } from "@open-erp/ui/components/select";
 import { PortfolioCompactNavigation } from "@open-erp/ui/components/firm-portfolio";
-import {
-  Workspace,
-  WorkspaceBrand,
-  WorkspaceHeader,
-  WorkspaceNavLink,
-} from "@open-erp/ui/components/workspace";
+import { Workspace, WorkspaceBrand, WorkspaceNavLink } from "@open-erp/ui/kanon/workspace";
+import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import {
   PageContent,
   PageEmpty,

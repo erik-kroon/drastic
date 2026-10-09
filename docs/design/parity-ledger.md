@@ -6,7 +6,7 @@ Generated from [kanon-manifest.json](../../verification/paper/kanon-manifest.jso
 |---|---|---|---|---|
 | K-10 Att göra, kö | /entities/$entityId/books/$bookId/ | apps/web/src/components/company-work-sections.tsx, apps/web/src/components/work-home.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-10.png) |
 | K-40 Fakturor | /entities/$entityId/books/$bookId/sales | apps/web/src/components/commerce/invoices.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-40.png) |
-| K-09 Byråportfölj | /firms | apps/web/src/components/firms/portfolio.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-09.png) |
+| K-09 Byråportfölj | /firms | apps/web/src/components/firms/portfolio.tsx, apps/web/src/components/firms/index.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-09.png) |
 | K-11 Granska och godkänn | /entities/$entityId/books/$bookId/reviews/$planId/$revision | apps/web/src/components/review-owner.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-11.png) |
 | K-70 Verifikationer | /entities/$entityId/books/$bookId/books | apps/web/src/components/voucher-workspace.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-70.png) |
 | K-80 Moms | /entities/$entityId/books/$bookId/tax | apps/web/src/components/vat-returns/panel.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-80.png) |
@@ -33,5 +33,5 @@ Generated from [kanon-manifest.json](../../verification/paper/kanon-manifest.jso
 | K-03 Listor och tabeller | /kanon/list | packages/ui/src/kanon/work-list.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-03.png) |
 | K-04 Status och återkoppling | /kanon/review | packages/ui/src/kanon/status.tsx, packages/ui/src/kanon/feedback.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-04.png) |
 | K-05 Dialoger och överlägg | /kanon/review | packages/ui/src/kanon/overlays.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-05.png) |
-| K-06 Skal och detaljpanel | /kanon/list | packages/ui/src/kanon/layouts.tsx, packages/ui/src/kanon/detail-panel.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-06.png) |
+| K-06 Skal och detaljpanel | /kanon/list | packages/ui/src/kanon/layouts.tsx, packages/ui/src/kanon/detail-panel.tsx, packages/ui/src/kanon/workspace.tsx, packages/ui/src/components/workspace.tsx, apps/web/src/components/book-workspace.tsx, apps/web/src/components/book-navigation.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-06.png) |
 | K-07 Diagram | /kanon/charts | packages/ui/src/kanon/charts.tsx | unverified | [PNG](../../verification/paper/baseline/kanon-2026-10-09/K-07.png) |

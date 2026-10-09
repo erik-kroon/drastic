@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { NavIcon } from "@open-erp/ui/components/nav-icon";
-import { WorkspaceNavigation, WorkspaceNavLink } from "@open-erp/ui/components/workspace";
+import { WorkspaceNavigation, WorkspaceNavLink } from "@open-erp/ui/kanon/workspace";
 import { attentionQueryOptions } from "@/lib/attention";
 import { type Audience, type NavDestination, showsDestination } from "@/lib/audience";
 import { frontendCopy } from "@/lib/frontend-copy";
@@ -28,8 +28,6 @@ export function BookNavigation(props: {
     pathname === `${base}/history` && new URLSearchParams(props.search).has("adoption");
 
   const bookkeeping = pathname === `${base}/books` || adoption;
-  const loan = bookkeeping && new URLSearchParams(props.search).has("loan");
-  const assets = bookkeeping && new URLSearchParams(props.search).get("view") === "assets";
 
   const waiting = useQuery({
     ...attentionQueryOptions(props.book, { status: "open" }),
@@ -89,13 +87,6 @@ export function BookNavigation(props: {
             <WorkspaceNavLink
               href={`${base}/accounts`}
               active={pathname === `${base}/accounts`}
-              selection={
-                ["foreign-cash", "processors"].includes(
-                  new URLSearchParams(props.search).get("view") ?? "",
-                )
-                  ? "neutral"
-                  : undefined
-              }
               onPointerEnter={preloadAccounts}
               onFocus={preloadAccounts}
             >
@@ -141,7 +132,6 @@ export function BookNavigation(props: {
           locale={locale}
           shows={shows}
           bookkeeping={bookkeeping}
-          neutral={assets || loan || adoption}
         />
       )}
     </>
@@ -154,7 +144,6 @@ function AccountingNavigation(props: {
   locale: Locale;
   shows: (destination: NavDestination) => boolean;
   bookkeeping: boolean;
-  neutral: boolean;
 }) {
   const { base, pathname, locale } = props;
   const copy = frontendCopy(locale);
@@ -162,11 +151,7 @@ function AccountingNavigation(props: {
   return (
     <WorkspaceNavigation label={locale === "sv" ? "Redovisning" : "Accounting"}>
       {props.shows("bookkeeping") && (
-        <WorkspaceNavLink
-          href={`${base}/books`}
-          active={props.bookkeeping}
-          selection={props.neutral ? "neutral" : undefined}
-        >
+        <WorkspaceNavLink href={`${base}/books`} active={props.bookkeeping}>
           <NavIcon name="bookkeeping" />
           {copy.bookkeeping}
         </WorkspaceNavLink>

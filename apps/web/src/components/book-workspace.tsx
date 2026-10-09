@@ -13,7 +13,7 @@ import {
   WorkspaceNavLink,
   WorkspaceAccount,
   WorkspaceMobileNavigation,
-} from "@open-erp/ui/components/workspace";
+} from "@open-erp/ui/kanon/workspace";
 import { BookSearch } from "@/components/book-search";
 import { NavIcon } from "@open-erp/ui/components/nav-icon";
 import { BookNavigation } from "@/components/book-navigation";

@@ -77,10 +77,13 @@ test("the K-01 palette switches appearance and survives reload", async ({
         background: getComputedStyle(document.body).backgroundColor,
         text: getComputedStyle(document.body).color,
         kanonColors: Object.fromEntries(
-          names.map((name) => [
-            name,
-            computed.getPropertyValue(`--kanon-color-${name}`).trim().toLowerCase(),
-          ]),
+          names.map((name) => {
+            const color = computed.getPropertyValue(`--kanon-color-${name}`).trim().toLowerCase();
+
+            const expanded = color.replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/, "#$1$1$2$2$3$3");
+
+            return [name, expanded];
+          }),
         ),
       };
     });
@@ -102,6 +105,41 @@ test("the K-01 palette switches appearance and survives reload", async ({
   expect(light.dark).toBe(false);
   expect(light.colorScheme).toBe("light");
   expect(light.kanonColors).toEqual(expectedColors.light);
+
+  const shell = await browser.evaluate(() => {
+    const sidebar = document.querySelector("aside");
+    const selected = sidebar?.querySelector('a[aria-current="page"]');
+    const companyMark = sidebar?.querySelector("a span[aria-hidden]");
+    const avatar = sidebar?.querySelector("summary span[aria-hidden]");
+    const group = sidebar?.querySelector("nav > p");
+
+    if (!sidebar || !selected || !companyMark || !avatar || !group)
+      throw new Error("The bureau shell is missing a required navigation part");
+
+    return {
+      sidebarWidth: sidebar.getBoundingClientRect().width,
+      selectedBackground: getComputedStyle(selected).backgroundColor,
+      labelColor: getComputedStyle(group).color,
+      companyMarkWidth: companyMark.getBoundingClientRect().width,
+      companyInitialSize: getComputedStyle(companyMark).fontSize,
+      companyInitialLeading: getComputedStyle(companyMark).lineHeight,
+      avatarWidth: avatar.getBoundingClientRect().width,
+      avatarInitialSize: getComputedStyle(avatar).fontSize,
+    };
+  });
+
+  const expectedShell = {
+    sidebarWidth: 224,
+    selectedBackground: "rgb(230, 234, 240)",
+    labelColor: "rgb(71, 85, 105)",
+    companyMarkWidth: 20,
+    companyInitialSize: "11px",
+    companyInitialLeading: "14px",
+    avatarWidth: 22,
+    avatarInitialSize: "10px",
+  };
+
+  expect(shell).toEqual(expectedShell);
   const lightShot = await app.screenshot("theme-light-overview");
 
   await choose("Utseende: mörkt");
@@ -164,6 +202,9 @@ test("the K-01 palette switches appearance and survives reload", async ({
           jsxSha256: "5490062e76f16d304b8677f3e9a658cad9ace4d1cc022c47e4e1e7da35daa641",
         },
         expectedColors,
+        shellReference: "K-06 / kanon-2026-10-09 stored JSX",
+        expectedShell,
+        shell,
         light,
         dark,
         reloaded,
