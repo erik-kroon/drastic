@@ -116,6 +116,36 @@ function PortfolioLink({ book, locale }: { book: typeof Accounting.Book.Type; lo
   );
 }
 
+function AccountMenu(props: {
+  book: typeof Accounting.Book.Type;
+  books: typeof Books.Type;
+  locale: Locale;
+  audience: Audience;
+  onAudienceChange: (audience: Audience) => void;
+}) {
+  const { book, locale, audience } = props;
+  const base = workspacePath(book);
+  const labels = frontendCopy(locale);
+  const copy = accountingCopy(locale);
+
+  return (
+    <>
+      {props.books.length > 1 ? (
+        <BookSwitcher book={book} books={props.books} label={copy.journal_book} />
+      ) : null}
+      <AudienceSwitcher audience={audience} locale={locale} onChange={props.onAudienceChange} />
+      <Link href={`${base}/settings`}>{labels.settings}</Link>
+      <Link href="/companies">{copy.workspace_switch}</Link>
+      {showsDestination(audience, "portfolio") ? (
+        <PortfolioLink book={book} locale={locale} />
+      ) : null}
+      {showsDestination(audience, "tools") ? (
+        <Link href={`${base}/tools`}>{labels.tools}</Link>
+      ) : null}
+    </>
+  );
+}
+
 function mobileItems({
   base,
   pathname,
@@ -237,14 +267,13 @@ export function BookWorkspace({
             : "Account"
       }
     >
-      {books.length > 1 ? (
-        <BookSwitcher book={book} books={books} label={copy.journal_book} />
-      ) : null}
-      <AudienceSwitcher audience={audience} locale={locale} onChange={setAudience} />
-      <Link href={`${base}/settings`}>{labels.settings}</Link>
-      <Link href="/companies">{copy.workspace_switch}</Link>
-      <PortfolioLink book={book} locale={locale} />
-      <Link href={`${base}/tools`}>{labels.tools}</Link>
+      <AccountMenu
+        book={book}
+        books={books}
+        locale={locale}
+        audience={audience}
+        onAudienceChange={setAudience}
+      />
       <SignOut locale={locale} />
     </WorkspaceAccount>
   );

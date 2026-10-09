@@ -44,7 +44,7 @@ test("the audience profile changes navigation only and survives reload", async (
   const bureau = await app.screenshot("audience-bureau-navigation");
 
   await agent.act(
-    "Open the account menu at the bottom of the sidebar and choose the view option Visa som klient.",
+    "Open the account menu at the bottom of the sidebar, open the Vy dropdown and select Visa som klient. Stop once it is selected.",
   );
   await expect(navigation("Arbete").getByRole("link")).toHaveCount(1);
   await expect(navigation("Arbete").getByRole("link", "Dokument", { exact: true })).toBeVisible();
@@ -53,7 +53,16 @@ test("the audience profile changes navigation only and survives reload", async (
     navigation("Redovisning").getByRole("link", "Rapporter", { exact: true }),
   ).toBeVisible();
 
-  for (const hidden of ["Bank", "Försäljning", "Inköp", "Bokföring", "Skatt och löner", "Bokslut"])
+  for (const hidden of [
+    "Bank",
+    "Försäljning",
+    "Inköp",
+    "Bokföring",
+    "Skatt och löner",
+    "Bokslut",
+    "Klientlista",
+    "Avancerade verktyg",
+  ])
     await expect(screen.getByRole("link", hidden, { exact: true })).toHaveCount(0);
 
   await browser.reload();
@@ -72,7 +81,7 @@ test("the audience profile changes navigation only and survives reload", async (
   const direct = await app.screenshot("audience-client-direct-bookkeeping");
 
   await agent.act(
-    "Open the account menu at the bottom of the sidebar and choose the view option Visa som byrå.",
+    "Open the account menu at the bottom of the sidebar, open the Vy dropdown and select Visa som byrå. Stop once it is selected.",
   );
   await expect(screen.getByRole("link", "Bokföring", { exact: true })).toBeVisible();
   await expect(navigation("Arbete").getByRole("link")).toHaveCount(4);
@@ -83,7 +92,12 @@ test("the audience profile changes navigation only and survives reload", async (
     JSON.stringify(
       {
         scope: "Synthetic operator book; audience profile is browser-local shell composition",
-        client: { work: ["Dokument"], accounting: ["Rapporter"], retainedAfterReload: true },
+        client: {
+          work: ["Dokument"],
+          accounting: ["Rapporter"],
+          accountMenuHides: ["Klientlista", "Avancerade verktyg"],
+          retainedAfterReload: true,
+        },
         authority: { workspaceStatus: after, unchangedAcrossProfiles: true },
         screenshots: [bureau, client, direct, restored],
       },

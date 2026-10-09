@@ -18,7 +18,9 @@ export type NavDestination =
   | "bookkeeping"
   | "tax"
   | "reports"
-  | "closing";
+  | "closing"
+  | "portfolio"
+  | "tools";
 
 // Navigation filters by audience; order and grouping stay shared so the same
 // destination is always found in the same place.
@@ -26,7 +28,16 @@ const hidden = {
   bureau: new Set<NavDestination>(),
   // A bureau client answers questions, sends evidence, approves exact actions
   // and reads the position. Bookkeeping, tax and closing stay with the bureau.
-  client: new Set<NavDestination>(["bank", "sales", "purchases", "bookkeeping", "tax", "closing"]),
+  client: new Set<NavDestination>([
+    "bank",
+    "sales",
+    "purchases",
+    "bookkeeping",
+    "tax",
+    "closing",
+    "portfolio",
+    "tools",
+  ]),
   founder: new Set<NavDestination>(),
 } satisfies Record<Audience, ReadonlySet<NavDestination>>;
 
