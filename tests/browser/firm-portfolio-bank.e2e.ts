@@ -10,6 +10,7 @@ import * as Coverage from "../../packages/contracts/src/bank-source-coverage";
 import * as AccountSignoffs from "../../packages/contracts/src/bank-signoffs";
 import * as Signoffs from "../../packages/contracts/src/bank-inventory-signoffs";
 import * as Settlement from "../../packages/contracts/src/settlements";
+import * as Reports from "../../packages/contracts/src/reports";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
 import { signInSyntheticOperator } from "./synthetic-session";
@@ -47,6 +48,7 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
     route: string,
     schema: S,
     body?: unknown,
+    key = randomUUID(),
   ): Promise<S["Type"]> => {
     const response = await fetch(`${origin}/api/v1${route}`, {
       method: body === undefined ? "GET" : "POST",
@@ -54,7 +56,7 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
         cookie,
         origin,
         "content-type": "application/json",
-        "idempotency-key": randomUUID(),
+        "idempotency-key": key,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
@@ -75,7 +77,11 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
     });
 
   const before = await call(`${path}/ledger`, Accounting.LedgerSnapshot);
-  const firm = await call("/firms", Firms.CommandResult, { name: "Synthetic bank source bureau" });
+
+  const firm = await call("/firms", Firms.CommandResult, {
+    name: "Synthetic bank source bureau",
+  });
+
   const workspace = await call(`/firms/${firm.firmId}`, Firms.Workspace);
 
   await call(`/firms/${firm.firmId}/clients`, Firms.CommandResult, {
@@ -97,7 +103,10 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
       endsOn,
       openingMinor: "0",
       closingMinor: "0",
-      completeness: { declaredComplete: true, basis: "Synthetic zero-activity declared statement" },
+      completeness: {
+        declaredComplete: true,
+        basis: "Synthetic zero-activity declared statement",
+      },
       rows: [],
     };
 
@@ -126,10 +135,11 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   const portfolioUrl = `/firms?firm=${encodeURIComponent(firm.firmId)}&tab=clients`;
 
   await app.open(portfolioUrl);
-  await expect(
-    screen.getByRole("columnheader", { name: "Bankavstämning", exact: true }),
-  ).toBeVisible();
-  await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
+  const details = screen.getByRole("region", "Klientdetaljer", { exact: true });
+  const bank = details.getByRole("region", "Bankavstämning", { exact: true });
+
+  await expect(bank).toBeVisible();
+  await expect(bank).toContainText("Okänt");
   await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
 
   const finalStatement = await importStatement("2026-09-29", "2026-12-31");
@@ -249,8 +259,108 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
   );
 
   await app.open(portfolioUrl);
-  await expect(screen.getByText("Avstämd", { exact: true })).toBeVisible();
+  await expect(bank.getByText("Avstämd", { exact: true })).toBeVisible();
   await app.screenshot("portfolio-current-bank-inventory");
+
+  const report = await call(`${path}/report-snapshots`, Reports.ReportSnapshot, {
+    kind: "trial_balance_v1",
+    startsOn: "2026-01-01",
+    endsOn: "2026-12-31",
+  });
+
+  expect(report.balanced).toBe(true);
+  expect(report.sequence).toBe(before.sequence);
+  expect(await call(`${path}/report-snapshots/${report.id}`, Reports.ReportSnapshot)).toEqual(
+    report,
+  );
+
+  const ready = await call(
+    `${path}/periods/period_synthetic_2026/closing-readiness`,
+    Closing.ClosingReadiness,
+  );
+
+  expect(ready.checks.filter((check) => !check.passed)).toEqual([]);
+  expect(ready.locked).toBe(false);
+  expect(ready.technicalCloseAllowed).toBe(true);
+  expect(ready.dependencies.reportId).toBe(report.id);
+  expect(ready.statutoryReady).toBe(false);
+  expect(ready.statutoryBlockers.length).toBeGreaterThan(0);
+
+  await app.open(portfolioUrl);
+  await expect(details.getByRole("heading", "Inga tekniska hinder", { exact: true })).toBeVisible();
+  await expect(
+    details.getByText(
+      "Tekniska kontroller fastställer inte fullständiga böcker eller lagstadgat bokslut.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await app.screenshot("portfolio-technically-clear");
+
+  const proposal = await call(
+    `${path}/periods/period_synthetic_2026/closing-proposals`,
+    Closing.ClosingProposal,
+    {
+      action: "close",
+      reason: "Synthetic portfolio technical lock qualification",
+    },
+  );
+
+  const approval = await call(
+    `${path}/closing-proposals/${proposal.id}/approvals`,
+    Closing.ClosingApproval,
+    { digest: proposal.digest },
+  );
+
+  const execution = { digest: proposal.digest, approvalId: approval.id };
+  const executionKey = randomUUID();
+
+  const receipt = await call(
+    `${path}/closing-proposals/${proposal.id}/executions`,
+    Closing.ClosingReceipt,
+    execution,
+    executionKey,
+  );
+
+  expect(
+    await call(
+      `${path}/closing-proposals/${proposal.id}/executions`,
+      Closing.ClosingReceipt,
+      execution,
+      executionKey,
+    ),
+  ).toEqual(receipt);
+  expect(receipt.locked).toBe(true);
+  expect(receipt.statutoryReady).toBe(false);
+
+  if (!receipt.certificateId) throw new Error("The technical lock must retain its certificate");
+
+  const certificate = await call(
+    `${path}/closing-certificates/${receipt.certificateId}`,
+    Closing.ClosingCertificateView,
+  );
+
+  const history = await call(
+    `${path}/periods/period_synthetic_2026/closing-history`,
+    Closing.ClosingHistory,
+  );
+
+  const locked = await call(
+    `${path}/periods/period_synthetic_2026/closing-readiness`,
+    Closing.ClosingReadiness,
+  );
+
+  expect(certificate.current).toBe(true);
+  expect(certificate.invalidatedBy).toBe(null);
+  expect(certificate.certificate.receipt).toEqual(receipt);
+  expect(certificate.certificate.effectiveDependencies).toEqual(locked.dependencies);
+  expect(history.items.find((item) => item.id === receipt.id)).toEqual(receipt);
+  expect(locked.locked).toBe(true);
+  expect(locked.technicalCloseAllowed).toBe(false);
+
+  await app.open(portfolioUrl);
+  await expect(details.getByRole("heading", "Perioden är låst", { exact: true })).toBeVisible();
+  await expect(screen.getByText("Inga tekniska hinder", { exact: true })).toHaveCount(0);
+  await app.screenshot("portfolio-locked-period");
 
   const replacementEvidence = await evidence(
     "Synthetic replacement inventory review",
@@ -277,8 +387,15 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
 
   const stale = await call(`/firms/${firm.firmId}/portfolio`, Firms.Portfolio);
 
+  const staleCertificate = await call(
+    `${path}/closing-certificates/${receipt.certificateId}`,
+    Closing.ClosingCertificateView,
+  );
+
   expect(staleView.dependenciesCurrent).toBe(false);
   expect(staleView.signedArtifact).toEqual(view.signedArtifact);
+  expect(staleCertificate.current).toBe(false);
+  expect(staleCertificate.certificate).toEqual(certificate.certificate);
   expect(stale.clients[0]?.bankInventorySignoffs[0]).toEqual({
     ...retained,
     dependenciesCurrent: false,
@@ -287,7 +404,7 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
 
   await app.open(portfolioUrl);
   await expect(screen.getByText("Avstämd", { exact: true })).toHaveCount(0);
-  await expect(screen.getByText("Okänt", { exact: true })).toBeVisible();
+  await expect(bank).toContainText("Okänt");
   await agent.assert(
     "The client portfolio shows an unknown bank reconciliation state, with no reconciled label. Do not infer company completeness or financial closing readiness from the zero-activity synthetic account.",
   );
@@ -300,7 +417,7 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
         scope:
           "Real public synthetic statement/coverage/account/whole-inventory signing and retained portfolio observations",
         limits:
-          "Bank cell browser/currentness only; no full V1 parity, nonzero bank difference, multi-account or whole-company completeness, financial close or live provider qualification",
+          "Synthetic technical clear/lock and bank currentness only; no full V1 parity, nonzero bank difference, multi-account or whole-company completeness, statutory closing or live provider qualification",
         before,
         early,
         finalStatement,
@@ -314,8 +431,17 @@ test("portfolio preserves dated bank observations and signed whole-inventory ide
         signed,
         view,
         current,
+        report,
+        ready,
+        proposal,
+        approval,
+        receipt,
+        certificate,
+        history,
+        locked,
         replacement,
         staleView,
+        staleCertificate,
         stale,
       },
       null,

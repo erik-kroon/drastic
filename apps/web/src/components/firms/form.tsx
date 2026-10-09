@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccountingError } from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Firms from "@open-erp/contracts/firms";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -43,14 +44,17 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
 
   const sv = props.locale === "sv";
 
+  const close = () => {
+    if (!mutation.isPending) props.onClose();
+  };
+
   return (
     <FormDialog
       size="compact"
       title={props.title}
       closeLabel={sv ? "Stäng" : "Close"}
-      onClose={() => {
-        if (!mutation.isPending) props.onClose();
-      }}
+      onClose={close}
+      onEscape={close}
     >
       <Box
         as="form"
@@ -65,9 +69,9 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
             props.input(new FormData(event.currentTarget)),
           );
 
-          setInvalid(input._tag === "None");
+          setInvalid(Option.isNone(input));
 
-          if (input._tag === "Some") mutation.mutate(input.value);
+          if (Option.isSome(input)) mutation.mutate(input.value);
         }}
       >
         <Box as="fieldset" disabled={mutation.isPending} display="grid" gap="lg" minWidth="zero">

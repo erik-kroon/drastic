@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, BookOpen, Users } from "lucide-react";
+import { Building2, BookOpen, Users, Plus } from "lucide-react";
 import * as Firms from "@open-erp/contracts/firms";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { SelectControl } from "@open-erp/ui/components/select";
+import { PortfolioCompactNavigation } from "@open-erp/ui/components/firm-portfolio";
 import {
   Workspace,
   WorkspaceBrand,
@@ -18,7 +19,6 @@ import {
   PageCaption,
   RegisterFilter,
 } from "@open-erp/ui/components/accounting-page";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@open-erp/ui/components/tabs";
 import { SignOut } from "@/components/accounting-access";
 import { AccountingStatus } from "@/components/accounting-status";
 import { LanguagePreference } from "@/components/book-workspace";
@@ -43,6 +43,17 @@ export function FirmsWorkspace(props: {
 
   const reads = useFirmReads(props);
 
+  const firmPicker =
+    reads.known && reads.firms.data ? (
+      <FirmPicker
+        firms={reads.firms.data}
+        current={reads.current}
+        locale={locale}
+        onSelect={(firmId) => props.onNavigate(firmId, "clients")}
+        onCreate={() => setCreating(true)}
+      />
+    ) : null;
+
   return (
     <Workspace
       pageKey="firms"
@@ -54,10 +65,21 @@ export function FirmsWorkspace(props: {
             <Building2 size={16} strokeWidth={1.5} />
             {sv ? "Företag" : "Companies"}
           </WorkspaceNavLink>
-          <WorkspaceNavLink href="/firms" active>
+          <WorkspaceNavLink
+            href={reads.current ? `/firms?firm=${reads.current}&tab=clients` : "/firms"}
+            active={props.tab === "clients"}
+          >
             <Users size={16} strokeWidth={1.5} />
             {sv ? "Byrå" : "Firm"}
           </WorkspaceNavLink>
+          {reads.current ? (
+            <WorkspaceNavLink
+              href={`/firms?firm=${reads.current}&tab=team`}
+              active={props.tab === "team"}
+            >
+              Team
+            </WorkspaceNavLink>
+          ) : null}
         </>
       }
       footer={
@@ -67,28 +89,51 @@ export function FirmsWorkspace(props: {
         </Box>
       }
     >
-      <WorkspaceHeader
-        title={
-          reads.ready && reads.currentWorkspace
-            ? reads.currentWorkspace.firm.name
-            : sv
-              ? "Byrå"
-              : "Firm"
-        }
-        action={
-          reads.known && reads.firms.data ? (
-            <FirmPicker
-              firms={reads.firms.data}
-              current={reads.current}
-              locale={locale}
-              onSelect={(firmId) => props.onNavigate(firmId, "clients")}
-              onCreate={() => setCreating(true)}
-            />
-          ) : undefined
-        }
-      />
+      {!(reads.ready && props.tab === "clients") ? (
+        <WorkspaceHeader
+          title={
+            reads.ready && reads.currentWorkspace
+              ? reads.currentWorkspace.firm.name
+              : sv
+                ? "Byrå"
+                : "Firm"
+          }
+          action={
+            <Box display="flex" flexWrap="wrap" gap="sm" alignItems="center">
+              {reads.ready && reads.current && props.tab === "team" ? (
+                <Button
+                  static
+                  variant="ghost"
+                  onClick={() => {
+                    if (reads.current) props.onNavigate(reads.current, "clients");
+                  }}
+                >
+                  {sv ? "Klienter" : "Clients"}
+                </Button>
+              ) : null}
+              {firmPicker}
+            </Box>
+          }
+        />
+      ) : null}
       <FirmMain
         {...props}
+        portfolioNavigation={
+          <>
+            <PortfolioCompactNavigation>
+              <Button
+                static
+                variant="ghost"
+                onClick={() => {
+                  if (reads.current) props.onNavigate(reads.current, "team");
+                }}
+              >
+                Team
+              </Button>
+            </PortfolioCompactNavigation>
+            {firmPicker}
+          </>
+        }
         current={reads.current}
         known={reads.known}
         listed={reads.listed}
@@ -121,6 +166,7 @@ export function FirmsWorkspace(props: {
 
 function FirmMain(
   props: Parameters<typeof FirmsWorkspace>[0] & {
+    portfolioNavigation: ReactNode;
     current?: string;
     known: boolean;
     listed: boolean;
@@ -165,32 +211,21 @@ function FirmMain(
         />
       ) : null}
       {props.ready && workspace ? (
-        <Tabs
-          key={props.current}
-          value={props.tab}
-          onValueChange={(value) =>
-            props.onNavigate(workspace.firm.id, value === "team" ? "team" : "clients")
-          }
-        >
-          <TabsList>
-            <TabsTrigger value="clients">{sv ? "Klienter" : "Clients"}</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-          </TabsList>
-          <TabsContent value="clients">
-            {props.portfolio ? (
-              <FirmPortfolio
-                portfolio={props.portfolio}
-                books={props.books}
-                locale={props.locale}
-                filters={props.filters}
-                onFilters={props.onFilters}
-              />
-            ) : null}
-          </TabsContent>
-          <TabsContent value="team">
-            <FirmTeam workspace={workspace} locale={props.locale} />
-          </TabsContent>
-        </Tabs>
+        props.tab === "clients" ? (
+          props.portfolio ? (
+            <FirmPortfolio
+              key={workspace.firm.id}
+              portfolio={props.portfolio}
+              books={props.books}
+              locale={props.locale}
+              filters={props.filters}
+              onFilters={props.onFilters}
+              navigation={props.portfolioNavigation}
+            />
+          ) : null
+        ) : (
+          <FirmTeam key={workspace.firm.id} workspace={workspace} locale={props.locale} />
+        )
       ) : null}
     </PageContent>
   );
@@ -219,8 +254,14 @@ function FirmPicker(props: {
           />
         </RegisterFilter>
       ) : null}
-      <Button static variant="ghost" onClick={props.onCreate}>
-        {sv ? "Skapa byrå" : "Create firm"}
+      <Button
+        static
+        variant="ghost"
+        aria-label={sv ? "Skapa byrå" : "Create firm"}
+        title={sv ? "Skapa byrå" : "Create firm"}
+        onClick={props.onCreate}
+      >
+        <Plus size={16} aria-hidden="true" />
       </Button>
     </Box>
   );

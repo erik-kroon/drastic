@@ -1,25 +1,23 @@
-import type * as Firms from "@open-erp/contracts/firms";
-import { Text } from "@open-erp/ui/components/typography";
+import type { ClosingState } from "./portfolio-model";
 import type { Locale } from "@/paraglide/runtime";
 
-export function ClientClosing({
-  closing,
-  locale,
-}: {
-  closing: (typeof Firms.PortfolioClientFacts.Type)["closing"];
-  locale: Locale;
-}) {
+export function closingLabel(state: ClosingState, locale: Locale) {
   const sv = locale === "sv";
 
-  if (!closing) return sv ? "Okänt" : "Unknown";
+  switch (state.kind) {
+    case "blocked":
+      return sv
+        ? `${state.failed.length} hinder för bokslut`
+        : `${state.failed.length} closing blockers`;
+    case "clear":
+      return sv ? "Inga tekniska hinder" : "No technical blockers";
+    case "locked":
+      return sv ? "Perioden är låst" : "Period locked";
+    case "unknown":
+      return sv ? "Okänt" : "Unknown";
+  }
+}
 
-  const failed = closing.checks.filter((check) => !check.passed).length;
-
-  if (failed === 0) return sv ? "Okänt" : "Unknown";
-
-  return (
-    <Text variant="control">
-      {sv ? `${failed} hinder för bokslut` : `${failed} closing blockers`}
-    </Text>
-  );
+export function ClientClosing({ state, locale }: { state: ClosingState; locale: Locale }) {
+  return <span>{closingLabel(state, locale)}</span>;
 }

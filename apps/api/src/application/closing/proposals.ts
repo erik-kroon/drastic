@@ -421,12 +421,13 @@ export const getClosingCertificate = Effect.fn("closing.getCertificate")(functio
     if (!certificate) return yield* failure("NotFound");
     const basis = yield* readBasis(transaction, command.scope.bookId, certificate.periodId);
 
-    const invalidated = (yield* Db.readInvalidation(
-      transaction,
-      command.scope.bookId,
-      "certificate",
-      command.certificateId,
-    ))[0]?.transitionId;
+    const invalidated =
+      (yield* Db.readInvalidation(
+        transaction,
+        command.scope.bookId,
+        "certificate",
+        command.certificateId,
+      ))[0]?.transitionId ?? null;
 
     const decoded = yield* decode(ReadinessSchema, basis);
     const dependencies = objectOrNull(certificate.body.effectiveDependencies);

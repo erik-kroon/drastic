@@ -97,15 +97,18 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
 
   await app.open(portfolio);
 
-  const names = screen.getByRole("link", /^Synthetic bureau \d{3}$/);
+  const names = screen.getByRole("button", /^Synthetic bureau \d{3}$/);
   const observed: string[] = [];
 
   for (let page = 0; page < 4; page++) {
     await expect(names).toHaveCount(Math.min(15, 50 - page * 15));
-    await expect(names.nth(0)).toHaveText(
+    await expect(names.nth(0)).toHaveAttribute(
+      "aria-label",
       `Synthetic bureau ${String(page * 15 + 1).padStart(3, "0")}`,
     );
-    observed.push(...(await names.allTextContents()));
+
+    for (let index = 0; index < Math.min(15, 50 - page * 15); index++)
+      observed.push((await names.nth(index).getAttribute("aria-label")) ?? "");
 
     if (page < 3) await screen.getByRole("button", "Nästa", { exact: true }).click();
   }
@@ -123,7 +126,7 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
   await expect(screen.getByText("46–50 av 50 klienter", { exact: true })).toBeVisible();
   await screen.getByRole("button", "Föregående", { exact: true }).click();
   await expect(names).toHaveCount(15);
-  await expect(names.nth(0)).toHaveText("Synthetic bureau 031");
+  await expect(names.nth(0)).toHaveAttribute("aria-label", "Synthetic bureau 031");
   await screen.getByRole("button", "Nästa", { exact: true }).click();
   await expect(names).toHaveCount(5);
 
@@ -139,23 +142,27 @@ test("native bureau portfolio retains fifty clients and scoped assignment filter
     "Synthetic bureau 00",
   );
 
-  const selected = screen.getByRole("row").filter({ hasText: "Synthetic bureau 001" });
+  const selected = screen.getByRole("button", "Synthetic bureau 001", { exact: true });
+  const details = screen.getByRole("region", "Klientdetaljer", { exact: true });
 
-  await expect(screen.getByRole("columnheader", "Nästa avstämning", { exact: true })).toBeVisible();
-  await expect(selected.getByRole("cell", "Ingen period", { exact: true })).toHaveCount(2);
-  await expect(selected).toContainText("2026-10-01");
-  await selected.getByRole("button", "Lämna över", { exact: true }).click();
+  await selected.click();
+  await expect(selected).toHaveAttribute("aria-pressed", "true");
+  await expect(details).toContainText("Ingen period");
+  await expect(details).toContainText("2026-10-01");
+  await details.getByRole("button", "Byt ansvarig", { exact: true }).click();
   await screen.getByRole("combobox", "Klientansvarig", { exact: true }).click();
   await screen.getByRole("option", "Ingen ansvarig", { exact: true }).click();
   await screen.getByRole("button", "Spara klient", { exact: true }).click();
   await expect(names).toHaveCount(4);
-  expect(await names.allTextContents()).toEqual([
+  expect(
+    await Promise.all([0, 1, 2, 3].map((index) => names.nth(index).getAttribute("aria-label"))),
+  ).toEqual([
     "Synthetic bureau 003",
     "Synthetic bureau 005",
     "Synthetic bureau 007",
     "Synthetic bureau 009",
   ]);
-  await expect(screen.getByRole("link", "Synthetic bureau 001", { exact: true })).toBeHidden();
+  await expect(screen.getByRole("button", "Synthetic bureau 001", { exact: true })).toBeHidden();
   await expect
     .poll(async () => new URL(await browser.url()).searchParams.get("q"))
     .toBe("Synthetic bureau 00");

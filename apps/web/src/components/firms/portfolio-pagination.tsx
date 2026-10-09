@@ -10,6 +10,7 @@ export function PortfolioPagination(props: {
   page: number;
   locale: Locale;
   onPage: (page: number) => void;
+  includesRequests?: boolean;
 }) {
   const sv = props.locale === "sv";
   const pages = Math.max(1, Math.ceil(props.total / portfolioPageSize));
@@ -29,8 +30,8 @@ export function PortfolioPagination(props: {
     >
       <Text as="span" variant="control">
         {sv
-          ? `${start}–${end} av ${props.total} klienter`
-          : `${start}–${end} of ${props.total} clients`}
+          ? `${start}–${end} av ${props.total} ${props.includesRequests ? "poster" : "klienter"}`
+          : `${start}–${end} of ${props.total} ${props.includesRequests ? "entries" : "clients"}`}
       </Text>
       <Box display="flex" alignItems="center" flexWrap="wrap" gap="lg">
         <Text as="span" variant="control">
