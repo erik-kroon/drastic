@@ -31,6 +31,9 @@ export const kanon = stylex.defineConsts({
   colorBlockedBorder: "var(--kanon-color-blocked-border)",
   colorBlockedText: "var(--kanon-color-blocked-text)",
   colorRiskyBorder: "var(--kanon-color-risky-border)",
+  colorChartCost: "var(--kanon-color-chart-cost)",
+  colorChartGrid: "var(--kanon-color-chart-grid)",
+  colorChartMark: "var(--kanon-color-chart-mark)",
 
   fontUi: "Inter, system-ui, sans-serif",
   fontCode: "Menlo, ui-monospace, monospace",

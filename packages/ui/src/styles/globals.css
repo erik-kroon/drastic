@@ -208,6 +208,9 @@
   --kanon-color-blocked-border: #f0cacc;
   --kanon-color-blocked-text: #7a161b;
   --kanon-color-risky-border: #e7b9bc;
+  --kanon-color-chart-cost: #cbd5e1;
+  --kanon-color-chart-grid: #eef1f5;
+  --kanon-color-chart-mark: #0f172a;
   --kanon-shadow-primary: 0 1px 2px #2448a540;
   --kanon-shadow-selected: 0 0 0 1px #e6eaf0, 0 1px 2px #0f172a0d;
   --kanon-shadow-focus: 0 0 0 3px #2448a51f;
@@ -373,6 +376,9 @@
   --kanon-color-blocked-border: #4f2224;
   --kanon-color-blocked-text: #f08a8a;
   --kanon-color-risky-border: #6b2c2f;
+  --kanon-color-chart-cost: #3a3f4b;
+  --kanon-color-chart-grid: #1f2023;
+  --kanon-color-chart-mark: #f7f8f8;
   --kanon-shadow-primary: 0 1px 2px #00000066;
   --kanon-shadow-selected: 0 0 0 1px #2e3035;
   --kanon-shadow-focus: 0 0 0 3px #7b9bf533;

@@ -11,6 +11,15 @@ export type KanonCopy = {
   differs: string;
   close: string;
   open: string;
+  showTable: string;
+  showChart: string;
+  thousands: string;
+  previousYear: string;
+  month: string;
+  date: string;
+  step: string;
+  amount: string;
+  through: string;
 };
 
 export const kanonCopy = {
@@ -24,6 +33,15 @@ export const kanonCopy = {
     differs: "Stämmer inte",
     close: "Stäng",
     open: "Öppna",
+    showTable: "Visa som tabell",
+    showChart: "Visa som diagram",
+    thousands: "tkr",
+    previousYear: "Föregående år",
+    month: "Månad",
+    date: "Datum",
+    step: "Post",
+    amount: "Belopp",
+    through: "till",
   },
   en: {
     account: "Account",
@@ -35,6 +53,15 @@ export const kanonCopy = {
     differs: "Differs",
     close: "Close",
     open: "Open",
+    showTable: "Show as table",
+    showChart: "Show as chart",
+    thousands: "k",
+    previousYear: "Previous year",
+    month: "Month",
+    date: "Date",
+    step: "Item",
+    amount: "Amount",
+    through: "to",
   },
 } as const satisfies Record<"sv" | "en", KanonCopy>;
 

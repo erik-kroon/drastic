@@ -6,6 +6,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
 import { Action, InlineAction } from "@open-erp/ui/kanon/action";
 import { CompareCard, FactCard, LedgerCard } from "@open-erp/ui/kanon/cards";
+import { ForecastLines, MonthlyComparison, Sparkline, Waterfall } from "@open-erp/ui/kanon/charts";
 import { DetailPanel, PanelSection } from "@open-erp/ui/kanon/detail-panel";
 import { Banner, CheckRow } from "@open-erp/ui/kanon/feedback";
 import {
@@ -27,7 +28,9 @@ import { WorkGroup, WorkList, WorkRow } from "@open-erp/ui/kanon/work-list";
 /** Reference compositions of page 00 Kanon, built only from @open-erp/ui/kanon parts. */
 export const Route = createFileRoute("/kanon/$screen")({
   validateSearch: Schema.decodeUnknownSync(
-    Schema.Struct({ screen: Schema.optional(Schema.Literals(["list", "review", "focus"])) }),
+    Schema.Struct({
+      screen: Schema.optional(Schema.Literals(["list", "review", "focus", "charts"])),
+    }),
   ),
   component: KanonReference,
 });
@@ -41,6 +44,7 @@ function KanonReference() {
         {screen === "list" && <ListScreen />}
         {screen === "review" && <ReviewScreen />}
         {screen === "focus" && <FocusScreen />}
+        {screen === "charts" && <ChartsScreen />}
       </Box>
     </Toaster>
   );
@@ -414,5 +418,83 @@ function FocusScreen() {
         />
       </Drawer>
     </FocusPage>
+  );
+}
+
+// Synthetic Fjällby Konsult AB, the Paper page 18 scenario. Minor units, scale 2.
+const kronor = (minor: string) =>
+  `${new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 0 }).format(Number(BigInt(minor) / 100n))} kr`;
+
+const months = [
+  ["jan", "11840000", "9800000"],
+  ["feb", "12630000", "10400000"],
+  ["mar", "14210000", "11500000"],
+  ["apr", "13180000", "11200000"],
+  ["maj", "14960000", "12100000"],
+  ["jun", "15620000", "12800000"],
+  ["jul", "9840000", "8400000"],
+  ["aug", "12730000", "10900000"],
+  ["sep", "14824000", "12500000"],
+] as const;
+
+const balances = [
+  ["2026-10-05", "5 okt", "31245000"],
+  ["2026-10-08", "8 okt", "27346000"],
+  ["2026-10-12", "12 okt", "22789600"],
+  ["2026-10-20", "20 okt", "28514600"],
+  ["2026-10-25", "25 okt", "23531600"],
+  ["2026-11-12", "12 nov", "4545800"],
+  ["2026-11-15", "15 nov", "4545800"],
+] as const;
+
+function ChartsScreen() {
+  return (
+    <Box display="grid" gap="xl" padding="xl" columnsAtLg={2}>
+      <MonthlyComparison
+        title="Intäkter per månad"
+        description="Januari till september 2026, låst till och med september."
+        measure="Intäkter 2026"
+        months={months.map(([label, current, previous]) => ({ label, current, previous }))}
+        format={kronor}
+      />
+      <ForecastLines
+        title="Saldo framåt"
+        description="Kända poster till 15 november. Företagets täckning är ofullständig."
+        points={balances.map(([on, label, closing]) => ({ on, label, closing, low: closing }))}
+        labels={{ closing: "Saldo", low: "Lägst under dagen", reserve: "Din gräns" }}
+        reserve="5000000"
+        format={kronor}
+      />
+      <Waterfall
+        title="Från intäkter till resultat"
+        description="Januari till september 2026."
+        steps={[
+          { label: "Intäkter", amount: "119834000", kind: "total" },
+          { label: "Personal", amount: "-61240000", kind: "change" },
+          { label: "Lokal", amount: "-9600000", kind: "change" },
+          { label: "Övrigt", amount: "-40003500", kind: "change" },
+          { label: "Resultat", amount: "8990500", kind: "total" },
+        ]}
+        format={kronor}
+      />
+      <Box display="flex" alignItems="center" gap="md">
+        <Text>Bank 1930</Text>
+        <Sparkline
+          label="Banksaldo de senaste åtta veckorna"
+          values={[
+            "24120000",
+            "26800000",
+            "25310000",
+            "29940000",
+            "28100000",
+            "30560000",
+            "29870000",
+            "31245000",
+          ]}
+          format={kronor}
+        />
+        <Text>312 450 kr</Text>
+      </Box>
+    </Box>
   );
 }
