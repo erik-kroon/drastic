@@ -1,0 +1,2 @@
+$ bun scripts/check-owners.ts
+Ownership declaration passed: 52 wired, 52 leaves total; deferrals are forbidden.

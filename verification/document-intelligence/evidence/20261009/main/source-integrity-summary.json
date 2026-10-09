@@ -1,0 +1,10 @@
+{
+  "status": "stable",
+  "revision": "fa729acad03ce2308837ccb9e09ac2e7073667cf",
+  "runnerExitCode": 0,
+  "exitCode": 0,
+  "limits": "Revision plus exact input inventory; not clean-checkout qualification. Endpoint comparison detects retained changes, not transient edits reverted during execution.",
+  "beforeDigest": "7582012460e823c0eb2a6d48c3b8a1fdbed1875591d4c26e0b35fb495b110b6a",
+  "afterDigest": "7582012460e823c0eb2a6d48c3b8a1fdbed1875591d4c26e0b35fb495b110b6a",
+  "projection": "Source-integrity summary; full inventories remain in the ignored local run. The checked revision plus frozen lockfile reproduces the clean main input."
+}

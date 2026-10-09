@@ -1,0 +1,12 @@
+{
+  "scope": "selected source-highlight SVG only, not the document screen or optical accuracy",
+  "width": 375,
+  "height": 375,
+  "channelTolerance": 24,
+  "gate": 0.01,
+  "changed": 0,
+  "ratio": 0,
+  "passed": true,
+  "expectedHash": "211725f5bb7271520b05a39607440d6583957e56b22cecb57cb6cf2ccba5d04a",
+  "actualHash": "52117a4c9384afac6dff00978b6a5c244afa394005b1f57e5544044273c67b29"
+}

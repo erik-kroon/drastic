@@ -21,3 +21,9 @@ The first API run passed 24/25 and exposed an obsolete immediate-contention expe
 The supported inspector remains macOS-only. Its V8 old-space bound is hard; RSS enforcement is sampled. Live-provider policy, corpus coverage, per-attempt billable usage/cost, SiftX and other-host isolation remain unqualified. The scoped result does not close broader document-screen recovery, performance or baseline acceptance.
 
 Reports and receipts are reviewed synthetic artifacts. Sessions, raw traces, startup logs, credentials and private planning history are excluded. Launchers cleaned their owned processes.
+
+## Main integration
+
+The document-intelligence delivery was cherry-picked onto main as `fa729ac`, preserving the independent remote README update and excluding the unrelated invoice/bank/VAT/period commit. The main checkout installed its frozen lockfile and generated the normal route/translation outputs through the disposable browser launcher. The browser journey passed again on clean main with one screenshot-enabled Luna judgment and zero highlight pixel difference. [Main report](main/report.json), [stable source summary](main/source-integrity-summary.json), [parity](main/highlight-parity.json), [workflow](main/document-intelligence-browser.json) and [source judgment screenshot](main/source-judgment.png) retain that observation. The earlier 25-case API run above remains separately identified by its original checked revision and input inventory.
+
+The [full changed-code check against origin/main](main/check-full.txt) and [ownership check](main/check-owners.txt) passed after generation. No product source changed during integration verification.
