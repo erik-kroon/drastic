@@ -98,6 +98,31 @@ Setup is the persistent workspace. Inventory, parsing, import, reconciliation
 and acceptance remain distinct, and first-live-period completion requires a
 current closing certificate rather than a setup checkbox.
 
+## Existing-book responsibilities
+
+`POST /onboarding/responsibilities` also supports books without an onboarding
+case. An admitted human operator can append assignments for enabled operators
+in that book. The command uses the current responsibility revision and an
+idempotency key; exact replay retains the original result, and stale revisions
+or changed replay input refuse. Assignment does not create an onboarding case,
+activate a book or grant membership.
+
+Financial approval reads these retained assignments together with current book
+access. Revoked or foreign access, agent actors and an unassigned independent
+human cannot supply financial authority. When an onboarding case exists, its
+activation fences still apply, including to a plan approved before the case
+was created. Retained assignments cannot bypass those fences.
+
+Run the absent-case assignment and payroll recovery journeys together:
+
+```sh
+OPENERP_E2E_ARTIFACTS=test-results/book-responsibilities bun run test:e2e apps/api/tests/book-responsibilities.e2e.test.ts apps/api/tests/mileage-corrections.e2e.test.ts
+```
+
+The artifacts include source-integrity receipts, exact assignment revisions,
+financial baselines and recovery histories. These are synthetic application
+checks; they do not qualify real-company onboarding or payroll delivery.
+
 ## Qualification limits
 
 The implementation retains independent controls, responsibility policies, exact
