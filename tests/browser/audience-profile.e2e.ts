@@ -80,9 +80,9 @@ test("the audience profile changes navigation only and survives reload", async (
   expect(after).toBe(before);
   const direct = await app.screenshot("audience-client-direct-bookkeeping");
 
-  await agent.act(
-    "Open the account menu at the bottom of the sidebar, open the Vy dropdown and select Visa som byrå. Stop once it is selected.",
-  );
+  await screen.getByText("Elin Sund", { exact: true }).click();
+  await screen.getByRole("combobox", "Vy", { exact: true }).click();
+  await screen.getByRole("option", "Visa som byrå", { exact: true }).click();
   await expect(screen.getByRole("link", "Bokföring", { exact: true })).toBeVisible();
   await expect(navigation("Arbete").getByRole("link")).toHaveCount(4);
   const restored = await app.screenshot("audience-bureau-restored");
