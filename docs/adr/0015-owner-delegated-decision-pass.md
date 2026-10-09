@@ -66,11 +66,11 @@ This is a policy change and it is deliberate, not an oversight: the previous bla
 
 **D-04 does not decide the company's method.** The reported company name, fiscal dates and bank remain reported facts. A method, registration or effective date is established from original registration and change records, not chosen by preference and not defaulted. Missing facts block the affected financial action; they do not block source retention, review, synthetic implementation, or testing both supported methods.
 
-### Accounted is a pinned reference, not the authority
+### external reference is a pinned reference, not the authority
 
-The reference is pinned at `erp-mafia/accounted` `7ebea94fb3968c126e67e6cfe7efab695cc65b2f`. It is used actively and is a genuine source of counterexamples. It is never the sole acceptance criterion, and "Accounted returned the same number" does not close a question.
+The reference is pinned at `external reference repository` `7ebea94fb3968c126e67e6cfe7efab695cc65b2f`. It is used actively and is a genuine source of counterexamples. It is never the sole acceptance criterion, and "external reference returned the same number" does not close a question.
 
-The verification hierarchy is: actual source documents and independent balances establish what happened; applicable primary rules and explicit expected cases establish what should result; pinned Accounted code, tests or an isolated run provide concrete comparison; actual openERP runtime observations establish whether this implementation performs and recovers correctly. When openERP and Accounted disagree, the difference is investigated against the source facts and the applicable rule — neither implementation is automatically changed to match the other, and neither is assumed superior.
+The verification hierarchy is: actual source documents and independent balances establish what happened; applicable primary rules and explicit expected cases establish what should result; pinned external reference code, tests or an isolated run provide concrete comparison; actual openERP runtime observations establish whether this implementation performs and recovers correctly. When openERP and external reference disagree, the difference is investigated against the source facts and the applicable rule — neither implementation is automatically changed to match the other, and neither is assumed superior.
 
 Licensing is preserved. The inspected reference licence is AGPL-3.0-or-later with a limited extension exception. Material carried across must retain its provenance, must not be presented as original openERP code, and must not be treated as unconditionally licensed data. The repository's AGPL-3.0-only position is unchanged. A reference runtime stays isolated and nonauthoritative; no service purchase and no upload of company originals to a hosted application.
 
@@ -121,7 +121,7 @@ Adoption of a decision is not adoption of the old file's bytes. A 1,503-line pla
 | Wait for external professional review before accepting any release | Unachievable in a one-operator repository, and it would have blocked all acceptance. Replaced with owner acceptance plus independently derived source, rule and runtime evidence. |
 | Keep the blanket test prohibition and request approval per test | Every ordinary regression would require a fresh decision round. The permission is now bounded once, in writing, instead. |
 | Accept HARNESS-1 as written | It would require the runtime role to be unable to write application tables, contradicting ADR 0010 and the intended installation, and it would invite tenant-session identity patterns back in. |
-| Treat Accounted agreement as acceptance | It replaces independent derivation with a second implementation's opinion, and both could share the same misunderstanding. |
+| Treat external reference agreement as acceptance | It replaces independent derivation with a second implementation's opinion, and both could share the same misunderstanding. |
 | Close all 34 scope items as decided | The decision pass covers 23 capabilities. Closing the other 11 by silence would be the exact failure this record exists to prevent. |
 | Import the revised parity backlog and test plan as files | A wholesale old-file overwrite would delete later valid requirements and would not survive the existing 53-packet and 101-edge integrity gate. |
 

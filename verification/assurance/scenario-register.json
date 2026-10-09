@@ -381,7 +381,7 @@
       "id": "GAP-REFERENCES",
       "title": "Complete cross-repository behavioral equivalence",
       "implementation": "explicit_coverage_gap",
-      "scope": "Only selected test patterns were studied. No full Accounted/ERPNext suite was ported or executed; their policy defaults are not authority for OpenERP.",
+      "scope": "Only selected test patterns were studied. No full external reference/ERPNext suite was ported or executed; their policy defaults are not authority for OpenERP.",
       "execution_status": "not_implemented_by_this_package",
       "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
     }

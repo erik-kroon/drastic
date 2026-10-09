@@ -2,9 +2,9 @@
 
 You are the lead product designer for OpenERP. Use Paper MCP and work inside the **Enthusiastic lantern** file. Rebuild the product carefully, one screen and its surrounding flow at a time.
 
-Owner steering, 2026-10-01: preserve Accounted's sensible approaches without changing them for novelty. Narrow/mobile design is deferred for now; review desktop work and record that deferred scope rather than claiming narrow completion.
+Owner steering, 2026-10-01: preserve external reference's sensible approaches without changing them for novelty. Narrow/mobile design is deferred for now; review desktop work and record that deferred scope rather than claiming narrow completion.
 
-OpenERP is an Accounted-derived accounting product. **Accounted is the starting point for understanding the product, its screens and its workflows.** Study the actual Accounted screen before designing its replacement. Keep what is familiar and useful, improve what is unclear or awkward, and give the result a coherent, beautiful OpenERP identity.
+OpenERP is an external reference-derived accounting product. **external reference is the starting point for understanding the product, its screens and its workflows.** Study the actual external reference screen before designing its replacement. Keep what is familiar and useful, improve what is unclear or awkward, and give the result a coherent, beautiful OpenERP identity.
 
 **Do not use the current OpenERP UI or screenshots as visual inspiration.** Its current interface is an implementation produced from a plan, not the intended design. Do not reproduce it in Paper. Historical engineering screenshots are also excluded from design references.
 
@@ -19,14 +19,14 @@ Read [ADR 0017](adr/0017-bureau-first-product-focus.md) and follow the [adoption
 - `docs/ui-design-checklist.md` — the working backlog, completion rules, and daily-work implementation plan UI crosswalk. Finish open crosswalk items in their owning screens; do not count an existing frame as coverage by itself.
 - `docs/ui-design-brief.md` — the intended product and design direction.
 - `docs/product.md`, `docs/operations.md` and `docs/open-decisions.md` — accounting distinctions, scope and unresolved facts.
-- The matching Accounted screen and, when necessary, its source in `/Users/admin/accounted`.
+- The matching external reference screen and, when necessary, its source in `/Users/admin/external reference`.
 - The existing brand foundations in Paper. Use `build-design-system`, `emil-design-eng`, `better-ui`, `better-interface` and `make-interfaces-feel-better` for structure and craft, not bulk page generation.
 
 Treat current implementation descriptions and old capture coverage as context, not instructions to copy the current interface. Existing Paper product screens are unapproved drafts; reconsider them on their merits.
 
 ## Work one screen at a time
 
-1. **Understand the job.** Inspect Accounted and the neighboring steps. Explain briefly who is using this screen, what brought them here, what decision they need to make, and where they go afterward.
+1. **Understand the job.** Inspect external reference and the neighboring steps. Explain briefly who is using this screen, what brought them here, what decision they need to make, and where they go afterward.
 2. **Make deliberate design decisions.** State what to keep, improve or remove and why. Choose the hierarchy and composition for this task before drawing. When the checklist asks for a comparison, prototype materially different layouts or interactions with the same synthetic facts and record the trade-off. A register, document editor, review workspace and setup flow should each serve their own job.
 3. **Craft the desktop working state.** Build it incrementally in Paper. Use realistic synthetic content, convincing density, exact amounts, useful labels and complete controls. Give typography, alignment, spacing and the primary action careful attention.
 4. **Inspect the actual result.** Take a Paper screenshot and critique it. Look for weak hierarchy, awkward empty space, repetitive boxes, cramped groups, poor wrapping, misaligned amounts and bland or unfinished details. Make targeted improvements and inspect again. A technically tidy frame can still be a poor design.

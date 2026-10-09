@@ -1,6 +1,7 @@
 # OpenERP agent rules
 
 ## Work
+
 - Use Linear MCP to track work in the existing OpenERP project.
 - Make one issue for each result that can be finished and checked.
 - Add source links, done checks, and an owner or blocker to every issue, including deferred work already tracked. Issues may be short; keep detailed requirements in their existing repo documents. Resolve source links to tracked files available in a fresh checkout; local ignored execution files are not sufficient.
@@ -11,14 +12,17 @@
 - Keep plans, code, and check results distinct. Update docs when facts or decisions change.
 
 ## Frontend design and code
+
 - Use Paper MCP to design frontend screens. Work on one screen at a time in `Enthusiastic lantern`.
 - Follow `docs/ui-design-prompt.md`, `docs/ui-design-checklist.md`, and `verification/paper/baseline/`.
 - Read frame code and styles with Paper `get_jsx` and `get_computed_styles`. Use shared components and UI tokens. Draft designs are not approval or proof of implementation.
 - Use only copy and states shown in each frame. Follow its selection style. Do not use middle-dot separators.
 - Keep route files thin. Compose pages from owned components; do not put the full interface in a page or route.
 - Build with StyleX and existing UI components. A screen is done when its parity check passes and its diff is saved. See `verification/paper/`.
+- Read https://good-css.com before you write CSS.
 
 ## Safety and checks
+
 - Follow accounting and code ownership in `docs/README.md` and `apps/api/README.md`. Read financial amounts from stored records, not client input.
 - Keep anti-slop Oxlint rules enabled. Fix lint and TypeScript errors; do not suppress warnings or weaken checks.
 - Run `bun run check:changed` after each coherent code edit. Run `bun run check:changed:full` before handoff and after Promise or async changes.
@@ -27,6 +31,7 @@
 - If dependency manifests change, update `bun.lock` and verify with `bun install --frozen-lockfile`.
 
 ## Testing
+
 Choose tests in this order of priority:
 
 1. Full E2E tests with nothing mocked out. Exercise real application flows with Playwright or equivalent, using synthetic test accounts and data. Production test accounts require task-specific authorization under the safety rules above. Save a verifiable, repeatable artifact at the end of each E2E run.
@@ -34,7 +39,7 @@ Choose tests in this order of priority:
 3. Golden tests grounded in representative data examples, covering regressions and edge cases. Use synthetic or sanitized fixtures that comply with the safety rules above.
 
 - Unit tests are exceptional; avoid tests that duplicate implementation details or add maintenance bloat. Never write unit tests after writing the implementation.
-- Coding agents must use [TesterArmy e2e](https://tester.army/e2e) for new browser E2E tests, with Luna (`gpt-6-luna`) for agent steps. Read its [coding-agent guide](https://e2e.tester.army/docs/coding-agents.md) and the installed `.agents/skills/e2e/SKILL.md` before writing or running tests. If the skill is missing, run `bun run setup:browser` to install the skill and Chromium from the locked packages.
+- Coding agents must use Vitest or [TesterArmy e2e](https://tester.army/e2e) for new browser E2E tests, with Luna (`gpt-6-luna`) for agent steps. Read its [coding-agent guide](https://e2e.tester.army/docs/coding-agents.md) and the installed `.agents/skills/e2e/SKILL.md` before writing or running tests. If the skill is missing, run `bun run setup:browser` to install the skill and Chromium from the locked packages. Choose what is most relevant, or combine.
 - Use `bun run test:browser` to start the pinned local [openai-api-server-via-codex](https://github.com/hotchpotch/openai-api-server-via-codex) proxy and a fresh synthetic PostgreSQL/API/web runtime, run tests, and clean up. The proxy uses the existing authorized Codex login on an allocated loopback port; `e2e.config.ts` explicitly selects `gpt-6-luna`. Follow [the setup and test recipe](verification/testerarmy/README.md), reuse `tests/browser/synthetic-session.ts`, and run `bun run check:browser` after test changes.
 - If Luna, Codex authentication, or the proxy is unavailable, report the blocker and the unverified behavior. Do not silently switch models or providers or claim agent-driven E2E verification from a mocked run.
 - Before building a system in isolation, first list all the ways it could fail, then write the code.

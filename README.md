@@ -22,7 +22,8 @@ The development build includes:
 
 - **Double-entry bookkeeping** — Chart of accounts, sequential voucher numbering, exact amounts and approval before posting.
 - **Invoicing** — Customer invoice drafts, PDF generation, credit notes and payment tracking.
-- **Recurring invoices** — Billing schedules, versioned invoice templates, pauses and per-cycle billing records.
+- **Recurring invoices** — Versioned agreements and templates create reviewable drafts, with pauses, explicit missing-period handling and retry/restart recovery.
+- **Collections and reminders** — Exact message review, separate approval and dispatch, changed-payment refusal and durable attempt recovery; live delivery qualification remains separate.
 - **Sales orders and catalog** — Customer orders, reusable articles and invoice handoff.
 - **Supplier invoices** — Document inbox, invoice review, purchase recognition, credits and payment batches.
 - **Bank reconciliation** — Statement imports, match candidates, transaction matching and reconciliation sign-offs.
@@ -40,15 +41,22 @@ The development build includes:
 - **Accountant workspaces** — Multiple client books, team assignments, access controls and due-work views.
 - **Agent access (MCP)** — Book-scoped tools for preparation, reconciliation, reports and execution of human-approved postings; REST and OpenAPI for integrations.
 
-> **Under active development.** Modules have different levels of implementation and verification, and availability depends on company setup and reviewed rule profiles. OpenERP is not yet validated for live company books or statutory filing. Current focus: a complete daily journey, a reviewer-accepted first period (Book Zero) and Cash qualification. See [implementation status](docs/plans/next-packet-progress.md) and the [roadmap](docs/roadmap.md).
+> **Under active development.** Modules have different levels of implementation and verification, and availability depends on company setup and reviewed rule profiles. OpenERP is not yet validated for live company books or statutory filing. Current focus: the bureau-led documents, bank, invoicing and VAT loop, with a reviewer-accepted first period (Book Zero). Cash follows that loop. See [current work status](docs/work-status.md), the [product focus decision](docs/adr/0017-bureau-first-product-focus.md) and the [roadmap](docs/roadmap.md).
 
 ## Proof
 
-No screenshots yet — proof here means repeatable evidence, linked with its limits:
+Repeatable evidence is linked with its scope and limits:
 
-- Backend E2E on real PostgreSQL and workerd, with source-hash manifests retained in `test-results/e2e/` and history in `test-results/e2e-history/`. Reproduce it with `bun run test:e2e` (see the [E2E guide](apps/api/tests/README.md)).
-- Dated synthetic browser journey: create evidence → prepare → review → approve → post → restart → recover, with receipts retained under `test-results/replacement-final/` (see `browser-proof.json`).
-- What each phase requires for acceptance: [roadmap](docs/roadmap.md), [verification scenarios](docs/verification.md) and the [Book Zero plan](docs/plans/15-book-zero-workflow-cash.md).
+![Implemented reminder review with synthetic invoice data](verification/paper/domain-owners/collections-reminders/M31/actual.png)
+
+*Actual application capture: exact message review before approval, with dispatch in a separate step. [Saved comparison](verification/paper/domain-owners/collections-reminders/M31/report.json).*
+
+- [Document and bank rehearsal, 8 October 2026](docs/plans/evidence/investor-rehearsals-20261007/qualified-20261008/README.md): repeated synthetic document/question/posting/recovery/allocation and bank-review chapters, with identical input hashes and stable source receipts. These are separate chapters, not a continuous recorded demo.
+- [Recurring drafts, 7 October 2026](docs/plans/evidence/recurring-20261007/README.md): 17 native PostgreSQL/workerd/Bun cases, 1,000 synthetic drafts and a 320px browser recovery journey. Functional qualification is complete for this scope; recurring screen parity remains open.
+- [Collections and reminders, 8 October 2026](docs/plans/evidence/domain-frontend-reminders/validation/20261008/README.md): 18 public API cases, isolated recovery, browser/native keyboard review and 11 saved whole-frame diffs at 0.94–2.21% under the configured 2.5% limit. The reviewed local reminder baseline is accepted; live delivery remains separate.
+- Acceptance requirements: [roadmap](docs/roadmap.md), [verification scenarios](docs/verification.md) and [Book Zero](docs/plans/15-book-zero-workflow-cash.md).
+
+For a deeper account of the domains, engineering decisions, verification and upcoming work, read the [technical overview](docs/technical-overview.md).
 
 ## Self-hosting
 
