@@ -1,0 +1,50 @@
+{
+  "actual": "verification/paper/evidence/k10-header-action/screenshots/001-home-selected-original-after-reload.png",
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/work-home-return.e2e.ts",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf2",
+          "weight": "normal",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T23:34:14.599Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_0c3e820881934de388b738b400e66853&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_b4754b87e8b14c79b8cc48a3a9953c5d%2F",
+    "route": "/entities/$entityId/books/$bookId/",
+    "fixture": {
+      "recipe": "tests/browser/work-home-return.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; full frame with synthetic fixture and unpinned clock limits",
+  "sourceRevision": "b10ba3cdfd4544f5ef34cecb6b0649f422170d17",
+  "sourceHashes": {
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "0b5c37e468975f8fb06e706df4bea693641855d093b3c59c1dc80a0ef9b04b91",
+    "packages/ui/src/kanon/layouts.tsx": "2ea353a6c273488d53927c659a97710a361cc61a1c38d978ea4b0463eb80d9f2",
+    "packages/ui/src/kanon/work-list.tsx": "5b7a2266b60de66a81601e41a4c27cde443cc0061c1a741567aec768f919a468",
+    "packages/ui/src/kanon/detail-panel.tsx": "2e7935db5e149d244531c86585206f111efb10654df2a369302006bd4445685e",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
+    "tests/browser/work-home-return.e2e.ts": "1364abdbe363cfd4651ad458c594a4dba5029bb7e87623ac9042fe464f62803d"
+  },
+  "workingTreeCandidate": true
+}

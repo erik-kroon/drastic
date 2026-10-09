@@ -29,7 +29,7 @@
         "loading",
         "error"
       ],
-      "evidence": "verification/paper/evidence/k10-supplier-panes/result.json",
+      "evidence": "verification/paper/evidence/k10-header-action/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -50,7 +50,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Canonical bars, rows, detail surface/header/actions preserve original and supplier saved owners. Native scoped root/stage/reload return, stored amounts and375px stacking pass with stable source and cleaned synthetic runtime. Full-frame drift4.3644% exceeds2%; board content differs, clock unpinned. Dark/native200% and complete-state parity remain unverified; no production qualification."
+      "notes": "Canonical compact secondary Review all header preserves the native scoped queue link, status/kind/sort/cursor, keyboard navigation and selected-row focus. Synthetic home-return passes with stable source and cleaned runtime. Full-frame drift 5.7936% exceeds 2%; fixture differs from board and clock is unpinned. Complete-state, dark and native 200% zoom parity remain unverified; no production qualification."
     },
     {
       "id": "K-40",
@@ -841,7 +841,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": " Rendered Action/InlineAction router links expose link semantics; native actions retain button semantics. This fixes the real-route regression reproduced by the retained Granska original link locator, without changing navigation destinations."
+      "notes": " Rendered Action/InlineAction router links expose link semantics; native actions retain button semantics. This fixes the real-route regression reproduced by the retained Granska original link locator, without changing navigation destinations. K-10 Review all uses the existing compact secondary Action. Native label-preserving form inhibition needs an explicit owner contract alongside the adopted blockedBy reason state; focused submit forms remain unchanged."
     },
     {
       "id": "K-03",

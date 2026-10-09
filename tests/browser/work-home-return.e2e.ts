@@ -124,6 +124,58 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
+  const selectedHomeUrl = await browser.url();
+
+  const reviewAll = screen.getByRole("link", "Granska alla", { exact: true });
+
+  const reviewAllSearch = new URLSearchParams({
+    status: "open",
+    kind: "all",
+    sort: "oldest",
+    after: continuation,
+  });
+
+  await expect(reviewAll).toHaveAttribute(
+    "href",
+    `${new URL(workspace).pathname}/work?${reviewAllSearch}`,
+  );
+
+  const headerAction = await browser.evaluate(() => {
+    const link = document.querySelector("main header a");
+    const style = link ? getComputedStyle(link) : null;
+
+    return {
+      tag: link?.tagName ?? null,
+      text: link?.textContent ?? null,
+      height: style?.height ?? null,
+      borderWidth: style?.borderTopWidth ?? null,
+    };
+  });
+
+  expect(headerAction).toEqual({
+    tag: "A",
+    text: "Granska alla",
+    height: "28px",
+    borderWidth: "1px",
+  });
+  await reviewAll.focus();
+  await expect(reviewAll).toBeFocused();
+  await reviewAll.press("Enter");
+  await expect
+    .poll(async () => {
+      const current = new URL(await browser.url());
+
+      return { path: current.pathname, search: Object.fromEntries(current.searchParams) };
+    })
+    .toEqual({
+      path: `${new URL(workspace).pathname}/work`,
+      search: { status: "open", kind: "all", sort: "oldest", after: continuation },
+    });
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  await app.open(selectedHomeUrl);
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(row).toBeFocused();
+
   const previewHeader = () =>
     browser.evaluate(() => {
       const header = document.querySelector("main aside[aria-label='Nästa steg'] header");
@@ -503,6 +555,8 @@ test("home retains the selected original and scoped keyboard return after reload
         before,
         after,
         selectedHeader,
+        headerAction,
+        reviewAllKeyboardNavigation: true,
         handoffHeader,
         selectedConditions,
         selectedScreenshot,

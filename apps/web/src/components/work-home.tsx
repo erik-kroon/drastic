@@ -5,7 +5,6 @@ import type * as Workspace from "@open-erp/contracts/workspace";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { WorkHeaderAction } from "@open-erp/ui/components/work-controls";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { AreaBar, BarTab, ListDetailPage } from "@open-erp/ui/kanon/layouts";
@@ -119,9 +118,13 @@ export function WorkHome() {
                   locale={locale}
                   onOpen={() => setGroupReview(true)}
                 />
-                <WorkHeaderAction href={workQueueHref(base, filters)}>
+                <Action
+                  kind="secondary"
+                  compact
+                  render={<Link to={workQueueHref(base, filters)} />}
+                >
                   {sv ? "Granska alla" : "Review all"}
-                </WorkHeaderAction>
+                </Action>
               </Box>
             }
           />

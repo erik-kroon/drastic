@@ -1231,7 +1231,6 @@
     "apps/web/src/components/work-home.tsx:@open-erp/ui/components/box",
     "apps/web/src/components/work-home.tsx:@open-erp/ui/components/button",
     "apps/web/src/components/work-home.tsx:@open-erp/ui/components/register-workspace",
-    "apps/web/src/components/work-home.tsx:@open-erp/ui/components/work-controls",
     "apps/web/src/components/work-questions.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/work-questions.tsx:@open-erp/ui/components/box",
     "apps/web/src/components/work-questions.tsx:@open-erp/ui/components/button",
