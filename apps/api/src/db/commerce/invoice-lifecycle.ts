@@ -267,10 +267,11 @@ export function readDraftSummaries(
     sql`
       select source.id, summary.body
       from (
-        select d.id, r.body, d.draft_key
+        select d.id, r.body, d.draft_key, r.revision
         from openerp.invoice_drafts d
         join openerp.invoice_draft_revisions r
-          on r.book_id = d.book_id and r.draft_id = d.id and r.revision = d.current_revision
+          on r.book_id = d.book_id and r.draft_id = d.id
+            and (${draftId}::text is not null or r.revision = d.current_revision)
         where d.book_id = ${bookId} and (${draftId}::text is null or d.id = ${draftId})
           and (${afterKey}::text is null or d.draft_key collate "C" > ${afterKey}::text collate "C")
           and (${search}::text = '' or
@@ -292,7 +293,7 @@ export function readDraftSummaries(
           'digest', source.body->>'digest'
         ) as body
       ) summary
-      order by source.draft_key collate "C", source.body->>'revision' collate "C"
+      order by source.draft_key collate "C", source.revision
       limit ${bound + 1}
     `,
     "objects",

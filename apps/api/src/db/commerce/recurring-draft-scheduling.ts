@@ -254,10 +254,28 @@ export function readAgreementPage(
   bookId: string,
   after: string | undefined,
 ) {
-  return transaction.execute<{ readonly id: string; readonly body: JsonObject }>(
+  return transaction.execute<{
+    readonly id: string;
+    readonly body: JsonObject;
+    readonly enabled: boolean | null;
+    readonly nextCycleOrdinal: string | null;
+    readonly schedule: JsonObject | null;
+  }>(
     sql`
-    select id,body from openerp.recurring_invoice_agreements where book_id=${bookId}
-      and (${after === undefined} or id collate "C" > ${after ?? ""}) order by id collate "C" limit 101
+    select a.id,a.body,s.enabled,s.next_cycle_ordinal::text as "nextCycleOrdinal",
+      r.body->'schedule' as schedule
+    from openerp.recurring_invoice_agreements a
+    left join openerp.recurring_invoice_draft_schedules s
+      on s.book_id=a.book_id and s.agreement_id=a.id
+    left join lateral (
+      select body from openerp.recurring_invoice_agreement_schedules
+      where book_id=a.book_id and agreement_id=a.id
+        and effective_from_cycle <= s.next_cycle_ordinal
+      order by effective_from_cycle desc,revision desc limit 1
+    ) r on true
+    where a.book_id=${bookId}
+      and (${after === undefined} or a.id collate "C" > ${after ?? ""})
+    order by a.id collate "C" limit 101
   `,
     "objects",
   );

@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
+import { cycleDate, RecurrenceSchedule } from "@open-erp/domain/recurrence";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
@@ -156,10 +157,35 @@ export const listRecurringAgreements = Effect.fn("commerce.recurring.listAgreeme
 
     const items = rows.slice(0, 100);
 
+    const scheduling = yield* Effect.forEach(items, (row) =>
+      Effect.gen(function* () {
+        if (row.enabled === null) return [];
+
+        if (row.nextCycleOrdinal === null || row.schedule === null)
+          return yield* failure("StaleDependency");
+
+        const schedule = yield* decode(RecurrenceSchedule, row.schedule);
+        const next = cycleDate(schedule, row.nextCycleOrdinal);
+
+        if (Result.isFailure(next)) return yield* failure("StaleDependency");
+
+        return [
+          {
+            agreementId: row.id,
+            enabled: row.enabled,
+            nextCycleOrdinal: row.nextCycleOrdinal,
+            nextCycleDate: next.success,
+            timeZone: schedule.timeZone,
+          },
+        ];
+      }),
+    );
+
     return yield* decode(Recurring.RecurringAgreementPage, {
       scope: input.scope,
       items: yield* Effect.forEach(items, (row) => decode(Recurring.RecurringAgreement, row.body)),
       continuation: rows.length > 100 ? (items.at(-1)?.id ?? null) : null,
+      scheduling: scheduling.flat(),
     });
   });
 });

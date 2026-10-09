@@ -10,6 +10,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { readAccounting } from "@/lib/accounting-api";
 import { checkScope, commerceKey, commercePath } from "./shared";
+import { CreateRecurringAgreement } from "./recurring-agreement-controls";
 import { SalesNavigation } from "./sales-navigation";
 
 export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?: string }) {
@@ -40,11 +41,18 @@ export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?
 
   const items = agreements.data?.pages.flatMap((page) => page.items) ?? [];
 
+  const schedules = new Map(
+    agreements.data?.pages
+      .flatMap((page) => page.scheduling)
+      .map((item) => [item.agreementId, item]),
+  );
+
   return (
     <RegisterWorkspace
       title={sv ? "Försäljning" : "Sales"}
       tabs={<SalesNavigation view="recurring" work={work} returnTo={returnTo} />}
     >
+      <CreateRecurringAgreement book={book} locale={locale} work={work} returnTo={returnTo} />
       <AccountingStatus pending={agreements.isPending} error={agreements.error} locale={locale} />
       {agreements.isSuccess && items.length === 0 ? (
         <PageEmpty
@@ -58,22 +66,48 @@ export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?
           narrow="stack"
           columns={[
             { id: "title", label: sv ? "Avtal" : "Agreement", width: "fill" },
-            { id: "interval", label: sv ? "Intervall" : "Interval", width: 130 },
-            { id: "anchor", label: sv ? "Startdatum" : "Anchor date", width: 150 },
+            {
+              id: "interval",
+              label: sv ? "Ursprungligt intervall" : "Original interval",
+              width: 130,
+            },
+            {
+              id: "anchor",
+              label: sv ? "Ursprungligt startdatum" : "Original anchor date",
+              width: 150,
+            },
+            { id: "status", label: sv ? "Automatiska utkast" : "Automatic drafts", width: 180 },
+            { id: "next", label: sv ? "Nästa cykel" : "Next cycle", width: 150 },
           ]}
-          rows={items.map((agreement) => ({
-            id: agreement.id,
-            cells: [
-              <Link
-                key="title"
-                href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "recurring", record: agreement.id, work, returnTo })}`}
-              >
-                {agreement.title}
-              </Link>,
-              cadenceLabel(agreement.schedule.cadence, sv),
-              agreement.schedule.anchorLocalDate,
-            ],
-          }))}
+          rows={items.map((agreement) => {
+            const schedule = schedules.get(agreement.id);
+
+            return {
+              id: agreement.id,
+              cells: [
+                <Link
+                  key="title"
+                  href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "recurring", record: agreement.id, work, returnTo })}`}
+                >
+                  {agreement.title}
+                </Link>,
+                cadenceLabel(agreement.schedule.cadence, sv),
+                agreement.schedule.anchorLocalDate,
+                schedule
+                  ? schedule.enabled
+                    ? sv
+                      ? "Automatiska utkast aktiva"
+                      : "Automatic drafts enabled"
+                    : sv
+                      ? "Automatiska utkast pausade"
+                      : "Automatic drafts paused"
+                  : sv
+                    ? "Inte schemalagt"
+                    : "Not scheduled",
+                schedule?.nextCycleDate ?? "—",
+              ],
+            };
+          })}
         />
       ) : null}
       {agreements.hasNextPage ? (

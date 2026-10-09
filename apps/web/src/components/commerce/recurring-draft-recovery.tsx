@@ -1,4 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { defaultStringifySearch } from "@tanstack/react-router";
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -11,15 +13,15 @@ import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
-export function RecurringDraftRecovery({
-  book,
-  locale,
-  agreementId,
-  jobId,
-}: CommerceProps & {
-  agreementId?: string;
-  jobId?: string;
-}) {
+export function RecurringDraftRecovery(
+  props: CommerceProps & {
+    agreementId?: string;
+    jobId?: string;
+    work?: string;
+    returnTo?: string;
+  },
+) {
+  const { book, locale, agreementId, jobId } = props;
   const sv = locale === "sv";
   const path = `${commercePath(book)}/recurring-invoices/${encodeURIComponent(agreementId ?? "")}`;
 
@@ -29,6 +31,9 @@ export function RecurringDraftRecovery({
       const value = await readAccounting(path, Recurring.RecurringAgreementView, { signal });
 
       checkScope(book, value.agreement.scope);
+
+      if (value.agreement.id !== agreementId)
+        throw new Error("Recurring agreement identity mismatch");
 
       return value;
     },
@@ -50,47 +55,65 @@ export function RecurringDraftRecovery({
         `${path}/scheduling?${search}`,
         Recurring.RecurringScheduling,
         { signal },
-      );
+      ).catch((error: unknown) => {
+        if (
+          !jobId &&
+          !pageParam &&
+          error instanceof Accounting.AccountingError &&
+          error.code === "NotFound"
+        )
+          return null;
+
+        throw error;
+      });
+
+      if (value === null) return null;
 
       checkScope(book, value.scope);
 
+      if (value.agreementId !== agreementId || (jobId && value.selectedJob?.id !== jobId))
+        throw new Error("Recurring scheduling identity mismatch");
+
       return value;
     },
-    getNextPageParam: (page) => page.continuation ?? undefined,
-    enabled: agreementId !== undefined,
+    getNextPageParam: (page) => page?.continuation ?? undefined,
+    enabled: agreement.isSuccess,
     retry: false,
   });
 
-  const first = scheduling.data?.pages[0];
-  const jobs = scheduling.data?.pages.flatMap((page) => page.history) ?? [];
+  const first = scheduling.isError ? undefined : scheduling.data?.pages[0];
+  const jobs = scheduling.data?.pages.flatMap((page) => page?.history ?? []) ?? [];
   const selected = first?.selectedJob ?? jobs.find((job) => job.id === jobId);
 
   return (
     <Box display="grid" gap="xl" minWidth="zero">
-      <Link href={`${workspacePath(book)}/work`}>{sv ? "Till Att göra" : "Back to work"}</Link>
+      <Link href={`${workspacePath(book)}/work${props.work ?? ""}`}>
+        {sv ? "Till Att göra" : "Back to work"}
+      </Link>
       <RecordHeading
         title={agreement.data?.agreement.title ?? (sv ? "Återkommande utkast" : "Recurring drafts")}
       />
       <AccountingStatus
         locale={locale}
-        pending={agreement.isPending || scheduling.isPending}
+        pending={agreement.isPending || (agreement.isSuccess && scheduling.isPending)}
         error={agreement.error ?? scheduling.error}
       />
+      {agreement.isSuccess && scheduling.isSuccess && first === null ? (
+        <StartScheduling
+          book={book}
+          locale={locale}
+          path={path}
+          current={!scheduling.isFetching && !agreement.isFetching}
+        />
+      ) : null}
       {first ? (
-        <RecordSection title={sv ? "Schemaläggning" : "Scheduling"}>
-          <Text>
-            {sv ? "Automatiska utkast" : "Automatic drafts"}:{" "}
-            {first.enabled ? (sv ? "Aktiva" : "Enabled") : sv ? "Pausade" : "Paused"}
-          </Text>
-          <Text>
-            {sv ? "Nästa cykel" : "Next cycle"}: {first.nextCycleDate}, {first.timeZone}
-          </Text>
-          <Text>
-            {sv
-              ? "Varje utkast granskas innan utfärdande."
-              : "Each draft requires review before issuance."}
-          </Text>
-        </RecordSection>
+        <SchedulingSection
+          book={book}
+          locale={locale}
+          path={path}
+          schedule={first}
+          current={!scheduling.isFetching && !scheduling.isError}
+        />
       ) : null}
       {selected && first ? (
         <SelectedCycle
@@ -99,6 +122,9 @@ export function RecurringDraftRecovery({
           path={path}
           schedule={first}
           selected={selected}
+          current={!scheduling.isFetching && !scheduling.isError}
+          work={props.work}
+          returnTo={props.returnTo}
         />
       ) : null}
       {first ? (
@@ -106,7 +132,7 @@ export function RecurringDraftRecovery({
           {jobs.map((job) => (
             <Box key={job.id} display="grid" gap="sm">
               <Link
-                href={`${workspacePath(book)}/sales?view=recurring&record=${encodeURIComponent(first.agreementId)}&job=${encodeURIComponent(job.id)}`}
+                href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "recurring", record: first.agreementId, job: job.id, work: props.work, returnTo: props.returnTo })}`}
               >
                 {sv ? "Cykel" : "Cycle"} {job.cycleOrdinal}, {job.cycleDate},{" "}
                 {jobStatus(job.state, sv)}
@@ -132,11 +158,132 @@ export function RecurringDraftRecovery({
   );
 }
 
+function StartScheduling(props: CommerceProps & { path: string; current: boolean }) {
+  const sv = props.locale === "sv";
+
+  return (
+    <RecordSection title={sv ? "Schemalägg automatiska utkast" : "Schedule automatic drafts"}>
+      <Text>
+        {sv
+          ? "Automatiska utkast är inte schemalagda för avtalet."
+          : "Automatic drafts are not scheduled for this agreement."}
+      </Text>
+      <Text>
+        {sv
+          ? "Spara en kommersiell framtida mall som gäller från eller före första automatiska cykeln. Öppna Ändra framtida fakturering nedan. Varje skapat utkast granskas före utfärdande."
+          : "Save a commercial future template effective on or before the first automatic cycle. Open Change future billing below. Each created draft requires review before issuance."}
+      </Text>
+      <CommandForm
+        {...props}
+        path={`${props.path}/scheduling`}
+        schema={Recurring.RecurringSchedulingInput}
+        output={Recurring.RecurringScheduling}
+        allowed={props.book.role === "operator" && props.current}
+        label={sv ? "Aktivera automatiska utkast" : "Enable automatic drafts"}
+        input={(fields) => ({
+          expectedGeneration: "0",
+          enabled: true,
+          firstAutomaticCycle: fields.get("firstAutomaticCycle"),
+          duePolicy: "local_calendar_date_v1",
+          confirmFirstAutomaticCycle: fields.get("confirmed") === "on",
+          reason: fields.get("reason"),
+        })}
+      >
+        <InputField
+          name="firstAutomaticCycle"
+          label={sv ? "Första automatiska cykel" : "First automatic cycle"}
+          maxLength={18}
+          required
+        />
+        <InputField
+          name="reason"
+          label={sv ? "Orsak till schemaläggning" : "Scheduling reason"}
+          maxLength={2000}
+          required
+        />
+        <Box as="label" display="flex" gap="md" alignItems="center">
+          <input name="confirmed" type="checkbox" required />
+          <Text>{sv ? "Bekräfta första automatiska cykel" : "Confirm first automatic cycle"}</Text>
+        </Box>
+      </CommandForm>
+    </RecordSection>
+  );
+}
+
+function SchedulingSection(
+  props: CommerceProps & {
+    path: string;
+    schedule: typeof Recurring.RecurringScheduling.Type;
+    current: boolean;
+  },
+) {
+  const { book, locale } = props;
+  const first = props.schedule;
+  const sv = locale === "sv";
+
+  return (
+    <RecordSection title={sv ? "Schemaläggning" : "Scheduling"}>
+      <Text>
+        {sv ? "Automatiska utkast" : "Automatic drafts"}:{" "}
+        {first.enabled ? (sv ? "Aktiva" : "Enabled") : sv ? "Pausade" : "Paused"}
+      </Text>
+      <CommandForm
+        book={book}
+        locale={locale}
+        path={`${props.path}/scheduling`}
+        recoveryId={first.agreementId}
+        schema={Recurring.RecurringSchedulingInput}
+        output={Recurring.RecurringScheduling}
+        allowed={book.role === "operator" && props.current}
+        label={
+          first.enabled
+            ? sv
+              ? "Pausa automatiska utkast"
+              : "Pause automatic drafts"
+            : sv
+              ? "Återuppta automatiska utkast"
+              : "Resume automatic drafts"
+        }
+        input={(fields) => ({
+          expectedGeneration: first.generation,
+          enabled: !first.enabled,
+          firstAutomaticCycle: first.firstAutomaticCycle,
+          duePolicy: first.duePolicy,
+          confirmFirstAutomaticCycle: fields.get("confirmed") === "on",
+          reason: fields.get("reason"),
+        })}
+      >
+        <InputField
+          name="reason"
+          label={sv ? "Orsak till schemaläggning" : "Scheduling reason"}
+          required
+          maxLength={2000}
+        />
+        <Box as="label" display="flex" gap="md" alignItems="center">
+          <input name="confirmed" type="checkbox" required />
+          <Text>{sv ? "Bekräfta schemaläggningsbeslut" : "Confirm scheduling decision"}</Text>
+        </Box>
+      </CommandForm>
+      <Text>
+        {sv ? "Nästa cykel" : "Next cycle"}: {first.nextCycleDate}, {first.timeZone}
+      </Text>
+      <Text>
+        {sv
+          ? "Varje utkast granskas innan utfärdande."
+          : "Each draft requires review before issuance."}
+      </Text>
+    </RecordSection>
+  );
+}
+
 function SelectedCycle(
   props: CommerceProps & {
     path: string;
     schedule: typeof Recurring.RecurringScheduling.Type;
     selected: (typeof Recurring.RecurringScheduling.Type)["history"][number];
+    current: boolean;
+    work?: string;
+    returnTo?: string;
   },
 ) {
   const { book, locale, schedule, selected } = props;
@@ -151,7 +298,7 @@ function SelectedCycle(
       </Text>
       {selected.draftId ? (
         <Link
-          href={`${workspacePath(book)}/sales?view=drafts&record=${encodeURIComponent(selected.draftId)}`}
+          href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "drafts", record: selected.draftId, work: props.work, returnTo: props.returnTo })}`}
         >
           {sv ? "Granska utkast" : "Review draft"}
         </Link>
@@ -163,7 +310,7 @@ function SelectedCycle(
           path={`${props.path}/scheduling/catch-up`}
           schema={Recurring.RecurringCatchUpInput}
           output={Recurring.RecurringScheduling}
-          allowed={book.role === "operator" && schedule.enabled}
+          allowed={book.role === "operator" && schedule.enabled && props.current}
           label={sv ? "Köa vald cykel för granskning" : "Queue selected cycle for review"}
           recoveryId={`${schedule.agreementId}_${selected.cycleOrdinal}_${selected.generation}`}
           input={(fields) => ({

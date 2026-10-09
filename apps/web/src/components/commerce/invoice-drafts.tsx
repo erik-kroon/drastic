@@ -697,7 +697,9 @@ function DraftDetail(
       {record && !view.isError ? (
         <>
           <Box display="flex" gap="sm" justifyContent="end" flexWrap="wrap" alignItems="center">
-            {props.issueAction}
+            {record.revision === view.data?.currentRevision && !view.isFetching
+              ? props.issueAction
+              : null}
             <InvoiceTemplateActions
               key={`${record.id}:${record.revision}`}
               book={props.book}
@@ -725,6 +727,18 @@ function DraftDetail(
               {labels.editDraft}
             </Button>
           </Box>
+          {record.revision !== view.data?.currentRevision ? (
+            <Box display="grid" gap="sm">
+              <Text role="status">
+                {sv
+                  ? "Du visar en tidigare sparad version. Öppna senaste versionen före ett nytt utfärdandebeslut."
+                  : "You are viewing an earlier saved revision. Open the latest revision before a new issuance decision."}
+              </Text>
+              <Button variant="outline" onClick={() => setRevision("")}>
+                {labels.showLatest}
+              </Button>
+            </Box>
+          ) : null}
           <RecordSplit
             aside={
               <>
@@ -757,11 +771,6 @@ function DraftDetail(
                       )}
                     </Button>
                   ))}
-                  {revision ? (
-                    <Button variant="outline" onClick={() => setRevision("")}>
-                      {labels.showLatest}
-                    </Button>
-                  ) : null}
                 </Details>
                 <Facts title={labels.technicalReferences} value={record} />
               </>
