@@ -12,5 +12,6 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/setup")(
 
 function SetupPage() {
   const search = Route.useSearch();
+
   return <OnboardingPanel view={search.view ?? "workspace"} />;
 }

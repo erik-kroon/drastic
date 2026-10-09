@@ -5,14 +5,7 @@ import { customerDirectoryFinancials } from "./customer-directory";
 import { newId, replay, saveCommand } from "../posting";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
-import {
-  decode,
-  exactKeys,
-  requireTableAccess,
-  withBook,
-  type JsonObject,
-  type Scope,
-} from "./support";
+import { decode, exactKeys, requireTableAccess, withBook, type Scope } from "./support";
 
 const DirectoryPageSchema = Crm.DirectoryPage;
 
@@ -67,7 +60,8 @@ export const readDirectory = Effect.fn("commerce.crm.readDirectory")(function* (
 
     return yield* decode(DirectoryPageSchema, {
       items: rows.map((row) => ({
-        ...directoryEntry(row),
+        party: row.revision,
+        annotations: row.annotations,
         financial: financials.get(row.id) ?? [],
       })),
       next: last?.hasMore === true ? last.id : null,

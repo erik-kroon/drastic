@@ -411,5 +411,7 @@ export const tokens = stylex.defineConsts({
   setupColumn300: "300px",
   setupColumn400: "400px",
   lineHeight36Px: "2.25rem",
+  lineHeight44Px: "2.75rem",
+  trackingAmount: "-0.02em",
   setupColumn514: "514px",
 });

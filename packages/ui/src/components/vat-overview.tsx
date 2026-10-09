@@ -12,8 +12,8 @@ const styles = stylex.create({
   amount: {
     fontSize: tokens.fontSize4xl,
     fontWeight: tokens.fontWeightSemibold,
-    lineHeight: "44px",
-    letterSpacing: "-0.02em",
+    lineHeight: tokens.lineHeight44Px,
+    letterSpacing: tokens.trackingAmount,
     fontVariantNumeric: "tabular-nums",
     marginBlockStart: 2,
     marginBlockEnd: 18,

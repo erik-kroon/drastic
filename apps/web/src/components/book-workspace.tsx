@@ -28,6 +28,63 @@ import { SetupWorkspace } from "@open-erp/ui/components/setup-workspace";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
+function isTodoPath(pathname: string, base: string) {
+  return (
+    pathname === base ||
+    pathname === `${base}/` ||
+    pathname.endsWith("/work") ||
+    pathname.includes("/reviews/")
+  );
+}
+
+function BookSwitcher({
+  book,
+  books,
+  label,
+}: {
+  book: typeof Accounting.Book.Type;
+  books: typeof Books.Type;
+  label: string;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <SelectControl
+      aria-label={label}
+      value={`${book.entityId}/${book.id}`}
+      options={books.map((item) => ({
+        value: `${item.entityId}/${item.id}`,
+        label: item.name,
+      }))}
+      onValueChange={(value) => {
+        const selected = books.find((item) => `${item.entityId}/${item.id}` === value);
+
+        if (selected) void navigate({ to: `${workspacePath(selected)}/` });
+      }}
+    />
+  );
+}
+
+function PortfolioLink({ book, locale }: { book: typeof Accounting.Book.Type; locale: Locale }) {
+  const navigate = useNavigate();
+
+  return (
+    <Link
+      href="/firms"
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const destination = portfolioReturn(book);
+
+        if (!destination) return;
+        event.preventDefault();
+        void navigate({ to: destination });
+      }}
+    >
+      {locale === "sv" ? "Klientlista" : "Client portfolio"}
+    </Link>
+  );
+}
+
 export function BookWorkspace({
   book,
   books,
@@ -40,7 +97,6 @@ export function BookWorkspace({
   children: ReactNode;
 }) {
   const copy = accountingCopy(locale);
-  const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const search = useLocation({ select: (location) => location.searchStr });
   const base = workspacePath(book);
@@ -110,35 +166,11 @@ export function BookWorkspace({
       }
     >
       {books.length > 1 ? (
-        <SelectControl
-          aria-label={copy.journal_book}
-          value={`${book.entityId}/${book.id}`}
-          options={books.map((item) => ({
-            value: `${item.entityId}/${item.id}`,
-            label: item.name,
-          }))}
-          onValueChange={(value) => {
-            const selected = books.find((item) => `${item.entityId}/${item.id}` === value);
-
-            if (selected) void navigate({ to: `${workspacePath(selected)}/` });
-          }}
-        />
+        <BookSwitcher book={book} books={books} label={copy.journal_book} />
       ) : null}
       <Link href={`${base}/settings`}>{labels.settings}</Link>
       <Link href="/companies">{copy.workspace_switch}</Link>
-      <Link
-        href="/firms"
-        onClick={(event) => {
-          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-          const destination = portfolioReturn(book);
-
-          if (!destination) return;
-          event.preventDefault();
-          void navigate({ to: destination });
-        }}
-      >
-        {locale === "sv" ? "Klientlista" : "Client portfolio"}
-      </Link>
+      <PortfolioLink book={book} locale={locale} />
       <Link href={`${base}/tools`}>{labels.tools}</Link>
       <SignOut locale={locale} />
     </WorkspaceAccount>
@@ -214,11 +246,7 @@ export function BookWorkspace({
             {
               label: labels.todo,
               href: `${base}/`,
-              active:
-                pathname === base ||
-                pathname === `${base}/` ||
-                pathname.endsWith("/work") ||
-                pathname.includes("/reviews/"),
+              active: isTodoPath(pathname, base),
               icon: <CheckSquare size={20} strokeWidth={1.5} aria-hidden="true" />,
             },
             {

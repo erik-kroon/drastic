@@ -11,7 +11,7 @@ root = Path(__file__).resolve().parent
 out = Path(os.environ.get("PEPPOL_VALIDATION_OUT", "test-results/peppol-validation"))
 out.mkdir(parents=True, exist_ok=True)
 release_hash = hashlib.sha256((root / "vendor/manifest.json").read_bytes()).hexdigest()
-expected = {"documentId": "Snippet1", "documentType": "Invoice", "currency": "EUR", "sellerParticipant": "9482348239847239874", "buyerParticipant": "FR23342", "exclusiveMinor": "132500", "taxMinor": "33125", "payableMinor": "165625", "originalInvoiceRef": None}
+expected = {"documentId": "Snippet1", "documentType": "Invoice", "currency": "EUR", "sellerParticipant": "9482348239847239874", "buyerParticipant": "FR23342", "exclusiveMinor": "132500", "taxMinor": "33125", "payableMinor": "165625", "originalInvoiceRef": None, "buyerReference": "0150abc", "orderReference": None}
 results = []
 
 def check(name, xml, semantic, outcome, release=release_hash, validator=root / "validate.py", interpreter=sys.executable):
