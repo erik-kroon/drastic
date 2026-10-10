@@ -195,3 +195,11 @@ The owner sequence and gates are recorded in the handoff evening update. The det
 Commit `eee5faa` preserves the 20 supplied plan documents in draft [PR #22](https://github.com/erik-kroon/drastic/pull/22). All 43 local file links resolve. Clean-worktree owners passed at 55/55. Changed and full checks are blocked by main's stale K-10/K-11 supplier evidence and missing handoff reference. No runtime, browser or production qualification is claimed.
 
 Linear AUT-06 was rewritten for Phase 1; AUT-28 through AUT-36, phase children and AUT-D11/D12 are mapped above. AUT-00 retains provider, client-role, mandate and live-fetching decisions. AUT-31 is related to AUT-26.
+
+## Owner research follow-up checkpoint
+
+The supplied plan amendments distinguish month completion from run settlement, pin effect and version protocols, extend recovery and blind evaluation cases, and retain fixture-only legal-source work. Hosted Clef-flash is specified as 24,576 tokens; complete request fit is checked before dispatch and probability thresholds confer no authority. No implementation or legal/provider qualification is implied by these plan amendments.
+
+The ADR 0020 counter table now matches existing SimpleWebAuthn behavior. Before editing that wording, the unchanged-runtime synthetic HTTP suite passed two selected tests: successive fresh zero-counter assertions with exact binding and single consumption, and the existing positive-counter clone refusal. Evidence is retained in `verification/presence-zero-counter/`. Hardware and browser authenticator behavior remain unverified.
+
+The initial changed check passed formatting and lint, then stopped on main's stale K-10/K-11 supplier design evidence. No baseline or unrelated design evidence was regenerated. The shared main worktree's supplied edits were preserved; this unit uses an isolated branch.

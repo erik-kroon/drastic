@@ -91,7 +91,7 @@ Presence proof:
 | Expired challenge                                                     | Assertion refused; no proof recorded.                                   |
 | Assertion without the user-verified flag                              | Refused.                                                                |
 | Assertion signed by an unenrolled or revoked key                      | Refused.                                                                |
-| Signature counter does not advance (cloned authenticator)             | Refused.                                                                |
+| Signature counter fails to advance when either stored or received counter is non-zero | Refused. Always-zero counters remain supported. |
 | Enrollment attempted with session but no ticket, or a consumed ticket | Refused; no authenticator stored.                                       |
 | API credential requests a challenge                                   | Refused; presence is only for interactive sessions.                     |
 | Enforcement off                                                       | Every existing gesture behaves exactly as before.                       |
