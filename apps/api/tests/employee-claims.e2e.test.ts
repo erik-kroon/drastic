@@ -927,7 +927,7 @@ test("R40 submitted originals fence previously approved legacy inputs and concur
   );
 });
 
-test("R40 current V7 backup, inspect and fenced restore preserve retained claim decisions and fixed instructions", async () => {
+test("R40 current V8 backup, inspect and fenced restore preserve retained claim decisions and fixed instructions", async () => {
   const f = await employeeClaimFixture();
 
   const revision = await post(
@@ -972,9 +972,9 @@ test("R40 current V7 backup, inspect and fenced restore preserve retained claim 
     Claims.EmployeeClaimRecognition,
   );
 
-  const recovered = (await proveReminderRecovery(f.book.bookId, [7]))[0];
+  const recovered = (await proveReminderRecovery(f.book.bookId, [8]))[0];
 
-  if (!recovered || recovered.inventory.version !== 7)
+  if (!recovered || recovered.inventory.version !== 8)
     throw new Error("Current claim recovery inventory missing");
   expect(recovered.restoredInventory).toEqual(recovered.inventory);
   expect(recovered.inspection.durableWork).toBe("matched");

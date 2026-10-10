@@ -24,6 +24,7 @@ import { readMileageRecord } from "./mileage-correction-records";
 import { mileageLifecycle } from "./mileage-correction-lifecycle";
 import { claimOffsetCapacity, compileClaimNetOffset } from "./settlement-net-recovery";
 import { readRetained, ClaimRecord, InstructionRecord } from "./settlement-support";
+import { compileNoncashPayment } from "./settlement-noncash-basis";
 
 import { validateComparison } from "./paid-comparison-basis";
 
@@ -328,10 +329,15 @@ export const compileSettlement = Effect.fn("payroll.compileSettlement")(function
 
   if (input.kind === "payment") return yield* compilePayment(tx, scope, input);
 
+  if (input.kind === "noncash_payment") return yield* compileNoncashPayment(tx, scope, input);
+
   if (input.kind === "cash_recovery") return yield* compileCashRecovery(tx, scope, input);
 
   if (input.kind === "future_pay" && input.recoveryClaimId)
     return yield* compileClaimNetOffset(tx, scope, input, input.recoveryClaimId);
+
+  if (input.kind === "future_pay" && (input.paidRecoveryLegId || input.capacityCalculationId))
+    return yield* failure("UnsupportedProfile");
 
   return yield* compileAdjustment(tx, scope, input);
 });
@@ -339,7 +345,7 @@ export const compileSettlement = Effect.fn("payroll.compileSettlement")(function
 const compileAdjustment = Effect.fn("payroll.compileAdjustment")(function* (
   tx: Transaction,
   scope: Scope,
-  input: Exclude<Input, { kind: "payment" | "cash_recovery" }>,
+  input: Exclude<Input, { kind: "payment" | "cash_recovery" | "noncash_payment" }>,
 ) {
   const lines: JournalLine[] = [];
 

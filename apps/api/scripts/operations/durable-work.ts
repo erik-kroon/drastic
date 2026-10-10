@@ -13,6 +13,8 @@ import {
   RecoveryWorkInventoryV5,
   RecoveryWorkInventoryV6,
   RecoveryWorkInventoryV7,
+  RecoveryWorkInventoryV8,
+  PaidRecoveryWorkSummary,
   MileageCorrectionWorkSummary,
   PayrollReviewWorkSummary,
   EmployeeClaimWorkSummary,
@@ -26,7 +28,7 @@ import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 import { requireFencedBackupBoundary } from "./snapshot";
 
-export const workInventoryPath = "durable-work-v7.json";
+export const workInventoryPath = "durable-work-v8.json";
 
 export const workInventoryPaths = [
   "durable-work-v2.json",
@@ -34,6 +36,7 @@ export const workInventoryPaths = [
   "durable-work-v4.json",
   "durable-work-v5.json",
   "durable-work-v6.json",
+  "durable-work-v7.json",
   workInventoryPath,
 ];
 
@@ -98,6 +101,30 @@ const payrollInputAssessmentTables = [
   "payroll_input_dispositions",
 ];
 
+const paidRecoveryTables = [
+  "payroll_paid_recovery_assessments",
+  "payroll_paid_recovery_drafts",
+  "payroll_paid_recovery_legs",
+  "payroll_paid_recovery_attachments",
+  "payroll_paid_recovery_qualifications",
+  "payroll_paid_recovery_claim_reviews",
+  "payroll_paid_recovery_cancellations",
+];
+
+const paidRecoveryReferences = [
+  ["assessment_id", "payroll_paid_recovery_assessments"],
+  ["comparison_id", "payroll_correction_comparisons"],
+  ["paid_event_id", "payroll_paid_events"],
+  ["calculation_id", "payroll_calculations"],
+  ["capacity_calculation_id", "payroll_calculations"],
+  ["draft_id", "payroll_paid_recovery_drafts"],
+  ["attachment_id", "payroll_paid_recovery_attachments"],
+  ["basis_id", "payroll_adjustment_bases"],
+  ["qualification_id", "payroll_paid_recovery_qualifications"],
+  ["review_id", "payroll_settlement_reviews"],
+  ["evidence_id", "evidence"],
+] as const;
+
 const workTables = [
   ...legacyWorkTables,
   ...recurringWorkTables,
@@ -106,6 +133,7 @@ const workTables = [
   ...employeeClaimTables,
   ...mileageCorrectionTables,
   ...payrollInputAssessmentTables,
+  ...paidRecoveryTables,
 ];
 
 function workSummary(
@@ -253,6 +281,16 @@ function payrollReviewSummary(
   });
 }
 
+function paidRecoverySummary(
+  inventory: Parameters<typeof payrollReviewSummary>[0] &
+    Pick<typeof RecoveryWorkInventoryV8.Type, "paidRecoveryRecords">,
+) {
+  return Schema.decodeSync(PaidRecoveryWorkSummary)({
+    ...payrollReviewSummary(inventory),
+    paidRecoveryRecords: String(inventory.paidRecoveryRecords.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -292,6 +330,7 @@ function validateInventory(
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
   const summary = Match.value(inventory).pipe(
+    Match.when({ version: 8 }, paidRecoverySummary),
     Match.when({ version: 7 }, payrollReviewSummary),
     Match.when({ version: 6 }, employeeClaimSummary),
     Match.when({ version: 5 }, reminderReviewSummary),
@@ -405,7 +444,8 @@ function validateInventory(
     inventory.version === 4 ||
     inventory.version === 5 ||
     inventory.version === 6 ||
-    inventory.version === 7
+    inventory.version === 7 ||
+    inventory.version === 8
   ) {
     const families = [
       inventory.reminderMessages,
@@ -474,7 +514,7 @@ function validateInventory(
       refuse("Reminder attempts contain duplicate external identities.");
   }
 
-  if (inventory.version === 6 || inventory.version === 7) {
+  if (inventory.version === 6 || inventory.version === 7 || inventory.version === 8) {
     for (const name of employeeClaimTables) {
       const rows = inventory.employeeClaimRecords.filter((row) => row.table === name);
       const table = tables.find((row) => row.schema === "openerp" && row.table === name);
@@ -488,7 +528,7 @@ function validateInventory(
     }
   }
 
-  if (inventory.version === 7) {
+  if (inventory.version === 7 || inventory.version === 8) {
     for (const name of payrollInputAssessmentTables) {
       const rows = inventory.payrollInputAssessmentRecords.filter((row) => row.table === name);
       const table = tables.find((row) => row.schema === "openerp" && row.table === name);
@@ -546,7 +586,48 @@ function validateInventory(
     validateMileageSuccessorChains(successors);
   }
 
-  if (inventory.version === 5 || inventory.version === 6 || inventory.version === 7) {
+  if (inventory.version === 8) {
+    const represented = new Set(
+      inventory.paidRecoveryRecords.map((row) => JSON.stringify([row.bookId, row.table, row.id])),
+    );
+
+    for (const name of paidRecoveryTables) {
+      const records = inventory.paidRecoveryRecords.filter((row) => row.table === name);
+      const table = tables.find((row) => row.schema === "openerp" && row.table === name);
+
+      if (!table || BigInt(table.rows) !== BigInt(records.length) || records.length > 10000)
+        refuse("Paid recovery inventory differs from the complete snapshot counts.");
+      uniqueScopedIds(records);
+
+      for (const record of records) {
+        if (
+          !bookIds.has(record.bookId) ||
+          !represented.has(
+            JSON.stringify([
+              record.bookId,
+              "payroll_paid_recovery_assessments",
+              record.assessmentId,
+            ]),
+          )
+        )
+          refuse("Paid recovery record has no represented scoped assessment.");
+
+        for (const reference of record.references)
+          if (
+            paidRecoveryTables.includes(reference.table) &&
+            !represented.has(JSON.stringify([record.bookId, reference.table, reference.id]))
+          )
+            refuse("Paid recovery link has no represented scoped record.");
+      }
+    }
+  }
+
+  if (
+    inventory.version === 5 ||
+    inventory.version === 6 ||
+    inventory.version === 7 ||
+    inventory.version === 8
+  ) {
     const families = [inventory.reminderRefusals, inventory.reminderResolutions];
 
     const messages = new Set(
@@ -770,11 +851,37 @@ async function capturePayrollInputAssessments(client: Client) {
   );
 }
 
+async function capturePaidRecovery(client: Client) {
+  const records = [];
+
+  for (const table of paidRecoveryTables) {
+    const invalid = await client.query<{ invalid: string }>(
+      `SELECT count(*)::text AS invalid FROM openerp.${client.escapeIdentifier(table)} WHERE digest<>openerp.digest(body-'digest') OR body->>'id'<>id OR body->'scope'->>'bookId'<>book_id`,
+    );
+
+    if (invalid.rows[0]?.invalid !== "0")
+      refuse("Paid recovery records failed retained digest or scope validation.");
+
+    const rows = await client.query<{ body: unknown }>(
+      `SELECT jsonb_build_object('table',$1::text,'bookId',book_id,'id',id,'assessmentId',coalesce(to_jsonb(t)->>'assessment_id',id),'bodySha256',encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex'),'references',coalesce((SELECT jsonb_agg(jsonb_build_object('table',r.target,'id',to_jsonb(t)->>r.column_name) ORDER BY r.column_name) FROM unnest($2::text[],$3::text[]) r(column_name,target) WHERE to_jsonb(t)->>r.column_name IS NOT NULL),'[]'::jsonb)) AS body FROM openerp.${client.escapeIdentifier(table)} t ORDER BY book_id COLLATE "C",id COLLATE "C"`,
+      [
+        table,
+        paidRecoveryReferences.map(([column]) => column),
+        paidRecoveryReferences.map(([, target]) => target),
+      ],
+    );
+
+    records.push(...rows.rows.map((row) => row.body));
+  }
+
+  return Schema.decodeUnknownSync(RecoveryWorkInventoryV8.fields.paidRecoveryRecords)(records);
+}
+
 export async function captureWorkInventory(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
   snapshot: string,
-  version: 2 | 3 | 4 | 5 | 6 | 7 = 7,
+  version: 2 | 3 | 4 | 5 | 6 | 7 | 8 = 8,
 ) {
   const requiredTables = [...legacyWorkTables];
 
@@ -788,6 +895,8 @@ export async function captureWorkInventory(
 
   if (version >= 7)
     requiredTables.push(...mileageCorrectionTables, ...payrollInputAssessmentTables);
+
+  if (version >= 8) requiredTables.push(...paidRecoveryTables);
 
   for (const name of [
     ...requiredTables,
@@ -962,13 +1071,28 @@ export async function captureWorkInventory(
               payrollInputAssessmentRecords: await capturePayrollInputAssessments(client),
             };
 
-            inventory = Schema.decodeSync(RecoveryWorkInventoryV7)({
-              ...common,
-              ...corrected,
-              version: 7,
-              summary: payrollReviewSummary(corrected),
-              providerAttemptHistory: "payment-reminder-attempts-retained",
-            });
+            if (version === 7) {
+              inventory = Schema.decodeSync(RecoveryWorkInventoryV7)({
+                ...common,
+                ...corrected,
+                version: 7,
+                summary: payrollReviewSummary(corrected),
+                providerAttemptHistory: "payment-reminder-attempts-retained",
+              });
+            } else {
+              const recovered = {
+                ...corrected,
+                paidRecoveryRecords: await capturePaidRecovery(client),
+              };
+
+              inventory = Schema.decodeSync(RecoveryWorkInventoryV8)({
+                ...common,
+                ...recovered,
+                version: 8,
+                summary: paidRecoverySummary(recovered),
+                providerAttemptHistory: "payment-reminder-attempts-retained",
+              });
+            }
           }
         }
       }

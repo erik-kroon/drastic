@@ -26,6 +26,12 @@ const paths = {
       <circle cx="11" cy="11" r="1.5" />
     </>
   ),
+  payroll: (
+    <>
+      <circle cx="8" cy="4" r="2.5" />
+      <path d="M3 14v-3a5 5 0 0110 0v3" />
+    </>
+  ),
   reports: <path d="M4 2h8v12H4zM6 6h4M6 9h4" />,
   closing: (
     <>

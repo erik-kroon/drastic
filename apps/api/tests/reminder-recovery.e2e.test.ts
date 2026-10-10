@@ -9,7 +9,7 @@ import { withPinnedReminderApi } from "./support/pinned-reminder-api";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { environment, journal, post } from "./support/fixtures";
 
-test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V4 projection", async () => {
+test("M60 V8 and authentic pre-0097 V6 preserve terminal work and refuse lossy V4 projection", async () => {
   const context = await legalFixture();
 
   const recipient = await post(
@@ -198,11 +198,11 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
   );
 
   const recoveries = await proveReminderRecovery(context.book.bookId);
-  expect(recoveries.map((recovery) => recovery.version)).toEqual([7, 6]);
+  expect(recoveries.map((recovery) => recovery.version)).toEqual([8, 6]);
   let v4Refusal: string | null = null;
 
   try {
-    await proveReminderRecovery(context.book.bookId, [7, 4]);
+    await proveReminderRecovery(context.book.bookId, [8, 4]);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     v4Refusal = error.message;
@@ -225,7 +225,7 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
 
     const inventory = recovery.inventory;
 
-    if (inventory.version !== 4 && inventory.version !== 6 && inventory.version !== 7)
+    if (inventory.version !== 4 && inventory.version !== 6 && inventory.version !== 8)
       throw new Error("Reminder recovery inventory version missing");
 
     const expectedBodies = [
@@ -249,7 +249,7 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
         identity: `${row.attemptId}/${row.observationId}`,
         ...row,
       })),
-      ...(inventory.version === 6 || inventory.version === 7
+      ...(inventory.version === 6 || inventory.version === 8
         ? [
             ...inventory.reminderRefusals.map((row) => ({
               table: "reminder_refusals",
@@ -269,7 +269,7 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
 
     expect(recovery.bodyHashes).toEqual(expectedBodies);
 
-    if (recovery.version !== 7) {
+    if (recovery.version !== 8) {
       const transfer = recovery.historicalTransfer;
 
       if (!transfer) throw new Error("Historical transfer proof missing");
@@ -295,7 +295,7 @@ test("M60 V7 and authentic pre-0097 V6 preserve terminal work and refuse lossy V
         .sort(),
     ).toEqual([original.id, replacement.message.id].sort());
 
-    if (inventory.version === 6 || inventory.version === 7) {
+    if (inventory.version === 6 || inventory.version === 8) {
       expect(
         inventory.reminderRefusals
           .filter((row) => row.bookId === context.book.bookId)

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, realpath, symlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Client } from "pg";
+import { createTestHarness } from "wrangler";
 import * as Schema from "effect/Schema";
 import * as Operations from "@open-erp/contracts/operations";
 import { captureRelease } from "../../scripts/operations/artifacts";
@@ -24,23 +25,46 @@ async function save(path: string, body: unknown) {
   await writeFile(path, JSON.stringify(body, null, 2), { mode: 0o600, flag: "wx" });
 }
 
-async function retainedHashes(client: Client, bookId: string, version: 4 | 6 | 7) {
+async function retainedHashes(client: Client, bookId: string, version: 4 | 6 | 8) {
   const tables = [
     "reminder_messages",
     "reminder_approvals",
     "reminder_attempts",
     "reminder_observations",
     ...(version >= 6 ? ["reminder_refusals", "reminder_resolutions"] : []),
+    ...(version >= 8
+      ? [
+          "payroll_paid_recovery_assessments",
+          "payroll_paid_recovery_drafts",
+          "payroll_paid_recovery_legs",
+          "payroll_paid_recovery_attachments",
+          "payroll_paid_recovery_qualifications",
+          "payroll_paid_recovery_claim_reviews",
+          "payroll_paid_recovery_cancellations",
+          "payroll_recovery_claims",
+          "payroll_recovery_allocations",
+          "payroll_adjustment_instructions",
+          "payroll_adjustment_consumptions",
+          "payroll_paid_events",
+          "payroll_settlement_reviews",
+          "payroll_settlement_approvals",
+          "payroll_settlement_executions",
+          "payroll_reporting_corrections",
+          "payroll_runs",
+          "payroll_payslip_documents",
+          "payroll_payslip_artifacts",
+        ]
+      : []),
   ];
 
   const bodies: Array<{ table: string; identity: string; bodySha256: string }> = [];
 
   for (const table of tables) {
     const rows = await client.query<{ identity: string; body: string }>(
-      `SELECT coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',
+      `SELECT coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',to_jsonb(r)->>'instruction_id',
         (to_jsonb(r)->>'attempt_id')||'/'||(to_jsonb(r)->>'observation_id')) AS identity,
-        body::text AS body FROM openerp.${client.escapeIdentifier(table)} r
-        WHERE book_id=$1 ORDER BY coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',
+        to_jsonb(r)::text AS body FROM openerp.${client.escapeIdentifier(table)} r
+        WHERE book_id=$1 ORDER BY coalesce(to_jsonb(r)->>'id',to_jsonb(r)->>'message_id',to_jsonb(r)->>'instruction_id',
           (to_jsonb(r)->>'attempt_id')||'/'||(to_jsonb(r)->>'observation_id')) COLLATE "C"`,
       [bookId],
     );
@@ -417,7 +441,8 @@ async function restoreHistoricalData(
 
 export async function proveReminderRecovery(
   bookId: string,
-  versions: ReadonlyArray<4 | 6 | 7> = [7, 6],
+  versions: ReadonlyArray<4 | 6 | 8> = [8, 6],
+  verifyContinuation?: (baseUrl: string) => Promise<unknown>,
 ) {
   const env = environment();
   const scratch = await realpath(env.scratch);
@@ -502,7 +527,7 @@ export async function proveReminderRecovery(
     const custody = "Synthetic configuration custody and suspended reminder recovery. No secrets.";
     await writeFile(join(supplementary, "custody.txt"), custody, { mode: 0o600, flag: "wx" });
 
-    if (versions[0] !== 7 || new Set(versions).size !== versions.length)
+    if (versions[0] !== 8 || new Set(versions).size !== versions.length)
       throw new Error(
         "Recovery proof requires one current donor before distinct historical versions",
       );
@@ -511,14 +536,14 @@ export async function proveReminderRecovery(
 
     for (const version of versions) {
       const producer =
-        version === 7 ? { root, revision: null } : await historicalProducer(work, version);
+        version === 8 ? { root, revision: null } : await historicalProducer(work, version);
 
       const sourceName = `openerp_ops_source_reminder_v${version}_${suffix}`;
       const restoredName = `openerp_restore_reminder_v${version}_${suffix}`;
       await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(sourceName)} TEMPLATE template0`);
       created.push(sourceName);
 
-      if (version === 7) {
+      if (version === 8) {
         await run(
           join(pgBin, "pg_restore"),
           ["--exit-on-error", "--single-transaction", "--no-owner", `--dbname=${sourceName}`, dump],
@@ -547,7 +572,7 @@ export async function proveReminderRecovery(
       let historicalTransfer: Awaited<ReturnType<typeof restoreHistoricalData>> | null = null;
 
       try {
-        if (version === 7) {
+        if (version === 8) {
           await source.query("DROP EXTENSION pg_stat_statements");
         } else {
           const donor = new Client({
@@ -555,7 +580,7 @@ export async function proveReminderRecovery(
             port: target.port,
             user: target.user,
             password: target.password,
-            database: `openerp_ops_source_reminder_v7_${suffix}`,
+            database: `openerp_ops_source_reminder_v8_${suffix}`,
           });
 
           await donor.connect();
@@ -682,6 +707,71 @@ export async function proveReminderRecovery(
         )
       ).rows[0];
 
+      let continuation: unknown = null;
+
+      if (version === 8 && verifyContinuation) {
+        const restoredUrl = new URL(env.runtimeUrl);
+        restoredUrl.pathname = `/${restoredName}`;
+
+        const server = createTestHarness({
+          root: apiDirectory,
+          workers: [
+            {
+              configPath: "wrangler.jsonc",
+              env: "e2e",
+              secrets: { DATABASE_URL: restoredUrl.toString() },
+            },
+          ],
+        });
+
+        try {
+          await admin.query(
+            `ALTER DATABASE ${admin.escapeIdentifier(restoredName)} ALLOW_CONNECTIONS true CONNECTION LIMIT -1`,
+          );
+          await admin.query(
+            `GRANT CONNECT ON DATABASE ${admin.escapeIdentifier(restoredName)} TO openerp_runtime`,
+          );
+          await admin.query(
+            `ALTER DATABASE ${admin.escapeIdentifier(restoredName)} SET default_transaction_read_only = off`,
+          );
+          const restoredAdminUrl = new URL(env.adminUrl);
+          restoredAdminUrl.pathname = `/${restoredName}`;
+          const restoredObserver = new Client({ connectionString: restoredAdminUrl.toString() });
+
+          await restoredObserver.connect();
+
+          try {
+            const hashes = await retainedHashes(restoredObserver, bookId, version);
+
+            if (JSON.stringify(hashes) !== JSON.stringify(bodyHashes))
+              throw new Error(
+                "Populated restore changed retained payroll or recovery record bytes",
+              );
+          } finally {
+            await restoredObserver.end();
+          }
+
+          const listening = await server.listen();
+          continuation = await verifyContinuation(listening.url.origin);
+        } finally {
+          await writeFile(
+            join(env.artifacts, `restored-v${version}-worker.json`),
+            JSON.stringify(server.getLogs(), null, 2),
+          );
+          await server.close();
+          await admin.query(
+            `ALTER DATABASE ${admin.escapeIdentifier(restoredName)} SET default_transaction_read_only = on`,
+          );
+          await admin.query(
+            `ALTER DATABASE ${admin.escapeIdentifier(restoredName)} ALLOW_CONNECTIONS false CONNECTION LIMIT 0`,
+          );
+          await admin.query(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1",
+            [restoredName],
+          );
+        }
+      }
+
       results.push({
         version,
         historicalRevision: producer.revision,
@@ -698,6 +788,7 @@ export async function proveReminderRecovery(
         receipt,
         suspension,
         fence,
+        continuation,
       });
     }
 

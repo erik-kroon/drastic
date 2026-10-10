@@ -755,9 +755,9 @@ test("current recovery inventory retains executed successor, blocked review, sub
   );
   const executed = await readyMileageCorrection(f);
   const execution = await executeCorrection(f, executed);
-  const recovered = (await proveReminderRecovery(f.book.bookId, [7]))[0];
+  const recovered = (await proveReminderRecovery(f.book.bookId, [8]))[0];
 
-  if (!recovered || recovered.inventory.version !== 7)
+  if (!recovered || recovered.inventory.version !== 8)
     throw new Error("Current mileage recovery inventory missing");
 
   expect(recovered.restoredInventory).toEqual(recovered.inventory);
@@ -1399,9 +1399,9 @@ test("future NET cancellation retains originals, refuses reservations, releases 
   expect(after.netInstruction?.remainingReceivableMinor).toBe("0");
   expect(after.execution).toEqual(c.executed);
   expect(await f.originalHistory()).toEqual(f.history);
-  const restore = (await proveReminderRecovery(f.book.bookId, [7]))[0];
+  const restore = (await proveReminderRecovery(f.book.bookId, [8]))[0];
 
-  if (!restore || restore.inventory.version !== 7)
+  if (!restore || restore.inventory.version !== 8)
     throw new Error("Missing populated NET cancellation restore proof");
   expect(restore.restoredInventory).toEqual(restore.inventory);
   expect(

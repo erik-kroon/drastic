@@ -46,7 +46,9 @@ export const captureAdjustmentInstructions = Effect.fn("payroll.captureAdjustmen
 
         if (
           retained.signedGrossDeltaMinor !== "0" ||
-          balance.remaining !== retained.netRecovery.amountMinor ||
+          (retained.netRecovery.paidRecoveryLegId
+            ? BigInt(retained.netRecovery.amountMinor) > BigInt(balance.remaining)
+            : balance.remaining !== retained.netRecovery.amountMinor) ||
           balance.claim.recoveryReceivableAccountId !== retained.netRecovery.receivableAccountId
         )
           return yield* failure("StaleDependency");
@@ -179,7 +181,11 @@ export const consumeAdjustmentInstructions = Effect.fn("payroll.consumeAdjustmen
       if (snapshot.netRecovery) {
         const balance = yield* claimBalance(tx, scope, snapshot.netRecovery.claimId);
 
-        if (balance.remaining !== snapshot.netRecovery.amountMinor)
+        if (
+          snapshot.netRecovery.paidRecoveryLegId
+            ? BigInt(snapshot.netRecovery.amountMinor) > BigInt(balance.remaining)
+            : balance.remaining !== snapshot.netRecovery.amountMinor
+        )
           return yield* failure("StaleDependency");
 
         const allocation = yield* seal(

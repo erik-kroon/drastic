@@ -133,6 +133,7 @@ export function BookNavigation(props: {
           locale={locale}
           shows={shows}
           bookkeeping={bookkeeping}
+          paidRecovery={new URLSearchParams(props.search).get("view") === "paid-recovery"}
         />
       )}
     </>
@@ -145,6 +146,7 @@ function AccountingNavigation(props: {
   locale: Locale;
   shows: (destination: NavDestination) => boolean;
   bookkeeping: boolean;
+  paidRecovery: boolean;
 }) {
   const { base, pathname, locale } = props;
   const copy = frontendCopy(locale);
@@ -158,9 +160,24 @@ function AccountingNavigation(props: {
         </WorkspaceNavLink>
       )}
       {props.shows("tax") && (
-        <WorkspaceNavLink href={`${base}/tax`} active={pathname === `${base}/tax`}>
+        <WorkspaceNavLink
+          href={`${base}/tax`}
+          active={pathname === `${base}/tax` && !props.paidRecovery}
+        >
           <NavIcon name="tax" />
-          {locale === "sv" ? "Skatt och löner" : "Tax and payroll"}
+          {props.paidRecovery
+            ? locale === "sv"
+              ? "Moms och skatt"
+              : "VAT and tax"
+            : locale === "sv"
+              ? "Skatt och löner"
+              : "Tax and payroll"}
+        </WorkspaceNavLink>
+      )}
+      {props.shows("tax") && props.paidRecovery && (
+        <WorkspaceNavLink href={`${base}/tax?view=payroll`} active>
+          <NavIcon name="payroll" />
+          {locale === "sv" ? "Löner" : "Payroll"}
         </WorkspaceNavLink>
       )}
       {props.shows("reports") && (

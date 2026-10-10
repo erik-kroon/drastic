@@ -14,6 +14,8 @@ export const AdjustmentInstruction = Schema.Struct({
       claimId: Accounting.Identifier,
       amountMinor: Accounting.MinorUnits,
       receivableAccountId: Accounting.Identifier,
+      paidRecoveryLegId: Schema.optional(Accounting.Identifier),
+      capacityCalculationId: Schema.optional(Accounting.Identifier),
     }),
   ),
   evidence: EvidenceReference,

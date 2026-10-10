@@ -34,6 +34,7 @@ import { readMileageRecord } from "./mileage-correction-records";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import { compileSettlement, validateComparison } from "./settlement-basis";
 import { claimOffsetComparison } from "./settlement-net-recovery";
+import { requirePaidRecoveryClaimCurrent } from "./paid-recovery-records";
 import {
   readRetained,
   requireSettlementAccess,
@@ -64,6 +65,14 @@ type SettlementPostingOwner = {
 
 type Command<I> = { readonly scope: Scope; readonly idempotencyKey: string; readonly input: I };
 
+type NetRecoveryInstruction = NonNullable<
+  (typeof Settlement.AdjustmentInstruction.Type)["netRecovery"]
+>;
+
+type MutableNetRecoveryInstruction = {
+  -readonly [Field in keyof NetRecoveryInstruction]: NetRecoveryInstruction[Field];
+};
+
 function owner(review: typeof Settlement.SettlementReview.Type): SettlementPostingOwner {
   return {
     kind: review.input.kind === "gross_recovery" ? "payroll_recovery" : "payroll_payment",
@@ -90,6 +99,7 @@ const currentReview = Effect.fn("payroll.currentSettlementReview")(function* (
 
   if ((yield* Db.readReviewExecution(tx, scope.bookId, id)).length)
     return yield* failure("AlreadyPosted");
+  yield* requirePaidRecoveryClaimCurrent(tx, scope, review.id);
   const compiled = yield* compileSettlement(tx, scope, review.input);
 
   for (const field of [
@@ -252,6 +262,47 @@ export const prepareComparison = Effect.fn("payroll.preparePaidComparison")(func
   );
 });
 
+export const recordAdjustmentBasisInTransaction = Effect.fn(
+  "payroll.recordAdjustmentBasisInTransaction",
+)(function* (
+  tx: Transaction,
+  scope: Scope,
+  principal: Principal,
+  input: typeof Settlement.RecordAdjustmentBasis.Type,
+  key: string,
+) {
+  const { comparison } = input.recoveryClaimId
+    ? yield* claimOffsetComparison(tx, scope, input.recoveryClaimId, input.comparisonId)
+    : yield* validateComparison(tx, scope, input.comparisonId);
+
+  if (input.recoveryClaimId && input.kind !== "future_pay")
+    return yield* failure("UnsupportedProfile");
+
+  if (comparison.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+  const evidence = yield* readEvidenceReference(tx, scope.bookId, input.evidenceId);
+
+  const result = yield* seal(
+    tx,
+    scope,
+    principal,
+    "payroll_record_adjustment_basis",
+    key,
+    Settlement.AdjustmentBasis,
+    {
+      id: newId("payroll_adjustment_basis"),
+      input: input,
+      comparisonDigest: comparison.digest,
+      evidence,
+      qualification: "synthetic_only",
+    },
+  );
+
+  yield* persist(tx, "payroll_adjustment_bases", result);
+
+  return result;
+});
+
 export const recordAdjustmentBasis = Effect.fn("payroll.recordAdjustmentBasis")(function* (
   token: string,
   command: Command<typeof Settlement.RecordAdjustmentBasis.Type>,
@@ -276,43 +327,14 @@ export const recordAdjustmentBasis = Effect.fn("payroll.recordAdjustmentBasis")(
 
       if (request.previous) return request.previous;
 
-      const { comparison } = command.input.recoveryClaimId
-        ? yield* claimOffsetComparison(
-            tx,
-            command.scope,
-            command.input.recoveryClaimId,
-            command.input.comparisonId,
-          )
-        : yield* validateComparison(tx, command.scope, command.input.comparisonId);
-
-      if (command.input.recoveryClaimId && command.input.kind !== "future_pay")
-        return yield* failure("UnsupportedProfile");
-
-      if (comparison.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const evidence = yield* readEvidenceReference(
-        tx,
-        command.scope.bookId,
-        command.input.evidenceId,
-      );
-
-      const result = yield* seal(
+      const result = yield* recordAdjustmentBasisInTransaction(
         tx,
         command.scope,
         principal,
-        operation,
+        command.input,
         command.idempotencyKey,
-        Settlement.AdjustmentBasis,
-        {
-          id: newId("payroll_adjustment_basis"),
-          input: command.input,
-          comparisonDigest: comparison.digest,
-          evidence,
-          qualification: "synthetic_only",
-        },
       );
 
-      yield* persist(tx, "payroll_adjustment_bases", result);
       yield* saveCommand(
         tx,
         command.scope,
@@ -459,6 +481,17 @@ export const approveSettlement = Effect.fn("payroll.approveSettlement")(function
 
       yield* requireMileageSubmission(tx, command.scope, review, principal.actorId);
 
+      const paidRecoveryClaim = yield* requirePaidRecoveryClaimCurrent(
+        tx,
+        command.scope,
+        review.id,
+      );
+
+      if (paidRecoveryClaim) {
+        if (principal.kind !== "betterAuthSession") return yield* failure("ApprovalRequired");
+        yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
+      }
+
       if (!review.postingPlan && review.input.kind !== "reporting_only") {
         yield* authorizePresent(
           tx,
@@ -523,6 +556,67 @@ export const approveSettlement = Effect.fn("payroll.approveSettlement")(function
   );
 });
 
+const recordSettlementPaidEvent = Effect.fn("payroll.recordSettlementPaidEvent")(function* (
+  tx: Transaction,
+  scope: Scope,
+  principal: Principal,
+  review: typeof Settlement.SettlementReview.Type,
+  executionId: string,
+  key: string,
+) {
+  const input = review.input;
+  const operation = "payroll_execute_settlement";
+
+  if (input.kind !== "payment" && input.kind !== "noncash_payment")
+    return yield* failure("InternalError");
+
+  const run = review.originalRun;
+  const cash = review.cash;
+  const employee = run?.employees.find((row) => row.calculation.employeeId === input.employeeId);
+  const obligation = run?.employeeObligations.find((row) => row.employeeId === input.employeeId);
+
+  if (
+    !run ||
+    (input.kind === "payment" && !cash) ||
+    !employee ||
+    !obligation ||
+    review.outputs.reportingReadiness === "not_applicable"
+  )
+    return yield* failure("InternalError");
+
+  const calculated = employee.calculation.calculation;
+  const paidOn = input.kind === "noncash_payment" ? input.postingDate : cash?.observedOn;
+
+  if (!paidOn) return yield* failure("InternalError");
+
+  const paidEvent = yield* seal(tx, scope, principal, operation, key, Settlement.PaidPayrollEvent, {
+    id: newId("payroll_paid_event"),
+    runId: run.id,
+    employeeId: input.employeeId,
+    paidOn,
+    paidMinor: review.outputs.amountMinor,
+    evidenceId:
+      input.kind === "noncash_payment"
+        ? input.evidenceId
+        : (cash?.evidence.evidenceId ?? input.evidenceId),
+    reportingPeriod: Domain.resolveReportingPeriod(paidOn),
+    grossCashMinor: calculated.grossMinor,
+    withholdingMinor: obligation.withholdingMinor,
+    contributionBaseMinor: obligation.contributionBaseMinor,
+    employerContributionMinor: obligation.employerContributionMinor,
+    specificationNumber: `spec_${(yield* digest({ employer: scope.entityId, employee: input.employeeId, period: Domain.resolveReportingPeriod(paidOn) })).slice(7, 39)}`,
+    originalRun: run,
+    originalEmployee: employee,
+    reportingReadiness: review.outputs.reportingReadiness,
+    sourceDigest: review.capacityDigest,
+    settlementExecutionId: executionId,
+  });
+
+  yield* persist(tx, "payroll_paid_events", paidEvent);
+
+  return paidEvent;
+});
+
 const commitConsequences = Effect.fn("payroll.commitSettlementConsequences")(function* (
   tx: Transaction,
   scope: Scope,
@@ -537,41 +631,8 @@ const commitConsequences = Effect.fn("payroll.commitSettlementConsequences")(fun
   let recoveryClaim: typeof Settlement.RecoveryClaim.Type | null = null;
   let instruction: typeof Settlement.AdjustmentInstruction.Type | null = null;
 
-  if (input.kind === "payment") {
-    const run = review.originalRun;
-    const cash = review.cash;
-    const employee = run?.employees.find((row) => row.calculation.employeeId === input.employeeId);
-    const obligation = run?.employeeObligations.find((row) => row.employeeId === input.employeeId);
-
-    if (
-      !run ||
-      !cash ||
-      !employee ||
-      !obligation ||
-      review.outputs.reportingReadiness === "not_applicable"
-    )
-      return yield* failure("InternalError");
-    const calculated = employee.calculation.calculation;
-    paidEvent = yield* seal(tx, scope, principal, operation, key, Settlement.PaidPayrollEvent, {
-      id: newId("payroll_paid_event"),
-      runId: run.id,
-      employeeId: input.employeeId,
-      paidOn: cash.observedOn,
-      paidMinor: review.outputs.amountMinor,
-      evidenceId: cash.evidence.evidenceId,
-      reportingPeriod: Domain.resolveReportingPeriod(cash.observedOn),
-      grossCashMinor: calculated.grossMinor,
-      withholdingMinor: obligation.withholdingMinor,
-      contributionBaseMinor: obligation.contributionBaseMinor,
-      employerContributionMinor: obligation.employerContributionMinor,
-      specificationNumber: `spec_${(yield* digest({ employer: scope.entityId, employee: input.employeeId, period: Domain.resolveReportingPeriod(cash.observedOn) })).slice(7, 39)}`,
-      originalRun: run,
-      originalEmployee: employee,
-      reportingReadiness: review.outputs.reportingReadiness,
-      sourceDigest: review.capacityDigest,
-      settlementExecutionId: executionId,
-    });
-    yield* persist(tx, "payroll_paid_events", paidEvent);
+  if (input.kind === "payment" || input.kind === "noncash_payment") {
+    paidEvent = yield* recordSettlementPaidEvent(tx, scope, principal, review, executionId, key);
   } else if (input.kind === "cash_recovery") {
     const allocation = yield* seal(tx, scope, principal, operation, key, AllocationRecord, {
       id: newId("payroll_recovery_allocation"),
@@ -633,12 +694,20 @@ const commitConsequences = Effect.fn("payroll.commitSettlementConsequences")(fun
         executionId,
       };
 
-      if (input.kind === "future_pay" && input.recoveryClaimId && review.claim)
-        instructionFields.netRecovery = {
+      if (input.kind === "future_pay" && input.recoveryClaimId && review.claim) {
+        const netRecovery: MutableNetRecoveryInstruction = {
           claimId: input.recoveryClaimId,
           amountMinor: review.outputs.amountMinor,
           receivableAccountId: review.claim.recoveryReceivableAccountId,
         };
+
+        if (input.paidRecoveryLegId) netRecovery.paidRecoveryLegId = input.paidRecoveryLegId;
+
+        if (input.capacityCalculationId)
+          netRecovery.capacityCalculationId = input.capacityCalculationId;
+
+        instructionFields.netRecovery = netRecovery;
+      }
 
       const retained = yield* seal(
         tx,
@@ -760,6 +829,9 @@ export const executeSettlement = Effect.fn("payroll.executeSettlement")(function
 
       yield* requireMileageSubmission(tx, command.scope, review, approval.actorId);
 
+      if (yield* requirePaidRecoveryClaimCurrent(tx, command.scope, review.id))
+        yield* requireInstructionAuthority(tx, command.scope, review, approval.actorId);
+
       if (!review.postingPlan && review.input.kind !== "reporting_only")
         yield* requireInstructionAuthority(tx, command.scope, review, approval.actorId);
 
@@ -846,26 +918,21 @@ export const executeSettlement = Effect.fn("payroll.executeSettlement")(function
   );
 });
 
-export const getSettlement = Effect.fn("payroll.getSettlement")(function* (
-  token: string,
-  command: { readonly scope: Scope; readonly reviewId: string },
-) {
-  return yield* withBook(token, command.scope, false, function* (tx, principal) {
-    yield* requireSettlementAccess(tx, command.scope, principal.actorId, false);
-
+export const getSettlementInTransaction = Effect.fn("payroll.getSettlementInTransaction")(
+  function* (tx: Transaction, scope: Scope, reviewId: string) {
     const review = yield* readRetained(
       tx,
-      command.scope,
+      scope,
       "payroll_settlement_reviews",
-      command.reviewId,
+      reviewId,
       Settlement.SettlementReview,
     );
 
     const approvals = [];
 
-    for (const row of yield* Db.readApprovalRows(tx, command.scope.bookId, review.id))
+    for (const row of yield* Db.readApprovalRows(tx, scope.bookId, review.id))
       approvals.push(yield* decode(Settlement.SettlementApproval, row.body));
-    const executionRow = (yield* Db.readReviewExecution(tx, command.scope.bookId, review.id))[0];
+    const executionRow = (yield* Db.readReviewExecution(tx, scope.bookId, review.id))[0];
 
     const execution = executionRow
       ? yield* decode(Settlement.SettlementExecution, executionRow.body)
@@ -874,13 +941,24 @@ export const getSettlement = Effect.fn("payroll.getSettlement")(function* (
     const claimId = execution?.recoveryClaim?.id ?? review.claim?.id;
 
     const remainingReceivableMinor = claimId
-      ? (yield* claimBalance(tx, command.scope, claimId)).remaining
+      ? (yield* claimBalance(tx, scope, claimId)).remaining
       : "0";
 
     const netInstruction = execution?.instruction
-      ? yield* netInstructionState(tx, command.scope, execution.instruction.id)
+      ? yield* netInstructionState(tx, scope, execution.instruction.id)
       : null;
 
     return { review, approvals, execution, remainingReceivableMinor, netInstruction };
+  },
+);
+
+export const getSettlement = Effect.fn("payroll.getSettlement")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly reviewId: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx, principal) {
+    yield* requireSettlementAccess(tx, command.scope, principal.actorId, false);
+
+    return yield* getSettlementInTransaction(tx, command.scope, command.reviewId);
   });
 });

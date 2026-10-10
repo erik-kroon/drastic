@@ -39,6 +39,15 @@ const styles = stylex.create({
     overflow: "hidden",
     width: "100%",
   },
+  reviewHeader: { height: kanon.sizeRowTall, paddingBottom: kanon.space4 },
+  plainCount: {
+    color: kanon.colorText,
+    fontFamily: kanon.fontUi,
+    fontSize: kanon.textCaption,
+    lineHeight: kanon.leadingBody,
+  },
+  recoverySelected: { borderInlineStartColor: "transparent" },
+  recoveryState: { color: kanon.colorSecondary },
   groupHeader: {
     alignItems: "flex-end",
     borderBottomColor: kanon.colorRule,
@@ -171,22 +180,30 @@ export function CountPill({ count }: { count: number | string }) {
 }
 
 /** A group header with its count. Pass `first` for the topmost group, which sits closer. */
-export function WorkGroup({
-  title,
-  count,
-  first = false,
-  children,
-}: {
+export function WorkGroup(props: {
+  recovery?: boolean;
   title: string;
   count: number;
   first?: boolean;
   children: ReactNode;
 }) {
+  const { title, count, first, children } = props;
+
   return (
     <li {...stylex.props(styles.group)}>
-      <div {...stylex.props(styles.groupHeader, !first && styles.laterGroupHeader)}>
+      <div
+        {...stylex.props(
+          styles.groupHeader,
+          !first && styles.laterGroupHeader,
+          props.recovery && styles.reviewHeader,
+        )}
+      >
         <h2 {...stylex.props(styles.groupTitle)}>{title}</h2>
-        <CountPill count={count} />
+        {props.recovery ? (
+          <span {...stylex.props(styles.plainCount)}>{count}</span>
+        ) : (
+          <CountPill count={count} />
+        )}
       </div>
       <ul {...stylex.props(styles.list)}>{children}</ul>
     </li>
@@ -195,6 +212,7 @@ export function WorkGroup({
 
 type WorkRowProps = {
   status: Status;
+  recovery?: boolean;
   title: string;
   /** Second line in caption text, such as "Godkänd av Elin Sund 2 okt 09:13". Makes the row 52 px. */
   detail?: string;
@@ -224,17 +242,30 @@ export function WorkRow(props: WorkRowProps) {
           styles.row,
           detail !== undefined && styles.rowTall,
           selected === true && styles.selected,
+          props.recovery && styles.recoverySelected,
         )}
       >
         <span {...stylex.props(styles.statusColumn)}>
-          <StatusIcon status={status} />
+          {props.recovery && status === "needsYou" ? (
+            <span {...stylex.props(statusTextStyle(status))}>!</span>
+          ) : (
+            <StatusIcon status={status} />
+          )}
         </span>
         {reference !== undefined && <span {...stylex.props(styles.reference)}>{reference}</span>}
         <span {...stylex.props(styles.titleColumn)}>
           <span {...stylex.props(styles.title)}>{props.title}</span>
           {detail !== undefined && <span {...stylex.props(styles.detail)}>{detail}</span>}
         </span>
-        <span {...stylex.props(styles.state, statusTextStyle(status))}>{props.state}</span>
+        <span
+          {...stylex.props(
+            styles.state,
+            statusTextStyle(status),
+            props.recovery && styles.recoveryState,
+          )}
+        >
+          {props.state}
+        </span>
         <span {...stylex.props(styles.amount)}>{props.amount}</span>
       </button>
     </li>

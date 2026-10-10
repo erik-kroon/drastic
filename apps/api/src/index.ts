@@ -1,5 +1,6 @@
 import { DecisionQuestionHandlers } from "./transport/http/routes/decision-questions";
 import { DecisionExampleHandlers } from "./transport/http/routes/decision-examples";
+import { PaidRecoveryHandlers } from "./transport/http/routes/paid-payroll-recovery";
 import { EmployeeClaimHandlers } from "./transport/http/routes/employee-claims";
 import { MileageCorrectionHandlers } from "./transport/http/routes/mileage-corrections";
 import { VariablePayReviewHandlers } from "./transport/http/routes/variable-pay-review";
@@ -255,6 +256,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     VariablePayReviewHandlers,
     AssetDisposalHandlers,
     PayrollSettlementHandlers,
+    PaidRecoveryHandlers,
     TreasuryLoanHandlers,
     DeadlineHandlers,
     RuleImpactHandlers,

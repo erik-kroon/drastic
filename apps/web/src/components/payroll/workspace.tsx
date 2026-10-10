@@ -1,3 +1,4 @@
+import { FormLink } from "@open-erp/ui/kanon/form";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Runs from "@open-erp/contracts/payroll-runs";
@@ -69,6 +70,9 @@ export function PayrollWorkspace({ recordId }: { recordId?: string }) {
         />
       }
     >
+      <FormLink href={`${base}?view=paid-recovery`}>
+        {sv ? "Återkrav efter utbetald lön" : "Recovery after paid payroll"}
+      </FormLink>
       <EmployeeClaimDirectory key={`${book.entityId}:${book.id}`} />
       <MileageCorrectionDirectory key={`mileage:${book.entityId}:${book.id}`} />
       <VariablePayDirectory key={`variable:${book.entityId}:${book.id}`} />
