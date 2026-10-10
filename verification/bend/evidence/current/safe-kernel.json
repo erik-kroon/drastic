@@ -1,0 +1,71 @@
+{
+  "schema": "openerp-bend-receipt/v1",
+  "kind": "safe-kernel",
+  "status": "passed",
+  "official": true,
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "sourceTreeDigest": "sha256:0beacd1882bd93dfbe993038a4b750955939139c5f90970984ca2c5a403acc3c",
+  "artifactDigest": "sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e",
+  "translationDigest": "sha256:34f2a9aefbd85dfb14d4874501dd4b0bc99e30b23339b78c98224a611207135e",
+  "kernelBinaryDigest": "sha256:b38c3a820d1230db7b564d9e5e581a2c7cec2e34851ff498b2e84058f97f724d",
+  "rootCount": 227,
+  "openObligations": 0,
+  "excludedDefinitions": [],
+  "runs": [
+    {
+      "command": "/Users/admin/.cache/drastic-bend/lean-4.34.0-darwin_aarch64/bin/lean",
+      "args": [
+        "--version"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Lean (version 4.34.0, arm64-apple-darwin24.6.0, commit 293d5d0c0c3f3dded4688b3ccd6a33939ac5102b, Release)\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.cache/drastic-bend/lean-4.34.0-darwin_aarch64/bin/lean",
+      "args": [
+        "-c",
+        "bendtt.c",
+        "bendtt.lean"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.cache/drastic-bend/lean-4.34.0-darwin_aarch64/bin/leanc",
+      "args": [
+        "-O3",
+        "-DNDEBUG",
+        "bendtt.c",
+        "-o",
+        "bendtt"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/var/folders/50/zdx6l4px2wg7wh8q7_78g2qr0000gn/T/openerp-bendtt-PIyBvP/bendtt",
+      "args": [
+        "/Users/admin/drastic-bend/verification/bend/dist/Kernel.bendtt"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "All terms check.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    }
+  ],
+  "caveat": "The upstream translation and JS code generator are not proved by this kernel check."
+}

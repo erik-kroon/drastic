@@ -1,62 +1,69 @@
-# Proof coverage and evidence boundaries
+# Proof coverage and trust boundaries
 
-## Checked propositions
+## Observed here
 
-`bend/LAWS.bend` is the specification surface. `bend/PROOF.bend` supplies every declared body. No first-party module contains an unsafe definition, a foreign implementation, a proof hole or an unfilled law.
+Both the development checker and the pinned upstream source checker accepted **35 completed law/proof pairs** with no reported holes. The independent safe-kernel lane also passes under Lean 4.34.0, and the suites pass against generated JS. See `evidence/current/release-verification.json` and its `safe-kernel.json` receipt for exact identities and coverage.
 
-| Property | What its proof establishes |
+The default development checker is reconstructed/adapted source. Its success alone is development evidence. The upstream build verifies pinned source bytes, exercises generated code and separately invokes the freshly built independent safe kernel. The compiler, translator and host boundary remain part of the trusted computing base.
+
+## Original 20 laws
+
+`LAWS.bend` and `PROOF.bend` retain:
+
+- Normalization/shift compatibility and idempotence; left and right addition identities.
+- Reversal involution, debit/credit interchange and preservation of a supplied balance witness.
+- Preservation of the preceding journal history in the model's append operation.
+- Balance, line shape and minimum-line evidence carried by accepted voucher values.
+- Source/target conservation and restoration evidence carried by accepted allocation values.
+- No floor increment for an exact negative division, the half-even tie decision and canonical zero sign.
+
+The certificate laws establish safety of already accepted values. They do not establish that every valid input is accepted. Journal-history laws do not prove persistence, database grants or concurrent execution behavior.
+
+## New 15 laws
+
+`Meaning.bend` defines an unbounded inductive mathematical-natural model for specifications, separate from both binary runtime integers and the backend's built-in Nat representation.
+
+`RefinementLaws.bend` and `RefinementProof.bend` connect binary operations to that model:
+
+| Law family | Property |
 | --- | --- |
-| `normalize_shift` | Normalization commutes with a binary left shift. |
-| `normalize_idempotent` | Repeating normalization changes nothing. |
-| `add_zero_left` | Adding zero on the left returns the normalized operand. |
-| `plus_shift_zero` | The internal addition helper preserves a shifted operand when adding zero. |
-| `add_zero_right` | Adding zero on the right returns the normalized operand. |
-| `reversal_involution` | Swapping debit and credit twice restores the original line list. |
-| `reversal_debits` | A reversal's debit total equals the original credit total. |
-| `reversal_credits` | A reversal's credit total equals the original debit total. |
-| `reversal_balanced` | A reversal of a balanced line list remains balanced. |
-| `append_preserves_history` | Posting to the immutable journal spine preserves its previous history. |
-| `voucher_balance` | Every constructed certified voucher has equal debit and credit totals. |
-| `voucher_line_shape` | Every certified voucher has exactly one nonzero side on every line. |
-| `voucher_minimum` | Every certified voucher contains at least two lines. |
-| `allocation_source_conservation` | Amount plus source remainder equals the normalized source capacity. |
-| `allocation_target_conservation` | Amount plus target remainder equals the normalized target capacity. |
-| `restoration_source` | Reversing the allocation's arithmetic restores its source capacity. |
-| `restoration_target` | Reversing the allocation's arithmetic restores its target capacity. |
-| `floor_exact_no_increment` | A zero remainder never increments the negative floor magnitude. |
-| `half_even_tie` | An exact tie delegates increment selection to quotient parity. |
-| `zero_has_no_negative_sign` | Constructing a signed zero produces the canonical nonnegative zero. |
+| Mathematical addition | Zero identity, successor behavior, associativity and commutativity |
+| Doubling | Distribution over addition and equality to self-addition |
+| Mathematical multiplication | Distribution over addition and compatibility with doubling |
+| Binary shift | Decoded value doubles |
+| Normalization | Decoded value is unchanged |
+| Increment | Decoded value increases by one |
+| Raw plus and public addition | Decoded output is the mathematical sum |
+| Raw times and public multiplication | Decoded output is the mathematical product |
 
-The certified-voucher and allocation properties are safety guarantees about accepted values. Their constructors require actual equality witnesses. The validators obtain those witnesses by deciding structural equality of normalized binary values, not by inserting axioms.
+These are refinement statements about the actual binary implementations, not merely equations saying an operation agrees with itself. Mutation tests remove multiplication terms and verify that the corresponding refinement check rejects the change.
 
-They are not proofs that a validator accepts every valid input. They also do not prove a refinement theorem connecting every binary arithmetic function to mathematical integers. The independent integer differential tests provide a separate, finite check of that connection.
+## What is not universally proved
 
-## Executable evidence
+The package does not contain complete refinement proofs for comparison, subtraction/borrow, long division, GCD, signed arithmetic, rational reduction, all decimal conversions, all rounding modes or solver completeness.
 
-The harness evaluates the actual Bend terms through the selected source checker/evaluator. Its independent expectations come from JS BigInt arithmetic and brute-force enumeration. Tests cover:
+It also does not prove the official compiler, the Bend-to-BendTT translator, the JS/native code generators, the runtime adapters, the TypeScript declarations, source extraction accuracy, SQL isolation or statutory applicability. The official safe checker itself has an explicit scope boundary and the release gate refuses exclusions.
 
-- Small exhaustive arithmetic grids plus large boundary values and signed division.
-- GCD reduction, rational arithmetic, decimal conversion and negative rounding ties.
-- Valid and invalid voucher shapes, conservation and restoration.
-- VAT source differentials, excluded contributions and reported-box net derivation.
-- Solver ambiguity, bounded cardinality, budget exhaustion and deterministic input identity.
-- Malformed money, duplicate IDs, stale snapshots and cross-book/currency/direction refusals.
-- Rejection of false proofs, missing proofs, holes, unsafe code, nondecreasing recursion and affine duplication.
+No `@unsafe`, foreign implementation, open law or placeholder proof is accepted by the source gate. That policy is not a claim that a new formal system or an adapted checker has no soundness defects.
 
-An independent positive checker control verifies that rejection tests are not merely failing to load their imports. Two mutation controls deliberately break reversal and exact-negative-floor behavior; their corresponding proofs must reject those changes.
+## Runtime mathematical postconditions
 
-## Deliberately not claimed
+`src/operations.mjs` checks each result independently before accepting it at the host boundary. In particular, rounding is not accepted solely because `q*d+r=n` holds.
 
-There is no universal proof here of addition commutativity, multiplication correctness, Euclidean division correctness, GCD completeness or all rounding identities. Those routines are implemented and tested, not comprehensively formally verified.
+For positive `d`:
 
-There is no universal proof of PRY-33 search completeness. A complete result follows the implemented finite traversal and is tested against exhaustive enumeration. The adapter independently validates each returned witness, but uniqueness still depends on the search and declared candidate scope.
+- Floor additionally requires `0 <= r < d`.
+- Ceiling additionally requires `-d < r <= 0`.
+- Truncation requires `abs(r) < d` with the appropriate residual sign.
+- Nearest rounding requires `2*abs(r) < d` or the selected tie condition.
+- Exact mode requires `r=0`.
 
-There is no proof that a receipt corresponds to an actual payment, that imported evidence is complete, that a reviewed rate is legally applicable or that an agent has human approval. Those facts cannot be established by this pure arithmetic model.
+Thus the fraudulent result `q=0, r=n` cannot generally pass just by conserving value. Output bounds, denominator identity, box presence, net derivation, period order, capacity conservation and reversal content are independently checked too.
 
-There is no concurrency proof for SQL, no proof of exactly-once financial effects and no authority to mutate posted records. In particular, `Allocation.restore` computes one restoration; it does not prevent a second restoration being applied by a careless caller. Existing effect identities and transactions must enforce that.
+These small host checks remain trusted executable code, not universal proof terms. They do not compute a fallback result or authorize an action. Their purpose is to reject a bad compiled result at the boundary.
 
-## Compiler trust
+## Review discipline
 
-The included development checker is a modified source adaptation. It is not an official release; official checking runs in the authority release lane.
+Review changes to `LAWS.bend`, `RefinementLaws.bend`, the interpretation model and `src/semantics.mjs` as specification changes. Do not let an implementation agent weaken a requirement solely to make its code pass. Implementation changes, proof changes and semantic changes should remain distinguishable in review.
 
-`BEND_SOURCE_ROOT` selects the unmodified pinned checker, verified by Git blob hash. The release gate additionally invokes the official Bend command and `--safe`. That still leaves the compiler, proof translation, execution backend, host codecs and operating environment in the trusted computing base.
+Do not claim complete arithmetic verification because there are 35 proof pairs. Promote one operation only after reviewing the exact law dependencies, postconditions, artifact evidence and current application mapping relevant to that operation.

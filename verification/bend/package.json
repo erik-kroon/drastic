@@ -1,6 +1,6 @@
 {
-  "name": "@openerp/bend-verification-kit",
-  "version": "0.1.0",
+  "name": "@open-erp/bend-authority-preview",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -9,16 +9,30 @@
   },
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.mjs"
+      "types": "./src/index.d.mts",
+      "default": "./src/index.mjs"
+    },
+    "./pure": {
+      "types": "./src/pure.d.mts",
+      "default": "./src/pure.mjs"
+    },
+    "./research": {
+      "types": "./src/research.d.mts",
+      "default": "./src/research.mjs"
     }
   },
   "scripts": {
-    "test": "node --experimental-strip-types tests/run.mjs",
-    "demo": "node --experimental-strip-types scripts/demo.mjs",
-    "check:proofs": "node --experimental-strip-types scripts/check-proofs.mjs",
-    "verify:owner": "node --experimental-strip-types scripts/verify-owner.mjs",
+    "test": "node --experimental-strip-types scripts/verify-local.mjs",
     "verify:local": "node --experimental-strip-types scripts/verify-local.mjs",
-    "solve": "node --experimental-strip-types scripts/solve.mjs"
+    "verify:owner": "node --experimental-strip-types scripts/verify-owner.mjs",
+    "verify:release": "node --experimental-strip-types scripts/verify-release.mjs",
+    "verify:compiler": "node --experimental-strip-types scripts/verify-compiler.mjs",
+    "build:official": "node --experimental-strip-types scripts/build-official.mjs",
+    "stage:release": "node --experimental-strip-types scripts/stage-release.mjs",
+    "bootstrap:upstream": "node --experimental-strip-types scripts/bootstrap-upstream.mjs",
+    "demo": "node --experimental-strip-types scripts/demo.mjs",
+    "solve": "node --experimental-strip-types scripts/solve.mjs",
+    "check:proofs": "node --experimental-strip-types scripts/check-proofs.mjs",
+    "check:types": "tsc -p tsconfig.types.json"
   }
 }

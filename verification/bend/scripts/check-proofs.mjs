@@ -4,8 +4,11 @@ import { readFile } from "node:fs/promises";
 const e = await loadEngine();
 
 const laws =
-  (await readFile(new URL("../bend/LAWS.bend", import.meta.url), "utf8")).match(/^law /gm)
-    ?.length ?? 0;
+  (
+    (await readFile(new URL("../bend/LAWS.bend", import.meta.url), "utf8")) +
+    "\n" +
+    (await readFile(new URL("../bend/RefinementLaws.bend", import.meta.url), "utf8"))
+  ).match(/^law /gm)?.length ?? 0;
 
 console.log(
   JSON.stringify(

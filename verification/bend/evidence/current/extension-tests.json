@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "suite": "authority-extension",
+  "assertions": 378,
+  "checker": "official-js-artifact",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "artifactDigest": "sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e",
+  "sourceTreeDigest": "sha256:0beacd1882bd93dfbe993038a4b750955939139c5f90970984ca2c5a403acc3c",
+  "elapsedMs": 189,
+  "operations": [
+    "money.round.v1",
+    "vat.project.v1",
+    "schedule.equal.v1",
+    "settlement.allocate.v1",
+    "fx.convert.v1",
+    "ledger.reverse.v1"
+  ],
+  "productionReady": false,
+  "actualCurrentOwnerCompared": false,
+  "caveats": [
+    "The temporary owner adapter and qualified service are explicit test fixtures. They are not deployed or real-owner evidence."
+  ]
+}

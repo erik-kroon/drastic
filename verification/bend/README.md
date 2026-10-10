@@ -1,127 +1,99 @@
-# Drastic Bend verification kit
+# Drastic Bend money model
 
-Offline models for exact arithmetic, ledger/allocation invariants, Swedish VAT
-monetary projection and bounded covering-set search. This directory is outside
-the product workspaces and has no production caller.
+An exact model of Drastic's money arithmetic, written in Bend, built with the
+official Bend compiler and checked by an independent Lean safe kernel. CI
+compares it with the code the application actually runs. Nothing in the
+application calls it: it is a reference that the real owners must agree with.
 
 ## In CI
 
 The `Exact money model (official Bend)` job in `.github/workflows/ci.yml` runs
 on every pull request and push to `main`. It installs Lean 4.34.0 (checksum
-pinned), fetches the pinned Bend source and runs the authority release lane
-(`verify:release`):
+pinned), fetches the pinned Bend source and runs `verify:release`:
 
 1. Builds the model twice with the official Bend compiler and requires
    byte-identical artifacts.
-2. Checks the model with the independent Lean safe kernel.
+2. Checks the model with the independent Lean safe kernel (35 law/proof pairs).
 3. Runs the laws and arithmetic with both the development evaluator and the
-   compiled artifact.
+   compiled artifact, which must agree.
 4. Compares the current owners with the compiled artifact through
-   [`current-owner-authority.mjs`](current-owner-authority.mjs). The model must
-   agree exactly with the code the application runs:
-
-   | Operation | Current owner |
-   | --- | --- |
-   | `money.round.v1`, `vat.project.v1` | `jurisdictions/se/src/vat/actual.ts` and the shared `roundRational` in `packages/domain/src/purchasing.ts`. Every rounding owner must also agree: `roundHalfUp` (`packages/domain/src/money.ts`, used by FX, mileage and Peppol tax checks), corporate tax `roundRational` and payroll `roundExact`. |
-   | `fx.convert.v1` (nonnegative half up) | `convertMinor` in `packages/domain/src/exchange-rates.ts`, used by rate reviews and commerce FX recognition |
-   | `schedule.equal.v1` (remainder last) | `allocateByWeights` in `packages/domain/src/prepayments.ts`, used by equal-month prepayments |
-
+   [`current-owner-authority.mjs`](current-owner-authority.mjs) (1437
+   comparisons). Any difference fails the job.
 5. Exercises the real VAT workflow on PostgreSQL with the compiled artifact.
 
-The job then runs this kit's historical VAT regressions (`test`).
-
-The job uploads fresh evidence as the `bend-evidence` artifact. Committed
+It uploads `evidence/current/` as the `bend-evidence` artifact. Committed
 evidence files are dated snapshots; the CI artifact is the current result.
+
+## What the real code is compared with
+
+| Comparison | Current owner |
+| --- | --- |
+| `money.round.v1` | `roundRational` in `packages/domain/src/purchasing.ts`. Every other rounding owner must give the same result: `roundHalfUp` in `packages/domain/src/money.ts` (FX, mileage, Peppol, invoice and credit-note line tax, disposals, VAT credit checks), corporate tax `roundRational` and payroll `roundExact` |
+| `vat.project.v1` | `actualVatMonetary` in `jurisdictions/se/src/vat/actual.ts` |
+| `fx.convert.v1` (nonnegative half up) | `convertMinor` in `packages/domain/src/exchange-rates.ts`, used by rate reviews and commerce FX recognition |
+| `schedule.equal.v1` (remainder last) | `allocateByWeights` in `packages/domain/src/prepayments.ts`, used by equal-month prepayments |
+| `ledger.reverse.v1` | `reversedLines` in `packages/domain/src/posting.ts`, used by every voucher reversal |
+| Voucher admission | `validatePostingLines` in `packages/domain/src/posting.ts` must accept exactly the vouchers the model's `Ledger.validate` accepts |
+| Bank covers | `findExactCovers` in `packages/domain/src/bank-cover-search.ts` against the model's `Cover.solve` on small complete pools: neither may miss or invent a cover, and a unique model cover must be the owner's cover |
+
 Inputs outside an owner's defined scope (negative FX amounts, other rounding
-modes, nonpositive schedules) are not generated, and the adapter refuses them
-rather than reporting agreement.
+modes, nonpositive schedules, more than 500 voucher lines) are not generated,
+and the adapter refuses them rather than reporting agreement. The day-gap
+ranking of bank covers is application policy and is not modelled.
+`settlement.allocate.v1` has no compared owner: settlement capacity is checked
+inside the allocation transactions.
 
-## Run
+## Run locally
 
-Use Node 22.16 or later. The standalone model checks need no npm installation:
-
-```sh
-npm --prefix verification/bend test
-npm --prefix verification/bend run check:proofs
-npm --prefix verification/bend run demo
-npm --prefix verification/bend run solve -- fixtures/cover-ambiguous.json
-```
-
-From an Drastic checkout with its normal dependencies installed, run the complete
-local lane (including the current owner):
+Node 22.16 or later. The development lane needs no toolchain:
 
 ```sh
 npm --prefix verification/bend run verify:local
+OPENERP_REPO="$PWD" OPENERP_OWNER_ADAPTER=verification/bend/current-owner-authority.mjs \
+  npm --prefix verification/bend run verify:owner
 ```
 
-`verify:local` selects the containing checkout, or `OPENERP_REPO` when set. It runs
-the commands sequentially, records exit statuses and console output, hashes the
-kit inputs and actual VAT/domain sources, and writes
-[`evidence/local-verification.json`](evidence/local-verification.json).
-Read that manifest together with its linked reports. Each run replaces the local
-evidence; a failed run cannot report a previous success as current.
-
-For only the current-owner monetary comparison:
+The official lane needs the pinned Bend source, Lean 4.34.0 and PostgreSQL 17,
+exactly as CI installs them. See [qualification](docs/QUALIFICATION.md):
 
 ```sh
-OPENERP_REPO="$PWD" npm --prefix verification/bend run verify:owner
+node --experimental-strip-types verification/bend/scripts/bootstrap-upstream.mjs ~/.cache/drastic-bend/bend
+export BEND_SOURCE_ROOT=~/.cache/drastic-bend/bend
+export LEAN_BIN=/path/to/lean-4.34.0/bin/lean LEANC_BIN=/path/to/lean-4.34.0/bin/leanc
+export OPENERP_REPO="$PWD" OPENERP_OWNER_ADAPTER="$PWD/verification/bend/current-owner-authority.mjs"
+npm --prefix verification/bend run verify:release
 ```
 
-## Verification boundary
+## Operations
 
-The default evaluator is the archive's **development adaptation** of the Bend
-source checker. It loads and evaluates the actual `.bend` files. Its accepted
-proof terms are not an official compiler or independent safe-kernel result.
-
-`tooling/dev-checker.ts.gz` preserves that adaptation byte-for-byte. The loader
-verifies the decompressed SHA-256, materializes it with `base.bend` in a temporary
-directory, and removes that directory after loading/checking the Bend book.
-The historical VAT excerpt is likewise a pinned compressed source asset. See
-[source provenance](docs/SOURCES.md) and [NOTICE](NOTICE).
-
-Official verification lives in the [authority](authority/README.md) release
-lane, which CI runs (see [In CI](#in-ci)): the official Bend compiler from the
-pinned source, the independent Lean safe kernel, compiled-artifact comparisons
-and the real VAT host. Native/GPU execution and statutory applicability remain
-separate claims.
-
-## Models
-
-| Area | Implementation and limit |
+| Operation | Scope |
 | --- | --- |
-| Ledger and allocation | Certified voucher balance/line shape and source/target conservation/restoration; no posting authority or concurrency model. |
-| VAT | Qualified contributions to boxes 05, 10, 11, 12 and 48; exact/reported/residual values; box 49 derived from reported primitive boxes. No eligibility or control-reconciliation replacement. |
-| Arithmetic | Binary naturals, signed integers, checked subtraction, multiplication, divmod, GCD, rationals, rounding and decimals. Canonical host monetary inputs allow up to 38 digits. |
-| Covering sets | Whole remaining capacities, global node budget, cardinality limits, ambiguity witnesses and incomplete/unavailable outcomes. No production ranking or candidate discovery. |
+| `money.round.v1` | Signed exact rational rounding: six explicit policies, up to 160-digit intermediates, bounded 38-digit output and a retained residual |
+| `vat.project.v1` | Qualified contributions, primitive box totals, an explicit reporting-unit divisor (`reportingUnitMinor`), residuals and net from reported primitive boxes |
+| `schedule.equal.v1` | Supplied remaining basis and ordered period IDs; the remainder goes to the final period |
+| `settlement.allocate.v1` | Same-currency positive amount and two nonnegative remaining capacities |
+| `fx.convert.v1` | Explicit major-unit rate and both currency scales; no implicit rate selection or gain/loss classification |
+| `ledger.reverse.v1` | Original line references, accounts and dimensions retained while debit and credit swap |
 
-`calculateVat` requires both `currencyScale` and `filingUnitScale`; the divisor is
-`10^(currencyScale - filingUnitScale)`. Finer-than-book filing precision refuses.
-The current-owner gate follows `actual.ts` into the real shared
-`purchasing.roundRational` implementation, using temporary Node resolution hooks
-and test-only exports in memory. Application source is not edited.
+Bank cover search (PRY-33) stays on the research path: it never produces
+permission to execute, and every result has `mayExecute: false` and
+`requiresRevalidation: true`.
 
-The original floor patch under `patches/` is historical: Drastic commit
-`b0e2fcbe473c1620a1da8848a0d9ceb2763e086a` already repaired that bug. Historical
-excerpt checks retain the old failure; they are labelled separately from current
-owner comparisons.
+## Boundary
 
-Every covering-set result has `mayExecute: false` and `requiresRevalidation: true`.
-Its fingerprint is a diagnostic identity, not an approval digest. Future callers
-must use the existing eligibility, preparation, approval and allocation owners.
+The development evaluator (`lib/checker.mjs` with `tooling/dev-checker.ts.gz`)
+is a reconstructed Bend checker for fast offline runs, not an official result.
+The official build path never accepts it.
 
-See [integration](docs/INTEGRATION.md), [proof coverage](docs/PROOF-COVERAGE.md),
-[arithmetic](docs/ARITHMETIC.md) and [local integration](docs/LOCAL-INTEGRATION.md).
-The original archive manifest is retained as
-[`upstream/ORIGINAL-MANIFEST.json`](upstream/ORIGINAL-MANIFEST.json); its checksums
-describe the supplied archive, not the locally adapted files.
+The application default remains TypeScript. `src/node-authority.mjs` could load
+a promoted artifact, but only for a candidate placed in deployment trust by an
+explicit review, and the supplied trust file holds zero approved releases.
+Effect still owns policy and transactions, and PostgreSQL still owns committed
+records, constraints, locks and receipts. Native or GPU execution and
+statutory applicability are separate claims. See
+[limitations](docs/LIMITATIONS.md), [proof coverage](docs/PROOF-COVERAGE.md),
+[arithmetic](docs/ARITHMETIC.md), [current owner](docs/CURRENT-OWNER.md) and
+[sources](docs/SOURCES.md).
 
-## Authority candidate
-
-The additive [authority candidate](authority/README.md) has its own model snapshot,
-versioned interfaces, stronger arithmetic proofs and staged compiler/release
-checks. It reuses this kit's checked source loader. Run its independent lane with
-`npm --prefix verification/bend/authority run verify:local`.
-
-Its pinned-source JS build, safe kernel, compiled suites, direct current-owner
-adapter and real-host qualification are exercised in the authority release lane. This parent's evidence
-manifest excludes the child. Neither lane grants posting or deployment authority.
+The historical VAT excerpt in `upstream/` keeps a fixed floor bug on purpose
+for the old regression suite; current-owner comparisons never use it.

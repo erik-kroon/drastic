@@ -4,7 +4,7 @@ import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import * as Result from "effect/Result";
-import { runProcess } from "./authority/scripts/process.mjs";
+import { runProcess } from "./scripts/process.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -174,7 +174,7 @@ export async function verifyHost(options) {
     "apps/api/tests/support/bend-vat-host.mjs",
     "apps/api/tests/support/global-setup.ts",
     "apps/api/tests/support/fixtures.ts",
-    "verification/bend/authority/vite.host.config.mts",
+    "verification/bend/vite.host.config.mts",
     "bun.lock",
   ];
 
@@ -188,13 +188,13 @@ export async function verifyHost(options) {
 
   const result = await runProcess(
     "bun",
-    ["run", "test:e2e", "--config", "verification/bend/authority/vite.host.config.mts"],
+    ["run", "test:e2e", "--config", "verification/bend/vite.host.config.mts"],
     {
       cwd: root,
       timeoutMs: 150000,
       env: {
         ...process.env,
-        OPENERP_BEND_ARTIFACT: resolve(root, "verification/bend/authority/dist/kernel.mjs"),
+        OPENERP_BEND_ARTIFACT: resolve(root, "verification/bend/dist/kernel.mjs"),
         OPENERP_BEND_ARTIFACT_DIGEST: options.artifactDigest,
         OPENERP_BEND_SOURCE_DIGEST: options.sourceTreeDigest,
       },
@@ -202,7 +202,7 @@ export async function verifyHost(options) {
   );
 
   await writeFile(
-    resolve(root, "verification/bend/authority/evidence/current/host-process.json"),
+    resolve(root, "verification/bend/evidence/current/host-process.json"),
     JSON.stringify(result, null, 2) + "\n",
   );
 

@@ -1,8 +1,0 @@
-{
-  "status": "source-check-passed",
-  "checker": "development-adaptation",
-  "definitions": 198,
-  "lawProofPairs": 20,
-  "officialBinaryChecked": false,
-  "independentSafeKernelChecked": false
-}

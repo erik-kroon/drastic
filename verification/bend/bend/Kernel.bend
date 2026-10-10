@@ -8,3 +8,6 @@ import ./Allocation.bend as Allocation
 import ./Vat.bend as Vat
 import ./Cover.bend as Cover
 import ./Decimal.bend as Decimal
+import ./Schedule.bend as Schedule
+import ./Fx.bend as Fx
+import ./RefinementProof.bend as Refined

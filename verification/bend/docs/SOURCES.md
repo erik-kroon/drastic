@@ -1,61 +1,40 @@
-# Source provenance
+# Sources and provenance
 
-Inspected on 2026-09-27. Source pins prevent a moving default branch from silently changing the comparison.
+The primary source baseline inspected for this work is:
 
-## OpenERP
+- OpenERP commit `0eaad6402241ff3853fdc1af015e13f343873641`.
+- Bend commit `af569d4826913b2ce3557e9829ccad31fcf86f94`.
 
-Repository: https://github.com/erik-kroon/openERP
-Commit: `0eaad6402241ff3853fdc1af015e13f343873641`
+The archive author did not have the integrated worktree. That historical context is retained in `evidence/historical/parent-integration-reported.json`. Current hashes and observed compiler results are in `evidence/current/`.
 
-Relevant sources:
+## Primary references
 
-- `AGENTS.md`: current application ownership, exact values and verification boundaries.
-- `docs/domain.md`: ledger and allocation invariants.
-- `docs/architecture.md`: Effect orchestration, PostgreSQL integrity and pure jurisdiction functions.
-- `docs/specs/parity-plan-review/11-parity-backlog.REVISED.md`: PRY-33 bounded covering-set suggestions.
-- `jurisdictions/se/src/vat/actual.ts`: exact rounding and monetary box projection. Full file Git blob `2006b670d926c2d11713375ab2de5bcdc6da9181`.
-- `packages/contracts/src/vat-filing-release.ts`: supported rounding names and filing-unit scale bounds.
+- https://github.com/erik-kroon/openERP/blob/0eaad6402241ff3853fdc1af015e13f343873641/docs/architecture.md
+- https://github.com/erik-kroon/openERP/blob/0eaad6402241ff3853fdc1af015e13f343873641/docs/domain.md
+- https://github.com/erik-kroon/openERP/blob/0eaad6402241ff3853fdc1af015e13f343873641/jurisdictions/se/src/vat/actual.ts
+- https://github.com/bendlang/bend/blob/af569d4826913b2ce3557e9829ccad31fcf86f94/bend2/bend.ts
+- https://github.com/bendlang/bend/blob/af569d4826913b2ce3557e9829ccad31fcf86f94/bend2/comp.ts
+- https://github.com/bendlang/bend/blob/af569d4826913b2ce3557e9829ccad31fcf86f94/bend2/main.ts
+- https://github.com/bendlang/bend/blob/af569d4826913b2ce3557e9829ccad31fcf86f94/bend2/safe.ts
 
-The retained VAT snapshot is an excerpt containing `round`, `taxed`, `reportedIn` and `boxRows` with necessary constants. Local type declarations and test-only exports surround the source functions. It is not the complete owner and must not be mistaken for a statutory calculation profile.
+The JS build adapter uses `js_lib(book, roots, exports)` and constructor metadata. Verification fetched and hash-checked the pinned source, ran the official source checker and produced identical JS artifacts. The compiled suites and independent safe kernel pass. The Lean 4.34.0 asset pin and reproduction commands are recorded in `docs/QUALIFICATION.md`.
 
-Full source:
-https://github.com/erik-kroon/openERP/blob/0eaad6402241ff3853fdc1af015e13f343873641/jurisdictions/se/src/vat/actual.ts
+## Exact upstream blob pins
 
-The historical patch corrects a negative exact-floor bug at the inspected pin. The current owner already reuses the corrected shared rounding implementation. Local source hashes, rather than this historical pin, identify the owner exercised by `verify:owner`.
+| File | Git blob SHA-1 |
+| --- | --- |
+| `bend2/bend.ts` | `c38e9e203530568b500dfc34785372d427706a6c` |
+| `bend2/comp.ts` | `12ffbef1837a184fb7c5a255c4847397b2eec75a` |
+| `bend2/base.bend` | `06fe1e8c4741987ae04b171ac785b2258371ddc3` |
+| `bend2/safe.ts` | `c9cfdc11bb5b8339fd076827e7d5ba08458990d3` |
+| `bend2/bendtt.lean` | `3ea970dfbb204740d094d1e3504c91ecdb6901f2` |
+| `bend2/main.ts` | `0d5be3fdda74d076c4ebdd53b60d73fd155506ef` |
 
-## Bend
+## Archived material
 
-Repository: https://github.com/bendlang/bend
-Commit: `af569d4826913b2ce3557e9829ccad31fcf86f94`
+The original downloadable kits and their distribution manifests are in Git
+history; this folder keeps only what the checks use.
 
-Relevant sources:
+`tooling/dev-checker.ts.gz` is the byte-preserved development adaptation under the upstream Apache license. It is never accepted by the official build path. `upstream/vat-monetary-slice.ts.gz` and the old floor patch remain historical regression material. The current shared owner has already corrected negative integral floor. The current-owner comparison never uses the excerpt.
 
-- `guide/GUIDE.md`: Bend 2 syntax, laws, proof checking and backend limitations.
-- `bend2/bend.ts`: parser, affine type checker, evaluator and hole tracking.
-- `bend2/main.ts`: JavaScript interoperability notes.
-
-Pinned source-checker Git blob: `c38e9e203530568b500dfc34785372d427706a6c`.
-
-The normal download paths could not be resolved in the authoring container. To make development checks possible, the published checker was reconstructed with comments/formatting condensed and equivalent branches reformatted. Its code is included and its different status is surfaced in every report. No assertion is made that it is byte-identical, independently audited or equivalent in every detail.
-
-`BEND_SOURCE_ROOT` requires the original file's exact Git blob hash. The strict model-verification gate refuses the development checker and additionally requires the official command and `--safe` execution.
-
-## Licenses
-
-First-party kit source and the OpenERP-derived excerpt are supplied under AGPL-3.0-only. The development checker retains Apache-2.0 attribution; see `NOTICE` and `tooling/LICENSE-APACHE-2.0`.
-
-## Local source packaging
-
-`upstream/ORIGINAL-MANIFEST.json` is the original ZIP manifest. It describes the
-supplied files before local formatting or adapter repairs. The development
-checker and historical VAT excerpt are stored as deterministic gzip source
-archives, decompressed and SHA-256 checked before use. Their decompressed bytes
-match the original manifest. Inspect them with `gzip -dc tooling/dev-checker.ts.gz`
-and `gzip -dc upstream/vat-monetary-slice.ts.gz` from the kit directory.
-
-Local changes repair temporary import portability, follow the real shared VAT
-rounding dependency, require both monetary scales, and retain repeatable local
-evidence. They do not modify the Bend kernels or the checker implementation.
-`evidence/local-verification.json` records current source hashes separately from
-the supplied archive's historical evidence. The original gate smoke result is
-retained under `upstream/original-gate-smoke.json` and is not a local result.
+New OpenERP-related source is distributed under AGPL-3.0-only. The inherited Apache-licensed checker material retains its separate notice and license. See `NOTICE`, `LICENSE` and `tooling/LICENSE-APACHE-2.0`.

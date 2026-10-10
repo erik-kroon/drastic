@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-10-10T08:26:53.281Z",
+  "schema": "openerp-bend-release-gate/v1",
+  "status": "passed",
+  "productionReady": false,
+  "runtimeId": "node:v26.4.0:darwin:arm64",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "runs": [
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/reproducible-build.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Built official JS artifact sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e. It is NOT yet approved for authoritative use.\nBuilt official JS artifact sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e. It is NOT yet approved for authoritative use.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/safe-official.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/verify-local.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "BigNat arithmetic and bounds: 2852 assertions\nBigInt sign and division: 4327 assertions\nReduced rationals and rounding: 2319 assertions\nDecimal conversion: 177 assertions\nLedger and allocation invariants: 485 assertions\nVAT source differential checks: 685 assertions\nPRY-33 exhaustive differential and scope: 319 assertions\nNegative proof and checker controls: 9 assertions\nPASS: 11173 assertions; 35 law/proof pairs under official-js-artifact. Runtime qualification is a separate gate.\nOperation kernels and boundary oracles { assertions: 798, ms: 15 }\nIndependent certificate checks reject plausible wrong results { assertions: 1061, ms: 3 }\nExact immutable envelopes and failure behavior { assertions: 24, ms: 5 }\nPer-operation release qualification, not self-approval { assertions: 7, ms: 2 }\nUpstream ABI adapter unit controls { assertions: 18, ms: 0 }\nRefinement proofs reject binary arithmetic mutations { assertions: 4, ms: 148 }\nBounded worker cancellation { assertions: 3, ms: 50 }\nPASS 1915 authority assertions under official-js-artifact\nPASS 378 extension assertions under official-js-artifact\n{\n  \"authority\": \"pinned-upstream-source\",\n  \"voucher\": {\n    \"accepted\": true,\n    \"debitMinor\": \"125000\",\n    \"creditMinor\": \"125000\",\n    \"scopeChecked\": false,\n    \"postingAuthorized\": false\n  },\n  \"allocation\": {\n    \"status\": \"allocated-arithmetic\",\n    \"amountMinor\": \"60000\",\n    \"sourceAfterMinor\": \"40000\",\n    \"targetAfterMinor\": \"30000\",\n    \"restoredSourceMinor\": \"100000\",\n    \"restoredTargetMinor\": \"90000\",\n    \"mayExecute\": false\n  },\n  \"vat\": [\n    {\n      \"box\": \"10\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"199\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"99\"\n    },\n    {\n      \"box\": \"48\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"101\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"1\"\n    },\n    {\n      \"box\": \"49\",\n      \"kind\": \"net\",\n      \"exactMinor\": \"98\",\n      \"reportedMinor\": \"0\",\n      \"residualMinor\": \"98\"\n    }\n  ],\n  \"cover\": {\n    \"engine\": \"bend-cover-v1\",\n    \"authority\": \"pinned-upstream-source\",\n    \"inputFingerprint\": \"verification-sha256:aead2803a3802b51a233e659c9f7f5a365feba6ff6ca39ece2f3b7cb7a86e9ea\",\n    \"scope\": {\n      \"entityId\": \"demo-company\",\n      \"bookId\": \"demo-book\",\n      \"snapshotId\": \"immutable-snapshot-1\"\n    },\n    \"currency\": \"SEK\",\n    \"scale\": 2,\n    \"direction\": \"inflow\",\n    \"targetMinor\": \"10000\",\n    \"mayExecute\": false,\n    \"requiresRevalidation\": true,\n    \"coverage\": {\n      \"poolCompleteDeclared\": true,\n      \"candidateCount\": 3,\n      \"maxCardinality\": 3,\n      \"nodeBudget\": 100,\n      \"visitedNodes\": 10,\n      \"searchExhausted\": false\n    },\n    \"status\": \"ambiguous\",\n    \"witnesses\": [\n      [\n        {\n          \"id\": \"line-0\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"4000\"\n        },\n        {\n          \"id\": \"line-1\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"6000\"\n        }\n      ],\n      [\n        {\n          \"id\": \"line-2\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"10000\"\n        }\n      ]\n    ]\n  }\n}\n{\n  \"engine\": \"bend-cover-v1\",\n  \"authority\": \"pinned-upstream-source\",\n  \"inputFingerprint\": \"verification-sha256:a1ec38645615fc083a10fe87febed4f0ed61e3fad53c6d2dd22edbe70192818f\",\n  \"scope\": {\n    \"entityId\": \"demo-entity\",\n    \"bookId\": \"demo-book\",\n    \"snapshotId\": \"snapshot-1\"\n  },\n  \"currency\": \"SEK\",\n  \"scale\": 2,\n  \"direction\": \"inflow\",\n  \"targetMinor\": \"10000\",\n  \"mayExecute\": false,\n  \"requiresRevalidation\": true,\n  \"coverage\": {\n    \"poolCompleteDeclared\": true,\n    \"candidateCount\": 3,\n    \"maxCardinality\": 3,\n    \"nodeBudget\": 100,\n    \"visitedNodes\": 10,\n    \"searchExhausted\": false\n  },\n  \"status\": \"ambiguous\",\n  \"witnesses\": [\n    [\n      {\n        \"id\": \"line-0\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"4000\"\n      },\n      {\n        \"id\": \"line-1\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"6000\"\n      }\n    ],\n    [\n      {\n        \"id\": \"line-2\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"10000\"\n      }\n    ]\n  ]\n}\n{\n  \"status\": \"passed\",\n  \"assertions\": 13466,\n  \"lawProofPairs\": 35,\n  \"productionReady\": false\n}\n",
+      "stderr": "(node:68615) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/compiled-receipts.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/verify-owner.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "PASS 1437 current-owner comparisons under official-js-artifact\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/verify-host.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Real host integration passed. No deployment trust entry was created.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "No statutory or complete-ERP certification",
+    "Promotion additionally requires an explicit deployment trust entry"
+  ],
+  "sourceTreeDigest": "sha256:0beacd1882bd93dfbe993038a4b750955939139c5f90970984ca2c5a403acc3c",
+  "artifactDigest": "sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e",
+  "receipts": {
+    "source-check": "sha256:48262ab4975cf6adbde8803b297be0e79472be06eba9b2c7b2f7de6bae212c96",
+    "safe-kernel": "sha256:eba6ae5896ff5769bf0c29db52668afef38649f548ab620115c4fc07b9763e50",
+    "reproducible-build": "sha256:868d6000ac46ee030679227a90c894e7f4aab3a4c8e9481c1b91efa5d7b42d10",
+    "compiled-differentials": "sha256:1dc0f98dcddb6a8bb305cf9568c6138af9e911bc3878834ade291eab14c4b8e4",
+    "runtime-probe": "sha256:f805683306c262d85036b4850123d11afc65acb0cefdbc6a6c6f19bb8aea4b23",
+    "owner-parity": "sha256:8942b13bcfa9968177db0be6b6b12a8e7fd355bccd97492b393781879f6f73d6",
+    "host-integration": "sha256:d85ffc2d4b469da5c4487084bf4662bdf4633b643a9ba8509a50e503d1bf9d3f"
+  },
+  "message": "Build and observed runtime/owner/host checks passed. Review and stage a per-operation release next; no trust entry was created."
+}

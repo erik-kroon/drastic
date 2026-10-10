@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdtemp, rm, cp, copyFile } from "node:fs/promises";
-import { writeFileSync } from "node:fs";
+import { readFile, writeFile, mkdtemp, rm, cp } from "node:fs/promises";
 import { tmpdir, platform, arch } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -11,34 +10,14 @@ import { loadVatOwner } from "../lib/owner.mjs";
 import { solveCover } from "../lib/cover.mjs";
 import { validateVoucher, allocate } from "../lib/accounting.mjs";
 
-const started = performance.now();
+import { loadTestEngine } from "./test-engine.mjs";
+
+const started = performance.now(),
+  e = await loadTestEngine();
 
 let checks = 0;
 
 const groups = {};
-
-const reportFile = resolve(ROOT, "evidence/test-report.json");
-
-writeFileSync(reportFile, JSON.stringify({ status: "running", releaseVerified: false }) + "\n");
-
-process.once("uncaughtExceptionMonitor", (error) => {
-  writeFileSync(
-    reportFile,
-    JSON.stringify(
-      {
-        status: "failed",
-        releaseVerified: false,
-        assertions: checks,
-        groups,
-        error: String(error),
-      },
-      null,
-      2,
-    ) + "\n",
-  );
-});
-
-const e = await loadEngine();
 
 const eq = (a, b, message) => {
   assert.deepStrictEqual(a, b, message);
@@ -345,7 +324,7 @@ const owner = await loadVatOwner(),
 
 const regressions = [];
 
-await group("Historical VAT excerpt differential checks", () => {
+await group("VAT source differential checks", () => {
   for (const rounding of ["half_up", "half_even", "toward_zero", "floor"])
     for (const d of [1n, 2n, 10n, 100n])
       for (const n of [-300n, -250n, -200n, -199n, -150n, -100n, -1n, 0n, 1n, 150n, 250n]) {
@@ -381,13 +360,7 @@ await group("Historical VAT excerpt differential checks", () => {
     }));
 
     const declareNet = rand(2) === 1,
-      request = {
-        contributions,
-        currencyScale: filingUnitScale,
-        filingUnitScale: 0,
-        rounding,
-        declareNet,
-      };
+      request = { contributions, filingUnitScale, rounding, declareNet };
 
     const result = calculateVat(e, request);
     eq(
@@ -411,8 +384,7 @@ await group("Historical VAT excerpt differential checks", () => {
       { box: "10", signedMinor: "199", included: true },
       { box: "48", signedMinor: "101", included: true },
     ],
-    currencyScale: 2,
-    filingUnitScale: 0,
+    filingUnitScale: 2,
     rounding: "toward_zero",
     declareNet: true,
   };
@@ -425,53 +397,6 @@ await group("Historical VAT excerpt differential checks", () => {
     }).at(-1).exactMinor,
     "0",
   );
-});
-
-await group("VAT filing-unit scale contract", () => {
-  const input = {
-    contributions: [
-      { box: "10", signedMinor: "199", included: true },
-      { box: "48", signedMinor: "101", included: true },
-    ],
-    currencyScale: 2,
-    filingUnitScale: 0,
-    rounding: "toward_zero",
-    declareNet: true,
-  };
-
-  eq(calculateVat(e, input), [
-    { box: "10", kind: "primitive", exactMinor: "199", reportedMinor: "1", residualMinor: "99" },
-    { box: "48", kind: "primitive", exactMinor: "101", reportedMinor: "1", residualMinor: "1" },
-    { box: "49", kind: "net", exactMinor: "98", reportedMinor: "0", residualMinor: "98" },
-  ]);
-  eq(calculateVat(e, { ...input, filingUnitScale: 2 }).at(-1), {
-    box: "49",
-    kind: "net",
-    exactMinor: "98",
-    reportedMinor: "98",
-    residualMinor: "0",
-  });
-
-  for (const scale of [undefined, -1, 0.5, 7, "2", null]) {
-    rejects(() => calculateVat(e, { ...input, currencyScale: scale }));
-    rejects(() => calculateVat(e, { ...input, filingUnitScale: scale }));
-  }
-
-  rejects(() => calculateVat(e, { ...input, filingUnitScale: 3 }));
-
-  for (let currencyScale = 0; currencyScale <= 6; currencyScale++)
-    for (let filingUnitScale = 0; filingUnitScale <= currencyScale; filingUnitScale++) {
-      const rows = calculateVat(e, {
-        ...input,
-        currencyScale,
-        filingUnitScale,
-        contributions: [{ box: "10", signedMinor: "-199", included: true }],
-      });
-
-      const divisor = 10n ** BigInt(currencyScale - filingUnitScale);
-      eq(rows[0].reportedMinor, String(-199n / divisor));
-      eq(rows[0].residualMinor, String(-199n % divisor));
-    }
 });
 
 const baseScope = { entityId: "entity-a", bookId: "book-a", snapshotId: "snapshot-1" };
@@ -531,11 +456,7 @@ await group("PRY-33 exhaustive differential and scope", () => {
 
     eq(
       result.status,
-      expected.length === 0
-        ? "no-match-within-scope"
-        : expected.length === 1
-          ? "unique-within-scope"
-          : "ambiguous",
+      ["no-match-within-scope", "unique-within-scope"][expected.length] ?? "ambiguous",
     );
     ok(result.coverage.visitedNodes <= input.limits.nodeBudget);
     eq(
@@ -586,10 +507,10 @@ await group("PRY-33 exhaustive differential and scope", () => {
 });
 
 await group("Negative proof and checker controls", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "bend controls.with spaces-"));
+  const directory = await mkdtemp(join(tmpdir(), "bend-negative-"));
 
   try {
-    await copyFile(resolve(ROOT, "bend/Foundation.bend"), join(directory, "Foundation.bend"));
+    await cp(resolve(ROOT, "bend/Foundation.bend"), join(directory, "Foundation.bend"));
     const prefix = "import ./Foundation.bend as F\n";
     const positive = join(directory, "positive.bend");
     await writeFile(
@@ -660,19 +581,26 @@ await group("Negative proof and checker controls", async () => {
 });
 
 const laws =
-  (await readFile(resolve(ROOT, "bend/LAWS.bend"), "utf8")).match(/^law /gm)?.length ?? 0;
+  (
+    (await readFile(resolve(ROOT, "bend/LAWS.bend"), "utf8")) +
+    "\n" +
+    (await readFile(resolve(ROOT, "bend/RefinementLaws.bend"), "utf8"))
+  ).match(/^law /gm)?.length ?? 0;
 
 const report = {
-  status: "passed-source-checks",
+  status: "passed",
   releaseVerified: false,
   checker: e.authority,
   bendCommit: BEND_PIN,
-  historicalOpenERPCommit: "0eaad6402241ff3853fdc1af015e13f343873641",
+  openERPCommit: "0eaad6402241ff3853fdc1af015e13f343873641",
   node: process.version,
   platform: platform(),
   arch: arch(),
   lawProofPairs: laws,
   definitions: e.definitions,
+  artifactDigest: e.artifactDigest ?? null,
+  sourceTreeDigest: e.sourceTreeDigest ?? null,
+  compilerCommit: BEND_PIN,
   assertions: checks,
   groups,
   elapsedMs: Math.round(performance.now() - started),
@@ -686,8 +614,11 @@ const report = {
   ],
 };
 
-await writeFile(reportFile, JSON.stringify(report, null, 2) + "\n");
+await writeFile(
+  resolve(ROOT, "evidence/current/arithmetic-tests.json"),
+  JSON.stringify(report, null, 2) + "\n",
+);
 
 console.log(
-  `PASS: ${checks} assertions; ${laws} law/proof pairs under ${e.authority}. Official release gate NOT run.`,
+  `PASS: ${checks} assertions; ${laws} law/proof pairs under ${e.authority}. Runtime qualification is a separate gate.`,
 );

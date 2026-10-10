@@ -11,8 +11,7 @@
       "included": true
     }
   ],
-  "currencyScale": 2,
-  "filingUnitScale": 0,
+  "filingUnitScale": 2,
   "rounding": "toward_zero",
   "declareNet": true
 }

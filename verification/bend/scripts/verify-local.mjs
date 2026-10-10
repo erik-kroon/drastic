@@ -1,124 +1,112 @@
-import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { readFile, readdir, writeFile } from "node:fs/promises";
-import { platform, arch } from "node:os";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { ROOT, BEND_PIN } from "../lib/engine.mjs";
+import { runProcess } from "./process.mjs";
+import { sourceIdentity } from "./build-official.mjs";
+import { runtimeIdentity } from "../src/runtime-id.mjs";
 
-const repo = resolve(process.env.OPENERP_REPO || resolve(ROOT, "../.."));
+const out = resolve(ROOT, "evidence/current");
 
-async function inputHashes(directory = "") {
-  const hashes = {};
+await mkdir(out, { recursive: true });
 
-  for (const entry of (await readdir(resolve(ROOT, directory), { withFileTypes: true })).sort(
-    (a, b) => a.name.localeCompare(b.name),
-  )) {
-    if (directory === "" && entry.name === "authority") continue;
+const report = {
+  generatedAt: new Date().toISOString(),
+  schema: "openerp-bend-local/v1",
+  status: "failed",
+  runtimeId: runtimeIdentity(),
+  compilerCommit: BEND_PIN,
+  runs: [],
+  productionReady: false,
+  parentModified: false,
+  currentOwner: "not-established-by-local-tests",
+  officialToolchain: "not-established-by-local-tests",
+};
 
-    if (
-      entry.name.startsWith(".") ||
-      entry.name === "evidence" ||
-      entry.name === "node_modules" ||
-      entry.name.endsWith(".tsbuildinfo") ||
-      entry.name === "tsconfig.changed.json"
-    )
-      continue;
+try {
+  const before = await sourceIdentity();
+  report.sourceTreeDigest = before.digest;
+  report.sourceFiles = before.files;
 
-    const name = directory ? `${directory}/${entry.name}` : entry.name;
+  for (const script of [
+    "tests/run.mjs",
+    "tests/authority/run.mjs",
+    "tests/extension.mjs",
+    "scripts/demo.mjs",
+    "scripts/solve.mjs",
+  ]) {
+    const args = [
+      ...(process.versions.bun ? [] : ["--experimental-strip-types"]),
+      script,
+      ...(script.endsWith("/solve.mjs") ? ["fixtures/cover-ambiguous.json"] : []),
+    ];
 
-    if (entry.isDirectory()) Object.assign(hashes, await inputHashes(name));
-    else
-      hashes[name] = createHash("sha256")
-        .update(await readFile(resolve(ROOT, name)))
-        .digest("hex");
+    const r = await runProcess(process.execPath, args, { cwd: ROOT });
+    report.runs.push(r);
+    process.stdout.write(r.stdout);
+    process.stderr.write(r.stderr);
+
+    if (!r.passed) throw Error(`Local stage failed: ${script}`);
   }
 
-  return hashes;
-}
+  let syntaxFiles = 0;
 
-const sourceHashes = await inputHashes();
+  for (const name of Object.keys(before.files).filter((f) => f.endsWith(".mjs"))) {
+    const r = await runProcess(process.execPath, ["--check", name], { cwd: ROOT });
 
-const reportFile = resolve(ROOT, "evidence/local-verification.json");
+    if (!r.passed) {
+      report.runs.push(r);
+      throw Error(`Syntax check failed: ${name}`);
+    }
 
-const runs = [];
+    syntaxFiles++;
+  }
 
-await writeFile(reportFile, JSON.stringify({ status: "running", releaseVerified: false }) + "\n");
+  report.syntaxFiles = syntaxFiles;
 
-for (const { script, args, artifact } of [
-  { script: "tests/run.mjs", args: [], artifact: "test-output.txt" },
-  { script: "scripts/check-proofs.mjs", args: [], artifact: "proof-output.json" },
-  { script: "scripts/verify-owner.mjs", args: [], artifact: "owner-output.json" },
-  { script: "scripts/demo.mjs", args: [], artifact: "demo-output.json" },
-  {
-    script: "scripts/solve.mjs",
-    args: ["fixtures/cover-ambiguous.json"],
-    artifact: "solver-example-output.json",
-  },
-]) {
-  const command = ["--experimental-strip-types", script, ...args];
-
-  const result = spawnSync(process.execPath, command, {
+  const types = await runProcess(process.env.TSC_BIN || "tsc", ["-p", "tsconfig.types.json"], {
     cwd: ROOT,
-    encoding: "utf8",
-    timeout: 120_000,
-    maxBuffer: 4 * 1024 * 1024,
-    env: { ...process.env, OPENERP_REPO: repo },
   });
 
-  runs.push({
-    command: ["node", ...command],
-    status: result.status,
-    signal: result.signal,
-    error: result.error?.message,
-    stderr: result.stderr,
-    artifact,
-  });
-  await writeFile(resolve(ROOT, "evidence", artifact), result.stdout || "");
-  console.log(`${script}: ${result.status === 0 && !result.error ? "PASS" : "FAIL"}`);
+  report.typeCheck = { ...types, status: types.passed ? "passed" : "failed" };
 
-  if (result.status !== 0 || result.error) console.error(result.stderr || result.error);
+  if (!types.passed) throw Error("Public declaration checks require a working TypeScript compiler");
+
+  const suites = await Promise.all(
+    ["arithmetic-tests", "authority-tests", "extension-tests"].map(async (n) =>
+      JSON.parse(await readFile(resolve(out, n + ".json"), "utf8")),
+    ),
+  );
+
+  report.assertions = suites.reduce((total, s) => total + s.assertions, 0);
+  report.suites = suites.map((s) => ({
+    suite: s.suite ?? "arithmetic",
+    assertions: s.assertions,
+    checker: s.checker,
+  }));
+  report.lawProofPairs = suites[0].lawProofPairs;
+  report.backend = suites[0].checker;
+  report.artifactDigest = suites[0].artifactDigest ?? null;
+
+  if ((await sourceIdentity()).digest !== before.digest)
+    throw Error("Source changed during local verification");
+  report.status = "passed";
+} catch (error) {
+  report.error = String(error.message);
+  process.exitCode = 1;
 }
 
-const sourceStable = JSON.stringify(sourceHashes) === JSON.stringify(await inputHashes());
+await writeFile(resolve(out, "local-verification.json"), JSON.stringify(report, null, 2) + "\n");
 
-const passed = sourceStable && runs.every((run) => run.status === 0 && !run.error);
-
-const revision = spawnSync("git", ["rev-parse", "HEAD"], {
-  cwd: repo,
-  encoding: "utf8",
-  timeout: 10_000,
-});
-
-const owner = JSON.parse(await readFile(resolve(ROOT, "evidence/owner-verification.json"), "utf8"));
-
-const tests = JSON.parse(await readFile(resolve(ROOT, "evidence/test-report.json"), "utf8"));
-
-await writeFile(
-  reportFile,
+console.log(
   JSON.stringify(
     {
-      status: passed ? "passed-local-verification" : "failed",
-      capturedAt: new Date().toISOString(),
-      node: process.version,
-      platform: platform(),
-      arch: arch(),
-      repositoryRevision: revision.status === 0 ? revision.stdout.trim() : null,
-      sourceHashes,
-      sourceStable,
-      ownerSourceHashes: owner.sourceHashes,
-      assertions: tests.assertions,
-      ownerComparisons: owner.comparisons,
-      checker: tests.checker,
-      bendSourceCommit: BEND_PIN,
-      releaseVerified: false,
+      status: report.status,
+      assertions: report.assertions,
+      lawProofPairs: report.lawProofPairs,
       productionReady: false,
-      runs,
+      error: report.error,
     },
     null,
     2,
-  ) + "\n",
+  ),
 );
-
-console.log(`Evidence: ${reportFile}`);
-
-process.exitCode = passed ? 0 : 1;

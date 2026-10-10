@@ -1,14 +1,14 @@
-OpenERP Bend verification kit
+OpenERP Bend authority upgrade
 
 First-party Bend modules, adapters, tests and documentation are supplied under
 AGPL-3.0-only. See LICENSE. They are supplied without warranty.
 
-upstream/vat-monetary-slice.ts.gz contains extracted source from erik-kroon/openERP,
+The shared ../upstream/vat-monetary-slice.ts.gz contains source from erik-kroon/openERP,
 commit 0eaad6402241ff3853fdc1af015e13f343873641, licensed AGPL-3.0-only.
 The type aliases and test exports around the extracted functions are local.
 The known negative exact-floor bug is intentionally retained in this snapshot.
 
-The development checker in tooling/dev-checker.ts.gz is an adaptation of
+The shared development checker in ../tooling/dev-checker.ts.gz is an adaptation of
 bendlang/bend bend2/bend.ts, commit af569d4826913b2ce3557e9829ccad31fcf86f94.
 Upstream project: HigherOrderCO / Bend contributors.
 Upstream license: Apache License 2.0, reproduced in tooling/LICENSE-APACHE-2.0.
@@ -17,10 +17,8 @@ control-flow formatting simplified. It is not a byte-identical upstream copy.
 It is included for reproducible offline development checks, not as an official
 compiler, an independently audited kernel or a release authority.
 
-Local integration preserves those two sources byte-for-byte inside deterministic
-gzip archives and verifies their decompressed hashes before use. Local host
-adapters, verification scripts and tests have been reformatted and updated for
-the current VAT owner and portable temporary imports. Bend kernels are unchanged.
+No production credentials or company financial records are included. All fixtures are synthetic.
 
-No production credentials, company financial records or third-party font files
-are included. All fixtures are synthetic.
+Local integration includes the earlier kit's hash-verified source loader and historical
+excerpt, adapts first-party declarations/scripts to repository checks and adds
+compiler-stage evidence recording. The supplied Bend and proof bytes are retained.

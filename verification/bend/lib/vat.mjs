@@ -12,24 +12,34 @@ export const boxes = Object.freeze({
 const reverse = Object.fromEntries(Object.entries(boxes).map(([k, v]) => [`Vat.${v}`, k]));
 
 export function calculateVat(engine, input) {
-  const { contributions, currencyScale, filingUnitScale, rounding } = input;
+  if (
+    !Number.isInteger(input.filingUnitScale) ||
+    input.filingUnitScale < 0 ||
+    input.filingUnitScale > 6
+  )
+    throw new RangeError("Invalid historical filing unit exponent");
 
+  return calculateVatWithUnit(engine, {
+    ...input,
+    reportingUnitMinor: String(10n ** BigInt(input.filingUnitScale)),
+  });
+}
+
+/** The new port takes the EXACT divisor in book minor units. Never infer it from an ambiguously named scale. */
+export function calculateVatWithUnit(
+  engine,
+  { contributions, reportingUnitMinor, rounding, declareNet },
+) {
   if (!Array.isArray(contributions) || contributions.length > 2000)
     throw new RangeError("Maximum 2000 contributions");
+  const unit = minor(reportingUnitMinor);
 
-  if (!Number.isInteger(filingUnitScale) || filingUnitScale < 0 || filingUnitScale > 6)
-    throw new RangeError("Invalid filing unit scale");
-
-  if (!Number.isInteger(currencyScale) || currencyScale < 0 || currencyScale > 6)
-    throw new RangeError("Invalid currency scale");
-
-  if (filingUnitScale > currencyScale)
-    throw new RangeError("Filing unit is finer than the book currency");
+  if (unit <= 0n) throw new RangeError("Positive reporting unit required");
 
   if (!["half_up", "half_even", "toward_zero", "floor"].includes(rounding))
     throw new TypeError("Unsupported OpenERP VAT rounding mode");
 
-  if (typeof input.declareNet !== "boolean") throw new TypeError("declareNet must be explicit");
+  if (typeof declareNet !== "boolean") throw new TypeError("declareNet must be explicit");
   let xs = engine.c("Vat.NoContributions");
 
   for (const row of contributions.toReversed()) {
@@ -50,9 +60,9 @@ export function calculateVat(engine, input) {
   const result = engine.call(
     "Vat.calculate",
     xs,
-    engine.nat(10n ** BigInt(currencyScale - filingUnitScale)),
+    engine.nat(unit),
     mode(engine, rounding),
-    engine.flag(input.declareNet),
+    engine.flag(declareNet),
   );
 
   if (result.k !== "Vat.Calculated") throw new Error(`VAT arithmetic refused: ${result.k}`);
@@ -63,6 +73,8 @@ export function calculateVat(engine, input) {
     const row = engine.force(tail);
 
     if (row.k === "Vat.NoRows") break;
+
+    if (rows.length >= 6) throw new Error("Too many VAT result rows");
 
     if (row.k !== "Vat.Row") throw new Error("Malformed VAT result");
     const box = reverse[engine.force(row.x[0]).k];

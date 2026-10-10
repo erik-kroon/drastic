@@ -8,14 +8,14 @@ import { databaseLayer } from "../../src/db/connection.ts";
 import {
   prepareActualReturn,
   getActualReturn,
-  makeActualVatCalculator,
+  vatCalculatorFor,
 } from "../../src/application/vat/actual-return.ts";
 import { calculateActualVat } from "../../../../jurisdictions/se/src/vat/actual.ts";
 import { failure } from "../../src/application/failures.ts";
-import { compiledEngine } from "../../../../verification/bend/authority/src/compiled-engine.mjs";
-import { qualifiedService } from "../../../../verification/bend/authority/src/service.mjs";
-import { createVatMonetaryPort } from "../../../../verification/bend/authority/src/vat-port.mjs";
-import { SEMANTICS } from "../../../../verification/bend/authority/src/semantics.mjs";
+import { compiledEngine } from "../../../../verification/bend/src/compiled-engine.mjs";
+import { qualifiedService } from "../../../../verification/bend/src/service.mjs";
+import { createVatMonetaryPort } from "../../../../verification/bend/src/vat-port.mjs";
+import { SEMANTICS } from "../../../../verification/bend/src/semantics.mjs";
 
 const input = JSON.parse(process.env.OPENERP_HOST_INPUT);
 
@@ -293,7 +293,7 @@ try {
   }
 
   const prepared = await run(
-    prepareActualReturn(book.token, command("host-capture"), makeActualVatCalculator(countedPort)),
+    prepareActualReturn(book.token, command("host-capture"), vatCalculatorFor(countedPort)),
   );
 
   eq(prepared.calculation.boxes, [
@@ -323,7 +323,7 @@ try {
   assertions++;
   checks.push({ name: "immutable-capture", status: "passed" });
 
-  const broken = makeActualVatCalculator({
+  const broken = vatCalculatorFor({
     ...port,
     project() {
       throw new Error("Candidate unavailable");

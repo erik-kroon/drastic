@@ -174,20 +174,12 @@ try {
 
   if (["bend-local", "full"].includes(profile)) {
     stages.push({
-      id: "bend-parent",
+      id: "bend-authority",
       command: "npm",
       args: ["--prefix", "verification/bend", "run", "verify:local"],
       timeoutMs: 900_000,
-      kind: "bend-parent",
-      reportPath: "verification/bend/evidence/local-verification.json",
-    });
-    stages.push({
-      id: "bend-authority",
-      command: "npm",
-      args: ["--prefix", "verification/bend/authority", "run", "verify:local"],
-      timeoutMs: 900_000,
       kind: "bend-authority",
-      reportPath: "verification/bend/authority/evidence/current/local-verification.json",
+      reportPath: "verification/bend/evidence/current/local-verification.json",
     });
   }
 
@@ -205,10 +197,10 @@ try {
     stages.push({
       id: "bend-release",
       command: "npm",
-      args: ["--prefix", "verification/bend/authority", "run", "verify:release"],
+      args: ["--prefix", "verification/bend", "run", "verify:release"],
       timeoutMs: 1_800_000,
       kind: "bend-release",
-      reportPath: "verification/bend/authority/evidence/current/release-verification.json",
+      reportPath: "verification/bend/evidence/current/release-verification.json",
     });
   }
 
@@ -310,7 +302,7 @@ try {
           throw new Error("Official Bend release report failed or incomplete");
 
         for (const name of names) {
-          const source = join(root, "verification/bend/authority/evidence/current", name + ".json");
+          const source = join(root, "verification/bend/evidence/current", name + ".json");
           const bytes = await readFile(source);
           const claimed = body.receipts?.[name];
 
@@ -387,4 +379,4 @@ try {
 
 console.log(`Result: ${report.status}. Evidence: ${out}`);
 
-process.exitCode = report.status === "passed" ? 0 : report.status === "failed" ? 1 : 2;
+process.exitCode = { passed: 0, failed: 1 }[report.status] ?? 2;

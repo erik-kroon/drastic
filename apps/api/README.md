@@ -226,7 +226,7 @@ already published.
 ## VAT monetary qualification
 
 The actual VAT return workflow accepts an internal `ActualVatCalculator` dependency
-between capture and sealing. `makeActualVatCalculator` runs the jurisdiction's
+between capture and sealing. `vatCalculatorFor` runs the jurisdiction's
 public monetary port and maps calculator failures to `Unavailable`, with no
 fallback. TypeScript remains the default and still owns qualification and
 readiness. An injected kernel's identity is sealed in the return's optional

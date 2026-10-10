@@ -1,63 +1,74 @@
-# Drastic integration
+# Integration and promotion
 
-## Keep the first change isolated
+## 1. Nothing is applied automatically
 
-This kit lives in `verification/bend/` outside the root workspace list. Run its Node commands independently. The local verification lane compares the current monetary owner using the checkout's installed dependencies. It adds no production dependency or capability claim.
+No migration or existing-file patch is automatically applied. The old negative-floor patch is historical and is not an instruction to edit the current shared rounding owner.
 
-The included rounding patch is historical: the current owner already delegates to the corrected shared `roundRational`. Do not apply it to the current checkout. Source-excerpt tests retain the historical regression; `verify:owner` separately exercises current source and its actual shared dependency.
+## 2. Compare through the real current owner
 
-## VAT boundary
+The original `actual.ts` source excerpt is retained only as a historical regression oracle. It cannot satisfy the new owner-parity gate. The new adapter must import the actual shared rounding owner and the current VAT projection path. Hash their current worktree bytes, including uncommitted changes, not just the Git HEAD version.
 
-Use the existing TypeScript owner to select qualified contributions from an immutable captured basis. The input to the Bend monetary model is only:
+The explicit `reportingUnitMinor` eliminates assumptions about whether a scale field means decimal places, an exponent or a minor-unit divisor. The adapter owns that reviewed translation and must exercise it against real current-owner results.
+
+## 3. Select one authority operation
+
+Start with `money.round.v1` plus `vat.project.v1` if the current VAT owner consumes both. The arithmetic supports other calculation families, but the existence of source does not authorize their deployment.
+
+A release names the exact source digest, artifact digest, compiler pin, supported operations and semantics IDs. Every promoted operation must have matching executable and host evidence. The actual runtime ID must match the recorded runtime probe. A Node probe cannot qualify Bun or workerd.
+
+`src/semantics.mjs` is deliberately small and explicit. Remainder-last equal distribution is not a largest-remainder allocation method. FX conversion is not FX accounting treatment. Reversal transformation is not a correction policy. Review each choice before selecting it.
+
+## 4. Inject only the monetary dependency
+
+After qualifying a release, construct `createVatMonetaryPort(await loadAuthority(...))` at an owning application runtime boundary. Do not load the checker during a request. Do not import `src/research.mjs` into the financial path.
+
+The port exposes synchronous `round(numerator, denominator, mode)` and `project(input)` functions. The first returns bigint or null for a nonpositive denominator, matching the inspected compatibility contract. Reconcile this contract with the actual current owner before wiring it. `project` consumes already-qualified contributions and an explicit divisor.
+
+Leave qualification, coverage, controls, source exclusions and filing readiness in their current owners. Do not replace all of `calculateActualVat` with the monetary projection, because those functions do not have the same responsibility.
+
+The public `.d.mts` declarations give TypeScript the exact operation inputs and outputs. Example after release qualification:
 
 ```ts
-{
-  contributions: [{ box: '10', signedMinor: '25000', included: true }],
-  currencyScale: 2,
-  filingUnitScale: 0,
-  rounding: 'half_even',
-  declareNet: true
-}
+import { loadAuthority, createVatMonetaryPort } from './verification/bend/src/index.mjs';
+
+const kernel = await loadAuthority({
+  manifestPath: '/deployment/bend/release-candidate.json',
+  artifactPath: '/deployment/bend/kernel.mjs',
+  trustPath: '/deployment-config/bend-trust.json'
+});
+const monetary = createVatMonetaryPort(kernel);
+
+const rows = monetary.project({
+  currency: 'SEK',
+  scale: 2,
+  reportingUnitMinor: '100',
+  rounding: 'toward_zero',
+  declareNet: true,
+  contributions: [
+    { id: 'captured-sale-component', box: '10', signedMinor: '199', included: true },
+    { id: 'captured-input-component', box: '48', signedMinor: '101', included: true }
+  ]
+});
 ```
 
-The selected release supplies rounding and filing scale; the book supplies currency scale. The divisor is `10^(currencyScale - filingUnitScale)`; finer-than-book filing precision refuses. The adapter supplies no legal defaults. `half_up` maps to the owner's existing tie-away-from-zero behavior. Standalone rational arithmetic additionally supports exact, ceiling and the explicit `half_away` name.
+Deployment paths and fixture rows above are illustrative. The real application supplies captured, qualified data. Never select a rounding mode from this example instead of the reviewed rule release.
 
-Preserve the original contribution identity, rule release, inclusion decision and captured basis alongside the model's output. The monetary projection intentionally does not carry enough information to become a second eligibility owner.
+## 5. Bind calculation, approval and execution
 
-Compare the Bend rows with `boxRows` while the existing owner stays authoritative. Any mismatch is a diagnostic requiring review. Do not choose whichever result looks more convenient and do not silently adopt a result produced under a different rule version.
+When retaining an authoritative calculation, use `kernel.prepare({ operation, context, input })`. The resulting immutable envelope carries exact input/output data, rule/profile/dependency references and build identity. Its internal digest is not Drastic's canonicalization format and is not an approval token.
 
-## PRY-33 contract
+Attach the envelope to the application's normal immutable proposal/report record. Include its exact bytes or digest in the EXISTING canonical sealing and approval mechanism. Do not change an existing canonicalization version, idempotency namespace or stored-record meaning merely to accommodate this model.
 
-The host accepts at most 64 candidates and a maximum 100,000-node search budget. Exceeding the pool limit is an input refusal, not truncation. These are research-adapter safety bounds, not Drastic's product limits.
+Inside the existing short transaction, after acquiring the normal locks, call `assertExecutionBinding()` with the stored envelope, the actual approved calculation digest, current context and releases still allowed for new execution. Then retain/use the approved output. Do not rerun calculation with the current newest kernel.
 
-Every candidate carries its resource ID, immutable revision, entity, book, snapshot, currency, scale, direction and remaining minor-unit amount. All must agree with the request's scope. Amounts are strictly positive magnitudes; direction is a separate field. The adapter rejects duplicates and zero capacities.
+The surrounding application must still check the actor, entity/book, period, semantic effect identity, approval authority and current capacities. The helper makes none of those checks true by itself. A caller-supplied context is not proof of current database state.
 
-The algorithm selects whole remaining capacities. It does not split the final candidate to force a match. A cardinality limit defines the search domain: “unique within size 3” does not mean “unique among every possible set size.” The result exposes this boundary.
+## 6. No ambiguous rollback
 
-| Status | Meaning |
-| --- | --- |
-| `unique-within-scope` | Exactly one witness was found after exhausting the requested finite search and the caller declared the candidate pool complete. |
-| `ambiguous` | At least two distinct valid witnesses are available. Exhausting the remaining search is unnecessary to establish ambiguity. |
-| `no-match-within-scope` | The requested finite search was exhausted with no witness and the caller declared the pool complete. |
-| `incomplete` | The pool was declared incomplete or the global node budget ended before a unique/no-match result could be established. A discovered witness may still be returned. |
-| `unavailable` | The evaluator failed or its returned witness could not be independently validated. This is never converted to no-match. |
+A failed promoted calculator does not trigger a hidden TypeScript calculation. Return a typed failure and retain the existing uncertain-outcome discipline. For rollback, explicitly select a previously qualified release for new preparations. Old approvals keep their exact retained output and release identity. Revoking a release prevents new execution without rewriting historical records.
 
-The adapter sorts resource IDs to make runs deterministic. This is not a confidence ranking. Two different resources with the same amount remain different candidate sets.
+Delete duplicated TypeScript production arithmetic only after the chosen Bend operation is qualified and wired through its actual callers. Keep independent mathematical postcondition checks, historical fixtures and narrow PostgreSQL integrity checks. These are defenses at different boundaries, not competing production calculators.
 
-`poolComplete` is a caller declaration, not a bank-attested completeness proof. Name it accordingly in the UI. Results expose `poolCompleteDeclared` to avoid hiding that distinction.
+## Limits
 
-## Accepting a suggestion
-
-Before calling the existing bank-allocation preparation operation, reload current source and target capacities under the application's normal scope. Recheck revisions, eligibility, currency, direction and capacity. Resolve ambiguity explicitly. Prepare and approve the exact existing operation, not this research result.
-
-At execution, reuse the current application transaction and its authority/dependency checks. A valid mathematical witness does not reserve capacity. Two correct suggestions can conflict after one is accepted.
-
-The verification fingerprint binds a normalized diagnostic request. It is not `openerp-c14n-v1`, an approval digest, an idempotency key or an execution receipt. Do not substitute it for any of those identities.
-
-## Runtime placement
-
-The shipped host evaluator is a Node research process. It is not intended for a Cloudflare Worker request path. It performs no I/O inside the Bend kernels, has no database connection and does not call external services.
-
-Start with CI/offline model checks. The next measured experiment can run captured suggestion inputs on a persistent job worker. Benchmark a production backend and real workload before changing placement or introducing GPU infrastructure.
-
-C, JavaScript code generation, Metal and CUDA were not validated for these kernels in the authoring environment. No GPU speedup or native portability result is asserted.
+This archive does not modify the application's database schema or choose the storage field for calculation lineage. Those changes must use the current repository's actual contracts and transaction-passing persistence. The real-host verification hook is mandatory precisely because source-only integration cannot prove those behaviors.

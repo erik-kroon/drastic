@@ -36,7 +36,7 @@ type Calculation = typeof Vat.VatActualCalculation.Type;
 
 export type ActualVatCalculator = (basis: Basis) => Effect.Effect<Calculation, AccountingError>;
 
-export function makeActualVatCalculator(monetary: VatMonetary): ActualVatCalculator {
+export function vatCalculatorFor(monetary: VatMonetary): ActualVatCalculator {
   return (basis) =>
     Effect.try({
       try: () => calculateActualVat(basis, monetary),
@@ -44,7 +44,7 @@ export function makeActualVatCalculator(monetary: VatMonetary): ActualVatCalcula
     });
 }
 
-const defaultCalculator = makeActualVatCalculator(actualVatMonetary);
+const defaultCalculator = vatCalculatorFor(actualVatMonetary);
 
 type Witness = (typeof Vat.VatActualBasis.Type)["profileWitness"];
 
@@ -889,7 +889,7 @@ function captureServiceFacts(
         rateId: row.rateId,
         jurisdictionClass: row.jurisdictionClass === "NON_EU" ? "NON_EU" : "EU_OTHER",
         basisBox: row.basisBox === "22" ? "22" : "21",
-        outputBox: row.outputBox === "31" ? "31" : row.outputBox === "32" ? "32" : "30",
+        outputBox: (["31", "32"] as const).find((box) => box === row.outputBox) ?? "30",
         deductibleMinor: row.signedDeductibleTaxMinor,
       },
       observation: {

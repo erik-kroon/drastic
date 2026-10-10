@@ -251,21 +251,15 @@ jobs:
           rm .cache/lean.tar.zst
       - name: Fetch and verify pinned Bend source
         timeout-minutes: 5
-        run: node --experimental-strip-types verification/bend/authority/scripts/bootstrap-upstream.mjs "$BEND_SOURCE_ROOT"
+        run: node --experimental-strip-types verification/bend/scripts/bootstrap-upstream.mjs "$BEND_SOURCE_ROOT"
       - name: Official release lane
         timeout-minutes: 25
-        run: npm --prefix verification/bend/authority run verify:release
-      - name: Historical VAT regressions
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 5
-        run: npm --prefix verification/bend test
+        run: npm --prefix verification/bend run verify:release
       - name: Upload model evidence
         if: ${{ always() && steps.install.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: bend-evidence
-          path: |
-            verification/bend/authority/evidence/current/
-            verification/bend/evidence/test-report.json
+          path: verification/bend/evidence/current/
           if-no-files-found: error
           retention-days: 14

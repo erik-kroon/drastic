@@ -1,0 +1,200 @@
+{
+  "status": "passed",
+  "releaseVerified": false,
+  "checker": "official-js-artifact",
+  "bendCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "openERPCommit": "0eaad6402241ff3853fdc1af015e13f343873641",
+  "node": "v26.4.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "lawProofPairs": 35,
+  "definitions": 187,
+  "artifactDigest": "sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e",
+  "sourceTreeDigest": "sha256:0beacd1882bd93dfbe993038a4b750955939139c5f90970984ca2c5a403acc3c",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "assertions": 11173,
+  "groups": {
+    "BigNat arithmetic and bounds": {
+      "assertions": 2852,
+      "ms": 22
+    },
+    "BigInt sign and division": {
+      "assertions": 4327,
+      "ms": 11
+    },
+    "Reduced rationals and rounding": {
+      "assertions": 2319,
+      "ms": 8
+    },
+    "Decimal conversion": {
+      "assertions": 177,
+      "ms": 4
+    },
+    "Ledger and allocation invariants": {
+      "assertions": 485,
+      "ms": 6
+    },
+    "VAT source differential checks": {
+      "assertions": 685,
+      "ms": 7
+    },
+    "PRY-33 exhaustive differential and scope": {
+      "assertions": 319,
+      "ms": 251
+    },
+    "Negative proof and checker controls": {
+      "assertions": 9,
+      "ms": 97
+    }
+  },
+  "elapsedMs": 465,
+  "upstreamRoundingRegressions": [
+    {
+      "numerator": "-300",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-301",
+      "expected": "-300"
+    },
+    {
+      "numerator": "-250",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-251",
+      "expected": "-250"
+    },
+    {
+      "numerator": "-200",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-201",
+      "expected": "-200"
+    },
+    {
+      "numerator": "-199",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-200",
+      "expected": "-199"
+    },
+    {
+      "numerator": "-150",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-151",
+      "expected": "-150"
+    },
+    {
+      "numerator": "-100",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-101",
+      "expected": "-100"
+    },
+    {
+      "numerator": "-1",
+      "denominator": "1",
+      "mode": "floor",
+      "observed": "-2",
+      "expected": "-1"
+    },
+    {
+      "numerator": "-300",
+      "denominator": "2",
+      "mode": "floor",
+      "observed": "-151",
+      "expected": "-150"
+    },
+    {
+      "numerator": "-250",
+      "denominator": "2",
+      "mode": "floor",
+      "observed": "-126",
+      "expected": "-125"
+    },
+    {
+      "numerator": "-200",
+      "denominator": "2",
+      "mode": "floor",
+      "observed": "-101",
+      "expected": "-100"
+    },
+    {
+      "numerator": "-150",
+      "denominator": "2",
+      "mode": "floor",
+      "observed": "-76",
+      "expected": "-75"
+    },
+    {
+      "numerator": "-100",
+      "denominator": "2",
+      "mode": "floor",
+      "observed": "-51",
+      "expected": "-50"
+    },
+    {
+      "numerator": "-300",
+      "denominator": "10",
+      "mode": "floor",
+      "observed": "-31",
+      "expected": "-30"
+    },
+    {
+      "numerator": "-250",
+      "denominator": "10",
+      "mode": "floor",
+      "observed": "-26",
+      "expected": "-25"
+    },
+    {
+      "numerator": "-200",
+      "denominator": "10",
+      "mode": "floor",
+      "observed": "-21",
+      "expected": "-20"
+    },
+    {
+      "numerator": "-150",
+      "denominator": "10",
+      "mode": "floor",
+      "observed": "-16",
+      "expected": "-15"
+    },
+    {
+      "numerator": "-100",
+      "denominator": "10",
+      "mode": "floor",
+      "observed": "-11",
+      "expected": "-10"
+    },
+    {
+      "numerator": "-300",
+      "denominator": "100",
+      "mode": "floor",
+      "observed": "-4",
+      "expected": "-3"
+    },
+    {
+      "numerator": "-200",
+      "denominator": "100",
+      "mode": "floor",
+      "observed": "-3",
+      "expected": "-2"
+    },
+    {
+      "numerator": "-100",
+      "denominator": "100",
+      "mode": "floor",
+      "observed": "-2",
+      "expected": "-1"
+    }
+  ],
+  "unverified": [
+    "official Bend binary",
+    "Bend --safe kernel",
+    "native C/Metal/CUDA backends",
+    "full OpenERP runtime and PostgreSQL transactions",
+    "statutory VAT applicability"
+  ]
+}

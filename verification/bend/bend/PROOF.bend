@@ -5,6 +5,7 @@ import ./Rational.bend as R
 import ./Ledger.bend as L
 import ./Allocation.bend as A
 import ./LAWS.bend as Laws
+import ./RefinementProof.bend as Refined
 
 def Laws.normalize_shift(n):
   match n:

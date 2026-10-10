@@ -1,2 +1,4 @@
-node_modules/
+dist/
+.bend-upstream/
 .toolchains/
+*.tsbuildinfo

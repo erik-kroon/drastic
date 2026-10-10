@@ -1,0 +1,15 @@
+{
+  "command": "bun",
+  "args": [
+    "run",
+    "test:e2e",
+    "--config",
+    "verification/bend/vite.host.config.mts"
+  ],
+  "status": 0,
+  "signal": null,
+  "stdout": "\n RUN  v4.1.10 /Users/admin/drastic-bend\n\n ✓ apps/api/tests/bend-vat.qualification.test.ts (1 test) 1214ms\n   ✓ qualified Bend arithmetic survives actual capture, sealing, replay and posting  1213ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  10:27:23\n   Duration  8.89s (transform 56ms, setup 0ms, import 182ms, tests 1.21s, environment 0ms)\n\nJSON report written to /Users/admin/drastic-bend/test-results/e2e/results.json\nJUNIT report written to /Users/admin/drastic-bend/test-results/e2e/junit.xml\n",
+  "stderr": "$ vp test run --config verification/bend/vite.host.config.mts\n",
+  "error": null,
+  "passed": true
+}

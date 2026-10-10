@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "suite": "authority-boundaries",
+  "checker": "official-js-artifact",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "artifactDigest": "sha256:a3f7652e68830d102d0b7d00adcf882a2b52452699222f74c9a64d5c5e41fa1e",
+  "sourceTreeDigest": "sha256:0beacd1882bd93dfbe993038a4b750955939139c5f90970984ca2c5a403acc3c",
+  "assertions": 1915,
+  "groups": {
+    "Operation kernels and boundary oracles": {
+      "assertions": 798,
+      "ms": 15
+    },
+    "Independent certificate checks reject plausible wrong results": {
+      "assertions": 1061,
+      "ms": 3
+    },
+    "Exact immutable envelopes and failure behavior": {
+      "assertions": 24,
+      "ms": 5
+    },
+    "Per-operation release qualification, not self-approval": {
+      "assertions": 7,
+      "ms": 2
+    },
+    "Upstream ABI adapter unit controls": {
+      "assertions": 18,
+      "ms": 0
+    },
+    "Refinement proofs reject binary arithmetic mutations": {
+      "assertions": 4,
+      "ms": 148
+    },
+    "Bounded worker cancellation": {
+      "assertions": 3,
+      "ms": 50
+    }
+  },
+  "elapsedMs": 226,
+  "operations": [
+    "money.round.v1",
+    "vat.project.v1",
+    "schedule.equal.v1",
+    "settlement.allocate.v1",
+    "fx.convert.v1",
+    "ledger.reverse.v1"
+  ],
+  "releaseQualified": false,
+  "caveats": [
+    "Release policy positive tests use explicit synthetic fixtures, not genuine compiler or deployment receipts.",
+    "Actual compiled artifact is only exercised when BEND_ARTIFACT is set."
+  ]
+}
