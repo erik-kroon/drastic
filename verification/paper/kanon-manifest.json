@@ -29,7 +29,13 @@
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["populated", "selected", "empty", "loading", "error"],
+      "requiredStates": [
+        "populated",
+        "selected",
+        "empty",
+        "loading",
+        "error"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-10/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -37,7 +43,13 @@
         "height": 900
       },
       "jsxSha256": "5b4f3b8588d1fb6945198e89dd1a886529c2d3213085fa75f983b1b4171af329",
-      "parts": ["layouts", "work-list", "detail-panel", "status", "action"],
+      "parts": [
+        "layouts",
+        "work-list",
+        "detail-panel",
+        "status",
+        "action"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
       "comparison": {
         "channelTolerance": 16,
@@ -55,7 +67,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-40.png",
       "baselineSha256": "0eec2bc36ffbfbc81682d2ad3aeea45c587aae7cf4f8d6bcb2c76d512864eed0",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-40.jsx.json",
-      "files": ["apps/web/src/components/commerce/invoices.tsx"],
+      "files": [
+        "apps/web/src/components/commerce/invoices.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -89,7 +103,13 @@
       "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["populated", "selected client", "empty", "filtered", "access requested"],
+      "requiredStates": [
+        "populated",
+        "selected client",
+        "empty",
+        "filtered",
+        "access requested"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-09/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -150,7 +170,13 @@
         "height": 900
       },
       "jsxSha256": "31b432022b3bd367b14cb7ed6fa886f39e6f2769cc67ce05d12360a585b53a04",
-      "parts": ["layouts", "status", "action", "@open-erp/ui/kanon/feedback", "detail-panel"],
+      "parts": [
+        "layouts",
+        "status",
+        "action",
+        "@open-erp/ui/kanon/feedback",
+        "detail-panel"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "comparison": {
         "channelTolerance": 16,
@@ -168,7 +194,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-70.png",
       "baselineSha256": "c49e8b43dd1cacf0eb1f9b7bca542d654da7d58b1716ff98465fc376aed4f2e7",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-70.jsx.json",
-      "files": ["apps/web/src/components/voucher-workspace.tsx"],
+      "files": [
+        "apps/web/src/components/voucher-workspace.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -193,7 +221,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-80.png",
       "baselineSha256": "214ee83fbd86d721a35e3013bcde78e8896cd6112055a49103947259e3a0495b",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-80.jsx.json",
-      "files": ["apps/web/src/components/vat-returns/panel.tsx"],
+      "files": [
+        "apps/web/src/components/vat-returns/panel.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -243,7 +273,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-41.png",
       "baselineSha256": "aa1286a8fed80c319317dbe2c31681c08c23b82478fad327a319ab6a96a30017",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-41.jsx.json",
-      "files": ["apps/web/src/components/commerce/invoice-drafts.tsx"],
+      "files": [
+        "apps/web/src/components/commerce/invoice-drafts.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -268,7 +300,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-60.png",
       "baselineSha256": "12e9778800d0539ded915697f23fd4f8680dd5773aae4e69782a315efdbcfeb6",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-60.jsx.json",
-      "files": ["apps/web/src/components/source-intake/workspace.tsx"],
+      "files": [
+        "apps/web/src/components/source-intake/workspace.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -303,7 +337,13 @@
       "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["populated", "coverage gap", "missing months", "loading", "error"],
+      "requiredStates": [
+        "populated",
+        "coverage gap",
+        "missing months",
+        "loading",
+        "error"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-08/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -328,7 +368,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-50.png",
       "baselineSha256": "889e755cbf4e3b113310c6b61d4defca8b5e54a6ff7b88819adf917629f1d65b",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-50.jsx.json",
-      "files": ["apps/web/src/components/settlements/review.tsx"],
+      "files": [
+        "apps/web/src/components/settlements/review.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -353,13 +395,20 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-90.png",
       "baselineSha256": "f772c8d3e8db9120c260d7977898fffe0048acd4d92b121f84ed623690ffa5cf",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-90.jsx.json",
-      "files": ["apps/web/src/components/closing/workspace.tsx"],
+      "files": [
+        "apps/web/src/components/closing/workspace.tsx"
+      ],
       "route": "/entities/$entityId/books/$bookId/closing",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["period list", "ready to lock", "lock refused", "locked"],
+      "requiredStates": [
+        "period list",
+        "ready to lock",
+        "lock refused",
+        "locked"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -408,7 +457,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-12.png",
       "baselineSha256": "f5c5604b6a2cb3882f7e77dc3412cc4648da63dd93703f40b35403ebb5b06ce5",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-12.jsx.json",
-      "files": ["apps/web/src/components/work-questions.tsx"],
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -433,7 +484,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-13.png",
       "baselineSha256": "b47f35bc2c0f6516248525bbba07461f4520541a0254a5794532f7149039d191",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-13.jsx.json",
-      "files": ["apps/web/src/components/work-questions.tsx"],
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -458,7 +511,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-14.png",
       "baselineSha256": "7078a0e6660119817c34ae1c62c65a652f1a94689efb0494f5cf62882f0ced27",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-14.jsx.json",
-      "files": ["apps/web/src/components/work-questions.tsx"],
+      "files": [
+        "apps/web/src/components/work-questions.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -494,7 +549,11 @@
       "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["unknown outcome", "resolved as posted", "resolved as not posted"],
+      "requiredStates": [
+        "unknown outcome",
+        "resolved as posted",
+        "resolved as not posted"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-15/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -502,7 +561,9 @@
         "height": 900
       },
       "jsxSha256": "d562947bedfdd22acf72107066d8727f32d480dc9ca25d218e236e8049052d2f",
-      "parts": ["@open-erp/ui/kanon/feedback"],
+      "parts": [
+        "@open-erp/ui/kanon/feedback"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
       "comparison": {
         "channelTolerance": 16,
@@ -536,7 +597,10 @@
       "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["posted voucher selected", "correction available"],
+      "requiredStates": [
+        "posted voucher selected",
+        "correction available"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-16/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -571,7 +635,12 @@
       "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["populated", "coverage gap", "empty", "import error"],
+      "requiredStates": [
+        "populated",
+        "coverage gap",
+        "empty",
+        "import error"
+      ],
       "evidence": "verification/paper/evidence/demo-2026-10-10/K-20/result.json",
       "owner": "Erik Kroon",
       "viewport": {
@@ -640,7 +709,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-30.png",
       "baselineSha256": "f808c7c2a7a22c12d3402011631e56808bb3ee45f10d2f916dc3f172d6210ff6",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-30.jsx.json",
-      "files": ["apps/web/src/components/commerce/reminder-review.tsx"],
+      "files": [
+        "apps/web/src/components/commerce/reminder-review.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -665,7 +736,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-31.png",
       "baselineSha256": "7693521640041482188cbcd9c95ec2e245d74e665071a8bd78d5f80249982205",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-31.jsx.json",
-      "files": ["apps/web/src/components/commerce/reminder-retained-review.tsx"],
+      "files": [
+        "apps/web/src/components/commerce/reminder-retained-review.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -690,7 +763,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-32.png",
       "baselineSha256": "1aa91cb3ba3051148e9f9f567aaf0ae182ce8614d19b2344749f53a4c5e48c8c",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-32.jsx.json",
-      "files": ["apps/web/src/components/commerce/reminder-message-workspace.tsx"],
+      "files": [
+        "apps/web/src/components/commerce/reminder-message-workspace.tsx"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -715,7 +790,9 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-00.png",
       "baselineSha256": "199eaca9e15bb514874324a91f8a07d242893f0546fb733418b67182f02672b9",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-00.jsx.json",
-      "files": ["docs/design-system.md"],
+      "files": [
+        "docs/design-system.md"
+      ],
       "route": null,
       "audience": "bureau",
       "status": "unverified",
@@ -740,13 +817,19 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-01.png",
       "baselineSha256": "b7a30521ca6f77bb956bcd8e3808ecbd3a31819cbcf2c3e4d059ed4dfbcb84b0",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-01.jsx.json",
-      "files": ["packages/ui/src/theme/kanon.stylex.ts", "packages/ui/src/styles/globals.css"],
+      "files": [
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "packages/ui/src/styles/globals.css"
+      ],
       "route": "/kanon/list",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["light", "dark"],
+      "requiredStates": [
+        "light",
+        "dark"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -754,7 +837,9 @@
         "height": 1708
       },
       "jsxSha256": "5490062e76f16d304b8677f3e9a658cad9ace4d1cc022c47e4e1e7da35daa641",
-      "parts": ["kanon.stylex"],
+      "parts": [
+        "kanon.stylex"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
@@ -768,13 +853,20 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-02.png",
       "baselineSha256": "f285c4fb3514120103125b26a6e45df62bed6e06d02e0b5fc58dc8bab2f4dc09",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-02.jsx.json",
-      "files": ["packages/ui/src/kanon/action.tsx"],
+      "files": [
+        "packages/ui/src/kanon/action.tsx"
+      ],
       "route": "/kanon/focus",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["default", "hover", "focus-visible", "disabled with stated reason"],
+      "requiredStates": [
+        "default",
+        "hover",
+        "focus-visible",
+        "disabled with stated reason"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -782,7 +874,9 @@
         "height": 1117
       },
       "jsxSha256": "20839b166f9b690350b8a0bdd681ac8b4d76246b7e8923f65a90d62920d8e8d9",
-      "parts": ["action"],
+      "parts": [
+        "action"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
@@ -795,13 +889,20 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-03.png",
       "baselineSha256": "538c6cd79ad61e7b1ba2097131e2b13a942a1573802c07bc6f8a7f54a51c8bf4",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-03.jsx.json",
-      "files": ["packages/ui/src/kanon/work-list.tsx"],
+      "files": [
+        "packages/ui/src/kanon/work-list.tsx"
+      ],
       "route": "/kanon/list",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["populated", "selected", "empty", "loading"],
+      "requiredStates": [
+        "populated",
+        "selected",
+        "empty",
+        "loading"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -809,7 +910,9 @@
         "height": 1222
       },
       "jsxSha256": "f685bd2612e38aff946b9eba87f8197c0bc83481ee29e2af8e0db21544c9aa0f",
-      "parts": ["work-list"],
+      "parts": [
+        "work-list"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
@@ -822,13 +925,22 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-04.png",
       "baselineSha256": "6d54942871f55a826a0311e1e84cf63e1ee230ea80765293701aec68b5333721",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-04.jsx.json",
-      "files": ["packages/ui/src/kanon/status.tsx", "packages/ui/src/kanon/feedback.tsx"],
+      "files": [
+        "packages/ui/src/kanon/status.tsx",
+        "packages/ui/src/kanon/feedback.tsx"
+      ],
       "route": "/kanon/review",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["unknown", "blocked", "success", "warning", "error"],
+      "requiredStates": [
+        "unknown",
+        "blocked",
+        "success",
+        "warning",
+        "error"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -836,7 +948,10 @@
         "height": 976
       },
       "jsxSha256": "09d24aafa378020a554b95c9b05e7f7d720d44c7c4a0334aa2e3e6ea209e5ca4",
-      "parts": ["status", "feedback"],
+      "parts": [
+        "status",
+        "feedback"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
@@ -848,13 +963,19 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-05.png",
       "baselineSha256": "d836d2eadab568719385ef24d502251d0c3d2dd549e3a0bfda1d7ebf6df7de33",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-05.jsx.json",
-      "files": ["packages/ui/src/kanon/overlays.tsx"],
+      "files": [
+        "packages/ui/src/kanon/overlays.tsx"
+      ],
       "route": "/kanon/review",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["confirm dialog", "drawer", "toast"],
+      "requiredStates": [
+        "confirm dialog",
+        "drawer",
+        "toast"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -862,7 +983,9 @@
         "height": 1538
       },
       "jsxSha256": "e4fb9dde0b275170cd5681fb8f7959209773c1bdac6bb5cf636c4208d386aa4a",
-      "parts": ["overlays"],
+      "parts": [
+        "overlays"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
@@ -888,7 +1011,12 @@
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["area bar", "detail bar", "detail panel", "narrow width"],
+      "requiredStates": [
+        "area bar",
+        "detail bar",
+        "detail panel",
+        "narrow width"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -896,7 +1024,11 @@
         "height": 2139
       },
       "jsxSha256": "ce6cda5b0d9ed786d9b0ac118d05174fb7d95d3a828b5109275f2446e8209eca",
-      "parts": ["layouts", "detail-panel", "workspace"],
+      "parts": [
+        "layouts",
+        "detail-panel",
+        "workspace"
+      ],
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
@@ -910,13 +1042,20 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-07.png",
       "baselineSha256": "6e8884625ea95633a9553bb8efc87a186e64bace4b3a90968cc2ee1467cfc932",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-07.jsx.json",
-      "files": ["packages/ui/src/kanon/charts.tsx"],
+      "files": [
+        "packages/ui/src/kanon/charts.tsx"
+      ],
       "route": "/kanon/charts",
       "audience": "bureau",
       "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": ["chart", "table fallback", "light", "dark"],
+      "requiredStates": [
+        "chart",
+        "table fallback",
+        "light",
+        "dark"
+      ],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -924,7 +1063,9 @@
         "height": 1281
       },
       "jsxSha256": "c9c6526104e7ef67397ee7208f242a770c521dcf9f4ea48cbe561e1eeb52d5f7",
-      "parts": ["charts"],
+      "parts": [
+        "charts"
+      ],
       "candidateRoute": "/kanon/charts",
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
@@ -996,14 +1137,23 @@
       "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/oauth-mcp.md",
-      "requiredStates": ["consent", "loading", "error", "revoked", "keyboard"],
+      "requiredStates": [
+        "consent",
+        "loading",
+        "error",
+        "revoked",
+        "keyboard"
+      ],
       "evidence": "verification/paper/evidence/oauth-2026-10-10/O-01/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "parts": ["access", "action"],
+      "parts": [
+        "access",
+        "action"
+      ],
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
@@ -1031,14 +1181,23 @@
       "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/oauth-mcp.md",
-      "requiredStates": ["empty", "loading", "error", "revoked", "keyboard"],
+      "requiredStates": [
+        "empty",
+        "loading",
+        "error",
+        "revoked",
+        "keyboard"
+      ],
       "evidence": "verification/paper/evidence/oauth-2026-10-10/O-02/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
-      "parts": ["access", "action"],
+      "parts": [
+        "access",
+        "action"
+      ],
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
@@ -1046,6 +1205,179 @@
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
       "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
+    },
+    {
+      "id": "R-01",
+      "name": "R-01 Återkommande avtal och historik",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44G2-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-01.png",
+      "baselineSha256": "d11986a69c13e3dd176010bb608abf3c2a5c7d1a999f86a430346cb8568684c4",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-01.jsx.json",
+      "jsxSha256": "da19035ce851e6cfa410454306139beef2b2a85d677ade4d5f0b6c82f3c59db0",
+      "files": [
+        "apps/web/src/components/commerce/recurring-register.tsx",
+        "apps/web/src/components/commerce/recurring-detail.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "selected agreement and retained cycle history",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted target only. Implementation, real-route behavior and visual comparison remain unverified. Forms are states of the recurring sales route; exact URL persistence must be retained in implementation."
+    },
+    {
+      "id": "R-02",
+      "name": "R-02 Skapa återkommande avtal",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44MB-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-02.png",
+      "baselineSha256": "e8607bb0cec3d5172d8884ca5acee19e43502b2ee046d79d27717307a5f2d849",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-02.jsx.json",
+      "jsxSha256": "fddd0781095c7b0ffaea78ba6e4549c01aa27918e0d685cd6f6ae400b0f2f25a",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "creation without selected customer",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted target only. Implementation, real-route behavior and visual comparison remain unverified. Forms are states of the recurring sales route; exact URL persistence must be retained in implementation."
+    },
+    {
+      "id": "R-03",
+      "name": "R-03 Ändra framtida schema",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44RO-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-03.png",
+      "baselineSha256": "1e16e154dc8e6cf65f36f783118d2871db6d25efafc615caf83c42a61c7f065d",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-03.jsx.json",
+      "jsxSha256": "5666d0fcdad499e9de2443595a31a243a527e0a827cf87d90de7337254bd1581",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "future schedule with required reason",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted target only. Implementation, real-route behavior and visual comparison remain unverified. Forms are states of the recurring sales route; exact URL persistence must be retained in implementation."
+    },
+    {
+      "id": "R-04",
+      "name": "R-04 Ändra framtida fakturamall",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44WC-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-04.png",
+      "baselineSha256": "f10172c51d57001962a29ae3e0ea68fb327ad53c01eaa09de9f21b3af56100f0",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-04.jsx.json",
+      "jsxSha256": "f9a9c66b82c55e272b77f0c06d7eef64f3aafadfa106701466622d88af7a05ff",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "future template without selected source",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted target only. Implementation, real-route behavior and visual comparison remain unverified. Forms are states of the recurring sales route; exact URL persistence must be retained in implementation."
     }
   ]
 }
