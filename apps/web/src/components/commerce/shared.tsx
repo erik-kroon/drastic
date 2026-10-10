@@ -185,7 +185,10 @@ export function CommandForm<
     submitCaption?: ReactNode;
     afterSubmit?: ReactNode;
     fullWidthSubmit?: boolean;
+    fillAvailable?: boolean;
+    inputRequired?: boolean;
     variant?: "default" | "outline";
+    actionKind?: "secondary" | "quiet";
     recoveryId?: string;
     allowed?: boolean;
     canSubmit?: boolean;
@@ -287,8 +290,14 @@ export function CommandForm<
       afterSubmit={props.afterSubmit}
       compact={props.compact}
       variant={props.variant}
+      actionKind={props.actionKind}
       fullWidth={props.fullWidthSubmit}
-      disabled={commandSubmitBlocked(captureBlocked, props.presentation, fieldsValid)}
+      disabled={commandSubmitBlocked({
+        blocked: captureBlocked,
+        presentation: props.presentation,
+        fieldsValid,
+        inputRequired: props.inputRequired,
+      })}
       pending={command.isPending}
       locale={locale}
       label={props.label}
@@ -300,8 +309,8 @@ export function CommandForm<
       as="form"
       aria-label={props.label}
       onChange={(event) => setFieldsValid(event.currentTarget.checkValidity())}
-      {...commandFormLayout(props.presentation)}
-      gap={props.presentation ? (props.presentation === "kanon" ? "lg" : "none") : "lg"}
+      {...commandFormLayout(props.presentation, props.fillAvailable)}
+      gap={commandFormGap(props.presentation)}
       minWidth="zero"
       aria-describedby={errorId}
       onSubmit={(event) => {
@@ -330,20 +339,23 @@ export function CommandForm<
         command.mutate({ key: requestKey ?? crypto.randomUUID(), input: parsed.value });
       }}
     >
-      <Box
-        key={formVersion}
-        as="fieldset"
-        disabled={!allowed || !recovery.ready || !!captured}
-        {...commandFormLayout(props.presentation)}
-        gap="lg"
-        minWidth="zero"
-        borderWidth="none"
-        padding="none"
-        margin="none"
-      >
-        {!captured ? props.children : null}
-        {props.presentation === "kanon" ? null : submitAction}
-      </Box>
+      {commandHasFields(props.children, props.presentation) ? (
+        <Box
+          key={formVersion}
+          as="fieldset"
+          disabled={!allowed || !recovery.ready || !!captured}
+          {...commandFormLayout(props.presentation)}
+          gap="lg"
+          minWidth="zero"
+          borderWidth="none"
+          padding="none"
+          margin="none"
+        >
+          {!captured ? props.children : null}
+          {props.presentation === "kanon" ? null : submitAction}
+        </Box>
+      ) : null}
+      {props.fillAvailable ? <Box flexGrow /> : null}
       {props.presentation === "kanon" ? submitAction : null}
       {invalid ? (
         <Text id={errorId} role="alert">
@@ -476,6 +488,7 @@ function CommandSubmitAction(props: {
   afterSubmit?: ReactNode;
   compact?: boolean;
   variant?: ButtonVariant;
+  actionKind?: "secondary" | "quiet";
   fullWidth?: boolean;
   disabled: boolean;
   pending: boolean;
@@ -485,7 +498,14 @@ function CommandSubmitAction(props: {
   if (props.presentation === "kanon")
     return (
       <ActionRow>
-        <Action kind="primary" type="submit" disabled={props.disabled || props.pending}>
+        <Action
+          kind={props.actionKind ?? (props.variant === "outline" ? "secondary" : "primary")}
+          presentation={props.fullWidth ? "record" : undefined}
+          fill={props.fullWidth}
+          besidePrimary={props.fullWidth && props.actionKind === undefined}
+          type="submit"
+          disabled={props.disabled || props.pending}
+        >
           {props.pending ? (props.locale === "sv" ? "Sparar…" : "Saving…") : props.label}
         </Action>
         {props.afterSubmit}
@@ -519,8 +539,8 @@ function CommandSubmitAction(props: {
   );
 }
 
-function commandFormLayout(presentation?: "focused" | "bank" | "kanon") {
-  return presentation === "bank"
+function commandFormLayout(presentation?: "focused" | "bank" | "kanon", fillAvailable?: boolean) {
+  return presentation === "bank" || fillAvailable === true
     ? ({ display: "flex", flexDirection: "column", flexGrow: true } as const)
     : ({ display: "grid" } as const);
 }
@@ -534,10 +554,22 @@ function commandCaptureBlocked(state: {
   return !state.allowed || !state.ready || state.captured || state.canSubmit === false;
 }
 
-function commandSubmitBlocked(
-  blocked: boolean,
-  presentation: "focused" | "bank" | "kanon" | undefined,
-  fieldsValid: boolean,
-) {
-  return blocked || (presentation === "kanon" && !fieldsValid);
+function commandSubmitBlocked(state: {
+  blocked: boolean;
+  presentation: "focused" | "bank" | "kanon" | undefined;
+  fieldsValid: boolean;
+  inputRequired?: boolean;
+}) {
+  return (
+    state.blocked ||
+    (state.presentation === "kanon" && !state.fieldsValid && state.inputRequired !== false)
+  );
+}
+
+function commandFormGap(presentation?: "focused" | "bank" | "kanon") {
+  return presentation && presentation !== "kanon" ? "none" : "lg";
+}
+
+function commandHasFields(children: ReactNode, presentation?: "focused" | "bank" | "kanon") {
+  return Boolean(children) || presentation !== "kanon";
 }

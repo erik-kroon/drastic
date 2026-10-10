@@ -7,12 +7,19 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Catalog from "@open-erp/contracts/catalog";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { DataTable } from "@open-erp/ui/components/data-table";
+import { RegisterSearch, RegisterTable } from "@open-erp/ui/kanon/register";
+import { AreaBar, ListDetailPage } from "@open-erp/ui/kanon/layouts";
+import {
+  DetailPanelSurface,
+  DetailPanelActions,
+  PanelSection,
+} from "@open-erp/ui/kanon/detail-panel";
+import { FormTitle, FormText, FormNote, PlainFacts, RecordHeader } from "@open-erp/ui/kanon/form";
+import { Action } from "@open-erp/ui/kanon/action";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
-import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { mutationOptions, readAccounting } from "@/lib/accounting-api";
 import {
@@ -78,6 +85,8 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
   const labels = sv ? swedish : english;
   const client = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [selectedCode, setSelectedCode] = useState<string>();
+  const [filter, setFilter] = useState("");
   const newArticleButton = useRef<HTMLButtonElement>(null);
   const openerCode = useRef<string | null>(null);
   const [form, setForm] = useState<ArticleForm>(emptyForm);
@@ -136,88 +145,112 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
   const items = articles.data?.pages.flatMap((page) => page.items) ?? [];
   const scale = metadata.data?.currencyScale;
 
+  const selected = items.find((article) => article.code === selectedCode);
+
+  const editSelected = () => {
+    if (!selected || scale === undefined) return;
+    openerCode.current = selected.code;
+    setEditing(true);
+    setForm(articleForm(selected, scale));
+    setInvalid(false);
+    setSaved(false);
+  };
+
   return (
-    <RegisterWorkspace
-      title={labels.sales}
-      tabs={props.navigation}
-      action={
-        <Button
-          type="button"
-          size="sm"
-          ref={newArticleButton}
-          disabled={book.role !== "operator" || save.isPending}
-          onClick={() => {
-            openerCode.current = null;
-            setEditing(true);
-            setForm(emptyForm());
-            setInvalid(false);
-            setSaved(false);
-          }}
-        >
-          {labels.newArticle}
-        </Button>
-      }
-    >
-      <AccountingStatus locale={locale} pending={articles.isPending} error={articles.error} />
-      {articles.isSuccess ? (
-        items.length ? (
-          <DataTable
-            title={labels.currentRevisions}
-            narrow="stack"
-            presentation="register"
-            columns={[
-              { id: "description", label: labels.article, width: "fill" },
-              { id: "unit", label: labels.unit, width: 90 },
-              { id: "tax", label: labels.vat, width: 80, numeric: true },
-              { id: "price", label: labels.price, numeric: true, width: 120 },
-              { id: "revenueAccount", label: labels.revenueAccount, numeric: true, width: 110 },
-            ]}
-            rows={items.map((article) => ({
-              id: article.code,
-              cells: [
-                <RecordOpen
-                  key="description"
-                  presentation="register"
-                  data-article-code={article.code}
-                  aria-label={`${article.description}, ${article.code}`}
-                  onClick={() => {
-                    if (scale !== undefined) {
-                      openerCode.current = article.code;
-                      setEditing(true);
-                      setForm(articleForm(article, scale));
-                      setInvalid(false);
-                      setSaved(false);
-                    }
-                  }}
-                >
-                  {article.description}
-                  {article.status === "archived" ? (sv ? ", Arkiverad" : ", Archived") : ""}
-                </RecordOpen>,
-                article.unit,
-                article.taxDescription ?? "—",
-                scale === undefined || article.unitPriceMinor === null
-                  ? "—"
-                  : formatMinorAmount(article.unitPriceMinor, scale, locale),
-                "—",
-              ],
-            }))}
+    <>
+      <ListDetailPage
+        bar={
+          <AreaBar
+            title={labels.sales}
+            tabs={props.navigation}
+            action={
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                ref={newArticleButton}
+                disabled={book.role !== "operator" || save.isPending}
+                onClick={() => {
+                  openerCode.current = null;
+                  setEditing(true);
+                  setForm(emptyForm());
+                  setInvalid(false);
+                  setSaved(false);
+                }}
+              >
+                {labels.newArticle}
+              </Button>
+            }
           />
-        ) : (
-          <PageEmpty title={labels.empty} detail={labels.emptyDetail} />
-        )
-      ) : null}
-      {articles.hasNextPage ? (
-        <Box>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={articles.isFetchingNextPage}
-            onClick={() => void articles.fetchNextPage()}
-          >
-            {labels.loadMore}
-          </Button>
-        </Box>
-      ) : null}
+        }
+        list={
+          <>
+            <RegisterSearch
+              label={sv ? "Sök artiklar" : "Search articles"}
+              value={filter}
+              onChange={setFilter}
+            />
+            <AccountingStatus locale={locale} pending={articles.isPending} error={articles.error} />
+            {articles.isSuccess && !items.length ? (
+              <PageEmpty title={labels.empty} detail={labels.emptyDetail} />
+            ) : null}
+            <RegisterTable
+              label={labels.currentRevisions}
+              selected={selectedCode}
+              columns={[
+                { label: labels.article },
+                { label: labels.unit, width: "unit" },
+                { label: labels.vat, width: "tax" },
+                { label: labels.price, width: "price", numeric: true },
+                { label: labels.revenueAccount, width: "account", numeric: true },
+              ]}
+              rows={items
+                .filter((article) =>
+                  `${article.description} ${article.code}`
+                    .toLocaleLowerCase()
+                    .includes(filter.toLocaleLowerCase()),
+                )
+                .map((article) => ({
+                  id: article.code,
+                  cells: [
+                    <RecordOpen
+                      key="description"
+                      presentation="register"
+                      data-article-code={article.code}
+                      aria-label={`${article.description}, ${article.code}`}
+                      onClick={() => setSelectedCode(article.code)}
+                    >
+                      {article.description}
+                      {article.status === "archived" ? (sv ? ", Arkiverad" : ", Archived") : ""}
+                    </RecordOpen>,
+                    article.unit,
+                    article.taxDescription ?? (sv ? "Okänd" : "Unknown"),
+                    scale === undefined || article.unitPriceMinor === null
+                      ? sv
+                        ? "Okänd"
+                        : "Unknown"
+                      : formatMinorAmount(article.unitPriceMinor, scale, locale),
+                    sv ? "Saknas" : "Missing",
+                  ],
+                }))}
+            />
+            {articles.hasNextPage ? (
+              <Action
+                kind="secondary"
+                disabled={articles.isFetchingNextPage}
+                onClick={() => void articles.fetchNextPage()}
+              >
+                {labels.loadMore}
+              </Action>
+            ) : null}
+          </>
+        }
+        panel={
+          selected ? (
+            <ArticleDetail article={selected} scale={scale} locale={locale} onEdit={editSelected} />
+          ) : null
+        }
+      />
       {scale === undefined ? (
         <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
       ) : editing ? (
@@ -384,7 +417,7 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
           </Box>
         </FormDialog>
       ) : null}
-    </RegisterWorkspace>
+    </>
   );
 }
 
@@ -446,3 +479,68 @@ const swedish: typeof english = {
   saved: "Artikelrevisionen har sparats.",
   revisionNote: "Sparning skapar nästa revision. Tidigare revisioner finns kvar för fakturautkast.",
 };
+
+function ArticleDetail(props: {
+  article: Article;
+  scale?: number;
+  locale: CommerceProps["locale"];
+  onEdit: () => void;
+}) {
+  const { article: selected, scale, locale, onEdit } = props;
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
+
+  return (
+    <DetailPanelSurface label={sv ? "Vald artikel" : "Selected article"}>
+      <RecordHeader>
+        <FormNote>
+          {selected.status === "archived"
+            ? sv
+              ? "Arkiverad"
+              : "Archived"
+            : sv
+              ? "Aktiv"
+              : "Active"}
+        </FormNote>
+        <FormTitle>{selected.description}</FormTitle>
+        <FormText>
+          {selected.code}, {sv ? "revision" : "revision"} {selected.revision}
+        </FormText>
+      </RecordHeader>
+      <PanelSection label={sv ? "Sparade uppgifter" : "Saved values"}>
+        <PlainFacts
+          align="end"
+          facts={[
+            { label: labels.unit, value: selected.unit },
+            {
+              label: labels.price,
+              value:
+                selected.unitPriceMinor !== null && scale !== undefined
+                  ? formatMinorAmount(selected.unitPriceMinor, scale, locale)
+                  : sv
+                    ? "Okänd"
+                    : "Unknown",
+            },
+            {
+              label: labels.taxTreatment,
+              value: selected.taxDescription ?? (sv ? "Ej granskad" : "Not reviewed"),
+            },
+            { label: labels.revenueAccount, value: sv ? "Saknas" : "Missing" },
+          ]}
+        />
+      </PanelSection>
+      <FormText>
+        {sv
+          ? "Ändringar skapar en ny revision. Tidigare fakturautkast behåller de uppgifter som redan kopierats."
+          : "Changes create a new revision. Earlier invoice drafts retain the values already copied."}
+      </FormText>
+      <DetailPanelActions
+        primary={
+          <Action kind="secondary" fill disabled={scale === undefined} onClick={onEdit}>
+            {sv ? "Redigera artikel" : "Edit article"}
+          </Action>
+        }
+      />
+    </DetailPanelSurface>
+  );
+}

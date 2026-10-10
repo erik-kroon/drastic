@@ -41,6 +41,7 @@ export const kanon = stylex.defineConsts({
   textFormTitle: "20px",
   leadingFormTitle: "26px",
   sizeAgreementForm: "640px",
+  sizeQuoteTitleColumn: "170px",
   sizeUnitColumn: "90px",
   sizeTaxColumn: "80px",
   sizePriceColumn: "120px",

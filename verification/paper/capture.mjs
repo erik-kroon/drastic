@@ -220,6 +220,9 @@ async function main() {
     // On narrow review screens, the ready control belongs to the requested pane.
     if (board?.readyText) await page.getByText(board.readyText, { exact: true }).waitFor();
 
+    if (board?.pendingText)
+      await page.getByText(board.pendingText, { exact: true }).waitFor({ state: "hidden" });
+
     await page.waitForLoadState("networkidle", { timeout: 30000 });
 
     // These demo states require a rendered original, not just absence of a spinner.

@@ -12,8 +12,24 @@ const styles = stylex.create({
     marginInline: "auto",
     minWidth: 0,
   },
+  compactColumn: { gap: kanon.space2 },
+  disclosureSummary: {
+    display: "block",
+    cursor: "pointer",
+    ":focus-visible": { outline: "none", boxShadow: kanon.shadowFocus },
+  },
   header: { display: "grid", gap: kanon.space1 },
   recordHeader: { gap: kanon.space2 },
+  recordFact: { lineHeight: kanon.leadingSection },
+  recordField: { gap: kanon.space2 },
+  recordControl: { height: kanon.sizeButtonPrimary },
+  compactFacts: { gap: kanon.space2 },
+  compactSection: { gap: kanon.space2 },
+  secondaryLabel: {
+    color: kanon.colorSecondary,
+    fontFamily: kanon.fontControl,
+    lineHeight: kanon.leadingSection,
+  },
   recordFacts: { gap: kanon.space3, fontFamily: kanon.fontControl },
   recordTerm: { color: kanon.colorText, fontFamily: kanon.fontControl },
   recordSection: { display: "grid", gap: kanon.space3, fontFamily: kanon.fontControl },
@@ -102,8 +118,8 @@ const styles = stylex.create({
   actions: { display: "flex", gap: kanon.space3, flexWrap: "wrap", alignItems: "center" },
 });
 
-export function FormColumn({ children }: { children: ReactNode }) {
-  return <div {...stylex.props(styles.column)}>{children}</div>;
+export function FormColumn({ children, compact }: { children: ReactNode; compact?: boolean }) {
+  return <div {...stylex.props(styles.column, compact && styles.compactColumn)}>{children}</div>;
 }
 
 export function FieldRow({ children }: { children: ReactNode }) {
@@ -118,13 +134,18 @@ export function FormText({
   children,
   role,
   compact,
+  record,
 }: {
+  record?: boolean;
   children: ReactNode;
   role?: "status" | "alert";
   compact?: boolean;
 }) {
   return (
-    <p role={role} {...stylex.props(styles.text, compact && styles.compactText)}>
+    <p
+      role={role}
+      {...stylex.props(styles.text, record && styles.recordFont, compact && styles.compactText)}
+    >
       {children}
     </p>
   );
@@ -167,6 +188,7 @@ export function InputField(props: ComponentProps<"input"> & { label: string }) {
 export function SelectField(
   props: Omit<ComponentProps<"select">, "onChange"> & {
     label: string;
+    record?: boolean;
     options: readonly { value: string; label: string }[];
     onValueChange?: (value: string) => void;
   },
@@ -175,17 +197,20 @@ export function SelectField(
   Reflect.deleteProperty(select, "label");
   Reflect.deleteProperty(select, "options");
   Reflect.deleteProperty(select, "onValueChange");
+  Reflect.deleteProperty(select, "record");
   const generated = useId();
   const id = props.id ?? generated;
 
   return (
-    <label htmlFor={id} {...stylex.props(styles.field)}>
-      <span {...stylex.props(styles.label)}>{props.label}</span>
+    <label htmlFor={id} {...stylex.props(styles.field, props.record && styles.recordField)}>
+      <span {...stylex.props(styles.label, props.record && styles.secondaryLabel)}>
+        {props.label}
+      </span>
       <select
         {...select}
         id={id}
         onChange={(event) => props.onValueChange?.(event.currentTarget.value)}
-        {...stylex.props(styles.control)}
+        {...stylex.props(styles.control, props.record && styles.recordControl)}
       >
         {props.options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -201,15 +226,30 @@ export function PlainFacts({
   facts,
   align,
   presentation,
+  compact,
 }: {
+  compact?: boolean;
   presentation?: "record";
   align?: "end";
   facts: readonly { label: string; renderLabel?: ReactNode; value: ReactNode }[];
 }) {
   return (
-    <dl {...stylex.props(styles.facts, presentation === "record" && styles.recordFacts)}>
+    <dl
+      {...stylex.props(
+        styles.facts,
+        presentation === "record" && styles.recordFacts,
+        compact && styles.compactFacts,
+      )}
+    >
       {facts.map((fact) => (
-        <div key={fact.label} {...stylex.props(styles.fact, align === "end" && styles.wideFact)}>
+        <div
+          key={fact.label}
+          {...stylex.props(
+            styles.fact,
+            align === "end" && styles.wideFact,
+            compact && styles.recordFact,
+          )}
+        >
           <dt {...stylex.props(styles.term, presentation === "record" && styles.recordTerm)}>
             {fact.label}
           </dt>
@@ -297,11 +337,38 @@ export function RecordHeader({ children, roomy }: { children: ReactNode; roomy?:
   return <header {...stylex.props(styles.header, roomy && styles.recordHeader)}>{children}</header>;
 }
 
-export function RecordSection({ label, children }: { label: string; children: ReactNode }) {
+export function RecordSection({
+  label,
+  children,
+  compact,
+}: {
+  label: string;
+  children: ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <section {...stylex.props(styles.recordSection)}>
-      <h3 {...stylex.props(styles.recordLabel)}>{label}</h3>
+    <section {...stylex.props(styles.recordSection, compact && styles.compactSection)}>
+      <h3 {...stylex.props(styles.recordLabel, compact && styles.secondaryLabel)}>{label}</h3>
       {children}
     </section>
+  );
+}
+
+export function FactDisclosure({
+  summary,
+  label,
+  children,
+}: {
+  summary: ReactNode;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <details>
+      <summary aria-label={label} {...stylex.props(styles.disclosureSummary)}>
+        {summary}
+      </summary>
+      {children}
+    </details>
   );
 }

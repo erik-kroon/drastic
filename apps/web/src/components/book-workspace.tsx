@@ -219,7 +219,11 @@ function useWorkspaceLayout(pathname: string, base: string) {
 
   return {
     contentInset:
-      isHomePath(pathname, base) || digestReview || sales?.search.view === "recurring"
+      isHomePath(pathname, base) ||
+      digestReview ||
+      sales?.search.view === "articles" ||
+      sales?.search.view === "orders" ||
+      sales?.search.view === "recurring"
         ? ("none" as const)
         : ("page" as const),
     focused: !digestReview && pathname.startsWith(`${base}/reviews/`),

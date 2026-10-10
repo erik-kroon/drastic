@@ -1,0 +1,82 @@
+{
+  "scope": "R-01",
+  "output": "/Users/admin/drastic-finish-commercial/test-results/commercial-qualified/R-01",
+  "adoptedComparisonEligible": true,
+  "comparatorStatus": 0,
+  "difference": 0.019381944444444445,
+  "parityQualified": false,
+  "limitations": [
+    "Pixel comparison is not behavior/state or production qualification"
+  ],
+  "grid": [
+    {
+      "row": 0,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 3609,
+      "difference": 0.0250625
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 4326,
+      "difference": 0.030041666666666668
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 6394,
+      "difference": 0.04440277777777778
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 1978,
+      "difference": 0.01373611111111111
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 6198,
+      "difference": 0.043041666666666666
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 601,
+      "difference": 0.0041736111111111114
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 2013,
+      "difference": 0.013979166666666668
+    }
+  ],
+  "gridCanvas": {
+    "width": 1440,
+    "height": 900
+  },
+  "sameDimensions": true,
+  "channelTolerance": 16
+}

@@ -1,0 +1,53 @@
+{
+  "actual": "test-results/commercial-qualified/R-02/actual.png",
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-commercial/verification/paper/capture.mjs R-02",
+  "sourceRevision": "619af79aeb090bbaa9e0eb4d7ce95487e184d40a",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/recurring-agreement-controls.tsx": "61a00528cf394c9a56673866a3e5f62da7b667ea9cb4c11b1eb83ce526a7da28",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx": "52f4a591396c2775a7b3fc04c0a56eb2011f2bc11d1a96bd1a5d98a87ccb978e",
+    "packages/ui/src/kanon/form.tsx": "283b45053678c70f2e5bc1da2ff270fc1291ae1233216a2a51dd43bfb93c9d74",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694",
+    "apps/web/src/components/commerce/shared.tsx": "20e2a9e570872f19e4a3e0bea9b99d794a3afa43269fef6c04253afb02788a5e",
+    "apps/web/src/components/book-workspace.tsx": "810f7cac8f70ed3bf9a78fe17427782086ef92f2865de12bc11252877033878a"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&recurringForm=create",
+    "time": "2026-10-10T22:16:49.300Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "empty creation form",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "fddd0781095c7b0ffaea78ba6e4549c01aa27918e0d685cd6f6ae400b0f2f25a"
+}

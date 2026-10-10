@@ -1,0 +1,180 @@
+{
+  "qualification": "Actual public article edit/archive, immutable revisions, keyboard focus, current DOM geometry and Luna unknown-tax review",
+  "limits": "No dedicated article frame exists on current Paper page 00. No current pixel diff, reviewed tax decision, article revenue default or production qualification is claimed.",
+  "geometry": [
+    {
+      "name": "Enhet",
+      "header": {
+        "x": 1008,
+        "y": 88,
+        "width": 90,
+        "height": 40
+      },
+      "cell": {
+        "x": 1008,
+        "y": 168,
+        "width": 90,
+        "height": 40
+      }
+    },
+    {
+      "name": "Moms",
+      "header": {
+        "x": 1098,
+        "y": 88,
+        "width": 80,
+        "height": 40
+      },
+      "cell": {
+        "x": 1098,
+        "y": 168,
+        "width": 80,
+        "height": 40
+      }
+    },
+    {
+      "name": "Pris",
+      "header": {
+        "x": 1178,
+        "y": 88,
+        "width": 120,
+        "height": 40
+      },
+      "cell": {
+        "x": 1178,
+        "y": 168,
+        "width": 120,
+        "height": 40
+      }
+    },
+    {
+      "name": "Intäktskonto",
+      "header": {
+        "x": 1298,
+        "y": 88,
+        "width": 110,
+        "height": 40
+      },
+      "cell": {
+        "x": 1298,
+        "y": 168,
+        "width": 110,
+        "height": 40
+      }
+    }
+  ],
+  "revenueColumn": {
+    "configuredLane": 110,
+    "trailingInset": 20,
+    "physicalWidth": 130
+  },
+  "articleA": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "digest": "sha256:80e5a6bed074e3f09076f3d4fa16758a9ba7212f9c0cd24278c93773624472f3",
+    "status": "active",
+    "treatment": {
+      "kind": "unresolved"
+    },
+    "code": "SYNTHETIC-ARTICLE-REVIEW",
+    "revision": 1,
+    "description": "Synthetic article for review",
+    "unit": "st",
+    "unitPriceMinor": "12345",
+    "taxDescription": null
+  },
+  "articleB": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "digest": "sha256:8eba3e9d75e61dc75f5346ad7faa45e18e47a475d08e38b002c4f94c4fc2a079",
+    "status": "active",
+    "treatment": {
+      "kind": "unresolved"
+    },
+    "code": "SYNTHETIC-ARTICLE-INDEPENDENT",
+    "revision": 1,
+    "description": "Synthetic independent article",
+    "unit": "tim",
+    "unitPriceMinor": "6789",
+    "taxDescription": null
+  },
+  "updated": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "digest": "sha256:c094b4462591418d9d435a8f59b7a3eddb4a66f14620845f27aee2b2d76e0898",
+    "status": "active",
+    "treatment": {
+      "kind": "unresolved"
+    },
+    "code": "SYNTHETIC-ARTICLE-REVIEW",
+    "revision": 2,
+    "description": "Synthetic reviewed article",
+    "unit": "tim",
+    "unitPriceMinor": "23456",
+    "taxDescription": null
+  },
+  "archived": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "digest": "sha256:b8921b6b3be0401d5b8b6414a41f16557b048958cc99879a0c820b1fa2882bca",
+    "status": "archived",
+    "treatment": {
+      "kind": "unresolved"
+    },
+    "code": "SYNTHETIC-ARTICLE-REVIEW",
+    "revision": 3,
+    "description": "Synthetic reviewed article",
+    "unit": "tim",
+    "unitPriceMinor": "23456",
+    "taxDescription": null
+  },
+  "beforeLedger": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "beforeInvoices": {
+    "items": [],
+    "next": null
+  },
+  "beforeDrafts": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "complete": true,
+    "count": 0,
+    "continuation": null,
+    "capturedAt": "2026-10-10T22:03:50.407404Z",
+    "digest": "sha256:2d10efab01b1983f9e377989474fffb0372d4731c8bb069ab0cc470e56b72357",
+    "items": []
+  },
+  "beforeSourceRecords": [],
+  "before": "screenshots/001-article-register-stored-values-desktop.png",
+  "afterEdit": "screenshots/002-article-register-updated-values-desktop.png",
+  "narrow": "screenshots/004-article-register-archived-review-400.png"
+}

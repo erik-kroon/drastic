@@ -94,6 +94,7 @@ const kindStyle = {
 
 type ActionProps = {
   kind: ActionKind;
+  ref?: ComponentProps<typeof ButtonPrimitive>["ref"];
   presentation?: "record";
   children: ReactNode;
   onClick?: () => void;
@@ -120,6 +121,7 @@ export function Action(props: ActionProps) {
 
   return (
     <ButtonPrimitive
+      ref={props.ref}
       type={props.type ?? "button"}
       onClick={props.onClick}
       render={props.render}

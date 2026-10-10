@@ -61,6 +61,10 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
   },
+  quoteTitle: { width: kanon.sizeQuoteTitleColumn },
+  amount: { width: kanon.sizeAmountColumn },
+  state: { width: kanon.sizeAmountColumn },
+  stateInset: { paddingInlineStart: kanon.space6 },
   unit: { width: kanon.sizeUnitColumn },
   tax: { width: kanon.sizeTaxColumn },
   price: { width: kanon.sizePriceColumn },
@@ -102,7 +106,16 @@ export function RegisterTable({
   columns: readonly {
     label: string;
     numeric?: boolean;
-    width?: "interval" | "date" | "unit" | "tax" | "price" | "account";
+    width?:
+      | "interval"
+      | "date"
+      | "unit"
+      | "tax"
+      | "price"
+      | "account"
+      | "quoteTitle"
+      | "amount"
+      | "state";
   }[];
   rows: readonly { id: string; cells: readonly ReactNode[] }[];
   selected?: string;
@@ -124,7 +137,12 @@ export function RegisterTable({
               <th
                 key={column.label}
                 scope="col"
-                {...stylex.props(styles.cell, styles.heading, column.numeric && styles.numeric)}
+                {...stylex.props(
+                  styles.cell,
+                  styles.heading,
+                  column.numeric && styles.numeric,
+                  column.width === "state" && styles.stateInset,
+                )}
               >
                 {column.label}
               </th>
@@ -139,7 +157,11 @@ export function RegisterTable({
               {row.cells.map((cell, index) => (
                 <td
                   key={columns[index]?.label ?? String(index)}
-                  {...stylex.props(styles.cell, columns[index]?.numeric && styles.numeric)}
+                  {...stylex.props(
+                    styles.cell,
+                    columns[index]?.numeric && styles.numeric,
+                    columns[index]?.width === "state" && styles.stateInset,
+                  )}
                 >
                   {cell}
                 </td>

@@ -1,0 +1,53 @@
+{
+  "actual": "test-results/commercial-qualified/C-02/actual.png",
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-commercial/verification/paper/capture.mjs C-02",
+  "sourceRevision": "619af79aeb090bbaa9e0eb4d7ce95487e184d40a",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/sales-orders.tsx": "1ee81c1d01d0f43faae1452046f4452152ea2f287ac6123c38c7ba33c7425ce3",
+    "apps/web/src/components/book-workspace.tsx": "810f7cac8f70ed3bf9a78fe17427782086ef92f2865de12bc11252877033878a",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/kanon/form.tsx": "283b45053678c70f2e5bc1da2ff270fc1291ae1233216a2a51dd43bfb93c9d74",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "packages/ui/src/kanon/layouts.tsx": "0555a198d47fb779704db3e6b6daf89de3055107f0a5cd19994a74e93be58da2",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694",
+    "apps/web/src/components/commerce/shared.tsx": "20e2a9e570872f19e4a3e0bea9b99d794a3afa43269fef6c04253afb02788a5e"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=orders",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=orders&record=sales_document_91f6835bd5a347f2a7461ab6e91f66d3",
+    "time": "2026-10-10T22:16:46.377Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "saved quote before source replacement",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "2fc7ea2c7c26a7a244886bd5fef15a318abd27aa49adaf8ef2e47fb87002518c"
+}
