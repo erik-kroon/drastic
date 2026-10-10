@@ -1,3 +1,17 @@
+import {
+  maximumExtractionHeaderFields,
+  maximumExtractionLines,
+  maximumExtractionLineFields,
+  maximumExtractionReviewFields,
+} from "./extraction-limits";
+
+export {
+  maximumExtractionHeaderFields,
+  maximumExtractionLines,
+  maximumExtractionLineFields,
+  maximumExtractionReviewFields,
+} from "./extraction-limits";
+
 import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
@@ -100,7 +114,7 @@ export const ExtractedField = Schema.Struct({
 export const ExtractedLine = Schema.Struct({
   candidateLineId: Accounting.Identifier,
   sourceLocators: Schema.Array(SourceLocator).check(Schema.isMaxLength(8)),
-  fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(16)),
+  fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(maximumExtractionLineFields)),
   // Legacy native rows retain their shape. Document candidates carry sparse fields.
   content: Schema.optional(Drafts.DraftLine),
 });
@@ -117,8 +131,8 @@ export const SupplierExtractionAttempt = Schema.Struct({
   textDigest: Schema.NullOr(Accounting.Digest),
   textByteLength: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: maxSourceBytes })),
   retainedOutputHash: Accounting.Digest,
-  fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(64)),
-  candidateLines: Schema.Array(ExtractedLine).check(Schema.isMaxLength(50)),
+  fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(maximumExtractionHeaderFields)),
+  candidateLines: Schema.Array(ExtractedLine).check(Schema.isMaxLength(maximumExtractionLines)),
   diagnostics: Schema.Array(ExtractionDiagnostic).check(Schema.isMaxLength(64)),
   document: Schema.optional(DocumentReadingEvidence),
   createdAt: Schema.String,
@@ -233,7 +247,9 @@ export const CommitSupplierExtractionReview = Schema.Struct({
   baseContent: Schema.NullOr(SupplierDrafts.SupplierDraftContent),
   reason: Accounting.Description,
   lines: Schema.Array(ExtractionLineDecision).check(Schema.isMaxLength(50)),
-  fields: Schema.Array(ExtractionFieldDecision).check(Schema.isMaxLength(200)),
+  fields: Schema.Array(ExtractionFieldDecision).check(
+    Schema.isMaxLength(maximumExtractionReviewFields),
+  ),
 });
 
 export const SupplierFieldDecisionRecord = Schema.Struct({
@@ -267,7 +283,7 @@ export const SupplierExtractionReviewPreparation = Schema.Struct({
     digest: Schema.NullOr(Accounting.Digest),
     state: Schema.Literals(["absent", "open", "accepted"]),
   }),
-  fields: Schema.Array(MergedField).check(Schema.isMaxLength(400)),
+  fields: Schema.Array(MergedField).check(Schema.isMaxLength(maximumExtractionReviewFields)),
   lines: Schema.Array(MergedLine).check(Schema.isMaxLength(50)),
   discrepancies: Schema.Array(MergeDiscrepancy).check(Schema.isMaxLength(200)),
   // Null exactly when the occurrence has no reviewed draft and therefore no
@@ -288,7 +304,7 @@ export const SupplierExtractionCorrectionCase = Schema.Struct({
   acceptance: Schema.Literals(["accepted"]),
   requiredOwner: Schema.Literal("correction_review"),
   reason: Accounting.Description,
-  fields: Schema.Array(MergedField).check(Schema.isMaxLength(400)),
+  fields: Schema.Array(MergedField).check(Schema.isMaxLength(maximumExtractionReviewFields)),
 });
 
 export const SupplierExtractionReview = Schema.Struct({
@@ -296,7 +312,9 @@ export const SupplierExtractionReview = Schema.Struct({
   outcome: Schema.Literals(["draft_created", "draft_revised", "correction_case"]),
   draft: Schema.NullOr(SupplierDrafts.SupplierInvoiceDraftRevision),
   correctionCase: Schema.NullOr(SupplierExtractionCorrectionCase),
-  fieldDecisions: Schema.Array(SupplierFieldDecisionRecord).check(Schema.isMaxLength(200)),
+  fieldDecisions: Schema.Array(SupplierFieldDecisionRecord).check(
+    Schema.isMaxLength(maximumExtractionReviewFields),
+  ),
 });
 
 export const SupplierExtractionState = Schema.Struct({
@@ -307,7 +325,9 @@ export const SupplierExtractionState = Schema.Struct({
   occurrenceId: Accounting.Identifier,
   requests: Schema.Array(SupplierExtractionRequest).check(Schema.isMaxLength(20)),
   attempt: Schema.NullOr(SupplierExtractionAttempt),
-  fieldDecisions: Schema.Array(SupplierFieldDecisionRecord).check(Schema.isMaxLength(200)),
+  fieldDecisions: Schema.Array(SupplierFieldDecisionRecord).check(
+    Schema.isMaxLength(maximumExtractionReviewFields),
+  ),
 });
 
 export const SupplierExtractionRequestResult = Schema.Struct({

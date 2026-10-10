@@ -40,14 +40,17 @@ export const recordSuggestion = Effect.fn("decisions.recordSuggestion")(function
   subject: Subject,
   ranked: Options,
 ) {
-  const record = {
-    id: newId("suggestion"),
-    subject,
-    actorId: principal.actorId,
-    sessionId: sessionId(principal),
-    optionSetDigest: yield* digest(ranked),
-    ranked,
-  };
+  const record = yield* decode(
+    Contract.SuggestionRecord,
+    yield* toJsonObject({
+      id: newId("suggestion"),
+      subject,
+      actorId: principal.actorId,
+      sessionId: sessionId(principal),
+      optionSetDigest: yield* digest(ranked),
+      ranked,
+    }),
+  );
 
   yield* Db.insertSuggestion(transaction, {
     bookId,
