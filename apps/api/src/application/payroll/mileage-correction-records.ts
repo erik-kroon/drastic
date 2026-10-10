@@ -4,7 +4,7 @@ import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Db from "../../db/payroll/mileage-corrections";
 import type { Transaction } from "../../db/transaction";
 import { decode, requireTableAccess, toJsonObject, type Scope } from "../commerce/support";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { failure } from "../failures";
 import { requireSettlementAccess } from "./settlement-support";
 

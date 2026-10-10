@@ -10,15 +10,13 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import {
   approveChangeInTransaction,
   createEvidenceInTransaction,
-  digest,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareManualJournalInTransaction,
-  replay,
-  saveCommand,
   validateManualJournalPlanInTransaction,
 } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import * as Db from "../db/posting";
 import * as RecoveryDb from "../db/posting-recovery";
 import * as CorrectionDb from "../db/posting-corrections";

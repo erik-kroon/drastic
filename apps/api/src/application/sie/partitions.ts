@@ -12,7 +12,9 @@ import * as Catalogue from "../../db/dimensions";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readPlan, sameBalances } from "./historical-shared";
 import { minorUnits } from "./source-controls";
 

@@ -13,7 +13,7 @@ import { databaseFailure, type Transaction } from "../db/transaction";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
 import { withAdmittedPrincipal } from "./identity";
-import { replay, saveCommand } from "./posting";
+import { replay, saveCommand } from "./command-receipts";
 import { readSourceOccurrenceInTransaction } from "./source-retention";
 import { sealSourcePlanInTransaction } from "./sie/import";
 

@@ -2,7 +2,8 @@ import * as Crm from "@open-erp/contracts/crm-master";
 import * as Effect from "effect/Effect";
 import * as CrmDb from "../../db/commerce/crm-master";
 import { customerDirectoryFinancials } from "./customer-directory";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {

@@ -13,7 +13,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { failure } from "../failures";
 import { readProcessorAccount } from "./processor-fetches";
 

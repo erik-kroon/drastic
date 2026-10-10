@@ -13,7 +13,9 @@ import * as SchedulesDb from "../../db/subledger/schedules";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import { basisMatchesRevision, readOccurrenceStates } from "./schedules";
 
 type Scope = typeof Accounting.Scope.Type;

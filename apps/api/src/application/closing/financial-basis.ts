@@ -6,7 +6,8 @@ import * as Ledger from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, readBook } from "../posting";
+import { digest } from "../json";
+import { readBook } from "../posting";
 import { readBasis } from "./proposals";
 
 function fullYear(

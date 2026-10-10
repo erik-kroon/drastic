@@ -7,7 +7,8 @@ import {
 } from "@open-erp/domain/annual-report";
 import * as Result from "effect/Result";
 import * as Effect from "effect/Effect";
-import { digest, newId } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
 import { artifactBasis, recordCommand, type Command } from "./support";
 
 const concepts = new Map([

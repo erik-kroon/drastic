@@ -1,7 +1,7 @@
 import * as Filing from "@open-erp/contracts/filing-lifecycle";
 import * as Documents from "@open-erp/contracts/document-signatures";
 import * as Effect from "effect/Effect";
-import { newId } from "../posting";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { readEvidenceReference, type Scope } from "../commerce/support";
 import { read, list, recordCommand, type Command } from "./support";

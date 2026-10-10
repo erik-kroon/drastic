@@ -1,3 +1,4 @@
+import * as Match from "effect/Match";
 import { prepareResolution, resolveDirectoryBalances } from "@open-erp/domain/party-identity";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as PartyIdentity from "@open-erp/contracts/party-identity";
@@ -5,7 +6,9 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { readLiveInvoicePage } from "../../db/commerce/invoices";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import * as DirectoryDb from "../../db/commerce/party-identity";
@@ -368,12 +371,11 @@ export const readDirectoryBalances = Effect.fn("directory.balances")(function* (
 
       if (!identity) continue;
 
-      const role =
-        identity.direction === "customer"
-          ? "receivable"
-          : identity.direction === "supplier"
-            ? "payable"
-            : null;
+      const role = Match.value(identity.direction).pipe(
+        Match.when("customer", () => "receivable" as const),
+        Match.when("supplier", () => "payable" as const),
+        Match.orElse(() => null),
+      );
 
       if (role === null) continue;
 

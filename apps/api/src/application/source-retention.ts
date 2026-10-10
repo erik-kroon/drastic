@@ -9,7 +9,9 @@ import {
   sourceDigest,
 } from "../adapters/storage/retained-objects";
 import { failure } from "./failures";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 import * as Retention from "../db/source-retention";
 import * as SupplierInboxDb from "../db/purchases/inbox";

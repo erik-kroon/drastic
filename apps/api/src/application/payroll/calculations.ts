@@ -6,7 +6,9 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { failure } from "../failures";
-import { newId, replay, saveCommand, versionedDigest } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
+import { versionedDigest } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import type { Dates } from "../company-profile-basis";
 import {

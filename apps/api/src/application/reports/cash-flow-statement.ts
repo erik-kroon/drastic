@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
 import { digest as digestNative } from "../json";
-import { isoNow } from "../posting";
+import { isoNow } from "../command-receipts";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import { readTableAccess } from "../../db/commerce/access";
 import * as Db from "../../db/reports/cash-flow-statement";

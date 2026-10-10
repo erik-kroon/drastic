@@ -43,13 +43,11 @@ import {
   readBook,
   readVoucher,
   readPeriod,
-  newId,
-  isoNow,
-  replay,
-  saveCommand,
   sealActionInTransaction,
   approveChangeInTransaction,
 } from "../posting";
+import { newId } from "../identifiers";
+import { isoNow, replay, saveCommand } from "../command-receipts";
 
 const profile = "synthetic-supplier-settlement-accrual-v1";
 

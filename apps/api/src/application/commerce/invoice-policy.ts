@@ -4,7 +4,8 @@ import * as Effect from "effect/Effect";
 
 import * as PolicyDb from "../../db/commerce/invoice-policy";
 import type { Transaction } from "../../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import { decode, requireTableAccess, withBook, type JsonObject, type Scope } from "./support";

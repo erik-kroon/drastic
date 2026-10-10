@@ -10,7 +10,9 @@ import * as Ledger from "../db/posting";
 import * as ProfileDb from "../db/company-profiles";
 import type { Transaction } from "../db/transaction";
 import { decode, requireTableAccess, withBook } from "./commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import { resolveCompanyProfileInTransaction } from "./company-profiles";
 import { failure } from "./failures";
 

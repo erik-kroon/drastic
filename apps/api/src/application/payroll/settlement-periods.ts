@@ -13,7 +13,10 @@ import {
 } from "../commerce/support";
 import { paidItemPopulation } from "./settlement-items";
 import { verifyRunLedger, verifyRecoveryLedger } from "./settlement-ledger";
-import { digest, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
+import { sha256Hex } from "../hashing";
 import { failure } from "../failures";
 import {
   readRetained,

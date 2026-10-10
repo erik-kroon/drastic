@@ -10,13 +10,13 @@ import * as YearEndDb from "../../db/commerce/cash-year-end";
 import { readAccounts } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
+import { digest } from "../json";
 import {
-  digest,
   sealActionInTransaction,
-  newId,
   approveChangeInTransaction,
   executeChangeInTransaction,
 } from "../posting";
+import { newId } from "../identifiers";
 import { recordCashMethodFactInTransaction } from "../vat/cash-method-facts";
 import {
   readCashInvoiceBasisInTransaction,

@@ -20,12 +20,10 @@ import {
   createEvidenceInTransaction,
   prepareJournalInTransaction,
   executeChangeInTransaction,
-  replay,
-  saveCommand,
-  isoNow,
-  newId,
-  digest,
 } from "../posting";
+import { replay, saveCommand, isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { digest } from "../json";
 import {
   readPlan,
   readBasis,

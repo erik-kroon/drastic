@@ -6,15 +6,10 @@ import * as Schedules from "../../db/subledger/schedules";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope, type Principal } from "../commerce/support";
 import { failure } from "../failures";
-import {
-  approveChangeInTransaction,
-  executeChangeInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-} from "../posting";
+import { approveChangeInTransaction, executeChangeInTransaction } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { checkedReview, type ReviewCommand } from "./asset-reviews";
 
 type ExecuteCommand = ReviewCommand & { readonly input: typeof Controls.ExecuteAssetDisposal.Type };

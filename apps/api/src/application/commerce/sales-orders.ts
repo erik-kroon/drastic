@@ -1,7 +1,9 @@
 import * as Sales from "@open-erp/contracts/sales-orders";
 import * as Effect from "effect/Effect";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import { calculateDraft } from "./draft-calculation";
 import { createInvoiceDraftInTransaction } from "./invoice-lifecycle";

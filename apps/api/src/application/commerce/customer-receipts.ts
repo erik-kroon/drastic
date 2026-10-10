@@ -19,12 +19,10 @@ import {
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   sealActionInTransaction,
 } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { digest } from "../json";
 
 // NEXT-30. The application owner of customer unapplied cash, paid credits and

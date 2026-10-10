@@ -22,7 +22,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 
 // NEXT-41. The application owner of late FX valuation and consumed-chain
 // correction.
