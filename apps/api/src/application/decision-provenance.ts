@@ -252,15 +252,15 @@ export const recordDecision = Effect.fn("decisions.recordDecision")(function* (
         ? "independent"
         : comparisons.length !== exposure.records.length
           ? "unknown_exposure"
-          : comparisons.some((item) => item.comparison === "changed")
-            ? "corrected"
-            : comparisons.some(
-                  (item) => item.coverage !== "complete" || item.comparison === "not_comparable",
-                )
-              ? "unknown_exposure"
-              : comparisons.every((item) => item.comparison === "unchanged")
-                ? "accepted_unchanged"
-                : "corrected");
+          : comparisons.some((item) => item.comparison === "not_comparable")
+            ? "unknown_exposure"
+            : comparisons.some((item) => item.comparison === "changed")
+              ? "corrected"
+              : comparisons.some((item) => item.coverage !== "complete")
+                ? "unknown_exposure"
+                : comparisons.every((item) => item.comparison === "unchanged")
+                  ? "accepted_unchanged"
+                  : "corrected");
 
   yield* Db.insertProvenance(transaction, {
     bookId: input.bookId,
