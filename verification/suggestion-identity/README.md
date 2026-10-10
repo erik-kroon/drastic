@@ -2,7 +2,7 @@
 
 The unfixed HTTP workflows independently returned two IDs for sequential reads and three IDs for concurrent reads with identical book, actor, null session, subject digest and option digest. The first run's legacy workflow had a fixture `ReferenceError` and is not defect evidence. The corrected legacy-only run reproduced a new ID despite valid same-session historical candidates. A subsequent canonical-corruption probe returned HTTP 200 for a malformed referenced capture before the winner validation guard; that failure is separately retained.
 
-The application now validates every proposed source variant before identity lookup. New migration `0109-suggestion-identities.sql` adds an append-only identity registry with nullable-session uniqueness, a deferred capture foreign key, and runtime SELECT/INSERT grants. A conflict-safe claim precedes capture insertion; only the winning claimant inserts a capture, and losing claimants read the winner in a fresh statement. Returned canonical captures are decoded and checked against actual record, owner, session, subject and computed digests. Database failures propagate.
+The application now validates every proposed source variant before identity lookup. New migration `0112-suggestion-identities.sql` adds an append-only identity registry with nullable-session uniqueness, a deferred capture foreign key, and runtime SELECT/INSERT grants. A conflict-safe claim precedes capture insertion; only the winning claimant inserts a capture, and losing claimants read the winner in a fresh statement. Returned canonical captures are decoded and checked against actual record, owner, session, subject and computed digests. Database failures propagate.
 
 Legacy adoption checks at most 64 candidates in an indexed exact-identity lookup, ordered by creation time and ID. Malformed or metadata-inconsistent candidates are ineligible. If no eligible candidate is found within that bound, a new validated canonical capture is retained. All original IDs and bodies remain unchanged; this does not qualify or backfill old history. Existing exposure classification is unchanged.
 
@@ -21,3 +21,5 @@ OPENERP_E2E_ARTIFACTS=test-results/suggestion-identity-rollback-final bun run te
 ```
 
 The before commands reproduce failures only at their named pre-fix inventories. Retained directories preserve distinct source hashes, outcomes and synthetic observations. Documentation was added after the runs. Full harness reports and disposable-runtime logs remain under the corresponding `test-results/` paths.
+
+Main integration moved the unpublished registry migration from0109 to0112 after owner OAuth/intake migrations0109–0111. The retained earlier runs used0109; their inventories remain unchanged. Clean integrated qualification is recorded separately.

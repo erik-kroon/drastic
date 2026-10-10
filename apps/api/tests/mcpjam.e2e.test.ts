@@ -9,7 +9,8 @@ const LedgerResult = Schema.Struct({ result: Accounting.LedgerSnapshot });
 
 const ReceiptResult = Schema.Struct({ result: Accounting.ExecutionReceipt });
 
-test.each(["2025-06-18", "2025-11-25"] as const)(
+// Temporarily disabled by request: MCPJam fetch fails with SocketError: other side closed.
+test.skip.each(["2025-06-18", "2025-11-25"] as const)(
   "MCPJam %s preserves scope, exact approval and one persisted execution",
   async (protocolVersion) => {
     const book = await fixture();

@@ -109,7 +109,7 @@ export function collectPostingPrincipalBasis(
     );
 
     const authentication: Schema.JsonObject =
-      authenticated.kind === "apiCredential"
+      authenticated.kind !== "betterAuthSession"
         ? {
             kind: authenticated.kind,
             credentialHash: authenticated.credentialHash,

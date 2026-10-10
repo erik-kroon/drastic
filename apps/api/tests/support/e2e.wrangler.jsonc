@@ -3,5 +3,5 @@
   "main": "../../src/runtime/e2e.ts",
   "compatibility_date": "2026-09-22",
   "compatibility_flags": ["nodejs_compat"],
-  "r2_buckets": [{ "binding": "EVIDENCE_BUCKET", "bucket_name": "openerp-e2e-originals" }]
+  "r2_buckets": [{ "binding": "EVIDENCE_BUCKET", "bucket_name": "openerp-e2e-originals" }],
 }

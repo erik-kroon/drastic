@@ -32,6 +32,9 @@ if (
 
 const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
+  OPENERP_INTAKE_FEED: process.env.OPENERP_INTAKE_FEED,
+  OPENERP_INTAKE_ENDPOINT: process.env.OPENERP_INTAKE_ENDPOINT,
+  OPENERP_INTAKE_SECRET: process.env.OPENERP_INTAKE_SECRET,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,
   DOCUMENT_INSPECTOR: inspectQueuedDocument,
@@ -48,9 +51,17 @@ const bindings: Bindings = {
   }),
 };
 
+const listenPort = Number(process.env.OPENERP_NATIVE_API_PORT ?? "0");
+
+if (
+  !Number.isInteger(listenPort) ||
+  (listenPort !== 0 && (listenPort < 1024 || listenPort > 65535))
+)
+  throw new Error("Native browser API requires an allocated loopback port");
+
 const server = Bun.serve({
   hostname: "127.0.0.1",
-  port: 0,
+  port: listenPort,
   maxRequestBodySize: 8 * 1024 * 1024,
   fetch(request, server) {
     const host = request.headers.get("host");
