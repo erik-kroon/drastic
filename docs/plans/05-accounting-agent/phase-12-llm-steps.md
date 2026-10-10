@@ -53,6 +53,11 @@ Add an LLM only where judgement or language is needed, and keep it only if it me
     - **Replay** that serves the journal and fails on any divergence.
     - **Strict output.** A truncated or timed-out result is a failure, never a finding.
   - Programs that keep proving useful become deterministic checks.
+  - Start with the smallest language that a read program needs. Widen it only when an investigation proves it necessary.
+  - Each ceiling is separate: instructions, elapsed time, memory, host calls, rows scanned, bytes returned and final output size. A small output cap does not stop a large internal query.
+  - The broker derives the book and scope from the run, never from arguments the model supplies.
+  - Hosted and self-hosted code mode are separate security targets that share one behavioural contract. Qualify the self-host process boundary on its own.
+  - Threat-model the combination of private data, attacker-controlled content and an output channel. Read-only does not prevent exfiltration.
   - A baseline arm calls tools one at a time, so the eval can show whether code mode earns its place.
 - A second-opinion step. Before a batch reaches a person, a model from a different family reviews it. Its findings map to K-04 statuses.
 - An eval on the Phase 3 month comparing runs with and without these steps on touches, consequence errors and cost per handled transaction.
