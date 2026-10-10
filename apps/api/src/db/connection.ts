@@ -62,6 +62,7 @@ interface PostgresConfig {
   readonly applicationName: string;
   readonly connectTimeoutMs: number;
   readonly statementTimeoutMs: number;
+  readonly maximumConnections?: number;
 }
 
 export function acquirePostgres(config: PostgresConfig) {
@@ -95,17 +96,20 @@ export function acquirePostgres(config: PostgresConfig) {
 }
 
 export function databaseLayer(config: PostgresConfig) {
+  const options = {
+    url: config.connectionString,
+    types: nativePostgresTypes,
+    applicationName: config.applicationName,
+    connectTimeout: config.connectTimeoutMs,
+    startupParameters: {
+      statement_timeout: String(config.statementTimeoutMs),
+    },
+  };
+
   const clientLayer = PgClient.layerFrom(
-    PgClient.makeClient({
-      url: config.connectionString,
-      types: nativePostgresTypes,
-      acquireForStream: false,
-      applicationName: config.applicationName,
-      connectTimeout: config.connectTimeoutMs,
-      startupParameters: {
-        statement_timeout: String(config.statementTimeoutMs),
-      },
-    }),
+    config.maximumConnections !== undefined && config.maximumConnections > 1
+      ? PgClient.make({ ...options, maxConnections: config.maximumConnections, minConnections: 0 })
+      : PgClient.makeClient({ ...options, acquireForStream: false }),
   );
 
   // Construct per request/CLI invocation: Workers cannot share sockets across requests.

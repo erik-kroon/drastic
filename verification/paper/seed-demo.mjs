@@ -132,8 +132,6 @@ export async function seedDemo(config) {
       "Board-only combined approval/posting, return and reject operations remain unsupported.",
       "Customer invoice is a synthetic register record backed by a posted receivable, not legal issuance.",
       "Complete source coverage, locked result comparison and illustrated actor activity are not fabricated.",
-      "Firm read and write owners support at most 200 clients; 1284 cannot be represented without a behavior change.",
-      "One operator can create at most 100 companies; stress portfolios retain those plus the provisioned synthetic book.",
     ],
     limits: {
       minorDigits: 38,
@@ -144,8 +142,8 @@ export async function seedDemo(config) {
       bankRows: 10000,
       supplierDraftPage: 200,
       attentionPage: 50,
-      createdCompaniesPerActor: 100,
-      firmClients: 200,
+      createdCompaniesPerActor: 2000,
+      firmClients: 2000,
     },
     reviews: [],
     boards: {
@@ -182,11 +180,18 @@ export async function seedDemo(config) {
     if (!login.ok()) throw new Error(`Demo operator sign-in: HTTP ${login.status()}`);
 
     const operator = async (path, body) => {
-      const response = await page.context().request.fetch(`${origin.origin}/api/v1${path}`, {
-        method: body === undefined ? "GET" : "POST",
-        headers: { origin: config.webUrl, "idempotency-key": randomUUID() },
-        data: body,
-      });
+      const response = await page
+        .context()
+        .request.fetch(`${origin.origin}/api/v1${path}`, {
+          method: body === undefined ? "GET" : "POST",
+          headers: { origin: config.webUrl, "idempotency-key": randomUUID() },
+          data: body,
+          timeout: path.endsWith("/portfolio") ? 120000 : 30000,
+        })
+        .catch(() => {
+          // Playwright request errors include session cookies; never publish them.
+          throw new Error(`Demo operator ${path}: request failed`);
+        });
 
       if (!response.ok()) throw new Error(`Demo operator ${path}: HTTP ${response.status()}`);
 
@@ -198,7 +203,7 @@ export async function seedDemo(config) {
     const clients = Match.value(mode).pipe(
       Match.when("one", () => 1),
       Match.when("demo", () => 3),
-      Match.orElse(() => 101),
+      Match.orElse(() => 1284),
     );
 
     const names =
@@ -223,34 +228,21 @@ export async function seedDemo(config) {
       });
     }
 
+    const portfolioReadStarted = performance.now();
     const portfolio = await operator(`/firms/${firm.firmId}/portfolio`);
 
     if (portfolio.workspace.clients.length !== clients)
       throw new Error("Demo portfolio readback differs from retained clients");
-    result.portfolio = { firmId: firm.firmId, retainedClients: clients };
+    result.portfolio = {
+      firmId: firm.firmId,
+      retainedClients: clients,
+      readDurationMs: Math.round(performance.now() - portfolioReadStarted),
+    };
     result.boards["K-09"] = {
       route: `/firms?firm=${firm.firmId}&tab=clients`,
       state: "permitted clients, first selected; incomplete company observations",
+      readyText: `1–${Math.min(15, clients)} av ${clients} klienter`,
     };
-
-    if (mode === "worst" || mode === "many") {
-      const refused = await page.context().request.post(`${origin.origin}/api/v1/companies`, {
-        headers: { origin: config.webUrl, "idempotency-key": randomUUID() },
-        data: { name: "Đặng Thị Ngọc Hân" },
-      });
-
-      const refusal = await refused.json();
-
-      if (refused.ok() || refusal.code !== "InvalidJournal")
-        throw new Error("Expected the existing 100-company creation owner boundary");
-      result.portfolio.limitRefusal = {
-        owner: "company_create",
-        attemptedCreatedCompany: 101,
-        requestedWorstClients: 1284,
-        status: refused.status(),
-        code: refusal.code,
-      };
-    }
 
     async function prepare(invoice, reviewed = true) {
       const bytes = await original(page, invoice);

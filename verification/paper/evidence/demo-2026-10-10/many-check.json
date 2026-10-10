@@ -5,7 +5,7 @@
   "waitingItems": 1003,
   "homeWaitingItems": 2004,
   "retainedBankRows": 1001,
-  "retainedClients": 101,
+  "retainedClients": 1284,
   "applicationClock": "2026-10-02T06:54:00.000Z",
   "checks": [
     "board application instant",
@@ -14,6 +14,9 @@
     "sidebar uses stored attention total",
     "retained bank rows",
     "unchanged ledger",
-    "browser pagination"
+    "browser pagination",
+    "1284-client portfolio",
+    "first, next and last client pages",
+    "client search resets pagination"
   ]
 }
