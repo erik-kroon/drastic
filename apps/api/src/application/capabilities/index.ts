@@ -21,6 +21,7 @@ import { closingCapabilities } from "./closing";
 import { financialCloseCapabilities } from "./financial-close";
 import { collectionsCapabilities } from "./collections";
 import { cashForecastCapabilities } from "./cash-forecast";
+import { bureauObligationsCapabilities } from "./bureau-obligations";
 import { bankingCapabilities } from "./banking";
 import { bankingSyncCapabilities } from "./bank-sync-windows";
 import { bankingSourceRevisionCapabilities } from "./bank-source-revisions";
@@ -67,6 +68,7 @@ export const capabilities = {
   ...collectionsCapabilities,
   ...bankingCapabilities,
   ...cashForecastCapabilities,
+  ...bureauObligationsCapabilities,
   ...bankingSyncCapabilities,
   ...bankingSourceRevisionCapabilities,
   ...prepaymentCapabilities,
