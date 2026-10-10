@@ -1,5 +1,5 @@
 {
-  "actual": "verification/paper/evidence/k10-core-finish/screenshots/001-home-selected-original-after-reload.png",
+  "actual": "verification/paper/evidence/k10-core-finish/actual.png",
   "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/work-home-return.e2e.ts",
   "conditions": {
     "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",

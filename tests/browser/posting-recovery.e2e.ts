@@ -213,6 +213,82 @@ test("saved posting survives a lost execution response and reload with one durab
   await expect(
     screen.getByText("Syntetisk återupptagen kontering", { exact: true }).last(),
   ).toBeVisible();
+
+  await expect(
+    screen
+      .getByRole("region", "Beslut: Syntetisk återupptagen kontering", { exact: true })
+      .getByText("125,00 SEK", { exact: true }),
+  ).toBeVisible();
+
+  const reviewConditions = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    const decision = document.querySelector(
+      "section[aria-label='Beslut: Syntetisk återupptagen kontering']",
+    );
+
+    const header = decision?.querySelector("header");
+    const figure = header?.querySelector("p");
+
+    return {
+      actionHeading: header?.querySelector("h2")?.textContent ?? null,
+      figure: figure?.textContent ?? null,
+      figureSize: figure ? getComputedStyle(figure).fontSize : null,
+      figureWhiteSpace: figure ? getComputedStyle(figure).whiteSpace : null,
+      originalSurfaces: document.querySelectorAll("section[aria-label='Underlag']").length,
+      decisionSurfaces: document.querySelectorAll(
+        "section[aria-label='Beslut: Syntetisk återupptagen kontering']",
+      ).length,
+      browser: navigator.userAgent,
+      deviceScaleFactor: window.devicePixelRatio,
+      fonts: {
+        family: getComputedStyle(document.body).fontFamily,
+        faces: Array.from(document.fonts).map((face) => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })),
+      },
+      locale: navigator.language,
+      theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      time: new Date().toISOString(),
+      clockPinned: false,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      resolvedRoute: `${window.location.pathname}${window.location.search}`,
+    };
+  });
+
+  expect(reviewConditions).toMatchObject({
+    actionHeading: "Syntetisk återupptagen kontering",
+    figure: "125,00 SEK",
+    figureSize: "32px",
+    figureWhiteSpace: "nowrap",
+    originalSurfaces: 1,
+    decisionSurfaces: 1,
+  });
+  await expect(
+    screen
+      .getByRole("region", "Underlag", { exact: true })
+      .getByText("Synthetic 125.00 SEK transfer. No company data or provider action.", {
+        exact: true,
+      }),
+  ).toBeVisible();
+  await expect(screen.getByRole("button", "Godkänn förslag", { exact: true })).toHaveCount(1);
+
+  const standaloneScreenshot = await app.screenshot("standalone-canonical-ready");
+
+  await browser.setViewport({ width: 375, height: 812 });
+  await expect(screen.getByRole("region", "Underlag", { exact: true })).toBeVisible();
+  await expect(
+    screen.getByRole("region", "Beslut: Syntetisk återupptagen kontering", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await browser.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true);
+
+  const narrowStandaloneScreenshot = await app.screenshot("standalone-canonical-narrow");
+
+  await browser.setViewport({ width: 1440, height: 900 });
   await screen
     .getByRole("checkbox", "Jag har granskat detta exakta förslag och dess underlag.")
     .check();
@@ -341,6 +417,9 @@ test("saved posting survives a lost execution response and reload with one durab
         inspectedMetadata,
         unknownConditions,
         unknownScreenshot,
+        reviewConditions,
+        standaloneScreenshot,
+        narrowStandaloneScreenshot,
         prepared,
         committed,
         recovered,

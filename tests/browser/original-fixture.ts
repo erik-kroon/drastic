@@ -1,5 +1,9 @@
-export function twoPageOriginal() {
-  const pages = ["Independent original page one", "Independent original page two"];
+export function twoPageOriginal(
+  pages: readonly [string, string] = [
+    "Independent original page one",
+    "Independent original page two",
+  ],
+) {
   const streams = pages.map((text) => `BT /F1 14 Tf 30 250 Td (${text}) Tj ET`);
 
   const objects = [

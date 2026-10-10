@@ -124,7 +124,6 @@
     },
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_e3db8c6638c34f4bbcd9e035d156e876&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_baf52202a8d74a76976fa0dfc29db623%2F"
   },
-  "selectedScreenshot": "screenshots/001-home-selected-original-after-reload.png",
   "narrow": {
     "width": 375,
     "overflow": false,
@@ -132,9 +131,6 @@
     "panelFits": true,
     "panelBelowRow": true
   },
-  "narrowScreenshot": "screenshots/002-home-selected-original-narrow.png",
-  "returnedScreenshot": "screenshots/004-home-returned-selected-original-focused.png",
-  "handoffScreenshot": "screenshots/005-home-same-root-new-supplier-stage.png",
   "completedStage": {
     "questionRoot": {
       "kind": "document",
@@ -164,7 +160,6 @@
     "state": "completed",
     "reason": "supplier_accepted"
   },
-  "completedScreenshot": "screenshots/007-home-exact-completed-supplier-stage-focused.png",
   "postedStage": {
     "questionRoot": {
       "kind": "document",
@@ -206,6 +201,5 @@
     "currencyScale": 2,
     "state": "completed",
     "reason": "journal_posted"
-  },
-  "postedReturnScreenshot": "screenshots/008-home-returned-exact-posted-stage-focused.png"
+  }
 }

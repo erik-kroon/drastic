@@ -136,7 +136,8 @@
         "apps/web/src/components/posting-recovery/saved-requests.tsx",
         "apps/web/src/components/posting-recovery/copy.ts",
         "packages/ui/src/kanon/feedback.tsx",
-        "packages/ui/src/kanon/action.tsx"
+        "packages/ui/src/kanon/action.tsx",
+        "apps/web/src/components/posting-recovery/review-entry.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
@@ -171,7 +172,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Core retry native GET failure, keyboard inhibition and ledger preservation pass with stable source and cleaned runtime. Supplier Questions uses native h3 and normal receipt/actions use canonical footer; expiry, renewal, wrong digest, mobile acknowledgment and lost-response one receipt pass. Full-frame drift 33.9283% exceeds2%; differing fixture and unpinned clock. Complete states, dark theme and native200% remain unverified; no production qualification."
+      "notes": "Supplier uploaded two-page PDF and readable invoice882 carry exact stored1250000 gross; native posted/stale-source cases pass. Standalone original/decision surfaces, native heading/stored debit total, narrow width and one exact receipt after lost response/reload pass. Existing group/action iteration and final-footer predicate unchanged; public producers currently seal oneaction, so multi-action native proof unavailable. Full-frame27.1391% drift exceeds2%; sample combined approval/post and return/reject actions lack current owner contracts. Dark/native200 and complete-state parity remain unverified. Superseded captures are retained in git history; latest board capture/diff/result and necessary behavior receipts remain."
     },
     {
       "id": "K-70",

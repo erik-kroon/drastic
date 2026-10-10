@@ -56,10 +56,14 @@ for (const changed of [false, true]) {
     };
 
     const filename = changed
-      ? `frozen-original-${randomUUID()}.pdf`
-      : "frozen-original-537acf6c-9e82-42da-96d0-db0dee72e71b.pdf";
+      ? `Vinter & Co AB faktura 883-${randomUUID()}.pdf`
+      : "Vinter & Co AB faktura 882.pdf";
 
-    const bytes = twoPageOriginal();
+    const bytes = twoPageOriginal([
+      `Vinter & Co AB, invoice ${changed ? "883" : "882"}`,
+      "Total SEK 12500.00",
+    ]);
+
     const expectedHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
     const file = join(output, filename);
 
@@ -96,7 +100,7 @@ for (const changed of [false, true]) {
       kind: "synthetic_counterparty_v1",
       externalKey: `frozen_${randomUUID()}`,
       role: "supplier",
-      displayName: "Frozen original supplier",
+      displayName: "Vinter & Co AB",
       evidenceId: entry.id,
       reason: "Local synthetic qualification",
     });
@@ -117,27 +121,27 @@ for (const changed of [false, true]) {
       supplier: identity,
       buyer: identity,
       sourceEvidenceId: entry.id,
-      supplierDocumentNumber: `FROZEN-${changed ? "CHANGED" : "POSTED"}`,
+      supplierDocumentNumber: changed ? "883" : "882",
       currency: "SEK",
       currencyScale: 2,
       documentDate: "2026-10-03",
       supplyDate: "2026-10-03",
       dueDate: "2026-10-14",
       paymentTerms: "Synthetic terms",
-      sourceTotalMinor: "125000",
+      sourceTotalMinor: "1250000",
       lines: [
         {
           id: "line_frozen_source",
           description: "Synthetic gross cost",
           quantity: "1",
-          unitPriceMinor: "125000",
-          baseMinor: "125000",
+          unitPriceMinor: "1250000",
+          baseMinor: "1250000",
           discountMinor: "0",
           chargeMinor: "0",
           taxMinor: "0",
           taxDescription: "Synthetic no tax treatment",
           taxEvidenceId: entry.id,
-          sourceGrossMinor: "125000",
+          sourceGrossMinor: "1250000",
         },
       ],
     } satisfies typeof Drafts.SupplierDraftContent.Type;
@@ -300,27 +304,55 @@ for (const changed of [false, true]) {
     await screen.getByRole("link", "Granska", { exact: true }).focus();
     await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
     await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
-    expect(plan.draftSnapshot.totals.grossMinor).toBe("125000");
+    expect(plan.draftSnapshot.totals.grossMinor).toBe("1250000");
     await expect(
-      screen.getByRole("heading", "1\u00a0250,00 att betala", { exact: true }),
+      screen.getByRole("heading", "12\u00a0500,00 att betala", { exact: true }),
     ).toBeVisible();
     expect(
       await browser.evaluate(() =>
         Array.from(document.querySelectorAll("main section[aria-label='Beslut'] h2"))
-          .filter((heading) => heading.textContent === "1\u00a0250,00 att betala")
+          .filter((heading) => heading.textContent === "12\u00a0500,00 att betala")
           .map((heading) => heading.tagName),
       ),
     ).toEqual(["H2"]);
     await expect(screen.getByRole("region", "Beslut", { exact: true })).toContainText(
-      `Frozen original supplier, faktura ${content.supplierDocumentNumber}`,
+      `Vinter & Co AB, faktura ${content.supplierDocumentNumber}`,
     );
     await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+
+    const originalConditions = await browser.evaluate(async () => {
+      await document.fonts.ready;
+
+      return {
+        browser: navigator.userAgent,
+        deviceScaleFactor: window.devicePixelRatio,
+        fonts: {
+          family: getComputedStyle(document.body).fontFamily,
+          faces: Array.from(document.fonts).map((face) => ({
+            family: face.family,
+            weight: face.weight,
+            status: face.status,
+          })),
+        },
+        locale: navigator.language,
+        theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+        time: new Date().toISOString(),
+        clockPinned: false,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        resolvedRoute: `${window.location.pathname}${window.location.search}`,
+      };
+    });
+
+    const originalScreenshot = await app.screenshot(
+      changed ? "invoice-original-stale" : "invoice-original-ready",
+    );
+
     await expect(screen.getByRole("combobox", "Sida", { exact: true })).toHaveCount(1);
     await screen.getByRole("combobox", "Sida", { exact: true }).click();
     await screen.getByRole("option", "2 av 2", { exact: true }).click();
     await expect(screen.getByRole("img", `${filename}, sida 2`)).toBeVisible();
     await screen.getByText("Sidtext", { exact: true }).click();
-    await expect(screen.getByText("Independent original page two", { exact: true })).toBeVisible();
+    await expect(screen.getByText("Total SEK 12500.00", { exact: true })).toBeVisible();
     await agent.assert(
       "The selected review has one original document pane showing page two beside the proposed accounting decision. Return only the configured JSON judgment. Do not infer any posting.",
       { timeout: 30000 },
@@ -408,6 +440,8 @@ for (const changed of [false, true]) {
           before,
           after,
           screenshot,
+          originalConditions,
+          originalScreenshot,
           nativeL2Screenshot,
           returnContext: { purchasesQuery, workQuery },
           supersededReviewExcluded: changed
