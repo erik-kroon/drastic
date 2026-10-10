@@ -4,22 +4,24 @@ import * as Schema from "effect/Schema";
 import { ApplicationSequence } from "@open-erp/contracts/operations";
 import { refuse } from "./safety";
 
-export const applicationSequenceTables = [
-  "document_governance",
-  "document_governance_reviews",
-  "document_manifests",
-  "document_signature_attempts",
-  "document_signature_evidence",
-  "document_signature_intents",
-  "document_signature_observations",
-  "document_validations",
-  "filing_attempts",
-  "filing_adoption_reviews",
-  "filing_adoptions",
-  "filing_authorizations",
-  "filing_intents",
-  "filing_observations",
-];
+export const applicationSequenceOwners = [
+  { table: "ai_egress_admissions", column: "sequence" },
+  { table: "ai_identity_tokens", column: "ordinal" },
+  { table: "document_governance", column: "ordinal" },
+  { table: "document_governance_reviews", column: "ordinal" },
+  { table: "document_manifests", column: "ordinal" },
+  { table: "document_signature_attempts", column: "ordinal" },
+  { table: "document_signature_evidence", column: "ordinal" },
+  { table: "document_signature_intents", column: "ordinal" },
+  { table: "document_signature_observations", column: "ordinal" },
+  { table: "document_validations", column: "ordinal" },
+  { table: "filing_attempts", column: "ordinal" },
+  { table: "filing_adoption_reviews", column: "ordinal" },
+  { table: "filing_adoptions", column: "ordinal" },
+  { table: "filing_authorizations", column: "ordinal" },
+  { table: "filing_intents", column: "ordinal" },
+  { table: "filing_observations", column: "ordinal" },
+].map((owner) => ({ ...owner, name: `${owner.table}_${owner.column}_seq` }));
 
 export async function readApplicationSequences(client: Client) {
   const sequences = await client.query<{ name: string; table: string; column: string }>(`
@@ -34,14 +36,14 @@ export async function readApplicationSequences(client: Client) {
 
   const relations = await client.query<{ table: string }>(
     "SELECT relname AS table FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='openerp' AND relname=ANY($1::text[]) ORDER BY relname COLLATE \"C\"",
-    [applicationSequenceTables],
+    [applicationSequenceOwners.map((owner) => owner.table)],
   );
 
-  const expected = relations.rows.map((row) => ({
-    name: `${row.table}_ordinal_seq`,
-    table: row.table,
-    column: "ordinal",
-  }));
+  const presentTables = new Set(relations.rows.map((row) => row.table));
+
+  const expected = applicationSequenceOwners
+    .filter((owner) => presentTables.has(owner.table))
+    .sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
 
   const count = await client.query<{ count: string }>(
     "SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='S' AND n.nspname NOT IN ('public','information_schema') AND n.nspname !~ '^pg_'",

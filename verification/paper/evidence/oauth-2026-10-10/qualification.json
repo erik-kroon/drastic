@@ -1,0 +1,30 @@
+{
+  "sourceRevision": "d2d2d4531dc5e4d59f90cd68dbc899eb26601bed",
+  "checks": {
+    "changedFullAgainstOriginMain": "passed",
+    "ownership": "55/55",
+    "browserTypes": "passed",
+    "frozenInstall": "passed"
+  },
+  "api": {
+    "command": "OPENERP_E2E_ARTIFACTS=test-results/finish-current-main bun run test:e2e apps/api/tests/oauth-mcp.e2e.test.ts apps/api/tests/bureau-intake.e2e.test.ts apps/api/tests/bureau-obligations.e2e.test.ts apps/api/tests/mcp-authority.e2e.test.ts",
+    "passed": 17
+  },
+  "browser": {
+    "command": "bun run test:browser tests/browser/oauth-consent.e2e.ts",
+    "run": "d3c6f9e4-9853-4b66-9243-1a0fadeb61cd",
+    "passed": 1,
+    "agentSteps": 0
+  },
+  "mcp": {
+    "command": "bun run test:mcp",
+    "passed": 3
+  },
+  "modelEvaluation": {
+    "command": "bun run test:mcp:eval",
+    "model": "gpt-6-luna",
+    "run": "0fdd7b69-100b-4210-9dc8-bf6cff57d155",
+    "passedSuites": 1
+  },
+  "limits": "Synthetic local application qualification only. No live clients, deployment, real financial data or production approval."
+}

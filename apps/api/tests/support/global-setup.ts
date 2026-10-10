@@ -12,6 +12,7 @@ import { Client } from "pg";
 import { createTestHarness } from "wrangler";
 import type { TestProject } from "vitest/node";
 import { startProcessorFixture } from "./processor-fixture";
+import { startIntakeFixture } from "./intake-fixture";
 import type { E2EEnvironment } from "./environment";
 import { ensureValidator, validatorPython } from "../../../../verification/peppol/validator.mjs";
 
@@ -138,6 +139,7 @@ export default async function setup(project: TestProject) {
   const runtimeUrl = `postgresql://e2e_runtime:${password}@127.0.0.1:${port}/postgres`;
 
   const processorFixture = await startProcessorFixture();
+  const intakeFixture = await startIntakeFixture();
   const documentFixture = await startDocumentFixture();
 
   const peppolFixture = await startPeppolFixture({
@@ -156,6 +158,9 @@ export default async function setup(project: TestProject) {
           OPENERP_PROCESSOR_FEED: "local-fixture",
           OPENERP_PROCESSOR_ENDPOINT: processorFixture.url,
           OPENERP_PROCESSOR_SECRET: processorFixture.secret,
+          OPENERP_INTAKE_FEED: "local-fixture",
+          OPENERP_INTAKE_ENDPOINT: intakeFixture.url,
+          OPENERP_INTAKE_SECRET: intakeFixture.secret,
           OPENERP_DOCUMENT_DELIVERY: "local-fixture",
           OPENERP_DOCUMENT_ENDPOINT: documentFixture.url,
           OPENERP_DOCUMENT_SECRET: documentFixture.secret,
@@ -226,6 +231,7 @@ export default async function setup(project: TestProject) {
           if (started)
             await run(join(pgBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"]);
           await processorFixture.close();
+          await intakeFixture.close();
           await documentFixture.close();
           await peppolFixture.close();
           await rm(scratch, { recursive: true, force: true });
@@ -282,6 +288,8 @@ export default async function setup(project: TestProject) {
 
     const environment: E2EEnvironment = {
       baseUrl: listening.url.origin,
+      intakeFixtureUrl: intakeFixture.url,
+      intakeFixtureSecret: intakeFixture.secret,
       processorFixtureUrl: processorFixture.url,
       processorFixtureSecret: processorFixture.secret,
       documentFixtureUrl: documentFixture.url,

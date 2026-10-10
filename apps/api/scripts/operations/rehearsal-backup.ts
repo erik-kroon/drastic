@@ -1,7 +1,7 @@
 import type { BackupManifest } from "@open-erp/contracts/operations";
 import { verifyBackupManifest } from "@open-erp/domain/rehearsal-verification";
 import { artifactPath, fingerprint, refuse } from "./safety";
-import { applicationSequenceTables } from "./application-sequences";
+import { applicationSequenceOwners } from "./application-sequences";
 import { workInventoryPaths } from "./durable-work";
 import { checked } from "./checkpoint";
 
@@ -27,7 +27,9 @@ export async function verifyActualBackup(
   if (
     manifest.inventory.applicationSequences === undefined &&
     manifest.tables.some(
-      (table) => table.schema === "openerp" && applicationSequenceTables.includes(table.table),
+      (table) =>
+        table.schema === "openerp" &&
+        applicationSequenceOwners.some((owner) => owner.table === table.table),
     )
   )
     refuse("BackupIncomplete: Application identity sequences have no retained state census.");

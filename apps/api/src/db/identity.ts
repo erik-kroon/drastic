@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import { credentials, identityAdmissions, memberships, books } from "./schema";
 import { session } from "./auth-schema";
 import { failure } from "../application/failures";
+import { admitOAuthRead, McpReadResource } from "./oauth-admission";
 import type { Transaction } from "./transaction";
 
 const CredentialRow = Schema.Struct({
@@ -50,6 +51,12 @@ export type AuthorityRequirement = {
 export type AuthorityLockMode = "share" | "update";
 
 export type VerifiedPrincipal =
+  | {
+      readonly actorId: string;
+      readonly kind: "oauthGrant";
+      readonly credentialHash: string;
+      readonly grantId: string;
+    }
   | {
       readonly actorId: string;
       readonly kind: "apiCredential";
@@ -257,6 +264,23 @@ export function admitPrincipal(
     }
 
     const credentialHash = yield* hashToken(access.token);
+
+    if ((yield* McpReadResource) !== null) {
+      if (lockMode !== "share") return yield* failure("Forbidden");
+      const grant = yield* admitOAuthRead(transaction, credentialHash);
+
+      if (grant.bookId !== scope.bookId || grant.entityId !== scope.entityId)
+        return yield* failure("Forbidden");
+
+      return {
+        actorId: grant.actorId,
+        kind: "oauthGrant" as const,
+        credentialHash,
+        grantId: grant.grantId,
+        expiresAt: grant.expiresAt,
+      };
+    }
+
     const credentialRows = yield* lockCredential(transaction, credentialHash);
 
     if (credentialRows[0]) {
@@ -314,6 +338,21 @@ export function recheckPrincipal(
   lockMode: AuthorityLockMode,
 ) {
   return Effect.gen(function* () {
+    if (principal.kind === "oauthGrant") {
+      if (lockMode !== "share") return yield* failure("Forbidden");
+      const grant = yield* admitOAuthRead(transaction, principal.credentialHash);
+
+      if (
+        grant.grantId !== principal.grantId ||
+        grant.actorId !== principal.actorId ||
+        grant.bookId !== scope.bookId ||
+        grant.entityId !== scope.entityId
+      )
+        return yield* failure("Forbidden");
+
+      return { ...principal, expiresAt: grant.expiresAt };
+    }
+
     if (principal.kind === "apiCredential") {
       const rows = yield* lockCredential(transaction, principal.credentialHash);
 

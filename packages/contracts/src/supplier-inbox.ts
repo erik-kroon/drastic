@@ -47,8 +47,18 @@ export const ExtractionAttempt = Schema.Struct({
   retainedOutputHash: Schema.optional(A.Digest),
 });
 
+export const SupplierIntakeProvenance = Schema.Struct({
+  channel: Schema.Literals(["email", "bulk", "drive", "dropbox"]),
+  sourceAccountId: Label,
+  envelopeId: Schema.NullOr(Label),
+  folderId: Schema.NullOr(Label),
+  fileId: Label,
+  revision: Label,
+});
+
 export const SupplierInboxView = Schema.Struct({
   occurrence: Source.OccurrenceSummary,
+  intakeProvenance: Schema.NullOr(SupplierIntakeProvenance),
   channel: RegisterSupplierInbox.fields.channel,
   messageIdentity: Schema.NullOr(Label),
   draftId: Schema.NullOr(A.Identifier),
@@ -89,9 +99,74 @@ export const SupplierInboxCapabilities = {
   },
 };
 
+export const IntakeItem = Schema.Struct({
+  fileId: Label,
+  revision: Label,
+  filename: Label,
+  mediaType: Source.SourceMediaType,
+  contentBase64: Source.RetainSource.fields.contentBase64,
+});
+
+export const IntakeBatch = Schema.Struct({
+  channel: Schema.Literals(["email", "bulk"]),
+  sourceAccountId: Label,
+  destination: Schema.NullOr(Label),
+  envelopeId: Schema.NullOr(Label),
+  items: Schema.Array(IntakeItem).check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+});
+
+export const CloudIntake = Schema.Struct({
+  provider: Schema.Literals(["drive", "dropbox"]),
+  sourceAccountId: Label,
+  folderId: Label,
+  cursor: Schema.NullOr(Label),
+});
+
+export const IntakeItemOutcome = Schema.Struct({
+  fileId: Label,
+  revision: Label,
+  status: Schema.Literals(["retained", "duplicate", "refused", "unknown", "expired"]),
+  occurrenceId: Schema.NullOr(A.Identifier),
+  reason: Schema.NullOr(Schema.String),
+});
+
+export const IntakeBatchResult = Schema.Struct({
+  destination: Label,
+  state: Schema.Literals(["completed", "unknown"]),
+  items: Schema.Array(IntakeItemOutcome),
+  nextCursor: Schema.NullOr(Label),
+});
+
+export const ForwardingDestination = Schema.Struct({ address: Label });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-inbox";
 
 export const SupplierInboxApi = HttpApiGroup.make("supplierInbox")
+  .add(
+    HttpApiEndpoint.get("getIntakeDestination", `${path}/intake-destination`, {
+      params: A.Scope,
+      success: ForwardingDestination,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("acquireIntakeBatch", `${path}/intake-batches`, {
+      params: A.Scope,
+      headers: A.IdempotencyHeaders,
+      payload: IntakeBatch,
+      success: IntakeBatchResult,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("acquireCloudIntake", `${path}/cloud-imports`, {
+      params: A.Scope,
+      headers: A.IdempotencyHeaders,
+      payload: CloudIntake,
+      success: IntakeBatchResult,
+      error: accountingErrors,
+    }),
+  )
   .add(
     HttpApiEndpoint.get("listSupplierInboxes", path, {
       params: A.Scope,

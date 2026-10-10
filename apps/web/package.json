@@ -12,8 +12,10 @@
     "check-types": "vp build && tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/oauth-provider": "1.7.5",
     "@inlang/paraglide-js": "catalog:",
     "@open-erp/contracts": "workspace:*",
+    "@open-erp/domain": "workspace:*",
     "@open-erp/ui": "workspace:*",
     "@stylexjs/stylex": "catalog:",
     "@tanstack/react-form": "^1.33.5",
@@ -26,8 +28,7 @@
     "lucide-react": "catalog:",
     "pdfjs-dist": "6.3.289",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "@open-erp/domain": "workspace:*"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@open-erp/config": "workspace:*",
