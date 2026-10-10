@@ -55,11 +55,11 @@ test("current fenced recovery preserves a PDF-bearing approval without dispatch 
 
   expect(pdf.artifact?.sha256).toBe(attachment.sha256);
 
-  const recoveries = await proveReminderRecovery(context.book.bookId, [7]);
+  const recoveries = await proveReminderRecovery(context.book.bookId, [8]);
 
   const recovery = recoveries[0];
 
-  if (!recovery || recovery.inventory.version !== 7)
+  if (!recovery || recovery.inventory.version !== 8)
     throw new Error("Current recovery proof missing");
 
   expect(recovery.restoredInventory).toEqual(recovery.inventory);
@@ -74,7 +74,7 @@ test("current fenced recovery preserves a PDF-bearing approval without dispatch 
   expect(recovery.fence).toEqual({ allowConnections: false, connectionLimit: 0 });
 
   await writeFile(
-    join(environment().artifacts, "reminder-pdf-v7-fenced-recovery.json"),
+    join(environment().artifacts, "reminder-pdf-v8-fenced-recovery.json"),
     JSON.stringify({ scope: message.scope, message, approved, attachment, recoveries }, null, 2),
   );
 }, 450000);

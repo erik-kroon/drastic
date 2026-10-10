@@ -127,7 +127,10 @@ export async function withWorkspaceBrowser(
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByText(book.bookName, { exact: true }).first().waitFor();
+    await page
+      .getByText(book.bookName ?? "Synthetic E2E book", { exact: true })
+      .first()
+      .waitFor();
 
     const sessions = new Map([[book.actorId, await page.context().cookies()]]);
 

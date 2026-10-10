@@ -51,16 +51,16 @@ test("a fresh representable API runtime produces an authentic absent-0091 V4 bun
     return { message, approved };
   });
 
-  const recoveries = await proveReminderRecovery(context.book.bookId, [7, 4]);
+  const recoveries = await proveReminderRecovery(context.book.bookId, [8, 4]);
 
-  expect(recoveries.map((recovery) => recovery.version)).toEqual([7, 4]);
+  expect(recoveries.map((recovery) => recovery.version)).toEqual([8, 4]);
   expect(approved.refusal).toBeNull();
   expect(approved.cancellation).toBeNull();
 
   for (const recovery of recoveries) {
     const inventory = recovery.inventory;
 
-    if (inventory.version !== 7 && inventory.version !== 4)
+    if (inventory.version !== 8 && inventory.version !== 4)
       throw new Error("Historical reminder inventory missing");
 
     expect(recovery.restoredInventory).toEqual(inventory);
@@ -80,7 +80,7 @@ test("a fresh representable API runtime produces an authentic absent-0091 V4 bun
         .map((row) => row.messageId),
     ).toEqual([message.id]);
 
-    if (inventory.version === 7) {
+    if (inventory.version === 8) {
       expect(inventory.reminderRefusals).toEqual([]);
       expect(inventory.reminderResolutions).toEqual([]);
     } else {

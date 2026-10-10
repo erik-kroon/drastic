@@ -142,7 +142,9 @@ export async function fixture(
   };
 }
 
-export type BookFixture = Awaited<ReturnType<typeof fixture>>;
+export type BookFixture = Omit<Awaited<ReturnType<typeof fixture>>, "bookName"> & {
+  bookName?: string;
+};
 
 const requestMethods = new WeakMap<Response, string>();
 

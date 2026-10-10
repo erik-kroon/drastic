@@ -352,7 +352,7 @@ test.each(["0", "100"])(
   },
 );
 
-test("populated assessment selection and disposition survive genuine V7 dump inspect and fenced restore", async () => {
+test("populated assessment selection and disposition survive genuine V8 dump inspect and fenced restore", async () => {
   const f = await variablePayFixture();
   const assessment = f.assessment.assessment;
 
@@ -367,10 +367,10 @@ test("populated assessment selection and disposition survive genuine V7 dump ins
     V.VariablePayReviewView,
   );
 
-  const recovery = await proveReminderRecovery(f.book.bookId, [7]);
+  const recovery = await proveReminderRecovery(f.book.bookId, [8]);
   expect(recovery).toHaveLength(1);
   await writeFile(
-    join(environment().artifacts, "variable-pay-v7-recovery.json"),
+    join(environment().artifacts, "variable-pay-v8-recovery.json"),
     JSON.stringify({ assessment, result, recovery }, null, 2),
   );
 });
