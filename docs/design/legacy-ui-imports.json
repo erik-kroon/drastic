@@ -509,7 +509,6 @@
     "apps/web/src/components/commerce/supplier-extraction.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/commerce/supplier-focused-review.tsx:@open-erp/ui/components/box",
     "apps/web/src/components/commerce/supplier-focused-review.tsx:@open-erp/ui/components/link",
-    "apps/web/src/components/commerce/supplier-focused-review.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/components/commerce/supplier-focused-review.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/commerce/supplier-focused-review.tsx:@open-erp/ui/components/workflow",
     "apps/web/src/components/commerce/supplier-inbox.tsx:@open-erp/ui/components/box",
@@ -948,7 +947,6 @@
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/button",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/data-grid",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/data-table",
-    "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/record-layout",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/select",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/workflow",
@@ -1235,12 +1233,10 @@
     "apps/web/src/components/work-questions.tsx:@open-erp/ui/components/record-sheet",
     "apps/web/src/components/work-return-action.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/work-supplier-preview.tsx:@open-erp/ui/components/accounting-page",
-    "apps/web/src/components/work-supplier-preview.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/routes/__root.tsx:@open-erp/ui/components/link",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/form-dialog",
-    "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/record-sheet",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/typography",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/workspace",
@@ -1276,7 +1272,5 @@
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/typography"
   ],
-  "infrastructureModules": [
-    "@open-erp/ui/components/workspace"
-  ]
+  "infrastructureModules": ["@open-erp/ui/components/workspace"]
 }

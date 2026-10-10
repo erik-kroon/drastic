@@ -1,0 +1,59 @@
+{
+  "scope": "K-15",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "referenceSha256": "74b29783065706e20e9f2b4a4fc901f5beae32671ef181f3e40220e158322eec",
+  "actualSha256": "f5610d12f7ca544118a4d8774057ff0a8709c9f7e179f4496c5c689c1bf5c0a0",
+  "diffSha256": "18868fe70c9932194dfbbab1e0205923c0a500c3d204cb1494be9eeedd558985",
+  "sourceHashes": {
+    "apps/web/src/components/posting-recovery/work-recovery.tsx": "506a7509d05439fc3b0438b87dfc64d76be7c8e4797e9c6821acf40217c61a8d",
+    "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
+    "apps/web/src/components/posting-recovery/copy.ts": "809aa7f243aabf495e94bc5df77ff46e14b43550ce7217764cb84a33f1f63352",
+    "packages/ui/src/kanon/feedback.tsx": "a549c33aaacfbfe69bd1e500612953d242393bcb5b5f0e8431685aeb3ed09d7f"
+  },
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-15 --output verification/paper/evidence/demo-2026-10-10/K-15",
+  "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-15 verification/paper/evidence/demo-2026-10-10/K-15/capture.json verification/paper/evidence/demo-2026-10-10/K-15",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/work",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/work?kind=journal&status=all",
+    "time": "2026-10-10T12:15:17.694Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "stored unknown preparation, never attempted",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.15804783950617285,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-15/actual.png",
+  "diff": "verification/paper/evidence/demo-2026-10-10/K-15/diff.png",
+  "passed": false
+}

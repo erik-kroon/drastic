@@ -1,0 +1,83 @@
+{
+  "scope": "K-10",
+  "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-10-narrow",
+  "adoptedComparisonEligible": false,
+  "comparatorStatus": null,
+  "difference": null,
+  "parityQualified": false,
+  "limitations": [
+    "Pixel comparison is not behavior/state or production qualification",
+    "Non-default rendering, dimensions or unadopted policy: diagnostic only"
+  ],
+  "grid": [
+    {
+      "row": 0,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 54921,
+      "difference": 0.3813958333333333
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 39840,
+      "difference": 0.27666666666666667
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 37276,
+      "difference": 0.2588611111111111
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 144000,
+      "difference": 1
+    }
+  ],
+  "gridCanvas": {
+    "width": 1440,
+    "height": 900
+  },
+  "sameDimensions": false,
+  "channelTolerance": 16
+}

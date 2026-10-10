@@ -14,3 +14,6 @@
 .agents
 references
 docs
+apps/api/src/runtime/e2e.ts
+apps/api/scripts/native-browser-api.ts
+apps/api/tests

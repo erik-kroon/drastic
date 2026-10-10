@@ -16,6 +16,7 @@ import { noOverzealousDestructuringRule } from "./rules/no-overzealous-destructu
 import { noReflectApplyRule } from "./rules/no-reflect-apply.ts";
 import { noReflectGetRule } from "./rules/no-reflect-get.ts";
 import { noRawHtmlLayoutRule } from "./rules/no-raw-html-layout.ts";
+import { noRouteDataAccessRule } from "./rules/no-route-data-access.ts";
 import { noRuntimeTypeofRule } from "./rules/no-runtime-typeof.ts";
 import { noForbiddenTermInSymbolNamesRule } from "./rules/no-shape-in-symbol-names.ts";
 import { noUnknownParametersRule } from "./rules/no-unknown-parameters.ts";
@@ -48,6 +49,7 @@ const antiSlopPlugin = eslintCompatPlugin({
     "no-reflect-apply": noReflectApplyRule,
     "no-reflect-get": noReflectGetRule,
     "no-raw-html-layout": noRawHtmlLayoutRule,
+    "no-route-data-access": noRouteDataAccessRule,
     "no-runtime-typeof": noRuntimeTypeofRule,
     "no-unsafe-dictionary-type": noUnsafeDictionaryTypeRule,
     "no-shape-in-symbol-names": noForbiddenTermInSymbolNamesRule,

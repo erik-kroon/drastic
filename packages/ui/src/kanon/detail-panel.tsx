@@ -48,7 +48,8 @@ const styles = stylex.create({
     letterSpacing: kanon.trackingFigure,
     lineHeight: kanon.leadingFigure,
     margin: 0,
-    whiteSpace: "nowrap",
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
   },
   subtitle: {
     color: kanon.colorSecondary,

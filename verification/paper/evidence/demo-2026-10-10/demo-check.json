@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "mode": "demo",
+  "passed": true,
+  "waitingItems": 3,
+  "homeWaitingItems": 5,
+  "retainedBankRows": 2,
+  "retainedClients": 3,
+  "applicationClock": "2026-10-02T06:54:00.000Z",
+  "checks": [
+    "board application instant",
+    "all waiting pages",
+    "home waiting total includes bank and overdue sales",
+    "sidebar uses stored attention total",
+    "retained bank rows",
+    "unchanged ledger",
+    "review due-today caption disappears on the next business date",
+    "bank original and acknowledgment gate",
+    "stored unknown without execution"
+  ]
+}

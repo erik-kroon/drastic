@@ -1,0 +1,46 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/worst-K-09/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/worst-K-09",
+  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceHashes": {
+    "apps/web/src/components/firms/portfolio.tsx": "17f0d3857f96ce48b593dcc2ec47518e20aa8cd8468e91c18b066cb8271a26a7",
+    "apps/web/src/components/firms/index.tsx": "72e8c3938196fa67946675e8b407001c4f5f3a2de2fed3d1bd8f4ea45d5c3b2a"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/firms",
+    "resolvedRoute": "/firms?firm=firm_0c0e072dbfff4d98876ebe45964c3bb3&tab=clients",
+    "time": "2026-10-10T13:31:42.393Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "worst",
+      "state": "permitted clients, first selected; incomplete company observations",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "12c0e0394197328a9139277879bf870ea18e3c49fec8292e8c524e79f5bb7fb6"
+}

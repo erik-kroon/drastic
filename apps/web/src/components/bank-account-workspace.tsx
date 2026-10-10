@@ -1,9 +1,9 @@
 import { BankReviewContext } from "@/components/bank-review-context";
 import { useRef, useState } from "react";
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
-import * as Bank from "@open-erp/contracts/bank-workspace";
+import type * as Bank from "@open-erp/contracts/bank-workspace";
 import * as Reconciliation from "@open-erp/contracts/reconciliation";
 import { ArrowLeft, ArrowRight, Landmark } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -39,10 +39,10 @@ import { StatementImports, statementImportsOptions } from "@/components/statemen
 import { BankTransactionMatch } from "@/components/bank-transaction-match";
 import { BankReport } from "@/components/bank-report";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bankWorkspaceOptions } from "@/lib/bank-workspace";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { encodeOwnerReturn } from "@/lib/work-return";
-import { checkScope } from "@/components/commerce/shared";
 
 export type BankSearch = {
   account?: string;
@@ -60,23 +60,7 @@ export type BankSearch = {
   report?: string;
 };
 
-export function bankWorkspaceOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
-  return queryOptions({
-    queryKey: [...bookKey(book), "bank-workspace", query.toString()],
-    queryFn: async ({ signal }) => {
-      const data = await readAccounting(
-        `${bookPath(book)}/bank-workspace?${query}`,
-        Bank.BankWorkspace,
-        { signal },
-      );
-
-      checkScope(book, data.scope);
-
-      return data;
-    },
-    retry: false,
-  });
-}
+export { bankWorkspaceOptions } from "@/lib/bank-workspace";
 
 export function bankWorkspaceParams(setup: typeof Accounting.BookSetup.Type, search: BankSearch) {
   const period =

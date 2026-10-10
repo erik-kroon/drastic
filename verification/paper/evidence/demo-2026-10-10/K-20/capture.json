@@ -1,0 +1,47 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-20/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-20 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-20",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "sourceHashes": {
+    "apps/web/src/components/banking-workspace.tsx": "ac13fc0ae9f3a43348f8a58bcd87fc983d1d2abb78db08603b801c0a56239416",
+    "apps/web/src/components/bank-account-workspace.tsx": "a9406b34d159259fe4b71250fbc9cd6b4b2f9780e0263ae807c96b5cd7049ba9",
+    "apps/web/src/lib/bank-workspace.ts": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/accounts",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-09-01&to=2026-10-03",
+    "time": "2026-10-10T13:47:03.496Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "bank rows",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "ec41d00789117de99d7657f9b09ba1e82bf9b2950beb17f7047db02a7a30b4e9"
+}

@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "passed": true,
+  "viewport": {
+    "width": 390,
+    "height": 900
+  },
+  "checks": [
+    "K-10 primary action is scroll-reachable, unobscured and keyboard-focusable at 390px",
+    "K-11 acknowledgment and approval action are usable without posting",
+    "K-11 primary action is scroll-reachable, unobscured and keyboard-focusable at 390px",
+    "Read-only mobile checks leave posted history unchanged"
+  ],
+  "parityQualified": false
+}

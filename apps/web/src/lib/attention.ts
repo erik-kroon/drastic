@@ -131,6 +131,8 @@ export function attentionStatus(item: typeof Workspace.AttentionItem.Type): Stat
 
   if (expiredSupplierApproval(item) !== null) return "needsYou";
 
+  if (preparedSupplierReview(item)) return "proposal";
+
   if (item.reason === "document_reading_failed") return "unknown";
 
   if (
@@ -156,7 +158,17 @@ export function attentionState(item: typeof Workspace.AttentionItem.Type, locale
     return `${locale === "sv" ? "Gick ut" : "Expired"} ${time}`;
   }
 
+  if (item.state === "open" && preparedSupplierReview(item))
+    return locale === "sv" ? "Förslag" : "Proposal";
+
   return attentionCopy(locale)[item.reason];
+}
+
+function preparedSupplierReview(item: typeof Workspace.AttentionItem.Type) {
+  return (
+    item.supplierReview?.dependenciesCurrent &&
+    item.supplierReview.approvalObservation.state === "prepared"
+  );
 }
 
 const english = {

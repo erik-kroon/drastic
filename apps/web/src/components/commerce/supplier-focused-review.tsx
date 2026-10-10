@@ -3,7 +3,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Action } from "@open-erp/ui/kanon/action";
 import { Link } from "@open-erp/ui/components/link";
-import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
+import { LedgerCard } from "@open-erp/ui/kanon/cards";
+import { CheckRow } from "@open-erp/ui/kanon/feedback";
 import { Text } from "@open-erp/ui/components/typography";
 import { ReviewPanes, ReviewContent, OriginalViewerSurface } from "@open-erp/ui/kanon/layouts";
 import {
@@ -24,6 +25,7 @@ import {
   SupplierAcceptanceResult,
   SupplierReviewedLines,
   useSupplierAcceptanceReview,
+  supplierPostingSummary,
 } from "./supplier-acceptance";
 import { SupplierApprovalExpiry, isSupplierApprovalExpired } from "./supplier-approval-expiry";
 import type { CommerceProps } from "./shared";
@@ -34,6 +36,7 @@ export function SupplierFocusedReview(
   props: CommerceProps & {
     owner: Owner;
     accounts: typeof Accounting.BookSetup.Type.accounts;
+    today: typeof Accounting.BookSetup.Type.today;
     expectedDigest: string;
     returnSearch: string;
   },
@@ -41,6 +44,27 @@ export function SupplierFocusedReview(
   const { book, locale, owner } = props;
   const sv = locale === "sv";
   const copy = accountingCopy(locale);
+
+  const labels = sv
+    ? {
+        original: "Original",
+        decision: "Beslut",
+        kicker: "Leverantörsfaktura, förslag",
+        posting: "Bokförs",
+        matches: "Beloppen stämmer med granskade uppgifter",
+        check: "Kontrollera beloppen mot originalet",
+        dueToday: "Förfaller i dag.",
+      }
+    : {
+        original: "Evidence",
+        decision: "Decision",
+        kicker: "Supplier invoice, proposal",
+        posting: "Posting",
+        matches: "Amounts match reviewed facts",
+        check: "Check amounts against the original",
+        dueToday: "Due today.",
+      };
+
   const query = useSupplierAcceptanceReview(book, owner.draftId, owner.reviewId);
   const view = query.isError ? undefined : query.data;
 
@@ -83,32 +107,18 @@ export function SupplierFocusedReview(
   const snapshot = view.plan.draftSnapshot;
   const ready = query.isFetchedAfterMount && query.fetchStatus === "idle";
 
-  const lines = view.plan.postingPlan.groups.flatMap((group) =>
-    group.actions.flatMap((action) =>
-      action.lines.map((line) => {
-        const account = props.accounts.find((item) => item.id === line.accountId);
-
-        return {
-          id: `${group.id}/${line.lineId}`,
-          description: account ? `${account.code} ${account.name}` : line.description,
-          amount: formatMinorAmount(
-            (BigInt(line.debitMinor) - BigInt(line.creditMinor)).toString(),
-            snapshot.content.currencyScale,
-            locale,
-          ),
-        };
-      }),
-    ),
-  );
+  const amountsMatch =
+    snapshot.totals.sourceTotalMatches === true &&
+    snapshot.calculatedLines.every((line) => line.sourceGrossMatches === true);
 
   return (
     <ReviewPanes
       paneLabels={{
-        original: sv ? "Original" : "Evidence",
-        decision: sv ? "Beslut" : "Decision",
+        original: labels.original,
+        decision: labels.decision,
       }}
       original={
-        <OriginalViewerSurface label={sv ? "Original" : "Evidence"}>
+        <OriginalViewerSurface label={labels.original}>
           <EvidenceInspector
             book={book}
             locale={locale}
@@ -120,16 +130,20 @@ export function SupplierFocusedReview(
         </OriginalViewerSurface>
       }
       decision={
-        <DetailPanelSurface as="section" label={sv ? "Beslut" : "Decision"}>
+        <DetailPanelSurface as="section" label={labels.decision}>
           <DetailPanelHeader
             figureAs="h2"
-            kicker={sv ? "Leverantörsfaktura, förslag" : "Supplier invoice, proposal"}
+            kicker={labels.kicker}
             figure={
               snapshot.totals.grossMinor === null
                 ? "—"
-                : `${formatMinorAmount(snapshot.totals.grossMinor, snapshot.content.currencyScale, locale)} ${sv ? "att betala" : "payable"}`
+                : formatMinorAmount(
+                    snapshot.totals.grossMinor,
+                    snapshot.content.currencyScale,
+                    locale,
+                  )
             }
-            subtitle={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}`}
+            subtitle={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}${snapshot.content.dueDate === props.today ? `. ${labels.dueToday}` : ""}`}
           />
           {isSupplierApprovalExpired(view) ? (
             <SupplierApprovalExpiry
@@ -141,12 +155,15 @@ export function SupplierFocusedReview(
             />
           ) : (
             <>
-              <RegisterDetailLines
-                title={sv ? "Bokförs" : "Posting"}
-                rowSize="review"
-                presentation="focused"
-                lines={lines}
-              />
+              <PanelSection label={labels.posting}>
+                <LedgerCard
+                  signed
+                  lines={supplierPostingSummary(view.plan, props.accounts, locale)}
+                />
+                <CheckRow result={amountsMatch ? "done" : "needsYou"}>
+                  {amountsMatch ? labels.matches : labels.check}
+                </CheckRow>
+              </PanelSection>
               <Box display="grid" gap="sm" paddingBlock="sm">
                 {!view.acceptance
                   ? view.blockers.map((blocker) => (

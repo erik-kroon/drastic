@@ -1,0 +1,60 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-21/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-21 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-21",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "sourceHashes": {
+    "apps/web/src/components/bank-transaction-match.tsx": "6f7af8cc901012ea392a4c888e03fb5451e78a46bd1733ccbd09f04a94f07fda",
+    "apps/web/src/components/bank-match-original.tsx": "ff9bd8716c2d64fda7fde28a16922a1b4fcf354c6ddeba8b914b8c750465a465",
+    "apps/web/src/components/bank-account-workspace.tsx": "a9406b34d159259fe4b71250fbc9cd6b4b2f9780e0263ae807c96b5cd7049ba9",
+    "apps/web/src/lib/bank-workspace.ts": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776",
+    "apps/web/src/components/original-document.tsx": "7d0f3c7466698d859774792a20909751bd00e9a65c53d1028437088c19e09087",
+    "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        },
+        {
+          "family": "g_d0_sf2",
+          "status": "loaded",
+          "weight": "bold"
+        },
+        {
+          "family": "g_d0_sf4",
+          "status": "loaded",
+          "weight": "normal"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/accounts",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_d70534423cac43ad95d834adf63a1e14&row=1",
+    "time": "2026-10-10T13:47:09.473Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "one posted candidate, original available; identity unestablished",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "be7d35df35cea6ec6d937ec1f82b60ab312ca253615ffbaa8b774c1971b42279"
+}

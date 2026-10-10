@@ -1,0 +1,49 @@
+{
+  "synthetic": true,
+  "passed": true,
+  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_7646f89ad05143a9a4c3ccbc53aa6ba8%252F%2522%257D%257D&record=voucher_8a4a52d4ed0b490994bfd4ad7def2ce9&returnSupplier=supplier_invoice_draft_e1b4c1155aeb43cda6c18dc404c0a308&returnSupplierReview=supplier_review_b01f4164a7924faa8d75cebfd1fbea87",
+  "checks": [
+    "original independently checked",
+    "uncropped original",
+    "approval without posting",
+    "one voucher",
+    "balanced 1250000 minor units",
+    "original retained after reload",
+    "separate account-side totals and empty cells",
+    "account table inside record panel gutters",
+    "all seven posted lines remain available",
+    "posted original fits record panel",
+    "Escape returns to supplier owner without ledger writes",
+    "bank original and acknowledgment gate",
+    "bank preparation and approval without allocation",
+    "one exact negative125000 allocation leg",
+    "bank execution retained after reload with zero remaining",
+    "overview at board instant excludes later posted movement and preserves registered invoice coverage",
+    "later bank cutoff includes the retained negative125000 movement",
+    "bureau portfolio retains three permitted clients",
+    "saved unknown remains unattempted",
+    "continuation never changes posted history"
+  ],
+  "geometry": {
+    "page": 720,
+    "viewport": 720,
+    "width": 532.078125,
+    "available": 532
+  },
+  "applicationClock": "2026-10-02T06:54:00.000Z",
+  "continuation": {
+    "bankAllocationId": "bankplan_9152fbe4b31f4f9fbe01392cf23a33be",
+    "bankAmountMinor": "-125000",
+    "retainedClients": 3,
+    "retainedDeadlines": 0,
+    "sameBrowserSession": true,
+    "routeNavigation": "Real route URLs and bank row link; no mocked transport",
+    "parityQualified": false,
+    "limitations": [
+      "Overview is a ledger balance and registered-invoice view, not the board's result/coverage read model.",
+      "Effect application clock is pinned; database and browser timestamps remain real. The bank movement is posted on October 3, after the board's October 2 cutoff.",
+      "No illustrated deadlines, agent activity or complete source coverage are fabricated.",
+      "Unknown is a saved unattempted preparation, not proof of uncertain execution."
+    ]
+  }
+}
