@@ -37,3 +37,5 @@ OPENERP_E2E_ARTIFACTS=test-results/approval-consequences-json-projection bun run
 ```
 
 Clean committed source `2e8aa3d` against pinned main `ff21273` passed full changed checks, owners (55/55) and design contract, with tracked status clean. Three deterministic MCP workflows and the pinned Luna eval test passed. Evidence summaries and source inventories are retained in `verification/approval-consequences/mcp/` and `mcp-eval/`. Zero measured screens is not visual parity. The initial projection lint failure is retained as a failed check; the explicit-field fix passed without suppression. No live provider, statutory mapping or nonempty-dimension qualification is claimed.
+
+The synthetic mapping capture records the hardcoded release selected inside the approval transaction and its content checksum. `applicableAtCutoff` binds that capture to the approval cutoff; it does not independently establish legal validity or historical release activation. No statutory applicability qualification is implied.
