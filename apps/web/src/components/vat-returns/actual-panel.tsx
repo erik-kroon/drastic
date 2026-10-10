@@ -14,7 +14,14 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { CommandForm, Evidence, checkScope } from "@/components/commerce/shared";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { useWorkReturn, workReturnHref } from "@/lib/work-return";
+import {
+  useWorkReturn,
+  workReturnHref,
+  useOwnerReturn,
+  encodeOwnerReturn,
+  encodeWorkReturn,
+} from "@/lib/work-return";
+import { defaultStringifySearch } from "@tanstack/react-router";
 import { formatMinorAmount } from "@/lib/workspace-api";
 
 const families = [
@@ -644,9 +651,27 @@ function PeriodActions() {
   const work = useWorkReturn();
   const sv = locale === "sv";
   const base = workspacePath(book);
+  const owner = useOwnerReturn();
+
+  const context = {
+    work: encodeWorkReturn(work),
+    returnTo: owner ? encodeOwnerReturn(owner) : undefined,
+  };
 
   return (
     <Box display="flex" flexWrap="wrap" gap="md">
+      <PageAction quiet href={`${base}/sales${defaultStringifySearch(context)}`}>
+        {sv ? "Granska kundfakturor och betalningar" : "Review customer invoices and payments"}
+      </PageAction>
+      <PageAction quiet href={`${base}/accounts${defaultStringifySearch(context)}`}>
+        {sv ? "Granska bankavstämning" : "Review bank reconciliation"}
+      </PageAction>
+      <PageAction
+        quiet
+        href={`${base}/closing${defaultStringifySearch({ ...context, record: work?.period })}`}
+      >
+        {sv ? "Granska periodkontroller" : "Review period controls"}
+      </PageAction>
       <PageAction quiet href={workReturnHref(`${base}/purchases`, "documents", work)}>
         {sv ? "Granska original" : "Review originals"}
       </PageAction>

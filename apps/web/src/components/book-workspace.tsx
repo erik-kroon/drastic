@@ -215,11 +215,15 @@ function useWorkspaceLayout(pathname: string, base: string) {
     shouldThrow: false,
   });
 
+  const sales = useMatch({ from: "/entities/$entityId/books/$bookId/sales", shouldThrow: false });
   const tax = useMatch({ from: "/entities/$entityId/books/$bookId/tax", shouldThrow: false });
 
   return {
     contentInset:
-      isHomePath(pathname, base) || digestReview || tax?.search.view === "paid-recovery"
+      isHomePath(pathname, base) ||
+      digestReview ||
+      tax?.search.view === "paid-recovery" ||
+      sales?.search.view === "recurring"
         ? ("none" as const)
         : ("page" as const),
     focused: !digestReview && pathname.startsWith(`${base}/reviews/`),

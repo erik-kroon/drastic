@@ -1251,6 +1251,267 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicit user adoption of P-01 at 2% in this session. No change to financial authority or original posted history."
+    },
+    {
+      "id": "R-01",
+      "name": "R-01 \u00c5terkommande avtal och historik",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44G2-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-01.png",
+      "baselineSha256": "d11986a69c13e3dd176010bb608abf3c2a5c7d1a999f86a430346cb8568684c4",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-01.jsx.json",
+      "jsxSha256": "da19035ce851e6cfa410454306139beef2b2a85d677ade4d5f0b6c82f3c59db0",
+      "files": [
+        "apps/web/src/components/commerce/recurring-register.tsx",
+        "apps/web/src/components/commerce/recurring-detail.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "apps/web/src/components/commerce/shared.tsx",
+        "apps/web/src/components/book-workspace.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "selected agreement and retained cycle history",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
+    },
+    {
+      "id": "R-02",
+      "name": "R-02 Skapa \u00e5terkommande avtal",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44MB-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-02.png",
+      "baselineSha256": "e8607bb0cec3d5172d8884ca5acee19e43502b2ee046d79d27717307a5f2d849",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-02.jsx.json",
+      "jsxSha256": "fddd0781095c7b0ffaea78ba6e4549c01aa27918e0d685cd6f6ae400b0f2f25a",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "apps/web/src/components/commerce/shared.tsx",
+        "apps/web/src/components/book-workspace.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "creation without selected customer",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
+    },
+    {
+      "id": "R-03",
+      "name": "R-03 \u00c4ndra framtida schema",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44RO-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-03.png",
+      "baselineSha256": "1e16e154dc8e6cf65f36f783118d2871db6d25efafc615caf83c42a61c7f065d",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-03.jsx.json",
+      "jsxSha256": "5666d0fcdad499e9de2443595a31a243a527e0a827cf87d90de7337254bd1581",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "apps/web/src/components/commerce/shared.tsx",
+        "apps/web/src/components/book-workspace.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "future schedule with required reason",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
+    },
+    {
+      "id": "R-04",
+      "name": "R-04 \u00c4ndra framtida fakturamall",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44WC-0",
+      "baseline": "verification/paper/baseline/recurring-candidates-2026-10-10/R-04.png",
+      "baselineSha256": "f10172c51d57001962a29ae3e0ea68fb327ad53c01eaa09de9f21b3af56100f0",
+      "jsx": "verification/paper/baseline/recurring-candidates-2026-10-10/R-04.jsx.json",
+      "jsxSha256": "f9a9c66b82c55e272b77f0c06d7eef64f3aafadfa106701466622d88af7a05ff",
+      "files": [
+        "apps/web/src/components/commerce/recurring-agreement-controls.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "apps/web/src/components/commerce/shared.tsx",
+        "apps/web/src/components/book-workspace.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/recurring-agreement-ui.md",
+      "requiredStates": [
+        "future template without selected source",
+        "loading",
+        "error",
+        "keyboard",
+        "changed source",
+        "reload and retry"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "action",
+        "detail-panel"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
+    },
+    {
+      "id": "CLOSEOUT-INVOICE",
+      "name": "Recovered invoice behavior",
+      "files": [
+        "apps/web/src/components/commerce/invoice-issuance.tsx",
+        "apps/web/src/components/commerce/invoice-payment-review.tsx",
+        "apps/web/src/components/commerce/recurring-draft-recovery.tsx",
+        "apps/web/src/components/daily-loop-review-links.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/closeout-existing-screen-exception.md",
+      "requiredStates": [
+        "stored-current-revision",
+        "historical-revision-refused",
+        "expired-approval",
+        "return-to-work"
+      ],
+      "owner": "Erik Kroon",
+      "implementationAuthorization": {
+        "by": "Erik Kroon",
+        "date": "2026-10-10",
+        "scope": "Existing appearance for recovered behavior and navigation only; visual parity unverified",
+        "source": "docs/operations/closeout-existing-screen-exception.md"
+      },
+      "notes": "\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
+    },
+    {
+      "id": "CLOSEOUT-PERIOD-VAT",
+      "name": "Recovered period-vat behavior",
+      "files": [
+        "apps/web/src/components/finance-area.tsx",
+        "apps/web/src/components/vat-returns/actual-panel.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.accounts.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.closing.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.tax.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/tax",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/closeout-existing-screen-exception.md",
+      "requiredStates": [
+        "stored-current-revision",
+        "historical-revision-refused",
+        "expired-approval",
+        "return-to-work"
+      ],
+      "owner": "Erik Kroon",
+      "implementationAuthorization": {
+        "by": "Erik Kroon",
+        "date": "2026-10-10",
+        "scope": "Existing appearance for recovered behavior and navigation only; visual parity unverified",
+        "source": "docs/operations/closeout-existing-screen-exception.md"
+      },
+      "notes": "\nPaid recovery shared controls integrated; this screen needs a refreshed comparison."
     }
   ]
 }

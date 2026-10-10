@@ -190,7 +190,7 @@ const MileageCorrectionWorkspace = lazy(() =>
   })),
 );
 
-const workReturnAreas = new Set(["sales", "purchases", "tax"]);
+const workReturnAreas = new Set(["sales", "purchases", "tax", "closing"]);
 
 const VariablePayWorkspace = lazy(() =>
   import("@/components/payroll/variable-pay-workspace").then((module) => ({
@@ -420,6 +420,7 @@ function OwnedFinanceArea(props: {
   if (area === "closing")
     return (
       <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        <WorkReturnAction work={work} />
         <ClosingWorkspace
           title={copy.closing}
           navigation={
