@@ -1,0 +1,32 @@
+{
+  "syntheticOnly": true,
+  "deadlineMaximumMs": 45000,
+  "currentLeaseMs": 60000,
+  "blockedDatabaseGuarantee": false,
+  "observations": [
+    {
+      "mode": "local-systemone-fixture",
+      "timeoutMs": 45001,
+      "refused": false
+    },
+    {
+      "mode": "local-systemone-fixture",
+      "timeoutMs": 60000,
+      "refused": false
+    },
+    {
+      "mode": "workers-ai-clef",
+      "timeoutMs": 45001,
+      "refused": true
+    },
+    {
+      "mode": "workers-ai-clef",
+      "timeoutMs": 60000,
+      "refused": true
+    }
+  ],
+  "rejectedTransportCalls": 0,
+  "rejectedBindingCalls": 0,
+  "acceptedStatus": "validated",
+  "acceptedTransportCalls": 1
+}

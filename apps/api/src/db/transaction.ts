@@ -3,10 +3,12 @@ import { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import * as SqlError from "effect/sql/SqlError";
 import { failure, logFailure } from "../application/failures";
-import { Database, type DatabaseClient } from "./connection";
+import { Database, databaseLayer, type DatabaseClient } from "./connection";
+import type { Bindings } from "../runtime/environment";
 
 const PostgresFailure = Schema.Struct({
   code: Schema.String,
@@ -83,6 +85,29 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
   }
 
   return failure("Unavailable", error);
+}
+
+export function withRequestDatabase<A, E, R>(
+  bindings: Bindings,
+  effect: Effect.Effect<A, E, R>,
+  maximumConnections = 1,
+) {
+  const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
+
+  if (!connectionString) return Effect.fail(failure("ConfigurationError"));
+
+  return effect.pipe(
+    Effect.provide(
+      databaseLayer({
+        connectionString: Redacted.make(connectionString),
+        applicationName: "open-erp-api",
+        connectTimeoutMs: 5000,
+        statementTimeoutMs: 15000,
+        maximumConnections,
+      }),
+    ),
+    Effect.mapError(databaseFailure),
+  );
 }
 
 export function withTransaction<A, R>(

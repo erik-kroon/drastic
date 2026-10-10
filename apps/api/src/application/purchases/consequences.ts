@@ -19,6 +19,17 @@ type Review = typeof Acceptance.SupplierAcceptanceReview.Type;
 
 type Action = typeof Accounting.VoucherPostingAction.Type;
 
+function exactCapturedRate(
+  recognition: NonNullable<Review["recognition"]>,
+  selected: NonNullable<Review["originalLines"]>[number],
+) {
+  const lines = recognition.lines.filter((line) => line.sourceLineId === selected.lineId);
+
+  return lines.length === 1 && lines[0]!.taxDiscrepancyOutcome === "exact_match"
+    ? selected.treatment.rate
+    : null;
+}
+
 export const sourcePostingBindings = Effect.fn("purchases.consequences.sourceBindings")(function* (
   recognition: NonNullable<Review["recognition"]>,
   action: Action,
@@ -172,7 +183,7 @@ export const captureApprovalConsequences = Effect.fn("purchases.consequences.cap
               (review.profileWitness?.family === "vat"
                 ? review.profileWitness.ruleReleaseChecksum
                 : null),
-            resolvedRate: selected.treatment.rate,
+            resolvedRate: exactCapturedRate(review.recognition, selected),
             deduction: selected.treatment.deduction,
           },
           period: { id: period.id, startsOn: period.startsOn, endsOn: period.endsOn },

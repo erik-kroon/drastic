@@ -19,9 +19,12 @@ stable source inventory. The run also retains migration/source hashes, Worker
 logs and the independent journey artifacts. Expected injected 500s are rollback
 and recovery observations.
 
-Supplier account/VAT hints cover two dimensions of a complete treatment; their
-whole-treatment class stays `unknown_exposure`, with the dimension comparisons
-retained. Empty option lists are recorded but do not count as exposure. Earlier
+Supplier account/VAT hints cover two dimensions of a complete treatment. Equal
+partial hints remain `unknown_exposure`; an observed account or VAT correction
+counts as `corrected` in its separate, nonrepresentative population. If any cited
+comparison is not comparable, the whole-treatment label remains
+`unknown_exposure`, including mixed changed/incomparable citations. Dimension
+comparisons remain retained. Empty option lists are recorded but do not count as exposure. Earlier
 presentations with the same exact subject and option-set digest are covered by a
 valid current citation; differing earlier options remain unknown. API credentials
 have no browser session identity, so their exposure boundary is the actor. No

@@ -40,8 +40,8 @@ export function configuredDecisionModel(
 
   const timeoutMs = Number(config.OPENERP_DECISION_MODEL_TIMEOUT_MS ?? "15000");
 
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000)
-    throw new Error("Decision model deadline must be 1–60000 milliseconds.");
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 45000)
+    throw new Error("Decision model deadline must be 1–45000 milliseconds.");
 
   const requestedModel =
     config.OPENERP_DECISION_MODEL_SELECTOR?.trim() ??
