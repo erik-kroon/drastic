@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
@@ -191,6 +191,11 @@ export function CommandForm<
     onNewCommand?: () => void;
     validate?: (result: O["Type"], input: S["Type"]) => void;
     keys?: Map<string, string>;
+    executeRequest?: (
+      request: { key: string; input: S["Type"] },
+      retain: (request: { key: string; input: S["Type"] }) => void,
+      replay: boolean,
+    ) => Promise<O["Type"]>;
   },
 ) {
   const { book, locale, path, schema } = props;
@@ -204,19 +209,33 @@ export function CommandForm<
   const [cleanupFailed, setCleanupFailed] = useState(false);
   const recovery = useCommerceCommandRecovery({ book, path, id: props.recoveryId, schema });
 
+  const activeRequest = useRef<{ key: string; input: S["Type"] } | null>(null);
+
   const command = useMutation({
     mutationFn: async (request: { key: string; input: S["Type"] }) => {
+      const replay = activeRequest.current !== null || recovery.saved !== null;
       recovery.retain(request);
+      activeRequest.current = request;
 
-      const result = await readAccounting(path, props.output, {
-        method: "POST",
-        body: JSON.stringify(request.input),
-        headers: { "Idempotency-Key": request.key },
-      });
+      const result = props.executeRequest
+        ? await props.executeRequest(
+            request,
+            (next) => {
+              if (activeRequest.current?.key !== next.key) recovery.replaceRefused(request, next);
+              else recovery.retain(next);
+              activeRequest.current = next;
+            },
+            replay,
+          )
+        : await readAccounting(path, props.output, {
+            method: "POST",
+            body: JSON.stringify(request.input),
+            headers: { "Idempotency-Key": request.key },
+          });
 
       if (typeof result === "object" && result !== null && "scope" in result)
         checkScope(book, Schema.decodeUnknownSync(Accounting.Scope)(result.scope));
-      props.validate?.(result, request.input);
+      props.validate?.(result, activeRequest.current.input);
 
       return result;
     },
@@ -224,7 +243,7 @@ export function CommandForm<
       props.onSuccess?.(result);
 
       try {
-        recovery.clear(request.key);
+        recovery.clear(activeRequest.current?.key ?? request.key);
       } catch {
         setCleanupFailed(true);
       }
@@ -234,7 +253,7 @@ export function CommandForm<
     retry: false,
   });
 
-  const captured = command.variables ?? recovery.saved;
+  const captured = activeRequest.current ?? command.variables ?? recovery.saved;
   const restored = command.isIdle && !!recovery.saved;
 
   const canReplace =
@@ -387,6 +406,7 @@ export function CommandForm<
               }
 
               setCleanupFailed(false);
+              activeRequest.current = null;
               command.reset();
               setInvalid(false);
               props.onNewCommand?.();

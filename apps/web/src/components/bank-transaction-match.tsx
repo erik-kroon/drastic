@@ -1,3 +1,4 @@
+import { submitBankWithCitationRefresh } from "@/lib/bank-citation-request";
 import { useRef, useState, type ReactNode } from "react";
 import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
 import { encodeOwnerReturn } from "@/lib/work-return";
@@ -134,6 +135,14 @@ function DiscoverMatch(props: Props & { statementId: string }) {
         data={data}
         candidate={selected}
         current={!matches.isFetching}
+        refreshCandidates={async () => {
+          const fresh = await matches.refetch();
+
+          if (!fresh.data || fresh.error)
+            throw fresh.error ?? new Error("Bank candidates unavailable");
+
+          return fresh.data;
+        }}
         onBack={() => setSelection(null)}
       />
     );
@@ -196,6 +205,14 @@ function DiscoverMatch(props: Props & { statementId: string }) {
               candidate={selected}
               cover={selectedCover}
               current={!matches.isFetching}
+              refreshCandidates={async () => {
+                const fresh = await matches.refetch();
+
+                if (!fresh.data || fresh.error)
+                  throw fresh.error ?? new Error("Bank candidates unavailable");
+
+                return fresh.data;
+              }}
               onBack={() => {
                 setSelection(null);
                 setCoverSelection(null);
@@ -557,6 +574,7 @@ function MatchChoice(
     cover?: (typeof Candidates.BankMatchCandidates.Type)["coverSearch"]["covers"][number];
     current: boolean;
     onBack: () => void;
+    refreshCandidates: () => Promise<typeof Candidates.BankMatchCandidates.Type>;
   },
 ) {
   const { data, candidate, cover, locale } = props;
@@ -653,6 +671,17 @@ function MatchChoice(
       path={`${bookPath(props.book)}/bank-allocation-plans`}
       schema={Settlement.PrepareBankAllocation}
       output={Settlement.BankAllocationPlan}
+      executeRequest={(request, retain, replay) =>
+        submitBankWithCitationRefresh({
+          path: `${bookPath(props.book)}/bank-allocation-plans`,
+          output: Settlement.BankAllocationPlan,
+          request,
+          retain,
+          optionSetDigest: data.optionSetDigest,
+          refreshAllowed: !replay,
+          refresh: props.refreshCandidates,
+        })
+      }
       label={sv ? "Förbered matchning" : "Prepare match"}
       allowed={props.current && data.source.eligible}
       canSubmit={valid && acknowledged && !!reason.trim() && (!candidate || originalAvailable)}

@@ -24,9 +24,10 @@ export function readCitedSuggestion(transaction: Transaction, bookId: string, id
     actorId: string;
     sessionId: string | null;
     subjectDigest: string;
+    subjectIdentity: string;
     body: Schema.JsonObject;
   }>(
-    sql`select actor_id as "actorId",session_id as "sessionId",subject_digest as "subjectDigest",body from openerp.suggestion_records where book_id=${bookId} and id=${id}`,
+    sql`select actor_id as "actorId",session_id as "sessionId",subject_digest as "subjectDigest",subject_identity as "subjectIdentity",body from openerp.suggestion_records where book_id=${bookId} and id=${id}`,
     "objects",
   );
 }

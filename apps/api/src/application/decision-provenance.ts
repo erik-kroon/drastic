@@ -75,6 +75,7 @@ export const citedSuggestions = Effect.fn("decisions.citedSuggestions")(function
   if (ids.length > 32 || new Set(ids).size !== ids.length) return yield* failure("InvalidJournal");
 
   const subjectDigests = yield* Effect.forEach(subjects, (subject) => digest(subject));
+  const subjectIdentities = subjects.map(identity);
 
   const records = [];
 
@@ -85,9 +86,12 @@ export const citedSuggestions = Effect.fn("decisions.citedSuggestions")(function
       !row ||
       row.actorId !== principal.actorId ||
       row.sessionId !== sessionId(principal) ||
-      !subjectDigests.includes(row.subjectDigest)
+      !subjectIdentities.includes(row.subjectIdentity)
     )
       return yield* failure("Forbidden");
+
+    if (!subjectDigests.includes(row.subjectDigest)) return yield* failure("StaleDependency");
+
     const record = yield* decode(Contract.SuggestionRecord, row.body);
 
     if (record.ranked.options.length > 0) records.push(record);

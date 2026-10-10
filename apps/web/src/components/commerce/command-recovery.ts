@@ -53,18 +53,28 @@ export function useCommerceCommandRecovery<
   const enabled = props.id !== undefined;
   const ready = !enabled || (actor.isSuccess && !actor.isFetching && saved.isSuccess);
 
-  function retain(request: { key: string; input: S["Type"] }) {
+  function retain(
+    request: { key: string; input: S["Type"] },
+    refused?: { key: string; input: S["Type"] },
+  ) {
     if (!enabled) return;
 
     if (!ready || !actorId) throw new Error("Command recovery is not ready");
     const existing = sessionStorage.getItem(identity);
 
+    if (refused && existing === null) throw new Error("Refused command recovery identity changed");
+
     if (existing !== null) {
       const original = decode(existing);
 
       if (
-        original.key !== request.key ||
-        JSON.stringify(original.input) !== JSON.stringify(request.input)
+        !(
+          refused &&
+          original.key === refused.key &&
+          JSON.stringify(original.input) === JSON.stringify(refused.input)
+        ) &&
+        (original.key !== request.key ||
+          JSON.stringify(original.input) !== JSON.stringify(request.input))
       )
         throw new Error("A different command is already waiting for recovery");
     }
@@ -99,6 +109,10 @@ export function useCommerceCommandRecovery<
     saved: enabled && saved.isSuccess ? saved.data : null,
     error: enabled ? (actor.error ?? saved.error) : null,
     retain,
+    replaceRefused: (
+      original: { key: string; input: S["Type"] },
+      request: { key: string; input: S["Type"] },
+    ) => retain(request, original),
     clear,
     refresh: () => {
       void actor.refetch();
