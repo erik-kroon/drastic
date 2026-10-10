@@ -18,7 +18,7 @@ Readiness labels:
 - **Design-pending:** UI needs Paper adoption under the page 00 contract.
 - **Gated:** needs a data-use or provider authorization.
 
-The earlier issue blocks are historical scope where the evening owner update supersedes them. No live model is approved. Nothing below claims accuracy,
+The earlier issue blocks are historical scope where the evening owner update supersedes them. No model is production-qualified; only the synthetic provider qualification below is approved. Nothing below claims accuracy,
 time saving or legal clearance.
 
 
@@ -28,7 +28,7 @@ Plans [05](../plans/05-accounting-agent/overview.md) and [06](../plans/06-rule-s
 
 No model reads document text or client free text. Build the engine, inner loop and interpreter from the specifications without copying source. Effect AI stays behind a Drastic port. No billing, metering or managed-plan caps belong in this repository. People start and stop runs; agent tools read plan previews only. Modes remain per question and book in the operator console.
 
-ADR 0019 blocks client delivery. ADR 0020 remains proposed. Bedrock EU hosting and live source fetching remain AUT-00 decisions. AUT-D11 and AUT-D12 are not adopted.
+The owner accepted all four decisions below on 2026-10-10: ADR 0019 for bureau/client, ADR 0020 with amendments, synthetic-only provider qualification and conditional public-source fetching. Client delivery still needs implementation and browser proof; mandate enablement waits for AUT-27. AUT-D11 and AUT-D12 are not adopted.
 
 ## Rules for every issue
 
@@ -84,7 +84,43 @@ AUT-24 ◄─ AUT-12        AUT-25 ◄─ AUT-01        AUT-26 ◄─ AUT-01
 
 ## AUT-00 Decide the automation basis and firm-learning legal footing
 
-Open evening decisions include Claude on Bedrock through an EU geographic inference profile, proposed ADR 0019 client roles, proposed ADR 0020 mandates, and live public-source fetching. Plan approval resolves none of these. AUT-D11 and AUT-D12 await adoption.
+### Owner approvals, 2026-10-10
+
+The owner approved all four as written. These decisions unblock building or qualification; they do not switch on a book policy or authorize real book data.
+
+- [x] Accept [ADR 0019](../adr/0019-client-and-founder-audiences.md) for bureau/client, with typed Phase 9 answer slots, no client free text in model state, and AUT-16 consent through the client role. Founder stays deferred.
+- [x] Accept [ADR 0020](../adr/0020-authorization-basis-presence-and-mandates.md), allowing constant-zero counters, refusing non-advancing non-zero counters, requiring two approvers excluding the preparer, and keeping mandates off by default and limited to supplier acceptance. No book enables mandates before AUT-27 is built.
+
+#### Provider qualification
+
+Qualify Claude on Amazon Bedrock through an EU geographic inference profile as the first LLM provider. Synthetic data only.
+
+Conditions:
+
+- Every call goes through AUT-28.
+- Allowed: tokenised structured data. Never documents or client free text.
+- No fallback to global routing. Record the inference region of every call.
+- Invocation logging stays off unless reviewed.
+
+Real book data needs a separate decision after counsel confirms GDPR roles and the DPA.
+
+Decision models: qualify Clef the same way, either on Workers AI after checking its current data-use terms, or self-hosted.
+
+#### Public legal-source fetching
+
+Approve scheduled fetching of public legal sources: Riksdagen open data, Skatteverket's public guidance and positions, BFN, domstol.se and EUR-Lex.
+
+Conditions:
+
+- The fetcher identifies itself, fetches at most once per second per host, at most daily, and honours each publisher's terms.
+- It credits sources as Riksdagen requires.
+- It stores the raw source with its hash, and records the reuse basis of each source.
+- No paid databases.
+- Fetching runs in the background runner, never in a user request.
+- Tests use fixtures only.
+- Fetched material can only propose rule changes. An operator installs them.
+
+AUT-D11 and AUT-D12 still await adoption. The following legal and governance decisions remain open.
 
 **Readiness:** Decision · **Owner:** founder, with counsel · **Size:** not engineering
 
@@ -107,7 +143,7 @@ Accept or amend ADR 0021, and get the legal answers the firm-learning lanes need
       firm-wide toggles). The proposal is two approvers plus presence for loosening.
       Tightening can be one person. Only the operator console can switch presence off.
 
-Blocks AUT-13, AUT-16 and every real-data run.
+Blocks real-data AUT-13 qualification, AUT-16 legal delivery and every real-data run. Synthetic Clef qualification may proceed under the approved conditions above; Jev remains separately gated.
 
 ## AUT-01 Record decision provenance for every human treatment decision
 
@@ -303,7 +339,7 @@ The AUT-06 vectors, plus these:
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 The original coverage scope remains below.
 
@@ -591,7 +627,7 @@ A separate Python deployable that:
 - reads only the bundle;
 - emits the adapter, its digest and an evaluation report.
 
-EU hosting must be chosen. Dogfood on Drastic AB's own books first, with the owner's
+Bedrock EU is the first synthetic qualification candidate under AUT-00; real-data EU hosting still needs its separate decision. Dogfood on Drastic AB's own books first, with the owner's
 consent.
 
 ## AUT-20 Firm-model release registry, promotion and retirement
@@ -698,7 +734,7 @@ required.
 
 Linear [DRA-256](https://linear.app/drastic-dev/issue/DRA-256/aut-28-enforce-the-ai-egress-boundary). PR #21 is merged into PR #20; live authorization remains open.
 
-**Readiness:** Implementation and synthetic verification tracked in [the AUT-28 record](https://github.com/erik-kroon/drastic/blob/automation/pr19-review-fixes/docs/operations/ai-egress-implementation.md). Live-provider qualification remains gated by AUT-00.
+**Readiness:** Implementation and synthetic verification tracked in [the AUT-28 record](https://github.com/erik-kroon/drastic/blob/automation/pr19-review-fixes/docs/operations/ai-egress-implementation.md). Synthetic Bedrock EU and conditional Clef qualification follow the AUT-00 approval; production use and other providers remain gated.
 
 Every product model call uses one boundary. The boundary loads stored identities under book authority, assigns stable book tokens and retains disclosure admissions before dispatch. Client names, owners, employees and private or unclassified counterparties are masked. Evidence-backed company counterparties keep their names. Sole-trader names are masked, while separately typed industry and tax attributes remain usable.
 
@@ -964,7 +1000,7 @@ AUT-06
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-32 Synthetic bureau month and deterministic baseline
 
@@ -987,7 +1023,7 @@ AUT-06, AUT-33
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-29 Run engine and deterministic playbooks
 
@@ -1040,7 +1076,7 @@ AUT-06, AUT-32
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-29-P4 Run model and architect arena
 
@@ -1066,7 +1102,7 @@ AUT-06, AUT-32
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 Compare candidates A, B and D in an architect arena. Use a judge from a different model family. Retain the verdict in `verification/agent-mode/` for owner review.
 
@@ -1091,7 +1127,7 @@ AUT-29-P4
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-29-P6 Playbook registry and supplier invoices
 
@@ -1114,7 +1150,7 @@ AUT-32, AUT-29-P5
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-29-P7 Att göra read model, pause and hand-over
 
@@ -1137,7 +1173,7 @@ AUT-29-P6
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-31 Completeness and batched questions
 
@@ -1168,7 +1204,7 @@ AUT-06, AUT-33, AUT-32
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-31-P8 Missing-fact model
 
@@ -1191,7 +1227,7 @@ AUT-06, AUT-33, AUT-32
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-31-P9 Batched question with typed answers
 
@@ -1215,9 +1251,9 @@ AUT-31-P8
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Client delivery is blocked by proposed ADR 0019. The ready implementation may address a bureau operator only. Client UI also waits for AUT-D12 adoption.
+ADR 0019 is accepted for bureau/client. Client delivery still requires the implemented role, invitations, scoped authority and browser proof; client UI also waits for AUT-D12 adoption. A bureau-operator path can proceed independently.
 
 ## AUT-29-P10 Deterministic month-close playbook
 
@@ -1239,7 +1275,7 @@ AUT-29-P7, AUT-31-P9
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-34 Decision-model steps evaluated against deterministic close
 
@@ -1262,7 +1298,7 @@ AUT-29-P10, AUT-11, AUT-12, AUT-28
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-35 LLM steps and code-mode investigation
 
@@ -1287,9 +1323,9 @@ AUT-34, AUT-24, AUT-00
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Effect AI is behind a Drastic port. Build our own inner loop and interpreter from the specification without copying source. Bedrock EU is an unapproved AUT-00 candidate. Deterministic technical execution limits remain separate from managed billing or plan caps.
+Effect AI is behind a Drastic port. Build our own inner loop and interpreter from the specification without copying source. Bedrock EU is approved for synthetic-only qualification under AUT-00; real book data remains separately gated. Deterministic technical execution limits remain separate from managed billing or plan caps.
 
 ## AUT-D11 Design the run view
 
@@ -1311,7 +1347,7 @@ None.
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 Readiness is design-pending. These boards are not adopted. No implementation or baseline regeneration is authorized by this issue.
 
@@ -1335,7 +1371,7 @@ None.
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 Readiness is design-pending. These boards are not adopted. No implementation or baseline regeneration is authorized by this issue.
 
@@ -1359,7 +1395,7 @@ AUT-29-P7
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
 ## AUT-30 Fixture-backed rule sources
 
@@ -1397,9 +1433,9 @@ None.
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+Start only while the engine track waits on review. Tests use fixtures; scheduled public-source fetching is approved under the AUT-00 conditions.
 
 ## AUT-30-P1 Point-in-time source corpus
 
@@ -1423,9 +1459,9 @@ None.
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+Start only while the engine track waits on review. Tests use fixtures; scheduled public-source fetching is approved under the AUT-00 conditions.
 
 ## AUT-30-P2 Deterministic rule lookup over HTTP and MCP
 
@@ -1448,9 +1484,9 @@ AUT-30-P1
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+Start only while the engine track waits on review. Tests use fixtures; scheduled public-source fetching is approved under the AUT-00 conditions.
 
 ## AUT-30-P3 Source change monitor and reviewed dossiers
 
@@ -1473,6 +1509,6 @@ AUT-30-P1
 
 ## Delivery
 
-Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+Synthetic data only; fixture providers by default. Synthetic provider qualification and public-source fetching may proceed only under the AUT-00 conditions. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 is accepted with amendments; deterministic playbooks work without mandates, and no book enables mandates before AUT-27 is built.
 
-Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+Start only while the engine track waits on review. Tests use fixtures; scheduled public-source fetching is approved under the AUT-00 conditions.

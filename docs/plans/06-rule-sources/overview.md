@@ -1,6 +1,6 @@
 # 06 Rule sources
 
-Status: plan, 2026-10-10. Not started. The owner decides when implementation begins.
+Status: plan approved by the owner, 2026-10-10. Not started. Conditional live public-source fetching approved on the same date.
 
 ## Context
 
@@ -50,9 +50,21 @@ Excluded:
 2. [Rule lookup](phase-02-lookup.md). M.
 3. [Change monitor and dossiers](phase-03-monitor.md). M.
 
-## Open decisions
+## Owner approval: public-source fetching, 2026-10-10
 
-- **Live fetching of public sources.** It is a new outbound flow, though low risk. Every phase uses fixtures until the owner approves it.
+Approve scheduled fetching of public legal sources: Riksdagen open data, Skatteverket's public guidance and positions, BFN, domstol.se and EUR-Lex.
+
+Conditions:
+
+- The fetcher identifies itself, fetches at most once per second per host, at most daily, and honours each publisher's terms.
+- It credits sources as Riksdagen requires.
+- It stores the raw source with its hash, and records the reuse basis of each source.
+- No paid databases.
+- Fetching runs in the background runner, never in a user request.
+- Tests use fixtures only.
+- Fetched material can only propose rule changes. An operator installs them.
+
+This records authorization to build the flow. No fetching schedule has been enabled by this documentation change.
 
 ## Implementation guidance
 

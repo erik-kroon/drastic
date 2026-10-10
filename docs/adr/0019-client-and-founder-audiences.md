@@ -1,6 +1,6 @@
 # ADR 0019: Client and founder audiences on the shared ledger
 
-Status: proposed, 2026-10-09. Awaiting owner acceptance. It narrows ADR 0006 and sequences work after ADR 0017; it claims no implementation, provider acceptance or commercial readiness.
+Status: accepted for `bureau` and `client`, 2026-10-10. `founder` remains deferred. It narrows ADR 0006 and sequences work after ADR 0017; it claims no implementation, provider acceptance or commercial readiness.
 
 ## Context
 
@@ -23,6 +23,16 @@ Sequence the audiences behind ADR 0017:
 1. Shared foundations that also serve the bureau product: the kanon parts, a dark theme, chart components and the audience profile.
 2. The `client` audience after the document journey is accepted: a client user role, client navigation, a known-obligations read model for Hem, client answers to work questions, and client approvals of payroll, supplier payments and invoice dispatch.
 3. The `founder` audience only after bureau design partners show weekly client use and the owner accepts a standalone plan.
+
+## Owner acceptance, 2026-10-10
+
+Accept steps 1 and 2 for the `bureau` and `client` audiences. Step 3 (`founder`) stays deferred, as written. Amendments:
+
+1. Client answers use the typed answer slots in [plan 05 Phase 9](../plans/05-accounting-agent/phase-09-client-question.md).
+2. Client free text never enters model state.
+3. Firm-learning consent (AUT-16) goes through this client role.
+
+Acceptance unblocks building and qualification. Real client access still requires implemented invitations, scoped authority and the synthetic browser proof below. It does not authorize real-data firm learning.
 
 ## Alternatives considered
 

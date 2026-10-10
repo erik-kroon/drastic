@@ -1,6 +1,6 @@
 # ADR 0020 — Authorization basis, presence proof and standing posting mandates
 
-Status: proposed, 2026-10-10. Awaiting owner acceptance. Implementation is behind a
+Status: accepted with amendments, 2026-10-10. Implementation is behind a
 per-book authority policy that defaults to off; this record claims no production
 qualification, provider integration or adopted UI.
 
@@ -61,10 +61,10 @@ later presence provider and needs its own qualification.
 A mandate is an immutable, human-granted record that pre-authorizes one agent to
 execute a bounded class of supplier-invoice acceptances. It binds book, grantor,
 grantee, accepted profiles, named counterparty revisions, currency, per-event gross
-limit, aggregate gross limit, maximum event count and validity interval. It is
-granted by an operator with an interactive session and presence proof (when
-enforced), is revocable by any operator, and never authorizes payment, signature or
-filing.
+limit, aggregate gross limit, maximum event count and validity interval. It requires
+two approving operators distinct from the preparer, with interactive sessions and
+presence proof (when enforced). Any operator may revoke it. It never authorizes
+payment, signature or filing.
 
 Execution under a mandate is one transaction: lock the mandate, check revocation,
 validity, grantee identity, the grantor's current operator authority, the sealed
@@ -74,9 +74,20 @@ ordinary acceptance execution, and append the consumption. Anything out of bound
 refused and stays in exact-plan human review. A mandate is never inferred from rules
 or repeated approvals (ADR 0017).
 
-The same per-book policy enables grant and execution; the default refuses. Grant,
+The same per-book policy enables grant and execution; the default refuses. No book
+may enable it until AUT-27 implements and verifies the two-approver gate. Grant,
 revocation, reads and execution are HTTP operations. Execution is not yet in the MCP
 catalog; adding it requires its own MCP evaluation.
+
+## Owner acceptance, 2026-10-10
+
+Accept the gesture table, presence proof and bounded supplier-acceptance mandates, with these amendments:
+
+1. A non-advancing non-zero counter is a risk signal and is refused; constant-zero authenticators are valid.
+2. Granting a mandate requires two approvers, and the preparer never counts (AUT-27, page 00 M-01). No book may enable mandates until that is built.
+3. Mandates stay limited to supplier acceptance, cannot pay, sign or file, and stay off by default.
+
+The existing single-approver grant implementation is not sufficient for enablement. AUT-27 must retain separate preparation and two distinct approvers bound to the same immutable terms, and prove the required refusals before any book can enable mandates. Acceptance changes no per-book policy and claims no production qualification.
 
 ## Failure cases (written before implementation)
 
