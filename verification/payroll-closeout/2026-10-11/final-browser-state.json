@@ -1,0 +1,2357 @@
+{
+  "before": {
+    "assessment": {
+      "id": "paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+      "comparisonId": "payroll_comparison_01f823b36db847a49d92532ae805a6e8",
+      "comparisonDigest": "sha256:de68ec0ed27a4fafb0222f58bdd0c429f33ba4bd6c9cd39bd229b7c75ab32bde",
+      "paidEventId": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "paidEventDigest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "employee": {
+        "id": "synthetic_employee_0",
+        "name": "Sara Lind"
+      },
+      "original": {
+        "runId": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+        "voucherId": "voucher_5e8ba2d45297461fbab8eb9280201e2d",
+        "reportingPeriod": "2026-09",
+        "paidOn": "2026-09-30",
+        "grossMinor": "3600000",
+        "payableMinor": "2700000"
+      },
+      "targetMinor": "60000",
+      "contributionDeltaMinor": "-18852",
+      "capacity": {
+        "calculationId": "paycalc_cd2192c4a8a84825a2ed2aabb304f901",
+        "digest": "sha256:bcd2f6a3f9bfd7dc578dc2b5ae94a3d1009963074208cd8be6fa09e81aa1de7b",
+        "month": "2026-10",
+        "availableNetMinor": "45000",
+        "paymentOn": "2026-10-31",
+        "context": "Independent synthetic G3000000 H900000 D10000 C300000"
+      },
+      "shortfallMinor": "15000",
+      "blockers": [
+        "missing_lawful_basis",
+        "insufficient_net_capacity"
+      ],
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:52bff99a5dd65df2ca8e027f02a4b00ff96fb51eb7ff11d637f05fe86fbb2a79",
+      "createdAt": "2026-10-10T22:36:58.433Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "0ae83d73-0979-4010-b89e-c72a667fe993",
+        "operation": "payroll_prepare_paid_recovery",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "originalPaidEvent": {
+      "id": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "runId": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+      "employeeId": "synthetic_employee_0",
+      "paidOn": "2026-09-30",
+      "paidMinor": "2700000",
+      "evidenceId": "evidence_18aa9f004cda42ef9f1d52c6a8e67560",
+      "reportingPeriod": "2026-09",
+      "grossCashMinor": "3600000",
+      "withholdingMinor": "900000",
+      "contributionBaseMinor": "3600000",
+      "employerContributionMinor": "1131120",
+      "specificationNumber": "spec_fbc30fda47e957ac0571c8c047fdf1e2",
+      "originalRun": {
+        "id": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+        "scope": {
+          "entityId": "entity_8024a05148224dbe",
+          "bookId": "book_8024a05148224dbe"
+        },
+        "digest": "sha256:721d8bae6c4be0f09701703cd05cdcea7024091d76eef4aa13338b18b643b005",
+        "input": {
+          "calculationIds": [
+            "paycalc_ceda21e6762e4011a8fc05ef6e868000"
+          ],
+          "accountingPeriodId": "period_2026",
+          "postingDate": "2026-09-30",
+          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "series": "L",
+          "roles": {
+            "salaryExpenseAccountId": "salary_expense",
+            "reimbursementExpenseAccountId": "reimbursement_expense",
+            "netPayLiabilityAccountId": "salary_liability",
+            "withholdingLiabilityAccountId": "withholding_liability",
+            "employerContributionExpenseAccountId": "contribution_expense",
+            "employerContributionLiabilityAccountId": "contribution_liability",
+            "deductions": [
+              {
+                "roleKind": "owner",
+                "accountId": "deduction_destination"
+              }
+            ],
+            "accruals": []
+          },
+          "reason": "Synthetic payroll run accrual"
+        },
+        "employees": [
+          {
+            "calculation": {
+              "id": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+              "scope": {
+                "entityId": "entity_8024a05148224dbe",
+                "bookId": "book_8024a05148224dbe"
+              },
+              "employeeId": "synthetic_employee_0",
+              "changeSetId": "payplan_6d947138536545f284c63d01822763d1",
+              "planDigest": "sha256:8bf90d0eb8b4169f02478897323090cf6e273d743edd0cc6dea3b827b7032b50",
+              "basis": {
+                "adjustmentInstructions": [],
+                "payrollInputs": [],
+                "employeeId": "synthetic_employee_0",
+                "employmentRevisionId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                "openingBaseMinor": "0",
+                "openingObligationReference": "synthetic_contribution",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "currency": "SEK",
+                "currencyScale": 2,
+                "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+                "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "ruleReleaseVersion": 1,
+                "companyActivationId": null,
+                "familyMembershipEpoch": null,
+                "factRevisionIds": [
+                  "fact_287055035d1745a2bd4c520e056bf430"
+                ],
+                "factReviewIds": [
+                  "fact_287055035d1745a2bd4c520e056bf430"
+                ],
+                "roleBindingIds": [],
+                "evidenceIds": [
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a"
+                ],
+                "calculatorVersion": "payroll-regular-v1",
+                "sourceCoverage": "complete",
+                "reviewedInput": {
+                  "recordClass": "synthetic",
+                  "employment": {
+                    "employeeId": "synthetic_employee_0",
+                    "effectiveRevision": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                    "monthlyCashSalary": "3600000",
+                    "workPattern": "monthly_salaried",
+                    "withholding": {
+                      "ruleId": "synthetic_withholding",
+                      "tableColumn": null,
+                      "taxStatus": "synthetic",
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    },
+                    "grossAdjustments": [],
+                    "reimbursements": [],
+                    "benefitComponents": [],
+                    "deductionComponents": [
+                      {
+                        "componentId": "synthetic_deduction",
+                        "minor": "0",
+                        "description": "Synthetic post-tax deduction",
+                        "destinationRole": "owner",
+                        "reducesBenefit": null
+                      }
+                    ],
+                    "holidayPolicy": {
+                      "state": "evidenced_not_applicable",
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    },
+                    "pensionAndOtherObligations": [
+                      {
+                        "state": "applicable",
+                        "selection": {
+                          "profileId": "synthetic_contribution",
+                          "obligationReference": "synthetic_contribution",
+                          "statusClass": "synthetic",
+                          "ageOnPaymentOn": 30,
+                          "evidence": [
+                            {
+                              "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                              "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "work": {
+                    "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                    "earningsPeriod": {
+                      "startsOn": "2026-09-01",
+                      "endsOn": "2026-09-30"
+                    },
+                    "expectedPaymentOn": "2026-09-30",
+                    "absence": [],
+                    "adjustments": [],
+                    "reimbursements": [],
+                    "evidence": [
+                      {
+                        "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                        "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                      }
+                    ]
+                  },
+                  "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+                }
+              },
+              "calculation": {
+                "owner": "payroll_calculation",
+                "calculatorVersion": "payroll-regular-v1",
+                "employeeId": "synthetic_employee_0",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "currency": "SEK",
+                "currencyScale": 2,
+                "grossMinor": "3600000",
+                "cashReimbursementMinor": "0",
+                "withholdingBaseMinor": "3600000",
+                "withholdingMinor": "900000",
+                "netDeductionMinor": "0",
+                "contributionBaseMinor": "3600000",
+                "employerContributionMinor": "1131120",
+                "payableMinor": "2700000",
+                "priorContributionBaseMinor": "0",
+                "benefitBases": [],
+                "extraAccruals": [],
+                "formulaRows": [
+                  {
+                    "step": "gross",
+                    "statement": "Monthly cash salary after qualified gross adjustments",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "reimbursement",
+                    "statement": "Supported non-taxable cash reimbursements",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "net_deduction",
+                    "statement": "Post-tax net deductions with a reviewed destination",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "withholding_base",
+                    "statement": "Gross cash earnings plus taxable benefit bases",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "withholding",
+                    "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+                    "numerator": "900000",
+                    "denominator": "1",
+                    "roundedMinor": "900000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "contribution_base",
+                    "statement": "Gross cash earnings plus contribution benefit bases",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "employer_contribution",
+                    "statement": "Rounded F(3600000) minus rounded F(0) over synthetic_contribution",
+                    "numerator": "1131120",
+                    "denominator": "1",
+                    "roundedMinor": "1131120",
+                    "residualNumerator": "0",
+                    "roundedBeforeMinor": "0",
+                    "roundedAfterMinor": "1131120"
+                  }
+                ],
+                "roundingResiduals": [
+                  {
+                    "step": "no_residual",
+                    "statement": "No component rounding residual was produced",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  }
+                ]
+              },
+              "inputRefs": [
+                {
+                  "kind": "employment_revision",
+                  "resourceId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                  "version": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                  "reason": "Exact current employment revision this calculation binds to"
+                },
+                {
+                  "kind": "work_revision",
+                  "resourceId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                  "version": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                  "reason": "Exact current work revision this calculation binds to"
+                },
+                {
+                  "kind": "opening_revision",
+                  "resourceId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                  "version": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                  "reason": "Exact retained opening balance supplying the prior monthly base"
+                },
+                {
+                  "kind": "rule_release",
+                  "resourceId": "paid_recovery_synthetic_qr_v1",
+                  "version": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "reason": "Reviewed payroll rule release for calculator payroll-regular-v1"
+                },
+                {
+                  "kind": "company_fact_revision",
+                  "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+                  "version": "fact_287055035d1745a2bd4c520e056bf430",
+                  "reason": "Exact reviewed company fact revision"
+                },
+                {
+                  "kind": "company_fact_review",
+                  "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+                  "version": "fact_287055035d1745a2bd4c520e056bf430",
+                  "reason": "Independent review of that fact revision"
+                },
+                {
+                  "kind": "evidence",
+                  "resourceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "version": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "reason": "Retained evidence backing a reviewed calculation input"
+                }
+              ],
+              "noFinancialEffect": true,
+              "createdBy": "operator_8024a05148224dbe",
+              "createdAt": "2026-10-11 00:36:57.520333+02",
+              "receipt": {
+                "key": "4901ff62-2fb3-41b1-b3fd-ca6480793f36",
+                "operation": "prepare_payroll_calculation",
+                "actorId": "operator_8024a05148224dbe"
+              }
+            },
+            "personRef": "Sara Lind"
+          }
+        ],
+        "employeeObligations": [
+          {
+            "employeeId": "synthetic_employee_0",
+            "calculationId": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+            "payableMinor": "2700000",
+            "grossMinor": "3600000",
+            "withholdingMinor": "900000",
+            "netDeductionMinor": "0",
+            "employerContributionMinor": "1131120",
+            "contributionBaseMinor": "3600000"
+          }
+        ],
+        "postingPlan": {
+          "schemaVersion": "1",
+          "canonicalization": "openerp-c14n-v1",
+          "id": "change_b1408117b7a74e28849268c4d688d48e",
+          "version": 1,
+          "scope": {
+            "entityId": "entity_8024a05148224dbe",
+            "bookId": "book_8024a05148224dbe"
+          },
+          "createdAt": "2026-10-10T22:36:57.780Z",
+          "dependencies": [
+            {
+              "kind": "profile",
+              "resourceId": "book_8024a05148224dbe",
+              "version": "1",
+              "reason": "Book currency and supported profile"
+            },
+            {
+              "kind": "writer_epoch",
+              "resourceId": "book_8024a05148224dbe",
+              "version": "1",
+              "reason": "Single authoritative writer"
+            },
+            {
+              "kind": "period",
+              "resourceId": "period_2026",
+              "version": "1",
+              "reason": "Posting dates and lock state"
+            },
+            {
+              "kind": "account",
+              "resourceId": "contribution_expense",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "contribution_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "salary_expense",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "salary_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "withholding_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            }
+          ],
+          "groups": [
+            {
+              "id": "group_f4392623972047a5a6f1f4366c68c333",
+              "dependsOnGroupIds": [],
+              "actions": [
+                {
+                  "kind": "post_voucher",
+                  "correctsVoucherId": null,
+                  "eventId": "event_bfc3b805c1464725b0b899009f06076b",
+                  "postingPurpose": "adjustment",
+                  "occurrenceKey": "manual_journal",
+                  "fiscalYearId": "fy_2026",
+                  "accountingPeriodId": "period_2026",
+                  "postingDate": "2026-09-30",
+                  "series": "L",
+                  "currency": "SEK",
+                  "description": "Regular payroll accrual",
+                  "rationale": "Synthetic payroll run accrual",
+                  "taxAssessment": "not_applicable",
+                  "lines": [
+                    {
+                      "accountId": "salary_expense",
+                      "debitMinor": "3600000",
+                      "creditMinor": "0",
+                      "description": "Salary expense synthetic_employee_0",
+                      "lineId": "line_8ed5d7208e1f438ea9f16b55b6e3c111",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "salary_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "2700000",
+                      "description": "Net pay liability synthetic_employee_0",
+                      "lineId": "line_57b587b412504ca091f02ac9b23c2ad4",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "withholding_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "900000",
+                      "description": "Withholding synthetic_employee_0",
+                      "lineId": "line_e5dce6a4da9241ff976960b7797d2648",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "contribution_expense",
+                      "debitMinor": "1131120",
+                      "creditMinor": "0",
+                      "description": "Employer contribution synthetic_employee_0",
+                      "lineId": "line_5b7b31a7b1bc4649b36ad7e4edcb1590",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "contribution_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "1131120",
+                      "description": "Contribution liability synthetic_employee_0",
+                      "lineId": "line_94023a4651eb4e5796079629be0957a3",
+                      "originalDimensions": []
+                    }
+                  ],
+                  "evidenceRefs": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+                      "locator": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "planDigest": "sha256:faeedda74433a0d17495d61364cba4003c92741f28bd80f20c972a97d291ec0c"
+        },
+        "state": "prepared",
+        "createdBy": "operator_8024a05148224dbe",
+        "createdAt": "2026-10-10T22:36:57.782Z",
+        "receipt": {
+          "key": "ce5ed61b-9bd8-4c86-a6e1-5a0bb88d8b66",
+          "operation": "prepare_payroll_run",
+          "actorId": "operator_8024a05148224dbe"
+        }
+      },
+      "originalEmployee": {
+        "calculation": {
+          "id": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+          "scope": {
+            "entityId": "entity_8024a05148224dbe",
+            "bookId": "book_8024a05148224dbe"
+          },
+          "employeeId": "synthetic_employee_0",
+          "changeSetId": "payplan_6d947138536545f284c63d01822763d1",
+          "planDigest": "sha256:8bf90d0eb8b4169f02478897323090cf6e273d743edd0cc6dea3b827b7032b50",
+          "basis": {
+            "adjustmentInstructions": [],
+            "payrollInputs": [],
+            "employeeId": "synthetic_employee_0",
+            "employmentRevisionId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+            "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+            "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+            "openingBaseMinor": "0",
+            "openingObligationReference": "synthetic_contribution",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+            "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ruleReleaseVersion": 1,
+            "companyActivationId": null,
+            "familyMembershipEpoch": null,
+            "factRevisionIds": [
+              "fact_287055035d1745a2bd4c520e056bf430"
+            ],
+            "factReviewIds": [
+              "fact_287055035d1745a2bd4c520e056bf430"
+            ],
+            "roleBindingIds": [],
+            "evidenceIds": [
+              "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "evidence_9f84947fa4a14ca389c355bf94bf460a"
+            ],
+            "calculatorVersion": "payroll-regular-v1",
+            "sourceCoverage": "complete",
+            "reviewedInput": {
+              "recordClass": "synthetic",
+              "employment": {
+                "employeeId": "synthetic_employee_0",
+                "effectiveRevision": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                "monthlyCashSalary": "3600000",
+                "workPattern": "monthly_salaried",
+                "withholding": {
+                  "ruleId": "synthetic_withholding",
+                  "tableColumn": null,
+                  "taxStatus": "synthetic",
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                },
+                "grossAdjustments": [],
+                "reimbursements": [],
+                "benefitComponents": [],
+                "deductionComponents": [
+                  {
+                    "componentId": "synthetic_deduction",
+                    "minor": "0",
+                    "description": "Synthetic post-tax deduction",
+                    "destinationRole": "owner",
+                    "reducesBenefit": null
+                  }
+                ],
+                "holidayPolicy": {
+                  "state": "evidenced_not_applicable",
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                },
+                "pensionAndOtherObligations": [
+                  {
+                    "state": "applicable",
+                    "selection": {
+                      "profileId": "synthetic_contribution",
+                      "obligationReference": "synthetic_contribution",
+                      "statusClass": "synthetic",
+                      "ageOnPaymentOn": 30,
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "work": {
+                "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "absence": [],
+                "adjustments": [],
+                "reimbursements": [],
+                "evidence": [
+                  {
+                    "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                    "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                  }
+                ]
+              },
+              "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+            }
+          },
+          "calculation": {
+            "owner": "payroll_calculation",
+            "calculatorVersion": "payroll-regular-v1",
+            "employeeId": "synthetic_employee_0",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "grossMinor": "3600000",
+            "cashReimbursementMinor": "0",
+            "withholdingBaseMinor": "3600000",
+            "withholdingMinor": "900000",
+            "netDeductionMinor": "0",
+            "contributionBaseMinor": "3600000",
+            "employerContributionMinor": "1131120",
+            "payableMinor": "2700000",
+            "priorContributionBaseMinor": "0",
+            "benefitBases": [],
+            "extraAccruals": [],
+            "formulaRows": [
+              {
+                "step": "gross",
+                "statement": "Monthly cash salary after qualified gross adjustments",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "reimbursement",
+                "statement": "Supported non-taxable cash reimbursements",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "net_deduction",
+                "statement": "Post-tax net deductions with a reviewed destination",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "withholding_base",
+                "statement": "Gross cash earnings plus taxable benefit bases",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "withholding",
+                "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+                "numerator": "900000",
+                "denominator": "1",
+                "roundedMinor": "900000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "contribution_base",
+                "statement": "Gross cash earnings plus contribution benefit bases",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "employer_contribution",
+                "statement": "Rounded F(3600000) minus rounded F(0) over synthetic_contribution",
+                "numerator": "1131120",
+                "denominator": "1",
+                "roundedMinor": "1131120",
+                "residualNumerator": "0",
+                "roundedBeforeMinor": "0",
+                "roundedAfterMinor": "1131120"
+              }
+            ],
+            "roundingResiduals": [
+              {
+                "step": "no_residual",
+                "statement": "No component rounding residual was produced",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              }
+            ]
+          },
+          "inputRefs": [
+            {
+              "kind": "employment_revision",
+              "resourceId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+              "version": "payrev_5840826dcd2546e6a393e0655f046e8e",
+              "reason": "Exact current employment revision this calculation binds to"
+            },
+            {
+              "kind": "work_revision",
+              "resourceId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+              "version": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+              "reason": "Exact current work revision this calculation binds to"
+            },
+            {
+              "kind": "opening_revision",
+              "resourceId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+              "version": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+              "reason": "Exact retained opening balance supplying the prior monthly base"
+            },
+            {
+              "kind": "rule_release",
+              "resourceId": "paid_recovery_synthetic_qr_v1",
+              "version": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "reason": "Reviewed payroll rule release for calculator payroll-regular-v1"
+            },
+            {
+              "kind": "company_fact_revision",
+              "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+              "version": "fact_287055035d1745a2bd4c520e056bf430",
+              "reason": "Exact reviewed company fact revision"
+            },
+            {
+              "kind": "company_fact_review",
+              "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+              "version": "fact_287055035d1745a2bd4c520e056bf430",
+              "reason": "Independent review of that fact revision"
+            },
+            {
+              "kind": "evidence",
+              "resourceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "version": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "reason": "Retained evidence backing a reviewed calculation input"
+            }
+          ],
+          "noFinancialEffect": true,
+          "createdBy": "operator_8024a05148224dbe",
+          "createdAt": "2026-10-11 00:36:57.520333+02",
+          "receipt": {
+            "key": "4901ff62-2fb3-41b1-b3fd-ca6480793f36",
+            "operation": "prepare_payroll_calculation",
+            "actorId": "operator_8024a05148224dbe"
+          }
+        },
+        "personRef": "Sara Lind"
+      },
+      "reportingReadiness": "ready",
+      "sourceDigest": "sha256:c161089b2e4843613e90271f6ee0a58c329447aa76d7003c8191a4b2aeb334a9",
+      "settlementExecutionId": "payroll_settlement_execution_d6a367bc5c904d66adf905a6aa313e2a",
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "createdAt": "2026-10-10T22:36:58.308Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "76a09f8e-0ac5-4de6-9779-34ce5ed9a487",
+        "operation": "payroll_execute_settlement",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "comparison": {
+      "id": "payroll_comparison_01f823b36db847a49d92532ae805a6e8",
+      "kind": "paid_correction_comparison",
+      "paidEventId": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "input": {
+        "recordClass": "synthetic",
+        "employment": {
+          "employeeId": "synthetic_employee_0",
+          "effectiveRevision": "payrev_d7a83e5d09c4468388dcefc658501957",
+          "monthlyCashSalary": "3540000",
+          "workPattern": "monthly_salaried",
+          "withholding": {
+            "ruleId": "synthetic_withholding",
+            "tableColumn": null,
+            "taxStatus": "synthetic",
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "grossAdjustments": [],
+          "reimbursements": [],
+          "benefitComponents": [],
+          "deductionComponents": [
+            {
+              "componentId": "synthetic_deduction",
+              "minor": "0",
+              "description": "Synthetic post-tax deduction",
+              "destinationRole": "owner",
+              "reducesBenefit": null
+            }
+          ],
+          "holidayPolicy": {
+            "state": "evidenced_not_applicable",
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "pensionAndOtherObligations": [
+            {
+              "state": "applicable",
+              "selection": {
+                "profileId": "synthetic_contribution",
+                "obligationReference": "synthetic_contribution",
+                "statusClass": "synthetic",
+                "ageOnPaymentOn": 30,
+                "evidence": [
+                  {
+                    "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                    "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "work": {
+          "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+          "earningsPeriod": {
+            "startsOn": "2026-09-01",
+            "endsOn": "2026-09-30"
+          },
+          "expectedPaymentOn": "2026-09-30",
+          "absence": [],
+          "adjustments": [],
+          "reimbursements": [],
+          "evidence": [
+            {
+              "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+            }
+          ]
+        },
+        "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+      },
+      "originalPaidDigest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "basis": {
+        "adjustmentInstructions": [],
+        "payrollInputs": [],
+        "employeeId": "synthetic_employee_0",
+        "employmentRevisionId": "payrev_d7a83e5d09c4468388dcefc658501957",
+        "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+        "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+        "openingBaseMinor": "0",
+        "openingObligationReference": "synthetic_contribution",
+        "earningsPeriod": {
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30"
+        },
+        "expectedPaymentOn": "2026-09-30",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+        "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ruleReleaseVersion": 1,
+        "companyActivationId": null,
+        "familyMembershipEpoch": null,
+        "factRevisionIds": [
+          "fact_287055035d1745a2bd4c520e056bf430"
+        ],
+        "factReviewIds": [
+          "fact_287055035d1745a2bd4c520e056bf430"
+        ],
+        "roleBindingIds": [],
+        "evidenceIds": [
+          "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "evidence_9f84947fa4a14ca389c355bf94bf460a"
+        ],
+        "calculatorVersion": "payroll-regular-v1",
+        "sourceCoverage": "complete",
+        "reviewedInput": {
+          "recordClass": "synthetic",
+          "employment": {
+            "employeeId": "synthetic_employee_0",
+            "effectiveRevision": "payrev_d7a83e5d09c4468388dcefc658501957",
+            "monthlyCashSalary": "3540000",
+            "workPattern": "monthly_salaried",
+            "withholding": {
+              "ruleId": "synthetic_withholding",
+              "tableColumn": null,
+              "taxStatus": "synthetic",
+              "evidence": [
+                {
+                  "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                }
+              ]
+            },
+            "grossAdjustments": [],
+            "reimbursements": [],
+            "benefitComponents": [],
+            "deductionComponents": [
+              {
+                "componentId": "synthetic_deduction",
+                "minor": "0",
+                "description": "Synthetic post-tax deduction",
+                "destinationRole": "owner",
+                "reducesBenefit": null
+              }
+            ],
+            "holidayPolicy": {
+              "state": "evidenced_not_applicable",
+              "evidence": [
+                {
+                  "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                }
+              ]
+            },
+            "pensionAndOtherObligations": [
+              {
+                "state": "applicable",
+                "selection": {
+                  "profileId": "synthetic_contribution",
+                  "obligationReference": "synthetic_contribution",
+                  "statusClass": "synthetic",
+                  "ageOnPaymentOn": 30,
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "work": {
+            "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "absence": [],
+            "adjustments": [],
+            "reimbursements": [],
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+        }
+      },
+      "calculation": {
+        "owner": "payroll_calculation",
+        "calculatorVersion": "payroll-regular-v1",
+        "employeeId": "synthetic_employee_0",
+        "earningsPeriod": {
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30"
+        },
+        "expectedPaymentOn": "2026-09-30",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "grossMinor": "3540000",
+        "cashReimbursementMinor": "0",
+        "withholdingBaseMinor": "3540000",
+        "withholdingMinor": "900000",
+        "netDeductionMinor": "0",
+        "contributionBaseMinor": "3540000",
+        "employerContributionMinor": "1112268",
+        "payableMinor": "2640000",
+        "priorContributionBaseMinor": "0",
+        "benefitBases": [],
+        "extraAccruals": [],
+        "formulaRows": [
+          {
+            "step": "gross",
+            "statement": "Monthly cash salary after qualified gross adjustments",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "reimbursement",
+            "statement": "Supported non-taxable cash reimbursements",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "net_deduction",
+            "statement": "Post-tax net deductions with a reviewed destination",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "withholding_base",
+            "statement": "Gross cash earnings plus taxable benefit bases",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "withholding",
+            "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+            "numerator": "900000",
+            "denominator": "1",
+            "roundedMinor": "900000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "contribution_base",
+            "statement": "Gross cash earnings plus contribution benefit bases",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "employer_contribution",
+            "statement": "Rounded F(3540000) minus rounded F(0) over synthetic_contribution",
+            "numerator": "1112268",
+            "denominator": "1",
+            "roundedMinor": "1112268",
+            "residualNumerator": "0",
+            "roundedBeforeMinor": "0",
+            "roundedAfterMinor": "1112268"
+          }
+        ],
+        "roundingResiduals": [
+          {
+            "step": "no_residual",
+            "statement": "No component rounding residual was produced",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          }
+        ]
+      },
+      "grossDeltaMinor": "-60000",
+      "contributionDeltaMinor": "-18852",
+      "correctionPopulationDigest": "sha256:52cca3098aac42500f20d75ba9af2cc3fed435f9eeb56ac476ccac5f0100c82b",
+      "mileageCorrections": [],
+      "noFinancialEffect": true,
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:de68ec0ed27a4fafb0222f58bdd0c429f33ba4bd6c9cd39bd229b7c75ab32bde",
+      "createdAt": "2026-10-10T22:36:58.364Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "7ad44c10-8f96-402e-9beb-1ea9bf3cd99a",
+        "operation": "payroll_prepare_comparison",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "drafts": [],
+    "attachments": [],
+    "qualifications": [],
+    "cancellation": null,
+    "claimReview": null,
+    "claimExecution": null,
+    "claimSettlement": null,
+    "claimRemainingMinor": null,
+    "legs": [],
+    "current": {
+      "assessmentCurrent": true,
+      "canSplit": true,
+      "canAttach": true,
+      "canCancel": true,
+      "canPrepareClaim": false,
+      "status": "blocked"
+    }
+  },
+  "after": {
+    "assessment": {
+      "id": "paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+      "comparisonId": "payroll_comparison_01f823b36db847a49d92532ae805a6e8",
+      "comparisonDigest": "sha256:de68ec0ed27a4fafb0222f58bdd0c429f33ba4bd6c9cd39bd229b7c75ab32bde",
+      "paidEventId": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "paidEventDigest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "employee": {
+        "id": "synthetic_employee_0",
+        "name": "Sara Lind"
+      },
+      "original": {
+        "runId": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+        "voucherId": "voucher_5e8ba2d45297461fbab8eb9280201e2d",
+        "reportingPeriod": "2026-09",
+        "paidOn": "2026-09-30",
+        "grossMinor": "3600000",
+        "payableMinor": "2700000"
+      },
+      "targetMinor": "60000",
+      "contributionDeltaMinor": "-18852",
+      "capacity": {
+        "calculationId": "paycalc_cd2192c4a8a84825a2ed2aabb304f901",
+        "digest": "sha256:bcd2f6a3f9bfd7dc578dc2b5ae94a3d1009963074208cd8be6fa09e81aa1de7b",
+        "month": "2026-10",
+        "availableNetMinor": "45000",
+        "paymentOn": "2026-10-31",
+        "context": "Independent synthetic G3000000 H900000 D10000 C300000"
+      },
+      "shortfallMinor": "15000",
+      "blockers": [
+        "missing_lawful_basis",
+        "insufficient_net_capacity"
+      ],
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:52bff99a5dd65df2ca8e027f02a4b00ff96fb51eb7ff11d637f05fe86fbb2a79",
+      "createdAt": "2026-10-10T22:36:58.433Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "0ae83d73-0979-4010-b89e-c72a667fe993",
+        "operation": "payroll_prepare_paid_recovery",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "originalPaidEvent": {
+      "id": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "runId": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+      "employeeId": "synthetic_employee_0",
+      "paidOn": "2026-09-30",
+      "paidMinor": "2700000",
+      "evidenceId": "evidence_18aa9f004cda42ef9f1d52c6a8e67560",
+      "reportingPeriod": "2026-09",
+      "grossCashMinor": "3600000",
+      "withholdingMinor": "900000",
+      "contributionBaseMinor": "3600000",
+      "employerContributionMinor": "1131120",
+      "specificationNumber": "spec_fbc30fda47e957ac0571c8c047fdf1e2",
+      "originalRun": {
+        "id": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f",
+        "scope": {
+          "entityId": "entity_8024a05148224dbe",
+          "bookId": "book_8024a05148224dbe"
+        },
+        "digest": "sha256:721d8bae6c4be0f09701703cd05cdcea7024091d76eef4aa13338b18b643b005",
+        "input": {
+          "calculationIds": [
+            "paycalc_ceda21e6762e4011a8fc05ef6e868000"
+          ],
+          "accountingPeriodId": "period_2026",
+          "postingDate": "2026-09-30",
+          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "series": "L",
+          "roles": {
+            "salaryExpenseAccountId": "salary_expense",
+            "reimbursementExpenseAccountId": "reimbursement_expense",
+            "netPayLiabilityAccountId": "salary_liability",
+            "withholdingLiabilityAccountId": "withholding_liability",
+            "employerContributionExpenseAccountId": "contribution_expense",
+            "employerContributionLiabilityAccountId": "contribution_liability",
+            "deductions": [
+              {
+                "roleKind": "owner",
+                "accountId": "deduction_destination"
+              }
+            ],
+            "accruals": []
+          },
+          "reason": "Synthetic payroll run accrual"
+        },
+        "employees": [
+          {
+            "calculation": {
+              "id": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+              "scope": {
+                "entityId": "entity_8024a05148224dbe",
+                "bookId": "book_8024a05148224dbe"
+              },
+              "employeeId": "synthetic_employee_0",
+              "changeSetId": "payplan_6d947138536545f284c63d01822763d1",
+              "planDigest": "sha256:8bf90d0eb8b4169f02478897323090cf6e273d743edd0cc6dea3b827b7032b50",
+              "basis": {
+                "adjustmentInstructions": [],
+                "payrollInputs": [],
+                "employeeId": "synthetic_employee_0",
+                "employmentRevisionId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                "openingBaseMinor": "0",
+                "openingObligationReference": "synthetic_contribution",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "currency": "SEK",
+                "currencyScale": 2,
+                "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+                "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "ruleReleaseVersion": 1,
+                "companyActivationId": null,
+                "familyMembershipEpoch": null,
+                "factRevisionIds": [
+                  "fact_287055035d1745a2bd4c520e056bf430"
+                ],
+                "factReviewIds": [
+                  "fact_287055035d1745a2bd4c520e056bf430"
+                ],
+                "roleBindingIds": [],
+                "evidenceIds": [
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "evidence_9f84947fa4a14ca389c355bf94bf460a"
+                ],
+                "calculatorVersion": "payroll-regular-v1",
+                "sourceCoverage": "complete",
+                "reviewedInput": {
+                  "recordClass": "synthetic",
+                  "employment": {
+                    "employeeId": "synthetic_employee_0",
+                    "effectiveRevision": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                    "monthlyCashSalary": "3600000",
+                    "workPattern": "monthly_salaried",
+                    "withholding": {
+                      "ruleId": "synthetic_withholding",
+                      "tableColumn": null,
+                      "taxStatus": "synthetic",
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    },
+                    "grossAdjustments": [],
+                    "reimbursements": [],
+                    "benefitComponents": [],
+                    "deductionComponents": [
+                      {
+                        "componentId": "synthetic_deduction",
+                        "minor": "0",
+                        "description": "Synthetic post-tax deduction",
+                        "destinationRole": "owner",
+                        "reducesBenefit": null
+                      }
+                    ],
+                    "holidayPolicy": {
+                      "state": "evidenced_not_applicable",
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    },
+                    "pensionAndOtherObligations": [
+                      {
+                        "state": "applicable",
+                        "selection": {
+                          "profileId": "synthetic_contribution",
+                          "obligationReference": "synthetic_contribution",
+                          "statusClass": "synthetic",
+                          "ageOnPaymentOn": 30,
+                          "evidence": [
+                            {
+                              "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                              "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "work": {
+                    "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                    "earningsPeriod": {
+                      "startsOn": "2026-09-01",
+                      "endsOn": "2026-09-30"
+                    },
+                    "expectedPaymentOn": "2026-09-30",
+                    "absence": [],
+                    "adjustments": [],
+                    "reimbursements": [],
+                    "evidence": [
+                      {
+                        "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                        "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                      }
+                    ]
+                  },
+                  "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+                }
+              },
+              "calculation": {
+                "owner": "payroll_calculation",
+                "calculatorVersion": "payroll-regular-v1",
+                "employeeId": "synthetic_employee_0",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "currency": "SEK",
+                "currencyScale": 2,
+                "grossMinor": "3600000",
+                "cashReimbursementMinor": "0",
+                "withholdingBaseMinor": "3600000",
+                "withholdingMinor": "900000",
+                "netDeductionMinor": "0",
+                "contributionBaseMinor": "3600000",
+                "employerContributionMinor": "1131120",
+                "payableMinor": "2700000",
+                "priorContributionBaseMinor": "0",
+                "benefitBases": [],
+                "extraAccruals": [],
+                "formulaRows": [
+                  {
+                    "step": "gross",
+                    "statement": "Monthly cash salary after qualified gross adjustments",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "reimbursement",
+                    "statement": "Supported non-taxable cash reimbursements",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "net_deduction",
+                    "statement": "Post-tax net deductions with a reviewed destination",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "withholding_base",
+                    "statement": "Gross cash earnings plus taxable benefit bases",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "withholding",
+                    "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+                    "numerator": "900000",
+                    "denominator": "1",
+                    "roundedMinor": "900000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "contribution_base",
+                    "statement": "Gross cash earnings plus contribution benefit bases",
+                    "numerator": "3600000",
+                    "denominator": "1",
+                    "roundedMinor": "3600000",
+                    "residualNumerator": "0"
+                  },
+                  {
+                    "step": "employer_contribution",
+                    "statement": "Rounded F(3600000) minus rounded F(0) over synthetic_contribution",
+                    "numerator": "1131120",
+                    "denominator": "1",
+                    "roundedMinor": "1131120",
+                    "residualNumerator": "0",
+                    "roundedBeforeMinor": "0",
+                    "roundedAfterMinor": "1131120"
+                  }
+                ],
+                "roundingResiduals": [
+                  {
+                    "step": "no_residual",
+                    "statement": "No component rounding residual was produced",
+                    "numerator": "0",
+                    "denominator": "1",
+                    "roundedMinor": "0",
+                    "residualNumerator": "0"
+                  }
+                ]
+              },
+              "inputRefs": [
+                {
+                  "kind": "employment_revision",
+                  "resourceId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                  "version": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                  "reason": "Exact current employment revision this calculation binds to"
+                },
+                {
+                  "kind": "work_revision",
+                  "resourceId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                  "version": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                  "reason": "Exact current work revision this calculation binds to"
+                },
+                {
+                  "kind": "opening_revision",
+                  "resourceId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                  "version": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+                  "reason": "Exact retained opening balance supplying the prior monthly base"
+                },
+                {
+                  "kind": "rule_release",
+                  "resourceId": "paid_recovery_synthetic_qr_v1",
+                  "version": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "reason": "Reviewed payroll rule release for calculator payroll-regular-v1"
+                },
+                {
+                  "kind": "company_fact_revision",
+                  "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+                  "version": "fact_287055035d1745a2bd4c520e056bf430",
+                  "reason": "Exact reviewed company fact revision"
+                },
+                {
+                  "kind": "company_fact_review",
+                  "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+                  "version": "fact_287055035d1745a2bd4c520e056bf430",
+                  "reason": "Independent review of that fact revision"
+                },
+                {
+                  "kind": "evidence",
+                  "resourceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "version": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "reason": "Retained evidence backing a reviewed calculation input"
+                }
+              ],
+              "noFinancialEffect": true,
+              "createdBy": "operator_8024a05148224dbe",
+              "createdAt": "2026-10-11 00:36:57.520333+02",
+              "receipt": {
+                "key": "4901ff62-2fb3-41b1-b3fd-ca6480793f36",
+                "operation": "prepare_payroll_calculation",
+                "actorId": "operator_8024a05148224dbe"
+              }
+            },
+            "personRef": "Sara Lind"
+          }
+        ],
+        "employeeObligations": [
+          {
+            "employeeId": "synthetic_employee_0",
+            "calculationId": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+            "payableMinor": "2700000",
+            "grossMinor": "3600000",
+            "withholdingMinor": "900000",
+            "netDeductionMinor": "0",
+            "employerContributionMinor": "1131120",
+            "contributionBaseMinor": "3600000"
+          }
+        ],
+        "postingPlan": {
+          "schemaVersion": "1",
+          "canonicalization": "openerp-c14n-v1",
+          "id": "change_b1408117b7a74e28849268c4d688d48e",
+          "version": 1,
+          "scope": {
+            "entityId": "entity_8024a05148224dbe",
+            "bookId": "book_8024a05148224dbe"
+          },
+          "createdAt": "2026-10-10T22:36:57.780Z",
+          "dependencies": [
+            {
+              "kind": "profile",
+              "resourceId": "book_8024a05148224dbe",
+              "version": "1",
+              "reason": "Book currency and supported profile"
+            },
+            {
+              "kind": "writer_epoch",
+              "resourceId": "book_8024a05148224dbe",
+              "version": "1",
+              "reason": "Single authoritative writer"
+            },
+            {
+              "kind": "period",
+              "resourceId": "period_2026",
+              "version": "1",
+              "reason": "Posting dates and lock state"
+            },
+            {
+              "kind": "account",
+              "resourceId": "contribution_expense",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "contribution_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "salary_expense",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "salary_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            },
+            {
+              "kind": "account",
+              "resourceId": "withholding_liability",
+              "version": "1",
+              "reason": "Exact account configuration"
+            }
+          ],
+          "groups": [
+            {
+              "id": "group_f4392623972047a5a6f1f4366c68c333",
+              "dependsOnGroupIds": [],
+              "actions": [
+                {
+                  "kind": "post_voucher",
+                  "correctsVoucherId": null,
+                  "eventId": "event_bfc3b805c1464725b0b899009f06076b",
+                  "postingPurpose": "adjustment",
+                  "occurrenceKey": "manual_journal",
+                  "fiscalYearId": "fy_2026",
+                  "accountingPeriodId": "period_2026",
+                  "postingDate": "2026-09-30",
+                  "series": "L",
+                  "currency": "SEK",
+                  "description": "Regular payroll accrual",
+                  "rationale": "Synthetic payroll run accrual",
+                  "taxAssessment": "not_applicable",
+                  "lines": [
+                    {
+                      "accountId": "salary_expense",
+                      "debitMinor": "3600000",
+                      "creditMinor": "0",
+                      "description": "Salary expense synthetic_employee_0",
+                      "lineId": "line_8ed5d7208e1f438ea9f16b55b6e3c111",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "salary_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "2700000",
+                      "description": "Net pay liability synthetic_employee_0",
+                      "lineId": "line_57b587b412504ca091f02ac9b23c2ad4",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "withholding_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "900000",
+                      "description": "Withholding synthetic_employee_0",
+                      "lineId": "line_e5dce6a4da9241ff976960b7797d2648",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "contribution_expense",
+                      "debitMinor": "1131120",
+                      "creditMinor": "0",
+                      "description": "Employer contribution synthetic_employee_0",
+                      "lineId": "line_5b7b31a7b1bc4649b36ad7e4edcb1590",
+                      "originalDimensions": []
+                    },
+                    {
+                      "accountId": "contribution_liability",
+                      "debitMinor": "0",
+                      "creditMinor": "1131120",
+                      "description": "Contribution liability synthetic_employee_0",
+                      "lineId": "line_94023a4651eb4e5796079629be0957a3",
+                      "originalDimensions": []
+                    }
+                  ],
+                  "evidenceRefs": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+                      "locator": "payroll_run_a8e0bf888a7649659b860b4c0a1fa08f"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "planDigest": "sha256:faeedda74433a0d17495d61364cba4003c92741f28bd80f20c972a97d291ec0c"
+        },
+        "state": "prepared",
+        "createdBy": "operator_8024a05148224dbe",
+        "createdAt": "2026-10-10T22:36:57.782Z",
+        "receipt": {
+          "key": "ce5ed61b-9bd8-4c86-a6e1-5a0bb88d8b66",
+          "operation": "prepare_payroll_run",
+          "actorId": "operator_8024a05148224dbe"
+        }
+      },
+      "originalEmployee": {
+        "calculation": {
+          "id": "paycalc_ceda21e6762e4011a8fc05ef6e868000",
+          "scope": {
+            "entityId": "entity_8024a05148224dbe",
+            "bookId": "book_8024a05148224dbe"
+          },
+          "employeeId": "synthetic_employee_0",
+          "changeSetId": "payplan_6d947138536545f284c63d01822763d1",
+          "planDigest": "sha256:8bf90d0eb8b4169f02478897323090cf6e273d743edd0cc6dea3b827b7032b50",
+          "basis": {
+            "adjustmentInstructions": [],
+            "payrollInputs": [],
+            "employeeId": "synthetic_employee_0",
+            "employmentRevisionId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+            "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+            "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+            "openingBaseMinor": "0",
+            "openingObligationReference": "synthetic_contribution",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+            "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "ruleReleaseVersion": 1,
+            "companyActivationId": null,
+            "familyMembershipEpoch": null,
+            "factRevisionIds": [
+              "fact_287055035d1745a2bd4c520e056bf430"
+            ],
+            "factReviewIds": [
+              "fact_287055035d1745a2bd4c520e056bf430"
+            ],
+            "roleBindingIds": [],
+            "evidenceIds": [
+              "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "evidence_9f84947fa4a14ca389c355bf94bf460a"
+            ],
+            "calculatorVersion": "payroll-regular-v1",
+            "sourceCoverage": "complete",
+            "reviewedInput": {
+              "recordClass": "synthetic",
+              "employment": {
+                "employeeId": "synthetic_employee_0",
+                "effectiveRevision": "payrev_5840826dcd2546e6a393e0655f046e8e",
+                "monthlyCashSalary": "3600000",
+                "workPattern": "monthly_salaried",
+                "withholding": {
+                  "ruleId": "synthetic_withholding",
+                  "tableColumn": null,
+                  "taxStatus": "synthetic",
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                },
+                "grossAdjustments": [],
+                "reimbursements": [],
+                "benefitComponents": [],
+                "deductionComponents": [
+                  {
+                    "componentId": "synthetic_deduction",
+                    "minor": "0",
+                    "description": "Synthetic post-tax deduction",
+                    "destinationRole": "owner",
+                    "reducesBenefit": null
+                  }
+                ],
+                "holidayPolicy": {
+                  "state": "evidenced_not_applicable",
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                },
+                "pensionAndOtherObligations": [
+                  {
+                    "state": "applicable",
+                    "selection": {
+                      "profileId": "synthetic_contribution",
+                      "obligationReference": "synthetic_contribution",
+                      "statusClass": "synthetic",
+                      "ageOnPaymentOn": 30,
+                      "evidence": [
+                        {
+                          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "work": {
+                "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+                "earningsPeriod": {
+                  "startsOn": "2026-09-01",
+                  "endsOn": "2026-09-30"
+                },
+                "expectedPaymentOn": "2026-09-30",
+                "absence": [],
+                "adjustments": [],
+                "reimbursements": [],
+                "evidence": [
+                  {
+                    "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                    "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                  }
+                ]
+              },
+              "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+            }
+          },
+          "calculation": {
+            "owner": "payroll_calculation",
+            "calculatorVersion": "payroll-regular-v1",
+            "employeeId": "synthetic_employee_0",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "grossMinor": "3600000",
+            "cashReimbursementMinor": "0",
+            "withholdingBaseMinor": "3600000",
+            "withholdingMinor": "900000",
+            "netDeductionMinor": "0",
+            "contributionBaseMinor": "3600000",
+            "employerContributionMinor": "1131120",
+            "payableMinor": "2700000",
+            "priorContributionBaseMinor": "0",
+            "benefitBases": [],
+            "extraAccruals": [],
+            "formulaRows": [
+              {
+                "step": "gross",
+                "statement": "Monthly cash salary after qualified gross adjustments",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "reimbursement",
+                "statement": "Supported non-taxable cash reimbursements",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "net_deduction",
+                "statement": "Post-tax net deductions with a reviewed destination",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "withholding_base",
+                "statement": "Gross cash earnings plus taxable benefit bases",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "withholding",
+                "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+                "numerator": "900000",
+                "denominator": "1",
+                "roundedMinor": "900000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "contribution_base",
+                "statement": "Gross cash earnings plus contribution benefit bases",
+                "numerator": "3600000",
+                "denominator": "1",
+                "roundedMinor": "3600000",
+                "residualNumerator": "0"
+              },
+              {
+                "step": "employer_contribution",
+                "statement": "Rounded F(3600000) minus rounded F(0) over synthetic_contribution",
+                "numerator": "1131120",
+                "denominator": "1",
+                "roundedMinor": "1131120",
+                "residualNumerator": "0",
+                "roundedBeforeMinor": "0",
+                "roundedAfterMinor": "1131120"
+              }
+            ],
+            "roundingResiduals": [
+              {
+                "step": "no_residual",
+                "statement": "No component rounding residual was produced",
+                "numerator": "0",
+                "denominator": "1",
+                "roundedMinor": "0",
+                "residualNumerator": "0"
+              }
+            ]
+          },
+          "inputRefs": [
+            {
+              "kind": "employment_revision",
+              "resourceId": "payrev_5840826dcd2546e6a393e0655f046e8e",
+              "version": "payrev_5840826dcd2546e6a393e0655f046e8e",
+              "reason": "Exact current employment revision this calculation binds to"
+            },
+            {
+              "kind": "work_revision",
+              "resourceId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+              "version": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+              "reason": "Exact current work revision this calculation binds to"
+            },
+            {
+              "kind": "opening_revision",
+              "resourceId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+              "version": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+              "reason": "Exact retained opening balance supplying the prior monthly base"
+            },
+            {
+              "kind": "rule_release",
+              "resourceId": "paid_recovery_synthetic_qr_v1",
+              "version": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "reason": "Reviewed payroll rule release for calculator payroll-regular-v1"
+            },
+            {
+              "kind": "company_fact_revision",
+              "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+              "version": "fact_287055035d1745a2bd4c520e056bf430",
+              "reason": "Exact reviewed company fact revision"
+            },
+            {
+              "kind": "company_fact_review",
+              "resourceId": "fact_287055035d1745a2bd4c520e056bf430",
+              "version": "fact_287055035d1745a2bd4c520e056bf430",
+              "reason": "Independent review of that fact revision"
+            },
+            {
+              "kind": "evidence",
+              "resourceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "version": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "reason": "Retained evidence backing a reviewed calculation input"
+            }
+          ],
+          "noFinancialEffect": true,
+          "createdBy": "operator_8024a05148224dbe",
+          "createdAt": "2026-10-11 00:36:57.520333+02",
+          "receipt": {
+            "key": "4901ff62-2fb3-41b1-b3fd-ca6480793f36",
+            "operation": "prepare_payroll_calculation",
+            "actorId": "operator_8024a05148224dbe"
+          }
+        },
+        "personRef": "Sara Lind"
+      },
+      "reportingReadiness": "ready",
+      "sourceDigest": "sha256:c161089b2e4843613e90271f6ee0a58c329447aa76d7003c8191a4b2aeb334a9",
+      "settlementExecutionId": "payroll_settlement_execution_d6a367bc5c904d66adf905a6aa313e2a",
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "createdAt": "2026-10-10T22:36:58.308Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "76a09f8e-0ac5-4de6-9779-34ce5ed9a487",
+        "operation": "payroll_execute_settlement",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "comparison": {
+      "id": "payroll_comparison_01f823b36db847a49d92532ae805a6e8",
+      "kind": "paid_correction_comparison",
+      "paidEventId": "payroll_paid_event_0c9a2e1464f4443cac8fa5f294ae8056",
+      "input": {
+        "recordClass": "synthetic",
+        "employment": {
+          "employeeId": "synthetic_employee_0",
+          "effectiveRevision": "payrev_d7a83e5d09c4468388dcefc658501957",
+          "monthlyCashSalary": "3540000",
+          "workPattern": "monthly_salaried",
+          "withholding": {
+            "ruleId": "synthetic_withholding",
+            "tableColumn": null,
+            "taxStatus": "synthetic",
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "grossAdjustments": [],
+          "reimbursements": [],
+          "benefitComponents": [],
+          "deductionComponents": [
+            {
+              "componentId": "synthetic_deduction",
+              "minor": "0",
+              "description": "Synthetic post-tax deduction",
+              "destinationRole": "owner",
+              "reducesBenefit": null
+            }
+          ],
+          "holidayPolicy": {
+            "state": "evidenced_not_applicable",
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "pensionAndOtherObligations": [
+            {
+              "state": "applicable",
+              "selection": {
+                "profileId": "synthetic_contribution",
+                "obligationReference": "synthetic_contribution",
+                "statusClass": "synthetic",
+                "ageOnPaymentOn": 30,
+                "evidence": [
+                  {
+                    "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                    "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "work": {
+          "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+          "earningsPeriod": {
+            "startsOn": "2026-09-01",
+            "endsOn": "2026-09-30"
+          },
+          "expectedPaymentOn": "2026-09-30",
+          "absence": [],
+          "adjustments": [],
+          "reimbursements": [],
+          "evidence": [
+            {
+              "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+              "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+            }
+          ]
+        },
+        "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+      },
+      "originalPaidDigest": "sha256:242f24b8d18ddc9181af7e1254748c96a1787bb3272fb4a62c551e93f3d3904a",
+      "basis": {
+        "adjustmentInstructions": [],
+        "payrollInputs": [],
+        "employeeId": "synthetic_employee_0",
+        "employmentRevisionId": "payrev_d7a83e5d09c4468388dcefc658501957",
+        "workRevisionId": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+        "openingRevisionId": "payrev_5b5efe1114844bec9c1b7ed06195e4e9",
+        "openingBaseMinor": "0",
+        "openingObligationReference": "synthetic_contribution",
+        "earningsPeriod": {
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30"
+        },
+        "expectedPaymentOn": "2026-09-30",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "ruleReleaseId": "paid_recovery_synthetic_qr_v1",
+        "ruleReleaseChecksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ruleReleaseVersion": 1,
+        "companyActivationId": null,
+        "familyMembershipEpoch": null,
+        "factRevisionIds": [
+          "fact_287055035d1745a2bd4c520e056bf430"
+        ],
+        "factReviewIds": [
+          "fact_287055035d1745a2bd4c520e056bf430"
+        ],
+        "roleBindingIds": [],
+        "evidenceIds": [
+          "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "evidence_9f84947fa4a14ca389c355bf94bf460a"
+        ],
+        "calculatorVersion": "payroll-regular-v1",
+        "sourceCoverage": "complete",
+        "reviewedInput": {
+          "recordClass": "synthetic",
+          "employment": {
+            "employeeId": "synthetic_employee_0",
+            "effectiveRevision": "payrev_d7a83e5d09c4468388dcefc658501957",
+            "monthlyCashSalary": "3540000",
+            "workPattern": "monthly_salaried",
+            "withholding": {
+              "ruleId": "synthetic_withholding",
+              "tableColumn": null,
+              "taxStatus": "synthetic",
+              "evidence": [
+                {
+                  "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                }
+              ]
+            },
+            "grossAdjustments": [],
+            "reimbursements": [],
+            "benefitComponents": [],
+            "deductionComponents": [
+              {
+                "componentId": "synthetic_deduction",
+                "minor": "0",
+                "description": "Synthetic post-tax deduction",
+                "destinationRole": "owner",
+                "reducesBenefit": null
+              }
+            ],
+            "holidayPolicy": {
+              "state": "evidenced_not_applicable",
+              "evidence": [
+                {
+                  "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                  "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                }
+              ]
+            },
+            "pensionAndOtherObligations": [
+              {
+                "state": "applicable",
+                "selection": {
+                  "profileId": "synthetic_contribution",
+                  "obligationReference": "synthetic_contribution",
+                  "statusClass": "synthetic",
+                  "ageOnPaymentOn": 30,
+                  "evidence": [
+                    {
+                      "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                      "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "work": {
+            "effectiveRevision": "payrev_fbbd82530abc451aba2b2b7c592c9a38",
+            "earningsPeriod": {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            },
+            "expectedPaymentOn": "2026-09-30",
+            "absence": [],
+            "adjustments": [],
+            "reimbursements": [],
+            "evidence": [
+              {
+                "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+                "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+              }
+            ]
+          },
+          "reason": "Independent synthetic G3000000 H900000 D10000 C300000"
+        }
+      },
+      "calculation": {
+        "owner": "payroll_calculation",
+        "calculatorVersion": "payroll-regular-v1",
+        "employeeId": "synthetic_employee_0",
+        "earningsPeriod": {
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30"
+        },
+        "expectedPaymentOn": "2026-09-30",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "grossMinor": "3540000",
+        "cashReimbursementMinor": "0",
+        "withholdingBaseMinor": "3540000",
+        "withholdingMinor": "900000",
+        "netDeductionMinor": "0",
+        "contributionBaseMinor": "3540000",
+        "employerContributionMinor": "1112268",
+        "payableMinor": "2640000",
+        "priorContributionBaseMinor": "0",
+        "benefitBases": [],
+        "extraAccruals": [],
+        "formulaRows": [
+          {
+            "step": "gross",
+            "statement": "Monthly cash salary after qualified gross adjustments",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "reimbursement",
+            "statement": "Supported non-taxable cash reimbursements",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "net_deduction",
+            "statement": "Post-tax net deductions with a reviewed destination",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "withholding_base",
+            "statement": "Gross cash earnings plus taxable benefit bases",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "withholding",
+            "statement": "Reviewed fixed withholding decision synthetic_withholding for this pay event",
+            "numerator": "900000",
+            "denominator": "1",
+            "roundedMinor": "900000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "contribution_base",
+            "statement": "Gross cash earnings plus contribution benefit bases",
+            "numerator": "3540000",
+            "denominator": "1",
+            "roundedMinor": "3540000",
+            "residualNumerator": "0"
+          },
+          {
+            "step": "employer_contribution",
+            "statement": "Rounded F(3540000) minus rounded F(0) over synthetic_contribution",
+            "numerator": "1112268",
+            "denominator": "1",
+            "roundedMinor": "1112268",
+            "residualNumerator": "0",
+            "roundedBeforeMinor": "0",
+            "roundedAfterMinor": "1112268"
+          }
+        ],
+        "roundingResiduals": [
+          {
+            "step": "no_residual",
+            "statement": "No component rounding residual was produced",
+            "numerator": "0",
+            "denominator": "1",
+            "roundedMinor": "0",
+            "residualNumerator": "0"
+          }
+        ]
+      },
+      "grossDeltaMinor": "-60000",
+      "contributionDeltaMinor": "-18852",
+      "correctionPopulationDigest": "sha256:52cca3098aac42500f20d75ba9af2cc3fed435f9eeb56ac476ccac5f0100c82b",
+      "mileageCorrections": [],
+      "noFinancialEffect": true,
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:de68ec0ed27a4fafb0222f58bdd0c429f33ba4bd6c9cd39bd229b7c75ab32bde",
+      "createdAt": "2026-10-10T22:36:58.364Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "7ad44c10-8f96-402e-9beb-1ea9bf3cd99a",
+        "operation": "payroll_prepare_comparison",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "drafts": [
+      {
+        "id": "paid_recovery_draft_37687ee4f39b4a2f877a4b027ac34fec",
+        "assessmentId": "paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+        "assessmentDigest": "sha256:52bff99a5dd65df2ca8e027f02a4b00ff96fb51eb7ff11d637f05fe86fbb2a79",
+        "legs": [
+          {
+            "id": "paid_recovery_leg_450731277efa4c15b87bfe6c9728db1e",
+            "month": "2026-10",
+            "amountMinor": "45000",
+            "capacityCalculationId": "paycalc_cd2192c4a8a84825a2ed2aabb304f901",
+            "capacityDigest": "sha256:bcd2f6a3f9bfd7dc578dc2b5ae94a3d1009963074208cd8be6fa09e81aa1de7b"
+          },
+          {
+            "id": "paid_recovery_leg_8d518ce899fb40a8a4ae67222bb5f95c",
+            "month": "2026-11",
+            "amountMinor": "15000",
+            "capacityCalculationId": null,
+            "capacityDigest": null
+          }
+        ],
+        "scope": {
+          "entityId": "entity_8024a05148224dbe",
+          "bookId": "book_8024a05148224dbe"
+        },
+        "digest": "sha256:ef54465d52a098977aea90e31b6fdc7cf6d098bc2c901f4da571486ec5af4ecb",
+        "createdAt": "2026-10-10T22:37:19.331Z",
+        "createdBy": "operator_8024a05148224dbe",
+        "receipt": {
+          "key": "f0c4a1dc-2f3d-4d3d-b1d7-33c46b8df1e7",
+          "operation": "payroll_split_paid_recovery",
+          "actorId": "operator_8024a05148224dbe"
+        }
+      }
+    ],
+    "attachments": [
+      {
+        "id": "paid_recovery_attachment_d9fccc9750d44d2ab0311fea6314c632",
+        "assessmentId": "paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+        "assessmentDigest": "sha256:52bff99a5dd65df2ca8e027f02a4b00ff96fb51eb7ff11d637f05fe86fbb2a79",
+        "evidence": {
+          "evidenceId": "evidence_9f84947fa4a14ca389c355bf94bf460a",
+          "sha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        "reason": "Reviewed synthetic recovery source",
+        "scope": {
+          "entityId": "entity_8024a05148224dbe",
+          "bookId": "book_8024a05148224dbe"
+        },
+        "digest": "sha256:30e02065d0a71ca9a6333c419c71e3aa1822771310c1f8dc2624628016c6407d",
+        "createdAt": "2026-10-10T22:37:20.298Z",
+        "createdBy": "operator_8024a05148224dbe",
+        "receipt": {
+          "key": "ec4e7549-9f09-4a1f-b5a8-271074d9e50b",
+          "operation": "payroll_attach_paid_recovery",
+          "actorId": "operator_8024a05148224dbe"
+        }
+      }
+    ],
+    "qualifications": [],
+    "cancellation": {
+      "id": "paid_recovery_cancellation_35484d5baffb4141aeb32bfe21be9ea6",
+      "assessmentId": "paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+      "assessmentDigest": "sha256:52bff99a5dd65df2ca8e027f02a4b00ff96fb51eb7ff11d637f05fe86fbb2a79",
+      "reason": "Cancelled synthetic recovery attempt",
+      "scope": {
+        "entityId": "entity_8024a05148224dbe",
+        "bookId": "book_8024a05148224dbe"
+      },
+      "digest": "sha256:11b8c3e62f17659857a59c607524ba56f02541507ff3582d5a9d128ca083af59",
+      "createdAt": "2026-10-10T22:37:21.215Z",
+      "createdBy": "operator_8024a05148224dbe",
+      "receipt": {
+        "key": "743e758d-b36b-4b86-b187-216549116e13",
+        "operation": "payroll_cancel_paid_recovery",
+        "actorId": "operator_8024a05148224dbe"
+      }
+    },
+    "claimReview": null,
+    "claimExecution": null,
+    "claimSettlement": null,
+    "claimRemainingMinor": null,
+    "legs": [
+      {
+        "leg": {
+          "id": "paid_recovery_leg_450731277efa4c15b87bfe6c9728db1e",
+          "month": "2026-10",
+          "amountMinor": "45000",
+          "capacityCalculationId": "paycalc_cd2192c4a8a84825a2ed2aabb304f901",
+          "capacityDigest": "sha256:bcd2f6a3f9bfd7dc578dc2b5ae94a3d1009963074208cd8be6fa09e81aa1de7b"
+        },
+        "reviews": [],
+        "capacityCalculationId": "paycalc_cd2192c4a8a84825a2ed2aabb304f901",
+        "payrollRun": null,
+        "noncash": null
+      },
+      {
+        "leg": {
+          "id": "paid_recovery_leg_8d518ce899fb40a8a4ae67222bb5f95c",
+          "month": "2026-11",
+          "amountMinor": "15000",
+          "capacityCalculationId": null,
+          "capacityDigest": null
+        },
+        "reviews": [],
+        "capacityCalculationId": null,
+        "payrollRun": null,
+        "noncash": null
+      }
+    ],
+    "current": {
+      "assessmentCurrent": true,
+      "canSplit": false,
+      "canAttach": false,
+      "canCancel": false,
+      "canPrepareClaim": false,
+      "status": "cancelled"
+    }
+  }
+}

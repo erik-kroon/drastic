@@ -15,8 +15,7 @@ is immutable. Synthetic qualification is not live legal or payroll qualification
 The real HTTP payroll recovery journey qualifies canonical claims, future
 installments, executed zero-net settlement, refusal and populated backup/restore.
 The real browser journey separately qualifies discoverability, saved comparison,
-unqualified evidence, reload and cancellation. Visual comparison remains pending
-until measured actual/diff evidence passes the adopted threshold.
+unqualified evidence, reload and cancellation. The final blocked-state P-01 comparison passes at 1.5192% against the immutable 2%/16 policy. Its unscaled actual/diff/result files and repeatable browser/API/MCP evidence are retained in `verification/payroll-closeout/2026-10-11/`. Other visual states and production use are not qualified.
 
 ## Repeatable operator and model proof
 
@@ -29,3 +28,5 @@ OPENERP_PAYROLL_MODEL_REVIEW=1 bun run test:e2e apps/api/tests/paid-payroll-reco
 The first case additionally runs a bounded Luna readability and refusal review against the same disposable application and the real password-authenticated operator. Its private session file is removed and the pinned Codex proxy is stopped in `finally`; no application boundary is mocked. The model review is gated explicitly so routine CI remains deterministic. Missing authentication, a foreign origin or an unavailable model refuses the model proof; none of those conditions qualifies the screen. Vitest verifies financial transitions, while Luna reviews the blocked screen rather than approving financial commands.
 
 A separate existing reminder recovery regression requires historical commit `3a3b2093`, absent from public Drastic history. Its attempted run refused before recovery. The same requirement is present on main. This is retained as an existing portability limitation, not a new payroll recovery failure or a passing reminder regression.
+
+All six shared C-01/C-02/R-01–R-04 light-state comparisons were refreshed after payroll integration and pass their unchanged adopted policies. The tracked manifest binds each result to all current owning source hashes. The complete financial browser case passed on the integrated application; the corrected bounded model-review case passed separately. One read-only Luna step used one actual model call.

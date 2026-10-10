@@ -1,0 +1,55 @@
+{
+  "actual": "test-results/payroll-shared-parity/R-01/actual.png",
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/capture.mjs R-01",
+  "sourceRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/recurring-register.tsx": "ba9efd6f1d667b732b0b047a58f0c4645dc63281da8fc4c21c8f3e1d19929e19",
+    "apps/web/src/components/commerce/recurring-detail.tsx": "796e6056a435178e4854039880217cf7737d7eedea41ccc33c9b317e955b9ac0",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx": "52f4a591396c2775a7b3fc04c0a56eb2011f2bc11d1a96bd1a5d98a87ccb978e",
+    "packages/ui/src/kanon/form.tsx": "54ea4ac1d8b9bc880b1a7ec5c184d63607d8461715acfeeaf9a5bf3242c4cb6c",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "packages/ui/src/kanon/detail-panel.tsx": "ef4c440554b92f9cfa26f554ac0a1bf34cd604185e985ed502b3a36195d52050",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694",
+    "apps/web/src/components/commerce/shared.tsx": "20e2a9e570872f19e4a3e0bea9b99d794a3afa43269fef6c04253afb02788a5e",
+    "apps/web/src/components/book-workspace.tsx": "54e51d31d59c7483ed5912b1ba2ceba8cb733c63d087dc99b868f4340d089fad"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&record=recurring_agreement_95057b9750bf4bcea912663df8dfdb1e",
+    "time": "2026-10-10T22:38:48.313Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "selected saved agreement with one unprepared cycle",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "da19035ce851e6cfa410454306139beef2b2a85d677ade4d5f0b6c82f3c59db0"
+}

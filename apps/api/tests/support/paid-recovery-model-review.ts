@@ -54,7 +54,7 @@ export async function reviewPaidRecoveryWithLuna(
       "--port",
       String(port),
     ],
-    { stdio: "ignore" },
+    { stdio: "ignore", detached: true },
   );
 
   let proxyError: Error | undefined;
@@ -70,7 +70,9 @@ export async function reviewPaidRecoveryWithLuna(
 
     while (!ready && Date.now() < deadline) {
       if (proxyError) throw proxyError;
+
       if (proxy.exitCode !== null) throw new Error("Owned Codex proxy exited before review");
+
       ready = await fetch(`${proxyUrl}/v1/models`, { signal: AbortSignal.timeout(1000) }).then(
         (response) => response.ok,
         () => false,
@@ -109,8 +111,14 @@ export async function reviewPaidRecoveryWithLuna(
     if (proxy.pid && proxy.exitCode === null) {
       const exited = once(proxy, "exit");
 
-      proxy.kill("SIGTERM");
+      process.kill(-proxy.pid, "SIGTERM");
+
+      const killTimer = globalThis.setTimeout(() => {
+        if (proxy.pid && proxy.exitCode === null) process.kill(-proxy.pid, "SIGKILL");
+      }, 30000);
+
       await exited;
+      globalThis.clearTimeout(killTimer);
     }
 
     await rm(directory, { recursive: true, force: true });

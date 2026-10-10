@@ -32,7 +32,8 @@ test("Luna reviews the real blocked paid recovery without proposing a financial 
   if (
     origin.protocol !== "http:" ||
     origin.hostname !== "127.0.0.1" ||
-    origin.origin !== app.baseUrl ||
+    !app.baseUrl ||
+    origin.origin !== new URL(app.baseUrl).origin ||
     !/^\/entities\/[a-zA-Z0-9_-]+\/books\/[a-zA-Z0-9_-]+$/.test(origin.pathname)
   )
     throw new Error("Payroll review must stay on the disposable loopback book");

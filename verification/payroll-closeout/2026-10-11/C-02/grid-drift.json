@@ -1,0 +1,82 @@
+{
+  "scope": "C-02",
+  "output": "/Users/admin/drastic-finish-lanes/test-results/payroll-shared-parity/C-02",
+  "adoptedComparisonEligible": true,
+  "comparatorStatus": 0,
+  "difference": 0.017988425925925925,
+  "parityQualified": false,
+  "limitations": [
+    "Pixel comparison is not behavior/state or production qualification"
+  ],
+  "grid": [
+    {
+      "row": 0,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 4574,
+      "difference": 0.03176388888888889
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 4313,
+      "difference": 0.02995138888888889
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 5389,
+      "difference": 0.03742361111111111
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 1978,
+      "difference": 0.01373611111111111
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 5124,
+      "difference": 0.035583333333333335
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 603,
+      "difference": 0.0041875
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 1332,
+      "difference": 0.00925
+    }
+  ],
+  "gridCanvas": {
+    "width": 1440,
+    "height": 900
+  },
+  "sameDimensions": true,
+  "channelTolerance": 16
+}

@@ -1223,7 +1223,7 @@
       "route": "/entities/$entityId/books/$bookId/sales?view=articles",
       "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=articles",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/commercial-registers.md",
       "requiredStates": [
@@ -1251,7 +1251,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
-      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/C-01/result.json"
     },
     {
       "id": "C-02",
@@ -1275,7 +1276,7 @@
       "route": "/entities/$entityId/books/$bookId/sales?view=orders",
       "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=orders",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/commercial-registers.md",
       "requiredStates": [
@@ -1304,7 +1305,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
-      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/C-02/result.json"
     },
     {
       "id": "R-01",
@@ -1329,7 +1331,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/recurring-agreement-ui.md",
       "requiredStates": [
@@ -1356,7 +1358,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/R-01/result.json"
     },
     {
       "id": "R-02",
@@ -1379,7 +1382,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/recurring-agreement-ui.md",
       "requiredStates": [
@@ -1406,7 +1409,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/R-02/result.json"
     },
     {
       "id": "R-03",
@@ -1429,7 +1433,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/recurring-agreement-ui.md",
       "requiredStates": [
@@ -1456,7 +1460,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/R-03/result.json"
     },
     {
       "id": "R-04",
@@ -1479,7 +1484,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/recurring-agreement-ui.md",
       "requiredStates": [
@@ -1506,7 +1511,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/R-04/result.json"
     },
     {
       "id": "CLOSEOUT-INVOICE",
@@ -1595,7 +1601,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/tax?view=paid-recovery",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/paid-recovery-ui.md",
       "requiredStates": [
@@ -1618,7 +1624,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicit user adoption of P-01 at 2% in this session. No change to financial authority or original posted history.",
-      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.\nIntegrated payroll source now passes the adopted light-state comparison with tracked actual/diff/result. Behavior and production qualification remain separate.",
+      "evidence": "verification/payroll-closeout/2026-10-11/P-01/result.json"
     }
   ]
 }

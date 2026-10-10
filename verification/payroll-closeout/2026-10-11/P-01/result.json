@@ -1,0 +1,55 @@
+{
+  "scope": "P-01",
+  "sourceRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "comparatorRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "referenceSha256": "03e9e7962991ea20df47b0b819b3c0046b5d7272e3a1b4613754af3fe9b3681c",
+  "actualSha256": "5e6741448584148a9150723116dd92770f3bedfd7a362a336b2d47419a728460",
+  "diffSha256": "192462aa64a976f0adad44d1ec7b427ede7b686c7c1d274ea76f8f05888c7ca4",
+  "sourceHashes": {
+    "apps/web/src/components/payroll/paid-recovery-workspace.tsx": "8cd6d9c7ba2d79f6a094c23e335f3460bc9b48a92b3f29ab78d6db31993abbe7",
+    "apps/web/src/components/payroll/paid-recovery-panel.tsx": "668eb2e8a76c9b48b8e840901ae4aa7b84979573eecb541c0dff5c31b5b7834f",
+    "apps/web/src/components/payroll/use-paid-recovery.ts": "e9e7dde34b8e4c1a505629b9a738078f7bb57aaa331728618b1efb225503622c",
+    "apps/web/src/components/finance-area.tsx": "9ed6817e166570578d44dcd67c3c594d695bb9435596e07d6f02945402f9be10",
+    "packages/ui/src/kanon/form.tsx": "54ea4ac1d8b9bc880b1a7ec5c184d63607d8461715acfeeaf9a5bf3242c4cb6c",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "apps/web/src/components/payroll/workspace.tsx": "93fbe4aed4e33d0c49473dfc900dbe7bf652a50e8e560e05ea29aa30c310cab6",
+    "apps/web/src/components/book-workspace.tsx": "54e51d31d59c7483ed5912b1ba2ceba8cb733c63d087dc99b868f4340d089fad",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694",
+    "apps/web/src/components/payroll/paid-recovery-completion.tsx": "0acd6a0dacdab70a40691f42c9bed7c630eebd42dbaa55f663d8780e54b8005d",
+    "apps/web/src/components/payroll/paid-recovery-presentation.ts": "8211d809d9c9fe7affdb6024ba00bf402181249cd2320cbc9366fb6340c33f7d",
+    "apps/web/src/components/book-navigation.tsx": "c63bbcb4e702e7885289c55b4c08df108440d3c9aba6db4e505995f39bcc5537",
+    "apps/web/src/components/commerce/shared.tsx": "20e2a9e570872f19e4a3e0bea9b99d794a3afa43269fef6c04253afb02788a5e",
+    "packages/ui/src/components/nav-icon.tsx": "ac0255fece3c3a9d3fa36b7f47134df7ae04f68017e59d10e8d1f473b99e3e67",
+    "packages/ui/src/kanon/detail-panel.tsx": "ef4c440554b92f9cfa26f554ac0a1bf34cd604185e985ed502b3a36195d52050",
+    "packages/ui/src/kanon/work-list.tsx": "ac3b56e7b5289e6da4d4b3667af03d5bf975e14683766a773a277c139f0dd283"
+  },
+  "command": "OPENERP_PAYROLL_MODEL_REVIEW=1 bun run test:e2e apps/api/tests/paid-payroll-recovery.browser.e2e.test.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/compare.mjs P-01 test-results/e2e/payroll-capture.json verification/payroll-closeout/2026-10-11/P-01",
+  "conditions": {
+    "browser": "Locked Playwright Chromium",
+    "deviceScaleFactor": 1,
+    "fonts": "Application fonts, document.fonts.ready awaited",
+    "locale": "en-US browser; Swedish application",
+    "theme": "light",
+    "time": "2026-10-10T22:37:10.355648+00:00",
+    "fixture": {
+      "synthetic": true,
+      "owner": "paidRecoveryFixture({visualNames:true})",
+      "state": "blocked, source picker settled"
+    },
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/tax?view=paid-recovery"
+  },
+  "reviewer": "Automated Vitest capture; Luna separately reviewed the real blocked screen; no production qualification",
+  "difference": 0.01519212962962963,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/payroll-closeout/2026-10-11/P-01/actual.png",
+  "diff": "verification/payroll-closeout/2026-10-11/P-01/diff.png",
+  "passed": true
+}
