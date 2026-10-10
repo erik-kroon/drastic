@@ -72,6 +72,7 @@ function qualificationDossier(artifact: { id: string; sha256: string }) {
 type QualificationFixture = {
   jurisdiction: string;
   qualification?: (artifact: { id: string; sha256: string }) => Schema.JsonObject;
+  storedVersion?: number;
 };
 
 async function prepared(configuration?: QualificationFixture) {
@@ -127,8 +128,8 @@ async function prepared(configuration?: QualificationFixture) {
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,$2,'posting_eligibility',1,$3,$4) on conflict(id) do nothing",
-      [release.id, jurisdiction, release.checksum, release],
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,$2,'posting_eligibility',$3,$4,$5) on conflict(id) do nothing",
+      [release.id, jurisdiction, configuration?.storedVersion ?? 1, release.checksum, release],
     );
   } finally {
     await admin.end();
@@ -268,6 +269,12 @@ function execution(
 const qualificationFailures: ReadonlyArray<QualificationFixture & { name: string }> = [
   { name: "missing dossier", jurisdiction: "ZA" },
   {
+    name: "stored version differs from reviewed release",
+    jurisdiction: "ZO",
+    qualification: qualificationDossier,
+    storedVersion: 2,
+  },
+  {
     name: "mismatched release checksum",
     jurisdiction: "ZB",
     qualification: (artifact) => ({
@@ -317,6 +324,21 @@ const qualificationFailures: ReadonlyArray<QualificationFixture & { name: string
     name: "empty primary source inventory",
     jurisdiction: "ZF",
     qualification: (artifact) => ({ ...qualificationDossier(artifact), primarySources: [] }),
+  },
+  {
+    name: "source retrieved after independent review",
+    jurisdiction: "ZN",
+    qualification: (artifact) => {
+      const dossier = qualificationDossier(artifact);
+
+      return {
+        ...dossier,
+        primarySources: dossier.primarySources.map((source) => ({
+          ...source,
+          retrievedAt: "2026-10-03T10:00:00.000Z",
+        })),
+      };
+    },
   },
   {
     name: "invalid primary source URL",

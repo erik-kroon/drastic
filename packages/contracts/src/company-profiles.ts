@@ -666,7 +666,9 @@ export const RuleRelease = Schema.Struct({
         release.qualification.releaseChecksum === release.checksum &&
         release.qualification.primarySources.every(
           (source) =>
-            source.effectiveFrom <= release.validFrom && source.effectiveTo >= release.validTo,
+            source.effectiveFrom <= release.validFrom &&
+            source.effectiveTo >= release.validTo &&
+            Date.parse(source.retrievedAt) <= Date.parse(release.qualification!.reviewedAt),
         )) ||
       "Qualification must cite this release checksum and sources covering its valid interval.",
   ),
