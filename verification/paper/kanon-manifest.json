@@ -1046,6 +1046,85 @@
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
       "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
+    },
+    {
+      "id": "C-01",
+      "name": "C-01 Artiklar",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=43T4-0",
+      "baseline": "verification/paper/baseline/product-closeout-2026-10-10/C-01.png",
+      "baselineSha256": "76309a4e3048451764acabf3ddf096f81c3a7a8e4969be55c38f0a37c41e89ad",
+      "jsx": "verification/paper/baseline/product-closeout-2026-10-10/C-01.jsx.json",
+      "jsxSha256": "463bd5190503551941685e99ea3ddabb4d6072eaa1ad6a822f13a9b1e52265f9",
+      "files": ["apps/web/src/components/commerce/catalog-articles.tsx"],
+      "route": null,
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=articles",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/commercial-registers.md",
+      "requiredStates": [
+        "selected unqualified article",
+        "empty",
+        "loading",
+        "error",
+        "edit",
+        "archived",
+        "stale revision"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": ["layouts", "detail-panel", "action"],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
+      "notes": "Implementation and fresh real-route behavior and visual evidence remain pending. Missing account, VAT, quote number, validity and sent facts must remain explicit rather than fabricated."
+    },
+    {
+      "id": "C-02",
+      "name": "C-02 Offerter och order",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=440W-0",
+      "baseline": "verification/paper/baseline/product-closeout-2026-10-10/C-02.png",
+      "baselineSha256": "db843ce9668866336731324e65914a31f99a26ebbadb8cf6bccbe7cff2acaf0c",
+      "jsx": "verification/paper/baseline/product-closeout-2026-10-10/C-02.jsx.json",
+      "jsxSha256": "2fc7ea2c7c26a7a244886bd5fef15a318abd27aa49adaf8ef2e47fb87002518c",
+      "files": ["apps/web/src/components/commerce/sales-orders.tsx"],
+      "route": null,
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=orders",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/commercial-registers.md",
+      "requiredStates": [
+        "selected draft quote",
+        "empty",
+        "loading",
+        "error",
+        "replacement preview",
+        "stale revision",
+        "accepted",
+        "cancelled"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": ["layouts", "detail-panel", "action"],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
+      "notes": "Implementation and fresh real-route behavior and visual evidence remain pending. Missing account, VAT, quote number, validity and sent facts must remain explicit rather than fabricated."
     }
   ]
 }
