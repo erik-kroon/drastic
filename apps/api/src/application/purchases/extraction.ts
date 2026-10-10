@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
+import * as Predicate from "effect/Predicate";
 import { DocumentOutputError } from "../../adapters/document-reading/azure";
 import { AiEgressError } from "../../adapters/ai-egress";
 import { openAiEgress } from "../ai-egress";
@@ -683,57 +684,68 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
         attempt &&
         Shared.textField(attemptBody(attempt, latest.id), "result") === "succeeded"
       ) {
-        const basis = yield* readReviewBasis(
+        const review = yield* readReviewBasis(
           transaction,
           command.scope.bookId,
           command.occurrenceId,
           latest.id,
           attempt.id,
           previewExpectations,
-        );
+          false,
+        ).pipe(Effect.result);
 
-        const retained = yield* readRetainedDecisions(
-          transaction,
-          command.scope.bookId,
-          basis.current?.id ?? null,
-        );
+        if (Result.isFailure(review)) {
+          if (
+            !Predicate.isTagged(review.failure, "AccountingError") ||
+            (review.failure.code !== "StaleDependency" && review.failure.code !== "NotFound")
+          )
+            return yield* review.failure;
+        } else {
+          const basis = review.success;
 
-        const merge = proposalState(
-          basis.base ?? {},
-          basis.current?.content ?? basis.base ?? {},
-          attemptBody(attempt, latest.id),
-          [],
-          retained,
-        );
+          const retained = yield* readRetainedDecisions(
+            transaction,
+            command.scope.bookId,
+            basis.current?.id ?? null,
+          );
 
-        const fields = yield* Schema.decodeUnknownEffect(Schema.Array(Extraction.MergedField))(
-          merge.fields,
-        ).pipe(Effect.mapError(() => failure("InternalError")));
+          const merge = proposalState(
+            basis.base ?? {},
+            basis.current?.content ?? basis.base ?? {},
+            attemptBody(attempt, latest.id),
+            [],
+            retained,
+          );
 
-        suggestionRecordId = yield* recordSuggestion(
-          transaction,
-          command.scope.bookId,
-          principal,
-          {
-            kind: "extraction_attempt",
-            occurrenceId: command.occurrenceId,
-            requestId: latest.id,
-            attemptId: attempt.id,
-            draftId: basis.current?.id ?? null,
-            revision: basis.current?.revision ?? null,
-          },
-          {
-            source: "extraction",
-            version: "extraction_merge_v1",
-            options: fields
-              .filter((field) => field.suggestion !== null)
-              .map((field) => ({
-                lineOrdinal: field.lineOrdinal,
-                fieldKey: field.fieldKey,
-                value: field.suggestion,
-              })),
-          },
-        );
+          const fields = yield* Schema.decodeUnknownEffect(Schema.Array(Extraction.MergedField))(
+            merge.fields,
+          ).pipe(Effect.mapError(() => failure("InternalError")));
+
+          suggestionRecordId = yield* recordSuggestion(
+            transaction,
+            command.scope.bookId,
+            principal,
+            {
+              kind: "extraction_attempt",
+              occurrenceId: command.occurrenceId,
+              requestId: latest.id,
+              attemptId: attempt.id,
+              draftId: basis.current?.id ?? null,
+              revision: basis.current?.revision ?? null,
+            },
+            {
+              source: "extraction",
+              version: "extraction_merge_v1",
+              options: fields
+                .filter((field) => field.suggestion !== null)
+                .map((field) => ({
+                  lineOrdinal: field.lineOrdinal,
+                  fieldKey: field.fieldKey,
+                  value: field.suggestion,
+                })),
+            },
+          );
+        }
       }
 
       return yield* Shared.decode(StateSchema, {
@@ -768,9 +780,11 @@ function readReviewBasis(
   requestId: string,
   attemptId: string,
   expectations: ReviewExpectations,
+  lockBasis = true,
 ) {
   return Effect.gen(function* () {
-    const entry = (yield* InboxDb.readInboxForUpdate(transaction, bookId, occurrenceId))[0];
+    const readInbox = lockBasis ? InboxDb.readInboxForUpdate : InboxDb.readInbox;
+    const entry = (yield* readInbox(transaction, bookId, occurrenceId))[0];
 
     if (!entry) return yield* failure("NotFound");
 
@@ -788,7 +802,11 @@ function readReviewBasis(
       return yield* failure("StaleDependency");
     }
 
-    const state = (yield* ExtractionDb.readExtractionState(transaction, bookId, requestId))[0];
+    const readState = lockBasis
+      ? ExtractionDb.readExtractionState
+      : ExtractionDb.readExtractionStateSnapshot;
+
+    const state = (yield* readState(transaction, bookId, requestId))[0];
 
     if (!state) return yield* failure("InternalError");
 

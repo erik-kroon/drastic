@@ -754,3 +754,152 @@ test("suggestion variants reject invalid captures before insert and export count
     await admin.end();
   }
 }, 60_000);
+
+test("extraction state GET completes while its inbox row is locked", async () => {
+  const { book, source, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const admin = await database();
+  let observed: { status: number | null; error: string | null } = { status: null, error: null };
+
+  try {
+    await admin.query("BEGIN");
+    await admin.query(
+      "SELECT occurrence_id FROM openerp.supplier_inbox WHERE book_id=$1 AND occurrence_id=$2 FOR UPDATE",
+      [book.bookId, source.id],
+    );
+
+    try {
+      const response = await request(book, path, { signal: AbortSignal.timeout(2500) });
+
+      observed = { status: response.status, error: null };
+      await writeFile(
+        join(environment().artifacts, "extraction-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      const state = await decoded(response, Extraction.SupplierExtractionState);
+
+      expect(state.attempt?.result).toBe("succeeded");
+      expect(state.requests[0]?.id).toBe(options.requestId);
+      expect(state.suggestionRecordId).not.toBeNull();
+    } catch (error) {
+      observed = { ...observed, error: error instanceof Error ? error.name : "unknown" };
+      await writeFile(
+        join(environment().artifacts, "extraction-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      throw error;
+    }
+  } finally {
+    await admin.query("ROLLBACK");
+    await admin.end();
+  }
+});
+
+test("extraction state retains diagnostics when its review basis is unavailable", async () => {
+  const { book, source, path, options, reviewed } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const before = await decoded(await request(book, path), Extraction.SupplierExtractionState);
+  const admin = await database();
+
+  try {
+    const countBefore = await admin.query(
+      "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+      [book.bookId],
+    );
+
+    await admin.query(
+      "UPDATE openerp.supplier_inbox SET draft_id=null WHERE book_id=$1 AND occurrence_id=$2",
+      [book.bookId, source.id],
+    );
+
+    const response = await request(book, path);
+    const body = await response.clone().json();
+
+    await writeFile(
+      join(environment().artifacts, "extraction-unavailable-basis.json"),
+      JSON.stringify({
+        bookId: book.bookId,
+        occurrenceId: source.id,
+        originalDraftId: reviewed.draft.id,
+        injectedDraftId: null,
+        status: response.status,
+        body,
+        before,
+      }),
+    );
+
+    const after = await decoded(response, Extraction.SupplierExtractionState);
+
+    expect(after.suggestionRecordId).toBeNull();
+    expect(after.requests).toEqual(before.requests);
+    expect(after.attempt).toEqual(before.attempt);
+    expect(after.fieldDecisions).toEqual(before.fieldDecisions);
+
+    const countAfter = await admin.query(
+      "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+      [book.bookId],
+    );
+
+    expect(countAfter.rows).toEqual(countBefore.rows);
+    await failure(
+      await request(book, `${path}/${options.requestId}/prepare`, {
+        method: "POST",
+        body: JSON.stringify({ attemptId: before.attempt!.attemptId }),
+      }),
+      409,
+      "StaleDependency",
+    );
+  } finally {
+    await admin.query(
+      "UPDATE openerp.supplier_inbox SET draft_id=$3 WHERE book_id=$1 AND occurrence_id=$2",
+      [book.bookId, source.id, reviewed.draft.id],
+    );
+    await admin.end();
+  }
+});
+
+test("extraction state GET completes while its lifecycle row is locked", async () => {
+  const { book, source, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const admin = await database();
+  let observed: { status: number | null; error: string | null } = { status: null, error: null };
+
+  try {
+    await admin.query("BEGIN");
+    await admin.query(
+      "SELECT request_id FROM openerp.supplier_extraction_request_states WHERE book_id=$1 AND request_id=$2 FOR UPDATE",
+      [book.bookId, options.requestId],
+    );
+
+    try {
+      const response = await request(book, path, { signal: AbortSignal.timeout(2500) });
+
+      observed = { status: response.status, error: null };
+      await writeFile(
+        join(environment().artifacts, "extraction-lifecycle-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      const state = await decoded(response, Extraction.SupplierExtractionState);
+
+      expect(state.attempt?.result).toBe("succeeded");
+      expect(state.requests[0]?.id).toBe(options.requestId);
+      expect(state.suggestionRecordId).not.toBeNull();
+    } catch (error) {
+      observed = { ...observed, error: error instanceof Error ? error.name : "unknown" };
+      await writeFile(
+        join(environment().artifacts, "extraction-lifecycle-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      throw error;
+    }
+  } finally {
+    await admin.query("ROLLBACK");
+    await admin.end();
+  }
+});

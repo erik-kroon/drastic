@@ -142,13 +142,30 @@ export function readLatestExtractionRequest(
 }
 
 export function readExtractionState(transaction: Transaction, bookId: string, requestId: string) {
+  return readExtractionStateQuery(transaction, bookId, requestId, true);
+}
+
+export function readExtractionStateSnapshot(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+) {
+  return readExtractionStateQuery(transaction, bookId, requestId, false);
+}
+
+function readExtractionStateQuery(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+  locked: boolean,
+) {
   return transaction.execute<ExtractionStateRow>(
     sql`
       select request_id as "requestId", state,
         cancel_version as "cancelVersion", attempts_made as "attemptsMade"
       from openerp.supplier_extraction_request_states
       where book_id = ${bookId} and request_id = ${requestId}
-      for update
+      ${locked ? sql`for update` : sql``}
     `,
     "objects",
   );

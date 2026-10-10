@@ -1,0 +1,48 @@
+{
+  "success": false,
+  "numPassedTests": 0,
+  "numFailedTests": 2,
+  "numPendingTests": 8,
+  "tests": [
+    {
+      "name": "uncited extraction acceptance remains unknown while retained manual values are independent",
+      "status": "skipped"
+    },
+    {
+      "name": "runtime-role extraction admits, reads, reviews, cancels and replays without immutable UPDATE grants",
+      "status": "skipped"
+    },
+    {
+      "name": "extraction rechecks credential revocation before capture and after object reading",
+      "status": "skipped"
+    },
+    {
+      "name": "extraction rechecks membership revocation before capture and after object reading",
+      "status": "skipped"
+    },
+    {
+      "name": "extraction rechecks identity revocation before capture and after object reading",
+      "status": "skipped"
+    },
+    {
+      "name": "service-intent extraction outlives requester session but cancellation and scope still fence it",
+      "status": "skipped"
+    },
+    {
+      "name": "bounded native extraction prepares cites commits and exports more than four hundred fields",
+      "status": "skipped"
+    },
+    {
+      "name": "suggestion variants reject invalid captures before insert and export counts malformed historical capture",
+      "status": "skipped"
+    },
+    {
+      "name": "extraction state GET completes while its inbox row is locked",
+      "status": "failed"
+    },
+    {
+      "name": "extraction state retains diagnostics when its review basis is unavailable",
+      "status": "failed"
+    }
+  ]
+}
