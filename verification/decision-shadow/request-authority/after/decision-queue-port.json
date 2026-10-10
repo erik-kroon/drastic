@@ -1,0 +1,23 @@
+{
+  "syntheticOnly": true,
+  "requestId": "decision_request_da6d4eafaf8f4f3c9d7f058bc3c19b2c",
+  "status": "validated",
+  "reason": null,
+  "dispatchCount": 1,
+  "transportAttempts": 1,
+  "providerFailures": [],
+  "independentReaderHolds": [
+    {
+      "milliseconds": 100,
+      "acquired": true,
+      "released": true
+    }
+  ],
+  "jobs": [
+    {
+      "id": "decision/book_bcc72931ac7e1b75/decision_request_da6d4eafaf8f4f3c9d7f058bc3c19b2c",
+      "state": "completed"
+    }
+  ],
+  "runnerFailures": []
+}

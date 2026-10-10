@@ -13,7 +13,7 @@ import { hashToken } from "../../db/human-actor";
 import { RequestEnvironment } from "../../runtime/environment";
 import { configuredDecisionModel } from "../../runtime/decision-model";
 import { withBook, decode, toJsonObject } from "../commerce/support";
-import { digest, newId } from "../posting";
+import { digest, newId, replay, saveCommand } from "../posting";
 import { failure } from "../failures";
 import { authorize } from "../authority";
 import { admitRunnerActor } from "../preparation-jobs";
@@ -171,13 +171,24 @@ export const admitDecisionRequest = Effect.fn("decisionJobs.admit")(function* (
   return yield* withBook(
     token,
     command.scope,
-    false,
+    true,
     function* (tx, principal) {
-      const policy = yield* currentPolicy(tx, command.scope);
       const existing = (yield* Db.readKey(tx, command.scope.bookId, command.idempotencyKey))[0];
       const admissionDigest = yield* digest({ actorId: principal.actorId, input: command.input });
 
+      const saved = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        "admit_decision_request",
+        principal.actorId,
+        yield* toJsonObject(command.input),
+        C.DecisionAdmission,
+      );
+
       if (existing) {
+        if (saved.previous !== undefined) return yield* failure("InternalError");
+
         if (existing.admissionDigest !== admissionDigest)
           return yield* failure("IdempotencyConflict");
         const current = (yield* Db.readRequest(tx, command.scope.bookId, existing.id))[0];
@@ -194,16 +205,36 @@ export const admitDecisionRequest = Effect.fn("decisionJobs.admit")(function* (
         );
       }
 
-      if (!policy || policy.mode === "off")
-        return yield* decode(C.DecisionAdmission, { status: "off", reason: null, request: null });
-      const frozen = yield* freeze(tx, command.scope, command.input, policy);
+      if (saved.previous !== undefined) return saved.previous;
 
-      if (frozen.skipped !== undefined)
-        return yield* decode(C.DecisionAdmission, {
-          status: "skipped",
-          reason: frozen.skipped,
-          request: null,
-        });
+      const policy = yield* currentPolicy(tx, command.scope);
+
+      const frozen =
+        !policy || policy.mode === "off"
+          ? { terminal: { status: "off" as const, reason: null, request: null } }
+          : yield* freeze(tx, command.scope, command.input, policy);
+
+      if ("terminal" in frozen || frozen.skipped !== undefined) {
+        const result = yield* decode(
+          C.DecisionAdmission,
+          "terminal" in frozen
+            ? frozen.terminal
+            : { status: "skipped", reason: frozen.skipped, request: null },
+        );
+
+        yield* saveCommand(
+          tx,
+          command.scope,
+          command.idempotencyKey,
+          saved.expected,
+          "admit_decision_request",
+          principal.actorId,
+          yield* toJsonObject(result),
+        );
+
+        return result;
+      }
+
       const body = frozen.request;
       yield* Db.insertRequest(tx, {
         bookId: command.scope.bookId,
@@ -213,7 +244,7 @@ export const admitDecisionRequest = Effect.fn("decisionJobs.admit")(function* (
         actorId: principal.actorId,
         credentialHash: principal.kind === "apiCredential" ? principal.credentialHash : null,
         sessionId: principal.kind === "betterAuthSession" ? principal.sessionId : null,
-        policyId: policy.id,
+        policyId: body.policy.id,
         body: yield* toJsonObject(body),
       });
       yield* Db.insertControl(tx, command.scope.bookId, body.id);
@@ -234,7 +265,7 @@ export const getDecisionRequest = Effect.fn("decisionJobs.get")(function* (
   token: string,
   command: { scope: Scope; id: string },
 ) {
-  return yield* withBook(token, command.scope, false, function* (tx) {
+  return yield* withBook(token, command.scope, true, function* (tx) {
     const row = (yield* Db.readRequest(tx, command.scope.bookId, command.id))[0];
 
     if (!row) return yield* failure("NotFound");
