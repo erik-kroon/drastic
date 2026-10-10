@@ -38,4 +38,6 @@ OPENERP_E2E_ARTIFACTS=test-results/pr20-extraction-native-final bun run test:e2e
   apps/api/tests/supplier-extraction.e2e.test.ts -t 'bounded native extraction'
 ```
 
-`CHECK_CHANGED_TIMEOUT_SECONDS=180 bun run check:changed` passed before the final focused run. The later changes refine the native failure assertion/artifact only; production code stayed unchanged. Oxlint and whitespace preflight passed. Clean-HEAD full/owners/design and mandatory MCP deterministic/evaluation checks remain the parent checkpoint; they are not claimed here. MCP state/preparation outputs expose the changed bounded schemas.
+`CHECK_CHANGED_TIMEOUT_SECONDS=180 bun run check:changed` passed before the final focused run. The later changes refine the native failure assertion/artifact only; production code stayed unchanged. Oxlint and whitespace preflight passed.
+
+Clean worktree HEAD `111f1e9`, against main `8cc665e`, passed `check:changed:full origin/main`, `check:owners` (55/55) and `check:design origin/main`; tracked status stayed clean. MCP state/preparation outputs expose the changed bounded schemas. Deterministic MCP passed 3/3 in `test-results/pr20-extraction-mcp`; pinned Luna evaluation passed 1/1 in `test-results/mcpjam/3ad212d9-2437-473e-9cbe-97d01efed133`. Logs are `/tmp/pr20-extraction-clean-{full,owners,design}.log`, `/tmp/pr20-extraction-mcp.log` and `/tmp/pr20-extraction-mcp-eval.log`. These checks do not qualify browser parity or a live provider.
