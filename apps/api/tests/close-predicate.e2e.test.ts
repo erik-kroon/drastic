@@ -5,6 +5,10 @@ import { expect, test } from "vitest";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Vat from "@open-erp/contracts/vat-returns";
+import * as Source from "@open-erp/contracts/source-intake";
+import * as Inbox from "@open-erp/contracts/supplier-inbox";
+import * as Workspace from "@open-erp/contracts/workspace";
+import { Client } from "pg";
 import {
   createSession,
   database,
@@ -19,7 +23,11 @@ import {
   post,
   request,
 } from "./support/fixtures";
-import { signedSeptemberBank, vatConfiguration } from "./support/close-predicate";
+import {
+  signedSeptemberBank,
+  vatConfiguration,
+  incompleteSeptemberCoverage,
+} from "./support/close-predicate";
 const periods = [
   { id: "period_september", startsOn: "2026-09-01", endsOn: "2026-09-30" },
   { id: "period_october", startsOn: "2026-10-01", endsOn: "2026-10-31" },
@@ -81,7 +89,7 @@ async function observe(book: Awaited<ReturnType<typeof fixture>>) {
   try {
     return (
       await admin.query(
-        `select (select count(*) from openerp.close_predicate_captures where book_id=$1)::text captures,(select count(*) from openerp.command_receipts where book_id=$1)::text commands,(select count(*) from openerp.vouchers where book_id=$1)::text vouchers,(select committed_sequence::text from openerp.books where id=$1) sequence`,
+        `select (select count(*) from openerp.close_predicate_captures where book_id=$1)::text captures,(select count(*) from openerp.command_receipts where book_id=$1)::text commands,(select count(*) from openerp.vouchers where book_id=$1)::text vouchers,(select count(*) from openerp.execution_receipts where book_id=$1)::text receipts,(select count(*) from openerp.outbox where book_id=$1)::text outbox,(select count(*) from public.effect_mq_jobs where metadata->>'bookId'=$1)::text queue_jobs,(select committed_sequence::text from openerp.books where id=$1) sequence`,
         [book.bookId],
       )
     ).rows[0];
@@ -98,8 +106,8 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     observations.initial = initial;
     expect(initial.capture).toBeNull();
     expect(check(initial, "bank_reconciliation").status).toBe("not_run");
-    expect(check(initial, "supporting_documents").status).toBe("not_established");
-    expect(check(initial, "complete_facts").status).toBe("not_established");
+    expect(check(initial, "vouchers_supported").status).toBe("not_established");
+    expect(check(initial, "facts_complete").status).toBe("not_established");
     expect(initial.verdict).toBe("inconclusive");
     const signed = await signedSeptemberBank(sessionBook);
     const input = { bankInventoryPlanId: signed.plan.id, actualVatReturnId: null };
@@ -115,6 +123,22 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     expect(check(saved, "bank_reconciliation").freshness.status).toBe("fresh");
     expect(saved.verdict).toBe("inconclusive");
     expect(saved.reported.every((c) => c.status !== "pass")).toBe(true);
+    const runtime = new Client({ connectionString: environment().runtimeUrl });
+    await runtime.connect();
+    try {
+      await expect(
+        runtime.query("UPDATE openerp.close_predicate_captures SET body=body WHERE book_id=$1", [
+          book.bookId,
+        ]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        runtime.query("DELETE FROM openerp.close_predicate_captures WHERE book_id=$1", [
+          book.bookId,
+        ]),
+      ).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await runtime.end();
+    }
     await failure(
       await request(book, path, {
         method: "POST",
@@ -141,6 +165,18 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     const annual = await fixture();
     await failure(
       await request(annual, "/periods/period_2026/close-predicate", {
+        method: "POST",
+        body: JSON.stringify({ bankInventoryPlanId: null, actualVatReturnId: null }),
+      }),
+      422,
+      "InvalidJournal",
+    );
+    const partial = await fixture(
+      [],
+      [{ id: "period_september", startsOn: "2026-09-02", endsOn: "2026-09-30" }],
+    );
+    await failure(
+      await request(partial, path, {
         method: "POST",
         body: JSON.stringify({ bankInventoryPlanId: null, actualVatReturnId: null }),
       }),
@@ -181,7 +217,9 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     )(await response.json());
     observations.mcp = rpc.result.structuredContent.result;
     expect(rpc.result.structuredContent.result.capture).toEqual(saved.capture);
-    expect(await observe(book)).toEqual(before);
+    const after = await observe(book);
+    observations.readOnly = { before, after, financial: beforeFinancial };
+    expect(after).toEqual(before);
     expect(await persisted(book)).toEqual(beforeFinancial);
     const source = await evidence(book);
     const j = journal(source.id, "100");
@@ -191,11 +229,14 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
       { ...j, accountingPeriodId: "period_october", postingDate: "2026-10-05" },
       Accounting.ChangeSet,
     );
-    await execute(book, later);
     const unrelated = await decoded(await request(book, path), View);
     observations.unrelated = unrelated;
     expect(check(unrelated, "bank_reconciliation").freshness.status).toBe("fresh");
     expect(unrelated.capture).toEqual(saved.capture);
+    await execute(book, later);
+    const inventoryStale = await decoded(await request(book, path), View);
+    observations.inventoryGlobalLedger = inventoryStale;
+    expect(check(inventoryStale, "bank_reconciliation").freshness.status).toBe("stale");
     const relevant = await post(
       book,
       "/change-sets",
@@ -249,6 +290,53 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     observations.saved = saved;
     expect(check(saved, "vat_control").status).toBe("pass");
     expect(saved.verdict).toBe("inconclusive");
+    const original = await post(
+      book,
+      "/source-occurrences",
+      {
+        sourceSystem: "close_predicate_fixture",
+        sourceAccountId: "synthetic_inbox",
+        occurrenceKey: randomUUID(),
+        sourceRevision: "1",
+        filename: "missing.txt",
+        mediaType: "text/plain",
+        contentBase64: Buffer.from("Synthetic unresolved supporting original").toString("base64"),
+      },
+      Source.SourceOccurrence,
+    );
+    await post(
+      book,
+      "/commerce/supplier-inbox",
+      { occurrenceId: original.id, channel: "upload", messageIdentity: null },
+      Inbox.SupplierInboxView,
+    );
+    const target = { kind: "document", recordId: original.id } as const;
+    const questionBasis = await post(
+      book,
+      "/workspace/questions/read",
+      target,
+      Workspace.WorkQuestionsView,
+    );
+    const sessionBook = { ...book, token: (await createSession(book)).token };
+    const asked = await post(
+      sessionBook,
+      "/workspace/questions",
+      {
+        target,
+        expectedTargetRevision: questionBasis.owner.revision,
+        kind: "missing_evidence",
+        question: "Please retain the missing synthetic receipt",
+        requestedFrom: book.actorId,
+      },
+      Workspace.WorkQuestionResult,
+    );
+    observations.question = asked.question;
+    const open = await capture(book, { bankInventoryPlanId: null, actualVatReturnId: vat.id });
+    observations.openReviews = open;
+    expect(check(open, "reviews_and_questions").status).toBe("fail");
+    expect(
+      check(open, "reviews_and_questions").evidenceRefs.some((ref) => ref.id === asked.question.id),
+    ).toBe(true);
     const later = await post(
       book,
       "/change-sets",
@@ -268,7 +356,14 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     const incomplete = await post(
       book,
       "/vat-returns/actuals",
-      { ...input, sourceCoverage: [] },
+      {
+        ...input,
+        sourceCoverage: input.sourceCoverage.map((row) => ({
+          ...row,
+          state: "unknown",
+          evidenceId: null,
+        })),
+      },
       Vat.ActualVatReturn,
     );
     observations.incomplete = incomplete;
@@ -282,5 +377,44 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     expect(failed.verdict).toBe("inconclusive");
   } finally {
     await save("close-predicate-vat.json", observations);
+  }
+}, 180000);
+
+test("AUT06 missing bank mappings, statements and continuity cannot pass at zero arithmetic", async () => {
+  const observed = [];
+  try {
+    for (const mode of ["missing", "continuity", "incomplete"] as const) {
+      const book = await fixture([], periods);
+      const sessionBook = { ...book, token: (await createSession(book)).token };
+      const report = await incompleteSeptemberCoverage(sessionBook, mode);
+      expect(report.hasReviewGaps).toBe(true);
+      if (mode === "missing") {
+        expect(report.accounts[0]?.diagnostics).toContain("source_mapping_missing");
+        expect(report.accounts[0]?.diagnostics).toContain("statements_missing");
+      }
+      if (mode === "continuity")
+        expect(report.accounts[0]?.gaps).toEqual([
+          { startsOn: "2026-09-16", endsOn: "2026-09-30" },
+        ]);
+      if (mode === "incomplete")
+        expect(report.accounts[0]?.statements[0]?.diagnostics).toContain(
+          "statement_declared_incomplete",
+        );
+      const result = await capture(book, {
+        bankInventoryPlanId: null,
+        bankSourceCoverageReportId: report.id,
+        actualVatReturnId: null,
+      });
+      observed.push({ mode, report, result });
+      expect(check(result, "bank_reconciliation").status).toBe("fail");
+      expect(
+        check(result, "bank_reconciliation").evidenceRefs.some(
+          (ref) => ref.id === report.id && ref.digest === report.digest,
+        ),
+      ).toBe(true);
+      expect(result.verdict).toBe("inconclusive");
+    }
+  } finally {
+    await save("close-predicate-missing-bank.json", observed);
   }
 }, 180000);

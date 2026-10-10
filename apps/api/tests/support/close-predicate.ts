@@ -372,3 +372,68 @@ export async function vatConfiguration(
     await admin.end();
   }
 }
+
+export async function incompleteSeptemberCoverage(
+  book: BookFixture,
+  mode: "missing" | "continuity" | "incomplete",
+) {
+  if (mode !== "missing") {
+    const statement = {
+      kind: "synthetic_bank_statement_v1",
+      statementIdentifier: randomUUID(),
+      sourceBankAccountId: "synthetic_gap_source",
+      accountId: "account_bank",
+      currency: "SEK",
+      startsOn: "2026-09-01",
+      endsOn: mode === "continuity" ? "2026-09-15" : "2026-09-30",
+      openingMinor: "0",
+      closingMinor: "0",
+      completeness: {
+        declaredComplete: mode !== "incomplete",
+        basis: "Synthetic zero source with deliberately missing coverage",
+      },
+      rows: [],
+    };
+    const source = await post(
+      book,
+      "/evidence",
+      {
+        title: "Incomplete synthetic bank source",
+        mediaType: "application/json",
+        content: JSON.stringify(statement),
+        origin: "Synthetic coverage fixture",
+      },
+      Accounting.Evidence,
+    );
+    await post(
+      book,
+      "/bank-statements",
+      { ...statement, evidenceId: source.id, existingMatches: [] },
+      Bank.StatementImportReceipt,
+    );
+  }
+  const source = await evidence(book);
+  const inventory = await post(
+    book,
+    "/periods/period_september/closing-source-inventories",
+    {
+      evidenceId: source.id,
+      bankAccountIds: ["account_bank"],
+      families: families.map((family) => ({
+        family,
+        status: family === "bank_sources" ? "required" : "not_applicable",
+        reviewedOn: "2026-09-28",
+        evidenceId: source.id,
+        rationale: "Explicit synthetic inventory with missing coverage",
+      })),
+    },
+    Closing.ClosingInventory,
+  );
+  const report = await post(
+    book,
+    "/bank-source-coverage",
+    { inventoryId: inventory.id, startsOn: "2026-09-01", endsOn: "2026-09-30" },
+    Coverage.BankSourceCoverageReport,
+  );
+  return report;
+}
