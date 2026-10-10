@@ -157,3 +157,11 @@ AUT-11 is parked in unpushed local checkpoint `4958339` on `automation/aut11-par
 Accepted ADR 0021 and the handoff are committed in `36711e2`. Main through `295d0b4` is merged in `6a73127`; migrations 0106 and 0107 follow main's 0105. Main's design entries and immutable references are retained. K-10, K-11 and K-21 are unverified because their retained source hashes predate request transport changes; no composition, baseline or new visual evidence is adopted. Erik Kroon adopted the AUT-01 request transport scope on 2026-10-10.
 
 A clean worktree at `6a73127` ran the seven affected automation suites: 15 of 16 tests passed. The stale consequence test expected export v2 despite current v3 exports; `477f381` corrects that assertion. Its two-test suite passed in a clean worktree at that commit. Artifacts are `test-results/pr19-main-merge` and `test-results/pr19-main-merge-consequence` in `/tmp/drastic-pr19-review-6a73127`. Final clean-worktree checks against the PR base remain outstanding.
+
+## Merged PR and follow-up checkpoint
+
+PR 19 merged at `8cc665e` before the owner corrections. They continue in draft [PR 20](https://github.com/erik-kroon/drastic/pull/20), on `automation/pr19-review-fixes`; main is not pushed by this work. The accepted documents and transport adoption are included in that follow-up.
+
+Clean worktree `400e569`, against main `8cc665e`, passed `check:changed:full origin/main`, `check:owners` (55/55), and `check:design origin/main`; tracked status remained clean. The preceding full check at `6e9b3d1` against older main failed on missing generated web route/localization types and is not a passing qualification. No current visual parity is claimed.
+
+The independently authored [owner review failure cases](automation-review-failure-cases.md) govern the remaining fixes in owner order. AUT-11 remains parked locally at `4958339` until those fixes and their evidence are complete.
