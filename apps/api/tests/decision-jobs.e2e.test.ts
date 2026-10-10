@@ -88,6 +88,7 @@ async function bridge(bindings: Bindings) {
     })().catch((error: unknown) => {
       failures.push({
         stage,
+        lockCensus,
         code: Schema.is(Schema.Struct({ code: Schema.String }))(error)
           ? error.code
           : "fixture_handler_error",
@@ -116,20 +117,24 @@ async function bridge(bindings: Bindings) {
 
 const providerControls = new Map<string, { scenario: string }>();
 
-async function provider(book: BookFixture) {
+async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
   const control = { scenario: "valid" };
   providerControls.set(book.bookId, control);
 
   const calls: { case: string; questions: unknown; state: string; bookLockReleased: boolean }[] =
     [];
 
-  const failures: { stage: string; code: string }[] = [];
+  type LockObservation = { mode: string; granted: boolean; state: string };
+  const failures: { stage: string; code: string; lockCensus: LockObservation[] }[] = [];
+  const readerHolds: { milliseconds: number; acquired: boolean; released: boolean }[] = [];
+  const readerReleases: Promise<void>[] = [];
   let transportAttempts = 0;
   const holds = new Map<string, () => void>();
 
   const server = createServer((incoming, outgoing) => {
     transportAttempts++;
     let stage = "request_body";
+    let lockCensus: LockObservation[] = [];
 
     void (async () => {
       const chunks: Buffer[] = [];
@@ -137,12 +142,49 @@ async function provider(book: BookFixture) {
       for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const scenario = control.scenario;
+      if (readerHoldMilliseconds > 0) {
+        stage = "independent_reader";
+        const reader = await database();
+        const observation = {
+          milliseconds: readerHoldMilliseconds,
+          acquired: false,
+          released: false,
+        };
+        readerHolds.push(observation);
+
+        try {
+          await reader.query("BEGIN");
+          await reader.query("SELECT id FROM openerp.books WHERE id=$1 FOR SHARE", [book.bookId]);
+          observation.acquired = true;
+        } catch (error) {
+          await reader.end();
+          throw error;
+        }
+
+        readerReleases.push(
+          (async () => {
+            await new Promise((resolve) => setTimeout(resolve, readerHoldMilliseconds));
+            try {
+              await reader.query("ROLLBACK");
+              observation.released = true;
+            } finally {
+              await reader.end();
+            }
+          })(),
+        );
+      }
+
       stage = "database_connect";
       const admin = await database();
       let bookLockReleased = false;
 
       try {
         await admin.query("BEGIN");
+        lockCensus = (
+          await admin.query<LockObservation>(
+            "SELECT l.mode,l.granted,a.state FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE l.relation='openerp.books'::regclass AND l.pid<>pg_backend_pid() ORDER BY l.mode,a.state",
+          )
+        ).rows;
         stage = "book_lock_probe";
         await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE NOWAIT", [
           book.bookId,
@@ -206,11 +248,13 @@ async function provider(book: BookFixture) {
     endpoint: `http://127.0.0.1:${address.port}`,
     calls,
     failures,
+    readerHolds,
     get transportAttempts() {
       return transportAttempts;
     },
     holds,
     async close() {
+      await Promise.all(readerReleases);
       for (const resolve of holds.values()) resolve();
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) =>
@@ -996,7 +1040,7 @@ test("decision runner auth and authored binding preserve ordinary accounting and
 
 test("decision queue resumes through the current egress port", async () => {
   const f = await supplierFixture();
-  const fixture = await provider(f.book);
+  const fixture = await provider(f.book, 100);
   const admin = await database();
   let runner: ReturnType<typeof startRunner> | undefined;
 
@@ -1066,6 +1110,7 @@ test("decision queue resumes through the current egress port", async () => {
           dispatchCount: fixture.calls.length,
           transportAttempts: fixture.transportAttempts,
           providerFailures: fixture.failures,
+          independentReaderHolds: fixture.readerHolds,
           jobs,
           runnerFailures: runner.diagnostics.failures,
         },
