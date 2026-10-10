@@ -42,7 +42,7 @@ The goal remains active until all authorized ready work is implemented and verif
 
 ## Current slice
 
-AUT-01 is in progress. Its failure cases are defined in the [handoff](automation-handoff-2026-10-10.md#aut-01-record-decision-provenance-for-every-human-treatment-decision) before implementation.
+AUT-01 is implemented in local commit `e685811` and in review in Linear. AUT-02 is in progress. Failure cases are defined in the handoff before implementation.
 
 - Blocking first steps. Trace trusted actor/session, served suggestions, command replay and transaction ownership before edits.
 - Independent workstreams. Read-only grounding may run together. One implementation owner changes the coupled provenance paths.
@@ -81,4 +81,14 @@ subject. A client cannot select `batch_approved` or `historical_import`.
 Sequence Work into Verifiable Units keeps AUT-02 implementation behind AUT-01's
 checks and focused synthetic journey. Read-only preparation can continue while the
 single implementation owner works.
+
+## AUT-01 checkpoint
+
+Full changed checks, owners (52/52), deterministic MCP (3 tests) and pinned Luna MCP evaluation passed. Six synthetic HTTP journeys retained 13 decisions across all six provenance classes. Two final extraction journeys prove uncited suggestion acceptance remains unknown. Commands and evidence are indexed in `verification/decision-provenance/README.md`; artifacts are under `test-results/dra219-provenance-final`, `test-results/dra219-extraction-final-stable`, and `test-results/mcpjam/8bd1d8b2-735b-4676-b7d1-83b843ae085d`.
+
+Browser transport remains source/TypeScript verified only. No browser parity, live-provider performance or real-company benefit is claimed. The commit is local; no push, merge or deployment occurred.
+
+## AUT-02 design boundary
+
+Export immutable captured evidence with pinned projection, lineage and redaction versions. Keep the original decision cutoff separate from the export lineage cutoff. Missing historical capture is an explicit counted exclusion; current account, draft and counterparty heads cannot reconstruct history. Redact typed document text while preserving exact financial values. Seal export inventory and retain canonical example and manifest digests.
 
