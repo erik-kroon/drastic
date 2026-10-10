@@ -1128,6 +1128,47 @@ test("decision queue resumes through the current egress port", async () => {
     expect(jobs.length).toBeGreaterThan(0);
     expect(observed.status).toBe("validated");
     expect(fixture.calls).toHaveLength(1);
+
+    const blocked = await provider(f.book);
+    const holder = await database();
+
+    try {
+      await holder.query("BEGIN");
+      await holder.query("SELECT id FROM openerp.books WHERE id=$1 FOR SHARE", [f.book.bookId]);
+      const response = await fetch(blocked.endpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          questions: fixture.calls[0]!.questions,
+          state: fixture.calls[0]!.state,
+        }),
+        signal: AbortSignal.timeout(3_000),
+      });
+
+      await response.text();
+      await writeFile(
+        join(environment().artifacts, "decision-queue-lock-negative-control.json"),
+        JSON.stringify(
+          {
+            syntheticOnly: true,
+            holderReleasedAfterResponse: true,
+            status: response.status,
+            transportAttempts: blocked.transportAttempts,
+            validatedFixtureCalls: blocked.calls.length,
+            failures: blocked.failures,
+          },
+          null,
+          2,
+        ),
+      );
+      expect(response.status).toBe(500);
+      expect(blocked.transportAttempts).toBe(1);
+      expect(blocked.calls).toHaveLength(0);
+      expect(blocked.failures).toMatchObject([{ stage: "book_lock_probe", code: "55P03" }]);
+    } finally {
+      await holder.query("ROLLBACK");
+      await holder.end();
+      await blocked.close();
+    }
   } finally {
     if (runner) await stopRunner(runner);
     await admin.end();
