@@ -1323,3 +1323,98 @@ test("decision request admission and diagnostic read require operator authority"
     await fixture.close();
   }
 });
+
+test("decision requester downgraded before dispatch loses operator authority", async () => {
+  const f = await supplierFixture();
+  const fixture = await provider(f.book);
+
+  const model = configuredDecisionModel({
+    OPENERP_DECISION_MODEL: "local-systemone-fixture",
+    OPENERP_DECISION_MODEL_RELEASE: release,
+    OPENERP_DECISION_MODEL_ENDPOINT: fixture.endpoint,
+  })!;
+
+  let reached = false;
+  let releaseGuard: () => void = () => {};
+
+  const gate = new Promise<void>((resolve) => {
+    releaseGuard = resolve;
+  });
+
+  const guarded = {
+    identity: model.identity,
+    decide: (...args: Parameters<typeof model.decide>) =>
+      model.decide(args[0], args[1], args[2], async () => {
+        reached = true;
+        await gate;
+        await args[3]?.();
+      }),
+  };
+
+  const api = await bridge({
+    DATABASE_URL: environment().runtimeUrl,
+    DECISION_FIXTURE_MODEL: guarded,
+    OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: hash(f.book.agentToken),
+  });
+
+  const admin = await database();
+  const observations: { [key: string]: object | string | number | boolean | null | undefined } = {};
+
+  try {
+    await policy(f.book, "shadow");
+
+    const admitted = await post(
+      f.book,
+      "/automation/decision-requests",
+      admission(await fixtureDraft(f, "valid")),
+      C.DecisionAdmission,
+    );
+
+    if (admitted.request === null) throw new Error("Synthetic operator request missing");
+    observations.requestId = admitted.request.id;
+    const pending = processRequest(api.origin, f.book, admitted.request.id);
+    await waitFor(() => reached);
+    await admin.query(
+      "UPDATE openerp.memberships SET role='agent' WHERE book_id=$1 AND actor_id=$2",
+      [f.book.bookId, f.book.actorId],
+    );
+    observations.authorityMutation =
+      "controlled_synthetic_membership_operator_to_agent_before_dispatch_guard";
+    releaseGuard();
+    const observed = await decoded(await pending, C.DecisionRequestView);
+
+    const attempts = (
+      await admin.query(
+        "SELECT phase,body FROM openerp.decision_attempts WHERE book_id=$1 AND request_id=$2 ORDER BY phase",
+        [f.book.bookId, observed.id],
+      )
+    ).rows;
+
+    observations.observed = observed;
+    observations.attempts = attempts;
+    observations.providerCalls = fixture.calls.length;
+    observations.inventory = await inventory(f.book);
+    const read = await request(f.book, `/automation/decision-requests/${observed.id}`);
+    observations.downgradedRequesterReadStatus = read.status;
+    expect(fixture.calls).toHaveLength(0);
+    expect(observed.status).toBe("stale");
+    expect(observed.reason).toBe("requester_authority_changed");
+    expect(observed.result).toBeNull();
+    expect(attempts.some((row) => row.phase === "disclosed")).toBe(false);
+    expect(attempts.find((row) => row.phase === "terminal").body.usageStatus).toBe("not_disclosed");
+    expect(read.status).toBe(403);
+  } finally {
+    releaseGuard();
+    await writeFile(
+      join(environment().artifacts, "decision-request-downgrade.json"),
+      JSON.stringify(observations, null, 2),
+    );
+    await admin.query(
+      "UPDATE openerp.memberships SET role='operator' WHERE book_id=$1 AND actor_id=$2",
+      [f.book.bookId, f.book.actorId],
+    );
+    await admin.end();
+    await api.close();
+    await fixture.close();
+  }
+}, 30_000);
