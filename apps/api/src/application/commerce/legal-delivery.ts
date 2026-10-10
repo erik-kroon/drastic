@@ -37,6 +37,16 @@ const deliveryAttemptBound = 20;
 
 const deliveryHistoryBound = 50;
 
+export const listUnknownLegalDeliveryAttempts = Effect.fn("commerce.legalDelivery.unknown")(
+  function* (token: string, input: { scope: Scope }) {
+    return yield* withBook(token, input.scope, false, function* (transaction) {
+      yield* requireTableAccess(transaction, ArDb.arLegalDeliveryTables, false);
+
+      return yield* ArDb.readUnknownLegalDeliveryAttempts(transaction, input.scope.bookId);
+    });
+  },
+);
+
 export const getLegalDelivery = Effect.fn("commerce.legalDelivery.get")(function* (
   token: string,
   input: { scope: Scope; id: string },

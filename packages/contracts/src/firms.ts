@@ -7,6 +7,7 @@ import { DeadlineList } from "./deadlines";
 import { BankWorkspace, BankWorkspaceAccount } from "./bank-workspace";
 import { BankInventorySignoffList, BankInventorySignoffView } from "./bank-inventory-signoffs";
 import { ClosingReadiness } from "./closing";
+import { BureauObligations } from "./bureau-obligations";
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
 
@@ -77,6 +78,39 @@ export const PortfolioClientFacts = Schema.Struct({
   company: CompanySetup,
   period: Schema.NullOr(Accounting.BookSetup.fields.periods.value),
   openTasks: Schema.NullOr(Accounting.MinorUnits),
+  assignedAccountantId: Schema.NullOr(Accounting.Identifier),
+  openWork: Schema.Struct({
+    total: Accounting.AggregateMinorUnits,
+    byKind: Schema.Struct({
+      journal: Accounting.AggregateMinorUnits,
+      invoice: Accounting.AggregateMinorUnits,
+      expense: Accounting.AggregateMinorUnits,
+      document: Accounting.AggregateMinorUnits,
+      supplier: Accounting.AggregateMinorUnits,
+      recurring: Accounting.AggregateMinorUnits,
+    }),
+    coverage: Schema.Literal("canonical_attention_all_periods"),
+  }),
+  supplierObligations: BureauObligations,
+  unknownOutcomes: Schema.Struct({
+    coverage: Schema.Literal("legal_delivery_provider_attempts_only"),
+    items: Schema.Array(
+      Schema.Struct({
+        id: Accounting.Identifier,
+        kind: Schema.Literal("legal_delivery_provider_unknown"),
+        recordedAt: Schema.String,
+      }),
+    ),
+  }),
+  nearestKnownDeadline: Schema.NullOr(
+    Schema.Struct({
+      source: Schema.Literals(["deadline", "supplier_obligation"]),
+      id: Accounting.Identifier,
+      dueOn: Accounting.AccountingDate,
+    }),
+  ),
+  lastActivityAt: Schema.NullOr(Schema.String),
+  lastActivityCoverage: Schema.Literal("canonical_attention_only"),
   deadlines: DeadlineList,
   bank: Schema.NullOr(BankWorkspace),
   bankObservations: Schema.Array(
@@ -112,6 +146,14 @@ export const Portfolio = Schema.Struct({
   observedFrom: Schema.String,
   observedUntil: Schema.String,
   clients: Schema.Array(PortfolioClientFacts).check(Schema.isMaxLength(200)),
+  needsToday: Schema.Array(
+    Schema.Struct({
+      scope: Accounting.Scope,
+      source: Schema.Literals(["firm_review", "deadline", "supplier_obligation"]),
+      id: Accounting.Identifier,
+      dueOn: Accounting.AccountingDate,
+    }),
+  ),
 }).check(
   Schema.makeFilter(
     (portfolio) =>
@@ -190,7 +232,7 @@ export const FirmCapabilities = {
     input: path,
     output: Portfolio,
     readOnly: true,
-    agentCallable: false,
+    agentCallable: true,
   },
   firm_create: {
     description:

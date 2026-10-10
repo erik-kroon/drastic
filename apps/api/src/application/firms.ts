@@ -13,6 +13,7 @@ import { admitHumanActor, lockActor, readAdmission } from "../db/human-actor";
 import { withTransaction, databaseFailure, type Transaction } from "../db/transaction";
 import { readTableAccess } from "../db/commerce/access";
 import { authorize } from "./authority";
+import { admitCredentialActor } from "../db/identity";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -211,32 +212,29 @@ export const listFirms = Effect.fn("firms.list")(function* (token: string) {
   });
 });
 
-export const getFirm = Effect.fn("firms.get")(function* (
-  token: string,
-  command: { firmId: string },
-) {
-  return yield* withHuman(token, function* (transaction, actorId) {
+function readWorkspace(transaction: Transaction, actorId: string, firmId: string) {
+  return Effect.gen(function* () {
     yield* requireAccess(transaction);
 
-    const firm = yield* readFirmRole(transaction, command.firmId, actorId, {
+    const firm = yield* readFirmRole(transaction, firmId, actorId, {
       lock: "share",
       adminOnly: false,
     });
 
-    yield* Db.lockClientBookMemberships(transaction, command.firmId);
-    const team = yield* Db.readTeam(transaction, command.firmId);
+    yield* Db.lockClientBookMemberships(transaction, firmId);
+    const team = yield* Db.readTeam(transaction, firmId);
 
     if (team.length > maximumFirmMembers) return yield* unsupported();
-    const clients = yield* Db.readClientBooks(transaction, command.firmId, actorId);
+    const clients = yield* Db.readClientBooks(transaction, firmId, actorId);
 
     if (clients.length > maximumFirmClients) return yield* unsupported();
 
-    const accessRequests = yield* Requests.readAccessRequests(transaction, command.firmId);
+    const accessRequests = yield* Requests.readAccessRequests(transaction, firmId);
 
     if (accessRequests.length > maximumFirmClients) return yield* unsupported();
 
     return yield* decode(WorkspaceSchema, {
-      firm: { id: command.firmId, name: firm.name, role: firm.role },
+      firm: { id: firmId, name: firm.name, role: firm.role },
       actorId,
       accessRequests,
       members: team.map((row) => ({
@@ -267,6 +265,34 @@ export const getFirm = Effect.fn("firms.get")(function* (
       })),
     });
   });
+}
+
+export const getFirm = Effect.fn("firms.get")(function* (
+  token: string,
+  command: { firmId: string },
+) {
+  return yield* withHuman(token, function* (transaction, actorId) {
+    return yield* readWorkspace(transaction, actorId, command.firmId);
+  });
+});
+
+export const getFirmPortfolioWorkspace = Effect.fn("firms.portfolioWorkspace")(function* (
+  token: string,
+  command: { firmId: string },
+) {
+  return yield* withTransaction((transaction) =>
+    Effect.gen(function* () {
+      const actorId = yield* admitCredentialActor(transaction, token).pipe(
+        Effect.mapError(databaseFailure),
+        Effect.catchIf(
+          (error) => error.code === "Unauthorized",
+          () => admitHumanActor(transaction, token).pipe(Effect.map((actor) => actor.actorId)),
+        ),
+      );
+
+      return yield* readWorkspace(transaction, actorId, command.firmId);
+    }).pipe(Effect.mapError(databaseFailure)),
+  );
 });
 
 export const saveFirmAccessRequest = Effect.fn("firms.saveAccessRequest")(function* (
