@@ -135,7 +135,15 @@ export const resolveCompanyProfileInTransaction = Effect.fn("companyProfiles.res
       for (const row of yield* Db.readRuleReleases(transaction, family)) {
         const release = decodeRelease(row);
 
-        if (release !== null) releases.push({ row, release });
+        if (
+          release !== null &&
+          release.id === row.id &&
+          release.jurisdiction === row.jurisdiction &&
+          release.family === row.family &&
+          release.version === row.version &&
+          release.checksum === row.checksum
+        )
+          releases.push({ row, release });
       }
 
       const selection = selectWitness({
