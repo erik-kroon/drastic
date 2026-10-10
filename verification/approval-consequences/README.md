@@ -29,3 +29,9 @@ Both passing runs retain stable source hash `29e4143e1d13df6462ac0b6c9efa7f48751
 `bun run check:changed` passed after implementation. The additive review output schema requires MCP qualification; clean full/owners/design and MCP checks are coordinated by the parent after commit. No browser/UI parity, live provider, production mapping qualification or mandate enablement is claimed.
 
 Selected synthetic observations, outcomes and source-integrity inventories are retained in `before/`, `after/` and `mapping/` for review without the disposable runtime. They preserve the distinct failing and passing runs; later documentation retention does not imply a new behavior run.
+
+The first clean full check at `a07b4c5` failed type-aware `no-misused-spread` on the JSON projection; type projects passed. The projection was changed to explicit owned JSON fields without suppressions. Focused type-aware lint, changed checks and the same three HTTP workflows passed at stable source hash `3fc7e6d7ac5749fceb6aa36cefd88f884cd2bc7e0b24d5828b252e5ce40f76d9`; observations and source inventory are retained in `json-projection/`. The separate mapping code and its previously retained pure-vector run were unchanged.
+
+```sh
+OPENERP_E2E_ARTIFACTS=test-results/approval-consequences-json-projection bun run test:e2e apps/api/tests/vat-purchase-categories.e2e.test.ts apps/api/tests/treatment-consequence.e2e.test.ts -t 'approval consequences|public decision export'
+```

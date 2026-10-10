@@ -92,12 +92,16 @@ const approvalConsequences = Effect.fn("decisionExamples.approvalConsequences")(
   action: typeof Accounting.VoucherPostingAction.Type,
   cutoff: string,
 ) {
-  const emptyMetadata: Schema.JsonObject = {};
+  const chosenTreatment = yield* toJsonObject({
+    journal: journal(action),
+    reviewedTreatments: review.originalLines ?? [],
+    vatCategory: capturedVatCategory(review),
+  });
 
   const legacy = (reason: string) => ({
     inputs: consequenceCaptures(action, cutoff, review.originalLines, review.profileWitness),
     missingFacts: [reason],
-    metadata: emptyMetadata,
+    chosenTreatment,
   });
 
   if (selected.consequenceCapture === undefined)
@@ -113,7 +117,10 @@ const approvalConsequences = Effect.fn("decisionExamples.approvalConsequences")(
   return {
     inputs: capture.sourceLines.map((line) => line.capture),
     missingFacts: [],
-    metadata: yield* toJsonObject({
+    chosenTreatment: yield* toJsonObject({
+      journal: journal(action),
+      reviewedTreatments: review.originalLines ?? [],
+      vatCategory: capturedVatCategory(review),
       sourcePostingBindings: capture.sourceLines.map((line) => ({
         sourceLineId: line.sourceLineId,
         postingLineId: line.postingLineId,
@@ -466,16 +473,11 @@ export const projectDecisionExample = Effect.fn("decisionExamples.project")(func
     const action = review.postingPlan.groups[0]?.actions[0];
 
     if (!action || action.kind !== "post_voucher") return { excluded: "missing_posting_snapshot" };
-    chosenTreatment = yield* toJsonObject({
-      journal: journal(action),
-      reviewedTreatments: review.originalLines ?? [],
-      vatCategory: capturedVatCategory(review),
-    });
     const retainedConsequence = yield* approvalConsequences(selected, review, action, cutoff);
 
     consequenceInputs = retainedConsequence.inputs;
     missingFacts.push(...retainedConsequence.missingFacts);
-    chosenTreatment = { ...chosenTreatment, ...retainedConsequence.metadata };
+    chosenTreatment = retainedConsequence.chosenTreatment;
 
     if (retained.mediaType === "text/plain" && typeof retained.content === "string") {
       const text = redact(retained.content);
