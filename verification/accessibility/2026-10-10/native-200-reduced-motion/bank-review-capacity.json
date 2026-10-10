@@ -1,0 +1,66 @@
+{
+  "syntheticOnly": true,
+  "nativeBaseline": {
+    "dpr": 1,
+    "width": 1440
+  },
+  "nativeAccess": {
+    "dpr": 2,
+    "width": 720,
+    "scrollWidth": 712,
+    "reducedMotion": true
+  },
+  "concurrent": {
+    "digest": "sha256:8872403136fa59eb23089bf4e7f88f3d90cf7f7d1e0d09c61a2b28e9d7953204",
+    "version": 1,
+    "approvalId": "bankapproval_290ed0245ac9414abda53320f651a596",
+    "planId": "bankplan_c620e2c875774387808190c9d2d5a8ed",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "accountId": "account_bank",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "legs": [
+      {
+        "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+        "rowOrdinal": 2,
+        "voucherId": "voucher_7701ed56873348af98c8b6cd3d0eace6",
+        "lineId": "line_6163fc9ca82648d1b2d4107ec5c67736",
+        "amountMinor": "-50000",
+        "planId": "bankplan_c620e2c875774387808190c9d2d5a8ed",
+        "ordinal": 1
+      }
+    ],
+    "executedAt": "2026-10-10T20:38:47.872Z",
+    "receipt": {
+      "key": "a207cd47-1f20-4430-8218-9f2991843d46",
+      "operation": "execute_bank_allocation",
+      "actorId": "actor_operator"
+    }
+  },
+  "ledger": {
+    "sequence": "6",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "750000",
+        "balanceMinor": "-750000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "750000",
+        "creditMinor": "0",
+        "balanceMinor": "750000"
+      }
+    ]
+  },
+  "lifecycleSignal": "A visibilitychange signal triggered a real public-owner refetch; no financial response was mocked",
+  "screenshot": "screenshots/002-bank-review-real-capacity-changed-draft-retained.png"
+}

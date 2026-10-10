@@ -1,0 +1,66 @@
+{
+  "syntheticOnly": true,
+  "nativeBaseline": {
+    "dpr": 1,
+    "width": 1440
+  },
+  "nativeAccess": {
+    "dpr": 1,
+    "width": 1440,
+    "scrollWidth": 1440,
+    "reducedMotion": false
+  },
+  "expectedHash": "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36",
+  "retainedOccurrence": {
+    "id": "source_be431926561046a7b97f6b8a35ee1bb8",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "sourceSystem": "synthetic-bank-review",
+    "sourceAccountId": "synthetic_originals",
+    "occurrenceKey": "c817994a-8a4e-4dbf-a211-c0315018d024",
+    "sourceRevision": "1",
+    "filename": "bank-review-original.pdf",
+    "sha256": "sha256:26a9278406d6c4b5713b28f06c4485c36384c61adba73d60f6b6638aec1e28ec",
+    "byteLength": 2659,
+    "mediaType": "application/pdf",
+    "retainedBy": "actor_operator",
+    "retainedAt": "2026-10-10T20:42:23.989Z",
+    "receipt": {
+      "key": "b027bd7a-163f-451a-a79e-6b4a3890b90a",
+      "operation": "retain_source_object",
+      "actorId": "actor_operator"
+    }
+  },
+  "evidence": {
+    "id": "evidence_5212a668f8574bdda4ec888d5aec17a9",
+    "title": "Exempel Kontorsservice AB",
+    "sha256": "d5af5befda7b16cd809fc83e419cbc0dfd55a1c5193f16c2ee756a967f00dd92",
+    "mediaType": "application/json",
+    "origin": "Synthetic supplier document and manual journal; no VAT treatment established",
+    "createdAt": "2026-10-10 22:42:24.042+02"
+  },
+  "ledger": {
+    "sequence": "4",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "500000",
+        "balanceMinor": "-500000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "500000",
+        "creditMinor": "0",
+        "balanceMinor": "500000"
+      }
+    ]
+  },
+  "screenshot": "screenshots/002-bank-review-checksum-refusal-after-retry.png"
+}

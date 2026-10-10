@@ -1,0 +1,497 @@
+{
+  "syntheticOnly": true,
+  "nativeBaseline": {
+    "dpr": 1,
+    "width": 1440
+  },
+  "nativeAccess": {
+    "dpr": 2,
+    "width": 720,
+    "scrollWidth": 712,
+    "reducedMotion": true
+  },
+  "originalHash": "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36",
+  "statement": {
+    "statement": {
+      "kind": "synthetic_bank_statement_v1",
+      "statementIdentifier": "bank_review_demo_2026_0037",
+      "sourceBankAccountId": "synthetic_bank",
+      "accountId": "account_bank",
+      "currency": "SEK",
+      "startsOn": "2026-10-01",
+      "endsOn": "2026-10-31",
+      "openingMinor": "0",
+      "closingMinor": "-175000",
+      "completeness": {
+        "declaredComplete": false,
+        "basis": "Synthetic outgoing rows; no coverage claim"
+      },
+      "rows": [
+        {
+          "rowOrdinal": 1,
+          "providerId": null,
+          "date": "2026-10-03",
+          "description": "BG EXEMPEL KONTORSSERVICE",
+          "amountMinor": "-125000"
+        },
+        {
+          "rowOrdinal": 2,
+          "providerId": null,
+          "date": "2026-10-03",
+          "description": "SYNTHETIC CONCURRENT PARTIAL PAYMENT",
+          "amountMinor": "-50000"
+        }
+      ],
+      "id": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+      "evidenceId": "evidence_8d3f196d80524c3ab3325cc9a67ad72f",
+      "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa"
+    },
+    "matches": [],
+    "checkpoint": {
+      "sequence": "2",
+      "sourceRevision": "1"
+    },
+    "receipt": {
+      "key": "d30715ca-6e5f-44b1-810d-0e678fcfb992",
+      "operation": "import_bank_statement",
+      "actorId": "actor_operator"
+    }
+  },
+  "vouchers": [
+    {
+      "id": "voucher_02488ddd40714338864b5434d6b557be",
+      "number": "1",
+      "sequence": "1",
+      "recordedAt": "2026-10-10 22:37:56.104216+02",
+      "action": {
+        "kind": "post_voucher",
+        "correctsVoucherId": null,
+        "eventId": "event_7d8c248b10044f1087140e333734c777",
+        "postingPurpose": "adjustment",
+        "occurrenceKey": "manual_journal",
+        "fiscalYearId": "year_synthetic_2026",
+        "accountingPeriodId": "period_synthetic_2026",
+        "postingDate": "2026-10-03",
+        "series": "A",
+        "currency": "SEK",
+        "description": "DEMO-2026-0037",
+        "rationale": "Synthetic matching-capacity control only; not a supplier invoice or VAT assessment",
+        "taxAssessment": "not_applicable",
+        "lines": [
+          {
+            "accountId": "account_bank",
+            "debitMinor": "0",
+            "creditMinor": "125000",
+            "description": "DEMO-2026-0037",
+            "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+            "originalDimensions": []
+          },
+          {
+            "accountId": "account_clearing",
+            "debitMinor": "125000",
+            "creditMinor": "0",
+            "description": "Synthetic counter-line",
+            "lineId": "line_7579d7deb43f4a5aac757db76b20dd95",
+            "originalDimensions": []
+          }
+        ],
+        "evidenceRefs": [
+          {
+            "evidenceId": "evidence_12491f6e3eb54b41ae60b106398f36b4",
+            "sha256": "a0f037d47133e7e40d06aebb923ee19e7647fa5f5df03eb4671aedade833877c",
+            "locator": "bank_review_47f31300-eaa6-498e-839a-a31ca8dc7a68_DEMO-2026-0037"
+          }
+        ]
+      }
+    },
+    {
+      "id": "voucher_2301ce31f06545f6a259e8b0c4eec906",
+      "number": "2",
+      "sequence": "2",
+      "recordedAt": "2026-10-10 22:37:56.321245+02",
+      "action": {
+        "kind": "post_voucher",
+        "correctsVoucherId": null,
+        "eventId": "event_ed9adf2fb8f8456f89eaa2392ed53ea9",
+        "postingPurpose": "adjustment",
+        "occurrenceKey": "manual_journal",
+        "fiscalYearId": "year_synthetic_2026",
+        "accountingPeriodId": "period_synthetic_2026",
+        "postingDate": "2026-10-02",
+        "series": "A",
+        "currency": "SEK",
+        "description": "DEMO-2026-0038",
+        "rationale": "Synthetic matching-capacity control only; not a supplier invoice or VAT assessment",
+        "taxAssessment": "not_applicable",
+        "lines": [
+          {
+            "accountId": "account_bank",
+            "debitMinor": "0",
+            "creditMinor": "125000",
+            "description": "DEMO-2026-0038",
+            "lineId": "line_cd8519d083984e6892fe9a0233010adb",
+            "originalDimensions": []
+          },
+          {
+            "accountId": "account_clearing",
+            "debitMinor": "125000",
+            "creditMinor": "0",
+            "description": "Synthetic counter-line",
+            "lineId": "line_82f0d718ae774630ba4e8afa802407ac",
+            "originalDimensions": []
+          }
+        ],
+        "evidenceRefs": [
+          {
+            "evidenceId": "evidence_12491f6e3eb54b41ae60b106398f36b4",
+            "sha256": "a0f037d47133e7e40d06aebb923ee19e7647fa5f5df03eb4671aedade833877c",
+            "locator": "bank_review_47f31300-eaa6-498e-839a-a31ca8dc7a68_DEMO-2026-0038"
+          }
+        ]
+      }
+    }
+  ],
+  "plan": {
+    "id": "bankplan_aed3aa5bba764d66897391c42019aaa6",
+    "version": 1,
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "input": {
+      "presentedSuggestionIds": [
+        "suggestion_a27c0d8aeaa643788cfea16a0e0d06d5"
+      ],
+      "accountId": "account_bank",
+      "reason": "Leverantörsunderlaget avser kontorsmaterial för 1 250,00 SEK. Mottagare och belopp stämmer med bankraden.",
+      "ambiguityAcknowledged": true,
+      "legs": [
+        {
+          "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+          "rowOrdinal": 1,
+          "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+          "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+          "amountMinor": "-125000"
+        }
+      ]
+    },
+    "snapshot": {
+      "versions": {
+        "profileVersion": "1",
+        "writerEpoch": "1",
+        "accountVersion": "1",
+        "sourceRevision": "1",
+        "accountLedgerSequence": "2"
+      },
+      "capacities": [
+        {
+          "leg": {
+            "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+            "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+            "amountMinor": "-125000"
+          },
+          "sourceAmountMinor": "-125000",
+          "sourceAllocatedMinor": "0",
+          "lineAmountMinor": "-125000",
+          "lineAllocatedMinor": "0",
+          "evidenceId": "evidence_8d3f196d80524c3ab3325cc9a67ad72f",
+          "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+          "providerId": null,
+          "sourceBankAccountId": "synthetic_bank",
+          "observedOn": "2026-10-03",
+          "postedOn": "2026-10-03",
+          "candidateCount": 2
+        }
+      ]
+    },
+    "createdBy": "actor_operator",
+    "createdAt": "2026-10-10T20:38:12.669Z",
+    "digest": "sha256:4885a1fc7884b114ac23b163edfa912b45a93496d0422d5e1ed0db2c0e3cbfda",
+    "receipt": {
+      "key": "29578a4a-2f6a-425e-a421-93c2d1cba184",
+      "operation": "prepare_bank_allocation",
+      "actorId": "actor_operator"
+    }
+  },
+  "view": {
+    "plan": {
+      "id": "bankplan_aed3aa5bba764d66897391c42019aaa6",
+      "version": 1,
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "input": {
+        "presentedSuggestionIds": [
+          "suggestion_a27c0d8aeaa643788cfea16a0e0d06d5"
+        ],
+        "accountId": "account_bank",
+        "reason": "Leverantörsunderlaget avser kontorsmaterial för 1 250,00 SEK. Mottagare och belopp stämmer med bankraden.",
+        "ambiguityAcknowledged": true,
+        "legs": [
+          {
+            "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+            "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+            "amountMinor": "-125000"
+          }
+        ]
+      },
+      "snapshot": {
+        "versions": {
+          "profileVersion": "1",
+          "writerEpoch": "1",
+          "accountVersion": "1",
+          "sourceRevision": "1",
+          "accountLedgerSequence": "2"
+        },
+        "capacities": [
+          {
+            "leg": {
+              "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+              "rowOrdinal": 1,
+              "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+              "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+              "amountMinor": "-125000"
+            },
+            "sourceAmountMinor": "-125000",
+            "sourceAllocatedMinor": "0",
+            "lineAmountMinor": "-125000",
+            "lineAllocatedMinor": "0",
+            "evidenceId": "evidence_8d3f196d80524c3ab3325cc9a67ad72f",
+            "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+            "providerId": null,
+            "sourceBankAccountId": "synthetic_bank",
+            "observedOn": "2026-10-03",
+            "postedOn": "2026-10-03",
+            "candidateCount": 2
+          }
+        ]
+      },
+      "createdBy": "actor_operator",
+      "createdAt": "2026-10-10T20:38:12.669Z",
+      "digest": "sha256:4885a1fc7884b114ac23b163edfa912b45a93496d0422d5e1ed0db2c0e3cbfda",
+      "receipt": {
+        "key": "29578a4a-2f6a-425e-a421-93c2d1cba184",
+        "operation": "prepare_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "approval": null,
+    "execution": null,
+    "dependenciesCurrent": true,
+    "unmatch": null
+  },
+  "refreshed": {
+    "suggestionRecordId": "suggestion_8096355df530427ea025f81646602378",
+    "optionSetDigest": "sha256:ed45e61e4f847209091b96f2cf4424ac2b070d9fa3af609bbe6054af36838e1d",
+    "version": "bank_match_candidates_v1",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "window": {
+      "accountId": "account_bank",
+      "startsOn": "2026-10-01",
+      "endsOn": "2026-10-31",
+      "lineLimit": 1000,
+      "completeWithinScope": true
+    },
+    "cutoff": {
+      "committedSequence": "2",
+      "sourceRevision": "1",
+      "accountVersion": "1",
+      "profileVersion": "1",
+      "writerEpoch": "1",
+      "periodDigest": "sha256:54919a467182a468e22be67dfb749f1c79cb6ce80631cde76b87fec87d77f472"
+    },
+    "source": {
+      "statementId": "statement_c2e79bfe41294e8a98763ab28c37dcfd",
+      "rowOrdinal": 1,
+      "evidenceId": "evidence_8d3f196d80524c3ab3325cc9a67ad72f",
+      "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+      "sourceBankAccountId": "synthetic_bank",
+      "providerId": null,
+      "observedOn": "2026-10-03",
+      "description": "BG EXEMPEL KONTORSSERVICE",
+      "amountMinor": "-125000",
+      "allocatedMinor": "0",
+      "remainingMinor": "-125000",
+      "eligible": true,
+      "blockedReasons": [],
+      "paymentReference": null
+    },
+    "candidates": [
+      {
+        "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+        "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-03",
+        "sequence": "1",
+        "description": "DEMO-2026-0037",
+        "amountMinor": "-125000",
+        "allocatedMinor": "0",
+        "remainingMinor": "-125000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": false,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": true,
+        "amountDistanceMinor": "0",
+        "dayDistance": 0,
+        "rankingReasons": [
+          "equal_remaining_amount",
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      },
+      {
+        "voucherId": "voucher_2301ce31f06545f6a259e8b0c4eec906",
+        "lineId": "line_cd8519d083984e6892fe9a0233010adb",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-02",
+        "sequence": "2",
+        "description": "DEMO-2026-0038",
+        "amountMinor": "-125000",
+        "allocatedMinor": "0",
+        "remainingMinor": "-125000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": false,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": true,
+        "amountDistanceMinor": "0",
+        "dayDistance": 1,
+        "rankingReasons": [
+          "equal_remaining_amount",
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      }
+    ],
+    "eligibleCount": 2,
+    "equalAmountEligibleCount": 2,
+    "multipleEligibleCandidates": true,
+    "identityEstablished": false,
+    "providerReferenceComparison": "unavailable",
+    "rankingPolicy": "retained_then_reference_amount_date_v2",
+    "coverage": "not_established",
+    "coverSearch": {
+      "status": "unique_within_declared_pool",
+      "limits": {
+        "maxCandidates": 40,
+        "maxSetSize": 4,
+        "maxVisited": 10000
+      },
+      "populationCount": 2,
+      "searchedCount": 2,
+      "visited": 3,
+      "poolComplete": true,
+      "searchedSetSize": 1,
+      "limitReasons": [],
+      "rankingPolicy": "fewest_lines_then_smallest_maximum_day_gap_v1",
+      "covers": [
+        {
+          "legs": [
+            {
+              "voucherId": "voucher_02488ddd40714338864b5434d6b557be",
+              "lineId": "line_23aa7f19b2324a04bc8e050244fcaf94",
+              "amountMinor": "-125000"
+            }
+          ],
+          "totalMinor": "-125000",
+          "leftoverMinor": "0",
+          "maximumDayDistance": 0
+        }
+      ]
+    },
+    "coverConflicts": {
+      "scope": "same_statement_v1",
+      "populationCount": 1,
+      "searchedCount": 1,
+      "completeWithinStatement": true,
+      "conflicts": []
+    },
+    "digest": "sha256:235e28ac99a31a459eb56a87ffd8d5c247649120d53db6e81139e7e5f8d4a61b",
+    "previousDigestMatches": null
+  },
+  "ledger": {
+    "sequence": "2",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "250000",
+        "balanceMinor": "-250000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "250000",
+        "creditMinor": "0",
+        "balanceMinor": "250000"
+      }
+    ]
+  },
+  "readyConditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 2,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf2",
+          "weight": "bold",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf4",
+          "weight": "normal",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T20:38:12.332Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 720,
+      "height": 450
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-01&to=2026-10-31&statement=statement_c2e79bfe41294e8a98763ab28c37dcfd&row=1"
+  },
+  "screenshots": [
+    "screenshots/001-bank-review-ambiguous-unselected.png",
+    "screenshots/003-bank-review-original-pre-review.png",
+    "screenshots/004-bank-review-ready-to-prepare.png",
+    "screenshots/005-bank-review-prepared-waiting-for-approval.png"
+  ]
+}
