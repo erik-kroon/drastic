@@ -1,0 +1,233 @@
+{
+  "syntheticBindingOnly": true,
+  "observed": [
+    {
+      "selector": "clef",
+      "limit": 64000,
+      "identity": {
+        "provider": "workers-ai",
+        "configuredRelease": "synthetic_release_1",
+        "requestedModel": "clef",
+        "expectedReportedModel": "clef",
+        "workersAiSelector": "@cf/cloudflare/clef",
+        "releaseQualification": "unsubstantiated",
+        "egressPolicy": {
+          "provider": "workers-ai",
+          "destination": "@cf/cloudflare/clef",
+          "modelRelease": "synthetic_release_1",
+          "policy": "self-hosted",
+          "approval": "synthetic-only"
+        }
+      },
+      "result": {
+        "status": "validated",
+        "claimStatus": "unreviewed_source_claim",
+        "identity": {
+          "provider": "workers-ai",
+          "configuredRelease": "synthetic_release_1",
+          "requestedModel": "clef",
+          "expectedReportedModel": "clef",
+          "workersAiSelector": "@cf/cloudflare/clef",
+          "releaseQualification": "unsubstantiated",
+          "egressPolicy": {
+            "provider": "workers-ai",
+            "destination": "@cf/cloudflare/clef",
+            "modelRelease": "synthetic_release_1",
+            "policy": "self-hosted",
+            "approval": "synthetic-only"
+          },
+          "reportedModel": "clef"
+        },
+        "response": {
+          "model": "clef",
+          "answers": {
+            "kind": {
+              "type": "choice",
+              "choice": "invoice",
+              "probabilities": {
+                "invoice": 0.9,
+                "unknown": 0.1
+              },
+              "confidence": 0.8
+            }
+          },
+          "usage": {
+            "input_tokens": 7,
+            "output_tokens": 1
+          }
+        },
+        "tokens": {},
+        "statistics": {
+          "kind": {
+            "confidence": 0.8,
+            "topProbability": 0.9,
+            "margin": 0.8,
+            "weightedScore": null
+          }
+        },
+        "wireEvidence": "already_parsed_object"
+      },
+      "dispatches": 1
+    },
+    {
+      "selector": "clef-flash",
+      "limit": 24576,
+      "identity": {
+        "provider": "workers-ai",
+        "configuredRelease": "synthetic_release_1",
+        "requestedModel": "clef-flash",
+        "expectedReportedModel": "clef-flash",
+        "workersAiSelector": "@cf/cloudflare/clef-flash",
+        "releaseQualification": "unsubstantiated",
+        "egressPolicy": {
+          "provider": "workers-ai",
+          "destination": "@cf/cloudflare/clef-flash",
+          "modelRelease": "synthetic_release_1",
+          "policy": "self-hosted",
+          "approval": "synthetic-only"
+        }
+      },
+      "result": {
+        "status": "validated",
+        "claimStatus": "unreviewed_source_claim",
+        "identity": {
+          "provider": "workers-ai",
+          "configuredRelease": "synthetic_release_1",
+          "requestedModel": "clef-flash",
+          "expectedReportedModel": "clef-flash",
+          "workersAiSelector": "@cf/cloudflare/clef-flash",
+          "releaseQualification": "unsubstantiated",
+          "egressPolicy": {
+            "provider": "workers-ai",
+            "destination": "@cf/cloudflare/clef-flash",
+            "modelRelease": "synthetic_release_1",
+            "policy": "self-hosted",
+            "approval": "synthetic-only"
+          },
+          "reportedModel": "clef-flash"
+        },
+        "response": {
+          "model": "clef-flash",
+          "answers": {
+            "kind": {
+              "type": "choice",
+              "choice": "invoice",
+              "probabilities": {
+                "invoice": 0.9,
+                "unknown": 0.1
+              },
+              "confidence": 0.8
+            }
+          },
+          "usage": {
+            "input_tokens": 7,
+            "output_tokens": 1
+          }
+        },
+        "tokens": {},
+        "statistics": {
+          "kind": {
+            "confidence": 0.8,
+            "topProbability": 0.9,
+            "margin": 0.8,
+            "weightedScore": null
+          }
+        },
+        "wireEvidence": "already_parsed_object"
+      },
+      "dispatches": 1
+    }
+  ],
+  "invalid": [
+    {
+      "mode": "self-hosted-clef",
+      "limit": "missing",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "0",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "-1",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "1.5",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "NaN",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "Infinity",
+      "refused": false
+    },
+    {
+      "mode": "self-hosted-clef",
+      "limit": "9007199254740992",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "missing",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "0",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "-1",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "1.5",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "NaN",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "Infinity",
+      "refused": false
+    },
+    {
+      "mode": "typesafe-jev",
+      "limit": "9007199254740992",
+      "refused": false
+    }
+  ],
+  "calls": [
+    {
+      "selector": "@cf/cloudflare/clef",
+      "bytes": 64186
+    },
+    {
+      "selector": "@cf/cloudflare/clef-flash",
+      "bytes": 24768
+    }
+  ]
+}

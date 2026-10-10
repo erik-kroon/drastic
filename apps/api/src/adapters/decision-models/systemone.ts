@@ -19,6 +19,7 @@ export interface WorkersAi {
 export interface DecisionIdentity {
   readonly provider: "http-systemone" | "workers-ai";
   readonly configuredRelease: string;
+  readonly inputTokenLimit: number;
   readonly requestedModel: string;
   readonly expectedReportedModel: string;
   readonly workersAiSelector: WorkersAiSelector | null;
@@ -38,7 +39,8 @@ type FailureCode =
   | "invalid_request"
   | "network_error"
   | "binding_error"
-  | "egress_refused";
+  | "egress_refused"
+  | "state_limit";
 
 export type DecisionOutcome =
   | {
@@ -105,6 +107,9 @@ export function systemOneModel(
   transport: Transport,
   timeoutMs: number,
 ): DecisionModel {
+  if (!Number.isSafeInteger(identity.inputTokenLimit) || identity.inputTokenLimit < 1)
+    throw new Error("Decision model input token limit must be a positive safe integer.");
+
   if (
     identity.egressPolicy.modelRelease !== identity.configuredRelease ||
     identity.egressPolicy.provider !== identity.provider ||
@@ -129,6 +134,9 @@ export function systemOneModel(
 
       if (admitted.status !== "ready" || request.model !== identity.requestedModel)
         return { status: "failed", code: "invalid_request", diagnostic: null };
+
+      if (new TextEncoder().encode(JSON.stringify(request)).byteLength > identity.inputTokenLimit)
+        return { status: "failed", code: "state_limit", diagnostic: null };
 
       if (callerSignal?.aborted) return { status: "failed", code: "aborted", diagnostic: null };
 
@@ -165,6 +173,12 @@ export function systemOneModel(
           if (outgoing.status !== "ready" || outgoing.request.model !== identity.requestedModel)
             throw new AiEgressError();
 
+          if (
+            new TextEncoder().encode(JSON.stringify(outgoing.request)).byteLength >
+            identity.inputTokenLimit
+          )
+            throw new DecisionAdapterError("state_limit");
+
           if (controller.signal.aborted)
             throw new DecisionAdapterError(
               controller.signal.reason === "deadline" ? "timeout" : "aborted",
@@ -191,6 +205,9 @@ export function systemOneModel(
             diagnostic: validated.reason,
           };
         }
+
+        if (validated.response.usage.input_tokens >= identity.inputTokenLimit)
+          return { status: "failed", code: "state_limit", diagnostic: null };
 
         return {
           status: "validated",

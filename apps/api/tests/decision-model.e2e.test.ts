@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import * as Schema from "effect/Schema";
 import type * as D from "@open-erp/domain/decisions";
 import { configuredDecisionModel } from "../src/runtime/decision-model";
 import type {
@@ -9,6 +10,7 @@ import type {
   DecisionOutcome,
   WorkersAi,
 } from "../src/adapters/decision-models/systemone";
+import { systemOneModel } from "../src/adapters/decision-models/systemone";
 import { withAiEgress } from "./support/ai-egress";
 import { environment, fixture } from "./support/fixtures";
 
@@ -79,7 +81,14 @@ async function loopbackFixture() {
       return;
     }
 
-    if (name === "size") outgoing.end("x".repeat(1024 * 1024 + 1));
+    if (name.startsWith("usage_"))
+      outgoing.end(
+        JSON.stringify({
+          ...authoredResponse(),
+          usage: { input_tokens: Number(name.slice(6)), output_tokens: 1 },
+        }),
+      );
+    else if (name === "size") outgoing.end("x".repeat(1024 * 1024 + 1));
     else if (name === "duplicate") outgoing.end('{"model":"first","model":"second"}');
     else if (name === "utf8") outgoing.end(Buffer.from([0xff, 0xfe]));
     else if (name === "json") outgoing.end("{");
@@ -371,4 +380,261 @@ test("authored Workers AI binding exercises the shared validator without claimin
       2,
     ),
   );
+});
+
+test("decision state limits bound actual complete UTF8 wire and reported usage through loopback HTTP", async () => {
+  const book = await fixture();
+  const local = await loopbackFixture();
+
+  const wireBytes = (value: D.SystemOneRequest) =>
+    new TextEncoder().encode(JSON.stringify(value)).length;
+
+  const multibyte = { ...request, state: "å".repeat(100) };
+
+  const envelope = {
+    ...request,
+    state: "x",
+    questions: { kind: { ...request.questions.kind!, instructions: "x".repeat(300) } },
+  };
+
+  const expanded = { ...request, state: "199001011234" };
+  const limit = wireBytes(request);
+
+  const cases = [
+    { name: "exact", input: request, limit, expected: "validated", calls: 1 },
+    { name: "one_byte_over", input: request, limit: limit - 1, expected: "state_limit", calls: 0 },
+    {
+      name: "multibyte",
+      input: multibyte,
+      limit: JSON.stringify(multibyte).length,
+      expected: "state_limit",
+      calls: 0,
+    },
+    {
+      name: "envelope",
+      input: envelope,
+      limit: wireBytes(request),
+      expected: "state_limit",
+      calls: 0,
+    },
+    {
+      name: "tokenised_growth",
+      input: expanded,
+      limit: wireBytes(expanded) + 1,
+      expected: "state_limit",
+      calls: 0,
+    },
+    {
+      name: "usage_equal",
+      input: request,
+      limit,
+      endpoint: `usage_${limit}`,
+      expected: "state_limit",
+      calls: 1,
+    },
+    {
+      name: "usage_above",
+      input: request,
+      limit,
+      endpoint: `usage_${limit + 1}`,
+      expected: "state_limit",
+      calls: 1,
+    },
+    {
+      name: "usage_below",
+      input: request,
+      limit,
+      endpoint: `usage_${limit - 1}`,
+      expected: "validated",
+      calls: 1,
+    },
+  ];
+
+  const observed = [];
+
+  try {
+    for (const item of cases) {
+      const endpoint = item.endpoint ?? item.name;
+
+      const model = required(
+        configuredDecisionModel({
+          OPENERP_DECISION_MODEL: "local-systemone-fixture",
+          OPENERP_DECISION_MODEL_RELEASE: release,
+          OPENERP_DECISION_MODEL_ENDPOINT: `${local.origin}/${endpoint}`,
+          OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: String(item.limit),
+        }),
+      );
+
+      const result = await withAiEgress(book, (egress) => model.decide(item.input, egress));
+      observed.push({
+        name: item.name,
+        expected: item.expected,
+        observed: result.status === "validated" ? "validated" : result.code,
+        expectedCalls: item.calls,
+        calls: local.counts[endpoint] ?? 0,
+        inputBytes: wireBytes(item.input),
+        limit: item.limit,
+        identity: model.identity,
+      });
+    }
+
+    const postTokenisationBytes = await withAiEgress(book, async (egress) => {
+      const model = required(
+        configuredDecisionModel({
+          OPENERP_DECISION_MODEL: "local-systemone-fixture",
+          OPENERP_DECISION_MODEL_RELEASE: release,
+          OPENERP_DECISION_MODEL_ENDPOINT: `${local.origin}/never`,
+        }),
+      );
+
+      const output = await egress.structured(
+        model.identity.egressPolicy,
+        Schema.decodeUnknownSync(Schema.Json)(expanded),
+        ["free_text"],
+      );
+
+      return new TextEncoder().encode(JSON.stringify(output.payload)).length;
+    });
+
+    await writeFile(
+      join(environment().artifacts, "decision-state-limits-http.json"),
+      JSON.stringify(
+        { syntheticOnly: true, observed, postTokenisationBytes, counts: local.counts },
+        null,
+        2,
+      ),
+    );
+
+    for (const item of observed) {
+      expect(item.observed, item.name).toBe(item.expected);
+      expect(item.calls, item.name).toBe(item.expectedCalls);
+      expect(item.identity).toMatchObject({
+        inputTokenLimit: item.limit,
+        releaseQualification: "unsubstantiated",
+      });
+    }
+
+    expect(postTokenisationBytes).toBeGreaterThan(wireBytes(expanded) + 1);
+  } finally {
+    await local.close();
+  }
+});
+
+test("decision state limits pin hosted selectors and refuse absent or invalid manual release limits", async () => {
+  const book = await fixture();
+  const calls: Array<{ selector: string; bytes: number }> = [];
+
+  const binding: WorkersAi = {
+    async run(selector, input) {
+      calls.push({ selector, bytes: new TextEncoder().encode(JSON.stringify(input)).length });
+
+      return authoredResponse(input.model);
+    },
+  };
+
+  const base = {
+    OPENERP_DECISION_MODEL_RELEASE: release,
+    OPENERP_AI_EGRESS_POLICY: "self-hosted",
+    OPENERP_AI_EGRESS_APPROVAL: "synthetic-only",
+  };
+
+  const observed = [];
+
+  for (const [selector, limit] of [
+    ["clef", 64000],
+    ["clef-flash", 24576],
+  ] as const) {
+    const model = required(
+      configuredDecisionModel(
+        {
+          ...base,
+          OPENERP_DECISION_MODEL: "workers-ai-clef",
+          OPENERP_DECISION_MODEL_SELECTOR: selector,
+        },
+        binding,
+      ),
+    );
+
+    const before = calls.length;
+
+    const result = await withAiEgress(book, (egress) =>
+      model.decide({ ...request, model: selector, state: "x".repeat(limit) }, egress),
+    );
+
+    observed.push({
+      selector,
+      limit,
+      identity: model.identity,
+      result,
+      dispatches: calls.length - before,
+    });
+  }
+
+  const invalid = [];
+
+  for (const mode of ["self-hosted-clef", "typesafe-jev"]) {
+    for (const limit of [undefined, "", "0", "-1", "1.5", "NaN", "Infinity", "9007199254740992"]) {
+      let refused = false;
+
+      try {
+        configuredDecisionModel({
+          ...base,
+          OPENERP_DECISION_MODEL: mode,
+          OPENERP_DECISION_MODEL_ENDPOINT: "https://synthetic.invalid/decision",
+          OPENERP_DECISION_MODEL_KEY: credential,
+          OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: limit,
+        });
+      } catch {
+        refused = true;
+      }
+
+      invalid.push({ mode, limit: limit ?? "missing", refused });
+    }
+  }
+
+  await writeFile(
+    join(environment().artifacts, "decision-state-limits-config.json"),
+    JSON.stringify({ syntheticBindingOnly: true, observed, invalid, calls }, null, 2),
+  );
+
+  for (const item of observed) {
+    expect(item.result).toMatchObject({ status: "failed", code: "state_limit" });
+    expect(item.dispatches).toBe(0);
+    expect(item.identity).toMatchObject({ inputTokenLimit: item.limit });
+  }
+
+  expect(invalid.every((item) => item.refused)).toBe(true);
+  expect(
+    configuredDecisionModel(
+      { OPENERP_DECISION_MODEL: "disabled", OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: "NaN" },
+      binding,
+    ),
+  ).toBeUndefined();
+  expect(() =>
+    configuredDecisionModel(
+      {
+        ...base,
+        OPENERP_DECISION_MODEL: "workers-ai-clef",
+        OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: "64000",
+      },
+      binding,
+    ),
+  ).toThrow();
+
+  const fixtureModel = required(
+    configuredDecisionModel({
+      OPENERP_DECISION_MODEL: "local-systemone-fixture",
+      OPENERP_DECISION_MODEL_RELEASE: release,
+      OPENERP_DECISION_MODEL_ENDPOINT: "http://127.0.0.1/decision",
+    }),
+  );
+
+  expect(fixtureModel.identity).toMatchObject({ inputTokenLimit: 24576 });
+  expect(() =>
+    systemOneModel(
+      { ...fixtureModel.identity, inputTokenLimit: NaN },
+      { kind: "http", endpoint: new URL("http://127.0.0.1/decision") },
+      1000,
+    ),
+  ).toThrow();
 });
