@@ -400,6 +400,7 @@ test("AUT06 missing bank mappings, statements and continuity cannot pass at zero
         expect(report.accounts[0]?.statements[0]?.diagnostics).toContain(
           "statement_declared_incomplete",
         );
+      observed.push({ mode, report, result: null });
       const result = await capture(book, {
         bankInventoryPlanId: null,
         bankSourceCoverageReportId: report.id,
