@@ -29,10 +29,23 @@ type Policy = typeof C.DecisionPolicy.Type;
 type Input = typeof C.AdmitDecisionRequest.Type;
 
 const requestView = Effect.fn("decisionJobs.view")(function* (row: Db.RequestRow) {
+  const frozen = yield* decode(C.FrozenDecisionRequest, row.body);
+
   return yield* decode(
     C.DecisionRequestView,
     yield* toJsonObject({
-      ...row.body,
+      id: frozen.id,
+      scope: frozen.scope,
+      subject: frozen.subject,
+      question: frozen.question,
+      builders: frozen.builders,
+      originalCommitCutoff: frozen.originalCommitCutoff,
+      evidence: frozen.evidence,
+      inputDigest: frozen.inputDigest,
+      optionSetDigest: frozen.optionSetDigest,
+      policy: frozen.policy,
+      input: frozen.input,
+      digest: frozen.digest,
       status: row.status,
       reason: row.reason,
       result: row.result,

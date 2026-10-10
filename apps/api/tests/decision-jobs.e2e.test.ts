@@ -61,27 +61,32 @@ async function policy(
 }
 
 async function bridge(bindings: Bindings) {
-  const server = createServer(async (incoming, outgoing) => {
-    const chunks: Buffer[] = [];
+  const server = createServer((incoming, outgoing) => {
+    void (async () => {
+      const chunks: Buffer[] = [];
 
-    for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
-    const headers = new Headers();
+      for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
+      const headers = new Headers();
 
-    for (const [name, value] of Object.entries(incoming.headers))
-      if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(",") : value);
-    const body = Buffer.concat(chunks);
+      for (const [name, value] of Object.entries(incoming.headers))
+        if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(",") : value);
+      const body = Buffer.concat(chunks);
 
-    const response = await app.fetch(
-      new Request(`http://127.0.0.1${incoming.url}`, {
-        method: incoming.method,
-        headers,
-        ...(body.length ? { body } : {}),
-      }),
-      bindings,
-    );
+      const response = await app.fetch(
+        new Request(`http://127.0.0.1${incoming.url}`, {
+          method: incoming.method,
+          headers,
+          ...(body.length ? { body } : {}),
+        }),
+        bindings,
+      );
 
-    outgoing.writeHead(response.status, Object.fromEntries(response.headers));
-    outgoing.end(Buffer.from(await response.arrayBuffer()));
+      outgoing.writeHead(response.status, Object.fromEntries(response.headers));
+      outgoing.end(Buffer.from(await response.arrayBuffer()));
+    })().catch(() => {
+      if (!outgoing.headersSent) outgoing.writeHead(500);
+      outgoing.end("Synthetic fixture handler failed");
+    });
   });
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -112,58 +117,68 @@ async function provider(book: BookFixture) {
 
   const holds = new Map<string, () => void>();
 
-  const server = createServer(async (incoming, outgoing) => {
-    const chunks: Buffer[] = [];
+  const server = createServer((incoming, outgoing) => {
+    void (async () => {
+      const chunks: Buffer[] = [];
 
-    for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
-    const body = JSON.parse(Buffer.concat(chunks).toString());
-    const scenario = control.scenario;
-    const admin = await database();
-    let bookLockReleased = false;
+      for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
+      const body = JSON.parse(Buffer.concat(chunks).toString());
+      const scenario = control.scenario;
+      const admin = await database();
+      let bookLockReleased = false;
 
-    try {
-      await admin.query("BEGIN");
-      await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE NOWAIT", [
-        book.bookId,
-      ]);
-      bookLockReleased = true;
-      await admin.query("ROLLBACK");
-    } finally {
-      await admin.end();
-    }
+      try {
+        await admin.query("BEGIN");
+        await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE NOWAIT", [
+          book.bookId,
+        ]);
+        bookLockReleased = true;
+        await admin.query("ROLLBACK");
+      } finally {
+        await admin.end();
+      }
 
-    calls.push({ case: scenario, questions: body.questions, state: body.state, bookLockReleased });
+      calls.push({
+        case: scenario,
+        questions: body.questions,
+        state: body.state,
+        bookLockReleased,
+      });
 
-    if (scenario.startsWith("hold_"))
-      await new Promise<void>((resolve) => holds.set(scenario, resolve));
+      if (scenario.startsWith("hold_"))
+        await new Promise<void>((resolve) => holds.set(scenario, resolve));
 
-    if (scenario === "timeout") return;
+      if (scenario === "timeout") return;
 
-    if (scenario === "rate") {
-      outgoing.writeHead(429);
-      outgoing.end("synthetic");
+      if (scenario === "rate") {
+        outgoing.writeHead(429);
+        outgoing.end("synthetic");
 
-      return;
-    }
+        return;
+      }
 
-    const criteria = body.questions.document_kind.criteria;
+      const criteria = body.questions.document_kind.criteria;
 
-    const probabilities = Object.fromEntries(
-      Object.keys(criteria).map((option) => [option, option === "invoice" ? 1 : 0]),
-    );
+      const probabilities = Object.fromEntries(
+        Object.keys(criteria).map((option) => [option, option === "invoice" ? 1 : 0]),
+      );
 
-    if (scenario === "option") probabilities.foreign = 0;
+      if (scenario === "option") probabilities.foreign = 0;
 
-    if (scenario === "distribution") probabilities.invoice = 0.5;
-    outgoing.end(
-      JSON.stringify({
-        model: scenario === "model" ? "unexpected" : release,
-        usage: { input_tokens: 0, output_tokens: 0 },
-        answers: {
-          document_kind: { type: "choice", choice: "invoice", probabilities, confidence: 1 },
-        },
-      }),
-    );
+      if (scenario === "distribution") probabilities.invoice = 0.5;
+      outgoing.end(
+        JSON.stringify({
+          model: scenario === "model" ? "unexpected" : release,
+          usage: { input_tokens: 0, output_tokens: 0 },
+          answers: {
+            document_kind: { type: "choice", choice: "invoice", probabilities, confidence: 1 },
+          },
+        }),
+      );
+    })().catch(() => {
+      if (!outgoing.headersSent) outgoing.writeHead(500);
+      outgoing.end("Synthetic fixture handler failed");
+    });
   });
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -1111,7 +1126,9 @@ test("local decision refusal retains no dispatch intent or unknown external usag
     expect(observed.reason).toBe("state_limit");
     expect(fixture.calls).toHaveLength(0);
     expect(controls[0].disclosed_at).toBeNull();
-    expect(attempts.map((row) => row.phase).sort()).toEqual(["claimed", "terminal"]);
+    expect(
+      attempts.map((row) => row.phase).sort((left, right) => left.localeCompare(right)),
+    ).toEqual(["claimed", "terminal"]);
     expect(attempts.find((row) => row.phase === "terminal").body.usageStatus).toBe("not_disclosed");
   } finally {
     await admin.end();

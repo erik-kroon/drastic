@@ -38,3 +38,18 @@ The lifecycle artifact includes actual received financial-state envelopes for eg
 The optional adapter pre-dispatch guard runs after AUT-28 admission/tokenisation and both complete-byte checks. It atomically checks the live lease/requester/subject/policy and commits a durable intent before transport. The legacy `disclosed` phase/column stores this intent, with transportConfirmed:false; it does not prove remote execution. A crash after intent can have zero actual calls and remains uncertain without redispatch. Local refusal before this guard is not_disclosed. Timeout, abort or network/binding failure after intent remains uncertain; known 429/invalid responses remain failed. Validated responses and protocol-reported usage are retained evidence, not independent billing verification. AUT-28 admission events separately prove admission, never actual transport.
 
 These are loopback HTTP and authored binding tests. No live Cloudflare deployment/binding, real provider, book data, immutable-weight qualification, suggestion UI/browser parity or model accuracy was exercised. HTTP shadow requests never grant posting authority. Clean full/owners/design qualification is coordinated separately by the parent after the source checkpoint; reachable MCP schema changes require the repository MCP gates.
+
+
+## Clean-check harness correction
+
+The first clean full check at 604669a found four type-aware lint errors: two async Node request listeners did not explicitly own their promises, and one phase array used an implicit sort comparator, and the request view spread a schema JSON object instead of explicitly projecting its frozen fields. The handlers now own asynchronous work and catch failures as a sanitized fixture HTTP 500; The request view now decodes its frozen request and explicitly emits the declared fields; provider policy and financial authority remain unchanged. The phase sort now has an explicit string comparator.
+
+The earlier handler-only five-pass artifact is retained separately at test-results/decision-shadow-handler-qualified. The corresponding five HTTP fixture workflows are rerun with this command; the other five adapter/catalog workflows from the ten-pass behavior run are unchanged:
+
+```sh
+OPENERP_E2E_ARTIFACTS=test-results/decision-shadow-view-qualified bun run test:e2e \
+  apps/api/tests/decision-jobs.e2e.test.ts \
+  -t 'decision shadow lifecycle|decision runner auth|decision queue resumes|local decision refusal|expired guard'
+```
+
+The request-view rerun passed all five selected workflows. Its stable behavior-source hash is `68336fae5f8481261d0bda06681c4995d2b30e0d89263a521697e323a9b3d30b`; results, lifecycle/queue/refusal artifacts and source integrity are retained in `test-results/decision-shadow-view-qualified`. Direct type-aware lint for the changed source/test and `bun run check:changed` passed. This final evidence paragraph was added after those checks; runtime/test code is unchanged. Clean full/owners/design remain a separate parent qualification.
