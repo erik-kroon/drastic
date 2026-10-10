@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, access } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createServer } from "node:net";
 import { expect, test } from "vitest";
 import { createTestHarness } from "wrangler";
@@ -21,6 +21,8 @@ import {
   journal,
   key,
   post,
+  prepare,
+  persisted,
   request,
 } from "./support/fixtures";
 
@@ -28,6 +30,9 @@ import {
 // a pinned E2E request reports retained revision age, not worker or database wall time.
 // Native and Worker harnesses must agree on the same request-scoped clock; the
 // production Worker and production Bun entrypoints must refuse clock headers.
+// Failure cases for self-host: missing real web assets prevents a valid server;
+// production Bun accepts the pinned header, changes retained facts, serves a
+// different book, or leaves its child process alive after the assertion.
 test("native synthetic browser API pins bureau time without changing stored obligations", async () => {
   const book = await fixture();
   const objectDirectory = join(environment().scratch, "native-clock-objects");
@@ -92,6 +97,96 @@ test("native synthetic browser API pins bureau time without changing stored obli
     if (native.pid && native.exitCode === null) {
       const exited = once(native, "exit");
       process.kill(-native.pid, "SIGTERM");
+      await exited;
+    }
+  }
+});
+
+test("production Bun self-host refuses client-supplied time over real built web assets", async () => {
+  await access(resolve(apiDirectory, "../web/dist/client/_shell.html"));
+
+  const book = await fixture();
+  await execute(book, await prepare(book));
+  const before = await persisted(book);
+  const socket = createServer();
+  socket.listen(0, "127.0.0.1");
+  await once(socket, "listening");
+  const address = socket.address();
+
+  if (!address || typeof address === "string") throw new Error("No production Bun test port");
+
+  const origin = `http://127.0.0.1:${address.port}`;
+  await new Promise<void>((resolve, reject) =>
+    socket.close((error) => (error ? reject(error) : resolve())),
+  );
+
+  const production = spawn("bun", ["--no-env-file", "scripts/self-host.ts"], {
+    cwd: apiDirectory,
+    env: {
+      PATH: process.env.PATH,
+      DATABASE_URL: environment().runtimeUrl,
+      BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      OPENERP_PUBLIC_URL: origin,
+      PORT: String(address.port),
+    },
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const lines = createInterface({ input: production.stdout });
+  let output = "";
+  production.stderr.on("data", (chunk: Buffer) => {
+    output += chunk.toString();
+  });
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      production.once("error", reject);
+      production.once("exit", () => reject(new Error(`Production Bun exited: ${output}`)));
+      lines.on("line", (line) => {
+        if (line.startsWith("Drastic self-host listening on ")) resolve();
+      });
+    });
+
+    const url = `${origin}${book.path}/bureau-obligations`;
+    const headers = { authorization: `Bearer ${book.token}` };
+    const baseline = await decoded(await fetch(url, { headers }), Bureau.BureauObligations);
+
+    const rejected = await fetch(url, {
+      headers: { ...headers, "x-openerp-test-now": "2026-10-02T06:54:00.000Z" },
+    });
+
+    await failure(rejected, 403, "Forbidden");
+
+    const after = await decoded(await fetch(url, { headers }), Bureau.BureauObligations);
+
+    expect(after.items).toEqual(baseline.items);
+    expect(after.coverage).toBe(baseline.coverage);
+    expect(await persisted(book)).toEqual(before);
+
+    await writeFile(
+      join(environment().artifacts, "production-bun-clock-refusal.json"),
+      JSON.stringify(
+        {
+          mode: "production-bun-self-host",
+          status: rejected.status,
+          requestId: rejected.headers.get("x-request-id"),
+          unchangedItems: after.items.length,
+          postingBefore: before,
+          postingAfter: await persisted(book),
+          coverage: after.coverage,
+          webAssets: "real_build",
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    lines.close();
+
+    if (production.pid && production.exitCode === null) {
+      const exited = once(production, "exit");
+      process.kill(-production.pid, "SIGTERM");
       await exited;
     }
   }
