@@ -11,6 +11,7 @@ import * as Questions from "@open-erp/contracts/decisions";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as A from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import * as Recovery from "@open-erp/contracts/posting-recovery";
 import { configuredDecisionModel } from "../src/runtime/decision-model";
 import { systemOneModel } from "../src/adapters/decision-models/systemone";
 import { acceptDraft, createDraft, supplierFixture } from "./support/supplier-review";
@@ -1532,3 +1533,123 @@ test("decision requester downgraded before dispatch loses operator authority", a
     await fixture.close();
   }
 }, 30_000);
+
+test("terminal off admissions retain durable shared command idempotency", async () => {
+  const f = await supplierFixture();
+  const fixture = await provider(f.book);
+
+  try {
+    const original = await fixtureDraft(f, "valid");
+    const other = await fixtureDraft(f, "valid");
+    const offKey = key();
+    const concurrentKey = key();
+
+    const submit = async (commandKey: string, input: ReturnType<typeof admission>) => {
+      const response = await request(f.book, "/automation/decision-requests", {
+        method: "POST",
+        headers: { "idempotency-key": commandKey },
+        body: JSON.stringify(input),
+      });
+
+      return { httpStatus: response.status, body: await response.json() };
+    };
+
+    const before = await inventory(f.book);
+    const initial = await submit(offKey, admission(original));
+    const changedWhileOff = await submit(offKey, admission(other));
+
+    const concurrent = await Promise.all([
+      submit(concurrentKey, admission(original)),
+      submit(concurrentKey, admission(original)),
+    ]);
+
+    const reserved = await post(
+      f.book,
+      "/saved-posting-requests",
+      {
+        operation: "create_evidence",
+        input: {
+          title: "Reserved synthetic source",
+          content: "Synthetic command identity",
+          mediaType: "text/plain",
+          origin: "Terminal decision test",
+        },
+      },
+      Recovery.SavedPostingRequest,
+    );
+
+    const reservedCollision = await submit(reserved.request.commandKey, admission(original));
+    await policy(f.book, "shadow");
+    const replayAfterEnabled = await submit(offKey, admission(original));
+    const concurrentReplayAfterEnabled = await submit(concurrentKey, admission(original));
+    const changedAfterEnabled = await submit(offKey, admission(other));
+    const after = await inventory(f.book);
+    const admin = await database();
+    let receipts;
+
+    try {
+      receipts = (
+        await admin.query(
+          "SELECT key,operation,actor_id,result FROM openerp.command_receipts WHERE book_id=$1 AND key=ANY($2::text[]) ORDER BY key",
+          [f.book.bookId, [offKey, concurrentKey]],
+        )
+      ).rows;
+    } finally {
+      await admin.end();
+    }
+
+    await writeFile(
+      join(environment().artifacts, "terminal-decision-idempotency.json"),
+      JSON.stringify(
+        {
+          syntheticOnly: true,
+          skippedBranch: "not_observed; valid public supplier drafts require counterparty",
+          originalSubject: admission(original),
+          changedSubject: admission(other),
+          offKey,
+          concurrentKey,
+          initial,
+          changedWhileOff,
+          concurrent,
+          reserved,
+          reservedCollision,
+          replayAfterEnabled,
+          concurrentReplayAfterEnabled,
+          changedAfterEnabled,
+          receipts,
+          before,
+          after,
+          transportAttempts: fixture.transportAttempts,
+        },
+        null,
+        2,
+      ),
+    );
+
+    expect(initial).toMatchObject({
+      httpStatus: 200,
+      body: { status: "off", reason: null, request: null },
+    });
+    expect(replayAfterEnabled).toEqual(initial);
+    expect(changedWhileOff).toMatchObject({
+      httpStatus: 409,
+      body: { code: "IdempotencyConflict" },
+    });
+    expect(changedAfterEnabled).toMatchObject({
+      httpStatus: 409,
+      body: { code: "IdempotencyConflict" },
+    });
+    expect(concurrent).toEqual([initial, initial]);
+    expect(concurrentReplayAfterEnabled).toEqual(initial);
+    expect(receipts).toHaveLength(2);
+    expect(receipts.map((row) => row.result)).toEqual([initial.body, initial.body]);
+    expect(reservedCollision).toMatchObject({
+      httpStatus: 409,
+      body: { code: "IdempotencyConflict" },
+    });
+    expect(after).toEqual(before);
+    expect(fixture.transportAttempts).toBe(0);
+  } finally {
+    await fixture.close();
+  }
+});
