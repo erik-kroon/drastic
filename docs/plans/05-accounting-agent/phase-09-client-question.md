@@ -8,7 +8,7 @@ A run asks each client once, with every askable fact in one question, and turns 
 
 ## Blocker
 
-There is no client role. ADR 0019 (client role, invitations and answers) is proposed, not accepted. The phase cannot reach clients until the owner accepts ADR 0019 and it is implemented. Until then the same mechanism addresses a bureau operator.
+There is no client role. ADR 0019 is accepted for bureau/client on 2026-10-10, with typed answer slots, no client free text in model state and AUT-16 consent through that role. The phase cannot reach clients until the role, invitations and scoped authority are implemented and its synthetic browser proof is retained. Until then the same mechanism addresses a bureau operator.
 
 ## Changes
 

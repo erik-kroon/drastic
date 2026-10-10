@@ -14,7 +14,7 @@ Playbooks are data, not code branches. The first playbook prepares a period's su
 - A plan preview read. It returns the steps that will run, the steps skipped with a reason, and the checks that will be evaluated.
 - The supplier invoice playbook covers recognition, a firm-memory suggestion, review preparation, and a person step for approval.
   - Mandated execution is included only where a book's authority policy enables it.
-  - ADR 0020 is still proposed, so the playbook must work fully without mandates.
+  - ADR 0020 is accepted with amendments. The playbook must work fully without mandates; no book enables them before AUT-27 is built.
 
 ## Data structures
 

@@ -81,4 +81,4 @@ Add an LLM only where judgement or language is needed, and keep it only if it me
 - Static. Changed checks, `check:changed:full`.
 - Runtime. Fixture-model E2E for every failure case. The eval decides whether each step ships. Record VERIFIED, NOT VERIFIED or INCONCLUSIVE in the decision trail. Artifacts under `test-results/agent-p12`.
 
-Size L. Depends on Phase 11, AUT-24, and the owner's LLM provider decision (AUT-00).
+Size L. Depends on Phase 11, AUT-24, and the approved synthetic-only Bedrock EU qualification conditions (AUT-00). Real book data still needs a separate counsel/DPA and per-book decision.

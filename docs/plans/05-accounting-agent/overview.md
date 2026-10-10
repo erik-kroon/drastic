@@ -1,6 +1,6 @@
 # 05 Accounting agent mode
 
-Status: plan approved by the owner, 2026-10-10. Not started. Revised after an independent review against the code. Approval of the plan does not accept ADR 0019 or ADR 0020, choose an LLM provider, or approve live source fetching. Those remain open decisions below.
+Status: plan approved by the owner, 2026-10-10. Not started. Revised after an independent review against the code. The owner subsequently approved ADR 0019 for bureau/client, ADR 0020 with amendments, synthetic-only Bedrock EU qualification and conditional public-source fetching. See the accepted decisions below; real-data, implementation and design gates remain.
 
 ## Context
 
@@ -54,7 +54,7 @@ Excluded:
 
 - **Authority.**
   - Agents prepare and record. People approve. Approvals bind to exact digests.
-  - Mandates follow ADR 0020, which is still proposed, so every playbook must work without mandates.
+  - Mandates follow accepted ADR 0020 with amendments. Every playbook must work without mandates; no book enables them before AUT-27 is built.
   - No period-work write is an agent tool today (`capabilities/agent-policy.ts:179`).
 - **Modes.** Shadow or suggest is set per decision question per book from the operator console (ADR 0021), never per run.
 - **Transactions.** No model or provider call inside a financial transaction (`docs/domain.md:90`). Owner commands replay through stable command keys.
@@ -101,7 +101,7 @@ Stage 2 is the engine without any model.
 Stage 3 is completeness. It can run in parallel with stage 2.
 
 8. [Missing-fact model](phase-08-missing-facts.md). M.
-9. [One batched question to the client](phase-09-client-question.md). L. Blocked on ADR 0019 for clients.
+9. [One batched question to the client](phase-09-client-question.md). L. Needs the accepted ADR 0019 client role implementation and browser proof.
 
 Stage 4 is the program predicate.
 
@@ -125,11 +125,27 @@ The parallel tracks are:
 
 Each track needs its own worktree and owner. At the start of a phase, its implementer splits it into units of two or three files, each ending in a check.
 
+## Accepted owner decisions, 2026-10-10
+
+- **ADR 0019.** Bureau/client accepted; founder deferred. Typed Phase 9 answer slots, no client free text in model state, and AUT-16 consent through the client role. Client delivery still needs invitations, scoped authority and browser proof.
+- **ADR 0020.** Accepted with constant-zero authenticators valid, non-advancing non-zero counters refused, and two mandate approvers excluding the preparer. Supplier acceptance only, off by default; no book enables mandates before AUT-27 is built.
+- **Provider qualification.** Qualify Claude on Amazon Bedrock through an EU geographic inference profile as the first LLM provider. Synthetic data only.
+
+Conditions:
+
+- Every call goes through AUT-28.
+- Allowed: tokenised structured data. Never documents or client free text.
+- No fallback to global routing. Record the inference region of every call.
+- Invocation logging stays off unless reviewed.
+
+Real book data needs a separate decision after counsel confirms GDPR roles and the DPA.
+
+Decision models: qualify Clef the same way, either on Workers AI after checking its current data-use terms, or self-hosted.
+
+See [AUT-00](../../operations/automation-handoff-2026-10-10.md#aut-00-decide-the-automation-basis-and-firm-learning-legal-footing) and [plan 06](../06-rule-sources/overview.md#owner-approval-public-source-fetching-2026-10-10) for the conditional public-source fetching approval.
+
 ## Open decisions for the owner
 
-- **ADR 0019, the client role.** Phase 9 cannot reach clients without it.
-- **ADR 0020, mandates.** Playbooks run without mandates until it is accepted.
-- **LLM provider and hosting for in-app steps.** This is part of the AUT-00 data-use decision. Phase 12 runs on fixtures until it is made. The leading candidate is Claude on Amazon Bedrock through an EU geographic inference profile, which keeps processing inside EU regions. It needs a DPA review, a check of each model's regional table, and the AUT-28 boundary in front of it.
 - **Whether agents may start runs.** The proposal is that people start and stop runs, an agent reads the plan preview only, and the runner advances steps with its machine credential.
 - **Design adoption** for boards AUT-D11 and D12.
 

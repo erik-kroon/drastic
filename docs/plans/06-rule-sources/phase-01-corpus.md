@@ -13,7 +13,7 @@ Drastic keeps its own versioned copy of public Swedish sources, so it can answer
   - The raw source is kept beside the normalised text, with the extraction version.
   - A rights ledger records each source's reuse basis. Riksdagen open data requires attribution. Upphovsrättslagen § 9 covers statutes and authority decisions, not every public page.
   - Amendments and transitional provisions are stored as relationships, not just as whole-document changes.
-- A fetcher. Tests use fixtures only. Live fetching waits for the owner. It covers:
+- A fetcher. Tests use fixtures only. Live fetching is approved under the [overview conditions](overview.md#owner-approval-public-source-fetching-2026-10-10): identified background GET requests, at most once per second per host and at most daily, publisher terms and attribution, raw hashes and reuse basis, no paid databases, and operator-only release installation. It covers:
   - Riksdagen open data, for consolidated statute text with its amended-up-to marker;
   - Skatteverket's legal guidance by yearly edition, and its official positions;
   - BFN guidance;
