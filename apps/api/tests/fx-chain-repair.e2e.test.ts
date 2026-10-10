@@ -91,6 +91,7 @@ async function recognisedItem(
   reviewer: Awaited<ReturnType<typeof fixture>>,
   source: { readonly id: string; readonly sha256: string },
   tag: string,
+  original: { readonly scale: number; readonly minor: string } = { scale: 2, minor: "10000" },
 ) {
   const recognitionRate = await reportingRate(book, source.id, source.id, "1000", "100");
 
@@ -120,8 +121,8 @@ async function recognisedItem(
       documentNumber: `INV-${tag}`,
       recognitionDate: "2026-01-15",
       originalCurrency: "USD",
-      originalScale: 2,
-      originalMinor: "10000",
+      originalScale: original.scale,
+      originalMinor: original.minor,
       rateObservationId: recognitionRate.observationId,
       rateDigest: recognitionRate.digest,
       accountingPeriodId: "period_2026",
@@ -163,6 +164,10 @@ async function settlePartially(
   reviewer: Awaited<ReturnType<typeof fixture>>,
   source: { readonly id: string; readonly sha256: string },
   itemId: string,
+  released: { readonly originalMinor: string; readonly considerationMinor: string } = {
+    originalMinor: "4000",
+    considerationMinor: "4000",
+  },
 ) {
   const settlement = await post(
     book,
@@ -170,10 +175,10 @@ async function settlePartially(
     {
       profile: "synthetic_partial_book_currency_settlement_v1",
       itemId,
-      originalReleasedMinor: "4000",
+      originalReleasedMinor: released.originalMinor,
       settlementDate: "2026-02-15",
       accountingPeriodId: "period_2026",
-      considerationMinor: "4000",
+      considerationMinor: released.considerationMinor,
       evidenceId: source.id,
       eventKey: `synthetic_settlement_${itemId}`,
       series: "VER",
@@ -339,4 +344,65 @@ test("NEXT-41 refuses a replayed repair key", async () => {
   });
 
   expect(again.status).toBe(422);
+});
+
+// A foreign currency without minor units (scale 0) against a book at scale 2.
+// Hand-derived: 100 units at 10.00 carry 1 000.00 kr; releasing 40 units at the
+// same rate leaves 60 units carrying 600.00 kr; 60 units at 10.85 are 651.00 kr,
+// so the repair attributes exactly 51.00 kr. Before the scale fix the replay
+// ignored the two scales and refused this chain.
+test("NEXT-41 repairs a chain whose foreign currency has a different scale than the book", async () => {
+  const { book, reviewer, source } = await setup();
+  const item = await recognisedItem(book, reviewer, source, "scale0", { scale: 0, minor: "100" });
+
+  await settlePartially(book, reviewer, source, item.id, {
+    originalMinor: "40",
+    considerationMinor: "40000",
+  });
+
+  const corrected = await reportingRate(book, source.id, source.id, "1085", "100");
+
+  const prepared = await post(
+    book,
+    "/commerce/fx/chain-repair-reviews",
+    repairInput(item.id, corrected, "repair_synthetic_scale0"),
+    CommerceFx.ChainRepairReview,
+  );
+
+  expect(prepared.repair.cashDeltaMinor).toBe("0");
+  expect(prepared.repair.foreignDeltaMinor).toBe("0");
+  expect(prepared.repair.deltas.filter((delta) => delta.amountMinor !== "0")).toEqual([
+    { accountingOn: "2026-02-28", role: "ar_movement", amountMinor: "5100" },
+    { accountingOn: "2026-02-28", role: "pnl", amountMinor: "5100" },
+  ]);
+
+  const approval = await post(
+    reviewer,
+    `/commerce/fx/chain-repair-reviews/${prepared.id}/approvals`,
+    { version: 1, digest: prepared.digest },
+    CommerceFx.ChainRepairApproval,
+  );
+
+  const executed = await post(
+    book,
+    `/commerce/fx/chain-repair-reviews/${prepared.id}/execute`,
+    { version: 1, digest: prepared.digest, approvalId: approval.id },
+    CommerceFx.ChainRepairExecuted,
+  );
+
+  const admin = await database();
+
+  try {
+    const lines = await admin.query(
+      "select account_id, debit_minor, credit_minor from openerp.journal_lines where book_id=$1 and voucher_id=$2 order by ordinal",
+      [book.bookId, executed.voucherId],
+    );
+
+    expect(lines.rows).toEqual([
+      { account_id: "account_control", debit_minor: "5100", credit_minor: "0" },
+      { account_id: "account_gain", debit_minor: "0", credit_minor: "5100" },
+    ]);
+  } finally {
+    await admin.end();
+  }
 });

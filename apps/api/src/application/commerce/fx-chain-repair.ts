@@ -257,6 +257,14 @@ export const prepareFxChainRepair = Effect.fn("commerceFx.prepareChainRepair")(f
       });
     }
 
+    // The leaf converts minor units at a minor-per-minor rate, so the reviewed
+    // major-unit rate carries both scales. Without them a foreign currency
+    // whose scale differs from the book's would replay at the wrong magnitude.
+    const minorRate = {
+      numerator: BigInt(rate.terms.rateNumerator) * 10n ** BigInt(book.scale),
+      denominator: BigInt(rate.terms.rateDenominator) * 10n ** BigInt(state.item.original.scale),
+    };
+
     const events = buildChainEvents(
       [],
       settlementRows.map((row) => ({
@@ -270,21 +278,19 @@ export const prepareFxChainRepair = Effect.fn("commerceFx.prepareChainRepair")(f
       {
         accountingOn: command.input.accountingCutoff,
         remainingForeignMinor: state.item.remainingOriginalMinor,
-        rateNumerator: rate.terms.rateNumerator,
-        rateDenominator: rate.terms.rateDenominator,
+        rateNumerator: minorRate.numerator.toString(),
+        rateDenominator: minorRate.denominator.toString(),
         eventId: `chain_repair_valuation_${command.input.repairKey}`,
       },
     );
 
     // The expected ending is the corrected target for the remaining foreign
-    // amount, with the same scale conversion the leaf applies. The leaf
-    // verifies the full replay arrives there, so a missing settlement fails
-    // here rather than posting against a partial chain.
+    // amount at the same minor-unit rate the leaf applies. The leaf verifies
+    // the full replay arrives there, so a missing settlement fails here rather
+    // than posting against a partial chain.
     const target = roundRational(
-      BigInt(state.item.remainingOriginalMinor) *
-        BigInt(rate.terms.rateNumerator) *
-        10n ** BigInt(book.scale),
-      BigInt(rate.terms.rateDenominator) * 10n ** BigInt(state.item.original.scale),
+      BigInt(state.item.remainingOriginalMinor) * minorRate.numerator,
+      minorRate.denominator,
       "half_up",
     );
 

@@ -55,6 +55,8 @@ function amount(value: bigint) {
   return value.toString();
 }
 
+// The rate converts foreign minor units straight to book minor units: callers
+// fold both currency scales into it before replay.
 export const ValuationEvent = Schema.Struct({
   kind: Schema.Literal("valuation"),
   accountingOn: AccountingDate,
