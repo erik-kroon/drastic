@@ -46,7 +46,7 @@ export const readFirmMemory = Effect.fn("firmMemory.read")(function* (
   }
 
   const historyDigest = yield* digest({
-    algorithmVersion: "firm_memory_v1",
+    algorithmVersion: "firm_memory_v2",
     inventory,
     vouchers: snapshot.vouchers ?? null,
   });
@@ -55,7 +55,7 @@ export const readFirmMemory = Effect.fn("firmMemory.read")(function* (
     Effect.mapError(() => failure("InternalError")),
   );
 
-  const ranked = Memory.rank({ ...target, cutoff }, history);
+  const ranked = Memory.rankV2({ ...target, cutoff }, history);
 
   return {
     ...ranked,

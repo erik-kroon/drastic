@@ -897,11 +897,15 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
     );
 
     const comparisons: Comparison[] = exposure.records.map((record): Comparison => {
-      if (record.ranked.source !== "firm_memory_v0" && record.ranked.source !== "firm_memory_v1")
+      if (
+        record.ranked.source !== "firm_memory_v0" &&
+        record.ranked.source !== "firm_memory_v1" &&
+        record.ranked.source !== "firm_memory_v2"
+      )
         return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
 
       const suggested =
-        record.ranked.source === "firm_memory_v1"
+        record.ranked.source === "firm_memory_v1" || record.ranked.source === "firm_memory_v2"
           ? record.ranked.legacyItems[0]
           : record.ranked.options[0];
 

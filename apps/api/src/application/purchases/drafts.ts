@@ -726,7 +726,7 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
           .slice(0, 5);
 
         const ranked = yield* Shared.decode(Provenance.SuggestionOptions, {
-          source: "firm_memory_v1",
+          source: "firm_memory_v2",
           version: memory.algorithmVersion,
           historyDigest: memory.historyDigest,
           legacyItems: items,

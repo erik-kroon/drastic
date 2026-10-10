@@ -3,7 +3,7 @@ import { Digest, Identifier } from "./values";
 import { MinorUnits } from "./money";
 import * as Consequence from "./treatment-consequence";
 
-export const AlgorithmVersion = Schema.Literal("firm_memory_v1");
+export const AlgorithmVersion = Schema.Literals(["firm_memory_v1", "firm_memory_v2"]);
 
 const Key = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
@@ -57,6 +57,48 @@ export function normalizeDescription(description: string) {
   return description.normalize("NFC").trim().replace(/\s+/gu, " ").toLowerCase();
 }
 
+type Version = typeof AlgorithmVersion.Type;
+
+const monthWords = new Set([
+  "januari",
+  "februari",
+  "mars",
+  "april",
+  "maj",
+  "juni",
+  "juli",
+  "augusti",
+  "september",
+  "oktober",
+  "november",
+  "december",
+  "january",
+  "february",
+  "march",
+  "may",
+  "june",
+  "july",
+  "august",
+  "october",
+]);
+
+export function normalizeDescriptionV2(description: string) {
+  const text = description
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/\b[0-9]+(?:st|nd|rd|th|:[ae])\b/gu, " ");
+
+  const words = (text.match(/[\p{L}\p{M}]+/gu) ?? []).filter((word) => !monthWords.has(word));
+
+  return [...new Set(words)].sort().join(" ");
+}
+
+function descriptionKey(description: string, version: Version) {
+  return version === "firm_memory_v1"
+    ? normalizeDescription(description)
+    : normalizeDescriptionV2(description);
+}
+
 function relatedIds(precedent: Precedent) {
   const ids = [...precedent.relatedIds, `decision:${precedent.id}`];
 
@@ -65,7 +107,7 @@ function relatedIds(precedent: Precedent) {
   return ids;
 }
 
-function exclusion(target: Target, precedent: Precedent): string | null {
+function exclusion(target: Target, precedent: Precedent, version: Version): string | null {
   if (precedent.bookId !== target.bookId) return "foreign_book";
 
   if (precedent.counterpartyId !== target.counterpartyId) return "different_counterparty";
@@ -82,17 +124,19 @@ function exclusion(target: Target, precedent: Precedent): string | null {
 
   if (BigInt(precedent.labelSequence) > BigInt(target.cutoff)) return "later_label";
 
-  if (precedent.description === null || normalizeDescription(precedent.description) === "")
+  if (precedent.description === null || descriptionKey(precedent.description, version) === "")
     return "missing_description";
 
   if (precedent.amountMinor === null) return "missing_amount";
 
-  if (target.description === null || normalizeDescription(target.description) === "")
+  if (target.description === null || descriptionKey(target.description, version) === "")
     return "missing_target_description";
 
   if (target.amountMinor === null) return "missing_target_amount";
 
-  if (normalizeDescription(precedent.description) !== normalizeDescription(target.description))
+  if (
+    descriptionKey(precedent.description, version) !== descriptionKey(target.description, version)
+  )
     return "different_description";
 
   return null;
@@ -106,11 +150,19 @@ function bandDistance(target: Target, precedent: Precedent) {
 }
 
 export function rank(target: Target, history: ReadonlyArray<Precedent>) {
+  return rankWithVersion(target, history, "firm_memory_v1");
+}
+
+export function rankV2(target: Target, history: ReadonlyArray<Precedent>) {
+  return rankWithVersion(target, history, "firm_memory_v2");
+}
+
+function rankWithVersion(target: Target, history: ReadonlyArray<Precedent>, version: Version) {
   const exclusions: Exclusion[] = [];
   const eligible: Precedent[] = [];
 
   for (const precedent of history) {
-    const reason = exclusion(target, precedent);
+    const reason = exclusion(target, precedent, version);
 
     if (reason === null) eligible.push(precedent);
     else exclusions.push({ id: precedent.id, reason });
@@ -130,7 +182,7 @@ export function rank(target: Target, history: ReadonlyArray<Precedent>) {
   exclusions.sort((left, right) => (left.id < right.id ? -1 : Number(left.id > right.id)));
 
   return {
-    algorithmVersion: "firm_memory_v1" as const,
+    algorithmVersion: version,
     precedents: eligible.slice(0, 5),
     eligibleCount: eligible.length,
     exclusions,
@@ -186,6 +238,14 @@ function metric(numerator: number, denominator: number) {
 }
 
 export function baseline(history: ReadonlyArray<Precedent>) {
+  return baselineWithVersion(history, "firm_memory_v1");
+}
+
+export function baselineV2(history: ReadonlyArray<Precedent>) {
+  return baselineWithVersion(history, "firm_memory_v2");
+}
+
+function baselineWithVersion(history: ReadonlyArray<Precedent>, version: Version) {
   const excludedTargets: Exclusion[] = [];
   const targets = [];
 
@@ -218,13 +278,14 @@ export function baseline(history: ReadonlyArray<Precedent>) {
 
     counts.eligibleTargets++;
 
-    const result = rank(
+    const result = rankWithVersion(
       {
         ...record,
         cutoff: record.originalCommitCutoff,
         excludeRelatedIds: holdoutIds(record, history),
       },
       history,
+      version,
     );
 
     const suggested = result.precedents[0];
@@ -252,7 +313,7 @@ export function baseline(history: ReadonlyArray<Precedent>) {
   }
 
   return {
-    algorithmVersion: "firm_memory_v1" as const,
+    algorithmVersion: version,
     counts,
     metrics: {
       coverage: metric(counts.suggestedTargets, counts.eligibleTargets),

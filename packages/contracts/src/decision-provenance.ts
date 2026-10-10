@@ -34,7 +34,14 @@ export const DecisionSubject = Schema.Union([
 export const SuggestionOptions = Schema.Union([
   Schema.Struct({
     source: Schema.Literal("firm_memory_v1"),
-    version: Memory.AlgorithmVersion,
+    version: Schema.Literal("firm_memory_v1"),
+    historyDigest: Accounting.Digest,
+    legacyItems: Schema.Array(Memory.AccountHint).check(Schema.isMaxLength(5)),
+    options: Schema.Array(Memory.Precedent).check(Schema.isMaxLength(5)),
+  }),
+  Schema.Struct({
+    source: Schema.Literal("firm_memory_v2"),
+    version: Schema.Literal("firm_memory_v2"),
     historyDigest: Accounting.Digest,
     legacyItems: Schema.Array(Memory.AccountHint).check(Schema.isMaxLength(5)),
     options: Schema.Array(Memory.Precedent).check(Schema.isMaxLength(5)),
