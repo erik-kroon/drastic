@@ -15,7 +15,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
-import { RecordSheet } from "@open-erp/ui/components/record-sheet";
+import { Drawer } from "@open-erp/ui/kanon/overlays";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
 import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
@@ -216,7 +216,9 @@ function Books() {
         ) : null}
         {view === "accounts" ? <ChartOfAccounts /> : null}
         {record && view === "vouchers" ? (
-          <RecordSheet
+          <Drawer
+            open
+            presentation="record"
             title={copy.voucher}
             closeLabel={
               query.returnPlan || query.returnSupplier || query.returnVat
@@ -231,65 +233,66 @@ function Books() {
                     ? ownerReturnLabels[owner.owner]
                     : copy.returnVouchers
             }
-            onClose={() =>
-              void navigate(
-                query.returnPlan
-                  ? {
-                      to: reviewPath(book, query.returnPlan, query.returnRevision),
-                      search: { ...work, returnTo: query.returnTo },
-                      resetScroll: false,
-                    }
-                  : query.returnSupplier
+            onOpenChange={(open) => {
+              if (!open)
+                void navigate(
+                  query.returnPlan
                     ? {
-                        to: `${workspacePath(book)}/purchases`,
-                        search: {
-                          view: "supplier-drafts",
-                          record: query.returnSupplier,
-                          review: query.returnSupplierReview,
-                          work: query.work,
-                          returnTo: query.returnTo,
-                        },
+                        to: reviewPath(book, query.returnPlan, query.returnRevision),
+                        search: { ...work, returnTo: query.returnTo },
                         resetScroll: false,
                       }
-                    : query.returnVat
+                    : query.returnSupplier
                       ? {
-                          to: `${workspacePath(book)}/tax`,
+                          to: `${workspacePath(book)}/purchases`,
                           search: {
-                            view: "actual-vat",
-                            record: query.returnVat,
+                            view: "supplier-drafts",
+                            record: query.returnSupplier,
+                            review: query.returnSupplierReview,
                             work: query.work,
                             returnTo: query.returnTo,
                           },
                           resetScroll: false,
                         }
-                      : returnReport
+                      : query.returnVat
                         ? {
-                            to: `${workspacePath(book)}/reports`,
+                            to: `${workspacePath(book)}/tax`,
                             search: {
-                              view: query.returnView ?? "trial",
-                              record: returnReport,
-                              account: returnAccount,
+                              view: "actual-vat",
+                              record: query.returnVat,
+                              work: query.work,
+                              returnTo: query.returnTo,
                             },
                             resetScroll: false,
                           }
-                        : owner
+                        : returnReport
                           ? {
-                              ...ownerReturnDestination(workspacePath(book), owner),
-                              resetScroll: false,
-                            }
-                          : {
-                              to: base,
+                              to: `${workspacePath(book)}/reports`,
                               search: {
-                                view: "vouchers",
-                                q: query.q,
-                                period: query.period,
-                                work: query.work,
-                                returnTo: query.returnTo,
+                                view: query.returnView ?? "trial",
+                                record: returnReport,
+                                account: returnAccount,
                               },
                               resetScroll: false,
-                            },
-              )
-            }
+                            }
+                          : owner
+                            ? {
+                                ...ownerReturnDestination(workspacePath(book), owner),
+                                resetScroll: false,
+                              }
+                            : {
+                                to: base,
+                                search: {
+                                  view: "vouchers",
+                                  q: query.q,
+                                  period: query.period,
+                                  work: query.work,
+                                  returnTo: query.returnTo,
+                                },
+                                resetScroll: false,
+                              },
+                );
+            }}
           >
             <PostedRecord
               book={book}
@@ -298,7 +301,7 @@ function Books() {
               id={record}
               onPrepared={onPrepared}
             />
-          </RecordSheet>
+          </Drawer>
         ) : null}
         {view === "journal" ? (
           <FormDialog

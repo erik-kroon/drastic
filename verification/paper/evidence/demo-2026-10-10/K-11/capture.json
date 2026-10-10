@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-11/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-11 --output verification/paper/evidence/demo-2026-10-10/K-11",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "sourceHashes": {
     "apps/web/src/components/review-owner.tsx": "67e2f74e37b429509b54e24537dd646d601af8109ce1b49eaec458f1d35454fa",
     "apps/web/src/components/review-screen.tsx": "850c8d7e9b48f4e6808adae02a5a27a8667ee06046cbf834af25def23300f653",
@@ -10,7 +10,7 @@
     "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
     "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
     "apps/web/src/components/commerce/supplier-focused-review.tsx": "6a6ac9fb3ba62e725a9b8ae2257a079c09721eeb3186ba1b14515238015813fa",
-    "packages/ui/src/components/pdf-viewer.tsx": "09e127e6474f57342f2e84b9c54f9edeb36b314a6a4ff471d6561f4395212a9e",
+    "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
     "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
     "apps/web/src/components/posting-recovery/copy.ts": "809aa7f243aabf495e94bc5df77ff46e14b43550ce7217764cb84a33f1f63352",
@@ -42,9 +42,10 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_84c6a08b042947e99ace40fc7c086b28/sha256:292f59e2f4b825114f4ff66ae2ef3e47d50440cb16d8f3f7b1c40beb982e3b6f?sort=oldest",
-    "time": "2026-10-10T11:06:28.079Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_e0336860e1504b6e8ae5e814eaf56574/sha256:3371b8698bc0294facbc12b7e455d64a85e85036b0c7579cdfafbfaf927bb1fa?sort=oldest",
+    "time": "2026-10-10T12:11:46.429Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

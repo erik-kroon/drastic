@@ -37,6 +37,7 @@ try {
     viewport: { width: 1440, height: 900 },
     locale: "sv-SE",
     storageState: join(dirname(runtime.sessionFile), "browser-state.json"),
+    extraHTTPHeaders: session.testNow ? { "x-openerp-test-now": session.testNow } : undefined,
   });
 
   const base = `${session.url}/api/v1${new URL(session.workspace).pathname}`;
@@ -48,6 +49,11 @@ try {
 
     return response.json();
   };
+
+  const obligations = await read("/bureau-obligations");
+
+  assert.equal(obligations.checkedAt, "2026-10-02T06:54:00.000Z", "Board application instant");
+  assert.equal(seed.applicationClock, obligations.checkedAt);
 
   const ledgerBefore = await read("/ledger");
   const keys = new Set();
@@ -161,7 +167,13 @@ try {
     waitingItems: keys.size,
     retainedBankRows: bankRows,
     retainedClients: expected.clients,
-    checks: ["all waiting pages", "retained bank rows", "unchanged ledger"],
+    applicationClock: obligations.checkedAt,
+    checks: [
+      "board application instant",
+      "all waiting pages",
+      "retained bank rows",
+      "unchanged ledger",
+    ],
   };
 
   if (seed.mode === "demo")

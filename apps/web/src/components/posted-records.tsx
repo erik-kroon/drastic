@@ -3,7 +3,8 @@ import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
 import { Voucher, VoucherPage } from "@open-erp/contracts/accounting";
-import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { DetailPanelHeader, PanelSection } from "@open-erp/ui/kanon/detail-panel";
+import { LedgerCard } from "@open-erp/ui/kanon/cards";
 import { RefreshCw } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -259,15 +260,7 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
           {locale === "sv" ? "Försök igen" : "Try again"}
         </Button>
       ) : null}
-      {voucher ? (
-        <>
-          <RecordHeading
-            title={`${voucher.action.series}${voucher.number}, ${voucher.action.description}`}
-            subtitle={voucher.action.postingDate}
-          />
-          <VoucherDetails {...props} voucher={voucher} />
-        </>
-      ) : null}
+      {voucher ? <VoucherDetails {...props} voucher={voucher} /> : null}
     </>
   );
 }
@@ -284,43 +277,74 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
 
-  return (
-    <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
-      <RecordSummary>
-        <RecordFact label={sv ? "Bokföringsdatum" : "Posting date"}>
-          {voucher.action.postingDate}
-        </RecordFact>
-        <RecordFact label={sv ? "Verifikation" : "Voucher"}>
-          {voucher.action.series}
-          {voucher.number}
-        </RecordFact>
-        <RecordFact label={sv ? "Belopp" : "Amount"}>
-          {amount(total.toString())} {voucher.action.currency}
-        </RecordFact>
-      </RecordSummary>
-      <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
-      <DataTable
-        title={sv ? "Bokförda rader" : "Posted entries"}
-        columns={[
-          { id: "account", label: sv ? "Konto" : "Account" },
-          { id: "description", label: sv ? "Beskrivning" : "Description" },
-          { id: "debit", label: sv ? "Debet" : "Debit", numeric: true },
-          { id: "credit", label: sv ? "Kredit" : "Credit", numeric: true },
-        ]}
-        rows={voucher.action.lines.map((line) => {
-          const account = props.setup?.accounts.find((item) => item.id === line.accountId);
+  const accounts = new Map<string, { debit: bigint; credit: bigint }>();
 
-          return {
-            id: line.lineId,
-            cells: [
-              account ? `${account.code}, ${account.name}` : line.accountId,
-              line.description,
-              amount(line.debitMinor),
-              amount(line.creditMinor),
-            ],
-          };
-        })}
+  for (const line of voucher.action.lines) {
+    const previous = accounts.get(line.accountId) ?? { debit: 0n, credit: 0n };
+    previous.debit += BigInt(line.debitMinor);
+    previous.credit += BigInt(line.creditMinor);
+    accounts.set(line.accountId, previous);
+  }
+
+  return (
+    <Box display="grid" columns={1} gap="lg" minWidth="zero">
+      <DetailPanelHeader
+        kicker={{
+          status: "done",
+          text: `${sv ? "Bokförd som" : "Posted as"} ${voucher.action.series}${voucher.number}`,
+        }}
+        figure={amount(total.toString())}
+        figureAs="h2"
+        subtitle={`${voucher.action.description}, ${voucher.action.postingDate}, ${voucher.action.currency}`}
       />
+      <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
+      <PanelSection
+        label={`${sv ? "Verifikation" : "Voucher"} ${voucher.action.series}${voucher.number}`}
+      >
+        <LedgerCard
+          lines={Array.from(accounts, ([id, totals]) => {
+            const account = props.setup?.accounts.find((item) => item.id === id);
+
+            return {
+              account: account ? `${account.code} ${account.name}` : id,
+              debit: totals.debit === 0n ? undefined : amount(totals.debit.toString()),
+              credit: totals.credit === 0n ? undefined : amount(totals.credit.toString()),
+            };
+          })}
+          total={{
+            debit: amount(total.toString()),
+            credit: amount(
+              voucher.action.lines
+                .reduce((sum, line) => sum + BigInt(line.creditMinor), 0n)
+                .toString(),
+            ),
+          }}
+        />
+      </PanelSection>
+      <Disclosure title={sv ? "Bokförda rader" : "Posted entries"}>
+        <DataTable
+          title={sv ? "Bokförda rader" : "Posted entries"}
+          columns={[
+            { id: "account", label: sv ? "Konto" : "Account" },
+            { id: "description", label: sv ? "Beskrivning" : "Description" },
+            { id: "debit", label: sv ? "Debet" : "Debit", numeric: true },
+            { id: "credit", label: sv ? "Kredit" : "Credit", numeric: true },
+          ]}
+          rows={voucher.action.lines.map((line) => {
+            const account = props.setup?.accounts.find((item) => item.id === line.accountId);
+
+            return {
+              id: line.lineId,
+              cells: [
+                account ? `${account.code}, ${account.name}` : line.accountId,
+                line.description,
+                amount(line.debitMinor),
+                amount(line.creditMinor),
+              ],
+            };
+          })}
+        />
+      </Disclosure>
       <Text>{voucher.action.rationale}</Text>
       {voucher.action.evidenceRefs.map((reference, index) => (
         <Disclosure

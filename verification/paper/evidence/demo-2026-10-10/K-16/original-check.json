@@ -1,7 +1,54 @@
 {
   "synthetic": true,
-  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_a50150673e264a72bd2ae5f42a843f2d%252F%2522%257D%257D&record=voucher_46d8ce351c2f4585a58c05684152861e&returnSupplier=supplier_invoice_draft_5d13b33d72ce4a1da49f72036d2aa556&returnSupplierReview=supplier_review_75be492b2f00439391255c31e88341d1",
-  "originalCanvasVisible": true,
-  "documentZoom": 75,
-  "boardComparison": false
+  "passed": true,
+  "checks": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "tableFit": true,
+      "fit": {
+        "width": 347,
+        "available": 371,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 371,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "tableFit": true,
+      "fit": {
+        "width": 317,
+        "available": 341,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 341,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "tableFit": true,
+      "fit": {
+        "width": 347,
+        "available": 371,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 371,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    }
+  ]
 }

@@ -101,6 +101,7 @@ export async function seedDemo(config) {
         origin: origin.origin,
         "content-type": "application/json",
         "idempotency-key": randomUUID(),
+        "x-openerp-test-now": config.testNow,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(60000),
@@ -114,13 +115,19 @@ export async function seedDemo(config) {
     return response.json();
   }
 
+  const obligations = await call("/bureau-obligations");
+
+  if (obligations.checkedAt !== config.testNow)
+    throw new Error("Demo application clock was not pinned to the board instant");
+
   const result = {
     mode,
     synthetic: true,
     clockPinned: false,
     boardMoment: "2026-10-02T08:54:00+02:00",
+    applicationClock: obligations.checkedAt,
     limitations: [
-      "No server/database test clock: ingestion, proposal, approval and receipt times remain real.",
+      "Effect application reads use the board instant; browser, database, ingestion, proposal, approval and receipt timestamps remain real.",
       "The bureau actor is Elin Sund; Sara Lind and illustrated agent activity are not fabricated.",
       "Board-only combined approval/posting, return and reject operations remain unsupported.",
       "Customer invoice is a synthetic register record backed by a posted receivable, not legal issuance.",
@@ -163,7 +170,9 @@ export async function seedDemo(config) {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({
+      extraHTTPHeaders: { "x-openerp-test-now": config.testNow },
+    });
 
     const login = await page.context().request.post(`${origin.origin}/api/auth/sign-in/email`, {
       headers: { origin: config.webUrl },
@@ -404,6 +413,7 @@ export async function seedDemo(config) {
     result.boards["K-11"] = {
       route: `${workspace}/reviews/${first.planId}/${first.planDigest}?sort=oldest`,
       state: "ready to approve",
+      readyText: "Attestera bokföring",
     };
 
     if (mode !== "one") {

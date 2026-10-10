@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-10/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output verification/paper/evidence/demo-2026-10-10/K-10",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "sourceHashes": {
     "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
     "apps/web/src/components/work-home.tsx": "a950cfaade887b07aac7a2e792e14ecd533244698f8f087cfda433c3b789e0c1",
@@ -11,6 +11,7 @@
     "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
     "packages/ui/src/kanon/work-list.tsx": "a322d5bd969950767eb48d2be210c9dedee99f4151299f129fbe2cc5d721d38f",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "packages/ui/src/kanon/record.tsx": "c213eb88dd91c17db8eed9315535dcb40891f35a34dae7607236db4929a1b66d",
     "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e"
   },
   "reviewer": "Automated capture; no human review or production qualification",
@@ -38,8 +39,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
-    "time": "2026-10-10T11:06:21.698Z",
+    "time": "2026-10-10T12:11:31.261Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

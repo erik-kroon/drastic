@@ -1,10 +1,10 @@
 {
   "scope": "K-08",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
-  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "referenceSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
-  "actualSha256": "459dbfd58e0c90eb80d18fdde36d56e50b61179a15e45748949ffc5bbaf99d16",
-  "diffSha256": "f2733072ff83de1b63d48685cc0c1129b75fd2e59b148097a0f416b0ec0ffcaa",
+  "actualSha256": "1600e71b07edf038891ef8680e1102be455f86b5cc9e8c0bbc1ec913ffafb022",
+  "diffSha256": "d2178dacf34ca8e7ae42bbfbb3375209bc4ac79cc3f1fb695f4c964115cf9ca5",
   "sourceHashes": {
     "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598"
   },
@@ -34,8 +34,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/overview",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
-    "time": "2026-10-10T11:06:49.506Z",
+    "time": "2026-10-10T12:15:08.049Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",
@@ -45,7 +46,7 @@
     }
   },
   "reviewer": "Automated capture; no human review or production qualification",
-  "difference": 0.07879861111111111,
+  "difference": 0.07620447530864198,
   "tolerance": 0.02,
   "channelTolerance": 16,
   "adoptedBy": "Erik Kroon",

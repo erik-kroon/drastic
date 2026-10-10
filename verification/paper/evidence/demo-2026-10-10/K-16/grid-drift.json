@@ -3,7 +3,7 @@
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-16",
   "adoptedComparisonEligible": true,
   "comparatorStatus": 1,
-  "difference": 0.40685493827160496,
+  "difference": 0.09338271604938271,
   "parityQualified": false,
   "limitations": [
     "Pixel comparison is not behavior/state or production qualification"
@@ -13,64 +13,64 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 139518,
-      "difference": 0.968875
+      "changed": 24265,
+      "difference": 0.16850694444444445
     },
     {
       "row": 0,
       "column": 1,
       "pixels": 144000,
-      "changed": 15793,
-      "difference": 0.10967361111111111
+      "changed": 26808,
+      "difference": 0.18616666666666667
     },
     {
       "row": 0,
       "column": 2,
       "pixels": 144000,
-      "changed": 19378,
-      "difference": 0.13456944444444444
+      "changed": 19851,
+      "difference": 0.13785416666666667
     },
     {
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 140282,
-      "difference": 0.9741805555555556
+      "changed": 7930,
+      "difference": 0.05506944444444444
     },
     {
       "row": 1,
       "column": 1,
       "pixels": 144000,
-      "changed": 12144,
-      "difference": 0.08433333333333333
+      "changed": 0,
+      "difference": 0
     },
     {
       "row": 1,
       "column": 2,
       "pixels": 144000,
-      "changed": 20990,
-      "difference": 0.1457638888888889
+      "changed": 14586,
+      "difference": 0.10129166666666667
     },
     {
       "row": 2,
       "column": 0,
       "pixels": 144000,
-      "changed": 140732,
-      "difference": 0.9773055555555555
+      "changed": 952,
+      "difference": 0.006611111111111111
     },
     {
       "row": 2,
       "column": 1,
       "pixels": 144000,
-      "changed": 12750,
-      "difference": 0.08854166666666667
+      "changed": 0,
+      "difference": 0
     },
     {
       "row": 2,
       "column": 2,
       "pixels": 144000,
-      "changed": 25697,
-      "difference": 0.1784513888888889
+      "changed": 26632,
+      "difference": 0.18494444444444444
     }
   ],
   "gridCanvas": {

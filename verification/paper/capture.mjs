@@ -69,6 +69,28 @@ async function main() {
   if (Object.values(viewport).some((n) => !Number.isInteger(n) || n < 320 || n > 5000))
     throw new Error("Dimensions must be integers between 320 and 5000");
   const artifacts = resolve(process.env.PAPER_ARTIFACTS ?? "test-results/paper");
+
+  const defaultRendering =
+    zoom === 1 &&
+    values.theme === "light" &&
+    viewport.width === entry.viewport.width &&
+    viewport.height === entry.viewport.height;
+
+  const output = resolve(
+    values.output ??
+      (defaultRendering
+        ? join(artifacts, entry.id)
+        : join(
+            artifacts,
+            entry.id,
+            `${values.theme}-${viewport.width}x${viewport.height}-zoom${zoom}-${values.pane ?? "default"}`,
+          )),
+  );
+
+  // An interrupted or failed capture must not look successful through old results.
+  rmSync(join(output, "result.json"), { force: true });
+  rmSync(join(output, "grid-drift.json"), { force: true });
+
   const runtimePath = join(artifacts, "runtime.json");
   const runtime = existsSync(runtimePath) ? json(runtimePath) : {};
   const sessionFile = process.env.PAPER_SESSION_FILE ?? runtime.sessionFile;
@@ -114,23 +136,6 @@ async function main() {
 
   if (jsxHash !== entry.jsxSha256) throw new Error("Stored board JSX changed");
 
-  const defaultRendering =
-    zoom === 1 &&
-    values.theme === "light" &&
-    viewport.width === entry.viewport.width &&
-    viewport.height === entry.viewport.height;
-
-  const output = resolve(
-    values.output ??
-      (defaultRendering
-        ? join(artifacts, entry.id)
-        : join(
-            artifacts,
-            entry.id,
-            `${values.theme}-${viewport.width}x${viewport.height}-zoom${zoom}-${values.pane ?? "default"}`,
-          )),
-  );
-
   const browser = await chromium.launch({ headless: true });
   let capture;
 
@@ -144,6 +149,7 @@ async function main() {
       locale: "sv-SE",
       colorScheme: values.theme,
       storageState: retainedSession ? stateFile : undefined,
+      extraHTTPHeaders: session.testNow ? { "x-openerp-test-now": session.testNow } : undefined,
     });
 
     if (!retainedSession) {
@@ -164,6 +170,9 @@ async function main() {
     );
     const page = await context.newPage();
     await page.goto(target.href, { waitUntil: "networkidle", timeout: 60000 });
+
+    // Cold route imports may mount after network-idle. Never compare an empty root.
+    await page.getByRole("heading").first().waitFor({ state: "visible" });
 
     const reached = new URL(page.url());
 
@@ -198,6 +207,18 @@ async function main() {
     }
 
     await page.waitForLoadState("networkidle", { timeout: 30000 });
+
+    // These demo states require a rendered original, not just absence of a spinner.
+    if (
+      session.demoMode &&
+      ["K-11", "K-16", "K-21"].includes(entry.id) &&
+      values.pane !== "decision"
+    )
+      await page
+        .locator("canvas[role=img]")
+        .filter({ visible: true })
+        .first()
+        .waitFor({ state: "visible", timeout: 30000 });
 
     // PDF decoding/rendering can still be active after network-idle.
     // A hidden decision-pane original is intentionally not part of that capture.
@@ -256,6 +277,7 @@ async function main() {
         resolvedRoute: new URL(page.url()).pathname + new URL(page.url()).search,
         time: new Date().toISOString(),
         clockPinned: false,
+        applicationClock: session.testNow ?? null,
         fixture: {
           synthetic: true,
           mode: session.demoMode ?? null,
@@ -288,8 +310,6 @@ async function main() {
     Boolean(entry.comparison?.adoptedBy);
 
   let comparatorStatus = null;
-
-  rmSync(join(output, "result.json"), { force: true });
 
   if (eligible) {
     const comparison = spawnSync(

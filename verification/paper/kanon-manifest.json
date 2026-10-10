@@ -18,6 +18,7 @@
         "packages/ui/src/kanon/layouts.tsx",
         "packages/ui/src/kanon/work-list.tsx",
         "packages/ui/src/kanon/detail-panel.tsx",
+        "packages/ui/src/kanon/record.tsx",
         "packages/ui/src/kanon/action.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/",
@@ -41,7 +42,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Demo K-10 drift 3.7284% exceeds unchanged 2%. Retained original identity and account-side summary replace the placeholder; approval and financial owners are unchanged. Demo, empty, one, worst and many API/browser checks pass with unchanged ledgers. Worst retains Unicode, zero and all 38 amount digits; many exposes all 1003 waiting items through pagination. Open counts cover the attention owner, not every supplementary bank row. Real clock, Vinter's unknown calculated gross, customer watch classification and unsupported board-only actions remain gaps. Loading/error, dark and native browser zoom remain unqualified."
+      "notes": "K-10 original file card uses the adopted JSX's 10 px block padding through the existing token; demo drift is 3.3772%, above unchanged 2%. The demo uses the upstream E2E application clock at 2 October 08:54 Stockholm, with database and browser timestamps still real. Retained original identity and account-side summary replace the placeholder; approval and financial owners are unchanged. Fresh demo, empty, one, worst and many public API/browser checks pass with unchanged ledgers. Worst retains Unicode, zero and all 38 amount digits; many exposes all 1003 waiting items through pagination. Light, dark and 390px renders were inspected; real mobile scrolling exposes an unobscured review action and the decision pane without writes. Dark/narrow images are diagnostics, not adopted parity. Open counts cover the attention owner, not every supplementary bank row. Vinter's unknown calculated gross, customer watch classification and unsupported board-only actions remain gaps. Loading/error and native browser zoom remain unqualified."
     },
     {
       "id": "K-40",
@@ -100,7 +101,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "implementationNote": "Existing permitted-client route measured with three demo clients: 7.1352% drift exceeds unchanged 2%. Worst and many retain 101 clients, including 100 companies created through the human owner plus the provisioned book. Company creation 101 is refused with HTTP 422 InvalidJournal; the separate firm read/write cap is 200. Requested 1284 clients are unsupported, not bypassed. Missing leads, company periods and readiness stay unknown; Sara Lind and locked-client facts are not fabricated. Other adopted states remain unqualified."
+      "implementationNote": "Existing permitted-client route measured with three demo clients: 7.1412% drift exceeds unchanged 2%. Fresh clock-enabled worst and many checks retain 101 clients, including 100 companies created through the human owner plus the provisioned book. Company creation 101 is refused with HTTP 422 InvalidJournal; the separate firm read/write cap is 200. Requested 1284 clients are unsupported, not bypassed. Missing leads, company periods and readiness stay unknown; Sara Lind and locked-client facts are not fabricated. Other adopted states remain unqualified."
     },
     {
       "id": "K-11",
@@ -152,7 +153,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Demo K-11 drift 7.7035% exceeds unchanged 2%. Real one-page Nordhamn original and shared three-account summary are readable; retained detailed lines remain available. Continuous K-10 to K-11 to K-16 browser proof checks original totals, approval without posting, one balanced voucher and original bytes after reload. Single, worst and many reviews, dark and CSS layout zoom 2 original/decision captures are retained diagnostics, not full state or native browser zoom qualification. Exact approval, synthetic acknowledgment and separate execution remain unchanged. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Prior changed-source/missing-original evidence remains historical."
+      "notes": "Demo K-11 drift 7.7035% exceeds unchanged 2%. Real one-page Nordhamn original and shared three-account summary are readable; retained detailed lines remain available. Shared readonly PDF now fits narrow record panels at up to 100% document zoom; focused supplier and bank presentations remain unchanged and are recaptured separately. Continuous K-10 to K-11 to K-16 browser proof checks original totals, approval without posting, one balanced voucher and original bytes after reload. Prior single, worst, many, dark and CSS layout zoom diagnostics are historical, not current-source full state or native browser zoom qualification. Exact approval, synthetic acknowledgment and separate execution remain unchanged. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Prior changed-source/missing-original evidence remains historical."
     },
     {
       "id": "K-70",
@@ -308,7 +309,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Existing overview measured with partial retained demo facts: 7.8799% drift exceeds unchanged 2%. Bank balance, customer receivable and supplier review are real stored observations. Illustrated locked September result, complete source coverage, cost breakdown and activity are absent, not invented. No overview UI or financial behavior change; broader adopted states and deadlines qualification remain pending."
+      "notes": "Existing overview measured with partial retained demo facts: 7.6204% drift exceeds unchanged 2%. Application clock is pinned to 2 October 08:54 Stockholm; browser/database times remain real. Continuous browser proof independently checks zero bank balance at the board cutoff and the retained -125000 movement at the next day's cutoff, without changing its October 3 posting date. Customer receivable and supplier review are real stored observations. Illustrated locked September result, complete source coverage, cost breakdown and activity are absent, not invented. No overview UI or financial behavior change; broader adopted states and deadlines qualification remain pending."
     },
     {
       "id": "K-50",
@@ -499,7 +500,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Stored demo unknown preparation measured at 15.8336% drift, above unchanged 2%. Saved prepare_journal has null outcome and was never attempted; inspection leaves posted history unchanged. This is not uncertain execution proof. Existing wording, exact request identity and recovery owners are unchanged. Board's failed supplier execution, terminal recovery, dark and native browser zoom remain unqualified; prior recovery receipts remain historical."
+      "notes": "Stored demo unknown preparation measured at 15.8048% drift, above unchanged 2%. Saved prepare_journal has null outcome and was never attempted; inspection leaves posted history unchanged. This is not uncertain execution proof. Existing wording, exact request identity and recovery owners are unchanged. Effect clock is pinned while database/browser timestamps remain real. Board's failed supplier execution, terminal recovery, dark and native browser zoom remain unqualified; prior recovery receipts remain historical."
     },
     {
       "id": "K-16",
@@ -515,8 +516,10 @@
         "apps/web/src/components/evidence-inspector.tsx",
         "apps/web/src/components/original-document.tsx",
         "apps/web/src/lib/source-documents.ts",
-        "packages/ui/src/components/record-sheet.tsx",
-        "packages/ui/src/components/pdf-viewer.tsx"
+        "packages/ui/src/components/pdf-viewer.tsx",
+        "packages/ui/src/kanon/overlays.tsx",
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "packages/ui/src/kanon/cards.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/books",
       "audience": "bureau",
@@ -539,7 +542,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Continuous demo posts Nordhamn 1048 once, balances 1250000 minor units each side and retains original bytes after reload. Selected real books-route dialog with Underlag 1 opened drifts 40.6855%, above unchanged 2%; modal composition differs substantially from K-16. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution is used. Original can be reached by scrolling inside the dialog. Correction owner and immutable history remain unchanged. Activity/payment/next-task, dark and native browser zoom remain unqualified."
+      "notes": "Bureau K-16 posted/correction states keep the existing books route, scope checks, evidence, correction and return owners. Canonical 420px record drawer retains dialog focus/dismissal and undimmed register context; its heading and account-side totals use kanon. Full immutable line descriptions remain in Bokförda rader, with evidence and correction disclosures unchanged. Fresh demo comparison is 9.3383%, down from 40.6855% but above unchanged 2%. Real browser proof checks separate side totals, all seven original lines, original checksum after reload, account table gutters, PDF panel fit at 100%, deliberate horizontal scrolling at 125%, and Escape return without ledger writes. Dark and 390px captures are diagnostics, not adopted parity. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution or unsupported payment/activity/next-task facts. Native browser zoom and complete-state qualification remain pending."
     },
     {
       "id": "K-20",
@@ -570,7 +573,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Existing bank route measured at 6.1795% drift, above unchanged 2%. Demo retains the 28 September -875000 row and a separate -125000 original-backed candidate. Many retains 1001 imported rows in five owner-supported evidence batches. Board's 27 matched rows, balance and complete coverage are not fabricated. No bank behavior or UI change; broader adopted states remain unqualified."
+      "notes": "Existing bank route measured at 6.1079% drift, above unchanged 2%. Demo retains the 28 September -875000 row and a separate -125000 original-backed candidate. Continuous clock-enabled browser path selects that real bank row and executes one exact allocation through existing preparation, approval and execution owners; bank capacity and ledger readbacks distinguish each stage. Fresh many checks retain 1001 imported rows in five owner-supported evidence batches. Board's 27 matched rows, balance and complete coverage are not fabricated. No bank behavior or UI change; broader adopted states remain unqualified."
     },
     {
       "id": "K-21",
@@ -611,7 +614,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Demo one-candidate review with retained original measured at 9.1395% drift, above unchanged 2%. Capture explicitly waits for PDF rendering, not only network idle. Original is rendered; preparation is disabled until the existing comparison acknowledgment. Browsing leaves the ledger unchanged. Candidate uses the genuine retained synthetic Kontorsservice PDF, not a fabricated supplier identity or board's receipt. No match execution or complete coverage qualification is claimed. Prior original refusal, preparation and keyboard evidence remains historical; broader states and native browser zoom are unqualified."
+      "notes": "Demo one-candidate review with retained original measured at 9.1395% drift, above unchanged 2%. Capture explicitly waits for PDF rendering, not only network idle. Shared readonly PDF fits narrow records; bank presentation and its explicit document magnification are unchanged and recaptured. Original is rendered; preparation is disabled until the existing comparison acknowledgment. Continuous real browser path separately checks preparation and approval without allocation, one exact -125000 execution leg, zero source remaining and retained receipt after reload, with unchanged posted history. Candidate uses the genuine retained synthetic Kontorsservice PDF, not a fabricated supplier identity or board's receipt. No complete coverage or pixel parity qualification is claimed. Prior original refusal evidence remains historical; broader states and native browser zoom are unqualified."
     },
     {
       "id": "K-30",
@@ -845,7 +848,8 @@
       "parts": ["overlays"],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Normal settings Drawer retains 400px width, shaded backdrop and supplied fixed footer. K-16 uses the 420px record presentation with clear backdrop, optional footer and caller-owned close label. Both retain the same Base UI dialog focus/dismissal owner. Confirm dialog and toast are unchanged; K-05 specimen qualification is not claimed."
     },
     {
       "id": "K-06",

@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-15/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-15 --output verification/paper/evidence/demo-2026-10-10/K-15",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "sourceHashes": {
     "apps/web/src/components/posting-recovery/work-recovery.tsx": "506a7509d05439fc3b0438b87dfc64d76be7c8e4797e9c6821acf40217c61a8d",
     "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
@@ -33,8 +33,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/work",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/work?kind=journal&status=all",
-    "time": "2026-10-10T11:07:02.166Z",
+    "time": "2026-10-10T12:15:17.694Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

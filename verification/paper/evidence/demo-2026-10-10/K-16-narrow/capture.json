@@ -1,0 +1,53 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-16-narrow/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-16 --width 390 --height 844 --output verification/paper/evidence/demo-2026-10-10/K-16-narrow",
+  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
+  "sourceHashes": {
+    "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx": "ea04ba0aa0858c3387223acad24b1351120c9cbda96e0c00d90d58ea7f088cd3",
+    "apps/web/src/components/posted-records.tsx": "c5da4357cb92e6bda7eb1d811d9983444f9f51e991f2621cbfd1f4ecd2817f22",
+    "apps/web/src/components/evidence-inspector.tsx": "594fcb3be6a37473492287333867ea2f215b53b5e22942150ea874d7ca04368e",
+    "apps/web/src/components/original-document.tsx": "7d0f3c7466698d859774792a20909751bd00e9a65c53d1028437088c19e09087",
+    "apps/web/src/lib/source-documents.ts": "836fd1a9fd61274e402fd209d801682b4d59ec7420051ad7040eb6d7311c4aff",
+    "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3",
+    "packages/ui/src/kanon/overlays.tsx": "eedff6f5ca28ffbd5534bccd07da4710199d75d72b7232e616a48e62a034ca0e",
+    "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "packages/ui/src/kanon/cards.tsx": "043370c0a7dce06985b485256909bdc98edd02bb134ce2b80af42f2172c23803"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "route": "/entities/$entityId/books/$bookId/books",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_5884e151bcb5470d981510deff21226c%252F%2522%257D%257D&record=voucher_d107eb83b9ad4aaeab257bb691f5d84f&returnSupplier=supplier_invoice_draft_3659ffdfabf54b3788a83eb81d4a0e4e&returnSupplierReview=supplier_review_fb73e1222f5147999a25a32e0545d5e4",
+    "time": "2026-10-10T11:44:30.764Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "posted voucher selected",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "57646e701fb281f86e27cd766fedb0ccd0aa8847a9617c1f34f7f487c41874b1"
+}
