@@ -1,3 +1,4 @@
+import { DecisionQuestionHandlers } from "./transport/http/routes/decision-questions";
 import { DecisionExampleHandlers } from "./transport/http/routes/decision-examples";
 import { EmployeeClaimHandlers } from "./transport/http/routes/employee-claims";
 import { MileageCorrectionHandlers } from "./transport/http/routes/mileage-corrections";
@@ -248,6 +249,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PayrollInputHandlers,
     EmployeeClaimHandlers,
     DecisionExampleHandlers,
+    DecisionQuestionHandlers,
     MileageCorrectionHandlers,
     VariablePayReviewHandlers,
     AssetDisposalHandlers,
