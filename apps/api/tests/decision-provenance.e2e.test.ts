@@ -679,15 +679,18 @@ test("same bank subject stale citation returns StaleDependency after another row
   await failure(response, 409, "StaleDependency");
 });
 
-async function advanceBankSource(book: Awaited<ReturnType<typeof fixture>>) {
+async function advanceBankSource(
+  book: Awaited<ReturnType<typeof fixture>>,
+  observedOn = "2026-10-01",
+) {
   const content = {
     kind: "synthetic_bank_statement_v1",
     statementIdentifier: key(),
     sourceBankAccountId: "synthetic_bank",
     accountId: "account_bank",
     currency: "SEK",
-    startsOn: "2026-09-01",
-    endsOn: "2026-09-30",
+    startsOn: observedOn,
+    endsOn: observedOn,
     openingMinor: "0",
     closingMinor: "1",
     completeness: { declaredComplete: false, basis: "Unrelated synthetic source revision" },
@@ -695,7 +698,7 @@ async function advanceBankSource(book: Awaited<ReturnType<typeof fixture>>) {
       {
         rowOrdinal: 1,
         providerId: null,
-        date: "2026-09-22",
+        date: observedOn,
         description: "Unrelated source observation",
         amountMinor: "1",
       },
@@ -820,7 +823,7 @@ test("bank request driver refreshes equal options once and refuses changed optio
             Candidates.BankMatchCandidates,
           );
 
-          if (mode === "twice_stale") await advanceBankSource(setup.book);
+          if (mode === "twice_stale") await advanceBankSource(setup.book, "2026-10-02");
 
           return fresh;
         },
