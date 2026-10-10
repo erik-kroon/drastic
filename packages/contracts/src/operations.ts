@@ -112,7 +112,7 @@ export const ApplicationSequence = Schema.Struct({
   schema: Schema.Literal("openerp"),
   name: Schema.String,
   table: Schema.String,
-  column: Schema.Literal("ordinal"),
+  column: Schema.Literals(["ordinal", "sequence"]),
   lastValue: Count,
   isCalled: Schema.Boolean,
 });

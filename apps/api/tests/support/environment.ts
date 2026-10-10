@@ -1,5 +1,7 @@
 export interface E2EEnvironment {
   baseUrl: string;
+  intakeFixtureUrl: string;
+  intakeFixtureSecret: string;
   processorFixtureUrl: string;
   processorFixtureSecret: string;
   documentFixtureUrl: string;

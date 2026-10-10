@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
 import * as InboxDb from "../../db/purchases/inbox";
+import * as IntakeDb from "../../db/purchases/intake";
 import * as Shared from "./shared";
 import { createSupplierInvoiceDraftInTransaction } from "./drafts";
 
@@ -26,6 +27,7 @@ const inboxTables = [
   "intake_previews",
   "intake_admissions",
   "supplier_inbox",
+  "supplier_intake_provenance",
   "supplier_extraction_attempts",
   "supplier_invoice_drafts",
   "supplier_invoice_draft_revisions",
@@ -79,8 +81,12 @@ function inboxView(
     if (!occurrence) return yield* failure("NotFound");
     const attempts = yield* InboxDb.readAttempts(transaction, bookId, occurrenceId);
 
+    const provenance =
+      (yield* IntakeDb.readProvenance(transaction, bookId, occurrenceId))[0] ?? null;
+
     return yield* Shared.decode(ViewSchema, {
       occurrence: occurrenceSummary(occurrence),
+      intakeProvenance: provenance,
       channel: entry.channel,
       messageIdentity: entry.messageIdentity,
       draftId: entry.draftId,

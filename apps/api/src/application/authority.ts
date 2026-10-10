@@ -37,7 +37,7 @@ type Gesture = {
   readonly presence?: true;
 };
 
-type Authenticated = { readonly kind: "apiCredential" | "betterAuthSession" };
+type Authenticated = { readonly kind: "apiCredential" | "betterAuthSession" | "oauthGrant" };
 
 const session = (power: Power, refusal: Gesture["refusal"] = "Forbidden") =>
   ({ power, basis: "interactive_session", refusal }) as const;
@@ -157,13 +157,13 @@ function hasBasis<P extends Authenticated, N extends GestureName>(
   principal: P,
   name: N,
 ): principal is Admitted<P, N> {
-  return basisOf(principal) === gestures[name].basis;
+  return principal.kind !== "oauthGrant" && basisOf(principal) === gestures[name].basis;
 }
 
 // Whether the authenticated principal may perform the gesture. Use for derived
 // read flags (for example whether a view offers an approval action) and to
 // re-read how a retained approver authenticated.
-export function permits(principal: Authenticated, name: GestureName) {
+export function permits(principal: Authenticated, name: GestureName): boolean {
   return hasBasis(principal, name);
 }
 

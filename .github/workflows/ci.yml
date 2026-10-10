@@ -95,6 +95,10 @@ jobs:
     name: End-to-end (PostgreSQL)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     env:
       PG_BINDIR: /usr/lib/postgresql/17/bin
 
@@ -142,6 +146,7 @@ jobs:
           "$python" verification/peppol/check.e2e.py
 
       - name: Build applications
+        id: build
         timeout-minutes: 5
         run: bun run build
 
@@ -155,30 +160,28 @@ jobs:
           DOMAIN_OWNER_CHECK_ARTIFACTS: test-results/domain-owner-declarations
         run: node verification/domain-owners/check.e2e.mjs
 
-      - name: Install Chromium for browser workflows
-        timeout-minutes: 5
-        run: bun run --cwd apps/api playwright install --with-deps chromium
-
       - name: Run domain owner public workflows
         timeout-minutes: 20
         env:
-          OPENERP_E2E_ARTIFACTS: test-results/domain-owners
-        run: bun run test:domain-owners
+          OPENERP_E2E_ARTIFACTS: test-results/domain-owners-${{ matrix.shard }}
+        run: bun run test:domain-owners --shard=${{ matrix.shard }}/2
 
       - name: MCPJam real PostgreSQL workflows
+        if: ${{ !cancelled() && matrix.shard == 1 && steps.build.outcome == 'success' }}
         timeout-minutes: 10
         env:
           OPENERP_E2E_ARTIFACTS: test-results/mcpjam-protocol
         run: bun run test:mcp
 
       - name: MCPJam Luna behavior gate (enable after adding the key)
-        if: ${{ vars.MCPJAM_MODEL_EVALS == 'enabled' }}
+        if: ${{ !cancelled() && matrix.shard == 1 && steps.build.outcome == 'success' && vars.MCPJAM_MODEL_EVALS == 'enabled' }}
         timeout-minutes: 15
         env:
           MCPJAM_OPENAI_API_KEY: ${{ secrets.MCPJAM_OPENAI_API_KEY }}
         run: bun run test:mcp:eval --ci
 
       - name: Run checkpoint and restricted restore workflow
+        if: ${{ !cancelled() && matrix.shard == 1 && steps.build.outcome == 'success' }}
         timeout-minutes: 10
         env:
           OPENERP_REHEARSAL_ARTIFACTS: test-results/domain-rehearsal
@@ -190,15 +193,41 @@ jobs:
         if: ${{ always() && steps.install.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-evidence
+          name: e2e-evidence-${{ matrix.shard }}
           path: |
             test-results/peppol-validation/
             test-results/domain-owner-declarations/
-            test-results/domain-owners/
+            test-results/domain-owners-${{ matrix.shard }}/
             test-results/domain-rehearsal/
             test-results/mcpjam-protocol/
             test-results/mcpjam/
           if-no-files-found: warn
+          retention-days: 14
+
+  shard-coverage:
+    name: Domain owner coverage
+    needs: e2e
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-evidence-*
+          path: test-results
+          merge-multiple: true
+      - name: Verify actual shard coverage and results
+        run: node verification/ci/shards.e2e.mjs
+      - name: Upload coverage receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: domain-owner-coverage
+          path: test-results/ci/shards.json
+          if-no-files-found: error
           retention-days: 14
 
   # Compares the real money owners (every rounding owner, VAT projection, FX
