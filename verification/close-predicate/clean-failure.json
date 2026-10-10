@@ -1,0 +1,18 @@
+{
+  "commit": "c43d8a3",
+  "worktree": "/tmp/drastic-firm-memory-v2-clean",
+  "trackedState": "clean",
+  "command": "OPENERP_E2E_ARTIFACTS=test-results/close-predicate-qualified bun run test:e2e apps/api/tests/close-predicate.e2e.test.ts",
+  "passed": 0,
+  "failed": 3,
+  "sourceInventorySha256": "c023ad96d8acffd236423b67998e4864d04038087ce4872d165f132ae8535863",
+  "sourceIntegrity": "stable",
+  "diagnostic": {
+    "name": "SchemaError",
+    "path": "gated.<index>.freshness.observedBookSequence",
+    "message": "Expected String",
+    "cause": "A strict optionalKey field was present with undefined instead of being omitted."
+  },
+  "fixCommit": "614879d",
+  "qualification": "Real clean-commit failure before the narrow fix. No final runtime pass at this commit."
+}

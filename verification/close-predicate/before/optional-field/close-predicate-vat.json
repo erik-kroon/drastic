@@ -1,0 +1,464 @@
+{
+  "taxStatement": {
+    "id": "taxstatement_4f31abccb9a94f62b30d790e811d1d1a",
+    "digest": "sha256:9ad733344c9900553d072e71acde714bd4736393501f644ed0502ffe454cda30",
+    "scope": {
+      "entityId": "entity_87bd48fc1f61c4d7",
+      "bookId": "book_87bd48fc1f61c4d7"
+    },
+    "input": {
+      "recordClass": "synthetic",
+      "balanceConvention": "debit_minus_credit",
+      "accountId": "account_tax",
+      "sourceAccountKey": "synthetic_tax_account",
+      "statementKey": "synthetic_zero_september",
+      "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+      "sourceLocator": "Synthetic zero statement",
+      "reviewEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+      "rationale": "Synthetic empty account observation",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "openingMinor": "0",
+      "closingMinor": "0",
+      "rows": []
+    },
+    "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+    "reviewEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+    "movementMinor": "0",
+    "events": [],
+    "coverage": "not_established",
+    "taxReturnEffect": "none",
+    "createdAt": "2026-10-10T19:13:43.478Z",
+    "receipt": {
+      "key": "2ed7b2d8-912f-4428-8a2e-cb5428f5ea6b",
+      "operation": "record_tax_account_statement",
+      "actorId": "operator_87bd48fc1f61c4d7"
+    }
+  },
+  "taxControl": {
+    "id": "taxcontrol_84a2d3b678174dd4b726b6c6773d33cd",
+    "digest": "sha256:a04619d9c542c1c84ca6df9852c33bf16c02f300cc490bd30d4338db5f2d7b98",
+    "scope": {
+      "entityId": "entity_87bd48fc1f61c4d7",
+      "bookId": "book_87bd48fc1f61c4d7"
+    },
+    "input": {
+      "accountId": "account_tax",
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30"
+    },
+    "kind": "synthetic_tax_account_gl_control_v3",
+    "classificationResolutions": [],
+    "matches": [],
+    "unmatchedLedgerLines": [],
+    "dependencyDigest": "sha256:73625674d87a00b8dff3c5daa47ceda1ccc320c75d7c38af8d5e6dcb2b397e67",
+    "sequence": "0",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "account": {
+      "id": "account_tax",
+      "code": "1630",
+      "name": "Synthetic tax account",
+      "version": "1",
+      "active": true
+    },
+    "statements": [
+      {
+        "id": "taxstatement_4f31abccb9a94f62b30d790e811d1d1a",
+        "digest": "sha256:9ad733344c9900553d072e71acde714bd4736393501f644ed0502ffe454cda30",
+        "scope": {
+          "entityId": "entity_87bd48fc1f61c4d7",
+          "bookId": "book_87bd48fc1f61c4d7"
+        },
+        "input": {
+          "recordClass": "synthetic",
+          "balanceConvention": "debit_minus_credit",
+          "accountId": "account_tax",
+          "sourceAccountKey": "synthetic_tax_account",
+          "statementKey": "synthetic_zero_september",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "sourceLocator": "Synthetic zero statement",
+          "reviewEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "rationale": "Synthetic empty account observation",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30",
+          "openingMinor": "0",
+          "closingMinor": "0",
+          "rows": []
+        },
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "reviewEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "movementMinor": "0",
+        "events": [],
+        "coverage": "not_established",
+        "taxReturnEffect": "none",
+        "createdAt": "2026-10-10T19:13:43.478Z",
+        "receipt": {
+          "key": "2ed7b2d8-912f-4428-8a2e-cb5428f5ea6b",
+          "operation": "record_tax_account_statement",
+          "actorId": "operator_87bd48fc1f61c4d7"
+        }
+      }
+    ],
+    "ledgerLines": [],
+    "sourceGaps": [],
+    "sourceOverlaps": [],
+    "balanceBreaks": [],
+    "sourceOpeningMinor": "0",
+    "sourceMovementMinor": "0",
+    "sourceClosingMinor": "0",
+    "ledgerOpeningMinor": "0",
+    "ledgerMovementMinor": "0",
+    "ledgerClosingMinor": "0",
+    "openingDifferenceMinor": "0",
+    "movementDifferenceMinor": "0",
+    "closingDifferenceMinor": "0",
+    "unmatchedEventIds": [],
+    "unmatchedLedgerLineIds": [],
+    "unknownClassificationEventIds": [],
+    "diagnostics": [
+      "coverage_unestablished"
+    ],
+    "coverage": "not_established",
+    "reconciled": false,
+    "financialCloseReady": false,
+    "taxReturnEffect": "none",
+    "createdAt": "2026-10-10T19:13:43.510Z",
+    "receipt": {
+      "key": "d8ab1e9a-ecf9-4e0e-9079-810932939238",
+      "operation": "create_tax_account_control",
+      "actorId": "operator_87bd48fc1f61c4d7"
+    }
+  },
+  "vat": {
+    "id": "vatactual_c036c194d1e9496daf1bae80f5cfb72c",
+    "digest": "sha256:8adeaa31f86a17e6a445b0d4e6cda4ecd1703c61ba70a26d2dc55fa4ef220b26",
+    "scope": {
+      "entityId": "entity_87bd48fc1f61c4d7",
+      "bookId": "book_87bd48fc1f61c4d7"
+    },
+    "version": 1,
+    "input": {
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "periodEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+      "openingEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+      "controlOpenings": [
+        {
+          "accountId": "account_vat",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "account_input_vat",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "account_vat_settlement",
+          "signedMinor": "0"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d"
+        }
+      ],
+      "rationale": "Explicit synthetic empty source inventory"
+    },
+    "basis": {
+      "digest": "sha256:59d9625c0e9c5904271c6faeea6dbb4731817a601f3c19dbe927612c46db749f",
+      "scope": {
+        "entityId": "entity_87bd48fc1f61c4d7",
+        "bookId": "book_87bd48fc1f61c4d7"
+      },
+      "engine": "vat-actual-return-v1",
+      "bookProfile": "synthetic-core-v1",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "ledgerBoundary": "0",
+      "recordedCutoff": "2026-10-10T19:13:43.566Z",
+      "registeredPeriod": {
+        "factRevisionId": "vat_period_book_87bd48fc1f61c4d7",
+        "factRevisionDigest": "sha256:5ef611172ffd6876ec9df2196b2d1ce2456006dd8fd977d48d1158ee3d583b70",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "periodEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+        "periodEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+      },
+      "profileWitness": {
+        "family": "vat",
+        "recordClass": "actual_company",
+        "dates": {
+          "postingOn": null,
+          "taxPointOn": "2026-09-30",
+          "paymentOn": null,
+          "reportOn": null
+        },
+        "selectorDate": "2026-09-30",
+        "jurisdiction": "SE",
+        "ruleReleaseId": "vat_assessment_review_synthetic_se",
+        "ruleReleaseChecksum": "sha256:9cc75bdf2afb67f9b3b65cf776f5b67363366cc1927ff0fa4333d8fd2398a45c",
+        "factRevisionIds": [
+          "jurisdiction_book_87bd48fc1f61c4d7",
+          "vat_period_book_87bd48fc1f61c4d7"
+        ],
+        "factReviewIds": [
+          "jurisdiction_book_87bd48fc1f61c4d7",
+          "vat_period_book_87bd48fc1f61c4d7"
+        ],
+        "roleBindingIds": [],
+        "activationId": "vat_assessment_activation"
+      },
+      "mappingRelease": {
+        "releaseId": "vat_assessment_review_synthetic_se",
+        "checksum": "sha256:9cc75bdf2afb67f9b3b65cf776f5b67363366cc1927ff0fa4333d8fd2398a45c",
+        "vat": {
+          "currency": "SEK",
+          "calculatorVersion": "vat-filing-actual-v1",
+          "filingUnitScale": 0,
+          "rounding": "toward_zero",
+          "rates": [
+            {
+              "rateId": "fixture_rate",
+              "numerator": "1",
+              "denominator": "4",
+              "salesBox": "10"
+            }
+          ],
+          "mappingRules": [
+            {
+              "mappingRuleId": "fixture_sale",
+              "treatment": "domestic_sale",
+              "rateId": "fixture_rate",
+              "basisBox": "05",
+              "inputBox": null
+            },
+            {
+              "mappingRuleId": "fixture_purchase",
+              "treatment": "domestic_purchase",
+              "rateId": "fixture_rate",
+              "basisBox": null,
+              "inputBox": "48"
+            }
+          ],
+          "supportedTreatments": [
+            "domestic_sale",
+            "domestic_purchase"
+          ],
+          "requiredSourceFamilies": [
+            "purchase_ledger",
+            "sales_ledger"
+          ],
+          "sourceManifest": "NEXT-37 synthetic vectors; not a legal rule release"
+        }
+      },
+      "accountRoles": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "accountVersion": "1",
+          "code": "2611",
+          "name": "account_vat",
+          "active": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "accountVersion": "1",
+          "code": "2641",
+          "name": "account_input_vat",
+          "active": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "accountVersion": "1",
+          "code": "2650",
+          "name": "account_vat_settlement",
+          "active": true
+        }
+      ],
+      "population": {
+        "bookAdmittedFactCount": 0,
+        "bookPurchaseComponentCount": 0,
+        "selectedAdmittedFactCount": 0,
+        "selectedPurchaseComponentCount": 0,
+        "bookOwnerPurchaseComponentCount": 0,
+        "selectedOwnerPurchaseComponentCount": 0,
+        "bookCustomerCreditComponentCount": 0,
+        "selectedCustomerCreditComponentCount": 0,
+        "bookServiceComponentCount": 0,
+        "selectedServiceComponentCount": 0,
+        "withoutTaxPoint": 0,
+        "membershipEpoch": "0"
+      },
+      "recognitions": [],
+      "facts": [],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        }
+      ],
+      "ownedEffects": [],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "ownerPorts": [
+        {
+          "owner": "owner_paid_purchase",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "customer_credit",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "vat_control_reclassification",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "vat_draft_amendment",
+          "state": "no_committed_financial_effect",
+          "recordCount": 0,
+          "recordDigests": []
+        }
+      ],
+      "openingEvidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+      "openingEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+    },
+    "calculation": {
+      "engine": "vat-actual-return-v1",
+      "basisDigest": "sha256:59d9625c0e9c5904271c6faeea6dbb4731817a601f3c19dbe927612c46db749f",
+      "boxes": [
+        {
+          "box": "49",
+          "kind": "net",
+          "exactMinor": "0",
+          "reportedMinor": "0",
+          "residualMinor": "0"
+        }
+      ],
+      "contributions": [],
+      "exclusions": [],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        }
+      ],
+      "timingBridge": [],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_88b9ba6afe3348348f866da03839a28d",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "blockers": [],
+      "assessedCount": 0,
+      "includedCount": 0,
+      "excludedCount": 0,
+      "calculationSupported": true,
+      "coverageComplete": true,
+      "controlsReconciled": true,
+      "periodVerified": true,
+      "filingReady": true
+    },
+    "recordedAt": "2026-10-10T19:13:43.583Z",
+    "receipt": {
+      "key": "f63aca04-f486-4ebe-95e4-3722fb2a64a1",
+      "operation": "prepare_actual_vat_return",
+      "actorId": "operator_87bd48fc1f61c4d7"
+    },
+    "externalState": "not_submitted",
+    "assessedMinor": null,
+    "paymentState": "not_paid"
+  }
+}

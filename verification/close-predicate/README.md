@@ -1,4 +1,4 @@
-# Monthly close predicate — synthetic evidence
+# Monthly close predicate. Synthetic evidence
 
 This implementation captures one immutable aggregate observation over an existing exact calendar-month period. HTTP capture is operator-only; HTTP and MCP reads reuse the same application owner and perform no writes. Retained outcomes are separate from live freshness. The required `vouchers_supported` and `facts_complete` owners remain not established, so these fixtures never qualify a month as done. Outside checks are diagnostic only.
 
@@ -32,10 +32,18 @@ The suite starts a disposable PostgreSQL/Worker runtime. It uses public syntheti
 
 Each directory retains results, source-integrity and runtime logs; successful workflows additionally retain their JSON observations. The tax owner produced exact zero closing difference, `coverage: not_established`, and `reconciled: false`; no close-ready claim follows from zero arithmetic. The first missing-bank failure occurred before later continuity cases, so that before-run alone does not prove those cases.
 
-Final worker `bun run check:changed` passed after explicit freshness-metadata edits. Those edits postdate the worker behavior hashes above; clean committed three-workflow qualification, full/owners/design checks and required global MCP/pinned Luna evaluation are coordinated separately by the parent. No final-source runtime qualification is claimed here yet.
+Final worker `bun run check:changed` passed after explicit freshness-metadata edits. Those edits postdate the worker behavior hashes above; clean committed three-workflow qualification, full/owners/design checks and required global MCP/pinned Luna evaluation are coordinated separately by the parent. Final clean qualification is recorded below.
 
 No browser rendering, UI parity, production close, statutory validity, live provider or unavailable owner qualification is claimed. The new MCP read-selection evaluator is authored but not run by the worker. Existing upstream protocol-matrix skips remain unchanged.
 
 ## Clean-source optional-field correction
 
-The parent clean committed run at `c43d8a3` failed all three workflows at capture with HTTP 500. Its retained `test-results/close-predicate-qualified` artifact and `/tmp/aut06-clean-e2e.log` identify a present `observedBookSequence: undefined` on unavailable check freshness, which strict `Schema.optionalKey` correctly rejects. The correction omits the optional property when no current book sequence was supplied; it does not relax the wire schema. This clean failure is the before-fix reproduction. Parent final clean runtime qualification remains pending.
+The parent clean committed run at `c43d8a3` failed all three workflows at capture with HTTP 500. Its retained `test-results/close-predicate-qualified` artifact and `/tmp/aut06-clean-e2e.log` identify a present `observedBookSequence: undefined` on unavailable check freshness, which strict `Schema.optionalKey` correctly rejects. The correction omits the optional property when no current book sequence was supplied; it does not relax the wire schema. This clean failure is the before-fix reproduction. The corrected clean runtime qualification follows below.
+
+## Clean runtime qualification
+
+The corrected committed source at `614879d` passed all three workflows. Test-only commit `ff39478` then retained the independent bank owner receipts, freshness digests and observed book sequences, asserting those sequences against persisted state. The final clean `test-results/close-predicate-retained` run passed three workflows with stable inventory `e00efa81a3be174085464b641dd4929728dda09fc44b48d406d85bf756dda051`. [after](after/) retains the complete observations/results. [clean-failure.json](clean-failure.json) and [before](before/) retain the actual failures separately.
+
+MCP admission passed at `614879d` with two unchanged upstream protocol cases skipped. The subsequent test-only commit changes no runtime/catalog; [mcp](mcp/) retains that result. Pinned `gpt-6-luna` through the Codex proxy passed three iterations each for ledger read, approval refusal and month-close read, one Vitest suite, at `ff39478`. [mcp-eval](mcp-eval/) retains run `a5a89923-8975-4ca2-806b-130092008f62` and its stable final source inventory. This tests tool selection, exact scope and persisted-state nonmutation; it does not qualify the skipped protocols or production providers.
+
+Frozen installation passed in the clean worktree. The final proof commit runs `check:changed:full`, `check:owners` and `check:design` against base `6e2a0ae5c5d88ac40381254a45ba8b6a23d72110`; their exact verdicts and commit are recorded in [draft PR 32](https://github.com/erik-kroon/drastic/pull/32). Static design-contract checks are not visual parity. The [read-only code review](comment-review.md) found zero actionable comment/suppression/workaround findings. Thirty-two retained JSON files passed the credential scan. No live financial provider, real book, browser composition, baseline or statutory qualification.

@@ -1,0 +1,59 @@
+{
+  "model": "gpt-6-luna",
+  "iterations": 3,
+  "successes": 3,
+  "failures": 0,
+  "observations": [
+    {
+      "case": "drastic_scoped_ledger",
+      "passed": true,
+      "modelError": false,
+      "calls": [
+        {
+          "toolName": "ledger_snapshot",
+          "arguments": {
+            "scope": {
+              "entityId": "entity_da329fa2b391ef8a",
+              "bookId": "book_da329fa2b391ef8a"
+            }
+          }
+        }
+      ],
+      "text": ""
+    },
+    {
+      "case": "drastic_scoped_ledger",
+      "passed": true,
+      "modelError": false,
+      "calls": [
+        {
+          "toolName": "ledger_snapshot",
+          "arguments": {
+            "scope": {
+              "entityId": "entity_da329fa2b391ef8a",
+              "bookId": "book_da329fa2b391ef8a"
+            }
+          }
+        }
+      ],
+      "text": ""
+    },
+    {
+      "case": "drastic_scoped_ledger",
+      "passed": true,
+      "modelError": false,
+      "calls": [
+        {
+          "toolName": "ledger_snapshot",
+          "arguments": {
+            "scope": {
+              "entityId": "entity_da329fa2b391ef8a",
+              "bookId": "book_da329fa2b391ef8a"
+            }
+          }
+        }
+      ],
+      "text": ""
+    }
+  ]
+}

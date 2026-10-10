@@ -1,0 +1,166 @@
+[
+  {
+    "mode": "missing",
+    "report": {
+      "id": "bank_coverage_ce8f99f900a54fcfbd30dafa4a95cd43",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_7afc25dccc6fa7e7",
+        "bookId": "book_7afc25dccc6fa7e7"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_b084f4be13624b12bb8401dd457662ee",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_efb6df1969954d39852751b5eb3c9743",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_b084f4be13624b12bb8401dd457662ee",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_7afc25dccc6fa7e7",
+        "declaredAt": "2026-10-10T19:13:43.872Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:7ea008949318698f4d67568c3255b35ef67322d303f4423f1c26fa96c4ddacf7",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": null,
+          "sourceRevision": null,
+          "statements": [],
+          "gaps": [
+            {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            }
+          ],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": null,
+          "closingMinor": null,
+          "diagnostics": [
+            "source_mapping_missing",
+            "statements_missing",
+            "opening_checkpoint_unavailable",
+            "closing_checkpoint_unavailable"
+          ],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:13:43.893Z",
+      "receipt": {
+        "key": "090b40fc-4a0d-423a-b20a-3728c4194589",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_7afc25dccc6fa7e7"
+      },
+      "digest": "sha256:022c942cfbcb68509c8818952fb61fce0dd340db19dbd0afd37f6eca419d8937"
+    },
+    "result": null
+  }
+]

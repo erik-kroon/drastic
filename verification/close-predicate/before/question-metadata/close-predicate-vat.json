@@ -1,0 +1,1129 @@
+{
+  "taxStatement": {
+    "id": "taxstatement_67adc1a72ad8486fb83576f3aef9f3a4",
+    "digest": "sha256:50d607278ab1f2d2e551768cccdd9b705615e191d6b64fefc145ce8694fc6ee9",
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "input": {
+      "recordClass": "synthetic",
+      "balanceConvention": "debit_minus_credit",
+      "accountId": "account_tax",
+      "sourceAccountKey": "synthetic_tax_account",
+      "statementKey": "synthetic_zero_september",
+      "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+      "sourceLocator": "Synthetic zero statement",
+      "reviewEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+      "rationale": "Synthetic empty account observation",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "openingMinor": "0",
+      "closingMinor": "0",
+      "rows": []
+    },
+    "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+    "reviewEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+    "movementMinor": "0",
+    "events": [],
+    "coverage": "not_established",
+    "taxReturnEffect": "none",
+    "createdAt": "2026-10-10T19:10:28.245Z",
+    "receipt": {
+      "key": "18db04e7-f74f-4d62-b0b3-29f9bb5fa434",
+      "operation": "record_tax_account_statement",
+      "actorId": "operator_cc4b1960dc48aad3"
+    }
+  },
+  "taxControl": {
+    "id": "taxcontrol_c5d72f6452864bb99f1bb7d0a540aea9",
+    "digest": "sha256:7e97b4fda439e9ff6f15995adf3e4a626217bda147b86390f2121f4ba7a5120f",
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "input": {
+      "accountId": "account_tax",
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30"
+    },
+    "kind": "synthetic_tax_account_gl_control_v3",
+    "classificationResolutions": [],
+    "matches": [],
+    "unmatchedLedgerLines": [],
+    "dependencyDigest": "sha256:f7a0e96434e933eeeb6bda277fdd4522cee17feeddcd60aa42298c1c73fac1aa",
+    "sequence": "0",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "account": {
+      "id": "account_tax",
+      "code": "1630",
+      "name": "Synthetic tax account",
+      "version": "1",
+      "active": true
+    },
+    "statements": [
+      {
+        "id": "taxstatement_67adc1a72ad8486fb83576f3aef9f3a4",
+        "digest": "sha256:50d607278ab1f2d2e551768cccdd9b705615e191d6b64fefc145ce8694fc6ee9",
+        "scope": {
+          "entityId": "entity_cc4b1960dc48aad3",
+          "bookId": "book_cc4b1960dc48aad3"
+        },
+        "input": {
+          "recordClass": "synthetic",
+          "balanceConvention": "debit_minus_credit",
+          "accountId": "account_tax",
+          "sourceAccountKey": "synthetic_tax_account",
+          "statementKey": "synthetic_zero_september",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "sourceLocator": "Synthetic zero statement",
+          "reviewEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "rationale": "Synthetic empty account observation",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "startsOn": "2026-09-01",
+          "endsOn": "2026-09-30",
+          "openingMinor": "0",
+          "closingMinor": "0",
+          "rows": []
+        },
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "reviewEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "movementMinor": "0",
+        "events": [],
+        "coverage": "not_established",
+        "taxReturnEffect": "none",
+        "createdAt": "2026-10-10T19:10:28.245Z",
+        "receipt": {
+          "key": "18db04e7-f74f-4d62-b0b3-29f9bb5fa434",
+          "operation": "record_tax_account_statement",
+          "actorId": "operator_cc4b1960dc48aad3"
+        }
+      }
+    ],
+    "ledgerLines": [],
+    "sourceGaps": [],
+    "sourceOverlaps": [],
+    "balanceBreaks": [],
+    "sourceOpeningMinor": "0",
+    "sourceMovementMinor": "0",
+    "sourceClosingMinor": "0",
+    "ledgerOpeningMinor": "0",
+    "ledgerMovementMinor": "0",
+    "ledgerClosingMinor": "0",
+    "openingDifferenceMinor": "0",
+    "movementDifferenceMinor": "0",
+    "closingDifferenceMinor": "0",
+    "unmatchedEventIds": [],
+    "unmatchedLedgerLineIds": [],
+    "unknownClassificationEventIds": [],
+    "diagnostics": [
+      "coverage_unestablished"
+    ],
+    "coverage": "not_established",
+    "reconciled": false,
+    "financialCloseReady": false,
+    "taxReturnEffect": "none",
+    "createdAt": "2026-10-10T19:10:28.273Z",
+    "receipt": {
+      "key": "65defd13-94a2-4e3b-a962-701687b2be57",
+      "operation": "create_tax_account_control",
+      "actorId": "operator_cc4b1960dc48aad3"
+    }
+  },
+  "vat": {
+    "id": "vatactual_a461f8bd2c7f467ab90a7184f341d662",
+    "digest": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac",
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "version": 1,
+    "input": {
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "periodEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+      "openingEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+      "controlOpenings": [
+        {
+          "accountId": "account_vat",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "account_input_vat",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "account_vat_settlement",
+          "signedMinor": "0"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016"
+        }
+      ],
+      "rationale": "Explicit synthetic empty source inventory"
+    },
+    "basis": {
+      "digest": "sha256:1f5c7e32d6ab091b2d01784e80382114d277bb3f0eb7585da67d817ef3289e11",
+      "scope": {
+        "entityId": "entity_cc4b1960dc48aad3",
+        "bookId": "book_cc4b1960dc48aad3"
+      },
+      "engine": "vat-actual-return-v1",
+      "bookProfile": "synthetic-core-v1",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "ledgerBoundary": "0",
+      "recordedCutoff": "2026-10-10T19:10:28.321Z",
+      "registeredPeriod": {
+        "factRevisionId": "vat_period_book_cc4b1960dc48aad3",
+        "factRevisionDigest": "sha256:95eea7a26da762cc511b4918cd5c450cc3660083dca39c179c301472817a9754",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "periodEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+        "periodEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+      },
+      "profileWitness": {
+        "family": "vat",
+        "recordClass": "actual_company",
+        "dates": {
+          "postingOn": null,
+          "taxPointOn": "2026-09-30",
+          "paymentOn": null,
+          "reportOn": null
+        },
+        "selectorDate": "2026-09-30",
+        "jurisdiction": "SE",
+        "ruleReleaseId": "vat_assessment_review_synthetic_se",
+        "ruleReleaseChecksum": "sha256:9cc75bdf2afb67f9b3b65cf776f5b67363366cc1927ff0fa4333d8fd2398a45c",
+        "factRevisionIds": [
+          "jurisdiction_book_cc4b1960dc48aad3",
+          "vat_period_book_cc4b1960dc48aad3"
+        ],
+        "factReviewIds": [
+          "jurisdiction_book_cc4b1960dc48aad3",
+          "vat_period_book_cc4b1960dc48aad3"
+        ],
+        "roleBindingIds": [],
+        "activationId": "vat_assessment_activation"
+      },
+      "mappingRelease": {
+        "releaseId": "vat_assessment_review_synthetic_se",
+        "checksum": "sha256:9cc75bdf2afb67f9b3b65cf776f5b67363366cc1927ff0fa4333d8fd2398a45c",
+        "vat": {
+          "currency": "SEK",
+          "calculatorVersion": "vat-filing-actual-v1",
+          "filingUnitScale": 0,
+          "rounding": "toward_zero",
+          "rates": [
+            {
+              "rateId": "fixture_rate",
+              "numerator": "1",
+              "denominator": "4",
+              "salesBox": "10"
+            }
+          ],
+          "mappingRules": [
+            {
+              "mappingRuleId": "fixture_sale",
+              "treatment": "domestic_sale",
+              "rateId": "fixture_rate",
+              "basisBox": "05",
+              "inputBox": null
+            },
+            {
+              "mappingRuleId": "fixture_purchase",
+              "treatment": "domestic_purchase",
+              "rateId": "fixture_rate",
+              "basisBox": null,
+              "inputBox": "48"
+            }
+          ],
+          "supportedTreatments": [
+            "domestic_sale",
+            "domestic_purchase"
+          ],
+          "requiredSourceFamilies": [
+            "purchase_ledger",
+            "sales_ledger"
+          ],
+          "sourceManifest": "NEXT-37 synthetic vectors; not a legal rule release"
+        }
+      },
+      "accountRoles": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "accountVersion": "1",
+          "code": "2611",
+          "name": "account_vat",
+          "active": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "accountVersion": "1",
+          "code": "2641",
+          "name": "account_input_vat",
+          "active": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "accountVersion": "1",
+          "code": "2650",
+          "name": "account_vat_settlement",
+          "active": true
+        }
+      ],
+      "population": {
+        "bookAdmittedFactCount": 0,
+        "bookPurchaseComponentCount": 0,
+        "selectedAdmittedFactCount": 0,
+        "selectedPurchaseComponentCount": 0,
+        "bookOwnerPurchaseComponentCount": 0,
+        "selectedOwnerPurchaseComponentCount": 0,
+        "bookCustomerCreditComponentCount": 0,
+        "selectedCustomerCreditComponentCount": 0,
+        "bookServiceComponentCount": 0,
+        "selectedServiceComponentCount": 0,
+        "withoutTaxPoint": 0,
+        "membershipEpoch": "0"
+      },
+      "recognitions": [],
+      "facts": [],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        }
+      ],
+      "ownedEffects": [],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "ownerPorts": [
+        {
+          "owner": "owner_paid_purchase",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "customer_credit",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "vat_control_reclassification",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "vat_draft_amendment",
+          "state": "no_committed_financial_effect",
+          "recordCount": 0,
+          "recordDigests": []
+        }
+      ],
+      "openingEvidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+      "openingEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+    },
+    "calculation": {
+      "engine": "vat-actual-return-v1",
+      "basisDigest": "sha256:1f5c7e32d6ab091b2d01784e80382114d277bb3f0eb7585da67d817ef3289e11",
+      "boxes": [
+        {
+          "box": "49",
+          "kind": "net",
+          "exactMinor": "0",
+          "reportedMinor": "0",
+          "residualMinor": "0"
+        }
+      ],
+      "contributions": [],
+      "exclusions": [],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "account_vat",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "account_input_vat",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "account_vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        }
+      ],
+      "timingBridge": [],
+      "sourceCoverage": [
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_23d20e5d721244ac9d8fcdb214fc1016",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "blockers": [],
+      "assessedCount": 0,
+      "includedCount": 0,
+      "excludedCount": 0,
+      "calculationSupported": true,
+      "coverageComplete": true,
+      "controlsReconciled": true,
+      "periodVerified": true,
+      "filingReady": true
+    },
+    "recordedAt": "2026-10-10T19:10:28.356Z",
+    "receipt": {
+      "key": "8967c65c-498c-494b-92cc-7e26b40f6d7c",
+      "operation": "prepare_actual_vat_return",
+      "actorId": "operator_cc4b1960dc48aad3"
+    },
+    "externalState": "not_submitted",
+    "assessedMinor": null,
+    "paymentState": "not_paid"
+  },
+  "saved": {
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "period": {
+      "id": "period_september",
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "version": "1"
+    },
+    "capture": {
+      "id": "close_capture_cda95d312b6c478599a49841ac5f3cfa",
+      "digest": "sha256:fc16d6ab0d88aa63814fc931790bd47f975b9b55746cddd6fb43ee8ddb5bc002",
+      "createdAt": "2026-10-10T19:10:28.410Z"
+    },
+    "gated": [
+      {
+        "checkId": "bank_reconciliation",
+        "status": "not_run",
+        "reasons": [
+          "bank_check_not_captured"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "bank_check_not_captured"
+          ]
+        },
+        "retained": {
+          "checkId": "bank_reconciliation",
+          "status": "not_run",
+          "reasons": [
+            "bank_check_not_captured"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "vouchers_supported",
+        "status": "not_established",
+        "reasons": [
+          "voucher_support_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "vouchers_supported",
+          "status": "not_established",
+          "reasons": [
+            "voucher_support_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "facts_complete",
+        "status": "not_established",
+        "reasons": [
+          "complete_fact_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "facts_complete",
+          "status": "not_established",
+          "reasons": [
+            "complete_fact_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "reviews_and_questions",
+        "status": "pass",
+        "reasons": [],
+        "freshness": {
+          "status": "fresh",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "reviews_and_questions",
+          "status": "pass",
+          "reasons": [],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {
+              "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+            }
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {
+            "scope": "period_attention_and_book_wide_latest_questions",
+            "attentionTotal": "0",
+            "openReviews": "0",
+            "questionTotal": "0",
+            "incompleteQuestionHeads": "0",
+            "unresolvedQuestions": "0"
+          }
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "vat_control",
+        "status": "pass",
+        "reasons": [],
+        "freshness": {
+          "status": "fresh",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "vat_control",
+          "status": "pass",
+          "reasons": [],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {
+              "basis": "sha256:1f5c7e32d6ab091b2d01784e80382114d277bb3f0eb7585da67d817ef3289e11",
+              "return": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+            }
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [
+            {
+              "owner": "actual_vat_return",
+              "id": "vatactual_a461f8bd2c7f467ab90a7184f341d662",
+              "digest": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+            }
+          ],
+          "facts": {
+            "calculationSupported": true,
+            "coverageComplete": true,
+            "controlsReconciled": true,
+            "periodVerified": true,
+            "includedCount": 0,
+            "excludedCount": 0,
+            "assessedCount": 0
+          }
+        },
+        "evidenceRefs": [
+          {
+            "owner": "actual_vat_return",
+            "id": "vatactual_a461f8bd2c7f467ab90a7184f341d662",
+            "digest": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+          }
+        ]
+      }
+    ],
+    "reported": [
+      {
+        "checkId": "tax_account_control",
+        "status": "not_established",
+        "reasons": [
+          "tax_account_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "tax_account_control",
+          "status": "not_established",
+          "reasons": [
+            "tax_account_coverage_not_established"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "subledger_control",
+        "status": "not_established",
+        "reasons": [
+          "subledger_control_not_reconciled"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "subledger_control",
+          "status": "not_established",
+          "reasons": [
+            "subledger_control_not_reconciled"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "supplier_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_supplier_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "supplier_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_supplier_statement_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "customer_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_customer_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "customer_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_customer_statement_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "closing_provider_control",
+        "status": "not_established",
+        "reasons": [
+          "closing_provider_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "closing_provider_control",
+          "status": "not_established",
+          "reasons": [
+            "closing_provider_coverage_not_established"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      }
+    ],
+    "verdict": "inconclusive"
+  },
+  "question": {
+    "id": "work_question_817b5e5edb1947db9ae83188c8a46221",
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "root": {
+      "kind": "document",
+      "recordId": "source_71d0d11175124d1b99aa581ddfceddb5",
+      "rowOrdinal": null,
+      "key": "entity_cc4b1960dc48aad3/book_cc4b1960dc48aad3/document/source_71d0d11175124d1b99aa581ddfceddb5/"
+    },
+    "kind": "missing_evidence",
+    "question": "Please retain the missing synthetic receipt",
+    "askedBy": "operator_cc4b1960dc48aad3",
+    "requestedFrom": "operator_cc4b1960dc48aad3",
+    "createdAt": "2026-10-10T19:10:28.516Z",
+    "state": "open",
+    "revision": 1,
+    "waitingOn": "operator_cc4b1960dc48aad3",
+    "events": [
+      {
+        "revision": 1,
+        "action": "asked",
+        "actorId": "operator_cc4b1960dc48aad3",
+        "createdAt": "2026-10-10T19:10:28.516Z",
+        "text": "Please retain the missing synthetic receipt",
+        "attachments": []
+      }
+    ]
+  },
+  "openReviews": {
+    "scope": {
+      "entityId": "entity_cc4b1960dc48aad3",
+      "bookId": "book_cc4b1960dc48aad3"
+    },
+    "period": {
+      "id": "period_september",
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "version": "1"
+    },
+    "capture": {
+      "id": "close_capture_2e0198d9799d4518b15928affa81d397",
+      "digest": "sha256:a5cf9dd0f39fbbca89bada4bd70918e0ba978b4f462fe90652670d26cf3b8a08",
+      "createdAt": "2026-10-10T19:10:28.552Z"
+    },
+    "gated": [
+      {
+        "checkId": "bank_reconciliation",
+        "status": "not_run",
+        "reasons": [
+          "bank_check_not_captured"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "bank_check_not_captured"
+          ]
+        },
+        "retained": {
+          "checkId": "bank_reconciliation",
+          "status": "not_run",
+          "reasons": [
+            "bank_check_not_captured"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "vouchers_supported",
+        "status": "not_established",
+        "reasons": [
+          "voucher_support_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "vouchers_supported",
+          "status": "not_established",
+          "reasons": [
+            "voucher_support_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "facts_complete",
+        "status": "not_established",
+        "reasons": [
+          "complete_fact_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "facts_complete",
+          "status": "not_established",
+          "reasons": [
+            "complete_fact_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "reviews_and_questions",
+        "status": "not_established",
+        "reasons": [
+          "question_inventory_incomplete"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "reviews_and_questions",
+          "status": "not_established",
+          "reasons": [
+            "question_inventory_incomplete"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {
+              "attention": "sha256:fc4d415528875e447490c92f9c734c5ecf46b249550e7b5563a46457d93ebd7b",
+              "questions": "sha256:46e1a839618fced909b47e33f1f5595a66dee9bfc7314a01813e2e1d6a9c7544"
+            }
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [
+            {
+              "owner": "attention_document",
+              "id": "source_71d0d11175124d1b99aa581ddfceddb5",
+              "digest": "sha256:1faa9412ac1fe092546789518717330d2e0c031dcb6a3ed0396d4edf1517a873"
+            }
+          ],
+          "facts": {
+            "scope": "period_attention_and_book_wide_latest_questions",
+            "attentionTotal": "1",
+            "openReviews": "1",
+            "questionTotal": "1",
+            "incompleteQuestionHeads": "1",
+            "unresolvedQuestions": "1"
+          }
+        },
+        "evidenceRefs": [
+          {
+            "owner": "attention_document",
+            "id": "source_71d0d11175124d1b99aa581ddfceddb5",
+            "digest": "sha256:1faa9412ac1fe092546789518717330d2e0c031dcb6a3ed0396d4edf1517a873"
+          }
+        ]
+      },
+      {
+        "checkId": "vat_control",
+        "status": "pass",
+        "reasons": [],
+        "freshness": {
+          "status": "fresh",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "vat_control",
+          "status": "pass",
+          "reasons": [],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {
+              "basis": "sha256:1f5c7e32d6ab091b2d01784e80382114d277bb3f0eb7585da67d817ef3289e11",
+              "return": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+            }
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [
+            {
+              "owner": "actual_vat_return",
+              "id": "vatactual_a461f8bd2c7f467ab90a7184f341d662",
+              "digest": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+            }
+          ],
+          "facts": {
+            "calculationSupported": true,
+            "coverageComplete": true,
+            "controlsReconciled": true,
+            "periodVerified": true,
+            "includedCount": 0,
+            "excludedCount": 0,
+            "assessedCount": 0
+          }
+        },
+        "evidenceRefs": [
+          {
+            "owner": "actual_vat_return",
+            "id": "vatactual_a461f8bd2c7f467ab90a7184f341d662",
+            "digest": "sha256:88469d661635bce95a851b84e25e6f4a3d2cecf1d9cd983d7d2951ec4cf84cac"
+          }
+        ]
+      }
+    ],
+    "reported": [
+      {
+        "checkId": "tax_account_control",
+        "status": "not_established",
+        "reasons": [
+          "tax_account_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "tax_account_control",
+          "status": "not_established",
+          "reasons": [
+            "tax_account_coverage_not_established"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "subledger_control",
+        "status": "not_established",
+        "reasons": [
+          "subledger_control_not_reconciled"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "subledger_control",
+          "status": "not_established",
+          "reasons": [
+            "subledger_control_not_reconciled"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "supplier_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_supplier_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "supplier_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_supplier_statement_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "customer_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_customer_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "customer_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_customer_statement_owner_not_released"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "closing_provider_control",
+        "status": "not_established",
+        "reasons": [
+          "closing_provider_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": []
+        },
+        "retained": {
+          "checkId": "closing_provider_control",
+          "status": "not_established",
+          "reasons": [
+            "closing_provider_coverage_not_established"
+          ],
+          "observedCutoff": {
+            "ledgerSequence": "0",
+            "dependencyDigests": {}
+          },
+          "builderVersion": "month_close_predicate_v1",
+          "evidenceRefs": [],
+          "facts": {}
+        },
+        "evidenceRefs": []
+      }
+    ],
+    "verdict": "inconclusive"
+  }
+}
