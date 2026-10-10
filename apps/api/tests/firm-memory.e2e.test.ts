@@ -1,6 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import * as Effect from "effect/Effect";
+import * as Provenance from "@open-erp/contracts/decision-provenance";
+import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import { digest } from "../src/application/posting";
+import { provenanceRows } from "./support/decision-provenance";
 import * as A from "@open-erp/contracts/accounting";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Examples from "@open-erp/contracts/decision-examples";
@@ -13,7 +18,16 @@ import {
   purchaseEvidence,
   supplierFixture,
 } from "./support/supplier-review";
-import { createSession, decoded, environment, post, request, run } from "./support/fixtures";
+import {
+  createSession,
+  database,
+  decoded,
+  environment,
+  key,
+  post,
+  request,
+  run,
+} from "./support/fixtures";
 
 test("same-book firm memory serves immutable ranked precedents, corrections and a sealed temporal baseline", async () => {
   const f = await supplierFixture([
@@ -55,11 +69,11 @@ test("same-book firm memory serves immutable ranked precedents, corrections and 
   const served = await hints(probe);
   const repeated = await hints(probe);
 
-  expect(served.algorithmVersion).toBe("firm_memory_v1");
+  expect(served.algorithmVersion).toBe("firm_memory_v2");
   expect(served.precedents).toHaveLength(2);
   expect(repeated.precedents).toEqual(served.precedents);
   expect(repeated.historyDigest).toBe(served.historyDigest);
-  expect(repeated.suggestionRecordId).not.toBe(served.suggestionRecordId);
+  expect(repeated.suggestionRecordId).toBe(served.suggestionRecordId);
   expect(
     served.precedents
       .flatMap((item) => item.sourceDecisionIds)
@@ -425,4 +439,351 @@ test("independent firm memory vectors prove hard filters, stable ties and correc
       2,
     ),
   );
+});
+
+test("public monthly firm memory v2 serves current captures while legacy v1 and sealed history remain unchanged", async () => {
+  const f = await supplierFixture([
+    { id: "account_expense", code: "6000", name: "Expense" },
+    { id: "account_other", code: "6100", name: "Other expense" },
+    { id: "account_payable", code: "2440", name: "Payable" },
+    { id: "account_input_vat", code: "2641", name: "Input VAT" },
+  ]);
+
+  f.book.token = (await createSession(f.book)).token;
+
+  const fresh = async (ordinal: number, description: string) => {
+    const source = await purchaseEvidence(f.book, ordinal);
+
+    return createDraft(f.book, {
+      ...f.content,
+      sourceEvidenceId: source.id,
+      supplierDocumentNumber: `MONTH-${ordinal}`,
+      lines: f.content.lines.map((line) => ({ ...line, description, taxEvidenceId: source.id })),
+    });
+  };
+
+  const hints = async (draft: typeof Drafts.SupplierInvoiceDraftRevision.Type) =>
+    decoded(
+      await request(
+        f.book,
+        `/commerce/supplier-account-suggestions/${f.supplier.id}?draftId=${draft.id}&draftRevision=${draft.revision}`,
+      ),
+      Drafts.SupplierAccountSuggestions,
+    );
+
+  const prepare = async (
+    draft: typeof Drafts.SupplierInvoiceDraftRevision.Type,
+    account: string,
+    citations: string[],
+  ) => {
+    const review = await post(
+      f.book,
+      "/commerce/supplier-acceptance-reviews",
+      {
+        profile: "swedish-purchase-v1",
+        draftId: draft.id,
+        expectedRevision: draft.revision,
+        expectedDigest: draft.digest,
+        controlAccountId: "account_payable",
+        accountingPeriodId: "period_2026",
+        series: "A",
+        reason: "Synthetic monthly memory",
+        acknowledgeSyntheticOnly: true,
+        taxPoint: { taxPointOn: "2026-09-22", basis: "document_date" },
+        lineAssignments: draft.content.lines.map((line) => ({
+          lineId: line.id,
+          expenseAccountId: account,
+          treatment: {
+            basis: "full_deduction",
+            rate: { numerator: "0", denominator: "1" },
+            deduction: { numerator: "1", denominator: "1" },
+            invoiceTaxRounding: "half_up",
+            deductionRounding: "half_up",
+            acceptancePolicy: "exact_match",
+            toleranceMinor: "0",
+          },
+        })),
+      },
+      Acceptance.SupplierAcceptanceReview,
+    );
+
+    const approval = await post(
+      f.book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: citations,
+      },
+      Acceptance.SupplierAcceptanceApproval,
+    );
+
+    return { review, approval };
+  };
+
+  const initial = await prepare(
+    await fresh(1, "Cloud software september 2026"),
+    "account_expense",
+    [],
+  );
+
+  const first = await post(
+    f.book,
+    `/commerce/supplier-acceptance-reviews/${initial.review.id}/execute`,
+    {
+      version: 1,
+      digest: initial.review.digest,
+      acknowledgeSyntheticOnly: true,
+      approvalId: initial.approval.id,
+    },
+    Acceptance.SupplierAcceptanceReceipt,
+  );
+
+  const sealed = await post(
+    f.book,
+    "/automation/decision-examples",
+    { purpose: "training", selectedDecisionIds: [first.approvalId] },
+    Examples.DecisionExampleExport,
+  );
+
+  const exactDraft = await fresh(2, "Cloud software september 2026");
+  const exact = await hints(exactDraft);
+  const admin = await database();
+  let legacy;
+  let legacyBefore;
+
+  try {
+    const row = (
+      await admin.query("select * from openerp.suggestion_records where book_id=$1 and id=$2", [
+        f.book.bookId,
+        exact.suggestionRecordId,
+      ])
+    ).rows[0]!;
+
+    legacy = {
+      ...row.body,
+      id: `suggestion_legacy_${key()}`,
+      ranked: { ...row.body.ranked, source: "firm_memory_v1", version: "firm_memory_v1" },
+    };
+    legacy.optionSetDigest = await Effect.runPromise(digest(legacy.ranked));
+    await admin.query(
+      "insert into openerp.suggestion_records(book_id,id,actor_id,session_id,subject_identity,subject_digest,body) values($1,$2,$3,$4,$5,$6,$7::jsonb)",
+      [
+        f.book.bookId,
+        legacy.id,
+        row.actor_id,
+        row.session_id,
+        row.subject_identity,
+        row.subject_digest,
+        JSON.stringify(legacy),
+      ],
+    );
+    legacyBefore = (
+      await admin.query("select body from openerp.suggestion_records where book_id=$1 and id=$2", [
+        f.book.bookId,
+        legacy.id,
+      ])
+    ).rows[0]!.body;
+  } finally {
+    await admin.end();
+  }
+
+  const legacyDecision = await prepare(exactDraft, "account_expense", [
+    exact.suggestionRecordId,
+    legacy.id,
+  ]);
+
+  const monthlyDraft = await fresh(3, "software Cloud October 2027");
+  const monthly = await hints(monthlyDraft);
+
+  const monthlyDecision = await prepare(monthlyDraft, "account_other", [
+    monthly.suggestionRecordId,
+  ]);
+
+  await post(
+    f.book,
+    `/commerce/supplier-acceptance-reviews/${monthlyDecision.review.id}/execute`,
+    {
+      version: 1,
+      digest: monthlyDecision.review.digest,
+      acknowledgeSyntheticOnly: true,
+      approvalId: monthlyDecision.approval.id,
+    },
+    Acceptance.SupplierAcceptanceReceipt,
+  );
+  const rows = await provenanceRows(f.book);
+
+  const final = await post(
+    f.book,
+    "/automation/decision-examples",
+    { purpose: "training", selectedDecisionIds: [] },
+    Examples.DecisionExampleExport,
+  );
+
+  const replay = await decoded(
+    await request(f.book, `/automation/decision-examples/${sealed.id}`),
+    Examples.DecisionExampleExport,
+  );
+
+  const reportDirectory = join(environment().artifacts, "v2-report");
+  await mkdir(reportDirectory, { recursive: true });
+  await run(
+    "bun",
+    [
+      "verification/firm-memory/report.ts",
+      f.book.entityId,
+      f.book.bookId,
+      final.id,
+      reportDirectory,
+    ],
+    {
+      cwd: join(import.meta.dirname, "../../.."),
+      env: {
+        ...process.env,
+        OPENERP_API_URL: environment().baseUrl,
+        OPENERP_OPERATOR_TOKEN: f.book.token,
+      },
+    },
+  );
+  const report = JSON.parse(await readFile(join(reportDirectory, "report.json"), "utf8"));
+  const verify = await database();
+  let legacyAfter;
+  let current;
+
+  try {
+    legacyAfter = (
+      await verify.query("select body from openerp.suggestion_records where book_id=$1 and id=$2", [
+        f.book.bookId,
+        legacy.id,
+      ])
+    ).rows[0]!.body;
+    current = (
+      await verify.query("select body from openerp.suggestion_records where book_id=$1 and id=$2", [
+        f.book.bookId,
+        monthly.suggestionRecordId,
+      ])
+    ).rows[0]!.body;
+  } finally {
+    await verify.end();
+  }
+
+  await writeFile(
+    join(environment().artifacts, "firm-memory-v2-serving.json"),
+    JSON.stringify(
+      {
+        legacyFixture: "append-only valid retained v1 capture",
+        first,
+        sealed,
+        replay,
+        legacyBefore,
+        legacyAfter,
+        exact,
+        monthly,
+        current,
+        legacyDecision,
+        monthlyDecision,
+        rows,
+        report,
+      },
+      null,
+      2,
+    ),
+  );
+  expect(monthly.precedents.map((item) => item.id)).toEqual([first.approvalId]);
+  expect(monthly.algorithmVersion).toBe("firm_memory_v2");
+  expect(current.ranked).toMatchObject({ source: "firm_memory_v2", version: "firm_memory_v2" });
+  expect(rows.find((row) => row.decision_id === monthlyDecision.approval.id)?.classification).toBe(
+    "corrected",
+  );
+  expect(legacyAfter).toEqual(legacyBefore);
+  expect(Provenance.SuggestionRecord.make(legacyAfter).id).toBe(legacy.id);
+  expect(replay).toEqual(sealed);
+  expect(report.algorithms).toHaveProperty("firm_memory_v1");
+  expect(report.algorithms).toHaveProperty("firm_memory_v2");
+  expect(report.algorithms.firm_memory_v2.counts.suggestedTargets).toBeGreaterThan(
+    report.algorithms.firm_memory_v1.counts.suggestedTargets,
+  );
+  expect(report.metrics.consequenceAccuracy.value).toBeNull();
+});
+
+test("independent v2 token corpus preserves v1 and all hard filters with versioned side by side denominators", async () => {
+  const variants = [
+    { previous: "Cloud software september 2026", next: "software Cloud October 2027", match: true },
+    { previous: "Cloud software januari", next: "Cloud software February", match: true },
+    {
+      previous: "Cloud 31st January 2026 software",
+      next: "Cloud 1st February 2027 software",
+      match: true,
+    },
+    { previous: "Cloud 1:a mars software", next: "Cloud 2:e April software", match: true },
+    { previous: "Cloud software 2026-09-01", next: "Cloud software 2027/10/02", match: true },
+    { previous: "Cloud Cloud software", next: "software Cloud", match: true },
+    { previous: "Cloud software september", next: "Cloud consulting october", match: false },
+    { previous: "January 2026 31st", next: "February 2027 1st", match: false },
+  ];
+
+  const observations = variants.map((item) => {
+    const prior = { ...authoredPrecedent("prior", "1"), description: item.previous };
+    const heldout = { ...authoredPrecedent("target", "2"), description: item.next };
+    const target = { ...heldout, cutoff: "2", excludeRelatedIds: [] };
+
+    return {
+      ...item,
+      v1: Memory.rank(target, [prior]),
+      v2: Memory.rankV2(target, [prior]),
+      baselineV1: Memory.baseline([prior, heldout]),
+      baselineV2: Memory.baselineV2([prior, heldout]),
+    };
+  });
+
+  const prior = { ...authoredPrecedent("prior", "1"), description: "Cloud January 2026" };
+
+  const target = {
+    ...prior,
+    description: "Cloud February 2027",
+    cutoff: "10",
+    excludeRelatedIds: [],
+  };
+
+  const failures = [
+    { name: "book", record: { ...prior, bookId: "other" } },
+    { name: "counterparty", record: { ...prior, counterpartyId: "other" } },
+    { name: "kind", record: { ...prior, documentKind: "other" } },
+    { name: "currency", record: { ...prior, currency: "EUR" } },
+    { name: "scale", record: { ...prior, currencyScale: 0 } },
+    { name: "receipt", record: { ...prior, receiptSequence: "11" } },
+    { name: "label", record: { ...prior, labelSequence: "11" } },
+    { name: "amount", record: { ...prior, amountMinor: null } },
+    { name: "holdout", record: prior, target: { ...target, excludeRelatedIds: prior.relatedIds } },
+  ];
+
+  const guards = failures.map((item) => ({
+    name: item.name,
+    observed: Memory.rankV2(item.target ?? target, [item.record]),
+  }));
+
+  const ties = Memory.rankV2(target, [
+    prior,
+    { ...prior, id: "a" },
+    { ...prior, id: "recent", receiptSequence: "2" },
+    { ...prior, id: "far", amountMinor: "30000", receiptSequence: "9" },
+  ]);
+
+  await writeFile(
+    join(environment().artifacts, "firm-memory-v2-corpus.json"),
+    JSON.stringify({ variants, observations, guards, ties }, null, 2),
+  );
+
+  for (const item of observations) {
+    expect(item.v2.precedents.length > 0).toBe(item.match);
+    expect(item.v1.algorithmVersion).toBe("firm_memory_v1");
+    expect(item.v2.algorithmVersion).toBe("firm_memory_v2");
+    expect(item.baselineV2.counts.eligibleTargets).toBe(item.baselineV1.counts.eligibleTargets);
+    expect(item.baselineV2.counts.suggestedTargets).toBe(item.match ? 1 : 0);
+    expect(item.baselineV2.metrics.consequenceAccuracy.value).toBeNull();
+  }
+
+  for (const item of guards) expect(item.observed.precedents).toEqual([]);
+  expect(ties.precedents.map((item) => item.id)).toEqual(["recent", "a", "prior", "far"]);
 });

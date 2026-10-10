@@ -42,11 +42,23 @@ function population(classification: "independent" | "corrected") {
     baseline: Memory.baseline(
       history.filter((record) => record.provenance.classification === classification),
     ),
+    algorithms: {
+      firm_memory_v1: Memory.baseline(
+        history.filter((record) => record.provenance.classification === classification),
+      ),
+      firm_memory_v2: Memory.baselineV2(
+        history.filter((record) => record.provenance.classification === classification),
+      ),
+    },
   };
 }
 
 const report = {
   ...Memory.baseline(history),
+  algorithms: {
+    firm_memory_v1: Memory.baseline(history),
+    firm_memory_v2: Memory.baselineV2(history),
+  },
   aggregateInterpretation: "descriptive_nonrepresentative",
   populations: { independent: population("independent"), corrected: population("corrected") },
   sealedExport: { id: exported.id, digest: exported.digest, lineageCutoff: exported.lineageCutoff },
