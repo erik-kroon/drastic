@@ -1,4 +1,4 @@
-import { assertUniqueJsonKeys } from "../json-keys";
+import { BoundedJsonError, readBoundedJson } from "../bounded-json";
 
 export class DocumentOutputError extends Error {}
 
@@ -10,43 +10,16 @@ export interface DocumentReader {
 
 async function boundedJson(response: Response) {
   if (!response.ok || response.body === null) throw new Error("reader_response");
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
 
   try {
-    while (true) {
-      const next = await reader.read();
+    return await readBoundedJson(response);
+  } catch (error) {
+    if (error instanceof BoundedJsonError)
+      throw new DocumentOutputError(
+        error.kind === "size" ? "reader_output_size" : "reader_output_json",
+      );
 
-      if (next.done) break;
-      length += next.value.length;
-
-      if (length > 1024 * 1024) throw new DocumentOutputError("reader_output_size");
-      chunks.push(next.value);
-    }
-  } finally {
-    await reader.cancel();
-    reader.releaseLock();
-  }
-
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  try {
-    assertUniqueJsonKeys(bytes);
-
-    const value: unknown = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes),
-    );
-
-    return value;
-  } catch {
-    throw new DocumentOutputError("reader_output_json");
+    throw error;
   }
 }
 
