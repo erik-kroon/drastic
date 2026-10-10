@@ -9,7 +9,8 @@ import type {
   DecisionOutcome,
   WorkersAi,
 } from "../src/adapters/decision-models/systemone";
-import { environment } from "./support/fixtures";
+import { withAiEgress } from "./support/ai-egress";
+import { environment, fixture } from "./support/fixtures";
 
 const release = "synthetic_release_1";
 
@@ -120,6 +121,7 @@ function required(model: DecisionModel | undefined) {
 }
 
 test("decision adapter configuration and real HTTP wire retain bounded typed outcomes without retry", async () => {
+  const book = await fixture();
   const local = await loopbackFixture();
 
   const base = {
@@ -200,7 +202,7 @@ test("decision adapter configuration and real HTTP wire retain bounded typed out
         }),
       );
 
-      const observed = await model.decide(request);
+      const observed = await withAiEgress(book, (egress) => model.decide(request, egress));
 
       expect(observed.status === "validated" ? observed.status : observed.code).toBe(expected);
       expect(local.counts[name]).toBe(1);
@@ -230,12 +232,18 @@ test("decision adapter configuration and real HTTP wire retain bounded typed out
       }),
     );
 
-    const beforeAbort = await abortModel.decide(request, aborted.signal);
+    const beforeAbort = await withAiEgress(book, (egress) =>
+      abortModel.decide(request, egress, aborted.signal),
+    );
 
     expect(beforeAbort).toMatchObject({ status: "failed", code: "aborted" });
     expect(local.counts.abort).toBeUndefined();
     const during = new AbortController();
-    const pending = abortModel.decide(request, during.signal);
+
+    const pending = withAiEgress(book, (egress) =>
+      abortModel.decide(request, egress, during.signal),
+    );
+
     const abortTimer = setTimeout(() => during.abort(), 50);
     const duringAbort = await pending;
     clearTimeout(abortTimer);
@@ -243,10 +251,15 @@ test("decision adapter configuration and real HTTP wire retain bounded typed out
     expect(duringAbort).toMatchObject({ status: "failed", code: "aborted" });
     expect(local.counts.abort).toBe(1);
 
-    const invalidRequest = await required(configuredDecisionModel(base)).decide({
-      ...request,
-      model: "different_selector",
-    });
+    const invalidRequest = await withAiEgress(book, (egress) =>
+      required(configuredDecisionModel(base)).decide(
+        {
+          ...request,
+          model: "different_selector",
+        },
+        egress,
+      ),
+    );
 
     expect(invalidRequest).toMatchObject({ status: "failed", code: "invalid_request" });
     expect(local.counts.valid).toBe(1);
@@ -273,6 +286,7 @@ test("decision adapter configuration and real HTTP wire retain bounded typed out
 });
 
 test("authored Workers AI binding exercises the shared validator without claiming live weight qualification or wire inspection", async () => {
+  const book = await fixture();
   const calls: Array<{ selector: string; requestedModel: string }> = [];
   let output: unknown = authoredResponse("clef-flash");
   let stalls = false;
@@ -289,13 +303,15 @@ test("authored Workers AI binding exercises the shared validator without claimin
 
   const config = {
     OPENERP_DECISION_MODEL: "workers-ai-clef",
+    OPENERP_AI_EGRESS_POLICY: "eu-no-training-no-retention",
+    OPENERP_AI_EGRESS_APPROVAL: "synthetic-policy-not-live-qualification",
     OPENERP_DECISION_MODEL_RELEASE: "synthetic_clef_configuration_1",
     OPENERP_DECISION_MODEL_TIMEOUT_MS: "100",
   };
 
   const model = required(configuredDecisionModel(config, binding));
   const input = { ...request, model: "clef-flash" };
-  const success = await model.decide(input);
+  const success = await withAiEgress(book, (egress) => model.decide(input, egress));
 
   expect(success.status).toBe("validated");
 
@@ -321,14 +337,14 @@ test("authored Workers AI binding exercises the shared validator without claimin
 
   for (const item of cases) {
     output = item.output;
-    const observed = await model.decide(input);
+    const observed = await withAiEgress(book, (egress) => model.decide(input, egress));
 
     expect(observed).toMatchObject({ status: "failed", code: item.expected });
     outcomes.push({ name: item.name, expected: item.expected, observed });
   }
 
   stalls = true;
-  const timedOut = await model.decide(input);
+  const timedOut = await withAiEgress(book, (egress) => model.decide(input, egress));
 
   expect(timedOut).toMatchObject({ status: "failed", code: "timeout" });
   expect(calls).toHaveLength(5);

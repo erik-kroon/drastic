@@ -455,7 +455,7 @@ distributions. Add the dependency only if needed, and verify the lockfile.
 
 ## AUT-13 Qualify Clef-flash and Jev in shadow
 
-**Readiness:** Gated (AUT-00 data-use) · **Size:** M · **Depends on:** AUT-12
+**Readiness:** Gated (AUT-00 data-use and AUT-28 egress) · **Size:** M · **Depends on:** AUT-12, AUT-28
 
 Run both providers through the same adapter on a synthetic corpus first. Clef-omni
 (9 October 2026) is an optional third candidate for the document-kind question with
@@ -618,7 +618,7 @@ an existing record is never edited.
 
 ## AUT-24 Agent watchdog questions and mandate suspension
 
-**Readiness:** Ready after dependencies · **Size:** M · **Depends on:** AUT-12
+**Readiness:** Ready after dependencies · **Size:** M · **Depends on:** AUT-12, AUT-28
 
 Add decision questions over agent action traces:
 
@@ -649,12 +649,24 @@ value measurements (DRA-183). Report observations, not targets.
 
 ## AUT-26 Completeness-chasing agent
 
-**Readiness:** Ready after AUT-01 · **Size:** M · **Depends on:** AUT-01
+**Readiness:** Ready after dependencies · **Size:** M · **Depends on:** AUT-01, AUT-28
 
 Expose templated work-question creation (`work-questions.ts`) to agents, covering
 missing receipts and private-or-business clarifications. Agents create questions and
 claims; they never post. The MCP catalog changes, so `test:mcp` and `test:mcp:eval` are
 required.
+
+## AUT-28 AI egress boundary
+
+**Readiness:** Implementation and synthetic verification tracked in [the AUT-28 record](ai-egress-implementation.md). Live-provider qualification remains gated by AUT-00.
+
+Every product model call uses one boundary. The boundary loads stored identities under book authority, assigns stable book tokens and retains disclosure admissions before dispatch. Client names, owners, employees and private or unclassified counterparties are masked. Evidence-backed company counterparties keep their names. Sole-trader names are masked, while separately typed industry and tax attributes remain usable.
+
+Typed financial facts retain exact values. Free text uses known aliases and Swedish personal-number patterns. Typed identity slots and message-template slots can restore tokens. Narrative text keeps tokens. Unknown tokens refuse the output.
+
+Raw document reading is a separate disclosure mode. Originals require an explicitly approved provider policy and a retained admission. The boundary cannot hide identities inside an original invoice. Deterministic name comparisons stay inside Drastic and can provide their result to a model.
+
+AUT-28 is a prerequisite for AUT-13, AUT-24 and AUT-26, and applies to the existing document reader. It reduces disclosure risk but does not guarantee anonymity. The proposed claim that names never reach a provider remains unavailable for raw documents and requires qualified outbound evidence.
 
 ---
 

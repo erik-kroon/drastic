@@ -1,11 +1,12 @@
 import { BoundedJsonError, readBoundedJson } from "../bounded-json";
+import { AiEgressError, requireAiEgress, type AiEgress, type AiProvider } from "../ai-egress";
 
 export class DocumentOutputError extends Error {}
 
 export interface DocumentReader {
   readonly identity: string;
-  submit(bytes: Uint8Array): Promise<string>;
-  poll(operation: string): Promise<unknown>;
+  submit(bytes: Uint8Array, egress: AiEgress): Promise<string>;
+  poll(operation: string, egress: AiEgress): Promise<unknown>;
 }
 
 async function boundedJson(response: Response) {
@@ -25,7 +26,11 @@ async function boundedJson(response: Response) {
 
 // Callers supply an approved endpoint and secret. No deployment enables this
 // adapter implicitly; the local fixture uses the same HTTP protocol on loopback.
-export function azureInvoiceReader(endpoint: string, key: string): DocumentReader {
+export function azureInvoiceReader(
+  endpoint: string,
+  key: string,
+  policy: AiProvider,
+): DocumentReader {
   const origin = new URL(endpoint);
 
   if (
@@ -41,6 +46,15 @@ export function azureInvoiceReader(endpoint: string, key: string): DocumentReade
   ) {
     throw new Error("reader_endpoint");
   }
+
+  if (
+    policy.destination !== origin.origin ||
+    policy.provider !== "azure-document-intelligence" ||
+    policy.modelRelease !== "prebuilt-invoice:2024-11-30" ||
+    (policy.policy === "local-fixture" &&
+      !(origin.protocol === "http:" && origin.hostname === "127.0.0.1"))
+  )
+    throw new AiEgressError();
 
   const prefix = "/documentintelligence/documentModels/prebuilt-invoice";
 
@@ -62,7 +76,8 @@ export function azureInvoiceReader(endpoint: string, key: string): DocumentReade
 
   return {
     identity: `azure-invoice-v1:${origin.origin}`,
-    async submit(bytes) {
+    async submit(bytes, egress) {
+      await requireAiEgress(egress).raw(policy, "document_submit", bytes);
       // The base64 request cannot ask the provider to fetch a caller-controlled URL.
       let binary = "";
 
@@ -90,9 +105,12 @@ export function azureInvoiceReader(endpoint: string, key: string): DocumentReade
         await response.body?.cancel();
       }
     },
-    async poll(operation) {
+    async poll(operation, egress) {
+      const url = operationUrl(operation);
+      await requireAiEgress(egress).raw(policy, "document_poll", operation);
+
       return boundedJson(
-        await fetch(operationUrl(operation), {
+        await fetch(url, {
           redirect: "error",
           signal: AbortSignal.timeout(15000),
           headers: { "Ocp-Apim-Subscription-Key": key },

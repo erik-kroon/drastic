@@ -1,5 +1,14 @@
 import * as D from "@open-erp/domain/decisions";
 import { assertBoundedJsonValue, BoundedJsonError, readBoundedJson } from "../bounded-json";
+import * as Schema from "effect/Schema";
+import {
+  AiEgressError,
+  AiState,
+  requireAiEgress,
+  type AiEgress,
+  type AiProvider,
+  type IdentityRegistry,
+} from "../ai-egress";
 
 export type WorkersAiSelector = "@cf/cloudflare/clef" | "@cf/cloudflare/clef-flash";
 
@@ -14,6 +23,7 @@ export interface DecisionIdentity {
   readonly expectedReportedModel: string;
   readonly workersAiSelector: WorkersAiSelector | null;
   readonly releaseQualification: "unsubstantiated";
+  readonly egressPolicy: AiProvider;
 }
 
 type FailureCode =
@@ -27,7 +37,8 @@ type FailureCode =
   | "invalid_response"
   | "invalid_request"
   | "network_error"
-  | "binding_error";
+  | "binding_error"
+  | "egress_refused";
 
 export type DecisionOutcome =
   | {
@@ -35,6 +46,7 @@ export type DecisionOutcome =
       readonly claimStatus: "unreviewed_source_claim";
       readonly identity: DecisionIdentity & { readonly reportedModel: string };
       readonly response: D.SystemOneResponse;
+      readonly tokens: IdentityRegistry;
       readonly statistics: Readonly<Record<string, D.Statistics>>;
       readonly wireEvidence: "bounded_utf8_unique_keys" | "already_parsed_object";
     }
@@ -42,7 +54,11 @@ export type DecisionOutcome =
 
 export interface DecisionModel {
   readonly identity: DecisionIdentity;
-  decide(request: D.SystemOneRequest, signal?: AbortSignal): Promise<DecisionOutcome>;
+  decide(
+    request: D.SystemOneRequest,
+    egress: AiEgress,
+    signal?: AbortSignal,
+  ): Promise<DecisionOutcome>;
 }
 
 class DecisionAdapterError extends Error {
@@ -89,10 +105,27 @@ export function systemOneModel(
   transport: Transport,
   timeoutMs: number,
 ): DecisionModel {
+  if (
+    identity.egressPolicy.modelRelease !== identity.configuredRelease ||
+    identity.egressPolicy.provider !== identity.provider ||
+    identity.egressPolicy.destination !==
+      (transport.kind === "http" ? transport.endpoint.origin : transport.selector) ||
+    (identity.egressPolicy.policy === "local-fixture" &&
+      !(
+        transport.kind === "http" &&
+        transport.endpoint.protocol === "http:" &&
+        transport.endpoint.hostname === "127.0.0.1"
+      ))
+  )
+    throw new AiEgressError();
+
   return {
     identity,
-    async decide(request, callerSignal) {
-      const admitted = D.parseRequest(request);
+    async decide(request, egress, callerSignal) {
+      const admitted = D.parseRequest({
+        ...request,
+        state: Schema.is(AiState)(request.state) ? JSON.stringify(request.state) : request.state,
+      });
 
       if (admitted.status !== "ready" || request.model !== identity.requestedModel)
         return { status: "failed", code: "invalid_request", diagnostic: null };
@@ -116,12 +149,40 @@ export function systemOneModel(
       });
 
       try {
-        const raw = await Promise.race([
-          dispatch(transport, admitted.request, controller.signal),
-          stopped,
-        ]);
+        const boundary = requireAiEgress(egress);
 
-        const validated = D.validateResponse(admitted.request, raw, identity.expectedReportedModel);
+        const invoke = async () => {
+          const captured = await boundary.structured(
+            identity.egressPolicy,
+            Schema.decodeUnknownSync(Schema.Json)(request),
+            Schema.is(AiState)(request.state) && request.state.some((part) => part.kind !== "text")
+              ? ["free_text", "financial_facts"]
+              : ["free_text"],
+          );
+
+          const outgoing = D.parseRequest(captured.payload);
+
+          if (outgoing.status !== "ready" || outgoing.request.model !== identity.requestedModel)
+            throw new AiEgressError();
+
+          if (controller.signal.aborted)
+            throw new DecisionAdapterError(
+              controller.signal.reason === "deadline" ? "timeout" : "aborted",
+            );
+
+          const raw = await dispatch(transport, outgoing.request, controller.signal);
+          captured.registry.assertOutput(Schema.decodeUnknownSync(Schema.Json)(raw));
+
+          return { raw, request: outgoing.request, tokens: captured.registry };
+        };
+
+        const completed = await Promise.race([invoke(), stopped]);
+
+        const validated = D.validateResponse(
+          completed.request,
+          completed.raw,
+          identity.expectedReportedModel,
+        );
 
         if (validated.status === "refused") {
           return {
@@ -136,11 +197,15 @@ export function systemOneModel(
           claimStatus: "unreviewed_source_claim",
           identity: { ...identity, reportedModel: validated.response.model },
           response: validated.response,
+          tokens: completed.tokens,
           statistics: validated.statistics,
           wireEvidence:
             transport.kind === "http" ? "bounded_utf8_unique_keys" : "already_parsed_object",
         };
       } catch (error) {
+        if (error instanceof AiEgressError)
+          return { status: "failed", code: "egress_refused", diagnostic: null };
+
         if (error instanceof DecisionAdapterError)
           return { status: "failed", code: error.code, diagnostic: null };
 
