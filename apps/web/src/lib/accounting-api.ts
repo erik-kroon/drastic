@@ -25,10 +25,11 @@ export async function readAccounting<S extends Schema.Top & { readonly DecodingS
   path: string,
   schema: S,
   options?: RequestInit,
+  timeoutMs = 20_000,
 ): Promise<S["Type"]> {
   const headers = new Headers(options?.headers);
   headers.set("Content-Type", "application/json");
-  const timeout = AbortSignal.timeout(20_000);
+  const timeout = AbortSignal.timeout(timeoutMs);
 
   const response = await fetch(path, {
     ...options,

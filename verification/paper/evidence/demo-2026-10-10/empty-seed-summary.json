@@ -13,17 +13,15 @@
     "bankRows": 10000,
     "supplierDraftPage": 200,
     "attentionPage": 50,
-    "createdCompaniesPerActor": 100,
-    "firmClients": 200
+    "createdCompaniesPerActor": 2000,
+    "firmClients": 2000
   },
   "limitations": [
     "Effect application reads use the board instant; browser, database, ingestion, proposal, approval and receipt timestamps remain real.",
     "The bureau actor is Elin Sund; Sara Lind and illustrated agent activity are not fabricated.",
     "Board-only combined approval/posting, return and reject operations remain unsupported.",
     "Customer invoice is a synthetic register record backed by a posted receivable, not legal issuance.",
-    "Complete source coverage, locked result comparison and illustrated actor activity are not fabricated.",
-    "Firm read and write owners support at most 200 clients; 1284 cannot be represented without a behavior change.",
-    "One operator can create at most 100 companies; stress portfolios retain those plus the provisioned synthetic book."
+    "Complete source coverage, locked result comparison and illustrated actor activity are not fabricated."
   ],
   "bankRowCount": 0
 }

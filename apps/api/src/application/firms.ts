@@ -33,7 +33,7 @@ const roles = ["admin", "accountant"] as const;
 
 const maximumCreatedFirms = 100;
 
-const maximumFirmClients = 200;
+const maximumFirmAccessRequests = 200;
 
 const maximumFirmMembers = 100;
 
@@ -227,11 +227,11 @@ function readWorkspace(transaction: Transaction, actorId: string, firmId: string
     if (team.length > maximumFirmMembers) return yield* unsupported();
     const clients = yield* Db.readClientBooks(transaction, firmId, actorId);
 
-    if (clients.length > maximumFirmClients) return yield* unsupported();
+    if (clients.length > FirmContract.maximumFirmClients) return yield* unsupported();
 
     const accessRequests = yield* Requests.readAccessRequests(transaction, firmId);
 
-    if (accessRequests.length > maximumFirmClients) return yield* unsupported();
+    if (accessRequests.length > maximumFirmAccessRequests) return yield* unsupported();
 
     return yield* decode(WorkspaceSchema, {
       firm: { id: firmId, name: firm.name, role: firm.role },
@@ -368,7 +368,7 @@ export const saveFirmAccessRequest = Effect.fn("firms.saveAccessRequest")(functi
     if (
       !current &&
       (yield* Requests.countAccessRequests(transaction, command.firmId))[0]!.total >=
-        maximumFirmClients
+        maximumFirmAccessRequests
     ) {
       return yield* failure("InvalidJournal");
     }
@@ -515,7 +515,10 @@ export const saveFirmClient = Effect.fn("firms.saveClient")(function* (
       if (current === undefined) {
         if (firm.role !== "admin") return yield* failure("Forbidden");
 
-        if ((yield* Db.countClients(transaction, command.firmId))[0]!.total >= maximumFirmClients) {
+        if (
+          (yield* Db.countClients(transaction, command.firmId))[0]!.total >=
+          FirmContract.maximumFirmClients
+        ) {
           return yield* failure("InvalidJournal");
         }
       }

@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/empty-K-10/actual.png",
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/empty-K-10",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output verification/paper/evidence/demo-2026-10-10/empty-K-10",
+  "sourceRevision": "295d0b4ca3e763664331136eec9c761271587ab8",
   "sourceHashes": {
     "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
     "apps/web/src/components/work-home.tsx": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
@@ -42,7 +42,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
-    "time": "2026-10-10T13:30:07.675Z",
+    "time": "2026-10-10T15:44:06.650Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

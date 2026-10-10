@@ -1,6 +1,6 @@
 {
-  "actual": "verification/paper/evidence/demo-2026-10-10/K-09/actual.png",
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output verification/paper/evidence/demo-2026-10-10/K-09",
+  "actual": "verification/paper/evidence/demo-2026-10-10/many-K-09/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output verification/paper/evidence/demo-2026-10-10/many-K-09",
   "sourceRevision": "295d0b4ca3e763664331136eec9c761271587ab8",
   "sourceHashes": {
     "apps/web/src/components/firms/portfolio.tsx": "17f0d3857f96ce48b593dcc2ec47518e20aa8cd8468e91c18b066cb8271a26a7",
@@ -30,13 +30,13 @@
       "height": 900
     },
     "route": "/firms",
-    "resolvedRoute": "/firms?firm=firm_41e6074673ce4495b3de7014f8e7a6f0&tab=clients",
-    "time": "2026-10-10T15:45:16.242Z",
+    "resolvedRoute": "/firms?firm=firm_23cfdae7d7334f60b2fac8f59eb3e027&tab=clients",
+    "time": "2026-10-10T15:38:04.105Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
-      "mode": "demo",
+      "mode": "many",
       "state": "permitted clients, first selected; incomplete company observations",
       "selection": null,
       "boardContentMatch": false

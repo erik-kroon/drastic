@@ -13,6 +13,10 @@ import { closingReadiness } from "./closing/proposals";
 import { bankWorkspace } from "./banking/workspace";
 import { listBankInventorySignoffs, getBankInventorySignoff } from "./banking/inventory-signoffs";
 import { failure } from "./failures";
+import { withRequestDatabase } from "../db/transaction";
+import { RequestEnvironment } from "../runtime/environment";
+
+const portfolioConcurrency = 4;
 
 const stockholmDate = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Europe/Stockholm",
@@ -71,20 +75,24 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
     };
 
     const kinds = ["journal", "invoice", "expense", "document", "supplier", "recurring"] as const;
-
-    const counts = yield* Effect.forEach(kinds, (kind) =>
-      listAttention(token, { scope, kind, status: "open" }),
-    );
-
     const latest = yield* listAttention(token, { scope, status: "all" });
 
+    const counts =
+      latest.counts.open === "0"
+        ? kinds.map(() => "0")
+        : yield* Effect.forEach(kinds, (kind) =>
+            listAttention(token, { scope, kind, status: "open" }).pipe(
+              Effect.map((page) => page.counts.open),
+            ),
+          );
+
     const byKind = {
-      journal: counts[0]!.counts.open,
-      invoice: counts[1]!.counts.open,
-      expense: counts[2]!.counts.open,
-      document: counts[3]!.counts.open,
-      supplier: counts[4]!.counts.open,
-      recurring: counts[5]!.counts.open,
+      journal: counts[0]!,
+      invoice: counts[1]!,
+      expense: counts[2]!,
+      document: counts[3]!,
+      supplier: counts[4]!,
+      recurring: counts[5]!,
     };
 
     const openWork = {
@@ -226,7 +234,16 @@ export const getFirmPortfolio = Effect.fn("firms.portfolio")(function* (
 ) {
   const observedFrom = yield* observedTime();
   const workspace = yield* getFirmPortfolioWorkspace(token, command);
-  const clients = yield* Effect.forEach(workspace.clients, (client) => clientFacts(token, client));
+  const { bindings } = yield* RequestEnvironment;
+
+  const clients = yield* withRequestDatabase(
+    bindings,
+    Effect.forEach(workspace.clients, (client) => clientFacts(token, client), {
+      concurrency: portfolioConcurrency,
+    }),
+    portfolioConcurrency,
+  );
+
   const current = yield* getFirmPortfolioWorkspace(token, command);
 
   if (JSON.stringify(current) !== JSON.stringify(workspace)) {
