@@ -52,7 +52,9 @@ test("admitted book catalog exposes stable server-authored shadow questions with
     probabilityTolerance: 0.000001,
     consistencyTolerance: 0.000000000001,
   });
-  expect(catalog.releases).toHaveLength(1);
+  expect(catalog.releases).toHaveLength(2);
+  expect(catalog.releases[1]?.version).toBe("document_kind_structured_v1");
+  expect(catalog.releases[1]?.stateBuilder.version).toBe("supplier_structured_financial_facts_v1");
   const release = catalog.releases[0]!;
 
   expect(release.id).toBe("document_kind");

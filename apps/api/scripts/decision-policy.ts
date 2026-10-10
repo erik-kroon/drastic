@@ -9,7 +9,7 @@ const args = process.argv.slice(2);
 
 const [bookId, questionId, mode, modelRelease] = args;
 
-const budget = args[4];
+const inputTokenLimit = args[4];
 
 const requestedModel = args[5] ?? modelRelease;
 
@@ -25,7 +25,7 @@ if (
   !expectedReportedModel?.trim()
 )
   throw new Error(
-    "Use separate privileged OPENERP_DECISION_POLICY_DATABASE_URL and book/question/off|shadow/release/dispatch-budget/[selector]/[reported-model]. Synthetic fixture policy only.",
+    "Use separate privileged OPENERP_DECISION_POLICY_DATABASE_URL and book/question/off|shadow/release/input-token-limit/[selector]/[reported-model]. Synthetic fixture policy only.",
   );
 
 const policy = Schema.decodeUnknownSync(DecisionPolicy)({
@@ -35,7 +35,7 @@ const policy = Schema.decodeUnknownSync(DecisionPolicy)({
   modelRelease,
   requestedModel,
   expectedReportedModel,
-  dispatchBudget: Number(budget),
+  inputTokenLimit: Number(inputTokenLimit),
   dataUse: "synthetic_fixture_only",
 });
 

@@ -41,22 +41,10 @@ CREATE TABLE openerp.decision_results (
   PRIMARY KEY(book_id,request_id), UNIQUE(book_id,id),
   FOREIGN KEY(book_id,request_id) REFERENCES openerp.decision_requests(book_id,id)
 );
-CREATE TABLE openerp.decision_budget_controls (
-  book_id text NOT NULL, policy_id text NOT NULL, reserved integer NOT NULL DEFAULT 0 CHECK(reserved>=0),
-  PRIMARY KEY(book_id,policy_id), FOREIGN KEY(book_id,policy_id) REFERENCES openerp.book_decision_policies(book_id,id)
-);
-CREATE TABLE openerp.decision_budget_reservations (
-  book_id text NOT NULL, request_id text NOT NULL, policy_id text NOT NULL,
-  body jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  PRIMARY KEY(book_id,request_id), FOREIGN KEY(book_id,request_id) REFERENCES openerp.decision_requests(book_id,id),
-  FOREIGN KEY(book_id,policy_id) REFERENCES openerp.book_decision_policies(book_id,id)
-);
 CREATE TRIGGER immutable_decision_policy BEFORE UPDATE OR DELETE ON openerp.book_decision_policies FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER immutable_decision_request BEFORE UPDATE OR DELETE ON openerp.decision_requests FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER immutable_decision_attempt BEFORE UPDATE OR DELETE ON openerp.decision_attempts FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER immutable_decision_result BEFORE UPDATE OR DELETE ON openerp.decision_results FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
-CREATE TRIGGER immutable_decision_reservation BEFORE UPDATE OR DELETE ON openerp.decision_budget_reservations FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 GRANT SELECT ON openerp.book_decision_policies TO openerp_runtime;
-GRANT SELECT,INSERT ON openerp.decision_requests,openerp.decision_attempts,openerp.decision_results,openerp.decision_budget_reservations TO openerp_runtime;
-GRANT SELECT,INSERT,UPDATE ON openerp.decision_request_controls,openerp.decision_budget_controls TO openerp_runtime;
+GRANT SELECT,INSERT ON openerp.decision_requests,openerp.decision_attempts,openerp.decision_results TO openerp_runtime;
+GRANT SELECT,INSERT,UPDATE ON openerp.decision_request_controls TO openerp_runtime;

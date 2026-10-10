@@ -138,27 +138,6 @@ export function lockRequesterAdmission(tx: Transaction, row: RequestRow) {
   );
 }
 
-export function initializeBudget(tx: Transaction, bookId: string, policyId: string) {
-  return tx.execute(
-    sql`insert into openerp.decision_budget_controls(book_id,policy_id) values(${bookId},${policyId}) on conflict do nothing`,
-    "objects",
-  );
-}
-
-export function reserveBudget(tx: Transaction, bookId: string, policyId: string, limit: number) {
-  return tx.execute<{ reserved: number }>(
-    sql`update openerp.decision_budget_controls set reserved=reserved+1 where book_id=${bookId} and policy_id=${policyId} and reserved<${limit} returning reserved`,
-    "objects",
-  );
-}
-
-export function insertReservation(tx: Transaction, bookId: string, id: string, policyId: string) {
-  return tx.execute(
-    sql`insert into openerp.decision_budget_reservations(book_id,request_id,policy_id,body) values(${bookId},${id},${policyId},' {"unit":"synthetic_dispatch","count":1,"usageStatus":"unknown"}'::jsonb)`,
-    "objects",
-  );
-}
-
 export function startAttempt(tx: Transaction, bookId: string, id: string) {
   return tx.execute<{ generation: number }>(
     sql`update openerp.decision_request_controls set status='running',generation=generation+1,lease_expires_at=clock_timestamp()+interval '60 seconds' where book_id=${bookId} and request_id=${id} returning generation`,
@@ -182,7 +161,7 @@ export function appendAttempt(
 
 export function markDisclosure(tx: Transaction, bookId: string, id: string, generation: number) {
   return tx.execute(
-    sql`update openerp.decision_request_controls set disclosed_at=clock_timestamp() where book_id=${bookId} and request_id=${id} and generation=${generation} and status='running'`,
+    sql`update openerp.decision_request_controls set disclosed_at=clock_timestamp() where book_id=${bookId} and request_id=${id} and generation=${generation} and status='running' and lease_expires_at>clock_timestamp() returning request_id`,
     "objects",
   );
 }

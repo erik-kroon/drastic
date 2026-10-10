@@ -355,3 +355,18 @@ export const documentKindDefinition: QuestionDefinition = {
     },
   },
 };
+
+export const structuredDocumentKindDefinition: QuestionDefinition = {
+  ...documentKindDefinition,
+  version: "document_kind_structured_v1",
+  stateBuilder: {
+    id: "supplier_structured_financial_facts",
+    version: "supplier_structured_financial_facts_v1",
+  },
+  question: {
+    ...documentKindDefinition.question,
+    instructions:
+      boundary +
+      "Classify only when the supplied structured financial facts establish the document kind. There is no source document text or owner narrative. Amounts and dates alone do not establish invoice, credit, receipt or payment status; choose unknown when those distinctions cannot be established.",
+  },
+};

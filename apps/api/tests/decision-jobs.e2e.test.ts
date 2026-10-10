@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import app from "../src/index";
 import type { Bindings } from "../src/runtime/environment";
 import * as C from "@open-erp/contracts/decision-jobs";
+import * as Questions from "@open-erp/contracts/decisions";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as A from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -105,6 +106,7 @@ const providerControls = new Map<string, { scenario: string }>();
 async function provider(book: BookFixture) {
   const control = { scenario: "valid" };
   providerControls.set(book.bookId, control);
+
   const calls: { case: string; questions: unknown; state: string; bookLockReleased: boolean }[] =
     [];
 
@@ -221,6 +223,7 @@ async function fixtureDraft(f: Awaited<ReturnType<typeof supplierFixture>>, scen
   );
 
   const control = providerControls.get(f.book.bookId);
+
   if (control) control.scenario = scenario;
 
   return createDraft(f.book, {
@@ -355,14 +358,34 @@ test("decision shadow lifecycle covers policy, fencing, disclosure recovery and 
     await policy(f.book, "shadow");
     expect(final.status, JSON.stringify({ reason: final.reason })).toBe("validated");
     expect(final.result?.status).toBe("unreviewed_source_claim");
+
+    const terminalUsage = (
+      await admin.query(
+        "SELECT body FROM openerp.decision_attempts WHERE book_id=$1 AND request_id=$2 AND phase='terminal'",
+        [f.book.bookId, id],
+      )
+    ).rows[0].body;
+
+    await writeFile(
+      join(environment().artifacts, "decision-validated-usage.json"),
+      JSON.stringify({ resultUsage: final.result?.usage, terminalUsage }, null, 2),
+    );
+    expect(terminalUsage.usageStatus).toBe("provider_reported");
+    expect(terminalUsage.usage).toEqual(final.result?.usage);
+
     expect(fixture.calls).toHaveLength(1);
     expect(fixture.calls[0]?.bookLockReleased).toBe(true);
     const receivedState = JSON.parse(fixture.calls[0]!.state);
     expect(Array.isArray(receivedState)).toBe(true);
-    expect(receivedState.every((fact: { kind: string }) => ["amount", "date", "vat", "account"].includes(fact.kind))).toBe(true);
+    expect(
+      receivedState.every((fact: { kind: string }) =>
+        ["amount", "date", "vat", "account"].includes(fact.kind),
+      ),
+    ).toBe(true);
     expect(fixture.calls[0]!.state).not.toContain("RAW_DOCUMENT_CANARY");
     expect(fixture.calls[0]!.state).not.toContain(f.book.bookId);
     expect(fixture.calls[0]!.state).not.toContain(draft.id);
+    expect(fixture.calls[0]!.state).not.toContain(draft.content.lines[0]!.description);
     expect(final.builders.state).toBe("supplier_structured_financial_facts_v1");
     expect(final.question.version).toBe("document_kind_structured_v1");
     expect(final.evidence.precedentDecisionIds).toContain(precedent.approvalId);
@@ -376,7 +399,7 @@ test("decision shadow lifecycle covers policy, fencing, disclosure recovery and 
 
     for (const [scenario, status] of [
       ["rate", "failed"],
-      ["timeout", "failed"],
+      ["timeout", "uncertain"],
       ["model", "failed"],
       ["option", "failed"],
       ["distribution", "failed"],
@@ -393,6 +416,20 @@ test("decision shadow lifecycle covers policy, fencing, disclosure recovery and 
         C.DecisionRequestView,
       );
 
+      await writeFile(
+        join(environment().artifacts, "decision-provider-outcome.json"),
+        JSON.stringify(
+          {
+            scenario,
+            status: outcome.status,
+            reason: outcome.reason,
+            result: outcome.result,
+            dispatches: fixture.calls.length,
+          },
+          null,
+          2,
+        ),
+      );
       expect(outcome.status).toBe(status);
       expect(outcome.result).toBeNull();
       const count = fixture.calls.length;
@@ -618,6 +655,7 @@ test("decision shadow lifecycle covers policy, fencing, disclosure recovery and 
           retainedRequests,
           retainedJobs,
           dispatches: fixture.calls.length,
+          receivedEnvelopes: fixture.calls,
           bookLockReleaseChecks: fixture.calls.map((item) => item.bookLockReleased),
         },
         null,
@@ -640,7 +678,13 @@ test("decision runner auth and authored binding preserve ordinary accounting and
     provider: "workers-ai",
     configuredRelease: release,
     inputTokenLimit: 24576,
-    egressPolicy: { provider: "workers-ai", destination: "@cf/cloudflare/clef-flash", modelRelease: release, policy: "self-hosted", approval: "synthetic_authored_binding_only" },
+    egressPolicy: {
+      provider: "workers-ai",
+      destination: "@cf/cloudflare/clef-flash",
+      modelRelease: release,
+      policy: "self-hosted",
+      approval: "synthetic_authored_binding_only",
+    },
     requestedModel: "clef-flash",
     expectedReportedModel: "clef-flash",
     workersAiSelector: "@cf/cloudflare/clef-flash",
@@ -915,7 +959,6 @@ test("decision runner auth and authored binding preserve ordinary accounting and
   }
 });
 
-
 test("decision queue resumes through the current egress port", async () => {
   const f = await supplierFixture();
   const fixture = await provider(f.book);
@@ -924,7 +967,36 @@ test("decision queue resumes through the current egress port", async () => {
 
   try {
     await policy(f.book, "shadow");
-    const queued = await post(f.book, "/automation/decision-requests", admission(await fixtureDraft(f, "valid")), C.DecisionAdmission);
+
+    const queued = await post(
+      f.book,
+      "/automation/decision-requests",
+      admission(await fixtureDraft(f, "valid")),
+      C.DecisionAdmission,
+    );
+
+    const catalog = await decoded(
+      await request(f.book, "/automation/decision-questions"),
+      Questions.DecisionQuestionCatalog,
+    );
+
+    const releaseView = catalog.releases.find(
+      (item) => item.version === queued.request!.question.version,
+    )!;
+
+    await writeFile(
+      join(environment().artifacts, "decision-option-digests.json"),
+      JSON.stringify(
+        {
+          catalog: releaseView.optionSetDigest,
+          request: queued.request!.optionSetDigest,
+          questionVersion: queued.request!.question.version,
+        },
+        null,
+        2,
+      ),
+    );
+    expect(queued.request!.optionSetDigest).toBe(releaseView.optionSetDigest);
     runner = startRunner(f.book.agentToken, undefined, {
       OPENERP_DECISION_MODEL: "local-systemone-fixture",
       OPENERP_DECISION_MODEL_RELEASE: release,
@@ -933,11 +1005,37 @@ test("decision queue resumes through the current egress port", async () => {
     });
     let observed = queued.request!;
     await waitFor(async () => {
-      observed = await decoded(await request(f.book, `/automation/decision-requests/${queued.request!.id}`), C.DecisionRequestView);
+      observed = await decoded(
+        await request(f.book, `/automation/decision-requests/${queued.request!.id}`),
+        C.DecisionRequestView,
+      );
+
       return !["ready", "running"].includes(observed.status);
     });
-    const jobs = (await admin.query("SELECT id,state FROM public.effect_mq_jobs WHERE name='decision' AND metadata->>'bookId'=$1", [f.book.bookId])).rows;
-    await writeFile(join(environment().artifacts, "decision-queue-port.json"), JSON.stringify({ syntheticOnly: true, requestId: observed.id, status: observed.status, reason: observed.reason, dispatchCount: fixture.calls.length, jobs, runnerFailures: runner.diagnostics.failures }, null, 2));
+
+    const jobs = (
+      await admin.query(
+        "SELECT id,state FROM public.effect_mq_jobs WHERE name='decision' AND metadata->>'bookId'=$1",
+        [f.book.bookId],
+      )
+    ).rows;
+
+    await writeFile(
+      join(environment().artifacts, "decision-queue-port.json"),
+      JSON.stringify(
+        {
+          syntheticOnly: true,
+          requestId: observed.id,
+          status: observed.status,
+          reason: observed.reason,
+          dispatchCount: fixture.calls.length,
+          jobs,
+          runnerFailures: runner.diagnostics.failures,
+        },
+        null,
+        2,
+      ),
+    );
     expect(jobs.length).toBeGreaterThan(0);
     expect(observed.status).toBe("validated");
     expect(fixture.calls).toHaveLength(1);
@@ -948,24 +1046,162 @@ test("decision queue resumes through the current egress port", async () => {
   }
 }, 30_000);
 
-
 test("local decision refusal retains no dispatch intent or unknown external usage", async () => {
   const f = await supplierFixture();
   const fixture = await provider(f.book);
-  const model = configuredDecisionModel({ OPENERP_DECISION_MODEL: "local-systemone-fixture", OPENERP_DECISION_MODEL_RELEASE: release, OPENERP_DECISION_MODEL_ENDPOINT: fixture.endpoint, OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: "1" });
-  const api = await bridge({ DATABASE_URL: environment().runtimeUrl, DECISION_FIXTURE_MODEL: model, OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: hash(f.book.agentToken) });
+
+  const model = configuredDecisionModel({
+    OPENERP_DECISION_MODEL: "local-systemone-fixture",
+    OPENERP_DECISION_MODEL_RELEASE: release,
+    OPENERP_DECISION_MODEL_ENDPOINT: fixture.endpoint,
+    OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT: "1",
+  });
+
+  const api = await bridge({
+    DATABASE_URL: environment().runtimeUrl,
+    DECISION_FIXTURE_MODEL: model,
+    OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: hash(f.book.agentToken),
+  });
+
   const admin = await database();
+
   try {
     await policy(f.book, "shadow", 1);
-    const admitted = await post(f.book, "/automation/decision-requests", admission(await fixtureDraft(f, "valid")), C.DecisionAdmission);
-    const observed = await decoded(await processRequest(api.origin, f.book, admitted.request!.id), C.DecisionRequestView);
-    const attempts = (await admin.query("SELECT phase,body FROM openerp.decision_attempts WHERE book_id=$1 AND request_id=$2 ORDER BY phase", [f.book.bookId, observed.id])).rows;
-    const controls = (await admin.query("SELECT disclosed_at FROM openerp.decision_request_controls WHERE book_id=$1 AND request_id=$2", [f.book.bookId, observed.id])).rows;
-    await writeFile(join(environment().artifacts, "decision-local-refusal.json"), JSON.stringify({ status: observed.status, reason: observed.reason, dispatchCount: fixture.calls.length, attempts, controls }, null, 2));
+
+    const admitted = await post(
+      f.book,
+      "/automation/decision-requests",
+      admission(await fixtureDraft(f, "valid")),
+      C.DecisionAdmission,
+    );
+
+    const observed = await decoded(
+      await processRequest(api.origin, f.book, admitted.request!.id),
+      C.DecisionRequestView,
+    );
+
+    const attempts = (
+      await admin.query(
+        "SELECT phase,body FROM openerp.decision_attempts WHERE book_id=$1 AND request_id=$2 ORDER BY phase",
+        [f.book.bookId, observed.id],
+      )
+    ).rows;
+
+    const controls = (
+      await admin.query(
+        "SELECT disclosed_at FROM openerp.decision_request_controls WHERE book_id=$1 AND request_id=$2",
+        [f.book.bookId, observed.id],
+      )
+    ).rows;
+
+    await writeFile(
+      join(environment().artifacts, "decision-local-refusal.json"),
+      JSON.stringify(
+        {
+          status: observed.status,
+          reason: observed.reason,
+          dispatchCount: fixture.calls.length,
+          attempts,
+          controls,
+        },
+        null,
+        2,
+      ),
+    );
     expect(observed.reason).toBe("state_limit");
     expect(fixture.calls).toHaveLength(0);
     expect(controls[0].disclosed_at).toBeNull();
-    expect(attempts.map(row => row.phase).sort()).toEqual(["claimed", "terminal"]);
-    expect(attempts.find(row => row.phase === "terminal").body.usageStatus).toBe("not_disclosed");
-  } finally { await admin.end(); await api.close(); await fixture.close(); }
+    expect(attempts.map((row) => row.phase).sort()).toEqual(["claimed", "terminal"]);
+    expect(attempts.find((row) => row.phase === "terminal").body.usageStatus).toBe("not_disclosed");
+  } finally {
+    await admin.end();
+    await api.close();
+    await fixture.close();
+  }
+}, 30_000);
+
+test("expired guard refuses transport before dispatch intent", async () => {
+  const f = await supplierFixture();
+  const fixture = await provider(f.book);
+
+  const model = configuredDecisionModel({
+    OPENERP_DECISION_MODEL: "local-systemone-fixture",
+    OPENERP_DECISION_MODEL_RELEASE: release,
+    OPENERP_DECISION_MODEL_ENDPOINT: fixture.endpoint,
+  })!;
+
+  let reached = false;
+  let releaseGuard: () => void = () => {};
+
+  const gate = new Promise<void>((resolve) => {
+    releaseGuard = resolve;
+  });
+
+  const guarded = {
+    identity: model.identity,
+    decide: (...args: Parameters<typeof model.decide>) =>
+      model.decide(args[0], args[1], args[2], async () => {
+        reached = true;
+        await gate;
+        await args[3]?.();
+      }),
+  };
+
+  const api = await bridge({
+    DATABASE_URL: environment().runtimeUrl,
+    DECISION_FIXTURE_MODEL: guarded,
+    OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: hash(f.book.agentToken),
+  });
+
+  const admin = await database();
+
+  try {
+    await policy(f.book, "shadow");
+
+    const admitted = await post(
+      f.book,
+      "/automation/decision-requests",
+      admission(await fixtureDraft(f, "valid")),
+      C.DecisionAdmission,
+    );
+
+    const pending = processRequest(api.origin, f.book, admitted.request!.id);
+    await waitFor(() => reached);
+    await admin.query(
+      "UPDATE openerp.decision_request_controls SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE book_id=$1 AND request_id=$2",
+      [f.book.bookId, admitted.request!.id],
+    );
+    releaseGuard();
+    const observed = await decoded(await pending, C.DecisionRequestView);
+
+    const attempts = (
+      await admin.query(
+        "SELECT phase,body FROM openerp.decision_attempts WHERE book_id=$1 AND request_id=$2 ORDER BY phase",
+        [f.book.bookId, observed.id],
+      )
+    ).rows;
+
+    await writeFile(
+      join(environment().artifacts, "decision-guard-expiry.json"),
+      JSON.stringify(
+        {
+          status: observed.status,
+          reason: observed.reason,
+          dispatches: fixture.calls.length,
+          attempts,
+        },
+        null,
+        2,
+      ),
+    );
+    expect(fixture.calls).toHaveLength(0);
+    expect(observed.status).toBe("stale");
+    expect(observed.reason).toBe("lease_expired_before_dispatch");
+    expect(attempts.find((row) => row.phase === "terminal").body.usageStatus).toBe("not_disclosed");
+  } finally {
+    releaseGuard();
+    await admin.end();
+    await api.close();
+    await fixture.close();
+  }
 }, 30_000);

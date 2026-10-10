@@ -4,6 +4,10 @@ import * as A from "@open-erp/contracts/accounting";
 import * as D from "@open-erp/domain/decisions";
 import * as Effect from "effect/Effect";
 import * as Db from "../../db/decision-jobs";
+import { Database } from "../../db/connection";
+import { openAiEgress } from "../ai-egress";
+import { AiFinancialFact } from "../../adapters/ai-egress";
+import * as Schema from "effect/Schema";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { hashToken } from "../../db/human-actor";
 import { RequestEnvironment } from "../../runtime/environment";
@@ -57,8 +61,7 @@ const freeze = Effect.fn("decisionJobs.freeze")(function* (
     return yield* failure("StaleDependency");
   const source = (yield* Db.readEvidence(tx, scope.bookId, draft.content.sourceEvidenceId))[0];
 
-  if (!source || source.mediaType !== "text/plain" || !source.content.trim())
-    return { skipped: "missing_input" } as const;
+  if (!source) return { skipped: "missing_input" } as const;
   const content = draft.content;
 
   if (content.counterpartyId === null) return { skipped: "missing_counterparty" } as const;
@@ -78,39 +81,27 @@ const freeze = Effect.fn("decisionJobs.freeze")(function* (
   const cutoff = cutoffRows[0]?.cutoff;
 
   if (cutoff === undefined) return yield* failure("InternalError");
-  const definition = D.documentKindDefinition;
+  const definition = D.structuredDocumentKindDefinition;
 
-  const state = {
-    scope,
-    cutoff,
-    subject: {
-      owner: "supplier_draft",
-      id: draft.id,
-      revision: draft.revision,
-      sourceEvidenceId: content.sourceEvidenceId,
-      counterpartyId: content.counterpartyId,
-      counterpartyRevision: content.counterpartyRevision,
-      documentDate: content.documentDate,
-      supplyDate: content.supplyDate,
-      currency: content.currency,
-      currencyScale: content.currencyScale,
-      sourceTotalMinor: content.sourceTotalMinor,
-      lines: content.lines.map((line) => ({
-        id: line.id,
-        description: line.description,
-        baseMinor: line.baseMinor,
-        taxMinor: line.taxMinor,
-        sourceGrossMinor: line.sourceGrossMinor,
-      })),
-    },
-    segments: [{ evidenceId: content.sourceEvidenceId, text: source.content }],
-    precedents: memory.precedents,
-    precedentHistoryDigest: memory.historyDigest,
-  };
+  const state = yield* Schema.decodeUnknownEffect(Schema.Array(AiFinancialFact))([
+    { kind: "date", value: content.documentDate },
+    ...(content.supplyDate === null ? [] : [{ kind: "date", value: content.supplyDate }]),
+    { kind: "amount", value: content.sourceTotalMinor },
+    ...content.lines.flatMap((line) =>
+      [line.baseMinor, line.taxMinor, line.sourceGrossMinor].flatMap((value) =>
+        value === null ? [] : [{ kind: "amount", value }],
+      ),
+    ),
+    ...memory.precedents.flatMap((precedent) =>
+      precedent.amountMinor === null ? [] : [{ kind: "amount", value: precedent.amountMinor }],
+    ),
+  ]).pipe(Effect.mapError(() => failure("InvalidRequest")));
+
+  if (state.length === 0) return { skipped: "missing_structured_input" } as const;
 
   const wire = {
     model: policy.requestedModel,
-    state: JSON.stringify(state),
+    state,
     questions: { document_kind: definition.question },
   };
 
@@ -132,8 +123,22 @@ const freeze = Effect.fn("decisionJobs.freeze")(function* (
       precedent: memory.algorithmVersion,
     },
     originalCommitCutoff: cutoff,
+    evidence: {
+      sourceEvidenceId: content.sourceEvidenceId,
+      sourceDigest: yield* digest(source),
+      precedentHistoryDigest: memory.historyDigest,
+      precedentDecisionIds: [
+        ...new Set(memory.precedents.flatMap((precedent) => precedent.sourceDecisionIds)),
+      ],
+    },
     inputDigest: yield* digest(state),
-    optionSetDigest: yield* digest(definition.question),
+    optionSetDigest: yield* digest({
+      type: definition.question.type,
+      criteria:
+        definition.question.type === "noul"
+          ? (definition.question.criteria ?? null)
+          : definition.question.criteria,
+    }),
     policy,
     input: admitted.request,
   };
@@ -274,12 +279,13 @@ const terminal = Effect.fn("decisionJobs.terminal")(function* (
   status: string,
   reason: string | null,
   disclosed: boolean,
+  reportedUsage?: typeof D.SystemOneResponse.Type.usage,
 ) {
   yield* Db.appendAttempt(tx, scope.bookId, id, generation, "terminal", {
     status,
     reason,
-    usageStatus: disclosed ? "unknown" : "not_disclosed",
-    usage: null,
+    usageStatus: reportedUsage ? "provider_reported" : disclosed ? "unknown" : "not_disclosed",
+    usage: reportedUsage ?? null,
   });
   yield* Db.finish(tx, scope.bookId, id, generation, status, reason);
   const current = (yield* Db.readRequest(tx, scope.bookId, id))[0];
@@ -325,28 +331,6 @@ const claim = Effect.fn("decisionJobs.claim")(function* (
       return {
         view: yield* terminal(tx, command.scope, command.id, row.generation, "stale", stale, false),
       };
-    yield* Db.initializeBudget(tx, command.scope.bookId, frozen.policy.id);
-
-    if (
-      (yield* Db.reserveBudget(
-        tx,
-        command.scope.bookId,
-        frozen.policy.id,
-        frozen.policy.dispatchBudget,
-      )).length === 0
-    )
-      return {
-        view: yield* terminal(
-          tx,
-          command.scope,
-          command.id,
-          row.generation,
-          "skipped",
-          "budget_exhausted",
-          false,
-        ),
-      };
-    yield* Db.insertReservation(tx, command.scope.bookId, command.id, frozen.policy.id);
 
     const generation = (yield* Db.startAttempt(tx, command.scope.bookId, command.id))[0]
       ?.generation;
@@ -355,12 +339,6 @@ const claim = Effect.fn("decisionJobs.claim")(function* (
     yield* Db.appendAttempt(tx, command.scope.bookId, command.id, generation, "claimed", {
       requestDigest: frozen.digest,
       policyId: frozen.policy.id,
-    });
-    yield* Db.markDisclosure(tx, command.scope.bookId, command.id, generation);
-    yield* Db.appendAttempt(tx, command.scope.bookId, command.id, generation, "disclosed", {
-      requestDigest: frozen.digest,
-      usageStatus: "unknown",
-      usage: null,
     });
 
     return { request: frozen, generation };
@@ -393,6 +371,8 @@ const saveValidatedResult = Effect.fn("decisionJobs.result")(function* (
     modelRelease: outcome.identity.configuredRelease,
     requestedModel: outcome.identity.requestedModel,
     reportedModel: outcome.identity.reportedModel,
+    inputTokenLimit: outcome.identity.inputTokenLimit,
+    usage: outcome.response.usage,
     releaseQualification: outcome.identity.releaseQualification,
     status: "unreviewed_source_claim",
     answer,
@@ -440,9 +420,9 @@ const finalize = Effect.fn("decisionJobs.finalize")(function* (
         command.scope,
         command.id,
         row.generation,
-        "uncertain",
-        "lease_expired_after_disclosure",
-        true,
+        row.disclosed ? "uncertain" : "stale",
+        row.disclosed ? "lease_expired_after_dispatch_intent" : "lease_expired_before_dispatch",
+        row.disclosed,
       );
     const stale = yield* staleReason(tx, command.scope, row, claimed.request);
     const refreshed = (yield* Db.readRequest(tx, command.scope.bookId, command.id))[0];
@@ -453,13 +433,21 @@ const finalize = Effect.fn("decisionJobs.finalize")(function* (
         command.scope,
         command.id,
         row.generation,
-        "uncertain",
-        "lease_expired_after_disclosure",
-        true,
+        row.disclosed ? "uncertain" : "stale",
+        row.disclosed ? "lease_expired_after_dispatch_intent" : "lease_expired_before_dispatch",
+        row.disclosed,
       );
 
     if (stale !== null)
-      return yield* terminal(tx, command.scope, command.id, row.generation, "stale", stale, true);
+      return yield* terminal(
+        tx,
+        command.scope,
+        command.id,
+        row.generation,
+        "stale",
+        stale,
+        row.disclosed,
+      );
 
     if (outcome.status !== "validated")
       return yield* terminal(
@@ -467,13 +455,17 @@ const finalize = Effect.fn("decisionJobs.finalize")(function* (
         command.scope,
         command.id,
         row.generation,
-        "failed",
+        row.disclosed &&
+          ["timeout", "aborted", "network_error", "binding_error"].includes(outcome.code)
+          ? "uncertain"
+          : "failed",
         outcome.code,
-        true,
+        row.disclosed,
       );
 
     if (
       outcome.identity.configuredRelease !== claimed.request.policy.modelRelease ||
+      outcome.identity.inputTokenLimit !== claimed.request.policy.inputTokenLimit ||
       outcome.identity.requestedModel !== claimed.request.policy.requestedModel ||
       outcome.identity.reportedModel !== claimed.request.policy.expectedReportedModel
     )
@@ -484,7 +476,7 @@ const finalize = Effect.fn("decisionJobs.finalize")(function* (
         row.generation,
         "failed",
         "model_identity_changed",
-        true,
+        row.disclosed,
       );
 
     const saved = yield* saveValidatedResult(
@@ -501,12 +493,56 @@ const finalize = Effect.fn("decisionJobs.finalize")(function* (
         command.scope,
         command.id,
         row.generation,
-        "uncertain",
-        "lease_expired_after_disclosure",
-        true,
+        row.disclosed ? "uncertain" : "stale",
+        row.disclosed ? "lease_expired_after_dispatch_intent" : "lease_expired_before_dispatch",
+        row.disclosed,
       );
 
-    return yield* terminal(tx, command.scope, command.id, row.generation, "validated", null, true);
+    return yield* terminal(
+      tx,
+      command.scope,
+      command.id,
+      row.generation,
+      "validated",
+      null,
+      row.disclosed,
+      outcome.response.usage,
+    );
+  });
+});
+
+const markDispatch = Effect.fn("decisionJobs.dispatchIntent")(function* (
+  token: string,
+  command: { scope: Scope; id: string },
+  claimed: Extract<Claim, { request: Frozen }>,
+) {
+  return yield* withBook(token, command.scope, false, function* (tx, principal) {
+    yield* authorize(principal, "run_decision_request");
+    const row = (yield* Db.readRequest(tx, command.scope.bookId, command.id, true))[0];
+
+    if (!row || row.generation !== claimed.generation || row.status !== "running" || row.disclosed)
+      return yield* failure("StaleDependency");
+    const stale = yield* staleReason(tx, command.scope, row, claimed.request);
+    const refreshed = (yield* Db.readRequest(tx, command.scope.bookId, command.id))[0];
+
+    if (stale !== null || !refreshed || refreshed.leaseExpired)
+      return yield* failure("StaleDependency");
+
+    const marked = yield* Db.markDisclosure(
+      tx,
+      command.scope.bookId,
+      command.id,
+      claimed.generation,
+    );
+
+    if (marked.length !== 1) return yield* failure("StaleDependency");
+    yield* Db.appendAttempt(tx, command.scope.bookId, command.id, claimed.generation, "disclosed", {
+      requestDigest: claimed.request.digest,
+      dispatchIntent: true,
+      transportConfirmed: false,
+      usageStatus: "unknown",
+      usage: null,
+    });
   });
 });
 
@@ -529,6 +565,7 @@ export const processDecisionRequest = Effect.fn("decisionJobs.process")(function
 
   if (
     model.identity.configuredRelease !== claimed.request.policy.modelRelease ||
+    model.identity.inputTokenLimit !== claimed.request.policy.inputTokenLimit ||
     model.identity.requestedModel !== claimed.request.policy.requestedModel ||
     model.identity.expectedReportedModel !== claimed.request.policy.expectedReportedModel
   )
@@ -538,8 +575,20 @@ export const processDecisionRequest = Effect.fn("decisionJobs.process")(function
       diagnostic: null,
     });
 
+  const db = yield* Database;
+  const environment = yield* RequestEnvironment;
+  const egress = yield* openAiEgress(token, command.scope, "decision");
+
   const outcome = yield* Effect.tryPromise({
-    try: (signal) => model.decide(claimed.request.input, signal),
+    try: (signal) =>
+      model.decide(claimed.request.input, egress, signal, () =>
+        Effect.runPromise(
+          markDispatch(token, command, claimed).pipe(
+            Effect.provideService(Database, db),
+            Effect.provideService(RequestEnvironment, environment),
+          ),
+        ),
+      ),
     catch: () => failure("Unavailable"),
   }).pipe(
     Effect.catch(() =>

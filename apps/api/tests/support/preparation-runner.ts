@@ -71,6 +71,7 @@ export function startRunner(
       DATABASE_URL: restoredDatabaseUrl ?? environment().runtimeUrl,
       OPENERP_PREPARATION_TOKEN: token,
       OPENERP_DOCUMENT_READER: "disabled",
+      OPENERP_DECISION_MODEL: "disabled",
       OPENERP_REMINDER_DELIVERY: "disabled",
       ...decisionConfig,
     },

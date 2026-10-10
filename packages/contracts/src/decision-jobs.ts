@@ -13,7 +13,9 @@ export const DecisionPolicy = Schema.Struct({
   modelRelease: Schema.String,
   requestedModel: Schema.String,
   expectedReportedModel: Schema.String,
-  dispatchBudget: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 10000 })),
+  inputTokenLimit: Schema.Int.check(
+    Schema.isBetween({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER }),
+  ),
 });
 
 export const AdmitDecisionRequest = Schema.Struct({
@@ -37,6 +39,12 @@ export const FrozenDecisionRequest = Schema.Struct({
     precedent: Schema.String,
   }),
   originalCommitCutoff: A.MinorUnits,
+  evidence: Schema.Struct({
+    sourceEvidenceId: A.Identifier,
+    sourceDigest: A.Digest,
+    precedentHistoryDigest: A.Digest,
+    precedentDecisionIds: Schema.Array(A.Identifier),
+  }),
   inputDigest: A.Digest,
   optionSetDigest: A.Digest,
   policy: DecisionPolicy,
@@ -47,6 +55,8 @@ export const FrozenDecisionRequest = Schema.Struct({
 export const StoredDecisionResult = Schema.Struct({
   ...DecisionResultView.fields,
   reportedModel: Schema.String,
+  inputTokenLimit: Schema.Int,
+  usage: D.SystemOneResponse.fields.usage,
   releaseQualification: Schema.Literal("unsubstantiated"),
   wireEvidence: Schema.Literals(["bounded_utf8_unique_keys", "already_parsed_object"]),
   requestDigest: A.Digest,

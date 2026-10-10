@@ -10,21 +10,26 @@ export const getDecisionQuestionCatalog = Effect.fn("decisionQuestions.catalog")
   command: { scope: typeof Accounting.Scope.Type },
 ) {
   return yield* withBook(token, command.scope, false, function* () {
-    const definition = D.documentKindDefinition;
-    const question = definition.question;
+    const releases = [];
 
-    const release = {
-      ...definition,
-      digest: yield* digest(definition),
-      optionSetDigest: yield* digest({
-        type: question.type,
-        criteria: question.type === "noul" ? (question.criteria ?? null) : question.criteria,
-      }),
-    };
+    for (const definition of [D.documentKindDefinition, D.structuredDocumentKindDefinition]) {
+      const question = definition.question;
+
+      const release = {
+        ...definition,
+        digest: yield* digest(definition),
+        optionSetDigest: yield* digest({
+          type: question.type,
+          criteria: question.type === "noul" ? (question.criteria ?? null) : question.criteria,
+        }),
+      };
+
+      releases.push(release);
+    }
 
     return yield* decode(
       Contract.DecisionQuestionCatalog,
-      yield* toJsonObject({ scope: command.scope, releases: [release], limits: D.limits }),
+      yield* toJsonObject({ scope: command.scope, releases, limits: D.limits }),
     );
   });
 });
