@@ -1,5 +1,4 @@
 import { HttpOperationLayers } from "./transport/http/operation-layers";
-import { configuredDocumentDelivery } from "./adapters/documents/local-fixture";
 import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
@@ -158,17 +157,12 @@ export function createApi(e2e: boolean) {
                 Effect.gen(function* () {
                   const db = yield* Database;
 
-                  const documentDelivery = yield* Effect.try({
-                    try: () => bindings.DOCUMENT_DELIVERY ?? configuredDocumentDelivery(bindings),
-                    catch: () => failure("ConfigurationError"),
-                  });
-
                   return yield* Effect.tryPromise({
                     try: () =>
                       handler(
                         bounded,
                         Context.make(RequestEnvironment, {
-                          bindings: { ...bindings, DOCUMENT_DELIVERY: documentDelivery },
+                          bindings,
                           url: new URL(request.url),
                         }).pipe(
                           Context.add(Database, db),

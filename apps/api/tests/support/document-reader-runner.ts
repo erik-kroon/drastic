@@ -21,7 +21,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { databaseLayer } from "../../src/db/connection";
 import { runSupplierExtraction } from "../../src/application/purchases/extraction";
 import { RequestEnvironment, type Bindings } from "../../src/runtime/environment";
-import { configuredDocumentReader } from "../../src/runtime/document-reader";
+import { localDocumentReader } from "../../src/adapters/document-reading/local-fixture";
 import { filesystemObjectStore } from "../../src/adapters/storage/filesystem-objects";
 import api from "../../src/index";
 
@@ -63,10 +63,7 @@ const bindings: Bindings = {
   DOCUMENT_INSPECTOR: inspectQueuedDocument,
   DATABASE_URL: connectionString,
   OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
-  DOCUMENT_READER: configuredDocumentReader({
-    OPENERP_DOCUMENT_READER: endpoint ? "local-azure-fixture" : "disabled",
-    OPENERP_DOCUMENT_READER_ENDPOINT: endpoint,
-  }),
+  DOCUMENT_READER: endpoint ? localDocumentReader(endpoint) : undefined,
   EVIDENCE_STORE: process.env.EVIDENCE_STORE_ROOT
     ? filesystemObjectStore(process.env.EVIDENCE_STORE_ROOT)
     : undefined,

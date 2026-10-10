@@ -1,4 +1,4 @@
-import api from "../../src/index";
+import api from "../../src/runtime/e2e";
 import type { Bindings } from "../../src/runtime/environment";
 
 export default {

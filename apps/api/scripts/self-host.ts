@@ -1,3 +1,4 @@
+import { configuredIntakeFeed } from "../src/adapters/intake/local-fixture";
 import { inspectQueuedDocument } from "./document-inspection/inspection";
 import { configuredDocumentDelivery } from "../src/adapters/documents/local-fixture";
 import { configuredPeppolAccessPoint } from "../src/adapters/peppol/local-fixture";
@@ -5,7 +6,7 @@ import { configuredProcessorFeed } from "../src/adapters/processor/local-fixture
 import { resolve, sep } from "node:path";
 import api from "../src/index";
 import { configuredDecisionModel } from "../src/runtime/decision-model";
-import { configuredDocumentReader } from "../src/runtime/document-reader";
+import { configuredSelfHostDocumentReader } from "./document-reader";
 import type { Bindings } from "../src/runtime/environment";
 import { fileObjectStore } from "./file-object-store";
 
@@ -42,7 +43,7 @@ if (!(await Bun.file(resolve(assets, "_shell.html")).exists())) {
   throw new Error("Build the web application before starting: bun run --cwd apps/web build");
 }
 
-const documentReader = configuredDocumentReader(process.env);
+const documentReader = configuredSelfHostDocumentReader(process.env);
 
 if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
   throw new Error("Document reading requires a configured preparation runner token.");
@@ -50,6 +51,11 @@ if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
 const bindings: Bindings = {
   DOCUMENT_INSPECTOR: inspectQueuedDocument,
   DATABASE_URL: databaseUrl,
+  INTAKE_FEED: configuredIntakeFeed({
+    OPENERP_INTAKE_FEED: process.env.OPENERP_INTAKE_FEED,
+    OPENERP_INTAKE_ENDPOINT: process.env.OPENERP_INTAKE_ENDPOINT,
+    OPENERP_INTAKE_SECRET: process.env.OPENERP_INTAKE_SECRET,
+  }),
   DECISION_MODEL: configuredDecisionModel(process.env),
   DOCUMENT_READER: documentReader,
   PEPPOL_EXCHANGE: configuredPeppolAccessPoint({

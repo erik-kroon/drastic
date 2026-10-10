@@ -9,7 +9,7 @@ import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import * as Schema from "effect/Schema";
 import { PDFDocument } from "pdf-lib";
-import { writeFile } from "node:fs/promises";
+import { appendFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as Source from "@open-erp/contracts/source-intake";
@@ -234,6 +234,9 @@ async function documentFixture(
         OPENERP_PREPARATION_TOKEN: base.token,
       },
     });
+
+    if (output.stderr)
+      await appendFile(join(environment().artifacts, "document-reader-runner.log"), output.stderr);
 
     return output.stdout;
   };
