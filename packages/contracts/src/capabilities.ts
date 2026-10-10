@@ -40,6 +40,7 @@ import { SettlementCapabilities } from "./settlements";
 import { BankMatchReversalCapabilities } from "./bank-match-reversals";
 import { BankMatchCandidateCapabilities } from "./bank-match-candidates";
 import { CashForecastCapabilities } from "./cash-forecast";
+import { BureauObligationsCapabilities } from "./bureau-obligations";
 import { BankSourceCoverageCapabilities } from "./bank-source-coverage";
 import { BankSignoffCapabilities } from "./bank-signoffs";
 import { BankInventorySignoffCapabilities } from "./bank-inventory-signoffs";
@@ -195,6 +196,7 @@ export const Capabilities = {
   ...BankMatchCandidateCapabilities,
   ...BankSourceCoverageCapabilities,
   ...CashForecastCapabilities,
+  ...BureauObligationsCapabilities,
   ...BankSignoffCapabilities,
   ...BankInventorySignoffCapabilities,
   ...TaxAccountCapabilities,
