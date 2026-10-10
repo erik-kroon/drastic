@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "mode": "demo",
+  "passed": true,
+  "waitingItems": 3,
+  "retainedBankRows": 2,
+  "retainedClients": 3,
+  "checks": [
+    "all waiting pages",
+    "retained bank rows",
+    "unchanged ledger",
+    "bank original and acknowledgment gate",
+    "stored unknown without execution"
+  ]
+}

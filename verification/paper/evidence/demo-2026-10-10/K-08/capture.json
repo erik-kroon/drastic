@@ -1,0 +1,44 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-08/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output verification/paper/evidence/demo-2026-10-10/K-08",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceHashes": {
+    "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/overview",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
+    "time": "2026-10-10T11:06:49.506Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "route default, partial fixture",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "090b72d312f7f48a1ebe87afdd6a5fa9dbfc5c72f3ebe16a5b15d2b874e2b6de"
+}

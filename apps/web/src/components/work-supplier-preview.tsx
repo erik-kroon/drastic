@@ -1,14 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import * as Accounting from "@open-erp/contracts/accounting";
 import type * as Workspace from "@open-erp/contracts/workspace";
-import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
-import { useBookWorkspace } from "@/lib/book-context";
-import { readAccounting } from "@/lib/accounting-api";
+import { LedgerCard } from "@open-erp/ui/kanon/cards";
+import { DetailPanelHeader, PanelSection } from "@open-erp/ui/kanon/detail-panel";
+import { EvidenceFile } from "@open-erp/ui/kanon/record";
+import { CheckRow } from "@open-erp/ui/kanon/feedback";
+import { InlineAction } from "@open-erp/ui/kanon/action";
+import { useBookWorkspace, reviewPath } from "@/lib/book-context";
+import { readAccounting, bookKey, bookPath } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
+import { enteredExpenseSource } from "@/lib/source-documents";
 import { commerceKey, commercePath, checkScope } from "@/components/commerce/shared";
 import { AccountingStatus } from "@/components/accounting-status";
+import { supplierPostingSummary } from "./commerce/supplier-acceptance";
 import {
   SupplierApprovalExpiry,
   isSupplierApprovalExpired,
@@ -62,6 +69,28 @@ export function WorkSupplierPreview({
     retry: false,
   });
 
+  const evidenceRef = query.data?.plan.draftSnapshot.sourceEvidence;
+
+  const evidence = useQuery({
+    queryKey: [...bookKey(book), "evidence", evidenceRef?.evidenceId, evidenceRef?.sha256],
+    enabled: Boolean(evidenceRef),
+    queryFn: async ({ signal }) => {
+      if (!evidenceRef) throw new Error("Supplier evidence is required");
+
+      const result = await readAccounting(
+        `${bookPath(book)}/evidence/${encodeURIComponent(evidenceRef.evidenceId)}`,
+        Accounting.EvidenceContent,
+        { signal },
+      );
+
+      if (result.id !== evidenceRef.evidenceId || result.sha256 !== evidenceRef.sha256)
+        throw new Error("Supplier evidence reference mismatch");
+
+      return result;
+    },
+    retry: false,
+  });
+
   if (!reference) return null;
 
   if (!query.data || query.isError)
@@ -90,49 +119,85 @@ export function WorkSupplierPreview({
     );
   }
 
-  const titles =
+  const copy =
     locale === "sv"
-      ? { posted: "Bokföring", proposed: "Föreslagen bokföring" }
-      : { posted: "Posting", proposed: "Proposed posting" };
+      ? {
+          posted: "Bokföring",
+          proposed: "Föreslagen bokföring",
+          kicker: "Leverantörsfaktura, förslag",
+          unknown: "Okänt",
+          stale: "Förslaget behöver uppdateras.",
+          original: "Original",
+          open: "Öppna",
+          matched: "Beloppen stämmer med granskade uppgifter",
+          check: "Kontrollera beloppen mot originalet",
+        }
+      : {
+          posted: "Posting",
+          proposed: "Proposed posting",
+          kicker: "Supplier invoice, proposal",
+          unknown: "Unknown",
+          stale: "The proposal needs updating.",
+          original: "Original document",
+          open: "Open",
+          matched: "Amounts match reviewed facts",
+          check: "Check amounts against the original",
+        };
 
-  const lines = view.plan.postingPlan.groups.flatMap((group) =>
-    group.actions.flatMap((action) =>
-      action.lines.flatMap((line) => {
-        const account = setup.accounts.find((candidate) => candidate.id === line.accountId);
-        const amounts = [];
+  const snapshot = view.plan.draftSnapshot;
 
-        if (BigInt(line.debitMinor) > 0n) amounts.push({ side: "debit", value: line.debitMinor });
+  const original =
+    evidence.data?.mediaType === "application/json"
+      ? enteredExpenseSource(evidence.data.content)
+      : null;
 
-        if (BigInt(line.creditMinor) > 0n)
-          amounts.push({ side: "credit", value: `-${line.creditMinor}` });
-
-        if (!amounts.length) amounts.push({ side: "zero", value: "0" });
-
-        return amounts.map((amount) => ({
-          id: `${group.id}:${action.occurrenceKey}:${line.lineId}:${amount.side}`,
-          description: account ? `${account.code} ${account.name}` : line.description,
-          amount: formatMinorAmount(
-            amount.value,
-            view.plan.draftSnapshot.content.currencyScale,
-            locale,
-          ),
-        }));
-      }),
-    ),
-  );
+  const amountsMatch =
+    snapshot.totals.sourceTotalMatches === true &&
+    snapshot.calculatedLines.every((line) => line.sourceGrossMatches === true);
 
   return (
     <>
-      {heading}
-      {!view.dependenciesCurrent && !view.acceptance ? (
-        <PageCaption>
-          {locale === "sv" ? "Förslaget behöver uppdateras." : "The proposal needs updating."}
-        </PageCaption>
-      ) : null}
-      <RegisterDetailLines
-        title={view.acceptance ? titles.posted : titles.proposed}
-        lines={lines}
+      <DetailPanelHeader
+        kicker={copy.kicker}
+        figure={
+          snapshot.totals.grossMinor === null
+            ? copy.unknown
+            : formatMinorAmount(snapshot.totals.grossMinor, snapshot.content.currencyScale, locale)
+        }
+        subtitle={snapshot.content.title}
+        subtitleAs="h2"
       />
+      {!view.dependenciesCurrent && !view.acceptance ? (
+        <PageCaption>{copy.stale}</PageCaption>
+      ) : null}
+      <AccountingStatus locale={locale} pending={evidence.isPending} error={evidence.error} />
+      {original ? (
+        <EvidenceFile
+          name={original.filename}
+          detail={copy.original}
+          action={
+            <InlineAction
+              render={
+                <a
+                  href={reviewPath(
+                    book,
+                    view.plan.postingPlan.id,
+                    view.plan.postingPlan.planDigest,
+                  )}
+                />
+              }
+            >
+              {copy.open}
+            </InlineAction>
+          }
+        />
+      ) : null}
+      <PanelSection label={view.acceptance ? copy.posted : copy.proposed}>
+        <LedgerCard signed lines={supplierPostingSummary(view.plan, setup.accounts, locale)} />
+        <CheckRow result={amountsMatch ? "done" : "needsYou"}>
+          {amountsMatch ? copy.matched : copy.check}
+        </CheckRow>
+      </PanelSection>
       {actions}
     </>
   );

@@ -82,7 +82,7 @@ export function ReviewScreen({
       }
       queue={
         <ReviewQueue
-          title={locale === "sv" ? "Granska och godkänn" : "Review and approve"}
+          title={locale === "sv" ? "Granska" : "Review"}
           count={!queue.isError ? queue.data?.counts.open : undefined}
         >
           <AccountingStatus locale={locale} pending={queue.isPending} error={queue.error} />

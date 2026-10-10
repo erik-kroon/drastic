@@ -1,0 +1,39 @@
+{
+  "mode": "many",
+  "synthetic": true,
+  "clockPinned": false,
+  "boardMoment": "2026-10-02T08:54:00+02:00",
+  "limits": {
+    "minorDigits": 38,
+    "filename": 200,
+    "supplierName": 200,
+    "supplierNumber": 128,
+    "invoiceLines": 50,
+    "bankRows": 10000,
+    "supplierDraftPage": 200,
+    "attentionPage": 50,
+    "createdCompaniesPerActor": 100,
+    "firmClients": 200
+  },
+  "limitations": [
+    "No server/database test clock: ingestion, proposal, approval and receipt times remain real.",
+    "The bureau actor is Elin Sund; Sara Lind and illustrated agent activity are not fabricated.",
+    "Board-only combined approval/posting, return and reject operations remain unsupported.",
+    "Customer invoice is a synthetic register record backed by a posted receivable, not legal issuance.",
+    "Complete source coverage, locked result comparison and illustrated actor activity are not fabricated.",
+    "Firm read and write owners support at most 200 clients; 1284 cannot be represented without a behavior change.",
+    "One operator can create at most 100 companies; stress portfolios retain those plus the provisioned synthetic book."
+  ],
+  "portfolio": {
+    "firmId": "firm_8e64570957c24a13877f117f66b92cf3",
+    "retainedClients": 101,
+    "limitRefusal": {
+      "owner": "company_create",
+      "attemptedCreatedCompany": 101,
+      "requestedWorstClients": 1284,
+      "status": 422,
+      "code": "InvalidJournal"
+    }
+  },
+  "bankRowCount": 1001
+}

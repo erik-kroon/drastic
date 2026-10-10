@@ -72,6 +72,7 @@
     "anti-slop/no-reflect-apply": "error",
     "anti-slop/no-reflect-get": "error",
     "anti-slop/no-raw-html-layout": "error",
+    "anti-slop/no-route-data-access": "error",
     "anti-slop/no-unknown-type-aliases": "error",
     "anti-slop/no-type-assertions": "error",
     "anti-slop/no-widen-then-assert": "error",

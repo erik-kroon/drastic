@@ -39,6 +39,23 @@ function git(...args) {
 function check(name, base, expected, diagnostic, input = "fixture.js") {
   const before = readFileSync(path.join(sandbox, input), "utf8");
 
+  if (input.endsWith(".tsx")) {
+    const manifestPath = path.join(sandbox, "verification/paper/kanon-manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+
+    const contract = manifest.entries.find((entry) => entry.id === "K-10");
+
+    if (!contract.files.includes(input)) contract.files.push(input);
+    contract.status = "unverified";
+    contract.evidence = null;
+    contract.notes = "Disposable lint fixture mapping only; no design adoption or parity claim.";
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const ledger = command("node", ["verification/paper/check.mjs", base, "--write-ledger"]);
+
+    assert.equal(ledger.status, 0, ledger.output);
+  }
+
   const result = command("bun", ["run", "lint:changed", base]);
 
   results.push({
@@ -63,6 +80,33 @@ try {
     path.join(sandbox, "scripts/check-changed.ts"),
   );
   cpSync(path.join(root, "config"), path.join(sandbox, "config"), { recursive: true });
+
+  // lint:changed runs the real design gate before linting. Keep its committed
+  // references and legacy ratchet intact rather than replacing it with a stub.
+  cpSync(path.join(root, "verification/paper"), path.join(sandbox, "verification/paper"), {
+    recursive: true,
+  });
+
+  const manifest = JSON.parse(
+    readFileSync(path.join(root, "verification/paper/kanon-manifest.json"), "utf8"),
+  );
+
+  const inventory = JSON.parse(
+    readFileSync(path.join(root, "docs/design/legacy-ui-imports.json"), "utf8"),
+  );
+
+  const designFiles = new Set([
+    "docs/design/legacy-ui-imports.json",
+    "docs/design/parity-ledger.md",
+    ...inventory.imports.map((pair) => pair.split(":")[0]),
+    ...manifest.entries.flatMap((entry) => [...entry.files, entry.behaviorSource, entry.evidence]),
+  ]);
+
+  for (const file of designFiles) {
+    if (!file) continue;
+    mkdirSync(path.dirname(path.join(sandbox, file)), { recursive: true });
+    cpSync(path.join(root, file), path.join(sandbox, file));
+  }
 
   for (const filename of [
     ".oxlintrc.json",
@@ -185,6 +229,7 @@ try {
   check("local fetch name is not an HTTP request", base, 0, undefined, route);
 
   rmSync(path.join(sandbox, route));
+  git("restore", "verification/paper/kanon-manifest.json", "docs/design/parity-ledger.md");
   const owner = "apps/web/src/components/reviews/query.ts";
 
   mkdirSync(path.dirname(path.join(sandbox, owner)), { recursive: true });

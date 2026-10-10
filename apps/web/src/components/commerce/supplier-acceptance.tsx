@@ -28,6 +28,56 @@ import { supplierApprovalRefetchInterval } from "./supplier-approval-expiry";
 
 type Draft = typeof Drafts.SupplierInvoiceDraftRevision.Type;
 
+export function supplierPostingSummary(
+  plan: typeof Acceptance.SupplierAcceptanceReview.Type,
+  accounts: typeof Accounting.BookSetup.Type.accounts,
+  locale: CommerceProps["locale"],
+) {
+  const totals = new Map<string, { account: string; side: "debit" | "credit"; amount: bigint }>();
+
+  for (const group of plan.postingPlan.groups) {
+    for (const action of group.actions) {
+      for (const line of action.lines) {
+        const side = BigInt(line.debitMinor) > 0n ? "debit" : "credit";
+        const key = `${line.accountId}/${side}`;
+        const amount = BigInt(side === "debit" ? line.debitMinor : line.creditMinor);
+        const previous = totals.get(key);
+
+        if (previous) previous.amount += amount;
+        else {
+          const account = accounts.find((item) => item.id === line.accountId);
+
+          totals.set(key, {
+            account: account ? `${account.code} ${account.name}` : line.description,
+            side,
+            amount,
+          });
+        }
+      }
+    }
+  }
+
+  return Array.from(totals.values(), (line) => ({
+    account: line.account,
+    debit:
+      line.side === "debit"
+        ? formatMinorAmount(
+            line.amount.toString(),
+            plan.draftSnapshot.content.currencyScale,
+            locale,
+          )
+        : undefined,
+    credit:
+      line.side === "credit"
+        ? formatMinorAmount(
+            line.amount.toString(),
+            plan.draftSnapshot.content.currencyScale,
+            locale,
+          )
+        : undefined,
+  }));
+}
+
 function inferredVatRate(netMinor: string | undefined, taxMinor: string | null) {
   if (!netMinor || taxMinor === null) return null;
   const net = BigInt(netMinor);

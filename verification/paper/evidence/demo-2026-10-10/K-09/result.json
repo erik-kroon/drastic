@@ -1,0 +1,56 @@
+{
+  "scope": "K-09",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "referenceSha256": "06b020d166c45f59b0f39ba49f14dad2ee8adff07a232a805bb595dd345cab78",
+  "actualSha256": "8325f96c098ec66a6cb14ac48a21bcaec715a995af4247e8b1169d1b4df8ea39",
+  "diffSha256": "059f05e8658c8b32f88200bb4d00a84b31b75ecd51403349331e49133b704a5f",
+  "sourceHashes": {
+    "apps/web/src/components/firms/portfolio.tsx": "17f0d3857f96ce48b593dcc2ec47518e20aa8cd8468e91c18b066cb8271a26a7",
+    "apps/web/src/components/firms/index.tsx": "72e8c3938196fa67946675e8b407001c4f5f3a2de2fed3d1bd8f4ea45d5c3b2a"
+  },
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output verification/paper/evidence/demo-2026-10-10/K-09",
+  "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-09 verification/paper/evidence/demo-2026-10-10/K-09/capture.json verification/paper/evidence/demo-2026-10-10/K-09",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/firms",
+    "resolvedRoute": "/firms?firm=firm_f21dbd4bfa2f46af8212ff964c23a69d&tab=clients",
+    "time": "2026-10-10T11:06:56.426Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "permitted clients, first selected; incomplete company observations",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.07135185185185185,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-09/actual.png",
+  "diff": "verification/paper/evidence/demo-2026-10-10/K-09/diff.png",
+  "passed": false
+}

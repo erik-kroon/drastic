@@ -7,14 +7,14 @@ import { Box } from "@open-erp/ui/components/box";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { AreaBar, BarTab, ListDetailPage } from "@open-erp/ui/kanon/layouts";
-import { WorkList, WorkGroup, WorkRow } from "@open-erp/ui/kanon/work-list";
+import { WorkList, WorkGroup, WorkRow, WorkListControls } from "@open-erp/ui/kanon/work-list";
 import {
   DetailPanelSurface,
   DetailPanelHeader,
   DetailPanelActions,
   PanelSection,
 } from "@open-erp/ui/kanon/detail-panel";
-import { Action } from "@open-erp/ui/kanon/action";
+import { Action, InlineAction } from "@open-erp/ui/kanon/action";
 import { useCompanyWork, type CompanyWork } from "@/lib/company-work";
 import {
   attentionQueryOptions,
@@ -169,6 +169,14 @@ export function WorkHome() {
               </Box>
             ) : null}
             <HomeBankStatus work={work} status={status} kind={kind} />
+            <WorkListControls
+              filterAction={
+                <InlineAction render={<Link to={workQueueHref(base, filters)} />}>
+                  + Filter
+                </InlineAction>
+              }
+              sortLabel={{ sv: "Sortera: Äldst", en: "Sort: Oldest" }[locale]}
+            />
             <WorkList>
               {groups.map((group, index) => {
                 const items = rows.filter((item) => item.group === group);

@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "mode": "worst",
+  "passed": true,
+  "waitingItems": 5,
+  "retainedBankRows": 3,
+  "retainedClients": 101,
+  "checks": [
+    "all waiting pages",
+    "retained bank rows",
+    "unchanged ledger",
+    "38-digit amount without clipping",
+    "Unicode",
+    "zero"
+  ]
+}

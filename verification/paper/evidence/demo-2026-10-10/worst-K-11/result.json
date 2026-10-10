@@ -1,0 +1,68 @@
+{
+  "scope": "K-11",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "referenceSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
+  "actualSha256": "71e9e5a3d81560dcfb5903e81413c045d2a242fa7784df4fdaa0e6670468d36d",
+  "diffSha256": "02d14cbd5ba31c113cb9dd2b57d28a11b461d99c76bbfbe176b9b89792aa56de",
+  "sourceHashes": {
+    "apps/web/src/components/review-owner.tsx": "67e2f74e37b429509b54e24537dd646d601af8109ce1b49eaec458f1d35454fa",
+    "apps/web/src/components/review-screen.tsx": "850c8d7e9b48f4e6808adae02a5a27a8667ee06046cbf834af25def23300f653",
+    "apps/web/src/components/commerce/supplier-acceptance.tsx": "eef80e363e775b6c3983c6bc717ee6d16a5d8d41d0b8799535e9ced47fc906ac",
+    "packages/ui/src/kanon/cards.tsx": "043370c0a7dce06985b485256909bdc98edd02bb134ce2b80af42f2172c23803",
+    "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
+    "apps/web/src/components/commerce/supplier-focused-review.tsx": "6a6ac9fb3ba62e725a9b8ae2257a079c09721eeb3186ba1b14515238015813fa",
+    "packages/ui/src/components/pdf-viewer.tsx": "09e127e6474f57342f2e84b9c54f9edeb36b314a6a4ff471d6561f4395212a9e",
+    "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
+    "apps/web/src/components/posting-recovery/copy.ts": "809aa7f243aabf495e94bc5df77ff46e14b43550ce7217764cb84a33f1f63352",
+    "packages/ui/src/kanon/feedback.tsx": "a549c33aaacfbfe69bd1e500612953d242393bcb5b5f0e8431685aeb3ed09d7f",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
+    "apps/web/src/components/posting-recovery/review-entry.tsx": "3890f75627a626a39e10c9f4689cfcbf226afa628f9181a3972426472c125386"
+  },
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-11 --output verification/paper/evidence/demo-2026-10-10/worst-K-11",
+  "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-11 verification/paper/evidence/demo-2026-10-10/worst-K-11/capture.json verification/paper/evidence/demo-2026-10-10/worst-K-11",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_ef466c40f1f24900b92462999c1c0be4/sha256:5f498a284b1dc077909ab846c906f2ce5e50897236fad8b8307f30ee2dc2cdf9?sort=oldest",
+    "time": "2026-10-10T11:03:14.438Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "worst",
+      "state": "ready to approve",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.09137345679012346,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/demo-2026-10-10/worst-K-11/actual.png",
+  "diff": "verification/paper/evidence/demo-2026-10-10/worst-K-11/diff.png",
+  "passed": false
+}
