@@ -1,0 +1,504 @@
+{
+  "qualification": "Real public source records, delayed delivery, real 404 and foreign identity/scope refusal",
+  "limits": "Transport timing and rerouting exercise client parsing; no mocked financial records or calculation.",
+  "unchangedQuote": {
+    "id": "sales_document_6be2e9703bb54d2ca65d9bcfe3773f1c",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "kind": "quote",
+    "state": "draft",
+    "revision": "1",
+    "content": {
+      "title": "Synthetic quote B reads",
+      "counterpartyId": "counterparty_e1ad1af2abe44af38417a084b3306deb",
+      "counterpartyRevision": "1",
+      "seller": {
+        "legalName": "Synthetic quote seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "customer": {
+        "legalName": "Synthetic customer B reads",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "plannedIssueDate": null,
+      "supplyDate": null,
+      "dueDate": null,
+      "paymentTerms": "Synthetic retained payment terms",
+      "note": "Retained note B",
+      "buyerReference": "Buyer B",
+      "orderReference": "Reference B",
+      "sourceTotalMinor": "23700",
+      "lines": [
+        {
+          "id": "quote_line_b",
+          "description": "Synthetic line B",
+          "quantity": "3",
+          "unitPriceMinor": "7900",
+          "baseMinor": "23700",
+          "discountMinor": "0",
+          "chargeMinor": "0",
+          "taxMinor": "0",
+          "taxDescription": "Synthetic retained zero tax",
+          "taxEvidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+          "sourceGrossMinor": "23700"
+        }
+      ]
+    },
+    "calculation": {
+      "content": {
+        "title": "Synthetic quote B reads",
+        "counterpartyId": "counterparty_e1ad1af2abe44af38417a084b3306deb",
+        "counterpartyRevision": "1",
+        "seller": {
+          "legalName": "Synthetic quote seller",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": "SE",
+          "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+        },
+        "customer": {
+          "legalName": "Synthetic customer B reads",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": "SE",
+          "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+        },
+        "currency": "SEK",
+        "currencyScale": 2,
+        "plannedIssueDate": null,
+        "supplyDate": null,
+        "dueDate": null,
+        "paymentTerms": "Synthetic retained payment terms",
+        "note": "Retained note B",
+        "buyerReference": "Buyer B",
+        "orderReference": "Reference B",
+        "sourceTotalMinor": "23700",
+        "lines": [
+          {
+            "id": "quote_line_b",
+            "description": "Synthetic line B",
+            "quantity": "3",
+            "unitPriceMinor": "7900",
+            "baseMinor": "23700",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic retained zero tax",
+            "taxEvidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+            "sourceGrossMinor": "23700"
+          }
+        ]
+      },
+      "counterparty": {
+        "id": "counterparty_e1ad1af2abe44af38417a084b3306deb",
+        "kind": "synthetic_counterparty_v1",
+        "role": "customer",
+        "scope": {
+          "bookId": "book_synthetic",
+          "entityId": "entity_synthetic"
+        },
+        "reason": "Disposable quote revision customer",
+        "receipt": {
+          "key": "15ced422-ff70-43c7-b38f-cf29f4114730",
+          "actorId": "actor_operator",
+          "operation": "commerce_create_counterparty"
+        },
+        "evidence": {
+          "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37",
+          "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+        },
+        "revision": "1",
+        "createdAt": "2026-10-10T22:04:14.797371Z",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+        "displayName": "Synthetic customer B reads",
+        "externalKey": "ac1024d0-9d19-4f85-92ca-1a46ce1c9994",
+        "legalIdentityVerified": false
+      },
+      "sellerEvidence": {
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+        "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+      },
+      "customerEvidence": {
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+        "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+      },
+      "totals": {
+        "baseMinor": "23700",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "23700",
+        "taxMinor": "0",
+        "grossMinor": "23700",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "quote_line_b",
+          "calculatedBaseMinor": "23700",
+          "netMinor": "23700",
+          "grossMinor": "23700",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+            "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "issuance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "seller_identity_fields_missing",
+          "lineId": null
+        },
+        {
+          "code": "customer_identity_fields_missing",
+          "lineId": null
+        },
+        {
+          "code": "dates_or_terms_missing",
+          "lineId": null
+        }
+      ],
+      "calculationBasis": "explicit_line_amounts_v1"
+    },
+    "sourceQuoteId": null,
+    "sourceQuoteRevision": null,
+    "createdAt": "2026-10-10T22:04:14.911Z",
+    "receipt": {
+      "key": "1660a6ab-7faf-4c09-897a-79b3e9136621",
+      "operation": "sales_document_command",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:ee4d889e862a7c6b3a4c177263e17cc768dc723ff558408e8375155c1b24c026"
+  },
+  "sourceA": {
+    "id": "invoice_draft_a0583fb6e0fb40e281d5e78ae344da34",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "draftKey": "quote_source_0edb530b-e1de-472d-bb9a-c6db59a9b71a",
+    "revision": "1",
+    "status": "draft",
+    "issued": false,
+    "recognized": false,
+    "delivered": false,
+    "calculationBasis": "explicit_line_amounts_v1",
+    "purpose": "source_transcription",
+    "content": {
+      "title": "Synthetic source A reads",
+      "counterpartyId": "counterparty_ab5e2505a4774a1585a3e9e360015264",
+      "counterpartyRevision": "1",
+      "seller": {
+        "legalName": "Synthetic quote seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "customer": {
+        "legalName": "Synthetic customer A reads",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "plannedIssueDate": null,
+      "supplyDate": null,
+      "dueDate": null,
+      "paymentTerms": "Synthetic retained payment terms",
+      "note": "Retained note A",
+      "buyerReference": "Buyer A",
+      "orderReference": "Reference A",
+      "sourceTotalMinor": "25000",
+      "lines": [
+        {
+          "id": "quote_line_a",
+          "description": "Synthetic line A",
+          "quantity": "2",
+          "unitPriceMinor": "12500",
+          "baseMinor": "25000",
+          "discountMinor": "0",
+          "chargeMinor": "0",
+          "taxMinor": "0",
+          "taxDescription": "Synthetic retained zero tax",
+          "taxEvidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+          "sourceGrossMinor": "25000"
+        }
+      ]
+    },
+    "counterparty": {
+      "kind": "synthetic_counterparty_v1",
+      "externalKey": "00cc131b-d9b9-43ae-877b-e0c47cffb484",
+      "role": "customer",
+      "displayName": "Synthetic customer A reads",
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "reason": "Disposable quote revision customer",
+      "id": "counterparty_ab5e2505a4774a1585a3e9e360015264",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "revision": "1",
+      "evidence": {
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+        "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+      },
+      "legalIdentityVerified": false,
+      "createdAt": "2026-10-10T22:04:14.713151Z",
+      "receipt": {
+        "key": "35c355d1-090c-4512-a284-ab6635c912cc",
+        "operation": "commerce_create_counterparty",
+        "actorId": "actor_operator"
+      }
+    },
+    "sellerEvidence": {
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+    },
+    "customerEvidence": {
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+    },
+    "totals": {
+      "baseMinor": "25000",
+      "discountMinor": "0",
+      "chargeMinor": "0",
+      "netMinor": "25000",
+      "taxMinor": "0",
+      "grossMinor": "25000",
+      "sourceTotalMatches": true
+    },
+    "calculatedLines": [
+      {
+        "id": "quote_line_a",
+        "calculatedBaseMinor": "25000",
+        "netMinor": "25000",
+        "grossMinor": "25000",
+        "sourceGrossMatches": true,
+        "taxEvidence": {
+          "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+          "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+        }
+      }
+    ],
+    "blockers": [
+      {
+        "code": "issuance_not_implemented",
+        "lineId": null
+      },
+      {
+        "code": "legal_identity_not_verified",
+        "lineId": null
+      },
+      {
+        "code": "tax_profile_not_activated",
+        "lineId": null
+      },
+      {
+        "code": "seller_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "customer_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "dates_or_terms_missing",
+        "lineId": null
+      }
+    ],
+    "reason": "Initial commercial draft",
+    "createdAt": "2026-10-10T22:04:14.740789Z",
+    "receipt": {
+      "key": "ff8e5331-a6db-4389-aff6-ef1ca0fd8548",
+      "operation": "create_invoice_draft",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:59cf99d1c5dfc41af28b12e6ea2f0ee085aec4e3f12c27e643c8a20bc21b9758"
+  },
+  "sourceB": {
+    "id": "invoice_draft_8343efb58ee1452cb9d6cd6d618a37e4",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "draftKey": "quote_source_42f3992d-f768-4480-af5a-4efc16117467",
+    "revision": "1",
+    "status": "draft",
+    "issued": false,
+    "recognized": false,
+    "delivered": false,
+    "calculationBasis": "explicit_line_amounts_v1",
+    "purpose": "source_transcription",
+    "content": {
+      "title": "Synthetic source B reads",
+      "counterpartyId": "counterparty_e1ad1af2abe44af38417a084b3306deb",
+      "counterpartyRevision": "1",
+      "seller": {
+        "legalName": "Synthetic quote seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "customer": {
+        "legalName": "Synthetic customer B reads",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "plannedIssueDate": null,
+      "supplyDate": null,
+      "dueDate": null,
+      "paymentTerms": "Synthetic retained payment terms",
+      "note": "Retained note B",
+      "buyerReference": "Buyer B",
+      "orderReference": "Reference B",
+      "sourceTotalMinor": "23700",
+      "lines": [
+        {
+          "id": "quote_line_b",
+          "description": "Synthetic line B",
+          "quantity": "3",
+          "unitPriceMinor": "7900",
+          "baseMinor": "23700",
+          "discountMinor": "0",
+          "chargeMinor": "0",
+          "taxMinor": "0",
+          "taxDescription": "Synthetic retained zero tax",
+          "taxEvidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+          "sourceGrossMinor": "23700"
+        }
+      ]
+    },
+    "counterparty": {
+      "kind": "synthetic_counterparty_v1",
+      "externalKey": "ac1024d0-9d19-4f85-92ca-1a46ce1c9994",
+      "role": "customer",
+      "displayName": "Synthetic customer B reads",
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "reason": "Disposable quote revision customer",
+      "id": "counterparty_e1ad1af2abe44af38417a084b3306deb",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "revision": "1",
+      "evidence": {
+        "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+        "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+      },
+      "legalIdentityVerified": false,
+      "createdAt": "2026-10-10T22:04:14.797371Z",
+      "receipt": {
+        "key": "15ced422-ff70-43c7-b38f-cf29f4114730",
+        "operation": "commerce_create_counterparty",
+        "actorId": "actor_operator"
+      }
+    },
+    "sellerEvidence": {
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+    },
+    "customerEvidence": {
+      "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+      "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+    },
+    "totals": {
+      "baseMinor": "23700",
+      "discountMinor": "0",
+      "chargeMinor": "0",
+      "netMinor": "23700",
+      "taxMinor": "0",
+      "grossMinor": "23700",
+      "sourceTotalMatches": true
+    },
+    "calculatedLines": [
+      {
+        "id": "quote_line_b",
+        "calculatedBaseMinor": "23700",
+        "netMinor": "23700",
+        "grossMinor": "23700",
+        "sourceGrossMatches": true,
+        "taxEvidence": {
+          "evidenceId": "evidence_40f55fee846a4e93b334ebf214d5d622",
+          "sha256": "4448e724936bfec5989914f9187c995f2129da3f71583b02a882b7c3b0913a37"
+        }
+      }
+    ],
+    "blockers": [
+      {
+        "code": "issuance_not_implemented",
+        "lineId": null
+      },
+      {
+        "code": "legal_identity_not_verified",
+        "lineId": null
+      },
+      {
+        "code": "tax_profile_not_activated",
+        "lineId": null
+      },
+      {
+        "code": "seller_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "customer_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "dates_or_terms_missing",
+        "lineId": null
+      }
+    ],
+    "reason": "Initial commercial draft",
+    "createdAt": "2026-10-10T22:04:14.830899Z",
+    "receipt": {
+      "key": "d9935a7c-aded-4a0e-8216-bdba22b032f0",
+      "operation": "create_invoice_draft",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:61d8c5316b5ba99ec9a778175faf29b42233c9246a9b111ac1177fb1ff921fab"
+  },
+  "foreignScope": {
+    "entityId": "entity_608f1748ab934dc19875800a5520a721",
+    "bookId": "book_7f940b0258544218a2dcd892ceec13c6"
+  },
+  "screenshot": "screenshots/001-quote-revision-source-boundary.png"
+}
