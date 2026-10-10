@@ -1,10 +1,10 @@
 {
   "scope": "K-10",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
-  "comparatorRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "comparatorRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "referenceSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
-  "actualSha256": "771e5804ca39eab813afbddb8fa8aa5b84f359c696f6fa590ec4d18792744ba4",
-  "diffSha256": "1f9a09ec9834e471b2f3074fda449f60f7a99f41c0768ba6fda1787e8ad8ea8a",
+  "actualSha256": "68cb3cdbfb634051c1c06ab56501e64392cddc231dcd2383abf66ec49c1e65b0",
+  "diffSha256": "3c99a41b34c1e7cc66e5e374582ecfcfa32fa78caa199597664e1c3b601b38c2",
   "sourceHashes": {
     "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
     "apps/web/src/components/work-home.tsx": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
@@ -46,7 +46,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
-    "time": "2026-10-10T13:35:02.390Z",
+    "time": "2026-10-10T13:46:05.199Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
@@ -58,7 +58,7 @@
     }
   },
   "reviewer": "Automated capture; no human review or production qualification",
-  "difference": 0.03288117283950617,
+  "difference": 0.03289583333333333,
   "tolerance": 0.02,
   "channelTolerance": 16,
   "adoptedBy": "Erik Kroon",

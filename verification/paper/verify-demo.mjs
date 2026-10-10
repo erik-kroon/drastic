@@ -160,6 +160,17 @@ try {
   }
 
   if (seed.mode === "demo") {
+    await page.goto(`${session.url}${session.boards["K-11"].route}`, { waitUntil: "networkidle" });
+    const dueToday = "Nordhamn Studio AB, faktura 1048. Förfaller i dag.";
+    const decision = page.getByRole("region", { name: "Beslut", exact: true });
+
+    await decision.getByText(dueToday, { exact: true }).waitFor();
+    await context.setExtraHTTPHeaders({ "x-openerp-test-now": "2026-10-03T06:54:00.000Z" });
+    await page.reload({ waitUntil: "networkidle" });
+    await decision.getByText("Nordhamn Studio AB, faktura 1048", { exact: true }).waitFor();
+    assert.equal(await decision.getByText(dueToday, { exact: true }).count(), 0);
+    await context.setExtraHTTPHeaders({ "x-openerp-test-now": session.testNow });
+
     await page.goto(`${session.url}${session.boards["K-21"].route}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Välj", exact: true }).first().click();
     await page.locator("canvas[role=img]").waitFor({ state: "visible" });
@@ -201,7 +212,11 @@ try {
   };
 
   if (seed.mode === "demo")
-    result.checks.push("bank original and acknowledgment gate", "stored unknown without execution");
+    result.checks.push(
+      "review due-today caption disappears on the next business date",
+      "bank original and acknowledgment gate",
+      "stored unknown without execution",
+    );
 
   if (seed.mode === "worst")
     result.checks.push("38-digit amount without clipping", "Unicode", "zero");

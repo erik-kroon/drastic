@@ -36,6 +36,7 @@ export function SupplierFocusedReview(
   props: CommerceProps & {
     owner: Owner;
     accounts: typeof Accounting.BookSetup.Type.accounts;
+    today: typeof Accounting.BookSetup.Type.today;
     expectedDigest: string;
     returnSearch: string;
   },
@@ -52,6 +53,7 @@ export function SupplierFocusedReview(
         posting: "Bokförs",
         matches: "Beloppen stämmer med granskade uppgifter",
         check: "Kontrollera beloppen mot originalet",
+        dueToday: "Förfaller i dag.",
       }
     : {
         original: "Evidence",
@@ -60,6 +62,7 @@ export function SupplierFocusedReview(
         posting: "Posting",
         matches: "Amounts match reviewed facts",
         check: "Check amounts against the original",
+        dueToday: "Due today.",
       };
 
   const query = useSupplierAcceptanceReview(book, owner.draftId, owner.reviewId);
@@ -140,7 +143,7 @@ export function SupplierFocusedReview(
                     locale,
                   )
             }
-            subtitle={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}`}
+            subtitle={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}${snapshot.content.dueDate === props.today ? `. ${labels.dueToday}` : ""}`}
           />
           {isSupplierApprovalExpired(view) ? (
             <SupplierApprovalExpiry

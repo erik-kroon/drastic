@@ -1,7 +1,7 @@
 {
   "scope": "K-16",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
-  "comparatorRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "comparatorRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "referenceSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
   "actualSha256": "a13e80dcf0ef86ac5e429037c5f0d367102eea2320a90699604945be107e549b",
   "diffSha256": "152ed671443781b3ee9ccd3e3b0da45198bb42fa15f73bf49f630037d82e0c80",
@@ -42,8 +42,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/books",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_368403a5bd98408cb393ff9e5687110f%252F%2522%257D%257D&record=voucher_f51679db215d4753897a165fdf3853f9&returnSupplier=supplier_invoice_draft_c5dcd59c67ed4f7e90ea37282a5b0ff8&returnSupplierReview=supplier_review_5f685b9d57a746668253d63269bf8d73",
-    "time": "2026-10-10T13:36:25.984Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_7646f89ad05143a9a4c3ccbc53aa6ba8%252F%2522%257D%257D&record=voucher_8a4a52d4ed0b490994bfd4ad7def2ce9&returnSupplier=supplier_invoice_draft_e1b4c1155aeb43cda6c18dc404c0a308&returnSupplierReview=supplier_review_b01f4164a7924faa8d75cebfd1fbea87",
+    "time": "2026-10-10T13:47:45.203Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

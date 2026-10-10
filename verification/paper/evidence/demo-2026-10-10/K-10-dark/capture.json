@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-10-dark/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-10-dark --theme dark",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "sourceHashes": {
     "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
     "apps/web/src/components/work-home.tsx": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
@@ -42,7 +42,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
-    "time": "2026-10-10T13:35:19.737Z",
+    "time": "2026-10-10T13:46:26.762Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

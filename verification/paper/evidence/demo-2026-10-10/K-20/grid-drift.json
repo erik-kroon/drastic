@@ -3,7 +3,7 @@
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-20",
   "adoptedComparisonEligible": true,
   "comparatorStatus": 1,
-  "difference": 0.061794753086419754,
+  "difference": 0.061795524691358024,
   "parityQualified": false,
   "limitations": [
     "Pixel comparison is not behavior/state or production qualification"
@@ -13,8 +13,8 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 16947,
-      "difference": 0.1176875
+      "changed": 16948,
+      "difference": 0.11769444444444445
     },
     {
       "row": 0,

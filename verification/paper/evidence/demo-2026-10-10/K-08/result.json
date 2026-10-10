@@ -1,7 +1,7 @@
 {
   "scope": "K-08",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
-  "comparatorRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "comparatorRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "referenceSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
   "actualSha256": "10cf797a0278caec79f9a8034d2ca54a3592723481fb7273460556df538a2165",
   "diffSha256": "14edec2be52c7453d35bc4e3f4b8068fad2e2e42a45725c046d0b17346d99692",
@@ -36,7 +36,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/overview",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
-    "time": "2026-10-10T13:35:43.712Z",
+    "time": "2026-10-10T13:46:58.725Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

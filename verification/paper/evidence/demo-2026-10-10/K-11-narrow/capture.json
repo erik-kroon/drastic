@@ -1,16 +1,16 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-11-narrow/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-11 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-11-narrow --width 390 --pane decision",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "sourceHashes": {
-    "apps/web/src/components/review-owner.tsx": "67e2f74e37b429509b54e24537dd646d601af8109ce1b49eaec458f1d35454fa",
+    "apps/web/src/components/review-owner.tsx": "169edd40b3d51ea97b477e450864677e72357ee9cc72cb0b15960c980b529c39",
     "apps/web/src/components/review-screen.tsx": "850c8d7e9b48f4e6808adae02a5a27a8667ee06046cbf834af25def23300f653",
     "apps/web/src/lib/attention.ts": "f0935ea9050c343e0b7e6beb563a3ed7ec71d7b99584de1c0a6bb5f2f9437491",
     "apps/web/src/components/commerce/supplier-acceptance.tsx": "eef80e363e775b6c3983c6bc717ee6d16a5d8d41d0b8799535e9ced47fc906ac",
     "packages/ui/src/kanon/cards.tsx": "254d83db782c2eb7984e4467eb391f15096429f35b7661acb3826b810aadaa1b",
     "packages/ui/src/kanon/layouts.tsx": "6531c7e5a81896e280f8b939fa74d16b79eee55be5a43630d7011d6c1b33d1f7",
     "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
-    "apps/web/src/components/commerce/supplier-focused-review.tsx": "6a6ac9fb3ba62e725a9b8ae2257a079c09721eeb3186ba1b14515238015813fa",
+    "apps/web/src/components/commerce/supplier-focused-review.tsx": "d0a53e42f641edb90ca46234eedb3a7dbe6856673245d6f364a9ec15878f03c2",
     "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
     "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
@@ -43,8 +43,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_419197c79e534f59858371eb3a5c7fbb/sha256:5038c4e319ca0117362c650fcb60a61bc28164f5fb484ed9d2f3e28439d7b2a4?sort=oldest",
-    "time": "2026-10-10T13:35:38.812Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_e046d8c0622c4620a9da1ce38c766f48/sha256:a61762b16b9265f542883f9449064756935984d0da0a526ca04aa90a01d3420a?sort=oldest",
+    "time": "2026-10-10T13:46:46.387Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

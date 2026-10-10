@@ -66,6 +66,7 @@ export function ReviewOwner(props: {
         book={book}
         locale={locale}
         accounts={setup.accounts}
+        today={setup.today}
         owner={target}
         expectedDigest={props.expectedDigest ?? target.planDigest}
         returnSearch={props.returnSearch}

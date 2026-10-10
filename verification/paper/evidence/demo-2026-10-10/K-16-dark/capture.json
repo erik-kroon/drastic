@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-16-dark/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-16 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-16-dark --theme dark",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "sourceHashes": {
     "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx": "ea04ba0aa0858c3387223acad24b1351120c9cbda96e0c00d90d58ea7f088cd3",
@@ -38,8 +38,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/books",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_368403a5bd98408cb393ff9e5687110f%252F%2522%257D%257D&record=voucher_f51679db215d4753897a165fdf3853f9&returnSupplier=supplier_invoice_draft_c5dcd59c67ed4f7e90ea37282a5b0ff8&returnSupplierReview=supplier_review_5f685b9d57a746668253d63269bf8d73",
-    "time": "2026-10-10T13:36:31.849Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_7646f89ad05143a9a4c3ccbc53aa6ba8%252F%2522%257D%257D&record=voucher_8a4a52d4ed0b490994bfd4ad7def2ce9&returnSupplier=supplier_invoice_draft_e1b4c1155aeb43cda6c18dc404c0a308&returnSupplierReview=supplier_review_b01f4164a7924faa8d75cebfd1fbea87",
+    "time": "2026-10-10T13:47:50.782Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

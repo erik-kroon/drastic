@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-08/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-08",
-  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
   "sourceHashes": {
     "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598",
     "apps/web/src/lib/company-work.ts": "7ffbac678fa30f88436452bd0fe7a0d286f17eebb246ceb3c11813a079865b41",
@@ -32,7 +32,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/overview",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
-    "time": "2026-10-10T13:35:43.712Z",
+    "time": "2026-10-10T13:46:58.725Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
