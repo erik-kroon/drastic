@@ -14,6 +14,7 @@ export interface DecisionModelConfiguration extends AiEgressConfiguration {
   readonly OPENERP_DECISION_MODEL_ENDPOINT?: string;
   readonly OPENERP_DECISION_MODEL_KEY?: string;
   readonly OPENERP_DECISION_MODEL_TIMEOUT_MS?: string;
+  readonly OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT?: string;
 }
 
 type Configuration = DecisionModelConfiguration | Readonly<Record<string, string | undefined>>;
@@ -52,6 +53,8 @@ export function configuredDecisionModel(
   if (!requestedModel || !expectedReportedModel)
     throw new Error("Decision model identities cannot be empty.");
 
+  const inputTokenLimit = configuredInputTokenLimit(config, mode, requestedModel);
+
   if (mode === "workers-ai-clef") {
     if (!binding) throw new Error("Workers AI decision mode requires an injected AI binding.");
 
@@ -64,6 +67,7 @@ export function configuredDecisionModel(
       {
         provider: "workers-ai",
         configuredRelease,
+        inputTokenLimit,
         requestedModel,
         expectedReportedModel,
         workersAiSelector: selector,
@@ -86,6 +90,7 @@ export function configuredDecisionModel(
   const identity: DecisionIdentity = {
     provider: "http-systemone",
     configuredRelease,
+    inputTokenLimit,
     requestedModel,
     expectedReportedModel,
     workersAiSelector: null,
@@ -100,6 +105,29 @@ export function configuredDecisionModel(
   };
 
   return systemOneModel(identity, transport, timeoutMs);
+}
+
+function configuredInputTokenLimit(config: Configuration, mode: string, selector: string) {
+  const authored = config.OPENERP_DECISION_MODEL_INPUT_TOKEN_LIMIT?.trim();
+  const fixed = mode === "workers-ai-clef" ? (selector === "clef" ? 64000 : 24576) : undefined;
+
+  const value =
+    authored ??
+    (fixed !== undefined
+      ? String(fixed)
+      : mode === "local-systemone-fixture"
+        ? "24576"
+        : undefined);
+
+  if (!value || !/^[1-9][0-9]*$/.test(value) || !Number.isSafeInteger(Number(value)))
+    throw new Error("Decision model input token limit requires an explicit positive safe integer.");
+
+  const limit = Number(value);
+
+  if (fixed !== undefined && limit !== fixed)
+    throw new Error("Hosted decision model input token limit must match its fixed selector limit.");
+
+  return limit;
 }
 
 function configuredHttpTransport(config: Configuration, mode: string) {
