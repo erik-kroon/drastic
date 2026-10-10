@@ -102,6 +102,14 @@ try {
     ...manifest.entries.flatMap((entry) => [...entry.files, entry.behaviorSource, entry.evidence]),
   ]);
 
+  for (const entry of manifest.entries) {
+    if (!entry.evidence) continue;
+    const proof = JSON.parse(readFileSync(path.join(root, entry.evidence), "utf8"));
+    for (const artifact of [proof.actual, proof.diff]) {
+      if (artifact) designFiles.add(artifact);
+    }
+  }
+
   for (const file of designFiles) {
     if (!file) continue;
     mkdirSync(path.dirname(path.join(sandbox, file)), { recursive: true });
