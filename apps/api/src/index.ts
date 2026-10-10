@@ -38,6 +38,7 @@ import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
+import { fixedApplicationClock } from "./runtime/application-clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
@@ -338,60 +339,88 @@ async function httpFailureResponse(response: Response, path: string) {
   return Response.json(error, { status: response.status, headers });
 }
 
-export default {
-  async fetch(request: Request, bindings: Bindings): Promise<Response> {
-    const requestId = crypto.randomUUID();
-    const annotations = { requestId, method: request.method, path: new URL(request.url).pathname };
+export function createApi(e2e: boolean) {
+  return {
+    async fetch(request: Request, bindings: Bindings): Promise<Response> {
+      const requestId = crypto.randomUUID();
 
-    const response = await Effect.runPromise(
-      boundedRequest(request).pipe(
-        Effect.matchEffect({
-          onFailure: (error) => Effect.succeed(boundaryResponse(error)),
-          onSuccess: (bounded) =>
-            new URL(bounded.url).pathname.startsWith("/api/auth/")
-              ? authHandler(bounded, bindings)
-              : withRequestDatabase(
-                  bindings,
-                  Effect.gen(function* () {
-                    const db = yield* Database;
+      const annotations = {
+        requestId,
+        method: request.method,
+        path: new URL(request.url).pathname,
+      };
 
-                    const documentDelivery = yield* Effect.try({
-                      try: () => bindings.DOCUMENT_DELIVERY ?? configuredDocumentDelivery(bindings),
-                      catch: () => failure("ConfigurationError"),
-                    });
+      const testNow = request.headers.get("x-openerp-test-now");
 
-                    return yield* Effect.tryPromise({
-                      try: () =>
-                        handler(
-                          bounded,
-                          Context.make(RequestEnvironment, {
-                            bindings: { ...bindings, DOCUMENT_DELIVERY: documentDelivery },
-                            url: new URL(request.url),
-                          }).pipe(
-                            Context.add(Database, db),
-                            Context.add(References.CurrentLogAnnotations, annotations),
-                          ),
+      const response = await Effect.runPromise(
+        boundedRequest(request).pipe(
+          Effect.matchEffect({
+            onFailure: (error) => Effect.succeed(boundaryResponse(error)),
+            onSuccess: (bounded) => {
+              if (testNow !== null && !e2e)
+                return Effect.succeed(boundaryResponse(failure("Forbidden")));
+
+              const instant =
+                testNow === null
+                  ? null
+                  : fixedApplicationClock(testNow, Clock.Clock.defaultValue());
+
+              if (testNow !== null && instant === null)
+                return Effect.succeed(boundaryResponse(failure("InvalidRequest")));
+
+              if (new URL(bounded.url).pathname.startsWith("/api/auth/"))
+                return authHandler(bounded, bindings);
+
+              const application = withRequestDatabase(
+                bindings,
+                Effect.gen(function* () {
+                  const db = yield* Database;
+
+                  const documentDelivery = yield* Effect.try({
+                    try: () => bindings.DOCUMENT_DELIVERY ?? configuredDocumentDelivery(bindings),
+                    catch: () => failure("ConfigurationError"),
+                  });
+
+                  return yield* Effect.tryPromise({
+                    try: () =>
+                      handler(
+                        bounded,
+                        Context.make(RequestEnvironment, {
+                          bindings: { ...bindings, DOCUMENT_DELIVERY: documentDelivery },
+                          url: new URL(request.url),
+                        }).pipe(
+                          Context.add(Database, db),
+                          Context.add(References.CurrentLogAnnotations, annotations),
+                          (context) =>
+                            instant === null ? context : Context.add(context, Clock.Clock, instant),
                         ),
-                      catch: databaseFailure,
-                    });
-                  }),
-                ),
-        }),
-        Effect.catchCause((cause) => {
-          if (Cause.hasInterrupts(cause)) return Effect.failCause(cause);
+                      ),
+                    catch: databaseFailure,
+                  });
+                }),
+              );
 
-          const safe = databaseFailure(Cause.squash(cause));
+              return application;
+            },
+          }),
+          Effect.catchCause((cause) => {
+            if (Cause.hasInterrupts(cause)) return Effect.failCause(cause);
 
-          return logFailure(safe).pipe(Effect.as(boundaryResponse(safe)));
-        }),
-        Effect.annotateLogs(annotations),
-      ),
-    );
+            const safe = databaseFailure(Cause.squash(cause));
 
-    const publicResponse = await httpFailureResponse(response, annotations.path);
-    publicResponse.headers.set("cache-control", "no-store");
-    publicResponse.headers.set("x-request-id", requestId);
+            return logFailure(safe).pipe(Effect.as(boundaryResponse(safe)));
+          }),
+          Effect.annotateLogs(annotations),
+        ),
+      );
 
-    return publicResponse;
-  },
-};
+      const publicResponse = await httpFailureResponse(response, annotations.path);
+      publicResponse.headers.set("cache-control", "no-store");
+      publicResponse.headers.set("x-request-id", requestId);
+
+      return publicResponse;
+    },
+  };
+}
+
+export default createApi(false);

@@ -1,5 +1,5 @@
 import { realpath } from "node:fs/promises";
-import api from "../src/index";
+import api from "../src/runtime/e2e";
 import { inspectQueuedDocument } from "./document-inspection/inspection";
 import { fileObjectStore } from "./file-object-store";
 import { configuredProcessorFeed } from "../src/adapters/processor/local-fixture";

@@ -150,8 +150,7 @@ export default async function setup(project: TestProject) {
     root: join(root, "apps/api"),
     workers: [
       {
-        configPath: "wrangler.jsonc",
-        env: "e2e",
+        configPath: "tests/support/e2e.wrangler.jsonc",
         secrets: {
           DATABASE_URL: runtimeUrl,
           OPENERP_PROCESSOR_FEED: "local-fixture",

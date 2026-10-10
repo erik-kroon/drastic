@@ -1,10 +1,10 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bureau from "@open-erp/contracts/bureau-obligations";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as InvoiceDb from "../db/commerce/invoices";
-import { readInstant } from "../db/commerce/access";
 import { failure } from "./failures";
 import { requireTableAccess, withBook } from "./commerce/support";
 
@@ -27,9 +27,7 @@ export const listBureauObligations = Effect.fn("bureau.obligations.list")(functi
     );
 
     if (identities.length > 10000) return yield* failure("UnsupportedProfile");
-    const checkedAt = (yield* readInstant(transaction))[0]?.instant;
-
-    if (!checkedAt) return yield* failure("InternalError");
+    const checkedAt = new Date(yield* Clock.currentTimeMillis).toISOString();
     const items: Array<(typeof Bureau.BureauObligations.Type.items)[number]> = [];
 
     for (let offset = 0; offset < identities.length; offset += 1000) {
