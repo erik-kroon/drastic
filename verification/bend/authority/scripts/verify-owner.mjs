@@ -15,7 +15,7 @@ const report = {
   currentWorktree: true,
   compilerCommit: BEND_PIN,
   assertions: 0,
-  operations: ["money.round.v1", "vat.project.v1"],
+  operations: ["money.round.v1", "vat.project.v1", "fx.convert.v1", "schedule.equal.v1"],
   differences: [],
 };
 

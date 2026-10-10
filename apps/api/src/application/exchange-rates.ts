@@ -1,5 +1,6 @@
 import { digest as digestNative } from "./json";
 import * as Rates from "@open-erp/contracts/exchange-rates";
+import { convertMinor } from "@open-erp/domain/exchange-rates";
 import { canonicalizeJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -553,24 +554,18 @@ export const listExchangeRates = Effect.fn("exchangeRates.list")(function* (
 });
 
 function convert(input: CaptureInput, bookScale: number, rate: RevisionBody) {
-  const numerator =
-    BigInt(input.originalMinor) * BigInt(rate.terms.rateNumerator) * 10n ** BigInt(bookScale);
+  const exact = convertMinor(BigInt(input.originalMinor), input.sourceScale, rate.terms, bookScale);
 
-  const denominator = BigInt(rate.terms.rateDenominator) * 10n ** BigInt(input.sourceScale);
-  const quotient = numerator / denominator;
-  const remainder = numerator % denominator;
-  const rounded = quotient + (2n * remainder >= denominator ? 1n : 0n);
-
-  if (rounded >= minorUnitBound) return failure("InvalidJournal");
+  if (exact.rounded >= minorUnitBound) return failure("InvalidJournal");
 
   return Effect.succeed({
-    exactNumerator: numerator.toString(),
-    exactDenominator: denominator.toString(),
-    quotientMinor: quotient.toString(),
-    remainderNumerator: remainder.toString(),
-    roundedMinor: rounded.toString(),
-    residualNumerator: (numerator - rounded * denominator).toString(),
-    residualDenominator: denominator.toString(),
+    exactNumerator: exact.numerator.toString(),
+    exactDenominator: exact.denominator.toString(),
+    quotientMinor: exact.quotient.toString(),
+    remainderNumerator: exact.remainder.toString(),
+    roundedMinor: exact.rounded.toString(),
+    residualNumerator: exact.residual.toString(),
+    residualDenominator: exact.denominator.toString(),
   } satisfies Amounts);
 }
 

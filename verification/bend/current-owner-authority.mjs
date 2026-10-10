@@ -3,6 +3,7 @@ import { registerHooks } from "node:module";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import * as Result from "effect/Result";
 import { runProcess } from "./authority/scripts/process.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
@@ -22,10 +23,12 @@ const hooks = registerHooks({
   },
 });
 
-let monetary;
+let monetary, rates, prepayments;
 
 try {
   monetary = (await import("../../jurisdictions/se/src/vat/actual.ts")).actualVatMonetary;
+  rates = await import("../../packages/domain/src/exchange-rates.ts");
+  prepayments = await import("../../packages/domain/src/prepayments.ts");
 } finally {
   hooks.deregister();
 }
@@ -61,6 +64,43 @@ export function calculate(operation, input) {
   }
 
   if (operation === "vat.project.v1") return { rows: monetary.project(input) };
+
+  // The owner defines only nonnegative half-up conversion; other inputs are outside its scope.
+  if (operation === "fx.convert.v1") {
+    if (input.rounding !== "half_up" || BigInt(input.amountMinor) < 0n)
+      throw new Error("The current FX owner does not define this conversion");
+
+    const exact = rates.convertMinor(
+      BigInt(input.amountMinor),
+      input.fromScale,
+      input,
+      input.toScale,
+    );
+
+    return {
+      convertedMinor: String(exact.rounded),
+      residualNumerator: String(exact.residual),
+      denominator: String(exact.denominator),
+    };
+  }
+
+  // Equal months put the remainder in the last installment; the owner refuses nonpositive costs.
+  if (operation === "schedule.equal.v1") {
+    const shares = prepayments.allocateByWeights(
+      input.remainingMinor,
+      input.periodIds.map(() => 1n),
+      "last_installment",
+    );
+
+    if (Result.isFailure(shares)) throw new Error("The current schedule owner refused this input");
+
+    return {
+      rows: shares.success.map((amountMinor, index) => ({
+        periodId: input.periodIds[index],
+        amountMinor,
+      })),
+    };
+  }
 
   throw new Error(`Owner comparison does not cover ${operation}`);
 }

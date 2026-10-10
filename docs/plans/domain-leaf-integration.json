@@ -152,9 +152,11 @@
       "leaf": "exchange-rates",
       "status": "wired",
       "consumers": [
-        "packages/contracts/src/exchange-rates.ts"
+        "packages/contracts/src/exchange-rates.ts",
+        "apps/api/src/application/exchange-rates.ts",
+        "apps/api/src/application/commerce/fx.ts"
       ],
-      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. convertMinor and exactHalfUp are the single conversion rounding owner for rate reviews and commerce FX recognition; verification/bend/authority compares them with its exact model."
     },
     {
       "leaf": "filing-lifecycle",

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T11:44:03.006Z",
+  "generatedAt": "2026-10-10T07:23:08.256Z",
   "schema": "openerp-bend-local/v1",
   "status": "passed",
   "runtimeId": "node:v26.4.0:darwin:arm64",
@@ -13,8 +13,8 @@
       ],
       "status": 0,
       "signal": null,
-      "stdout": "BigNat arithmetic and bounds: 2852 assertions\nBigInt sign and division: 4327 assertions\nReduced rationals and rounding: 2319 assertions\nDecimal conversion: 177 assertions\nLedger and allocation invariants: 485 assertions\nVAT source differential checks: 685 assertions\nPRY-33 exhaustive differential and scope: 319 assertions\nNegative proof and checker controls: 9 assertions\nPASS: 11173 assertions; 35 law/proof pairs under official-js-artifact. Runtime qualification is a separate gate.\n",
-      "stderr": "(node:45442) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "stdout": "BigNat arithmetic and bounds: 2852 assertions\nBigInt sign and division: 4327 assertions\nReduced rationals and rounding: 2319 assertions\nDecimal conversion: 177 assertions\nLedger and allocation invariants: 485 assertions\nVAT source differential checks: 685 assertions\nPRY-33 exhaustive differential and scope: 319 assertions\nNegative proof and checker controls: 9 assertions\nPASS: 11173 assertions; 35 law/proof pairs under development-adaptation. Runtime qualification is a separate gate.\n",
+      "stderr": "(node:9196) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
       "error": null,
       "passed": true
     },
@@ -26,7 +26,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stdout": "Operation kernels and boundary oracles { assertions: 798, ms: 20 }\nIndependent certificate checks reject plausible wrong results { assertions: 1061, ms: 3 }\nExact immutable envelopes and failure behavior { assertions: 24, ms: 6 }\nPer-operation release qualification, not self-approval { assertions: 7, ms: 3 }\nUpstream ABI adapter unit controls { assertions: 18, ms: 0 }\nRefinement proofs reject binary arithmetic mutations { assertions: 4, ms: 135 }\nBounded worker cancellation { assertions: 3, ms: 57 }\nPASS 1915 authority assertions under official-js-artifact\n",
+      "stdout": "Operation kernels and boundary oracles { assertions: 798, ms: 175 }\nIndependent certificate checks reject plausible wrong results { assertions: 1061, ms: 4 }\nExact immutable envelopes and failure behavior { assertions: 24, ms: 7 }\nPer-operation release qualification, not self-approval { assertions: 7, ms: 3 }\nUpstream ABI adapter unit controls { assertions: 18, ms: 1 }\nRefinement proofs reject binary arithmetic mutations { assertions: 4, ms: 87 }\nBounded worker cancellation { assertions: 3, ms: 100 }\nPASS 1915 authority assertions under development-adaptation\n",
       "stderr": "",
       "error": null,
       "passed": true
@@ -39,7 +39,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stdout": "PASS 378 extension assertions under official-js-artifact\n",
+      "stdout": "PASS 378 extension assertions under development-adaptation\n",
       "stderr": "",
       "error": null,
       "passed": true
@@ -52,7 +52,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stdout": "{\n  \"authority\": \"pinned-upstream-source\",\n  \"voucher\": {\n    \"accepted\": true,\n    \"debitMinor\": \"125000\",\n    \"creditMinor\": \"125000\",\n    \"scopeChecked\": false,\n    \"postingAuthorized\": false\n  },\n  \"allocation\": {\n    \"status\": \"allocated-arithmetic\",\n    \"amountMinor\": \"60000\",\n    \"sourceAfterMinor\": \"40000\",\n    \"targetAfterMinor\": \"30000\",\n    \"restoredSourceMinor\": \"100000\",\n    \"restoredTargetMinor\": \"90000\",\n    \"mayExecute\": false\n  },\n  \"vat\": [\n    {\n      \"box\": \"10\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"199\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"99\"\n    },\n    {\n      \"box\": \"48\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"101\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"1\"\n    },\n    {\n      \"box\": \"49\",\n      \"kind\": \"net\",\n      \"exactMinor\": \"98\",\n      \"reportedMinor\": \"0\",\n      \"residualMinor\": \"98\"\n    }\n  ],\n  \"cover\": {\n    \"engine\": \"bend-cover-v1\",\n    \"authority\": \"pinned-upstream-source\",\n    \"inputFingerprint\": \"verification-sha256:aead2803a3802b51a233e659c9f7f5a365feba6ff6ca39ece2f3b7cb7a86e9ea\",\n    \"scope\": {\n      \"entityId\": \"demo-company\",\n      \"bookId\": \"demo-book\",\n      \"snapshotId\": \"immutable-snapshot-1\"\n    },\n    \"currency\": \"SEK\",\n    \"scale\": 2,\n    \"direction\": \"inflow\",\n    \"targetMinor\": \"10000\",\n    \"mayExecute\": false,\n    \"requiresRevalidation\": true,\n    \"coverage\": {\n      \"poolCompleteDeclared\": true,\n      \"candidateCount\": 3,\n      \"maxCardinality\": 3,\n      \"nodeBudget\": 100,\n      \"visitedNodes\": 10,\n      \"searchExhausted\": false\n    },\n    \"status\": \"ambiguous\",\n    \"witnesses\": [\n      [\n        {\n          \"id\": \"line-0\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"4000\"\n        },\n        {\n          \"id\": \"line-1\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"6000\"\n        }\n      ],\n      [\n        {\n          \"id\": \"line-2\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"10000\"\n        }\n      ]\n    ]\n  }\n}\n",
+      "stdout": "{\n  \"authority\": \"development-adaptation\",\n  \"voucher\": {\n    \"accepted\": true,\n    \"debitMinor\": \"125000\",\n    \"creditMinor\": \"125000\",\n    \"scopeChecked\": false,\n    \"postingAuthorized\": false\n  },\n  \"allocation\": {\n    \"status\": \"allocated-arithmetic\",\n    \"amountMinor\": \"60000\",\n    \"sourceAfterMinor\": \"40000\",\n    \"targetAfterMinor\": \"30000\",\n    \"restoredSourceMinor\": \"100000\",\n    \"restoredTargetMinor\": \"90000\",\n    \"mayExecute\": false\n  },\n  \"vat\": [\n    {\n      \"box\": \"10\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"199\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"99\"\n    },\n    {\n      \"box\": \"48\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"101\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"1\"\n    },\n    {\n      \"box\": \"49\",\n      \"kind\": \"net\",\n      \"exactMinor\": \"98\",\n      \"reportedMinor\": \"0\",\n      \"residualMinor\": \"98\"\n    }\n  ],\n  \"cover\": {\n    \"engine\": \"bend-cover-v1\",\n    \"authority\": \"development-adaptation\",\n    \"inputFingerprint\": \"verification-sha256:aead2803a3802b51a233e659c9f7f5a365feba6ff6ca39ece2f3b7cb7a86e9ea\",\n    \"scope\": {\n      \"entityId\": \"demo-company\",\n      \"bookId\": \"demo-book\",\n      \"snapshotId\": \"immutable-snapshot-1\"\n    },\n    \"currency\": \"SEK\",\n    \"scale\": 2,\n    \"direction\": \"inflow\",\n    \"targetMinor\": \"10000\",\n    \"mayExecute\": false,\n    \"requiresRevalidation\": true,\n    \"coverage\": {\n      \"poolCompleteDeclared\": true,\n      \"candidateCount\": 3,\n      \"maxCardinality\": 3,\n      \"nodeBudget\": 100,\n      \"visitedNodes\": 10,\n      \"searchExhausted\": false\n    },\n    \"status\": \"ambiguous\",\n    \"witnesses\": [\n      [\n        {\n          \"id\": \"line-0\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"4000\"\n        },\n        {\n          \"id\": \"line-1\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"6000\"\n        }\n      ],\n      [\n        {\n          \"id\": \"line-2\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"10000\"\n        }\n      ]\n    ]\n  }\n}\n",
       "stderr": "",
       "error": null,
       "passed": true
@@ -66,7 +66,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stdout": "{\n  \"engine\": \"bend-cover-v1\",\n  \"authority\": \"pinned-upstream-source\",\n  \"inputFingerprint\": \"verification-sha256:a1ec38645615fc083a10fe87febed4f0ed61e3fad53c6d2dd22edbe70192818f\",\n  \"scope\": {\n    \"entityId\": \"demo-entity\",\n    \"bookId\": \"demo-book\",\n    \"snapshotId\": \"snapshot-1\"\n  },\n  \"currency\": \"SEK\",\n  \"scale\": 2,\n  \"direction\": \"inflow\",\n  \"targetMinor\": \"10000\",\n  \"mayExecute\": false,\n  \"requiresRevalidation\": true,\n  \"coverage\": {\n    \"poolCompleteDeclared\": true,\n    \"candidateCount\": 3,\n    \"maxCardinality\": 3,\n    \"nodeBudget\": 100,\n    \"visitedNodes\": 10,\n    \"searchExhausted\": false\n  },\n  \"status\": \"ambiguous\",\n  \"witnesses\": [\n    [\n      {\n        \"id\": \"line-0\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"4000\"\n      },\n      {\n        \"id\": \"line-1\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"6000\"\n      }\n    ],\n    [\n      {\n        \"id\": \"line-2\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"10000\"\n      }\n    ]\n  ]\n}\n",
+      "stdout": "{\n  \"engine\": \"bend-cover-v1\",\n  \"authority\": \"development-adaptation\",\n  \"inputFingerprint\": \"verification-sha256:a1ec38645615fc083a10fe87febed4f0ed61e3fad53c6d2dd22edbe70192818f\",\n  \"scope\": {\n    \"entityId\": \"demo-entity\",\n    \"bookId\": \"demo-book\",\n    \"snapshotId\": \"snapshot-1\"\n  },\n  \"currency\": \"SEK\",\n  \"scale\": 2,\n  \"direction\": \"inflow\",\n  \"targetMinor\": \"10000\",\n  \"mayExecute\": false,\n  \"requiresRevalidation\": true,\n  \"coverage\": {\n    \"poolCompleteDeclared\": true,\n    \"candidateCount\": 3,\n    \"maxCardinality\": 3,\n    \"nodeBudget\": 100,\n    \"visitedNodes\": 10,\n    \"searchExhausted\": false\n  },\n  \"status\": \"ambiguous\",\n  \"witnesses\": [\n    [\n      {\n        \"id\": \"line-0\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"4000\"\n      },\n      {\n        \"id\": \"line-1\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"6000\"\n      }\n    ],\n    [\n      {\n        \"id\": \"line-2\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"10000\"\n      }\n    ]\n  ]\n}\n",
       "stderr": "",
       "error": null,
       "passed": true
@@ -76,7 +76,7 @@
   "parentModified": false,
   "currentOwner": "not-established-by-local-tests",
   "officialToolchain": "not-established-by-local-tests",
-  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "sourceTreeDigest": "sha256:8002f30e417aacc2ddd6b5e8b0073217be1bf5c52ef947f6f1d89b4ec830b7cc",
   "sourceFiles": {
     "bend/Allocation.bend": "sha256:ae75c3ec9ec4d1fa7fa944347a9312e72effb3d82c9ec01bf85fa905e2ec5e53",
     "bend/BigInt.bend": "sha256:c5a2e3d868798a4724eb6dbc5fbddc675aaf2a47fe276381d606cae0a2a1ccc7",
@@ -136,11 +136,11 @@
     "scripts/verify-compiler.mjs": "sha256:06c9c1d4f3d43f8b5ecbb2f2c9211d3ded2bbda3b8f108beeb76f6c261649e8b",
     "scripts/verify-host.mjs": "sha256:028e11ecad3704873a30733a52e72a34a3ac3a39e5a31ac0cecf56b90fb11462",
     "scripts/verify-local.mjs": "sha256:859d9aa676d354e00cb31564780893794d7cf933700d95daa44e2f7aeac562e0",
-    "scripts/verify-owner.mjs": "sha256:dc7fda1ba7acb18bb2bd4329d92e7f9e1eedb0a19eb6109021c2ceb93bed9a38",
+    "scripts/verify-owner.mjs": "sha256:7034eb2c42ffe9165dcb008d1a4624475a436373341ebc8603bdbcc82b2ebb75",
     "scripts/verify-release.mjs": "sha256:c7d15582c0b0f74e08f341eb86f7a72bf45e2c9b82c3d0c10034ff109d2a059c",
     "tests/authority/run.mjs": "sha256:cfd9e62a29c3127e9a5c8c37c3dca07249d36ec548c2979b02971413e25d0822",
     "tests/extension.mjs": "sha256:24d3441bb7fe279c30edd8a06647b482d0c7e5be4ff3ca421d94920c088f38bf",
-    "tests/owner-cases.mjs": "sha256:cabca4b4a02a76ef9ba206dea287275a9fb3dff4009c6828b954a8a90a8b852f",
+    "tests/owner-cases.mjs": "sha256:52c5c745ba778fb75f479f18e417f18138eb69da2bfc112df77c55bfcd02651a",
     "tests/run.mjs": "sha256:6783f8f4863c9b03958d1588df619c8ebd909a76ac63629debc68726d37f49ea",
     "tests/test-engine.mjs": "sha256:6c30b46ab5b140d559893104f0928bbadd2841fdda802265263eb74a93c68ee6",
     "tests/types.mts": "sha256:bcb01860e76f87a0163d3ddb10607fff06137c21728a2df68d5a310a48e92d78",
@@ -174,20 +174,20 @@
     {
       "suite": "arithmetic",
       "assertions": 11173,
-      "checker": "official-js-artifact"
+      "checker": "development-adaptation"
     },
     {
       "suite": "authority-boundaries",
       "assertions": 1915,
-      "checker": "official-js-artifact"
+      "checker": "development-adaptation"
     },
     {
       "suite": "authority-extension",
       "assertions": 378,
-      "checker": "official-js-artifact"
+      "checker": "development-adaptation"
     }
   ],
   "lawProofPairs": 35,
-  "backend": "official-js-artifact",
-  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c"
+  "backend": "development-adaptation",
+  "artifactDigest": null
 }

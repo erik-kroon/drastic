@@ -32,3 +32,32 @@ export const ConversionAmounts = Schema.Struct({
   residualNumerator: SignedMinorUnits,
   residualDenominator: AggregateMinorUnits,
 });
+
+/** Exact nonnegative rational rounded half up, keeping the residual. The single FX rounding owner. */
+export function exactHalfUp(numerator: bigint, denominator: bigint) {
+  const quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+  const rounded = quotient + (remainder * 2n >= denominator ? 1n : 0n);
+
+  return {
+    numerator,
+    denominator,
+    quotient,
+    remainder,
+    rounded,
+    residual: numerator - rounded * denominator,
+  };
+}
+
+/** Converts minor units between currency scales at a quote-per-base major-unit rate. */
+export function convertMinor(
+  originalMinor: bigint,
+  sourceScale: number,
+  rate: { readonly rateNumerator: string; readonly rateDenominator: string },
+  targetScale: number,
+) {
+  return exactHalfUp(
+    originalMinor * BigInt(rate.rateNumerator) * 10n ** BigInt(targetScale),
+    BigInt(rate.rateDenominator) * 10n ** BigInt(sourceScale),
+  );
+}

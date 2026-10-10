@@ -200,3 +200,48 @@ jobs:
             test-results/mcpjam/
           if-no-files-found: warn
           retention-days: 14
+
+  # Compares the real money owners (rounding, VAT projection, FX conversion and
+  # equal schedules) with the exact Bend model. Node only; no database. The
+  # development checker is not the official Bend compiler or safe kernel.
+  bend:
+    name: Exact money model
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install locked dependencies
+        id: install
+        timeout-minutes: 5
+        run: bun install --frozen-lockfile
+      - name: Model laws and arithmetic
+        timeout-minutes: 5
+        run: npm --prefix verification/bend/authority run verify:local
+      - name: Compare current owners with the model
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        env:
+          OPENERP_REPO: ${{ github.workspace }}
+          OPENERP_OWNER_ADAPTER: verification/bend/current-owner-authority.mjs
+        run: npm --prefix verification/bend/authority run verify:owner
+      - name: Historical VAT regressions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: npm --prefix verification/bend test
+      - name: Upload model evidence
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: bend-evidence
+          path: |
+            verification/bend/authority/evidence/current/
+            verification/bend/evidence/test-report.json
+          if-no-files-found: error
+          retention-days: 14

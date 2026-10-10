@@ -6,6 +6,7 @@ import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import * as CommerceFx from "@open-erp/contracts/commerce-fx";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Rates from "@open-erp/contracts/exchange-rates";
+import { convertMinor, exactHalfUp } from "@open-erp/domain/exchange-rates";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
@@ -165,25 +166,6 @@ function evidenceReference(row: { id: string; sha256: string }) {
 
 export function commandReceipt(key: string, operation: string, actorId: string) {
   return { key, operation, actorId };
-}
-
-function pow10(value: number) {
-  return 10n ** BigInt(value);
-}
-
-function exactHalfUp(numerator: bigint, denominator: bigint) {
-  const quotient = numerator / denominator;
-  const remainder = numerator % denominator;
-  const rounded = quotient + (remainder * 2n >= denominator ? 1n : 0n);
-
-  return {
-    numerator,
-    denominator,
-    quotient,
-    remainder,
-    rounded,
-    residual: numerator - rounded * denominator,
-  };
 }
 
 function exactMinor(value: string) {
@@ -710,9 +692,7 @@ function recognitionSnapshot(
     const amount = exactMinor(input.originalMinor);
 
     if (amount === undefined) return yield* failure("InvalidJournal");
-    const numerator = amount * BigInt(rate.terms.rateNumerator) * pow10(book.currencyScale);
-    const denominator = BigInt(rate.terms.rateDenominator) * pow10(input.originalScale);
-    const exact = exactHalfUp(numerator, denominator);
+    const exact = convertMinor(amount, input.originalScale, rate.terms, book.currencyScale);
 
     if (exact.rounded <= 0n || exact.rounded >= 10n ** 38n) return yield* failure("InvalidJournal");
 

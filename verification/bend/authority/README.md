@@ -41,6 +41,8 @@ See `evidence/current/local-verification.json` for run output, backend identity,
 | `fx.convert.v1` | FX conversion | Explicit major-unit rate direction and both currency scales; no implicit rate selection or gain/loss classification |
 | `ledger.reverse.v1` | Reversal transformation | Original line references, accounts and dimensions retained while debit and credit sides swap |
 
+`ledger.reverse.v1` and `settlement.allocate.v1` have no compared current owner: reversal is an inline side swap in `posting-corrections.ts`, and settlement capacity is checked inside the allocation transactions. The parent [README](../README.md#in-ci) lists the compared operations.
+
 PRY-33 stays on the separate research/suggestion path. It cannot be placed in an authority release and never produces permission to execute.
 
 ### Explicit VAT units

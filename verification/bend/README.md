@@ -4,6 +4,30 @@ Offline models for exact arithmetic, ledger/allocation invariants, Swedish VAT
 monetary projection and bounded covering-set search. This directory is outside
 the product workspaces and has no production caller.
 
+## In CI
+
+The `Exact money model` job in `.github/workflows/ci.yml` runs on every pull
+request and push to `main`:
+
+1. `authority` model laws and arithmetic (`verify:local`).
+2. Current-owner comparison (`authority` `verify:owner` with
+   [`current-owner-authority.mjs`](current-owner-authority.mjs)). The model must
+   agree exactly with the code the application runs:
+
+   | Operation | Current owner |
+   | --- | --- |
+   | `money.round.v1`, `vat.project.v1` | `jurisdictions/se/src/vat/actual.ts` and the shared rounding |
+   | `fx.convert.v1` (nonnegative half up) | `convertMinor` in `packages/domain/src/exchange-rates.ts`, used by rate reviews and commerce FX recognition |
+   | `schedule.equal.v1` (remainder last) | `allocateByWeights` in `packages/domain/src/prepayments.ts`, used by equal-month prepayments |
+
+3. This kit's historical VAT regressions (`test`).
+
+The job uploads fresh evidence as the `bend-evidence` artifact. Committed
+evidence files are dated snapshots; the CI artifact is the current result.
+Inputs outside an owner's defined scope (negative FX amounts, other rounding
+modes, nonpositive schedules) are not generated, and the adapter refuses them
+rather than reporting agreement.
+
 ## Run
 
 Use Node 22.16 or later. The standalone model checks need no npm installation:
