@@ -13,7 +13,9 @@ import * as Db from "../../db/posting";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import { isoNow, newId, replay, saveCommand, validatePlan } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { validatePlan } from "../posting";
 
 type Scope = typeof Accounting.Scope.Type;
 

@@ -10,13 +10,11 @@ import {
   executeChangeInTransaction,
   createEvidenceInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   validatePlan,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { valuationBasis, checkedValuation } from "./valuation-basis";
 
 type PrepareCommand = {

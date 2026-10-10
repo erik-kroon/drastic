@@ -7,7 +7,7 @@ import { StatementPaymentReference } from "@open-erp/contracts/reconciliation";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import * as CandidateDb from "../../db/banking/candidates";
 import * as BankDb from "../../db/banking/shared";
 import type { Transaction } from "../../db/transaction";

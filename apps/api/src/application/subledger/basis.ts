@@ -11,7 +11,9 @@ import {
   type Scope,
 } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, readBook, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { readBook } from "../posting";
 import * as Db from "../../db/posting";
 import * as ControlsDb from "../../db/subledger/controls";
 import * as SchedulesDb from "../../db/subledger/schedules";

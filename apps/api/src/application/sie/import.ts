@@ -14,7 +14,9 @@ import {
   type Scope,
 } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { checkControls } from "./source-controls";
 
 type Identified = { readonly scope: Scope; readonly id: string };

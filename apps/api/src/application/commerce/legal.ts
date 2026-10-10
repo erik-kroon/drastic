@@ -16,7 +16,8 @@ import * as LegalPolicyDb from "../../db/commerce/legal-policies";
 import { lockBookForUpdate, readOperatorMembership } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import {
   decode,
   exactKeys,

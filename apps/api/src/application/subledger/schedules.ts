@@ -13,14 +13,9 @@ import * as OccurrenceCorrections from "../../db/subledger/occurrence-correction
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import {
-  isoNow,
-  newId,
-  prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { prepareJournalInTransaction, validatePlan } from "../posting";
 
 type Scope = typeof Accounting.Scope.Type;
 

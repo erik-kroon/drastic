@@ -7,7 +7,8 @@ import { failure } from "./failures";
 import { lockBookForUpdate } from "../db/posting";
 import * as VatDb from "../db/vat-return-drafts";
 import type { Transaction } from "../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   exactKeys,

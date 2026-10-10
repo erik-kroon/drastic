@@ -5,7 +5,9 @@ import * as Effect from "effect/Effect";
 import * as Db from "../../db/historical";
 import { decode, withBook } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readPlan, requireStaged, type Command, type Identified } from "./historical-shared";
 
 type Input = typeof Historical.AdmitItems.Type;

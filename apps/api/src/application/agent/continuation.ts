@@ -7,7 +7,8 @@ import * as Db from "../../db/agent-context";
 import type { Transaction } from "../../db/transaction";
 import { decode, toJsonObject, withBook, type Principal, type Scope } from "../commerce/support";
 import { digest } from "../json";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { captureBookContextInTransaction } from "./context";
 

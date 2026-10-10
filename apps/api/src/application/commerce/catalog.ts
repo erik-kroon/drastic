@@ -4,7 +4,7 @@ import * as Policies from "../../db/commerce/legal-policies";
 import { digest } from "../json";
 import * as Effect from "effect/Effect";
 import * as CatalogDb from "../../db/commerce/catalog";
-import { replay, saveCommand } from "../posting";
+import { replay, saveCommand } from "../command-receipts";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {

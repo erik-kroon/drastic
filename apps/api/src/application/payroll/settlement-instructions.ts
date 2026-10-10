@@ -16,7 +16,7 @@ import {
   claimBalance,
 } from "./settlement-support";
 import { type Principal } from "../commerce/support";
-import { newId } from "../posting";
+import { newId } from "../identifiers";
 
 export const captureAdjustmentInstructions = Effect.fn("payroll.captureAdjustmentInstructions")(
   function* (

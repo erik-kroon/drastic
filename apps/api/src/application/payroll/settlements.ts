@@ -21,12 +21,10 @@ import {
   approveChangeInTransaction,
   executeChangeInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { addMatch } from "../banking/matches";
 import { captureCalculationBasis } from "./calculations";

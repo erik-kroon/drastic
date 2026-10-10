@@ -9,7 +9,8 @@ import * as Sources from "../db/sie-import";
 import type { Transaction } from "../db/transaction";
 import { decode, type Scope } from "./commerce/support";
 import { readSourceBytesInTransaction } from "./source-retention";
-import { isoNow, newId } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { failure } from "./failures";
 
 const Document = Schema.Struct({

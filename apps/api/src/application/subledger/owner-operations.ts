@@ -28,13 +28,11 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
   validatePlan,
 } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as PurchaseShared from "../purchases/shared";
 import * as Recognition from "../purchases/recognition";
 import { readCapacity, sealOwnerAggregateInTransaction } from "./owners";

@@ -1,3 +1,13 @@
+import { replay, saveCommand, isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
+import { sha256Hex } from "./hashing";
+
+export { replay, saveCommand, isoNow } from "./command-receipts";
+
+export { newId } from "./identifiers";
+
+export { sha256Hex } from "./hashing";
+
 import { admitOAuthRead, McpReadResource } from "../db/oauth-admission";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import { requireOnboardingResponsibility } from "./onboarding-policy";
@@ -19,7 +29,7 @@ import {
   admitScheduleEvent,
   type PostingOwner,
 } from "./posting-admission";
-import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
+import { recordHistoricalOpening } from "../db/posting-admission";
 import {
   applyOriginalAssignmentsInTransaction,
   resolveAssignmentsInTransaction,
@@ -27,7 +37,7 @@ import {
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as ProfileDb from "../db/company-profiles";
-import { digest, versionedDigest } from "./json";
+import { versionedDigest } from "./json";
 import { resolveCompanyProfileInTransaction } from "./company-profiles";
 
 export { digest, versionedDigest } from "./json";
@@ -105,31 +115,10 @@ const EvidenceSchema = Accounting.Evidence;
 
 const EvidenceContentSchema = Accounting.EvidenceContent;
 
-export function newId(prefix: string) {
-  return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
-}
-
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   return Schema.decodeEffect(schema)(value).pipe(
     Effect.mapError((cause) => failure("InternalError", cause)),
   );
-}
-
-function requestDigest(operation: string, actorId: string, input: JsonObject) {
-  return digest({ operation, actor: actorId, input }, "InternalError");
-}
-
-export function sha256Hex(value: string) {
-  return Effect.tryPromise({
-    try: async () => {
-      const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-
-      return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join(
-        "",
-      );
-    },
-    catch: () => failure("InternalError"),
-  });
 }
 
 function withBook<A>(
@@ -695,77 +684,6 @@ export const validateManualJournalPlanInTransaction = Effect.fn(
     manualContext,
   );
 });
-
-export function replay<A>(
-  transaction: Transaction,
-  scope: Scope,
-  key: string,
-  operation: string,
-  actorId: string,
-  input: JsonObject,
-  schema: Schema.Decoder<A>,
-) {
-  return Effect.gen(function* () {
-    const expected = yield* requestDigest(operation, actorId, input);
-    const reserved = (yield* readReservedCommand(transaction, scope.bookId, key))[0];
-
-    if (reserved) {
-      const savedOperation =
-        reserved.command.operation === "revoke_approval"
-          ? "revoke_posting_approval"
-          : reserved.command.operation;
-
-      const payload =
-        reserved.command.operation === "create_evidence" ||
-        reserved.command.operation === "prepare_journal"
-          ? reserved.command.input
-          : { id: reserved.command.id ?? null, input: reserved.command.input ?? null };
-
-      if (
-        savedOperation !== operation ||
-        reserved.actorId !== actorId ||
-        !equalJson(payload, input)
-      )
-        return yield* failure("IdempotencyConflict");
-    }
-
-    const rows = yield* Db.readCommandReceipt(transaction, scope.bookId, key, "update");
-    const row = rows[0];
-
-    if (!row) return { expected, previous: undefined } as const;
-
-    if (row.requestDigest !== expected || row.operation !== operation) {
-      return yield* failure("IdempotencyConflict");
-    }
-
-    return { expected, previous: yield* decode(schema, row.result) } as const;
-  });
-}
-
-export function saveCommand(
-  transaction: Transaction,
-  scope: Scope,
-  key: string,
-  request: string,
-  operation: string,
-  actorId: string,
-  result: JsonObject,
-) {
-  return Db.insertCommandReceipt(transaction, {
-    bookId: scope.bookId,
-    key,
-    requestDigest: request,
-    operation,
-    actorId,
-    result,
-  });
-}
-
-export function isoNow(transaction: Transaction) {
-  return Db.readDatabaseTime(transaction).pipe(
-    Effect.map((row) => new Date(row.now).toISOString()),
-  );
-}
 
 export const createEvidenceInTransaction = Effect.fn("posting.createEvidenceInTransaction")(
   function* (

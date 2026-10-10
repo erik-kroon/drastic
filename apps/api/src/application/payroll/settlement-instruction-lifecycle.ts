@@ -5,7 +5,8 @@ import type { Transaction } from "../../db/transaction";
 import { withBook, decode, toJsonObject, type Scope } from "../commerce/support";
 import { failure } from "../failures";
 import { readOnboardingResponsibility } from "../onboarding-policy";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import {
   InstructionRecord,
   claimBalance,

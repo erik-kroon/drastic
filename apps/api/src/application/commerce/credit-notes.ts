@@ -14,12 +14,10 @@ import { digest } from "../json";
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   sealActionInTransaction,
 } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, toJsonObject, withBook, type Scope } from "./support";
 import { liveInvoice } from "./register";
 import {

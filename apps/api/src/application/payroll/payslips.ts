@@ -7,7 +7,9 @@ import { withTransaction, databaseFailure, type Transaction } from "../../db/tra
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { base64, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { admitRunnerActor } from "../preparation-jobs";
 import { requirePayrollAccess } from "./run-basis";
 import { renderPayslipPdf } from "./payslip-renderer";

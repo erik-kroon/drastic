@@ -20,7 +20,9 @@ import {
   consumeProcessorReceivableInTransaction,
   consumeProcessorRefundInTransaction,
 } from "../commerce/processor-settlements";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import { compileProcessorReview, type Compilation } from "./processor-effects";

@@ -11,7 +11,9 @@ import { readHistoricalObligation } from "./historical-obligations";
 import { readPool, assertPoolBasis, checkedAdoption } from "../sie/adoption-basis";
 import { admitLineOwner, admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { authorize } from "../authority";
 
 type Command = { scope: Scope; id: string; idempotencyKey: string };

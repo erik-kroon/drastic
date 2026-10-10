@@ -11,11 +11,9 @@ import {
   createEvidenceInTransaction,
   prepareJournalInTransaction,
   executeChangeInTransaction,
-  replay,
-  saveCommand,
-  isoNow,
   validatePlan,
 } from "../posting";
+import { replay, saveCommand, isoNow } from "../command-receipts";
 import {
   readBasis,
   readPlan,

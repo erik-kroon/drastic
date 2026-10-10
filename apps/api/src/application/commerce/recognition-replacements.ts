@@ -10,7 +10,7 @@ import * as PostingDb from "../../db/posting";
 import * as AdmissionDb from "../../db/posting-admission";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { decode, type Scope } from "./support";
 
 type Contribution = typeof Corrections.InvoiceRecognitionContribution.Type;

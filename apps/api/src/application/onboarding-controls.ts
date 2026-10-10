@@ -10,7 +10,8 @@ import * as O from "@open-erp/contracts/onboarding";
 import { readSourceBytesInTransaction } from "./source-retention";
 import { failure } from "./failures";
 import { decode, toJsonObject, type Scope } from "./commerce/support";
-import { isoNow, newId } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import * as Db from "../db/onboarding-lifecycle";
 import type { Transaction } from "../db/transaction";
 

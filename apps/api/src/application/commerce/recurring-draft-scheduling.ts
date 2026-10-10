@@ -10,7 +10,8 @@ import * as SchedulingDb from "../../db/commerce/recurring-draft-scheduling";
 import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import {
   initializeRecurringScheduleInTransaction,
   inspectRecurringCycle,
