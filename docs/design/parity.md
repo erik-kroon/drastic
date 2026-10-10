@@ -95,3 +95,12 @@ Comparison failures to retain before implementing the runner: missing adopted
 tolerance; changed baseline hash; wrong image dimensions; missing capture
 conditions/provenance; changed implementation after capture; image mismatch above
 the adopted tolerance. Comparison must not rescale, crop or mask either image.
+
+## Narrow existing-screen implementation authorization
+
+Erik Kroon authorized the recovered invoice, VAT and period behavior on
+2026-10-10 using current appearance. See
+[the scope](../operations/closeout-existing-screen-exception.md). Entries record
+`implementationAuthorization`; their approved implementation scope is not Paper
+visual adoption, and their status remains `unverified`. This exception does not
+cover new screen compositions or modify any adopted comparison policy.

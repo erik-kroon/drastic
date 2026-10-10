@@ -36,7 +36,17 @@ export const kanon = stylex.defineConsts({
   colorChartMark: "var(--kanon-color-chart-mark)",
 
   fontUi: "Inter, system-ui, sans-serif",
+  fontControl: "system-ui, sans-serif",
   fontCode: "Menlo, ui-monospace, monospace",
+  textFormTitle: "20px",
+  leadingFormTitle: "26px",
+  sizeAgreementForm: "640px",
+  sizeUnitColumn: "90px",
+  sizeTaxColumn: "80px",
+  sizePriceColumn: "120px",
+  sizeIntervalColumn: "160px",
+  sizeStartColumn: "120px",
+
   textFigure: "2rem",
   textPage: "1rem",
   textSection: "0.875rem",

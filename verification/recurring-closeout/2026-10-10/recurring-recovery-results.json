@@ -1,0 +1,558 @@
+{
+  "fixture": {
+    "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+    "jobId": "recurring_draft_job_e8a57c6212a444458f2fde0ab176a165",
+    "title": "Tallvik återkommande granskning",
+    "cycleOrdinal": "1"
+  },
+  "before": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+    "enabled": true,
+    "generation": "1",
+    "firstAutomaticCycle": "1",
+    "nextCycleOrdinal": "2",
+    "nextCycleDate": "2026-11-01",
+    "requestedBy": "actor_operator",
+    "timeZone": "Europe/Stockholm",
+    "duePolicy": "local_calendar_date_v1",
+    "history": [
+      {
+        "id": "recurring_draft_job_e8a57c6212a444458f2fde0ab176a165",
+        "cycleOrdinal": "1",
+        "cycleDate": "2026-10-01",
+        "generation": "1",
+        "state": "failed",
+        "reason": "StaleDependency",
+        "draftId": null
+      }
+    ],
+    "selectedJob": null,
+    "continuation": null
+  },
+  "recovered": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+    "enabled": true,
+    "generation": "1",
+    "firstAutomaticCycle": "1",
+    "nextCycleOrdinal": "2",
+    "nextCycleDate": "2026-11-01",
+    "requestedBy": "actor_operator",
+    "timeZone": "Europe/Stockholm",
+    "duePolicy": "local_calendar_date_v1",
+    "history": [
+      {
+        "id": "recurring_draft_job_e8a57c6212a444458f2fde0ab176a165",
+        "cycleOrdinal": "1",
+        "cycleDate": "2026-10-01",
+        "generation": "1",
+        "state": "failed",
+        "reason": "StaleDependency",
+        "draftId": null
+      },
+      {
+        "id": "recurring_draft_job_53bb5754c9364c438dc4f634c1fae247",
+        "cycleOrdinal": "1",
+        "cycleDate": "2026-10-01",
+        "generation": "2",
+        "state": "drafted",
+        "reason": null,
+        "draftId": "invoice_draft_30ea401673c1498a804afe519c64f887"
+      }
+    ],
+    "selectedJob": null,
+    "continuation": null
+  },
+  "draft": {
+    "record": {
+      "id": "invoice_draft_30ea401673c1498a804afe519c64f887",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "recurring-1-recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+      "revision": "1",
+      "status": "draft",
+      "issued": false,
+      "recognized": false,
+      "delivered": false,
+      "calculationBasis": "commercial_minor_v1",
+      "purpose": "commercial",
+      "content": {
+        "title": "Tallvik återkommande utkast",
+        "counterpartyId": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+        "counterpartyRevision": "1",
+        "seller": {
+          "legalName": "Synthetic recurring seller",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": "SE",
+          "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+        },
+        "customer": {
+          "legalName": "Tallvik återkommande testkund",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": null,
+          "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+        },
+        "currency": "SEK",
+        "currencyScale": 2,
+        "plannedIssueDate": "2026-10-01",
+        "supplyDate": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "paymentTerms": "Synthetic 14 calendar days",
+        "buyerReference": null,
+        "orderReference": null,
+        "sourceTotalMinor": null,
+        "lines": [
+          {
+            "id": "recurring_service",
+            "description": "Synthetic recurring service",
+            "quantity": "3",
+            "unitPriceMinor": "1001",
+            "baseMinor": "3003",
+            "discountMinor": "2",
+            "chargeMinor": "4",
+            "taxMinor": null,
+            "taxDescription": null,
+            "taxEvidenceId": null,
+            "sourceGrossMinor": null
+          }
+        ]
+      },
+      "occurrence": {
+        "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+        "cycleOrdinal": "1"
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "b28b0f8d-9d8c-497a-b221-1ace2c117f61",
+        "role": "customer",
+        "displayName": "Tallvik återkommande testkund",
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+        "reason": "Synthetic recurrence review",
+        "id": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+          "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-10T21:26:03.890495Z",
+        "receipt": {
+          "key": "f0b9bd6a-b8d8-42f9-ac65-b381c3a3d80e",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "sellerEvidence": {
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+        "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+      },
+      "customerEvidence": {
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+        "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+      },
+      "totals": {
+        "baseMinor": "3003",
+        "discountMinor": "2",
+        "chargeMinor": "4",
+        "netMinor": "3005",
+        "taxMinor": null,
+        "grossMinor": null,
+        "sourceTotalMatches": null
+      },
+      "calculatedLines": [
+        {
+          "id": "recurring_service",
+          "calculatedBaseMinor": "3003",
+          "netMinor": "3005",
+          "grossMinor": null,
+          "sourceGrossMatches": null,
+          "taxEvidence": null
+        }
+      ],
+      "blockers": [
+        {
+          "code": "seller_identity_fields_missing",
+          "lineId": null
+        },
+        {
+          "code": "customer_identity_fields_missing",
+          "lineId": null
+        },
+        {
+          "code": "tax_inputs_unreviewed",
+          "lineId": "recurring_service"
+        },
+        {
+          "code": "legal_issue_review_required",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial commercial draft",
+      "createdAt": "2026-10-10T21:26:42.004802Z",
+      "receipt": {
+        "key": "recurring_occurrence_1be6131dfa6b4f0c9a35cc52380e5863",
+        "operation": "create_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:606ea43e5686c9e68f036c1db8af1b04bd27b6a86ef90858978e9592b58f8e2c",
+      "commercialInput": {
+        "title": "Tallvik återkommande utkast",
+        "counterpartyId": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+        "counterpartyRevision": "1",
+        "seller": {
+          "legalName": "Synthetic recurring seller",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": "SE",
+          "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+        },
+        "customer": {
+          "legalName": "Tallvik återkommande testkund",
+          "registrationId": null,
+          "taxId": null,
+          "address": null,
+          "countryCode": null,
+          "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+        },
+        "plannedIssueDate": "2026-10-01",
+        "supplyDate": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "paymentTerms": "Synthetic 14 calendar days",
+        "lines": [
+          {
+            "id": "recurring_service",
+            "description": "Synthetic recurring service",
+            "quantity": "3",
+            "unitPriceMinor": "1001",
+            "discountMinor": "2",
+            "chargeMinor": "4",
+            "treatment": {
+              "kind": "unresolved"
+            }
+          }
+        ]
+      },
+      "recurringTemplateOrigin": {
+        "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+        "revision": "1",
+        "digest": "sha256:962bd8755f8540c20f117b57d8d23a63f3a787aa51c26345a480041d0e62d56e"
+      },
+      "inputDigest": "sha256:70e7e12b5a6d9d58009557ac69234b910c8f7a6b2e0ebf9deccd306c5a84d577"
+    },
+    "currentRevision": "1",
+    "currentDigest": "sha256:606ea43e5686c9e68f036c1db8af1b04bd27b6a86ef90858978e9592b58f8e2c",
+    "lifecycle": {
+      "kind": "editable"
+    }
+  },
+  "revised": {
+    "id": "invoice_draft_30ea401673c1498a804afe519c64f887",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "draftKey": "recurring-1-recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+    "revision": "2",
+    "status": "draft",
+    "issued": false,
+    "recognized": false,
+    "delivered": false,
+    "calculationBasis": "commercial_minor_v1",
+    "purpose": "commercial",
+    "content": {
+      "title": "Tallvik återkommande utkast",
+      "counterpartyId": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+      "counterpartyRevision": "1",
+      "seller": {
+        "legalName": "Synthetic recurring seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+      },
+      "customer": {
+        "legalName": "Tallvik återkommande testkund",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": null,
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "plannedIssueDate": "2026-10-01",
+      "supplyDate": "2026-10-01",
+      "dueDate": "2026-10-15",
+      "paymentTerms": "Synthetic 14 calendar days",
+      "note": "Revised saved preview",
+      "buyerReference": null,
+      "orderReference": null,
+      "sourceTotalMinor": null,
+      "lines": [
+        {
+          "id": "recurring_service",
+          "description": "Synthetic recurring service",
+          "quantity": "3",
+          "unitPriceMinor": "1001",
+          "baseMinor": "3003",
+          "discountMinor": "2",
+          "chargeMinor": "4",
+          "taxMinor": null,
+          "taxDescription": null,
+          "taxEvidenceId": null,
+          "sourceGrossMinor": null
+        }
+      ]
+    },
+    "occurrence": {
+      "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+      "cycleOrdinal": "1"
+    },
+    "counterparty": {
+      "kind": "synthetic_counterparty_v1",
+      "externalKey": "b28b0f8d-9d8c-497a-b221-1ace2c117f61",
+      "role": "customer",
+      "displayName": "Tallvik återkommande testkund",
+      "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+      "reason": "Synthetic recurrence review",
+      "id": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "revision": "1",
+      "evidence": {
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+        "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+      },
+      "legalIdentityVerified": false,
+      "createdAt": "2026-10-10T21:26:03.890495Z",
+      "receipt": {
+        "key": "f0b9bd6a-b8d8-42f9-ac65-b381c3a3d80e",
+        "operation": "commerce_create_counterparty",
+        "actorId": "actor_operator"
+      }
+    },
+    "sellerEvidence": {
+      "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+      "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+    },
+    "customerEvidence": {
+      "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253",
+      "sha256": "0b67087f669463b3f216d09663cfb65145732020ada4e343f8b512c19657ad51"
+    },
+    "totals": {
+      "baseMinor": "3003",
+      "discountMinor": "2",
+      "chargeMinor": "4",
+      "netMinor": "3005",
+      "taxMinor": null,
+      "grossMinor": null,
+      "sourceTotalMatches": null
+    },
+    "calculatedLines": [
+      {
+        "id": "recurring_service",
+        "calculatedBaseMinor": "3003",
+        "netMinor": "3005",
+        "grossMinor": null,
+        "sourceGrossMatches": null,
+        "taxEvidence": null
+      }
+    ],
+    "blockers": [
+      {
+        "code": "seller_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "customer_identity_fields_missing",
+        "lineId": null
+      },
+      {
+        "code": "tax_inputs_unreviewed",
+        "lineId": "recurring_service"
+      },
+      {
+        "code": "legal_issue_review_required",
+        "lineId": null
+      }
+    ],
+    "reason": "Synthetic historical preview regression",
+    "createdAt": "2026-10-10T21:26:57.649061Z",
+    "receipt": {
+      "key": "historical_preview_invoice_draft_30ea401673c1498a804afe519c64f887",
+      "operation": "revise_invoice_draft",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:f7d0bc16e328d77e502d84c0dae5d50f56c60accd5e20ddacf53da737eb0af33",
+    "commercialInput": {
+      "title": "Tallvik återkommande utkast",
+      "counterpartyId": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+      "counterpartyRevision": "1",
+      "seller": {
+        "legalName": "Synthetic recurring seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+      },
+      "customer": {
+        "legalName": "Tallvik återkommande testkund",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": null,
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+      },
+      "plannedIssueDate": "2026-10-01",
+      "supplyDate": "2026-10-01",
+      "dueDate": "2026-10-15",
+      "paymentTerms": "Synthetic 14 calendar days",
+      "note": "Revised saved preview",
+      "lines": [
+        {
+          "id": "recurring_service",
+          "description": "Synthetic recurring service",
+          "quantity": "3",
+          "unitPriceMinor": "1001",
+          "discountMinor": "2",
+          "chargeMinor": "4",
+          "treatment": {
+            "kind": "unresolved"
+          }
+        }
+      ]
+    },
+    "recurringTemplateOrigin": {
+      "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+      "revision": "1",
+      "digest": "sha256:962bd8755f8540c20f117b57d8d23a63f3a787aa51c26345a480041d0e62d56e"
+    },
+    "inputDigest": "sha256:650a90fffa148abc7639165e3f0c485e538c32ae5ecc429a4c230a2b530905c0"
+  },
+  "occurrences": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_bfcfc2c0015341d4a7b54d5a52ee6fc2",
+    "complete": true,
+    "count": 1,
+    "continuation": null,
+    "items": [
+      {
+        "cycleOrdinal": "1",
+        "cycleDate": "2026-10-01",
+        "serviceInterval": {
+          "serviceStartsOn": "2026-09-01",
+          "serviceEndsOn": "2026-10-01"
+        },
+        "selectedTemplateRevision": "1",
+        "status": "drafted",
+        "occurrenceId": "recurring_occurrence_record_f7a8efd9b0614fb886cb3432e033a8de",
+        "draftId": "invoice_draft_30ea401673c1498a804afe519c64f887",
+        "prepared": false,
+        "approved": false,
+        "issued": false,
+        "documentNumber": null,
+        "postingReceiptId": null
+      }
+    ]
+  },
+  "template": {
+    "id": "recurring_template_04016645e93048929df4ab3a0b3f4757",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_1d65d132946447aaae3fd86be60c487b",
+    "agreementDigest": "sha256:2559cdcfc2f7bc456cb6cfaef00acc5e095135929a7961a5106fc9bfb69e8276",
+    "revision": "1",
+    "effectiveFromCycle": "1",
+    "chargeComponentKeys": [
+      "line_1"
+    ],
+    "template": {
+      "kind": "commercial",
+      "title": "Tallvik återkommande utkast",
+      "counterpartyId": "counterparty_f4ce255a17874305a2fb37fab43f8909",
+      "seller": {
+        "legalName": "Synthetic recurring seller",
+        "registrationId": null,
+        "taxId": null,
+        "address": null,
+        "countryCode": "SE",
+        "evidenceId": "evidence_f337aebe4787477a8b4e712d4044c253"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "paymentTerms": "Synthetic 14 calendar days",
+      "dateOffsets": {
+        "issueDays": "0",
+        "supplyDays": "0",
+        "dueDays": "30"
+      },
+      "lines": [
+        {
+          "id": "recurring_service",
+          "description": "Synthetic recurring service",
+          "quantity": "3",
+          "unitPriceMinor": "1001",
+          "discountMinor": "2",
+          "chargeMinor": "4",
+          "treatment": {
+            "kind": "unresolved"
+          }
+        }
+      ]
+    },
+    "reason": "Reviewed saved template",
+    "createdAt": "2026-10-10T21:27:36.692Z",
+    "receipt": {
+      "key": "0f846b91-3925-471d-9575-bf0a1810b928",
+      "operation": "propose_recurring_template_revision",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:aa65e3052d9196577299e6a33a29378720849c26cd1d64ed28d8294864635f9f"
+  },
+  "createdScheduling": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_1d65d132946447aaae3fd86be60c487b",
+    "enabled": true,
+    "generation": "1",
+    "firstAutomaticCycle": "1",
+    "nextCycleOrdinal": "1",
+    "nextCycleDate": "2027-01-01",
+    "requestedBy": "actor_operator",
+    "timeZone": "Europe/Stockholm",
+    "duePolicy": "local_calendar_date_v1",
+    "history": [],
+    "selectedJob": null,
+    "continuation": null
+  },
+  "sameCommandKey": true
+}

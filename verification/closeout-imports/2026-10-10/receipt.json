@@ -192,7 +192,7 @@
     "apps/api/src/application/vat/tax-account.ts": "1dbc912b0c9e63897c85eebd095a2ed0a5a1947f865d0e11af6829beaa1f699a",
     "apps/api/src/application/work-questions.ts": "9e48459a453cefdb5bf70347f352305cbe361a3d3800cd87727997af671209e2",
     "apps/api/src/application/workspace.ts": "e0fa12fb6c797164edfa010d258b8a18f0ba53b506fcb2c663871384e05689f6",
-    "docs/operations/closeout-api-imports.md": "35740f8f40f647124c7f4dabcb45f92ba9084784c21642db070b870f5899c34c"
+    "docs/operations/closeout-api-imports.md": "ab0b717a8fb8143b47d3c0d726017173f050faedf26018014bfe23dd5256d450"
   },
   "checks": [
     "check:changed:full origin/main passed",

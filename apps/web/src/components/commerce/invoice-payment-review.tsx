@@ -21,6 +21,7 @@ import {
 import { InvoicePaymentUndo } from "./invoice-payment-undo";
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import type { InvoicePaymentNavigation } from "./invoice-payments";
+import { DailyLoopReviewLinks } from "../daily-loop-review-links";
 
 export function InvoicePaymentReview(
   props: CommerceProps & {
@@ -32,11 +33,25 @@ export function InvoicePaymentReview(
   const { book, locale, id, invoice } = props;
   const copy = invoicePaymentCopy(locale);
 
-  const view = useQuery({
+  const view = useQuery<typeof Commerce.AllocationView.Type>({
     queryKey: [...commerceKey(book), "allocation", id],
     staleTime: 0,
     refetchOnMount: "always",
     retry: false,
+    refetchInterval: (query) => {
+      const allocation = query.state.data;
+      const expiresAt = allocation?.approval?.expiresAt;
+
+      if (
+        !allocation ||
+        !expiresAt ||
+        allocation.application ||
+        Date.parse(expiresAt) <= Date.now()
+      )
+        return false;
+
+      return Math.max(1000, Date.parse(expiresAt) - Date.now() + 20);
+    },
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}`,
@@ -159,6 +174,25 @@ export function InvoicePaymentReview(
             />
           ) : null}
           <InvoicePaymentActions {...props} view={view.data} ready={ready} />
+          {view.data.application ? (
+            <DailyLoopReviewLinks
+              book={book}
+              locale={locale}
+              owner={
+                invoice.direction === "customer"
+                  ? {
+                      owner: "sales",
+                      search: {
+                        record: invoice.id,
+                        kind: "invoice",
+                        stage: "payments",
+                        allocation: props.id,
+                      },
+                    }
+                  : { owner: "purchases", search: { view: "invoices", record: invoice.id } }
+              }
+            />
+          ) : null}
           <Facts title={copy.details} value={view.data} />
         </>
       ) : null}

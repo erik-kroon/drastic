@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
-import { WorkReturnSearch, DocumentQuery } from "@/lib/work-return";
+import { WorkReturnSearch, DocumentQuery, OwnerReturnSearch } from "@/lib/work-return";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/tax")({
   validateSearch: Schema.decodeUnknownSync(
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tax")({
       record: Schema.optional(Schema.String),
       occurrence: Schema.optional(Schema.String),
       work: WorkReturnSearch,
+      returnTo: OwnerReturnSearch,
       expenseRevision: DocumentQuery.fields.expenseRevision,
       expenseReviewId: DocumentQuery.fields.expenseReviewId,
     }),
@@ -27,6 +28,7 @@ function Page() {
       record={search.record}
       occurrence={search.occurrence}
       work={search.work}
+      returnTo={search.returnTo}
     />
   );
 }
