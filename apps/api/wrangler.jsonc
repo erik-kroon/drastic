@@ -7,6 +7,7 @@
   "observability": { "enabled": true },
   "env": {
     "e2e": {
+      "main": "src/runtime/e2e.ts",
       "r2_buckets": [{ "binding": "EVIDENCE_BUCKET", "bucket_name": "openerp-e2e-originals" }],
     },
   },

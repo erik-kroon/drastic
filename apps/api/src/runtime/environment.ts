@@ -1,3 +1,4 @@
+import type { IntakeFeed } from "../adapters/intake/local-fixture";
 import type { PeppolAccessPoint } from "../adapters/peppol/local-fixture";
 import type { DocumentDelivery } from "../adapters/documents/local-fixture";
 import type { R2Bucket } from "@cloudflare/workers-types";
@@ -28,6 +29,7 @@ export interface Bindings extends DecisionModelConfiguration {
   readonly OPENERP_DOCUMENT_PUBLIC_KEY?: string;
   readonly OPENERP_DOCUMENT_KEY_ID?: string;
   readonly PROCESSOR_FEED?: ProcessorFeed;
+  readonly INTAKE_FEED?: IntakeFeed;
   readonly OPENERP_INTAKE_FEED?: string;
   readonly OPENERP_INTAKE_ENDPOINT?: string;
   readonly OPENERP_INTAKE_SECRET?: string;

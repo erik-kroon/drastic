@@ -3,7 +3,6 @@ import * as Effect from "effect/Effect";
 import * as Db from "../../db/commerce/peppol-exchange";
 import type { Transaction } from "../../db/transaction";
 import { RequestEnvironment } from "../../runtime/environment";
-import { configuredPeppolAccessPoint } from "../../adapters/peppol/local-fixture";
 import { readPeppolDocument, bindingSubject, partyDigest } from "./peppol-document";
 import { decode, type Scope } from "./support";
 import { failure } from "../failures";
@@ -12,10 +11,7 @@ export function accessPoint() {
   return Effect.gen(function* () {
     const settings = (yield* RequestEnvironment).bindings;
 
-    const provider = yield* Effect.try({
-      try: () => settings.PEPPOL_EXCHANGE ?? configuredPeppolAccessPoint(settings),
-      catch: () => failure("Unavailable"),
-    });
+    const provider = settings.PEPPOL_EXCHANGE;
 
     if (!provider) return yield* failure("Unavailable");
 

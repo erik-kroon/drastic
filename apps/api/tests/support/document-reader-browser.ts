@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import api from "../../src/index";
 import { filesystemObjectStore } from "../../src/adapters/storage/filesystem-objects";
-import { configuredDocumentReader } from "../../src/runtime/document-reader";
+import { localDocumentReader } from "../../src/adapters/document-reading/local-fixture";
 
 const database = process.env.DATABASE_URL;
 
@@ -31,10 +31,7 @@ if (
 )
   throw new Error("Local fixture configuration required.");
 
-const reader = configuredDocumentReader({
-  OPENERP_DOCUMENT_READER: "local-azure-fixture",
-  OPENERP_DOCUMENT_READER_ENDPOINT: endpoint,
-});
+const reader = localDocumentReader(endpoint);
 
 const assets = resolve(import.meta.dirname, "../../../web/dist/client");
 

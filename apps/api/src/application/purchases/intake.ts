@@ -6,7 +6,7 @@ import * as Match from "effect/Match";
 import * as Predicate from "effect/Predicate";
 import * as Retention from "../../db/source-retention";
 import * as IntakeDb from "../../db/purchases/intake";
-import { configuredIntakeFeed, type FixturePage } from "../../adapters/intake/local-fixture";
+import type { FixturePage } from "../../adapters/intake/local-fixture";
 import { RequestEnvironment } from "../../runtime/environment";
 import { failure } from "../failures";
 import { retainSource } from "../source-retention";
@@ -451,10 +451,7 @@ export const acquireCloudIntake = Effect.fn("purchases.intake.cloud")(function* 
 
   const { bindings } = yield* RequestEnvironment;
 
-  const feed = yield* Effect.try({
-    try: () => configuredIntakeFeed(bindings),
-    catch: () => failure("ConfigurationError"),
-  });
+  const feed = bindings.INTAKE_FEED;
 
   if (!feed) return yield* failure("UnsupportedProfile");
 

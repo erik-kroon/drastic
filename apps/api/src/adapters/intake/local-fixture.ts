@@ -15,11 +15,18 @@ export const FixturePage = Schema.Struct({
   nextCursor: Schema.NullOr(Inbox.CloudIntake.fields.cursor),
 });
 
+export type IntakeFeed = (
+  provider: "drive" | "dropbox",
+  account: string,
+  folder: string,
+  cursor: string | null,
+) => Promise<typeof FixturePage.Type>;
+
 export function configuredIntakeFeed(settings: {
   readonly OPENERP_INTAKE_FEED?: string;
   readonly OPENERP_INTAKE_ENDPOINT?: string;
   readonly OPENERP_INTAKE_SECRET?: string;
-}) {
+}): IntakeFeed | undefined {
   if (settings.OPENERP_INTAKE_FEED === undefined || settings.OPENERP_INTAKE_FEED === "disabled")
     return undefined;
 

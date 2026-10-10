@@ -7,10 +7,7 @@ import { Buffer } from "node:buffer";
 import * as Db from "../../db/banking/processor-clearing";
 import * as Posting from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
-import {
-  configuredProcessorFeed,
-  type ProcessorFeed,
-} from "../../adapters/processor/local-fixture";
+import type { ProcessorFeed } from "../../adapters/processor/local-fixture";
 import { assertUniqueJsonKeys } from "../../adapters/json-keys";
 import { RequestEnvironment } from "../../runtime/environment";
 import { retainSource } from "../source-retention";
@@ -256,7 +253,7 @@ export const fetchProcessorObservations = Effect.fn("processor.fetch")(function*
   },
 ) {
   const { bindings } = yield* RequestEnvironment;
-  const feed = bindings.PROCESSOR_FEED ?? configuredProcessorFeed(bindings);
+  const feed = bindings.PROCESSOR_FEED;
 
   if (!feed) return yield* failure("UnsupportedProfile");
 

@@ -15,7 +15,7 @@ import * as Redacted from "effect/Redacted";
 import { nativePostgresTypes, Database } from "../src/db/connection";
 import { filesystemObjectStore } from "../src/adapters/storage/filesystem-objects";
 import { configuredDecisionModel } from "../src/runtime/decision-model";
-import { configuredDocumentReader } from "../src/runtime/document-reader";
+import { configuredSelfHostDocumentReader } from "./document-reader";
 import { fileObjectStore } from "./file-object-store";
 import {
   jobAttempts,
@@ -66,7 +66,7 @@ if (!connectionString || !token) {
 // stored content does not need a store at all.
 const evidenceRoot = process.env.EVIDENCE_STORE_ROOT;
 
-const reader = configuredDocumentReader(process.env);
+const reader = configuredSelfHostDocumentReader(process.env);
 
 const evidenceStore = process.env.OPENERP_OBJECT_DIRECTORY
   ? await fileObjectStore(process.env.OPENERP_OBJECT_DIRECTORY)

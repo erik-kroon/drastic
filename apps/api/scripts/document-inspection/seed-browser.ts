@@ -8,7 +8,7 @@ import * as Schema from "effect/Schema";
 import * as Source from "@open-erp/contracts/source-intake";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
-import { configuredDocumentReader } from "../../src/runtime/document-reader";
+import { localDocumentReader } from "../../src/adapters/document-reading/local-fixture";
 import { RequestEnvironment, type Bindings } from "../../src/runtime/environment";
 import { databaseLayer } from "../../src/db/connection";
 import { runSupplierExtraction } from "../../src/application/purchases/extraction";
@@ -173,10 +173,7 @@ try {
     BETTER_AUTH_URL: input.origin,
     OPENERP_PREPARATION_TOKEN: input.token,
     DOCUMENT_INSPECTOR: inspectQueuedDocument,
-    DOCUMENT_READER: configuredDocumentReader({
-      OPENERP_DOCUMENT_READER: "local-azure-fixture",
-      OPENERP_DOCUMENT_READER_ENDPOINT: endpoint,
-    }),
+    DOCUMENT_READER: localDocumentReader(endpoint),
   };
 
   const login = await api.fetch(
