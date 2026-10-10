@@ -297,3 +297,9 @@ No MCP catalog/schema/transport changed or exposes the new HTTP jobs/catalog, so
 Clean604669a full against6e2a0ae failed four type-aware lint findings, while all TypeScript projects passed: the request JSON spread, two async Node handlers and a bare sort. Explicit request projection, owned handler promises and comparator resolve them without suppression. Five final affected HTTP workflows passed, with source inventory68336fae5f8481261d0bda06681c4995d2b30e0d89263a521697e323a9b3d30b. Earlier ten-flow qualification and handler-only five are retained separately; final clean checks follow the narrow fix.
 
 Clean committed1e3a712 against main6e2a0ae passed full changed checks, owners55/55 and design contract (two measured matching screens; no visual comparison), tracked status clean before and after. Frozen install passed on the isolated check tree. No MCP catalog/schema/transport change; MCP/Luna not rerun for this unit. Parent protocol skips remain unverified. No live, statutory, model-accuracy or browser qualification.
+
+### AUT-11 review follow-up, policy sequence restore
+
+Failure-first commit `7991ca4` reproduced checkpoint `UnhandledFamily` in the real synthetic rehearsal. Fix `ea033f5` declares the `book_decision_policies.sequence` owner. The same rehearsal passed and retained counter 41; a new operator off policy received 42 and superseded shadow policy 23. The original restore quarantine remained intact. Proof is retained in `verification/decision-shadow/policy-sequence/`; the complete packet is under `test-results/aut11-policy-sequence-after/`.
+
+The working-tree changed check passed for the narrow fix. Final clean static gates for the integrated review fixes remain pending. Admission permissions, VAT discrepancy capture and the remaining review findings are still open. No live provider or production restore was exercised.

@@ -1,0 +1,1 @@
+{"sequenceBefore":{"lastValue":"41","isCalled":true},"policyRows":[{"sequence":"42","mode":"off"},{"sequence":"23","mode":"shadow"}],"quarantineAfter":{"connectionsAllowed":false,"connectionLimit":0},"mutationScope":"fresh_local_restored_state_clone"}

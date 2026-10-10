@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "kind": "openerp-public-local-rehearsal",
+  "status": "passed",
+  "recordedAt": "2026-10-10T19:33:27.912Z",
+  "syntheticOnly": true,
+  "files": [
+    {
+      "path": "journey.json",
+      "sha256": "4bed8aaffd76e83906cf6789b7dc78136597d453436def60c76927e65b36c6b0",
+      "bytes": "518302"
+    },
+    {
+      "path": "checkpoint.json",
+      "sha256": "8fda1e5e334d7abf4a29276636e1cd7394677a373e07165cd374dbf5e1a70049",
+      "bytes": "456257"
+    },
+    {
+      "path": "backup-verification.json",
+      "sha256": "ef2aded6d24f140c4ee3f1468e877eb0c1b66c0e89eac31b715fc3ae4d2a4c7d",
+      "bytes": "445"
+    },
+    {
+      "path": "application-restore-certificate.json",
+      "sha256": "998d6da7dfb5d93543d49951d70522e65012665e47ffc222d212809a8a64dd4f",
+      "bytes": "33947"
+    },
+    {
+      "path": "application-restore-observations.json",
+      "sha256": "d50fe462c360d75da311eaab68d2de238fc4dfad38a71d0cbe70848140236abc",
+      "bytes": "33252"
+    },
+    {
+      "path": "quarantine-observation.json",
+      "sha256": "3362bb2ef4bfdc30654d365702b03cba32138f0fc6a568e8d625dde0c139b06b",
+      "bytes": "131"
+    },
+    {
+      "path": "source-integrity.json",
+      "sha256": "a030cf20154bdaaeae9bf87803a1af080a068720fd4879e3f06f7978bc00aa23",
+      "bytes": "211"
+    },
+    {
+      "path": "decision-policy-restore-observation.json",
+      "sha256": "e68519ca8ccdf6215bdba84c493cff36b5cf431a96aa05d1fc3ee4ac45474287",
+      "bytes": "251"
+    }
+  ],
+  "providerOutcomes": "unobserved",
+  "productionAction": "disabled"
+}
