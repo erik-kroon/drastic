@@ -326,3 +326,7 @@ The earlier helper invocation failure is not a defect reproduction. The first ch
 ### Approval consequence review, retained VAT discrepancies
 
 Failure-first `72ff0e5` reproduced a tolerated source-tax discrepancy qualifying as known. Fix `5268d43` passed all five VAT workflows, with a null captured rate on retained discrepancies and exact source-line binding for repeated accounts. The lower PR27 owns the cherry-picked test/fix at `df1cae9`/`852f92d`; its clean focused replay passed one workflow, four unselected, after a frozen install. Original sealed export bytes remained unchanged. Proof is in `verification/approval-consequences/vat-discrepancy/`. Final clean integrated gates remain pending. These are synthetic fixtures, not statutory VAT qualification.
+
+## Owner stop checkpoint
+
+The owner stopped tests/checks before final stack qualification. Local combined source `d58579e` retained a stable inventory but its HTTP batch failed:20 passing,9 failing workflows. Earlier unit evidence is scoped to its recorded commits; the combined stack is not claimed clean or ready. Terminal off idempotency, the configured deadline margin, five VAT workflows and three close-predicate workflows passed in the batch. The close identity restore-after workflow and final static/MCP gates remain unverified. No rerun, new phase, main push or merge followed the stop. See `automation-review-handoff-2026-10-10.md` and `verification/agent-mode/review-stop/batch-receipt.json`. Draft commits remain local; pushing may trigger CI.
