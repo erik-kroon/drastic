@@ -3,6 +3,7 @@ import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Provenance from "@open-erp/contracts/decision-provenance";
+import * as Consequence from "@open-erp/domain/treatment-consequence";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Db from "../../db/decision-examples";
@@ -12,7 +13,8 @@ import { digest, newId, replay, saveCommand } from "../posting";
 import * as Shared from "../purchases/shared";
 
 const versions = {
-  schema: "decision_examples_v1",
+  schema: "decision_examples_v2",
+  consequence: "treatment_consequence_v1",
   state: "retained_snapshot_projection_v1",
   options: "served_options_projection_v1",
   lineage: "posted_voucher_lineage_v1",
@@ -55,6 +57,63 @@ function journal(action: typeof Accounting.VoucherPostingAction.Type) {
       creditMinor: line.creditMinor,
     })),
   };
+}
+
+function consequenceAttachment(inputs: Consequence.CapturedTreatment[]) {
+  return {
+    builderVersion: "treatment_consequence_v1",
+    captureStatus: inputs.length > 0 ? "retained_treatments" : "not_accounting_treatment",
+    treatments: inputs.map((capture) => ({ capture, result: Consequence.classify(capture) })),
+  };
+}
+
+function consequenceCaptures(
+  action: typeof Accounting.VoucherPostingAction.Type,
+  originalCommitCutoff: string,
+  reviewed: (typeof Acceptance.SupplierAcceptanceReview.Type)["originalLines"],
+  witness: (typeof Acceptance.SupplierAcceptanceReview.Type)["profileWitness"],
+): Consequence.CapturedTreatment[] {
+  const accounts =
+    reviewed && reviewed.length > 0
+      ? reviewed.map((line) => ({
+          accountId: line.expenseAccountId,
+          deduction: line.treatment.deduction,
+          resolvedRate: line.treatment.rate,
+        }))
+      : action.lines.map((line) => ({
+          accountId: line.accountId,
+          deduction: null,
+          resolvedRate: null,
+        }));
+
+  return accounts.map((account) => {
+    const lines = action.lines.filter((line) => line.accountId === account.accountId);
+    const assignments = lines.length === 1 ? lines[0]?.originalDimensions : undefined;
+
+    return {
+      accountId: account.accountId,
+      originalCommitCutoff,
+      postingOn: action.postingDate,
+      mapping: null,
+      vat: {
+        category: null,
+        profileIdentity: witness?.family === "vat" ? witness.ruleReleaseChecksum : null,
+        resolvedRate: account.resolvedRate,
+        deduction: account.deduction,
+      },
+      period: { id: action.accountingPeriodId, startsOn: null, endsOn: null },
+      dimensions: {
+        requirements: null,
+        assignments:
+          assignments?.map((value) => ({
+            code: value.dimensionCode,
+            revision: value.dimensionRevision,
+            valueCode: value.valueCode,
+            valueRevision: value.valueRevision,
+          })) ?? null,
+      },
+    };
+  });
 }
 
 const projectBank = Effect.fn("decisionExamples.bank")(function* (
@@ -163,6 +222,7 @@ const project = Effect.fn("decisionExamples.project")(function* (
 
   let state: Schema.JsonObject;
   let chosenTreatment: Schema.JsonObject;
+  let consequenceInputs: Consequence.CapturedTreatment[] = [];
   const evidence: Schema.JsonObject[] = [];
   const lineage: Schema.JsonObject[] = [];
 
@@ -217,6 +277,12 @@ const project = Effect.fn("decisionExamples.project")(function* (
       reviewedTreatments: review.originalLines ?? [],
       vatCategory: "not_captured",
     });
+    consequenceInputs = consequenceCaptures(
+      action,
+      cutoff,
+      review.originalLines,
+      review.profileWitness,
+    );
 
     if (retained.mediaType === "text/plain" && typeof retained.content === "string") {
       const text = redact(retained.content);
@@ -264,6 +330,7 @@ const project = Effect.fn("decisionExamples.project")(function* (
         reviewedTreatments: [],
         vatReasoning: "replacement_journal_only",
       });
+      consequenceInputs = consequenceCaptures(replacementAction, cutoff, undefined, undefined);
       missingFacts.push("replacement_vat_reasoning_not_captured");
       current = textField(replacement, "id");
     }
@@ -333,6 +400,7 @@ const project = Effect.fn("decisionExamples.project")(function* (
       records: optionRecords,
     },
     chosenTreatment,
+    consequence: consequenceAttachment(consequenceInputs),
     provenance: { classification, digest: yield* digest(row.body) },
     lineage,
     evidence,

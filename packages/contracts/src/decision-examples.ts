@@ -3,6 +3,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { DecisionClassification } from "./decision-provenance";
+import * as Consequence from "@open-erp/domain/treatment-consequence";
 
 const DecisionKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
@@ -24,6 +25,15 @@ export const DecisionExample = Schema.Struct({
     records: Schema.Array(Schema.JsonObject),
   }),
   chosenTreatment: Schema.JsonObject,
+  consequence: Schema.optional(
+    Schema.Struct({
+      builderVersion: Consequence.BuilderVersion,
+      captureStatus: Schema.Literals(["retained_treatments", "not_accounting_treatment"]),
+      treatments: Schema.Array(
+        Schema.Struct({ capture: Consequence.CapturedTreatment, result: Consequence.Consequence }),
+      ),
+    }),
+  ),
   provenance: Schema.Struct({ classification: DecisionClassification, digest: A.Digest }),
   lineage: Schema.Array(Schema.JsonObject),
   evidence: Schema.Array(Schema.JsonObject),
@@ -37,7 +47,8 @@ export const DecisionExampleExport = Schema.Struct({
   purpose: SealDecisionExamples.fields.purpose,
   lineageCutoff: A.MinorUnits,
   versions: Schema.Struct({
-    schema: Schema.Literal("decision_examples_v1"),
+    schema: Schema.Literals(["decision_examples_v1", "decision_examples_v2"]),
+    consequence: Schema.optional(Consequence.BuilderVersion),
     state: Schema.Literal("retained_snapshot_projection_v1"),
     options: Schema.Literal("served_options_projection_v1"),
     lineage: Schema.Literal("posted_voucher_lineage_v1"),
