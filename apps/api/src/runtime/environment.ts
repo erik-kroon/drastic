@@ -11,7 +11,12 @@ import type { ProcessorFeed } from "../adapters/processor/local-fixture";
 
 import type { ReminderDelivery } from "../adapters/reminder-delivery/local-fixture";
 
-export interface Bindings {
+import type { DecisionModel, WorkersAi } from "../adapters/decision-models/systemone";
+import type { DecisionModelConfiguration } from "./decision-model";
+
+export interface Bindings extends DecisionModelConfiguration {
+  readonly DECISION_MODEL?: DecisionModel;
+  readonly AI?: WorkersAi;
   readonly PEPPOL_EXCHANGE?: PeppolAccessPoint;
   readonly OPENERP_PEPPOL_EXCHANGE?: string;
   readonly OPENERP_PEPPOL_ENDPOINT?: string;

@@ -1,5 +1,6 @@
+import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import * as Profiles from "./company-profiles";
@@ -10,6 +11,7 @@ import { accountingErrors } from "./accounting-errors";
 export const workGroupSelectionLimit = 50;
 
 const SharedSupplierAcceptanceFields = {
+  presentedSuggestionIds: PresentedSuggestionIds,
   draftId: Accounting.Identifier,
   expectedRevision: Commerce.Version,
   expectedDigest: Accounting.Digest,
@@ -26,7 +28,7 @@ const SharedSupplierAcceptanceFields = {
 export const SupplierLineAssignment = Schema.Struct({
   lineId: Accounting.Identifier,
   expenseAccountId: Accounting.Identifier,
-  treatment: Recognition.ReviewedTreatment,
+  treatment: Recognition.ReviewedTreatmentInput,
 });
 
 export const PrepareSyntheticSupplierAcceptance = Schema.Struct({
@@ -51,6 +53,7 @@ export const PrepareSupplierAcceptance = Schema.Union([
 ]);
 
 export const ApproveSupplierAcceptance = Schema.Struct({
+  presentedSuggestionIds: PresentedSuggestionIds,
   version: Schema.Literal(1),
   digest: Accounting.Digest,
   acknowledgeSyntheticOnly: Schema.Literal(true),
@@ -190,47 +193,53 @@ const mutation = {
   error: accountingErrors,
 };
 
-export const SupplierAcceptanceApi = HttpApiGroup.make("supplierAcceptance").add(
-  HttpApiEndpoint.post("prepareSupplierAcceptance", `${path}/supplier-acceptance-reviews`, {
-    params: Accounting.Scope,
-    headers: Accounting.IdempotencyHeaders,
-    payload: PrepareSupplierAcceptance.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: SupplierAcceptanceReview,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.post(
-    "approveSupplierAcceptance",
-    `${path}/supplier-acceptance-reviews/:id/approvals`,
-    {
-      ...mutation,
-      payload: ApproveSupplierAcceptance.annotate({ parseOptions: { onExcessProperty: "error" } }),
-      success: SupplierAcceptanceApproval,
-    },
-  ),
-  HttpApiEndpoint.post(
-    "executeSupplierAcceptance",
-    `${path}/supplier-acceptance-reviews/:id/execute`,
-    {
-      ...mutation,
-      payload: ExecuteSupplierAcceptance.annotate({ parseOptions: { onExcessProperty: "error" } }),
-      success: SupplierAcceptanceReceipt,
-    },
-  ),
-  HttpApiEndpoint.get("getSupplierAcceptanceReview", `${path}/supplier-acceptance-reviews/:id`, {
-    params: Accounting.ChangePath,
-    success: SupplierAcceptanceView,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get(
-    "supplierAcceptanceHistory",
-    `${path}/supplier-invoice-drafts/:id/acceptance-reviews`,
-    {
-      params: Accounting.ChangePath,
-      success: SupplierAcceptanceHistory,
+export const SupplierAcceptanceApi = HttpApiGroup.make("supplierAcceptance")
+  .add(
+    HttpApiEndpoint.post("prepareSupplierAcceptance", `${path}/supplier-acceptance-reviews`, {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: PrepareSupplierAcceptance.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: SupplierAcceptanceReview,
       error: accountingErrors,
-    },
-  ),
-);
+    }),
+    HttpApiEndpoint.post(
+      "approveSupplierAcceptance",
+      `${path}/supplier-acceptance-reviews/:id/approvals`,
+      {
+        ...mutation,
+        payload: ApproveSupplierAcceptance.annotate({
+          parseOptions: { onExcessProperty: "error" },
+        }),
+        success: SupplierAcceptanceApproval,
+      },
+    ),
+    HttpApiEndpoint.post(
+      "executeSupplierAcceptance",
+      `${path}/supplier-acceptance-reviews/:id/execute`,
+      {
+        ...mutation,
+        payload: ExecuteSupplierAcceptance.annotate({
+          parseOptions: { onExcessProperty: "error" },
+        }),
+        success: SupplierAcceptanceReceipt,
+      },
+    ),
+    HttpApiEndpoint.get("getSupplierAcceptanceReview", `${path}/supplier-acceptance-reviews/:id`, {
+      params: Accounting.ChangePath,
+      success: SupplierAcceptanceView,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get(
+      "supplierAcceptanceHistory",
+      `${path}/supplier-invoice-drafts/:id/acceptance-reviews`,
+      {
+        params: Accounting.ChangePath,
+        success: SupplierAcceptanceHistory,
+        error: accountingErrors,
+      },
+    ),
+  )
+  .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" });
 
 // All issue/recognition mutations are operator-only. Ordinary MCP exposes recovery reads only.
 export const SupplierAcceptanceCapabilities = {

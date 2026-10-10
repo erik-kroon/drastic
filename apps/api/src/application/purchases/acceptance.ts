@@ -1,7 +1,14 @@
+import {
+  citedSuggestions,
+  inheritedSuggestionIds,
+  recordDecision,
+  type Comparison,
+} from "../decision-provenance";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as PostingDb from "../../db/posting";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import { requireCapturedPurchaseCategories } from "./vat-categories";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Effect from "effect/Effect";
 import { readDraftAdoption, readCashOriginalAdoption } from "../../db/commerce/cash-invoices";
@@ -255,6 +262,7 @@ function purchaseRecognition(
     );
 
     const compiled = yield* Recognition.compilePurchasePlan(transaction, scope, {
+      allowPurchaseCategory: true,
       recognitionId,
       book,
       content,
@@ -467,6 +475,20 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       ) {
         return yield* failure("AlreadyPosted");
       }
+
+      yield* citedSuggestions(
+        transaction,
+        command.scope.bookId,
+        principal,
+        [
+          {
+            kind: "supplier_draft",
+            draftId: command.input.draftId,
+            revision: head.currentRevision,
+          },
+        ],
+        command.input.presentedSuggestionIds ?? [],
+      );
 
       const content = Shared.objectField(head.body, "content");
       const reviewId = newId("supplier_review");
@@ -791,13 +813,13 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
     readonly reviewId: string;
     readonly idempotencyKey: string;
     readonly input: typeof Acceptance.ApproveSupplierAcceptance.Type;
+    readonly provenanceContext?: { readonly batchId: string; readonly ordinal: number };
   },
 ) {
   return yield* Effect.gen(function* () {
     yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
     yield* Shared.requireColumns(transaction, Shared.accountColumns);
     const book = yield* readBook(transaction, command.scope.bookId);
-    void book;
 
     const request = yield* replay(
       transaction,
@@ -821,6 +843,11 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
     }
 
     const proposal = yield* Shared.decode(ReviewSchema, review.body);
+    yield* requireCapturedPurchaseCategories(
+      transaction,
+      command.scope.bookId,
+      (proposal.originalLines ?? []).map((line) => line.treatment),
+    );
     yield* requireResolvedSupplierQuestions(transaction, command.scope, proposal.input.draftId);
 
     const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
@@ -843,6 +870,81 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
         "approve_supplier_acceptance",
         principal.actorId,
       ),
+    });
+
+    const subject = {
+      kind: "supplier_draft" as const,
+      draftId: proposal.draftSnapshot.id,
+      revision: proposal.draftSnapshot.revision,
+    };
+
+    const inheritedIds = command.provenanceContext
+      ? []
+      : yield* inheritedSuggestionIds(
+          transaction,
+          command.scope.bookId,
+          principal,
+          proposal.input.presentedSuggestionIds ?? [],
+        );
+
+    const exposure = yield* citedSuggestions(
+      transaction,
+      command.scope.bookId,
+      principal,
+      [subject],
+      command.provenanceContext ? [] : (command.input.presentedSuggestionIds ?? inheritedIds),
+    );
+
+    const comparisons: Comparison[] = exposure.records.map((record): Comparison => {
+      if (record.ranked.source !== "firm_memory_v0" && record.ranked.source !== "firm_memory_v1")
+        return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
+
+      const suggested =
+        record.ranked.source === "firm_memory_v1"
+          ? record.ranked.legacyItems[0]
+          : record.ranked.options[0];
+
+      const lines = proposal.originalLines;
+
+      if (!suggested || !lines)
+        return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
+
+      return {
+        coverage: "partial",
+        comparison: "not_comparable",
+        dimensions: {
+          account: lines.every((line) => line.expenseAccountId === suggested.expenseAccountId)
+            ? "unchanged"
+            : "changed",
+          vatRate: lines.every(
+            (line) =>
+              BigInt(line.treatment.rate.numerator) * 100n ===
+              BigInt(suggested.vatRatePercent) * BigInt(line.treatment.rate.denominator),
+          )
+            ? "unchanged"
+            : "changed",
+        },
+      };
+    });
+
+    yield* recordDecision(transaction, {
+      bookId: command.scope.bookId,
+      actorId: principal.actorId,
+      kind: "supplier_approval",
+      id: approval.id,
+      subject: yield* Shared.toJsonObject(subject),
+      selected: yield* Shared.toJsonObject({
+        bookCommitSequence: book.committedSequence,
+        reviewId: proposal.id,
+        reviewDigest: proposal.digest,
+        draftDigest: proposal.draftSnapshot.digest,
+        input: proposal.input,
+        originalLines: proposal.originalLines ?? null,
+        postingPlan: proposal.postingPlan,
+      }),
+      exposure,
+      comparisons,
+      forced: command.provenanceContext ? "batch_approved" : undefined,
     });
 
     yield* saveCommand(
@@ -1035,6 +1137,11 @@ export const executeAcceptanceInTransaction = Effect.fn(
     yield* readBook(transaction, scope.bookId);
     const row = yield* readReview(transaction, scope.bookId, reviewId);
     const review = yield* Shared.decode(ReviewSchema, row.body);
+    yield* requireCapturedPurchaseCategories(
+      transaction,
+      scope.bookId,
+      (review.originalLines ?? []).map((line) => line.treatment),
+    );
     yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
 
     if (

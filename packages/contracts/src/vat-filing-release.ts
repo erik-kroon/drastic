@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as A from "./accounting";
+import { PurchaseCategorySection } from "./vat-purchase-categories";
 
 // The qualified VAT filing release. A rate, a report box, a filing unit and a
 // rounding mode are reviewed executable inputs carried by the one `vat` rule
@@ -228,5 +229,6 @@ export const VatFilingRuleRelease = Schema.Struct({
   // Absent unless the release qualifies general-rule cross-border services.
   // Nothing defaults it into existence.
   generalRuleServices: Schema.optional(GeneralRuleServiceRelease),
+  purchaseCategories: Schema.optional(PurchaseCategorySection),
   sourceManifest: A.Description,
 }).check(Schema.makeFilter(releaseIssues));

@@ -1,3 +1,4 @@
+import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -54,12 +55,14 @@ export const ImportBankStatement = Schema.Struct({
 });
 
 export const BankMatchInput = Schema.Struct({
+  presentedSuggestionIds: PresentedSuggestionIds,
   statementId: Accounting.Identifier,
   ...ExistingBankMatch.fields,
 });
 
 export const BankMatch = Schema.Struct({
-  ...BankMatchInput.fields,
+  statementId: Accounting.Identifier,
+  ...ExistingBankMatch.fields,
   origin: Schema.Literals(["imported", "explicit"]),
   actorId: Accounting.Identifier,
 });

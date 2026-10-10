@@ -82,6 +82,7 @@ export const BankMatchCandidate = Schema.Struct({
 });
 
 export const BankMatchCandidates = Schema.Struct({
+  suggestionRecordId: Accounting.Identifier,
   version: Schema.Literal("bank_match_candidates_v1"),
   scope: Accounting.Scope,
   currency: Schema.String,
@@ -162,7 +163,7 @@ export const BankMatchCandidatesApi = HttpApiGroup.make("bankMatchCandidates").a
 export const BankMatchCandidateCapabilities = {
   bank_discover_match_candidates: {
     description:
-      "Read bounded mapped-account lines and exact whole-residual covers in a retained statement interval. Explain capacity, blockers, tied alternatives, search limits and same-statement conflicts; never establish identity, select or apply a match.",
+      "Record exposure while reading bounded mapped-account lines and exact whole-residual covers in a retained statement interval. Explain capacity, blockers, tied alternatives, search limits and same-statement conflicts; never establish identity, select or apply a match.",
     input: Schema.Struct({ scope: Accounting.Scope, input: DiscoverBankMatchCandidates }),
     output: BankMatchCandidates,
     readOnly: true,

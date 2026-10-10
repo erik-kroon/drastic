@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./vat-purchase-categories": "./src/vat/purchase-categories.ts",
     "./vat": "./src/vat/calculation.ts",
     "./vat-actual": "./src/vat/actual.ts",
     "./sie": "./src/sie/encoder.ts",

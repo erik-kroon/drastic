@@ -4,6 +4,7 @@ import { configuredPeppolAccessPoint } from "../src/adapters/peppol/local-fixtur
 import { configuredProcessorFeed } from "../src/adapters/processor/local-fixture";
 import { resolve, sep } from "node:path";
 import api from "../src/index";
+import { configuredDecisionModel } from "../src/runtime/decision-model";
 import { configuredDocumentReader } from "../src/runtime/document-reader";
 import type { Bindings } from "../src/runtime/environment";
 import { fileObjectStore } from "./file-object-store";
@@ -49,6 +50,7 @@ if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
 const bindings: Bindings = {
   DOCUMENT_INSPECTOR: inspectQueuedDocument,
   DATABASE_URL: databaseUrl,
+  DECISION_MODEL: configuredDecisionModel(process.env),
   DOCUMENT_READER: documentReader,
   PEPPOL_EXCHANGE: configuredPeppolAccessPoint({
     OPENERP_PEPPOL_EXCHANGE: process.env.OPENERP_PEPPOL_EXCHANGE,

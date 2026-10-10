@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import * as Profiles from "./company-profiles";
 import { accountingErrors } from "./accounting-errors";
+import { PurchaseCategorySelection, PurchaseCategoryResolution } from "./vat-purchase-categories";
 
 // Owned source-line recognition of a domestic purchase, and the exact signed tax
 // components it publishes. The pure calculation lives in
@@ -35,7 +36,7 @@ export const DeductionBasis = Schema.Literals([
   "no_tax_exempt",
 ]);
 
-export const ReviewedTreatment = Schema.Struct({
+export const ExactReviewedTreatment = Schema.Struct({
   basis: DeductionBasis,
   rate: Rational,
   deduction: Rational,
@@ -43,6 +44,16 @@ export const ReviewedTreatment = Schema.Struct({
   deductionRounding: RoundingMode,
   acceptancePolicy: AcceptancePolicy,
   toleranceMinor: Accounting.MinorUnits,
+});
+
+export const ReviewedTreatmentInput = Schema.Struct({
+  ...ExactReviewedTreatment.fields,
+  category: Schema.optional(PurchaseCategorySelection),
+});
+
+export const ReviewedTreatment = Schema.Struct({
+  ...ReviewedTreatmentInput.fields,
+  categoryResolution: Schema.optional(PurchaseCategoryResolution),
 });
 
 // The two dates a retained supplier document actually carries. A tax point this

@@ -1,3 +1,4 @@
+import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -221,6 +222,7 @@ export const ExtractionFieldDecision = Schema.Struct({
 });
 
 export const CommitSupplierExtractionReview = Schema.Struct({
+  presentedSuggestionIds: PresentedSuggestionIds,
   requestId: Accounting.Identifier,
   attemptId: Accounting.Identifier,
   expectedDraftRevision: Schema.NullOr(Commerce.Version),
@@ -248,9 +250,10 @@ export const SupplierFieldDecisionRecord = Schema.Struct({
 });
 
 // The prepared review. It exposes the merged values and the exact discrepancy
-// list; it writes nothing. A proposed total mismatch or a tax input the reviewer
+// list; it records exposure without changing the draft. A proposed total mismatch or a tax input the reviewer
 // has not supplied is a blocker here, not a posting.
 export const SupplierExtractionReviewPreparation = Schema.Struct({
+  suggestionRecordId: Accounting.Identifier,
   currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   scope: Accounting.Scope,
   occurrenceId: Accounting.Identifier,
@@ -297,6 +300,7 @@ export const SupplierExtractionReview = Schema.Struct({
 });
 
 export const SupplierExtractionState = Schema.Struct({
+  suggestionRecordId: Schema.NullOr(Accounting.Identifier),
   currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   documentReaderAvailable: Schema.Boolean,
   scope: Accounting.Scope,
@@ -401,14 +405,14 @@ export const SupplierExtractionApi = HttpApiGroup.make("supplierExtraction")
 export const SupplierExtractionCapabilities = {
   supplier_inbox_extraction_state: {
     description:
-      "Read the bounded extraction requests, the retained attempt interpretation with its source locators and diagnostics, and the immutable human field decisions for one supplier inbox occurrence. Suggestions are unconfirmed evidence, not a reviewed fact. No extraction, review, acceptance or posting authority.",
+      "Record exposure while reading the bounded extraction requests, the retained attempt interpretation with its source locators and diagnostics, and the immutable human field decisions for one supplier inbox occurrence. Suggestions are unconfirmed evidence, not a reviewed fact. No extraction, review, acceptance or posting authority.",
     input: Schema.Struct({ scope: Accounting.Scope, occurrenceId: Accounting.Identifier }),
     output: SupplierExtractionState,
     readOnly: true,
   },
   supplier_inbox_extraction_review_preparation: {
     description:
-      "Read the three-way merge of a retained extraction attempt against the current reviewed draft, with each field labelled unchanged, suggested, convergent, conflicting, reviewer-retained or needing review, plus the explicit discrepancy list and the proposed source totals. It writes nothing and applies nothing. No approval or posting authority.",
+      "Read the three-way merge of a retained extraction attempt against the current reviewed draft, with each field labelled unchanged, suggested, convergent, conflicting, reviewer-retained or needing review, plus the explicit discrepancy list and the proposed source totals. It records suggestion exposure and applies no proposed values. No approval or posting authority.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       occurrenceId: Accounting.Identifier,

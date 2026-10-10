@@ -1,3 +1,4 @@
+import * as Examples from "@open-erp/contracts/decision-examples";
 import { documentSelfHost } from "./support/document-self-host";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -155,6 +156,7 @@ test("retains native extraction, diagnostics and replay through the public state
 async function documentFixture(
   mediaType: "application/pdf" | "image/png" | "image/jpeg" = "application/pdf",
   pageCount = 2,
+  sourceTotalText = "1250,00 SEK",
 ) {
   let submissions = 0;
   let polls = 0;
@@ -261,7 +263,7 @@ async function documentFixture(
     const sheet = pdf.addPage();
     sheet.drawText(page === 0 ? "SYNTHETIC-1" : "Second page", { x: 50, y: 700 });
 
-    if (page === 0) sheet.drawText("1250,00 SEK", { x: 50, y: 650 });
+    if (page === 0) sheet.drawText(sourceTotalText, { x: 50, y: 650 });
   }
 
   let bytes: Uint8Array;
@@ -1637,6 +1639,159 @@ test("document reader rechecks executor authority without repeating disclosure",
   } finally {
     await setRevoked(false);
     await admin.end();
+    await local.close();
+  }
+});
+
+test("decision example projection preserves exact extraction money colliding with personalID digits", async () => {
+  const local = await documentFixture("application/pdf", 2, "1990010112,34 SEK");
+
+  try {
+    const response = invoiceResponse();
+    response.analyzeResult.content = "SYNTHETIC-1\n1990010112,34 SEK\nSecond page";
+    response.analyzeResult.documents[0]!.fields.InvoiceTotal.content = "1990010112,34 SEK";
+    response.analyzeResult.documents[0]!.fields.InvoiceTotal.spans[0]!.length =
+      "1990010112,34 SEK".length;
+    response.analyzeResult.pages[0]!.spans[0]!.length = "SYNTHETIC-1\n1990010112,34 SEK\n".length;
+    response.analyzeResult.pages[1]!.spans[0]!.offset = "SYNTHETIC-1\n1990010112,34 SEK\n".length;
+
+    local.setResponse(response);
+    const admitted = await local.request();
+    await local.run(admitted.request.id);
+
+    const state = await decoded(
+      await local.apiCall(local.path),
+      Extraction.SupplierExtractionState,
+    );
+
+    const prepared = await decoded(
+      await local.apiCall(`${local.path}/${admitted.request.id}/prepare`, {
+        attemptId: state.attempt!.attemptId,
+      }),
+      Extraction.SupplierExtractionReviewPreparation,
+    );
+
+    const support = await evidence(local.book);
+
+    const counterparty = await post(
+      local.book,
+      "/commerce/counterparties",
+      {
+        kind: "synthetic_counterparty_v1",
+        externalKey: key(),
+        role: "supplier",
+        displayName: "Synthetic supplier",
+        evidenceId: support.id,
+        reason: "Document reading fixture",
+      },
+      Commerce.CounterpartyRevision,
+    );
+
+    const identity = {
+      legalName: "Synthetic identity",
+      registrationId: null,
+      taxId: null,
+      address: null,
+      countryCode: "SE",
+      evidenceId: support.id,
+    };
+
+    const originalEvidence = await post(
+      local.book,
+      "/evidence",
+      {
+        title: "Reviewed original reference",
+        content: JSON.stringify({
+          source: { occurrenceId: local.source.id, sha256: local.source.sha256 },
+        }),
+        mediaType: "application/json",
+        origin: "Synthetic reviewed document",
+      },
+      Accounting.Evidence,
+    );
+
+    const baseContent = {
+      title: "Human reviewed synthetic invoice",
+      counterpartyId: counterparty.id,
+      counterpartyRevision: counterparty.revision,
+      supplier: identity,
+      buyer: identity,
+      sourceEvidenceId: originalEvidence.id,
+      supplierDocumentNumber: null,
+      currency: "SEK",
+      currencyScale: 2,
+      documentDate: null,
+      supplyDate: null,
+      dueDate: null,
+      paymentTerms: null,
+      sourceTotalMinor: null,
+      lines: [
+        {
+          id: "reviewed_line_one",
+          description: "Manually supplied item",
+          quantity: "1",
+          unitPriceMinor: "199001011234",
+          baseMinor: "199001011234",
+          discountMinor: "0",
+          chargeMinor: "0",
+          taxMinor: "0",
+          taxDescription: "Synthetic reviewed VAT",
+          taxEvidenceId: support.id,
+          sourceGrossMinor: "199001011234",
+        },
+      ],
+    };
+
+    const created = await decoded(
+      await local.apiCall(`${local.path}/${admitted.request.id}/review`, {
+        requestId: admitted.request.id,
+        attemptId: state.attempt!.attemptId,
+        expectedDraftRevision: null,
+        expectedDraftDigest: null,
+        baseContent,
+        reason: "Human accepts printed number and total",
+        lines: [],
+        presentedSuggestionIds: [prepared.suggestionRecordId],
+        fields: [
+          {
+            lineOrdinal: 0,
+            fieldKey: "supplierDocumentNumber",
+            decisionKind: "accepted_suggestion",
+            selectedValue: "SYNTHETIC-1",
+          },
+          {
+            lineOrdinal: 0,
+            fieldKey: "sourceTotalMinor",
+            decisionKind: "accepted_suggestion",
+            selectedValue: "199001011234",
+          },
+        ],
+      }),
+      Extraction.SupplierExtractionReview,
+    );
+
+    expect(created.outcome).toBe("draft_created");
+    expect(created.draft?.content.sourceTotalMinor).toBe("199001011234");
+
+    const exported = await post(
+      local.book,
+      "/automation/decision-examples",
+      { purpose: "training", selectedDecisionIds: [] },
+      Examples.DecisionExampleExport,
+    );
+
+    const money = exported.examples.find(
+      (row) => row.chosenTreatment.fieldKey === "sourceTotalMinor",
+    );
+
+    expect(money?.chosenTreatment.value).toBe("199001011234");
+    expect(money?.state.suggestion).toBe("199001011234");
+    expect(JSON.stringify(money?.options)).toContain("199001011234");
+    await writeFile(
+      join(environment().artifacts, "decision-examples-extraction-money.json"),
+      JSON.stringify({ exported, created }, null, 2),
+    );
+  } finally {
     await local.close();
   }
 });

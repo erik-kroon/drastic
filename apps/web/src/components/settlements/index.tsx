@@ -1,3 +1,4 @@
+import * as Option from "effect/Option";
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -137,6 +138,7 @@ function AllocationForm(props: {
         const fields = new FormData(event.currentTarget);
 
         const result = Schema.decodeUnknownOption(Settlement.PrepareBankAllocation)({
+          presentedSuggestionIds: seed ? [seed.suggestionRecordId] : [],
           accountId: fields.get("accountId"),
           reason: fields.get("reason"),
           ambiguityAcknowledged: fields.get("acknowledged") === "on",
@@ -149,7 +151,7 @@ function AllocationForm(props: {
           })),
         });
 
-        if (result._tag === "None") {
+        if (Option.isNone(result)) {
           setError(copy.invalid);
 
           return;

@@ -5,6 +5,10 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./decisions": "./src/decisions.ts",
+    "./vat-purchase-categories": "./src/vat-purchase-categories.ts",
+    "./decision-examples": "./src/decision-examples.ts",
+    "./decision-provenance": "./src/decision-provenance.ts",
     "./bank-workspace": "./src/bank-workspace.ts",
     "./sales-register": "./src/sales-register.ts",
     "./identity": "./src/identity.ts",

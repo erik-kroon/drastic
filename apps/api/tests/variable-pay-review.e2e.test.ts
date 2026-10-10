@@ -1,3 +1,4 @@
+import { assertPersonalOwnersExcluded } from "./support/decision-examples";
 import { proveReminderRecovery } from "./support/reminder-recovery";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -14,6 +15,7 @@ import {
 
 test("retained unknown absence and mismatched holiday controls block financial review and return to actual submitter", async () => {
   const f = await variablePayFixture();
+  await assertPersonalOwnersExcluded(f.book, "payroll");
   const view = f.assessment;
   expect(view.current.blockers.map((row) => row.code)).toEqual([
     "unsupported_work",

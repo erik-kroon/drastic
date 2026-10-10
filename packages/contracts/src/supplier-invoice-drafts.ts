@@ -1,9 +1,11 @@
+import * as Memory from "@open-erp/domain/firm-memory";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import * as Drafts from "./invoice-drafts";
 import { accountingErrors } from "./accounting-errors";
+import { PurchaseCategoryResolution } from "./vat-purchase-categories";
 
 export const SupplierDraftContent = Schema.Struct({
   title: Drafts.DraftContent.fields.title,
@@ -114,6 +116,14 @@ export const SupplierInvoiceDraftHistory = Schema.Struct({
 });
 
 export const SupplierAccountSuggestions = Schema.Struct({
+  algorithmVersion: Memory.AlgorithmVersion,
+  historyDigest: Accounting.Digest,
+  precedents: Schema.Array(Memory.Precedent).check(Schema.isMaxLength(5)),
+  eligibleCount: Schema.Int,
+  exclusions: Schema.Array(Schema.Struct({ id: Schema.String, reason: Schema.String })),
+  suggestionRecordId: Accounting.Identifier,
+  draftId: Accounting.Identifier,
+  draftRevision: Commerce.Version,
   scope: Accounting.Scope,
   counterpartyId: Accounting.Identifier,
   items: Schema.Array(
@@ -121,6 +131,7 @@ export const SupplierAccountSuggestions = Schema.Struct({
       expenseAccountId: Accounting.Identifier,
       vatRatePercent: Schema.Literals([0, 6, 12, 25]),
       sourceInvoiceId: Accounting.Identifier,
+      categoryResolution: Schema.optional(PurchaseCategoryResolution),
     }),
   ).check(Schema.isMaxLength(5)),
 });
@@ -169,6 +180,7 @@ export const SupplierInvoiceDraftsApi = HttpApiGroup.make("supplierInvoiceDrafts
     "/v1/entities/:entityId/books/:bookId/commerce/supplier-account-suggestions/:counterpartyId",
     {
       params: Schema.Struct({ ...Accounting.Scope.fields, counterpartyId: Accounting.Identifier }),
+      query: Schema.Struct({ draftId: Accounting.Identifier, draftRevision: Commerce.Version }),
       success: SupplierAccountSuggestions,
       error: accountingErrors,
     },

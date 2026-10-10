@@ -1,3 +1,4 @@
+import { recordSuggestion } from "../decision-provenance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
 import { findExactCovers } from "@open-erp/domain/bank-cover-search";
@@ -191,7 +192,7 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
     readonly input: typeof Candidates.DiscoverBankMatchCandidates.Type;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, candidateTables);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
@@ -512,6 +513,29 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
         coverConflicts,
       } satisfies JsonObject);
 
+      const suggestionRecordId = yield* recordSuggestion(
+        transaction,
+        command.scope.bookId,
+        principal,
+        {
+          kind: "bank_row",
+          statementId: source.statementId,
+          rowOrdinal: source.rowOrdinal,
+          revision: source.sourceRevision,
+        },
+        {
+          source: "bank_ranking_v2",
+          version: "retained_then_reference_amount_date_v2",
+          options: typedCandidates
+            .filter((candidate) => candidate.eligible)
+            .map((candidate) => ({
+              voucherId: candidate.voucherId,
+              lineId: candidate.lineId,
+              amountMinor: candidate.remainingMinor,
+            })),
+        },
+      );
+
       const bodyDigest = yield* digest(body);
       const previousDigest = command.input.previousDigest;
 
@@ -520,6 +544,7 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
         yield* Shared.toJsonObject(
           Object.assign({}, body, {
             digest: bodyDigest,
+            suggestionRecordId,
             previousDigestMatches:
               previousDigest === undefined ? null : previousDigest === bodyDigest,
           }),

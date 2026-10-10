@@ -16,6 +16,7 @@ import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import * as Db from "../../db/purchases/recognition";
 import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
+import { resolveSelectedPurchaseCategory } from "./vat-categories";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -208,6 +209,7 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
       readonly expenseAccountId: string;
       readonly treatment: Treatment;
     }>;
+    readonly allowPurchaseCategory?: boolean;
     readonly controlAccountId: string;
     readonly inputVatAccountId: string;
     readonly taxPoint: DraftTaxPoint;
@@ -219,6 +221,7 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
   if (sourceEvidenceId === undefined) return yield* failure("MissingEvidence");
 
   const reviewed = yield* taxPointDate(command.content, command.taxPoint);
+  const witness = yield* readVatWitness(transaction, scope, reviewed.taxPointOn);
   const selections: Array<PurchaseLineSelection> = [];
 
   for (const line of command.draftLines) {
@@ -230,12 +233,27 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
       return yield* failure("InvalidJournal");
     }
 
+    if (assignment.treatment.category !== undefined && command.allowPurchaseCategory !== true) {
+      return yield* Shared.unsupported();
+    }
+
     yield* requireConsistentTreatment(assignment.treatment, amounts.net, amounts.tax);
     yield* Shared.readEvidenceReference(
       transaction,
       scope.bookId,
       Shared.textField(line, "taxEvidenceId") ?? sourceEvidenceId,
     );
+
+    const treatment = yield* resolveSelectedPurchaseCategory(transaction, {
+      bookId: scope.bookId,
+      sourceEvidenceId,
+      taxPointOn: reviewed.taxPointOn,
+      lineCount: command.draftLines.length,
+      netMinor: amounts.net,
+      taxMinor: amounts.tax,
+      treatment: assignment.treatment,
+      witness: witness.witness,
+    });
 
     selections.push({
       lineId,
@@ -244,7 +262,7 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
       sourceTaxMinor: amounts.tax,
       sourceGrossMinor: (BigInt(amounts.net) + BigInt(amounts.tax)).toString(),
       taxComponentId: `${command.recognitionId}_${lineId}`,
-      treatment: assignment.treatment,
+      treatment,
     });
   }
 
@@ -257,8 +275,6 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
   ) {
     return yield* Shared.unsupported();
   }
-
-  const witness = yield* readVatWitness(transaction, scope, reviewed.taxPointOn);
 
   const result = compileDomesticPurchase({
     currencyScale: command.book.currencyScale,

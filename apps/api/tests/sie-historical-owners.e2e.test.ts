@@ -1,3 +1,5 @@
+import { assertEvaluationRefused } from "./support/decision-examples";
+import { provenanceRows } from "./support/decision-provenance";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -1066,6 +1068,7 @@ test("SIE multi-member chunk rolls back the first posted member when the second 
     "ApprovalRequired",
   );
   expect((await ledger(book)).sequence).toBe("0");
+  expect(await provenanceRows(book)).toEqual([]);
 
   const refused = await decoded(
     await request(book, `/sie-financial-runs/${run.id}`),
@@ -1085,10 +1088,14 @@ test("SIE multi-member chunk rolls back the first posted member when the second 
   );
 
   expect([committed.items.length, (await ledger(book)).sequence]).toEqual([2, "2"]);
+  const provenance = await provenanceRows(book);
+  expect(provenance).toHaveLength(2);
+  expect(provenance.every((row) => row.classification === "historical_import")).toBe(true);
+  await assertEvaluationRefused(book, provenance[0]!.decision_id);
   await writeFile(
     join(environment().artifacts, "sie-all-or-none.json"),
     JSON.stringify(
-      { refused, committed, sequenceBeforeRecovery: "0", sequenceAfterRecovery: "2" },
+      { refused, committed, provenance, sequenceBeforeRecovery: "0", sequenceAfterRecovery: "2" },
       null,
       2,
     ),

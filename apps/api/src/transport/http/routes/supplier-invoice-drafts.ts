@@ -18,11 +18,13 @@ export const SupplierInvoiceDraftHandlers = HttpApiBuilder.group(
   "supplierInvoiceDrafts",
   (handlers) =>
     handlers
-      .handle("supplierAccountSuggestions", ({ params }) =>
+      .handle("supplierAccountSuggestions", ({ params, query: search }) =>
         Effect.flatMap(authenticate, (token) =>
           supplierAccountSuggestions(token, {
             scope: scopeFromPath(params),
             counterpartyId: params.counterpartyId,
+            draftId: search.draftId,
+            draftRevision: search.draftRevision,
           }),
         ),
       )

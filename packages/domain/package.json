@@ -5,6 +5,8 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./decisions": "./src/decisions.ts",
+    "./treatment-consequence": "./src/treatment-consequence.ts",
     "./values": "./src/values.ts",
     "./money": "./src/money.ts",
     "./commercial-invoice": "./src/commercial-invoice.ts",
@@ -56,7 +58,8 @@
     "./service-purchases": "./src/service-purchases.ts",
     "./sie-partitions": "./src/sie-partitions.ts",
     "./collection-reminders": "./src/collection-reminders.ts",
-    "./cash-forecast": "./src/cash-forecast.ts"
+    "./cash-forecast": "./src/cash-forecast.ts",
+    "./firm-memory": "./src/firm-memory.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

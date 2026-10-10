@@ -1,3 +1,9 @@
+import {
+  citedSuggestions,
+  inheritedSuggestionIds,
+  recordDecision,
+  type Comparison,
+} from "../decision-provenance";
 import * as AssetDisposals from "@open-erp/contracts/asset-disposals";
 import * as LedgerDb from "../../db/posting";
 import * as ForeignCashDb from "../../db/banking/foreign-cash";
@@ -280,6 +286,32 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
 
       const snapshot = yield* allocationSnapshot(transaction, command.scope.bookId, command.input);
 
+      const sourceRevision = Shared.textField(snapshot.versions, "sourceRevision");
+
+      if (sourceRevision === undefined) return yield* failure("InternalError");
+
+      const subjects = [
+        ...new Map(
+          command.input.legs.map((leg) => [
+            `${leg.statementId}:${leg.rowOrdinal}`,
+            {
+              kind: "bank_row" as const,
+              statementId: leg.statementId,
+              rowOrdinal: leg.rowOrdinal,
+              revision: sourceRevision,
+            },
+          ]),
+        ).values(),
+      ];
+
+      yield* citedSuggestions(
+        transaction,
+        command.scope.bookId,
+        principal,
+        subjects,
+        command.input.presentedSuggestionIds ?? [],
+      );
+
       const body = Object.assign({}, {
         id: newId("bankplan"),
         version: 1,
@@ -429,6 +461,78 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         expiresAt,
         body,
       });
+      const retained = yield* Shared.decode(PlanSchema, plan.body);
+
+      const subjects = [
+        ...new Map(
+          retained.input.legs.map((leg) => [
+            `${leg.statementId}:${leg.rowOrdinal}`,
+            {
+              kind: "bank_row" as const,
+              statementId: leg.statementId,
+              rowOrdinal: leg.rowOrdinal,
+              revision: retained.snapshot.versions.sourceRevision,
+            },
+          ]),
+        ).values(),
+      ];
+
+      const inheritedIds = yield* inheritedSuggestionIds(
+        transaction,
+        command.scope.bookId,
+        principal,
+        retained.input.presentedSuggestionIds ?? [],
+      );
+
+      const exposure = yield* citedSuggestions(
+        transaction,
+        command.scope.bookId,
+        principal,
+        subjects,
+        command.input.presentedSuggestionIds ?? inheritedIds,
+      );
+
+      const comparisons: Comparison[] = exposure.records.map((record) => {
+        const first =
+          record.ranked.source === "bank_ranking_v2" ? record.ranked.options[0] : undefined;
+
+        const leg = retained.input.legs[0];
+        const complete = retained.input.legs.length === 1;
+
+        return {
+          coverage: complete ? "complete" : "partial",
+          comparison:
+            first === undefined || leg === undefined
+              ? "not_comparable"
+              : first.voucherId === leg.voucherId &&
+                  first.lineId === leg.lineId &&
+                  first.amountMinor === leg.amountMinor
+                ? "unchanged"
+                : "changed",
+          dimensions: { legs: retained.input.legs.length },
+        };
+      });
+
+      yield* recordDecision(transaction, {
+        bookId: command.scope.bookId,
+        actorId: principal.actorId,
+        kind: "bank_allocation",
+        id: approvalId,
+        subject: yield* Shared.toJsonObject({
+          kind: "bank_allocation",
+          planId: retained.id,
+          digest: retained.digest,
+          rows: subjects,
+        }),
+        selected: yield* Shared.toJsonObject({
+          plan: retained,
+          approvalId,
+          bookCommitSequence: book.committedSequence,
+        }),
+        exposure,
+        comparisons,
+      });
+
       const approval = yield* Shared.decode(ApprovalSchema, body);
       yield* saveCommand(
         transaction,
