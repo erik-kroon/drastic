@@ -155,5 +155,123 @@ export function ownerCases() {
       },
     });
 
+  // Reversals: every line mirrors exactly, including wide amounts and dimensions.
+  for (let i = 0; i < 60; i++) {
+    const count = 1 + rand(8),
+      lines = [];
+
+    let total = 0n;
+
+    for (let j = 0; j < count; j++) {
+      const amount = BigInt(1 + rand(1_000_000)) * (i % 10 === 0 ? 10n ** 30n : 1n);
+
+      total += amount;
+      lines.push({
+        id: `debit-${j}`,
+        accountId: `account-${rand(5)}`,
+        dimensions: rand(2) ? { project: `p-${rand(3)}` } : {},
+        debitMinor: String(amount),
+        creditMinor: "0",
+      });
+    }
+
+    lines.push({
+      id: "credit",
+      accountId: "account-credit",
+      dimensions: {},
+      debitMinor: "0",
+      creditMinor: String(total),
+    });
+    cases.push({
+      operation: "ledger.reverse.v1",
+      input: { currency: "SEK", scale: 2, originalVoucherId: `voucher-${i}`, lines },
+    });
+  }
+
+  return cases;
+}
+
+/** Voucher shapes within the posting owner's scope: 2 to 500 lines with unique ids. */
+export function voucherCases() {
+  const line = (debitMinor, creditMinor) => ({ debitMinor, creditMinor });
+
+  const cases = [
+    [line("100", "0"), line("0", "100")],
+    [line("100", "0"), line("0", "99")],
+    [line("100", "100"), line("0", "0")],
+    [line("0", "0"), line("0", "0")],
+    [line("100", "0"), line("0", "100"), line("0", "0")],
+    [line("100", "0"), line("100", "0")],
+    [line(String(10n ** 37n), "0"), line("0", String(10n ** 37n))],
+    [line("1", "0"), line("1", "0"), line("0", "2")],
+    [line("1", "0"), line("2", "0"), line("0", "2")],
+  ];
+
+  let seed = 90127;
+
+  const rand = (max) => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+
+    return seed % max;
+  };
+
+  for (let i = 0; i < 200; i++) {
+    const rows = Array.from({ length: 2 + rand(10) }, () =>
+      rand(2) ? line(String(1 + rand(500)), "0") : line("0", String(1 + rand(500))),
+    );
+
+    // Balance about half of them on the last line's side so both outcomes occur.
+    if (i % 2 === 0) {
+      const balance = rows.reduce(
+        (sum, row) => sum + BigInt(row.debitMinor) - BigInt(row.creditMinor),
+        0n,
+      );
+
+      if (balance > 0n) rows.push(line("0", String(balance)));
+      else if (balance < 0n) rows.push(line(String(-balance), "0"));
+    }
+
+    cases.push(rows);
+  }
+
+  return cases.map((rows) => rows.map((row, index) => ({ ...row, id: `line-${index}` })));
+}
+
+/** Small complete pools, so both searches finish and must agree on the verdict. */
+export function coverCases() {
+  const cases = [
+    { targetMinor: "100", amounts: ["100"], maxSetSize: 1 },
+    { targetMinor: "100", amounts: ["60", "40", "100"], maxSetSize: 2 },
+    { targetMinor: "100", amounts: ["60", "40", "70", "30"], maxSetSize: 2 },
+    { targetMinor: "100", amounts: ["50", "50", "50"], maxSetSize: 2 },
+    { targetMinor: "100", amounts: ["99", "2", "3"], maxSetSize: 3 },
+    { targetMinor: "100", amounts: ["10", "20", "30", "40"], maxSetSize: 4 },
+    { targetMinor: "7", amounts: ["1", "2", "4"], maxSetSize: 3 },
+    { targetMinor: "7", amounts: ["1", "2", "4"], maxSetSize: 2 },
+    { targetMinor: "1", amounts: ["2", "3"], maxSetSize: 2 },
+  ];
+
+  let seed = 4421;
+
+  const rand = (max) => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+
+    return seed % max;
+  };
+
+  for (let i = 0; i < 150; i++) {
+    const amounts = Array.from({ length: 1 + rand(9) }, () => String(1 + rand(20)));
+
+    // Half the targets are a real subset sum, so matches and ambiguity occur often.
+    const picked = amounts.filter(() => rand(3) === 0);
+
+    const target =
+      i % 2 === 0 && picked.length > 0
+        ? picked.reduce((sum, amount) => sum + BigInt(amount), 0n)
+        : BigInt(1 + rand(60));
+
+    cases.push({ targetMinor: String(target), amounts, maxSetSize: 1 + rand(4) });
+  }
+
   return cases;
 }

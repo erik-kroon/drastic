@@ -35,7 +35,7 @@ import {
   ExecutionReceipt as DomainExecutionReceipt,
   ManualCompanyAdmission,
 } from "@open-erp/domain/ledger";
-import { orderPostingGroups, validatePostingLines } from "@open-erp/domain/posting";
+import { orderPostingGroups, reversedLines, validatePostingLines } from "@open-erp/domain/posting";
 import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
@@ -2006,12 +2006,7 @@ export const prepareCorrectionInTransaction = Effect.fn("posting.prepareCorrecti
       postingDate: command.input.postingDate,
       description: `Reversal: ${original.action.description.slice(0, 1990)}`,
       rationale: command.input.rationale,
-      lines: original.action.lines.map((line) => ({
-        ...line,
-        lineId: newId("line"),
-        debitMinor: line.creditMinor,
-        creditMinor: line.debitMinor,
-      })),
+      lines: reversedLines(original.action.lines, () => newId("line")),
     };
 
     const action = yield* decode(ActionSchema, actionValue);

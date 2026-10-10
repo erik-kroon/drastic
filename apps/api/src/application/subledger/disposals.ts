@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Contracts from "@open-erp/contracts/asset-disposals";
+import { reversedLines } from "@open-erp/domain/posting";
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Vat from "@open-erp/contracts/vat-returns";
@@ -214,12 +215,7 @@ export const prepare = Effect.fn("subledger.prepareProceedsDisposal")(function* 
       if (!event) return yield* failure("InternalError");
 
       const lines = originalAction
-        ? originalAction.lines.map((line) => ({
-            ...line,
-            lineId: newId("line"),
-            debitMinor: line.creditMinor,
-            creditMinor: line.debitMinor,
-          }))
+        ? reversedLines(originalAction.lines, () => newId("line"))
         : current.domainPlan.journal.map((line) => ({
             accountId: line.accountId,
             debitMinor: line.debitMinor,

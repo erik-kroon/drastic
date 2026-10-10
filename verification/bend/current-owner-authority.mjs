@@ -23,13 +23,15 @@ const hooks = registerHooks({
   },
 });
 
-let monetary, money, rates, prepayments, corporateTax, payroll;
+let monetary, money, rates, prepayments, corporateTax, payroll, posting, covers;
 
 try {
   monetary = (await import("../../jurisdictions/se/src/vat/actual.ts")).actualVatMonetary;
   money = await import("../../packages/domain/src/money.ts");
   rates = await import("../../packages/domain/src/exchange-rates.ts");
   prepayments = await import("../../packages/domain/src/prepayments.ts");
+  posting = await import("../../packages/domain/src/posting.ts");
+  covers = await import("../../packages/domain/src/bank-cover-search.ts");
   corporateTax = await import("../../apps/api/src/application/tax/corporate-basis.ts");
   payroll = await import("../../apps/api/src/application/payroll/calculation-basis.ts");
 } finally {
@@ -115,6 +117,51 @@ export function calculate(operation, input) {
         periodId: input.periodIds[index],
         amountMinor,
       })),
+    };
+  }
+
+  if (operation === "ledger.reverse.v1")
+    return {
+      lines: posting.reversedLines(input.lines).map((line) => ({
+        originalLineId: line.id,
+        accountId: line.accountId,
+        dimensions: line.dimensions,
+        debitMinor: line.debitMinor,
+        creditMinor: line.creditMinor,
+      })),
+    };
+
+  if (operation === "ledger.validate") {
+    const checked = posting.validatePostingLines(
+      input.lines.map((line) => ({
+        accountId: "account",
+        debitMinor: line.debitMinor,
+        creditMinor: line.creditMinor,
+        description: "Synthetic comparison line",
+        lineId: line.id,
+      })),
+    );
+
+    return { accepted: Result.isSuccess(checked) };
+  }
+
+  // Equal day distances, so the owner keeps every cover of the smallest size.
+  if (operation === "cover.search") {
+    const search = covers.findExactCovers(
+      input.targetMinor,
+      input.amounts.map((amountMinor, index) => ({
+        voucherId: `c${String(index).padStart(2, "0")}`,
+        lineId: "line",
+        amountMinor,
+        dayDistance: 0,
+      })),
+      { maxCandidates: 40, maxSetSize: input.maxSetSize, maxVisited: 10000 },
+      true,
+    );
+
+    return {
+      status: search.status,
+      covers: search.covers.map((cover) => cover.legs.map((leg) => leg.voucherId).toSorted()),
     };
   }
 

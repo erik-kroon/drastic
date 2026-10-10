@@ -210,3 +210,18 @@ export function orderPostingGroups(value: unknown): PostingGroupOrderResult {
 
   return Result.succeed(immutableGroups(ordered));
 }
+
+/**
+ * A reversal mirrors every line exactly: debit and credit swap, nothing is
+ * rounded, merged or dropped. Pass lineId when the reversal needs new line ids.
+ */
+export function reversedLines<
+  L extends { readonly debitMinor: string; readonly creditMinor: string },
+>(lines: ReadonlyArray<L>, lineId?: () => string) {
+  return lines.map((line) => ({
+    ...line,
+    ...(lineId && { lineId: lineId() }),
+    debitMinor: line.creditMinor,
+    creditMinor: line.debitMinor,
+  }));
+}

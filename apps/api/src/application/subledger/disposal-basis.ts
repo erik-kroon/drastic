@@ -1,5 +1,6 @@
 import * as Contracts from "@open-erp/contracts/asset-disposals";
 import * as Domain from "@open-erp/domain/asset-disposals";
+import { reversedLines } from "@open-erp/domain/posting";
 import { roundHalfUp } from "@open-erp/domain/money";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Effect from "effect/Effect";
@@ -349,11 +350,7 @@ export const correction = Effect.fn("subledger.captureDisposalCorrection")(funct
       stopFutureOccurrences: false,
       newCashReceivableOrVatFacts: false,
       saleTaxFacts: [],
-      journal: original.domainPlan.journal.map((line) => ({
-        ...line,
-        debitMinor: line.creditMinor,
-        creditMinor: line.debitMinor,
-      })),
+      journal: reversedLines(original.domainPlan.journal),
     },
   };
 });

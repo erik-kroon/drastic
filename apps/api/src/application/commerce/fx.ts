@@ -7,6 +7,7 @@ import * as CommerceFx from "@open-erp/contracts/commerce-fx";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import { convertMinor, exactHalfUp } from "@open-erp/domain/exchange-rates";
+import { reversedLines } from "@open-erp/domain/posting";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
@@ -1189,12 +1190,7 @@ function correctionSnapshot(
       settlement,
       voucher,
       sourceEvidence: evidenceReference(sourceEvidence),
-      reversalLines: voucher.action.lines.map((line) => ({
-        ...line,
-        lineId: newId("line"),
-        debitMinor: line.creditMinor,
-        creditMinor: line.debitMinor,
-      })),
+      reversalLines: reversedLines(voucher.action.lines, () => newId("line")),
       fiscalYearId: period.fiscalYearId,
       profileVersion: book.profileVersion.toString(),
       writerEpoch: book.writerEpoch.toString(),

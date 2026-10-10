@@ -1,6 +1,7 @@
 import { collectPostingPrincipalBasis } from "./posting-authority";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
+import { reversedLines } from "@open-erp/domain/posting";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
@@ -868,12 +869,7 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           postingDate: command.input.postingDate,
           description: `Reversal: ${original.action.description.slice(0, 1990)}`,
           rationale: command.input.rationale,
-          lines: original.action.lines.map((line) => ({
-            ...line,
-            lineId: newId("line"),
-            debitMinor: line.creditMinor,
-            creditMinor: line.debitMinor,
-          })),
+          lines: reversedLines(original.action.lines, () => newId("line")),
         };
 
         const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
