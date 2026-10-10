@@ -1,0 +1,72 @@
+{
+  "syntheticOnly": true,
+  "nativeBaseline": {
+    "dpr": 1,
+    "width": 1440
+  },
+  "nativeAccess": {
+    "dpr": 1,
+    "width": 1440,
+    "scrollWidth": 1440,
+    "reducedMotion": false
+  },
+  "originalHash": "sha256:dfa7eb88a6909af5c3e163abcc0240ca2b4518bbcb829ce3270752a7f5ef9e03",
+  "bankScreenshot": "screenshots/001-native-loop-bank-scoped.png",
+  "bankAccess": {
+    "dpr": 1,
+    "width": 1440,
+    "scrollWidth": 1440,
+    "route": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-01&to=2026-10-31&statement=statement_262070ab641748fd8d79174d24c6c24d"
+  },
+  "page": 2,
+  "zoom": 125,
+  "viewport": {
+    "width": 593,
+    "scrollWidth": 744,
+    "overflowX": "auto"
+  },
+  "focus": {
+    "inside": true,
+    "shadow": "rgb(96, 165, 250) 0px 0px 0px 2px"
+  },
+  "active": "Förbered matchning",
+  "source": {
+    "statementId": "statement_262070ab641748fd8d79174d24c6c24d",
+    "rowOrdinal": 1,
+    "evidenceId": "evidence_f5a72dfdcf3445a08d203f8726fad067",
+    "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+    "sourceBankAccountId": "synthetic_bank",
+    "providerId": null,
+    "observedOn": "2026-10-03",
+    "description": "BG EXEMPEL KONTORSSERVICE",
+    "amountMinor": "-125000",
+    "allocatedMinor": "0",
+    "remainingMinor": "-125000",
+    "eligible": true,
+    "blockedReasons": [],
+    "paymentReference": null
+  },
+  "ledger": {
+    "sequence": "8",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "1000000",
+        "balanceMinor": "-1000000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "1000000",
+        "creditMinor": "0",
+        "balanceMinor": "1000000"
+      }
+    ]
+  },
+  "screenshot": "screenshots/003-bank-review-keyboard-original-zoom-retained.png",
+  "remaining": "Native browser 200% zoom, reduced motion, full accessibility, cold-start performance and complete-state parity remain open."
+}

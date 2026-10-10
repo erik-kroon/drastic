@@ -27,8 +27,11 @@ export default {
     {
       name: "synthetic-chromium",
       engine: web({
-        ...(process.env.OPENERP_REMINDER_NATIVE_ZOOM === "1"
-          ? { browser: nativeReminderBrowser() }
+        ...(process.env.OPENERP_NATIVE_ZOOM === "1" ||
+        process.env.OPENERP_REMINDER_NATIVE_ZOOM === "1"
+          ? {
+              browser: nativeReminderBrowser(),
+            }
           : { locale: "sv-SE", timezoneId: "Europe/Stockholm" }),
         viewport: { width: 1440, height: 900 },
       }),
