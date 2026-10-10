@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Prepares a fresh orb: Bun (pinned by package.json), PostgreSQL 17 server
+# binaries for the E2E harness, the shared Peppol validator, locked
+# dependencies and Playwright Chromium. Idempotent; runs without secrets.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() { printf '\n==> %s (%s)\n' "$1" "$(date +%T)"; }
+
+export DEBIAN_FRONTEND=noninteractive
+
+step "system packages"
+packages=(postgresql-17 postgresql-client-17 python3-venv libxml2-utils)
+missing=()
+for pkg in "${packages[@]}"; do
+  dpkg -s "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  sudo apt-get update
+  if printf '%s\n' "${missing[@]}" | grep -q '^postgresql-'; then
+    sudo apt-get install -y --no-install-recommends postgresql-common curl ca-certificates
+    sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+  fi
+  sudo apt-get install -y --no-install-recommends "${missing[@]}"
+  # The harness runs its own initdb/pg_ctl clusters; drop the packaged one.
+  if command -v pg_dropcluster >/dev/null 2>&1; then
+    sudo pg_dropcluster --stop 17 main 2>/dev/null || true
+  fi
+fi
+
+step "bun"
+want_bun="$(sed -n 's/.*"packageManager": "bun@\([^"]*\)".*/\1/p' package.json)"
+if [ "$(bun --version 2>/dev/null || true)" != "$want_bun" ]; then
+  tmp="$(mktemp -d)"
+  curl -fsSL -o "$tmp/bun.zip" \
+    "https://github.com/oven-sh/bun/releases/download/bun-v${want_bun}/bun-linux-x64.zip"
+  unzip -q "$tmp/bun.zip" -d "$tmp"
+  sudo install -m 0755 "$tmp/bun-linux-x64/bun" /usr/local/bin/bun
+  rm -rf "$tmp"
+fi
+bun --version
+
+step "bun install --frozen-lockfile"
+bun install --frozen-lockfile
+
+step "peppol validator"
+node verification/peppol/setup.mjs
+
+step "playwright chromium"
+# Run under Bun's runtime: Playwright's zip extraction hangs on the orb's Node 26.
+bun --bun apps/api/node_modules/.bin/playwright install --with-deps chromium
+
+step "done"
