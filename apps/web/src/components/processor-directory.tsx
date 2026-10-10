@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Processor from "@open-erp/contracts/processor-clearing";
@@ -6,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "./accounting-status";
 import { checkScope } from "./commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 
 export function ProcessorDirectory({ accountId }: { accountId?: string }) {
@@ -17,13 +19,16 @@ export function ProcessorDirectory({ accountId }: { accountId?: string }) {
     queryKey: [...bookKey(book), "processors-directory", accountId, after],
     retry: false,
     queryFn: async ({ signal }) => {
-      const base = `${bookPath(book)}/banking/processors/accounts`;
       const cursor = after ? `?after=${encodeURIComponent(after)}` : "";
       const href = `${workspacePath(book)}/accounts?view=processors`;
 
       if (accountId) {
         const page = await readAccounting(
-          `${base}/${encodeURIComponent(accountId)}/reviews${cursor}`,
+          (client) =>
+            client.processorClearing.listProcessorReviews({
+              params: { ...bookScope(book), id: accountId },
+              query: httpQuery(Api.groups.processorClearing.endpoints.listProcessorReviews, cursor),
+            }),
           Processor.ReviewPage,
           { signal },
         );
@@ -52,7 +57,15 @@ export function ProcessorDirectory({ accountId }: { accountId?: string }) {
         };
       }
 
-      const page = await readAccounting(`${base}${cursor}`, Processor.AccountPage, { signal });
+      const page = await readAccounting(
+        (client) =>
+          client.processorClearing.listProcessorAccounts({
+            params: bookScope(book),
+            query: httpQuery(Api.groups.processorClearing.endpoints.listProcessorAccounts, cursor),
+          }),
+        Processor.AccountPage,
+        { signal },
+      );
 
       checkScope(book, page.scope);
 

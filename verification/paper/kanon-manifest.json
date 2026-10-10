@@ -1569,6 +1569,11 @@
         "afterSha256": "e402c41d64cb05c9f43210a31e5582a10f865b5324a5dfce063d0d4a46a7dd62"
       },
       {
+        "path": "apps/web/src/components/foreign-cash-directory.tsx",
+        "beforeSha256": "63a070b0890124d7f4f54bc4096496af13345b7b7f6f52a05c99f6806fd07a0f",
+        "afterSha256": "71b33d95a200ec3fc55935e65c6492485d92f937279e5c73740ec70fd1c9f7bc"
+      },
+      {
         "path": "apps/web/src/components/foreign-cash-workspace.tsx",
         "beforeSha256": "d476fa0f6806c053d8cbd9f1789161b187e808ce37cf3b3a0c80dc4cc1f58013",
         "afterSha256": "12531fd916df78f7ebe57ff554ee2c5808683d356552085aa709b231a1cbfe97"
@@ -1756,12 +1761,12 @@
       {
         "path": "apps/web/src/components/period-work/batch.tsx",
         "beforeSha256": "b3a1a22ca4a28eccbdfba44446bb5ae0f2f5049aa20116eae9f96b84fe5b9b23",
-        "afterSha256": "4200ad32358a7d6e7fd1cc02ea17b6b319f12516d385636f5c55cbb28ef2b03c"
+        "afterSha256": "c5a239eb3932c0f9fc2b4dfce3451b10c452b62639155d3d79574813b83049c9"
       },
       {
         "path": "apps/web/src/components/period-work/panel.tsx",
         "beforeSha256": "d34a7715620b619ed78e9695b3a3fc366254876e398ab6f6aa82166d49532441",
-        "afterSha256": "7c7e2ac7c0c8de84f33920ecfe2ca97662f6b6d9395a0927860b165e5c7badd6"
+        "afterSha256": "8515b32240c32ef7759069905166d3efcc984ea30fbd92a44369835a0dcde68d"
       },
       {
         "path": "apps/web/src/components/posted-records.tsx",
@@ -1774,6 +1779,11 @@
         "afterSha256": "22bd11f75c5a3267f80186970926e4864bff03ee523b2088f44d193825f22585"
       },
       {
+        "path": "apps/web/src/components/posting-recovery/request.ts",
+        "beforeSha256": "684c5329c10aa0f5f771e643bf80cb0e674369d51c0b66672cf6f3e4446782fd",
+        "afterSha256": "8d7252afc5567477f6a222ac4ac005d4286614fb51f9c60de8afb0d314602369"
+      },
+      {
         "path": "apps/web/src/components/posting-recovery/review.tsx",
         "beforeSha256": "b451ff62d4bb9a23f8ce5a42bdf3b55f240986dff8db15d5523c7f578646c1e8",
         "afterSha256": "392deecfb4e5c42fbf256578054b1f82438afbdc2347ed786b8b242dbd372d80"
@@ -1781,7 +1791,7 @@
       {
         "path": "apps/web/src/components/posting-recovery/saved-requests.tsx",
         "beforeSha256": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
-        "afterSha256": "804965edb564f7034a7d66e64d9e81f6efde98b0bd8c1caf4819d1e6117d6f86"
+        "afterSha256": "9da2ea24955d5b9ce11dd0d9581d231c701dd9db870029749d8a9bdfa4310e2c"
       },
       {
         "path": "apps/web/src/components/preparation-background.tsx",
@@ -1792,6 +1802,11 @@
         "path": "apps/web/src/components/preparation-run.tsx",
         "beforeSha256": "3a08e9f3630464319afeffa0ddd630222bb56a66fde82f29e0d60d8c7b3c0722",
         "afterSha256": "af06d7df3f170818b628c601b79b42a5c195786d60ac2a4b6e7eeed41bcc163a"
+      },
+      {
+        "path": "apps/web/src/components/processor-directory.tsx",
+        "beforeSha256": "fd12370ebf1a76c69a83d30cd1099e796fcbebf812703a7e0a970ffef98b6ec3",
+        "afterSha256": "3a59ba33a3f12e24a8db18e45e73d6f89388d6ae6a127e6e67a07a1e65e2641f"
       },
       {
         "path": "apps/web/src/components/processor-workspace.tsx",
@@ -1909,6 +1924,11 @@
         "afterSha256": "626f443c44ab6fb3b28e94fde35b7df496f66ef846b3b09778685a0d8e643f52"
       },
       {
+        "path": "apps/web/src/components/treasury-loan-directory.tsx",
+        "beforeSha256": "e0f034c479c4cb462af39af743cf943a33f51f58a2e875373e2508f98b1e7146",
+        "afterSha256": "8281b1815d0cf8479cdceb1eb3cd9c276b2cc76ddca5ea70f549f2351d12b657"
+      },
+      {
         "path": "apps/web/src/components/treasury-loan-workspace.tsx",
         "beforeSha256": "6dc5d398989434e991838ef934a4634953c4bbf54a0bf4a4d8b4a106fde0de3d",
         "afterSha256": "31c35b86e5b1eb879b64ae3623c2d8eb70f5e5d982cea00ce280068ee80f8665"
@@ -1991,7 +2011,7 @@
       {
         "path": "apps/web/src/lib/period-work.ts",
         "beforeSha256": "95405e6db4c7203f8b04cdcf52503fbbae2efc275fb328372ab6523c5491bddb",
-        "afterSha256": "4e039ed13e1ab2eb31b85117fd0f3333da995c87e18d675e975231fdf57469d8"
+        "afterSha256": "e48e31c252cd7ee55c194ab1840ccafe65e99b2540107d677ac067beb4da239e"
       },
       {
         "path": "apps/web/src/lib/source-documents.ts",

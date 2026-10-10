@@ -1,3 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
+import type * as Effect from "effect/Effect";
+import { bookScope, httpRequest, type AccountingClient } from "./contract-client";
 import type { CommandKeys } from "@/lib/command-keys";
 import { queryOptions } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -13,7 +16,8 @@ export function periodWorkQueryOptions(book: typeof Accounting.Book.Type, manife
     queryKey: [...bookKey(book), "period-work", manifestId],
     queryFn: async ({ signal }) => {
       const progress = await readAccounting(
-        `${periodWorkPath(book, manifestId)}/progress`,
+        (client) =>
+          client.periodWork.getPeriodWorkProgress({ params: { ...bookScope(book), manifestId } }),
         PeriodWork.PeriodWorkRunProgress,
         { signal },
       );
@@ -28,9 +32,10 @@ export function periodWorkQueryOptions(book: typeof Accounting.Book.Type, manife
   });
 }
 
-// A command carries its own path and request together, so a caller cannot post a
-// body to a different path than the one its identity key was derived from.
-export type PeriodWorkCommand = { readonly path: string; readonly request: RequestInit };
+export type PeriodWorkCommand<A = typeof PeriodWork.PeriodWorkRunProgress.Type> = {
+  readonly execute: (client: AccountingClient, options: RequestInit) => Effect.Effect<A, unknown>;
+  readonly request: RequestInit;
+};
 
 // Advancing visits children through the owners that already hold each economic
 // effect. It is a bounded pass, not a completion, and its own projection is what
@@ -43,7 +48,17 @@ export function advancePeriodWork(
 ): PeriodWorkCommand {
   const path = `${periodWorkPath(book, manifestId)}/advance`;
 
-  return { path, request: mutationOptions(path, JSON.stringify({ boundedCount }), keys) };
+  return {
+    execute: (client, options) =>
+      client.periodWork.advancePeriodWork(
+        httpRequest(
+          Api.groups.periodWork.endpoints.advancePeriodWork,
+          { params: { ...bookScope(book), manifestId } },
+          options,
+        ),
+      ),
+    request: mutationOptions(path, JSON.stringify({ boundedCount }), keys),
+  };
 }
 
 export function cancelPeriodWork(
@@ -54,7 +69,17 @@ export function cancelPeriodWork(
 ): PeriodWorkCommand {
   const path = `${periodWorkPath(book, manifestId)}/cancel`;
 
-  return { path, request: mutationOptions(path, JSON.stringify({ expectedDigest }), keys) };
+  return {
+    execute: (client, options) =>
+      client.periodWork.cancelPeriodWork(
+        httpRequest(
+          Api.groups.periodWork.endpoints.cancelPeriodWork,
+          { params: { ...bookScope(book), manifestId } },
+          options,
+        ),
+      ),
+    request: mutationOptions(path, JSON.stringify({ expectedDigest }), keys),
+  };
 }
 
 export function periodWorkBatchPath(book: typeof Accounting.Book.Type, batchId: string) {
@@ -70,11 +95,18 @@ export function preparePeriodWorkBatch(
   manifestId: string,
   workIdentities: ReadonlyArray<string>,
   keys: CommandKeys,
-): PeriodWorkCommand {
+): PeriodWorkCommand<typeof PeriodWork.ApprovalBatch.Type> {
   const path = `${bookPath(book)}/period-work/batches`;
 
   return {
-    path,
+    execute: (client, options) =>
+      client.periodWork.preparePeriodWorkBatch(
+        httpRequest(
+          Api.groups.periodWork.endpoints.preparePeriodWorkBatch,
+          { params: bookScope(book) },
+          options,
+        ),
+      ),
     request: mutationOptions(path, JSON.stringify({ manifestId, workIdentities }), keys),
   };
 }
@@ -86,11 +118,21 @@ export function approvePeriodWorkBatch(
   batchId: string,
   expectedDigest: string,
   keys: CommandKeys,
-): PeriodWorkCommand {
+): PeriodWorkCommand<typeof PeriodWork.ApprovalBatch.Type> {
   const path = `${periodWorkBatchPath(book, batchId)}/approvals`;
   const body = JSON.stringify({ expectedDigest, acknowledgeSyntheticOnly: true });
 
-  return { path, request: mutationOptions(path, body, keys) };
+  return {
+    execute: (client, options) =>
+      client.periodWork.approvePeriodWorkBatch(
+        httpRequest(
+          Api.groups.periodWork.endpoints.approvePeriodWorkBatch,
+          { params: { ...bookScope(book), batchId } },
+          options,
+        ),
+      ),
+    request: mutationOptions(path, body, keys),
+  };
 }
 
 // Execution is bounded and resumable: `afterOrdinal` continues from the cursor the
@@ -103,7 +145,7 @@ export function executePeriodWorkBatch(
   boundedCount: number,
   afterOrdinal: number | undefined,
   keys: CommandKeys,
-): PeriodWorkCommand {
+): PeriodWorkCommand<typeof PeriodWork.PeriodWorkExecutionResult.Type> {
   const path = `${periodWorkBatchPath(book, batchId)}/execute`;
 
   const payload = {
@@ -115,5 +157,15 @@ export function executePeriodWorkBatch(
     afterOrdinal,
   } satisfies typeof PeriodWork.ExecutePeriodWorkBatch.Type;
 
-  return { path, request: mutationOptions(path, JSON.stringify(payload), keys) };
+  return {
+    execute: (client, options) =>
+      client.periodWork.executePeriodWorkBatch(
+        httpRequest(
+          Api.groups.periodWork.endpoints.executePeriodWorkBatch,
+          { params: { ...bookScope(book), batchId } },
+          options,
+        ),
+      ),
+    request: mutationOptions(path, JSON.stringify(payload), keys),
+  };
 }

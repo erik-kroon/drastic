@@ -15,7 +15,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
-import { readSavedPostingRequest, runSavedPostingRequest, savedPostingPath } from "./request";
+import { readSavedPostingRequest, runSavedPostingRequest } from "./request";
 
 export function useSavedPostingRequests(
   book: typeof Accounting.Book.Type,
@@ -26,7 +26,14 @@ export function useSavedPostingRequests(
     queryKey: [...bookKey(book), "posting-saved", "list", after],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${savedPostingPath(book)}${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.postingRecovery.listSavedPostingRequests({
+            params: bookScope(book),
+            query: httpQuery(
+              Api.groups.postingRecovery.endpoints.listSavedPostingRequests,
+              after ? `?after=${encodeURIComponent(after)}` : "",
+            ),
+          }),
         Recovery.SavedPostingRequests,
         { signal },
       );
