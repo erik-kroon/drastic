@@ -5,9 +5,9 @@ node_modules
 .codex/*
 .codex/
 .codex
-.agents/
 .agents/*
-.agents
+!.agents/setup
+!.agents/resume
 
 # Build outputs
 # These paths are load-bearing, not cosmetic: infra/alchemy deploys the web Worker
@@ -97,3 +97,6 @@ temp
 
 # TesterArmy replay cache and transient runner output
 .e2e/
+
+# Amp orb portal state
+.amp/portals/*
