@@ -33,6 +33,17 @@ Parent issue [DRA-217](https://linear.app/drastic-dev/issue/DRA-217/layered-acco
 | AUT-24 | [DRA-242](https://linear.app/drastic-dev/issue/DRA-242/aut-24-agent-watchdog-questions-and-mandate-suspension) |
 | AUT-25 | [DRA-243](https://linear.app/drastic-dev/issue/DRA-243/aut-25-measure-firm-learning-per-book) |
 | AUT-26 | [DRA-244](https://linear.app/drastic-dev/issue/DRA-244/aut-26-completeness-chasing-agent) |
+| AUT-27 | [DRA-255](https://linear.app/drastic-dev/issue/DRA-255/aut-27-require-two-approvers-to-grant-a-mandate) |
+| AUT-D01 | [DRA-245](https://linear.app/drastic-dev/issue/DRA-245/aut-d01-explanation-and-provenance-in-review-k-11) |
+| AUT-D02 | [DRA-246](https://linear.app/drastic-dev/issue/DRA-246/aut-d02-correction-to-rule-prompt-k-11) |
+| AUT-D03 | [DRA-247](https://linear.app/drastic-dev/issue/DRA-247/aut-d03-batch-review-with-deviation-highlighting-k-10-granska-alla) |
+| AUT-D04 | [DRA-248](https://linear.app/drastic-dev/issue/DRA-248/aut-d04-anomaly-rows-and-bank-detail-change-k-11-and-m-01) |
+| AUT-D05 | [DRA-249](https://linear.app/drastic-dev/issue/DRA-249/aut-d05-stickprov-judge-then-reveal-k-11-variant) |
+| AUT-D06 | [DRA-250](https://linear.app/drastic-dev/issue/DRA-250/aut-d06-regler-och-mandat-k-09-firm-level-and-book-level) |
+| AUT-D07 | [DRA-251](https://linear.app/drastic-dev/issue/DRA-251/aut-d07-presence-step-up-and-enrolment-k-05-dialog-family) |
+| AUT-D08 | [DRA-252](https://linear.app/drastic-dev/issue/DRA-252/aut-d08-what-was-handled-automatically-k-10-klart-k-09-rows) |
+| AUT-D09 | [DRA-253](https://linear.app/drastic-dev/issue/DRA-253/aut-d09-byrans-modell-the-firm-model-page-k-95-family) |
+| AUT-D10 | [DRA-254](https://linear.app/drastic-dev/issue/DRA-254/aut-d10-client-consent-through-a-client-question-k-12-k-13-client) |
 
 ## Execution contract
 
@@ -42,7 +53,7 @@ The goal remains active until all authorized ready work is implemented and verif
 
 ## Current slice
 
-AUT-01 is implemented in local commit `e685811` and in review in Linear. AUT-02 is in progress. Failure cases are defined in the handoff before implementation.
+AUT-01 (`e685811`) and AUT-02 (`15a1b5c`) are implemented locally and in review in Linear. AUT-03 is in progress. Failure cases are defined before implementation.
 
 - Blocking first steps. Trace trusted actor/session, served suggestions, command replay and transaction ownership before edits.
 - Independent workstreams. Read-only grounding may run together. One implementation owner changes the coupled provenance paths.
@@ -91,4 +102,20 @@ Browser transport remains source/TypeScript verified only. No browser parity, li
 ## AUT-02 design boundary
 
 Export immutable captured evidence with pinned projection, lineage and redaction versions. Keep the original decision cutoff separate from the export lineage cutoff. Missing historical capture is an explicit counted exclusion; current account, draft and counterparty heads cannot reconstruct history. Redact typed document text while preserving exact financial values. Seal export inventory and retain canonical example and manifest digests.
+
+## AUT-02 checkpoint
+
+Local commit `15a1b5c` seals operator-only exports from one SQL snapshot, preserves captured state and exact financial values, resolves committed correction and withdrawal receipts, excludes personal owners before payload reads, and permits only independent/corrected evaluation labels. Missing historic captures and option universes remain explicit.
+
+Full changed checks passed with the supported 180-second timeout after a competing agent check caused the default timeout. Owners passed (52/52). Nine focused journeys passed in `test-results/dra220-final`; its CLI mount-path failure was fixed and superseded by the passing `test-results/dra220-seal-final` rerun. The final uncited-exposure regression passed in `test-results/dra220-uncited-final`. Source integrity stayed stable. Repeatable commands, JSONL and manifest evidence are indexed in `verification/decision-examples/README.md`. No production training, provider flow, UI delivery or MCP catalog change is claimed.
+
+## Design and mandate reconciliation
+
+The updated handoff has 38 child issues, including AUT-27 and AUT-D01 through AUT-D10. The owner approved Paper page 21 on 2026-10-10: https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0 . Its current A-01/A-01b, A-02, A-05/A-05b and A-06 boards are adopted for matching states. Missing or unfinished states remain pending; browser and parity evidence are separate. Linear retains the original backend dependencies plus design gates.
+
+Use the existing canon: evidence rather than percentages in ordinary review, consequence summaries, blind spot checks, correction-to-rule prompts and existing statuses. AUT-27 must retain preparation separately from two approvals because M-01 excludes the preparer. AUT-00's proposed settings-governance policy remains open.
+
+## AUT-03 expectations
+
+The independently written vectors in `automation-consequence-vectors.md` predate implementation. Mapping content checksum, explicit VAT category, normalized deduction, accounting period and captured dimensions determine known classes. Missing facts produce unknown; current mappings and rates cannot fill historical gaps.
 
