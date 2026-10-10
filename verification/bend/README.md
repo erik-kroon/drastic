@@ -16,7 +16,7 @@ request and push to `main`:
 
    | Operation | Current owner |
    | --- | --- |
-   | `money.round.v1`, `vat.project.v1` | `jurisdictions/se/src/vat/actual.ts` and the shared rounding |
+   | `money.round.v1`, `vat.project.v1` | `jurisdictions/se/src/vat/actual.ts` and the shared `roundRational` in `packages/domain/src/purchasing.ts`. Every rounding owner must also agree: `roundHalfUp` (`packages/domain/src/money.ts`, used by FX, mileage and Peppol tax checks), corporate tax `roundRational` and payroll `roundExact`. |
    | `fx.convert.v1` (nonnegative half up) | `convertMinor` in `packages/domain/src/exchange-rates.ts`, used by rate reviews and commerce FX recognition |
    | `schedule.equal.v1` (remainder last) | `allocateByWeights` in `packages/domain/src/prepayments.ts`, used by equal-month prepayments |
 

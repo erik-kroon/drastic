@@ -68,7 +68,7 @@
       "consumers": [
         "packages/contracts/src/accounting.ts"
       ],
-      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module. roundHalfUp is the shared half-up owner for the exchange-rates, mileage-reimbursement and peppol-exchange leaves; verification/bend/authority compares it with its exact model."
     },
     {
       "leaf": "canonicalization",
@@ -240,7 +240,7 @@
       "consumers": [
         "packages/contracts/src/accounting.ts"
       ],
-      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module. roundHalfUp is the shared half-up owner for the exchange-rates, mileage-reimbursement and peppol-exchange leaves; verification/bend/authority compares it with its exact model."
     },
     {
       "leaf": "owner-funding",

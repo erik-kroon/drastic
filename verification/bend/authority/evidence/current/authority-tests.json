@@ -9,15 +9,15 @@
   "groups": {
     "Operation kernels and boundary oracles": {
       "assertions": 798,
-      "ms": 175
+      "ms": 229
     },
     "Independent certificate checks reject plausible wrong results": {
       "assertions": 1061,
-      "ms": 4
+      "ms": 5
     },
     "Exact immutable envelopes and failure behavior": {
       "assertions": 24,
-      "ms": 7
+      "ms": 13
     },
     "Per-operation release qualification, not self-approval": {
       "assertions": 7,
@@ -29,14 +29,14 @@
     },
     "Refinement proofs reject binary arithmetic mutations": {
       "assertions": 4,
-      "ms": 87
+      "ms": 141
     },
     "Bounded worker cancellation": {
       "assertions": 3,
-      "ms": 100
+      "ms": 171
     }
   },
-  "elapsedMs": 376,
+  "elapsedMs": 565,
   "operations": [
     "money.round.v1",
     "vat.project.v1",

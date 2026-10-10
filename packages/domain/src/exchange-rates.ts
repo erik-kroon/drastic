@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import { AccountingDate, Description, Identifier } from "./values";
-import { AggregateMinorUnits, MinorUnits, SignedMinorUnits } from "./money";
+import { AggregateMinorUnits, MinorUnits, SignedMinorUnits, roundHalfUp } from "./money";
 
 export const CurrencyCode = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
 
@@ -37,7 +37,7 @@ export const ConversionAmounts = Schema.Struct({
 export function exactHalfUp(numerator: bigint, denominator: bigint) {
   const quotient = numerator / denominator;
   const remainder = numerator % denominator;
-  const rounded = quotient + (remainder * 2n >= denominator ? 1n : 0n);
+  const rounded = roundHalfUp(numerator, denominator);
 
   return {
     numerator,

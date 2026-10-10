@@ -23,12 +23,15 @@ const hooks = registerHooks({
   },
 });
 
-let monetary, rates, prepayments;
+let monetary, money, rates, prepayments, corporateTax, payroll;
 
 try {
   monetary = (await import("../../jurisdictions/se/src/vat/actual.ts")).actualVatMonetary;
+  money = await import("../../packages/domain/src/money.ts");
   rates = await import("../../packages/domain/src/exchange-rates.ts");
   prepayments = await import("../../packages/domain/src/prepayments.ts");
+  corporateTax = await import("../../apps/api/src/application/tax/corporate-basis.ts");
+  payroll = await import("../../apps/api/src/application/payroll/calculation-basis.ts");
 } finally {
   hooks.deregister();
 }
@@ -55,6 +58,19 @@ export function calculate(operation, input) {
     const rounded = monetary.round(numerator, denominator, input.rounding);
 
     if (rounded === null) throw new Error("The current rounding owner refused this input");
+
+    // Every other rounding owner must agree with the shared one, or the comparison fails.
+    const value = { n: numerator, d: denominator };
+
+    const others = {
+      corporateTax: corporateTax.roundRational(value, input.rounding),
+      payroll: payroll.roundExact(value, input.rounding),
+      ...(input.rounding === "half_up" && { money: money.roundHalfUp(numerator, denominator) }),
+    };
+
+    for (const [owner, result] of Object.entries(others))
+      if (result !== rounded)
+        throw new Error(`The ${owner} rounding owner disagrees with the shared rounding`);
 
     return {
       roundedMinor: String(rounded),

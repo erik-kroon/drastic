@@ -6,7 +6,7 @@
   "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
   "artifactDigest": null,
   "sourceTreeDigest": null,
-  "elapsedMs": 367,
+  "elapsedMs": 495,
   "operations": [
     "money.round.v1",
     "vat.project.v1",

@@ -1,7 +1,7 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { AccountingDate, Description, Digest, Identifier } from "./values";
-import { MinorUnits, SignedMinorUnits } from "./money";
+import { MinorUnits, SignedMinorUnits, roundHalfUp } from "./money";
 
 // Pure mileage math for one trip claim.
 // NEXT-34 leaf: distance-based reimbursement with a distinct entitlement,
@@ -99,15 +99,6 @@ export const CalculateMileageInput = Schema.Struct({
 
 export type CalculateMileageInput = typeof CalculateMileageInput.Type;
 
-function halfUp(numerator: bigint, denominator: bigint) {
-  const sign = numerator < 0n ? -1n : 1n;
-  const absolute = numerator < 0n ? -numerator : numerator;
-  const quotient = absolute / denominator;
-  const remainder = absolute % denominator;
-
-  return sign * (quotient + (remainder * 2n >= denominator ? 1n : 0n));
-}
-
 // Exact distance split. Meters and the release unit form an exact rational;
 // entitlement and ceiling round half up from it. The exempt part is the
 // min of entitlement and ceiling under a per-distance-ceiling profile, and
@@ -146,8 +137,8 @@ export function calculateMileage(input: CalculateMileageInput): Checked<MileageS
     return fail("UnsupportedTripProfile", "Release rates cannot be negative.");
   }
 
-  const entitlement = halfUp(meters * entitlementRate, unit);
-  const ceiling = halfUp(meters * exemptRate, unit);
+  const entitlement = roundHalfUp(meters * entitlementRate, unit);
+  const ceiling = roundHalfUp(meters * exemptRate, unit);
   const exempt = entitlement < ceiling ? entitlement : ceiling;
   const taxable = entitlement - exempt;
 

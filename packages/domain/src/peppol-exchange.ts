@@ -1,7 +1,7 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { Description, Digest, Identifier } from "./values";
-import { MinorUnits } from "./money";
+import { MinorUnits, roundHalfUp } from "./money";
 
 export const ExchangeFailureCode = Schema.Literals([
   "UnsupportedDocumentType",
@@ -118,10 +118,7 @@ export function reconcileBisTotals(input: ReconcileInput): Checked<BisTotals> {
 
     const rate = BigInt(line.taxRateNumerator);
     const denominator = BigInt(line.taxRateDenominator);
-    const product = BigInt(line.netMinor) * rate;
-    const quotient = product / denominator;
-    const remainder = product % denominator;
-    const expected = quotient + (2n * remainder >= denominator ? 1n : 0n);
+    const expected = roundHalfUp(BigInt(line.netMinor) * rate, denominator);
 
     if (expected !== BigInt(line.taxAmountMinor)) {
       return fail("TaxMismatch", "A line tax amount disagrees with the selected half-up rate.");
