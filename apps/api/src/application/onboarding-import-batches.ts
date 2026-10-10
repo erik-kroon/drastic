@@ -15,14 +15,12 @@ import { failure } from "./failures";
 import { withAdmittedPrincipal } from "./identity";
 import {
   approveChangeInTransaction,
-  digest,
-  isoNow,
-  newId,
   readBook,
   readExecutionApprovalInTransaction,
-  replay,
-  saveCommand,
 } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   advanceFinancialRunInTransaction,
   prepareFinancialVoucherInTransaction,

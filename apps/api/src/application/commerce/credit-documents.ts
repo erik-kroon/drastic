@@ -9,7 +9,9 @@ import type { Database } from "../../db/connection";
 import { base64, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import { renderCreditDocumentPdf } from "./credit-document-renderer";
 

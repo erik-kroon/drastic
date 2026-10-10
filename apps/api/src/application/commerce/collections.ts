@@ -5,7 +5,8 @@ import { readInstant } from "../../db/commerce/access";
 import * as CollectionDb from "../../db/commerce/collections";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import type { Transaction } from "../../db/transaction";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {

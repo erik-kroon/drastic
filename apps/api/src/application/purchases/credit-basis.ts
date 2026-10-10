@@ -21,7 +21,8 @@ import * as Ledger from "../../db/posting";
 import * as Assets from "../../db/subledger/assets";
 import { liveInvoice } from "../commerce/register";
 import { failure } from "../failures";
-import { digest, validatePlan } from "../posting";
+import { digest } from "../json";
+import { validatePlan } from "../posting";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;

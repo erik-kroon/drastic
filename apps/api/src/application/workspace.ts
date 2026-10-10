@@ -4,7 +4,8 @@ import * as Workspace from "@open-erp/contracts/workspace";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   requireInsertAccess,

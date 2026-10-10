@@ -23,12 +23,10 @@ import {
   executeChangeInTransaction,
   createEvidenceInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { checkedReview, compileLoanReview, loanSnapshot, readLoan } from "./loan-basis";
 
 type Mutation<I> = { readonly scope: Scope; readonly idempotencyKey: string; readonly input: I };

@@ -4,7 +4,7 @@ import * as CompanySetupContract from "@open-erp/contracts/company-setup";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { newId } from "./posting";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/company-setup";
 import * as LedgerSetupDb from "../db/company-ledger-setup";

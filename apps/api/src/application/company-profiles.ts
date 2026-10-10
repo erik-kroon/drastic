@@ -1,15 +1,10 @@
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Effect from "effect/Effect";
-import {
-  readExecutionApprovalInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-  versionedDigest,
-  digest,
-} from "./posting";
+import { readExecutionApprovalInTransaction, versionedDigest } from "./posting";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
+import { digest } from "./json";
 import { failure } from "./failures";
 import { readTableAccess } from "../db/commerce/access";
 import {

@@ -9,7 +9,8 @@ import * as Foundation from "../../db/payroll-foundation";
 import type { Transaction } from "../../db/transaction";
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { newId, replay, saveCommand, isoNow } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand, isoNow } from "../command-receipts";
 import {
   requireMileageAccess,
   readMileageRecord,

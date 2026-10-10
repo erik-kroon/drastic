@@ -18,7 +18,8 @@ import type { Transaction } from "../../db/transaction";
 import { decodeRelease } from "../company-profile-basis";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, toJsonObject, unsupported, withBook, type Scope } from "../commerce/support";
 import { digestBody } from "./basis";
 

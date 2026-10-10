@@ -11,7 +11,8 @@ import * as InvoiceDb from "../../db/commerce/invoices";
 import { lockBookForUpdate, readAccounts } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import {
   commandReceipt,
   decode,

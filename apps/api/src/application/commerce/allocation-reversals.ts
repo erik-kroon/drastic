@@ -16,7 +16,8 @@ import { lockBookForUpdate, readAccounts, readActorAdmission } from "../../db/po
 import type { Transaction } from "../../db/transaction";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { failure } from "../failures";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { approvalExpiry } from "./approval";
 import {
   commandReceipt,

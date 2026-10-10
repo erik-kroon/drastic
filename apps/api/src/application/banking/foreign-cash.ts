@@ -21,7 +21,9 @@ import {
   type Scope,
 } from "../commerce/support";
 import { ensureEvent, postOwnedJournal, readItemState } from "../commerce/fx";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { addMatch } from "./matches";
 import { arrayField, booleanField, isJsonObject, objectField, textField } from "./shared";

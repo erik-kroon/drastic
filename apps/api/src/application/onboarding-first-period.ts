@@ -3,7 +3,7 @@ import type * as O from "@open-erp/contracts/onboarding";
 import type { Transaction } from "../db/transaction";
 import * as Db from "../db/onboarding-lifecycle";
 import { rejectedOnboardingControls } from "./onboarding-control-rejection";
-import { isoNow } from "./posting";
+import { isoNow } from "./command-receipts";
 
 type Projection = typeof O.OnboardingProjection.Type;
 

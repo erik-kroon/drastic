@@ -5,7 +5,9 @@ import * as Ledger from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { commandReceipt, decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { reviewerIsCurrent, withFinancialApproval } from "./financial-authority";
 
 const proposal = Effect.fn("closing.readReopenProposal")(function* (

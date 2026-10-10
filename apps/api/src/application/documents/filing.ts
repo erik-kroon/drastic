@@ -10,7 +10,8 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { RequestEnvironment } from "../../runtime/environment";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { requireInsertAccess, toJsonObject, withBook, type Scope } from "../commerce/support";
 import {
   artifactBasis,

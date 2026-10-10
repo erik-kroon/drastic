@@ -9,7 +9,7 @@ import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { readSourceBytesInTransaction } from "../source-retention";
 import { decode, requireTableAccess, toJsonObject, type Scope } from "../commerce/support";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { failure } from "../failures";
 
 export function registerProcessorCashHolding(

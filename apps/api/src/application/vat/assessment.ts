@@ -12,14 +12,12 @@ import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
   approveChangeInTransaction,
-  digest,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as Db from "../../db/vat/assessment";
 import * as TaxDb from "../../db/vat/tax-account";
 import * as Ledger from "../../db/posting";

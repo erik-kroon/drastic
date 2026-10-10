@@ -4,7 +4,7 @@ import { failure } from "../failures";
 import { lockBookForShare, lockBookForUpdate } from "../../db/posting";
 import * as Catalogue from "../../db/dimensions";
 import type { Transaction } from "../../db/transaction";
-import { replay, saveCommand } from "../posting";
+import { replay, saveCommand } from "../command-receipts";
 import { decode, toJsonObject, unsupported, withBook, type Scope } from "../commerce/support";
 
 type SaveDimensionInput = typeof Dimensions.SaveDimension.Type;

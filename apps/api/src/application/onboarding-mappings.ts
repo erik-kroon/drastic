@@ -7,7 +7,8 @@ import * as Ledger from "../db/posting";
 import { withAdmittedPrincipal } from "./identity";
 import { decode, toJsonObject, type Scope } from "./commerce/support";
 import { readSourceOccurrenceInTransaction } from "./source-retention";
-import { replay, saveCommand, isoNow, newId } from "./posting";
+import { replay, saveCommand, isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { failure } from "./failures";
 import { databaseFailure, type Transaction } from "../db/transaction";
 

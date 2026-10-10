@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { digest } from "../json";
 import { failure } from "../failures";
-import { newId } from "../posting";
+import { newId } from "../identifiers";
 import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import {
   decode,

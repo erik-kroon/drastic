@@ -6,7 +6,8 @@ import * as Intake from "@open-erp/contracts/source-intake";
 import { readSourceBytesInTransaction } from "./source-retention";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
-import { isoNow, newId } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import type { Transaction } from "../db/transaction";
 
 const IndexRow = Schema.Struct({

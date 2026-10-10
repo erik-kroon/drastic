@@ -1,9 +1,12 @@
+import * as Match from "effect/Match";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Impact from "@open-erp/contracts/rule-impact";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decodeRelease } from "../company-profile-basis";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/rule-impact";
@@ -111,11 +114,11 @@ function readRelease(transaction: Transaction, id: string, reviewed: boolean) {
 function deadlineExecutionState(recorded: boolean, outcomeKind: string | null): ExecutionState {
   if (!recorded) return "not_recorded";
 
-  return outcomeKind === "accepted"
-    ? "recorded_accepted"
-    : outcomeKind === "submitted"
-      ? "recorded_submitted"
-      : "recorded_prepared";
+  return Match.value(outcomeKind).pipe(
+    Match.when("accepted", () => "recorded_accepted" as const),
+    Match.when("submitted", () => "recorded_submitted" as const),
+    Match.orElse(() => "recorded_prepared" as const),
+  );
 }
 
 function targetBody(input: {

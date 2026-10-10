@@ -8,7 +8,9 @@ import * as SourceDb from "../db/sie-import";
 import { databaseFailure, type Transaction } from "../db/transaction";
 import { withAdmittedPrincipal } from "./identity";
 import { decode, toJsonObject, type Scope } from "./commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import { failure } from "./failures";
 
 function voucherFacts(voucher: typeof Sie.Voucher.Type, description: string) {

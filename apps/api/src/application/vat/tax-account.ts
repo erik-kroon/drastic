@@ -20,7 +20,9 @@ import {
 } from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
-import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import { digestBody, digestValue } from "./basis";
 
 type StatementInput = typeof Tax.RecordTaxAccountStatement.Type;

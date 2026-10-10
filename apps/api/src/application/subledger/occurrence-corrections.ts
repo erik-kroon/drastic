@@ -10,7 +10,7 @@ import * as Posting from "../../db/posting";
 import * as Admission from "../../db/posting-admission";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { decode, type Scope } from "../commerce/support";
 import { readOccurrenceStates, readPostingBasis } from "./schedules";
 

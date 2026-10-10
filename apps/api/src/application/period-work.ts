@@ -47,7 +47,8 @@ import { sha256HexOf } from "./bytes";
 import { orderPostingGroups } from "@open-erp/domain/posting";
 import { PeriodWorkExecutionFence } from "./period-work-fence";
 import { admitRunnerActor } from "./preparation-jobs";
-import { digest, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { replay, saveCommand } from "./command-receipts";
 import {
   approveInvoiceIssueInTransaction,
   executeInvoiceIssue,

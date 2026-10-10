@@ -18,12 +18,11 @@ import {
   approveChangeInTransaction,
   createEvidenceInTransaction,
   executeChangeInTransaction,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
   validatePlan,
 } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { lockBookForUpdate, readAccounts } from "../../db/posting";
 import { approvalExpiry } from "./approval";
 import {
