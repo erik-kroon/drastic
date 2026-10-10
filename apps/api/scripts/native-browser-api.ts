@@ -32,6 +32,9 @@ if (
 
 const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
+  OPENERP_INTAKE_FEED: process.env.OPENERP_INTAKE_FEED,
+  OPENERP_INTAKE_ENDPOINT: process.env.OPENERP_INTAKE_ENDPOINT,
+  OPENERP_INTAKE_SECRET: process.env.OPENERP_INTAKE_SECRET,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,
   DOCUMENT_INSPECTOR: inspectQueuedDocument,

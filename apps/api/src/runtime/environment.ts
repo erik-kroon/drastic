@@ -28,6 +28,9 @@ export interface Bindings extends DecisionModelConfiguration {
   readonly OPENERP_DOCUMENT_PUBLIC_KEY?: string;
   readonly OPENERP_DOCUMENT_KEY_ID?: string;
   readonly PROCESSOR_FEED?: ProcessorFeed;
+  readonly OPENERP_INTAKE_FEED?: string;
+  readonly OPENERP_INTAKE_ENDPOINT?: string;
+  readonly OPENERP_INTAKE_SECRET?: string;
   readonly OPENERP_PROCESSOR_FEED?: string;
   readonly OPENERP_PROCESSOR_ENDPOINT?: string;
   readonly OPENERP_PROCESSOR_SECRET?: string;

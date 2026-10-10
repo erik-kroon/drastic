@@ -26,7 +26,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/",
       "audience": "bureau",
-      "status": "drifts",
+      "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": ["populated", "selected", "empty", "loading", "error"],
@@ -45,7 +45,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-10 composes stored attention, unmatched bank and overdue sales work, with an owner-total aggregate count. Single remaining bank events expose their stored description and remaining amount; larger accounts keep their summary and bank-owner destination. Overdue amounts and age use the sales owner's outstanding amount and asOf. Valid prepared supplier reviews show proposal status without changing approval or expiry checks. The header displays the attention owner's actual checkedAt, not a fabricated board clock. Database-derived read time and overdue age remain different from the Effect test clock. State columns, plain tab counts, filter outline and 14px card gutters follow stored JSX. Comparison remains above unchanged 2%; missing watch facts, Vinter's unknown calculated gross, Sara/agent activity and unsupported board-only actions are not fabricated. Current-source mode, interaction and visual checks are retained separately; dark/narrow are diagnostics, not adopted parity. Native zoom and complete state qualification remain pending."
+      "notes": "K-10 composes stored attention, unmatched bank and overdue sales work, with an owner-total aggregate count. Single remaining bank events expose their stored description and remaining amount; larger accounts keep their summary and bank-owner destination. Overdue amounts and age use the sales owner's outstanding amount and asOf. Valid prepared supplier reviews show proposal status without changing approval or expiry checks. The header displays the attention owner's actual checkedAt, not a fabricated board clock. Database-derived read time and overdue age remain different from the Effect test clock. State columns, plain tab counts, filter outline and 14px card gutters follow stored JSX. Comparison remains above unchanged 2%; missing watch facts, Vinter's unknown calculated gross, Sara/agent activity and unsupported board-only actions are not fabricated. Current-source mode, interaction and visual checks are retained separately; dark/narrow are diagnostics, not adopted parity. Native zoom and complete state qualification remain pending. The retained demo comparison predates supplier-acceptance changes merged in PR19; its source hash is stale. Keep that historical receipt without claiming current-code measurement. Fresh capture is required; adopted baseline and comparison policy are unchanged."
     },
     {
       "id": "K-40",
@@ -132,7 +132,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
-      "status": "drifts",
+      "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -157,7 +157,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-11 uses adopted 14px card gutters and compact queue name lines. Full stored titles remain accessible; schema-maximum amounts still wrap. The focused review now shows the stored due date's due-today caption against the existing setup business date, matching K-10 without inventing a clock. Browser checks distinguish the due date from the following day and retain unchanged ledger history. Valid prepared supplier status retains expiry and dependency guards. Refreshed comparison remains above unchanged 2%. The real original, exact approval, synthetic acknowledgment, detailed facts and separate execution remain. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Continuous browser proof and light, dark and narrow captures remain separate from parity; broader states and native zoom remain unqualified."
+      "notes": "K-11 uses adopted 14px card gutters and compact queue name lines. Full stored titles remain accessible; schema-maximum amounts still wrap. The focused review now shows the stored due date's due-today caption against the existing setup business date, matching K-10 without inventing a clock. Browser checks distinguish the due date from the following day and retain unchanged ledger history. Valid prepared supplier status retains expiry and dependency guards. Refreshed comparison remains above unchanged 2%. The real original, exact approval, synthetic acknowledgment, detailed facts and separate execution remain. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Continuous browser proof and light, dark and narrow captures remain separate from parity; broader states and native zoom remain unqualified. The retained demo comparison predates supplier-acceptance changes merged in PR19; its source hash is stale. Keep that historical receipt without claiming current-code measurement. Fresh capture is required; adopted baseline and comparison policy are unchanged."
     },
     {
       "id": "K-70",
