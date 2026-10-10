@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Vat from "@open-erp/contracts/vat-returns";
+import * as TaxAccount from "@open-erp/contracts/tax-account";
 import * as Source from "@open-erp/contracts/source-intake";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import * as Workspace from "@open-erp/contracts/workspace";
@@ -28,24 +29,30 @@ import {
   vatConfiguration,
   incompleteSeptemberCoverage,
 } from "./support/close-predicate";
+
 const periods = [
   { id: "period_september", startsOn: "2026-09-01", endsOn: "2026-09-30" },
   { id: "period_october", startsOn: "2026-10-01", endsOn: "2026-10-31" },
 ];
+
 const Check = Schema.Struct({
   checkId: Schema.String,
   status: Schema.String,
   reasons: Schema.Array(Schema.String),
   freshness: Schema.Struct({ status: Schema.String, reasons: Schema.Array(Schema.String) }),
-  observedCutoff: Schema.Struct({
-    ledgerSequence: Schema.String,
-    dependencyDigests: Schema.Record(Schema.String, Schema.String),
-  }),
+  retained: Schema.NullOr(Schema.JsonObject),
+  observedCutoff: Schema.optionalKey(
+    Schema.Struct({
+      ledgerSequence: Schema.String,
+      dependencyDigests: Schema.Record(Schema.String, Schema.String),
+    }),
+  ),
   evidenceRefs: Schema.Array(
     Schema.Struct({ owner: Schema.String, id: Schema.String, digest: Schema.String }),
   ),
-  builderVersion: Schema.String,
+  builderVersion: Schema.optionalKey(Schema.String),
 });
+
 const View = Schema.Struct({
   scope: Accounting.Scope,
   period: Schema.Struct({
@@ -61,15 +68,21 @@ const View = Schema.Struct({
   reported: Schema.Array(Check),
   verdict: Schema.String,
 });
+
 const path = "/periods/period_september/close-predicate";
+
 function check(view: typeof View.Type, id: string) {
   const found = view.gated.find((c) => c.checkId === id);
+
   if (!found) throw new Error(`Missing gated ${id}`);
+
   return found;
 }
+
 async function save(name: string, value: unknown) {
   await writeFile(join(environment().artifacts, name), JSON.stringify(value, null, 2));
 }
+
 async function capture(
   book: Awaited<ReturnType<typeof fixture>>,
   input: unknown,
@@ -84,8 +97,10 @@ async function capture(
     View,
   );
 }
+
 async function observe(book: Awaited<ReturnType<typeof fixture>>) {
   const admin = await database();
+
   try {
     return (
       await admin.query(
@@ -97,14 +112,19 @@ async function observe(book: Awaited<ReturnType<typeof fixture>>) {
     await admin.end();
   }
 }
+
 test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and read-only MCP", async () => {
   const book = await fixture([], periods);
   const sessionBook = { ...book, token: (await createSession(book)).token };
-  const observations: Record<string, unknown> = {};
+
+  const observations: { [name: string]: object | string | number | boolean | null | undefined } =
+    {};
+
   try {
     const initial = await decoded(await request(book, path), View);
     observations.initial = initial;
     expect(initial.capture).toBeNull();
+    expect(initial.gated.every((check) => check.retained === null)).toBe(true);
     expect(check(initial, "bank_reconciliation").status).toBe("not_run");
     expect(check(initial, "vouchers_supported").status).toBe("not_established");
     expect(check(initial, "facts_complete").status).toBe("not_established");
@@ -112,10 +132,12 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     const signed = await signedSeptemberBank(sessionBook);
     const input = { bankInventoryPlanId: signed.plan.id, actualVatReturnId: null };
     const key = randomUUID();
+
     const [saved, replayed] = await Promise.all([
       capture(book, input, key),
       capture(book, input, key),
     ]);
+
     observations.saved = saved;
     expect(saved.capture).not.toBeNull();
     expect(replayed.capture).toEqual(saved.capture);
@@ -125,6 +147,7 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     expect(saved.reported.every((c) => c.status !== "pass")).toBe(true);
     const runtime = new Client({ connectionString: environment().runtimeUrl });
     await runtime.connect();
+
     try {
       await expect(
         runtime.query("UPDATE openerp.close_predicate_captures SET body=body WHERE book_id=$1", [
@@ -139,6 +162,7 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     } finally {
       await runtime.end();
     }
+
     await failure(
       await request(book, path, {
         method: "POST",
@@ -171,10 +195,12 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
       422,
       "InvalidJournal",
     );
+
     const partial = await fixture(
       [],
       [{ id: "period_september", startsOn: "2026-09-02", endsOn: "2026-09-30" }],
     );
+
     await failure(
       await request(partial, path, {
         method: "POST",
@@ -185,6 +211,7 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     );
     const before = await observe(book);
     const beforeFinancial = await persisted(book);
+
     const response = await fetch(`${environment().baseUrl}/api/mcp`, {
       method: "POST",
       headers: {
@@ -206,7 +233,9 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
         },
       }),
     });
+
     expect(response.status).toBe(200);
+
     const rpc = Schema.decodeUnknownSync(
       Schema.Struct({
         result: Schema.Struct({
@@ -215,6 +244,7 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
         }),
       }),
     )(await response.json());
+
     observations.mcp = rpc.result.structuredContent.result;
     expect(rpc.result.structuredContent.result.capture).toEqual(saved.capture);
     const after = await observe(book);
@@ -223,12 +253,14 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     expect(await persisted(book)).toEqual(beforeFinancial);
     const source = await evidence(book);
     const j = journal(source.id, "100");
+
     const later = await post(
       book,
       "/change-sets",
       { ...j, accountingPeriodId: "period_october", postingDate: "2026-10-05" },
       Accounting.ChangeSet,
     );
+
     const unrelated = await decoded(await request(book, path), View);
     observations.unrelated = unrelated;
     expect(check(unrelated, "bank_reconciliation").freshness.status).toBe("fresh");
@@ -237,12 +269,14 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     const inventoryStale = await decoded(await request(book, path), View);
     observations.inventoryGlobalLedger = inventoryStale;
     expect(check(inventoryStale, "bank_reconciliation").freshness.status).toBe("stale");
+
     const relevant = await post(
       book,
       "/change-sets",
       { ...journal((await evidence(book)).id, "100"), accountingPeriodId: "period_september" },
       Accounting.ChangeSet,
     );
+
     await execute(book, relevant);
     const stale = await decoded(await request(book, path), View);
     observations.stale = stale;
@@ -254,19 +288,66 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     await save("close-predicate-bank.json", observations);
   }
 }, 180000);
+
 test("AUT06 actual VAT zero without coverage remains incomplete and global ledger rule is retained", async () => {
   const book = await fixture(
     [
+      { id: "account_tax", code: "1630", name: "Synthetic tax account" },
       { id: "account_input_vat", code: "2641", name: "Synthetic input VAT" },
       { id: "account_vat_settlement", code: "2650", name: "Synthetic settlement" },
       { id: "account_vat", code: "2611", name: "Synthetic output VAT" },
     ],
     periods,
   );
-  const observations: Record<string, unknown> = {};
+
+  const observations: { [name: string]: object | string | number | boolean | null | undefined } =
+    {};
+
   try {
     const source = await evidence(book);
     await vatConfiguration({ book }, source.id);
+
+    const taxStatement = await post(
+      book,
+      "/tax-account/statements",
+      {
+        recordClass: "synthetic",
+        balanceConvention: "debit_minus_credit",
+        accountId: "account_tax",
+        sourceAccountKey: "synthetic_tax_account",
+        statementKey: "synthetic_zero_september",
+        evidenceId: source.id,
+        sourceLocator: "Synthetic zero statement",
+        reviewEvidenceId: source.id,
+        rationale: "Synthetic empty account observation",
+        currency: "SEK",
+        currencyScale: 2,
+        startsOn: "2026-09-01",
+        endsOn: "2026-09-30",
+        openingMinor: "0",
+        closingMinor: "0",
+        rows: [],
+      },
+      TaxAccount.TaxAccountStatement,
+    );
+
+    const taxControl = await post(
+      book,
+      "/tax-account/controls",
+      {
+        accountId: "account_tax",
+        startsOn: "2026-09-01",
+        endsOn: "2026-09-30",
+      },
+      TaxAccount.TaxAccountControl,
+    );
+
+    observations.taxStatement = taxStatement;
+    observations.taxControl = taxControl;
+    expect(taxControl.coverage).toBe("not_established");
+    expect(taxControl.reconciled).toBe(false);
+    expect(taxControl.closingDifferenceMinor).toBe("0");
+
     const input = {
       startsOn: "2026-09-01",
       endsOn: "2026-09-30",
@@ -282,6 +363,7 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       })),
       rationale: "Explicit synthetic empty source inventory",
     };
+
     const vat = await post(book, "/vat-returns/actuals", input, Vat.ActualVatReturn);
     observations.vat = vat;
     expect(vat.calculation.coverageComplete).toBe(true);
@@ -290,6 +372,7 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     observations.saved = saved;
     expect(check(saved, "vat_control").status).toBe("pass");
     expect(saved.verdict).toBe("inconclusive");
+
     const original = await post(
       book,
       "/source-occurrences",
@@ -304,6 +387,7 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       },
       Source.SourceOccurrence,
     );
+
     await post(
       book,
       "/commerce/supplier-inbox",
@@ -311,13 +395,16 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       Inbox.SupplierInboxView,
     );
     const target = { kind: "document", recordId: original.id } as const;
+
     const questionBasis = await post(
       book,
       "/workspace/questions/read",
       target,
       Workspace.WorkQuestionsView,
     );
+
     const sessionBook = { ...book, token: (await createSession(book)).token };
+
     const asked = await post(
       sessionBook,
       "/workspace/questions",
@@ -330,6 +417,7 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       },
       Workspace.WorkQuestionResult,
     );
+
     observations.question = asked.question;
     const open = await capture(book, { bankInventoryPlanId: null, actualVatReturnId: vat.id });
     observations.openReviews = open;
@@ -337,6 +425,7 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     expect(
       check(open, "reviews_and_questions").evidenceRefs.some((ref) => ref.id === asked.question.id),
     ).toBe(true);
+
     const later = await post(
       book,
       "/change-sets",
@@ -347,12 +436,14 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       },
       Accounting.ChangeSet,
     );
+
     await execute(book, later);
     const stale = await decoded(await request(book, path), View);
     observations.stale = stale;
     expect(check(stale, "vat_control").status).toBe("pass");
     expect(check(stale, "vat_control").freshness.status).toBe("stale");
     expect(check(stale, "vat_control").freshness.reasons).toContain("ledger_boundary_moved");
+
     const incomplete = await post(
       book,
       "/vat-returns/actuals",
@@ -366,12 +457,15 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
       },
       Vat.ActualVatReturn,
     );
+
     observations.incomplete = incomplete;
     expect(incomplete.calculation.coverageComplete).toBe(false);
+
     const failed = await capture(book, {
       bankInventoryPlanId: null,
       actualVatReturnId: incomplete.id,
     });
+
     observations.failed = failed;
     expect(check(failed, "vat_control").status).toBe("fail");
     expect(failed.verdict).toBe("inconclusive");
@@ -382,30 +476,36 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
 
 test("AUT06 missing bank mappings, statements and continuity cannot pass at zero arithmetic", async () => {
   const observed = [];
+
   try {
     for (const mode of ["missing", "continuity", "incomplete"] as const) {
       const book = await fixture([], periods);
       const sessionBook = { ...book, token: (await createSession(book)).token };
       const report = await incompleteSeptemberCoverage(sessionBook, mode);
       expect(report.hasReviewGaps).toBe(true);
+
       if (mode === "missing") {
         expect(report.accounts[0]?.diagnostics).toContain("source_mapping_missing");
         expect(report.accounts[0]?.diagnostics).toContain("statements_missing");
       }
+
       if (mode === "continuity")
         expect(report.accounts[0]?.gaps).toEqual([
           { startsOn: "2026-09-16", endsOn: "2026-09-30" },
         ]);
+
       if (mode === "incomplete")
         expect(report.accounts[0]?.statements[0]?.diagnostics).toContain(
           "statement_declared_incomplete",
         );
       observed.push({ mode, report, result: null });
+
       const result = await capture(book, {
         bankInventoryPlanId: null,
         bankSourceCoverageReportId: report.id,
         actualVatReturnId: null,
       });
+
       observed.push({ mode, report, result });
       expect(check(result, "bank_reconciliation").status).toBe("fail");
       expect(

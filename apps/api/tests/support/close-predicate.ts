@@ -1,3 +1,4 @@
+import { expect } from "vitest";
 import { randomUUID, createHash } from "node:crypto";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -17,6 +18,7 @@ import {
   type BookFixture,
 } from "./fixtures";
 import { syntheticQualification } from "./rule-qualification";
+
 const families = [
   "bank_sources",
   "invoices",
@@ -29,18 +31,23 @@ const families = [
   "external_schedules",
   "disclosures",
 ];
+
 export async function signedSeptemberBank(book: BookFixture) {
   const planInput = journal((await evidence(book)).id, "12500");
+
   const journalPlan = await post(
     book,
     "/change-sets",
     { ...planInput, accountingPeriodId: "period_september" },
     Accounting.ChangeSet,
   );
+
   const receipt = await execute(book, journalPlan);
+
   const line = journalPlan.groups[0]?.actions[0]?.lines.find(
     (line) => line.accountId === "account_bank",
   );
+
   if (!line) throw new Error("Missing synthetic bank line");
   const bankLine = { voucherId: receipt.voucherId, lineId: line.lineId };
 
@@ -227,8 +234,10 @@ export async function signedSeptemberBank(book: BookFixture) {
     },
     Signoffs.BankInventorySignoff,
   );
+
   return { plan, signed, statement, imported, capacity, coverage };
 }
+
 export async function vatConfiguration(
   context: { book: BookFixture; existingJurisdiction?: string },
   evidenceId: string,
@@ -394,6 +403,7 @@ export async function incompleteSeptemberCoverage(
       },
       rows: [],
     };
+
     const source = await post(
       book,
       "/evidence",
@@ -405,6 +415,7 @@ export async function incompleteSeptemberCoverage(
       },
       Accounting.Evidence,
     );
+
     await post(
       book,
       "/bank-statements",
@@ -412,7 +423,9 @@ export async function incompleteSeptemberCoverage(
       Bank.StatementImportReceipt,
     );
   }
+
   const source = await evidence(book);
+
   const inventory = await post(
     book,
     "/periods/period_september/closing-source-inventories",
@@ -429,11 +442,13 @@ export async function incompleteSeptemberCoverage(
     },
     Closing.ClosingInventory,
   );
+
   const report = await post(
     book,
     "/bank-source-coverage",
     { inventoryId: inventory.id, startsOn: "2026-09-01", endsOn: "2026-09-30" },
     Coverage.BankSourceCoverageReport,
   );
+
   return report;
 }

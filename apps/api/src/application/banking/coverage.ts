@@ -488,44 +488,51 @@ export const createBankSourceCoverage = Effect.fn("banking.coverage.create")(fun
   );
 });
 
+export const getBankSourceCoverageInTransaction = Effect.fn("getBankSourceCoverage.inTransaction")(
+  function* (
+    transaction: import("../../db/transaction").Transaction,
+    command: { readonly scope: Scope; readonly reportId: string },
+  ) {
+    yield* Shared.requireTables(transaction, coverageTables);
+    yield* Shared.requireColumns(transaction, Shared.accountColumns);
+    const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
+    if (!book) return yield* failure("Forbidden");
+
+    const saved = (yield* CoverageDb.readCoverageReport(
+      transaction,
+      command.scope.bookId,
+      command.reportId,
+    ))[0];
+
+    if (!saved) return yield* failure("NotFound");
+
+    const current = (yield* BankDb.readCoverageDependencyDigest(
+      transaction,
+      command.scope.bookId,
+      saved.inventoryId,
+    ))[0]?.digest;
+
+    return yield* Shared.decode(ViewSchema, {
+      report: yield* Shared.decode(ReportSchema, saved.body),
+      dependenciesCurrent:
+        current != null && Shared.textField(saved.body, "dependencyDigest") === current,
+      artifact: {
+        content: saved.content,
+        sha256: saved.sha256,
+        byteLength: saved.byteLength,
+        mediaType: "application/json",
+      },
+    });
+  },
+);
+
 export const getBankSourceCoverage = Effect.fn("banking.coverage.get")(function* (
   token: string,
   command: { readonly scope: Scope; readonly reportId: string },
 ) {
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, coverageTables);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-      const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      const saved = (yield* CoverageDb.readCoverageReport(
-        transaction,
-        command.scope.bookId,
-        command.reportId,
-      ))[0];
-
-      if (!saved) return yield* failure("NotFound");
-
-      const current = (yield* BankDb.readCoverageDependencyDigest(
-        transaction,
-        command.scope.bookId,
-        saved.inventoryId,
-      ))[0]?.digest;
-
-      return yield* Shared.decode(ViewSchema, {
-        report: yield* Shared.decode(ReportSchema, saved.body),
-        dependenciesCurrent:
-          current != null && Shared.textField(saved.body, "dependencyDigest") === current,
-        artifact: {
-          content: saved.content,
-          sha256: saved.sha256,
-          byteLength: saved.byteLength,
-          mediaType: "application/json",
-        },
-      });
-    }),
+    getBankSourceCoverageInTransaction(transaction, command),
   );
 });
 

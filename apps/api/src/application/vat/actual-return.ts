@@ -1456,11 +1456,8 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
   );
 });
 
-export const getActualReturn = Effect.fn("vat.getActualReturn")(function* (
-  token: string,
-  command: { scope: Scope; id: string },
-) {
-  return yield* withBook(token, command.scope, false, function* (transaction) {
+export const getActualReturnInTransaction = Effect.fn("vat.getActualReturnInTransaction")(
+  function* (transaction: Transaction, command: { scope: Scope; id: string }) {
     yield* requireAccess(transaction, false);
     yield* Ledger.lockBookForShare(transaction, command.scope);
     const row = (yield* Db.readReturn(transaction, command.scope.bookId, command.id))[0];
@@ -1481,6 +1478,15 @@ export const getActualReturn = Effect.fn("vat.getActualReturn")(function* (
         },
       }),
     );
+  },
+);
+
+export const getActualReturn = Effect.fn("vat.getActualReturn")(function* (
+  token: string,
+  command: { scope: Scope; id: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    return yield* getActualReturnInTransaction(transaction, command);
   });
 });
 

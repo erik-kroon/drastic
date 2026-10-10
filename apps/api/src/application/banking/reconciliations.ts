@@ -640,32 +640,39 @@ export const getBankReconciliation = Effect.fn("banking.reconciliation.get")(fun
   );
 });
 
+export const getBankCapacityReconciliationInTransaction = Effect.fn(
+  "banking.capacity.inTransaction",
+)(function* (
+  transaction: Transaction,
+  command: { readonly scope: Scope; readonly reconciliationId: string },
+) {
+  yield* Shared.requireTables(transaction, [
+    ...reconciliationTables,
+    "bank_capacity_reconciliations",
+  ]);
+  yield* Shared.requireColumns(transaction, Shared.accountColumns);
+  const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
+  if (!book) return yield* failure("Forbidden");
+
+  const found = yield* readReportFreshness(
+    transaction,
+    command.scope,
+    book,
+    command.reconciliationId,
+    "capacity",
+  );
+
+  return yield* Shared.decode(CapacityViewSchema, {
+    report: yield* Shared.decode(CapacitySchema, found.body),
+    ...found.current,
+  });
+});
+
 export const getBankCapacityReconciliation = Effect.fn("banking.reconciliation.capacityGet")(
   function* (token: string, command: { readonly scope: Scope; readonly reconciliationId: string }) {
-    return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
-      Effect.gen(function* () {
-        yield* Shared.requireTables(transaction, [
-          ...reconciliationTables,
-          "bank_capacity_reconciliations",
-        ]);
-        yield* Shared.requireColumns(transaction, Shared.accountColumns);
-        const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
-
-        if (!book) return yield* failure("Forbidden");
-
-        const found = yield* readReportFreshness(
-          transaction,
-          command.scope,
-          book,
-          command.reconciliationId,
-          "capacity",
-        );
-
-        return yield* Shared.decode(CapacityViewSchema, {
-          report: yield* Shared.decode(CapacitySchema, found.body),
-          ...found.current,
-        });
-      }),
+    return yield* Shared.withBook(token, command.scope, false, "share", (tx) =>
+      getBankCapacityReconciliationInTransaction(tx, command),
     );
   },
 );

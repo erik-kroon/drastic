@@ -1,3 +1,4 @@
+import { CoverageCapabilities } from "./verification-coverage";
 import { EmployeeClaimCapabilities } from "./employee-claims";
 import { MileageCorrectionCapabilities } from "./mileage-corrections";
 import { VariablePayReviewCapabilities } from "./variable-pay-review";
@@ -110,6 +111,7 @@ const change = { ...scoped, changeSetId: Accounting.Identifier };
 const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {
+  ...CoverageCapabilities,
   ...SupplierSettlementCapabilities,
   ...CashFlowCapabilities,
   ...PaymentResolutionCapabilities,

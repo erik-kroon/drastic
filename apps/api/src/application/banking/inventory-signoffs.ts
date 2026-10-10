@@ -473,53 +473,60 @@ export const signBankInventory = Effect.fn("banking.inventorySignoff.sign")(func
   );
 });
 
+export const getBankInventorySignoffInTransaction = Effect.fn(
+  "getBankInventorySignoff.inTransaction",
+)(function* (
+  transaction: import("../../db/transaction").Transaction,
+  command: { readonly scope: Scope; readonly planId: string },
+) {
+  yield* Shared.requireTables(transaction, inventoryTables);
+  yield* Shared.requireColumns(transaction, Shared.accountColumns);
+  const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
+  if (!book) return yield* failure("Forbidden");
+
+  const stored = (yield* SignoffDb.readInventorySignoffPlan(
+    transaction,
+    command.scope.bookId,
+    command.planId,
+  ))[0];
+
+  if (!stored) return yield* failure("NotFound");
+  const plan = yield* Shared.decode(PlanSchema, stored.body);
+
+  const signed = (yield* SignoffDb.readInventorySignoff(
+    transaction,
+    command.scope.bookId,
+    command.planId,
+  ))[0];
+
+  return yield* Shared.decode(ViewSchema, {
+    plan,
+    signoff: signed ? yield* Shared.decode(SignoffSchema, signed.body) : null,
+    preparedArtifact: {
+      content: stored.content,
+      sha256: stored.sha256,
+      byteLength: stored.byteLength,
+      mediaType: "application/json",
+    },
+    signedArtifact: signed
+      ? {
+          content: signed.content,
+          sha256: signed.sha256,
+          byteLength: signed.byteLength,
+          mediaType: "application/json",
+        }
+      : null,
+    dependenciesCurrent: yield* inventoryIsCurrent(transaction, command.scope.bookId, plan),
+  });
+});
+
 export const getBankInventorySignoff = Effect.fn("banking.inventorySignoff.get")(function* (
   token: string,
   command: { readonly scope: Scope; readonly planId: string },
 ) {
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, inventoryTables);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-      const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      const stored = (yield* SignoffDb.readInventorySignoffPlan(
-        transaction,
-        command.scope.bookId,
-        command.planId,
-      ))[0];
-
-      if (!stored) return yield* failure("NotFound");
-      const plan = yield* Shared.decode(PlanSchema, stored.body);
-
-      const signed = (yield* SignoffDb.readInventorySignoff(
-        transaction,
-        command.scope.bookId,
-        command.planId,
-      ))[0];
-
-      return yield* Shared.decode(ViewSchema, {
-        plan,
-        signoff: signed ? yield* Shared.decode(SignoffSchema, signed.body) : null,
-        preparedArtifact: {
-          content: stored.content,
-          sha256: stored.sha256,
-          byteLength: stored.byteLength,
-          mediaType: "application/json",
-        },
-        signedArtifact: signed
-          ? {
-              content: signed.content,
-              sha256: signed.sha256,
-              byteLength: signed.byteLength,
-              mediaType: "application/json",
-            }
-          : null,
-        dependenciesCurrent: yield* inventoryIsCurrent(transaction, command.scope.bookId, plan),
-      });
-    }),
+    getBankInventorySignoffInTransaction(transaction, command),
   );
 });
 

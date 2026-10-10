@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./verification-coverage": "./src/verification-coverage.ts",
     "./decisions": "./src/decisions.ts",
     "./vat-purchase-categories": "./src/vat-purchase-categories.ts",
     "./decision-examples": "./src/decision-examples.ts",
