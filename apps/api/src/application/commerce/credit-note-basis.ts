@@ -1,4 +1,5 @@
 import * as Credits from "@open-erp/contracts/customer-credit-notes";
+import { roundHalfUp } from "@open-erp/domain/money";
 import * as Effect from "effect/Effect";
 import { failure } from "../failures";
 import { digest } from "../json";
@@ -92,7 +93,7 @@ export type CreditCapacityBasis = {
 const qualifiedRatePercent = 25n;
 
 function lineTax(net: bigint) {
-  return (net * qualifiedRatePercent + 50n) / 100n;
+  return roundHalfUp(net * qualifiedRatePercent, 100n);
 }
 
 function exactMinor(value: string) {

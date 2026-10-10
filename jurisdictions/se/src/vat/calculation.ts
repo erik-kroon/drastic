@@ -1,4 +1,5 @@
 import type * as Vat from "@open-erp/contracts/vat-returns";
+import { roundHalfUp } from "@open-erp/domain/money";
 
 type Basis = typeof Vat.VatBasis.Type;
 
@@ -125,14 +126,14 @@ function validCashCoverage(fact: typeof Vat.VatFact.Type) {
     if (
       gross <= 0n ||
       net < 0n ||
-      tax !== (2n * net + 4n) / 8n ||
+      tax !== roundHalfUp(net, 4n) ||
       after < 0n ||
       after >= before ||
       before > gross
     )
       return false;
 
-    const taxAt = (coverage: bigint) => (2n * tax * coverage + gross) / (2n * gross);
+    const taxAt = (coverage: bigint) => roundHalfUp(tax * coverage, gross);
 
     return (
       after - before === BigInt(input.grossMinor) &&
@@ -152,14 +153,14 @@ function validCashCoverage(fact: typeof Vat.VatFact.Type) {
   const net = gross - tax;
   const before = BigInt(cash.recognizedBeforeMinor);
   const after = BigInt(cash.recognizedAfterMinor);
-  const taxAt = (coverage: bigint) => (2n * tax * coverage + gross) / (2n * gross);
+  const taxAt = (coverage: bigint) => roundHalfUp(tax * coverage, gross);
 
   return (
     gross > 0n &&
     net >= 0n &&
     // Validate the rounded original, then its cumulative releases; a partial
     // slice need not itself have an exact 25% ratio.
-    tax === (2n * net + 4n) / 8n &&
+    tax === roundHalfUp(net, 4n) &&
     before >= 0n &&
     before <= after &&
     after <= gross &&

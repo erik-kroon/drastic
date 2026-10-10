@@ -1,5 +1,6 @@
 import * as Contracts from "@open-erp/contracts/asset-disposals";
 import * as Domain from "@open-erp/domain/asset-disposals";
+import { roundHalfUp } from "@open-erp/domain/money";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -95,7 +96,7 @@ export const captureProceeds = Effect.fn("subledger.captureDisposalProceeds")(fu
 
     if (!sourceRevision) return yield* failure("StaleDependency");
     const gross = BigInt(row.amountMinor);
-    const net = (gross * 4n + 2n) / 5n;
+    const net = roundHalfUp(gross * 4n, 5n);
 
     return yield* decode(Contracts.ProceedsWitness, {
       kind: selection.kind,

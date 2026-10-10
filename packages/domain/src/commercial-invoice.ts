@@ -1,4 +1,5 @@
 import * as Result from "effect/Result";
+import { roundHalfUp } from "./money";
 
 export function exactCommercialBase(quantity: string, unitPriceMinor: string) {
   const [whole = "0", fraction = ""] = quantity.split(".");
@@ -22,7 +23,7 @@ export function commercialLineAmounts(input: {
 
   if (base === null || discount > base || base >= maximum) return Result.fail("InvalidJournal");
   const net = base - discount + charge;
-  const tax = input.taxRule === "unresolved" ? null : (net * 25n + 50n) / 100n;
+  const tax = input.taxRule === "unresolved" ? null : roundHalfUp(net * 25n, 100n);
   const gross = tax === null ? null : net + tax;
 
   if (net >= maximum || (gross !== null && gross >= maximum)) return Result.fail("InvalidJournal");
