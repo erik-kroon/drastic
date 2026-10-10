@@ -74,6 +74,7 @@ jobs:
           "$python" verification/peppol/check.e2e.py
 
       - name: Build applications for self-host proof
+        id: build
         timeout-minutes: 5
         run: bun run build
 
@@ -88,18 +89,21 @@ jobs:
         run: node verification/domain-owners/check.e2e.mjs
 
       - name: Run domain owner public workflows
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 20
         env:
           OPENERP_E2E_ARTIFACTS: test-results/domain-owners
         run: bun run test:domain-owners
 
       - name: Run checkpoint and restricted restore workflow
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 10
         env:
           OPENERP_REHEARSAL_ARTIFACTS: test-results/domain-rehearsal
         run: bun apps/api/scripts/operations/rehearsal-e2e.ts
 
       - name: Run scoped excellence qualification
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         id: e2e
         timeout-minutes: 50
         run: |

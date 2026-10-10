@@ -56,6 +56,7 @@ test("native synthetic browser API pins bureau time without changing stored obli
       DATABASE_URL: environment().runtimeUrl,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
       BETTER_AUTH_URL: origin,
+      OPENERP_NATIVE_API_PORT: String(address.port),
       OPENERP_OBJECT_DIRECTORY: objectDirectory,
     },
     detached: true,

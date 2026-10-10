@@ -1,0 +1,17 @@
+{
+  "status": "local_synthetic",
+  "noPreselectedScope": true,
+  "nativeSelectChoices": true,
+  "keyboardConsent": true,
+  "denialIssuedNoCode": true,
+  "reloadRetainedGrant": true,
+  "explicitConsent": true,
+  "callbackStatePreserved": true,
+  "readOnlyCatalog": true,
+  "revokedGrantBlocked": true,
+  "unchangedLedger": true,
+  "screenshots": {
+    "selection": "O-02/actual.png",
+    "consent": "O-01/actual.png"
+  }
+}
