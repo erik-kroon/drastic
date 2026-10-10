@@ -359,7 +359,11 @@ export function createApi(e2e: boolean) {
             onSuccess: (bounded) => {
               if (testNow !== null && !e2e)
                 return Effect.succeed(boundaryResponse(failure("Forbidden")));
-              const instant = testNow === null ? null : fixedApplicationClock(testNow);
+
+              const instant =
+                testNow === null
+                  ? null
+                  : fixedApplicationClock(testNow, Clock.Clock.defaultValue());
 
               if (testNow !== null && instant === null)
                 return Effect.succeed(boundaryResponse(failure("InvalidRequest")));

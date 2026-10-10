@@ -1,7 +1,7 @@
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 
-export function fixedApplicationClock(instant: string): Clock.Clock | null {
+export function fixedApplicationClock(instant: string, native: Clock.Clock): Clock.Clock | null {
   const milliseconds = Date.parse(instant);
 
   if (
@@ -18,8 +18,8 @@ export function fixedApplicationClock(instant: string): Clock.Clock | null {
     currentTimeMillisUnsafe: () => milliseconds,
     currentTimeNanos: Effect.succeed(nanoseconds),
     currentTimeNanosUnsafe: () => nanoseconds,
-    monotonicTimeNanos: Effect.sync(() => BigInt(Math.round(performance.now() * 1_000_000))),
-    monotonicTimeNanosUnsafe: () => BigInt(Math.round(performance.now() * 1_000_000)),
-    sleep: (duration) => Effect.sleep(duration),
+    monotonicTimeNanos: native.monotonicTimeNanos,
+    monotonicTimeNanosUnsafe: () => native.monotonicTimeNanosUnsafe(),
+    sleep: (duration) => native.sleep(duration),
   };
 }

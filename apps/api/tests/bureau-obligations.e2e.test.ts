@@ -11,7 +11,6 @@ import {
   environment,
   evidence,
   failure,
-  database,
   execute,
   fixture,
   journal,
@@ -160,44 +159,54 @@ test("bureau obligations read canonical stored residual once with two retained s
     Commerce.Invoice,
   );
 
-  const admin = await database();
+  const baseline = await decoded(
+    await request(book, "/bureau-obligations"),
+    Bureau.BureauObligations,
+  );
 
-  try {
-    // Independent fixture setup only: simulate a retained revision from before the pinned instant.
-    await admin.query(`ALTER TABLE openerp.commerce_invoice_revisions DISABLE TRIGGER USER`);
+  const original = baseline.items.find((entry) => entry.obligationId === invoice.id);
 
-    try {
-      await admin.query(
-        `UPDATE openerp.commerce_invoice_revisions SET body = jsonb_set(body, '{createdAt}', to_jsonb($1::text)) WHERE book_id = $2 AND invoice_id = $3 AND revision = 2`,
-        ["2026-09-30T06:54:00.000Z", book.bookId, invoice.id],
-      );
-    } finally {
-      await admin.query(`ALTER TABLE openerp.commerce_invoice_revisions ENABLE TRIGGER USER`);
-    }
-  } finally {
-    await admin.end();
-  }
+  expect(original?.freshness).toBe("current");
+  expect(original?.outstandingMinor).toBe("12345");
+  expect(original?.dueOn).toBe("2026-02-28");
+  expect(original?.sources.map((source) => source.evidenceId).sort()).toEqual(
+    [source.id, revisionSource.id].sort(),
+  );
 
-  const pinned = "2026-10-02T06:54:00.000Z"; // 08:54 Europe/Stockholm
+  const stockholmInstant = "2026-10-02T06:54:00.000Z"; // 08:54 Europe/Stockholm
 
-  const response = await decoded(
+  const pinned = await decoded(
     await request(book, "/bureau-obligations", {
-      headers: { "x-openerp-test-now": pinned },
+      headers: { "x-openerp-test-now": stockholmInstant },
     }),
     Bureau.BureauObligations,
   );
 
-  const item = response.items.find((entry) => entry.obligationId === invoice.id);
-  expect(response.coverage).toBe("partial");
-  expect(item?.outstandingMinor).toBe("12345");
-  expect(item?.dueOn).toBe("2026-02-28");
-  expect(response.checkedAt).toBe(pinned);
-  expect(item?.freshness).toBe("stale");
-  expect(item?.sources.map((source) => source.evidenceId).sort()).toEqual(
-    [source.id, revisionSource.id].sort(),
+  expect(pinned.checkedAt).toBe(stockholmInstant);
+
+  const laterInstant = new Date(Date.parse(baseline.checkedAt) + 48 * 60 * 60 * 1000).toISOString();
+
+  const stale = await decoded(
+    await request(book, "/bureau-obligations", {
+      headers: { "x-openerp-test-now": laterInstant },
+    }),
+    Bureau.BureauObligations,
   );
-  expect(response.items.filter((entry) => entry.obligationId === invoice.id)).toHaveLength(1);
-  const artifact = join(environment().artifacts, "bureau-obligations.json");
+
+  const item = stale.items.find((entry) => entry.obligationId === invoice.id);
+
+  expect(stale.checkedAt).toBe(laterInstant);
+  expect(stale.coverage).toBe("partial");
+  expect(item?.freshness).toBe("stale");
+  expect(item).toMatchObject({
+    obligationId: original?.obligationId,
+    recordedAt: original?.recordedAt,
+    outstandingMinor: original?.outstandingMinor,
+    dueOn: original?.dueOn,
+    sources: original?.sources,
+  });
+  expect(stale.items.filter((entry) => entry.obligationId === invoice.id)).toHaveLength(1);
+
   await failure(
     await request(book, "/bureau-obligations", {
       headers: { "x-openerp-test-now": "not-an-instant" },
@@ -205,5 +214,8 @@ test("bureau obligations read canonical stored residual once with two retained s
     400,
     "InvalidRequest",
   );
-  await writeFile(artifact, JSON.stringify({ scope: book.bookId, pinned: response }, null, 2));
+  await writeFile(
+    join(environment().artifacts, "bureau-obligations.json"),
+    JSON.stringify({ scope: book.bookId, baseline, pinned, stale }, null, 2),
+  );
 });
