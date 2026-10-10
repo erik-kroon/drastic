@@ -172,7 +172,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Supplier uploaded two-page PDF and readable invoice882 carry exact stored1250000 gross; native posted/stale-source cases pass. Standalone original/decision surfaces, native heading/stored debit total, narrow width and one exact receipt after lost response/reload pass. Existing group/action iteration and final-footer predicate unchanged; public producers currently seal oneaction, so multi-action native proof unavailable. Full-frame27.1391% drift exceeds2%; sample combined approval/post and return/reject actions lack current owner contracts. Dark/native200 and complete-state parity remain unverified. Superseded captures are retained in git history; latest board capture/diff/result and necessary behavior receipts remain."
+      "notes": "Supplier uploaded two-page PDF and readable invoice882 carry exact stored1250000 gross; native posted/stale-source cases pass. Standalone original/decision surfaces, native heading/stored debit total, narrow width and one exact receipt after lost response/reload pass. Existing group/action iteration and final-footer predicate unchanged; public producers currently seal oneaction, so multi-action native proof unavailable. Full-frame27.1391% drift exceeds2%; sample combined approval/post and return/reject actions lack current owner contracts. Dark/native200 and complete-state parity remain unverified. Superseded captures are retained in git history; latest board capture/diff/result and necessary behavior receipts remain. DRA-194 native object loss and equal-length corruption return MissingEvidence with no preview/approval/ledger change; exact-byte restoration and keyboard retry pass. Newer-draft refusal and owner returns pass. Public P1-P13 behavior reconciliation: docs/plans/document-review-recovery.md."
     },
     {
       "id": "K-70",
@@ -569,14 +569,14 @@
       ],
       "route": "/entities/$entityId/books/$bookId/books",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
         "posted voucher selected",
         "correction available"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k16-posted-original/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -590,7 +590,8 @@
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "DRA-194 native posted voucher retains uploaded original after reload and one exact receipt; full-frame8.1167% drift exceeds2%. Existing correction owner remains untouched. This is a selected books-route voucher, not qualification of unsupported activity/payment/next-task composition. Dark/native200 and complete-state parity remain unverified."
     },
     {
       "id": "K-20",

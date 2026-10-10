@@ -1,0 +1,56 @@
+{
+  "scope": "K-16",
+  "sourceRevision": "d07ad63",
+  "comparatorRevision": "d07ad63bed8a300e3441d89da48d233952e11a47",
+  "referenceSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
+  "actualSha256": "bce293d173bab7eb60902fab6d931a0b41c5b1d6d93ee1601ffca0e61e002945",
+  "diffSha256": "2511f18970c31cbe8c70333ebfe4625d9f9676c6f7c769c3794d6873ed54de06",
+  "sourceHashes": {
+    "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
+    "tests/browser/supplier-frozen-original.e2e.ts": "d8bb9119b487c2d88e6aa6fce9cc48a1e9d0aec9d7cfa13756f63933133f7f2e"
+  },
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/supplier-frozen-original.e2e.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-dra194/verification/paper/compare.mjs K-16 verification/paper/evidence/k16-posted-original/capture.json verification/paper/evidence/k16-posted-original",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf2",
+          "weight": "normal",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T07:36:51.766Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&q=Vinter+%26+Co+AB+faktura+882.pdf",
+    "route": "/entities/$entityId/books/$bookId/books",
+    "fixture": {
+      "recipe": "tests/browser/supplier-frozen-original.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; native uploaded original, missing/corrupt recovery and posted voucher. Full frame, no baseline changes.",
+  "difference": 0.08116743827160494,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/k16-posted-original/actual.png",
+  "diff": "verification/paper/evidence/k16-posted-original/diff.png",
+  "passed": false
+}

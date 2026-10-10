@@ -1,7 +1,7 @@
 {
   "scope": "K-11",
-  "sourceRevision": "fd4fc0550a6355b2db37eadf171e149ce82118b3",
-  "comparatorRevision": "fd4fc0550a6355b2db37eadf171e149ce82118b3",
+  "sourceRevision": "d07ad63",
+  "comparatorRevision": "d07ad63bed8a300e3441d89da48d233952e11a47",
   "referenceSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
   "actualSha256": "6cfcb0f0b4900f626950a57697a82e5f5e12d4bb671921dedfb51313851553e4",
   "diffSha256": "99f3329b3a6bffe75ca22f0ddf1cbe112999264a1e42623136ed6873bf6d1f8a",
@@ -17,12 +17,10 @@
     "packages/ui/src/kanon/feedback.tsx": "a549c33aaacfbfe69bd1e500612953d242393bcb5b5f0e8431685aeb3ed09d7f",
     "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
     "apps/web/src/components/posting-recovery/review-entry.tsx": "3890f75627a626a39e10c9f4689cfcbf226afa628f9181a3972426472c125386",
-    "tests/browser/supplier-frozen-original.e2e.ts": "14e604204644dd74d1993eb20b69dd59621566cb4a529b9016b354af67a3fa68",
-    "tests/browser/original-fixture.ts": "5d960e4761f67480ef34a463e11ac62b2a0c8cb85e1fd316d3ab9fa4266a30ba",
-    "tests/browser/posting-recovery.e2e.ts": "7db598a98301b75977ea3da48258a4769e069a493b17959963f08941e77cb852"
+    "tests/browser/supplier-frozen-original.e2e.ts": "d8bb9119b487c2d88e6aa6fce9cc48a1e9d0aec9d7cfa13756f63933133f7f2e"
   },
   "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/supplier-frozen-original.e2e.ts",
-  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-parity-foundations/verification/paper/compare.mjs K-11 verification/paper/evidence/k11-core-finish/capture.json verification/paper/evidence/k11-core-finish",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-dra194/verification/paper/compare.mjs K-11 verification/paper/evidence/k11-core-finish/capture.json verification/paper/evidence/k11-core-finish",
   "conditions": {
     "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
     "deviceScaleFactor": 1,
@@ -43,13 +41,13 @@
     },
     "locale": "sv-SE",
     "theme": "light",
-    "time": "2026-10-10T07:06:25.438Z",
+    "time": "2026-10-10T07:36:46.218Z",
     "clockPinned": false,
     "viewport": {
       "width": 1440,
       "height": 900
     },
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_3f5158712c904d24a5e5980588f26abb/sha256%3Aa7281492200155cf45c5c250df17db4abc7db6806765556aab53ad9176efdcaa?returnTo=owner%3A%257B%2522owner%2522%253A%2522purchases%2522%252C%2522search%2522%253A%257B%2522filename%2522%253A%2522Vinter%2520%2526%2520Co%2520AB%2520faktura%2520882.pdf%2522%252C%2522q%2522%253A%2522Vinter%2520%2526%2520Co%2520AB%2520faktura%2520882.pdf%2522%252C%2522currency%2522%253A%2522SEK%2522%252C%2522view%2522%253A%2522supplier-drafts%2522%252C%2522record%2522%253A%2522supplier_invoice_draft_5856d2b28ba24b418de9de6c1d192de6%2522%252C%2522review%2522%253A%2522supplier_review_c1e8e4cfab4242339b55a5dd19aa0108%2522%257D%257D",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_8c2ee61b529e472789f835be1d60e125/sha256%3A2c4ce70dd56ec66723d49d5e08b8f1d3f15fa5e17c5160117e822789213ff7eb?returnTo=owner%3A%257B%2522owner%2522%253A%2522purchases%2522%252C%2522search%2522%253A%257B%2522filename%2522%253A%2522Vinter%2520%2526%2520Co%2520AB%2520faktura%2520882.pdf%2522%252C%2522q%2522%253A%2522Vinter%2520%2526%2520Co%2520AB%2520faktura%2520882.pdf%2522%252C%2522currency%2522%253A%2522SEK%2522%252C%2522view%2522%253A%2522supplier-drafts%2522%252C%2522record%2522%253A%2522supplier_invoice_draft_fb49cc7bf98d4f5eb08a2adfe5aeda12%2522%252C%2522review%2522%253A%2522supplier_review_5e4bdb3fc2bf41b7b47b8c152e48c490%2522%257D%257D",
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
     "fixture": {
       "recipe": "tests/browser/supplier-frozen-original.e2e.ts",
@@ -57,7 +55,7 @@
       "boardContentMatch": false
     }
   },
-  "reviewer": "Codex; rendered uploaded original and stored1250000 gross; separate approval/post workflow remains distinct from board",
+  "reviewer": "Codex; native uploaded original, missing/corrupt recovery and posted voucher. Full frame, no baseline changes.",
   "difference": 0.2713912037037037,
   "tolerance": 0.02,
   "channelTolerance": 16,

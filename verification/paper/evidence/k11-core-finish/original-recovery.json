@@ -1,0 +1,64 @@
+{
+  "synthetic": true,
+  "issue": "DRA-194",
+  "run": "04a03ff2-3731-488c-943b-7dc248404831",
+  "sourceIntegrity": {
+    "status": "stable",
+    "before": "c5cc9c072a5b551c15c2c3ae16dbce6cf2d1c0aacde404409f0cfc66e246e361",
+    "after": "c5cc9c072a5b551c15c2c3ae16dbce6cf2d1c0aacde404409f0cfc66e246e361"
+  },
+  "scratchRemoved": true,
+  "original": {
+    "id": "source_037c4dd2b0a44abd8b13f6fa574fdd03",
+    "sha256": "sha256:5e5ea11a48580f127ba11088504d8769dc59e49fe5af8f8a95d0404cb29f6c05",
+    "filename": "Vinter & Co AB faktura 882.pdf",
+    "byteLength": 872
+  },
+  "recovery": [
+    {
+      "fault": "missing",
+      "code": "MissingEvidence",
+      "nativeHttpStatus": 422,
+      "previewWithheld": true,
+      "approvalAndAcceptanceAbsent": true,
+      "ledgerUnchanged": true,
+      "keyboardRetryRestoredIdenticalBytes": true
+    },
+    {
+      "fault": "corrupt",
+      "code": "MissingEvidence",
+      "nativeHttpStatus": 422,
+      "previewWithheld": true,
+      "approvalAndAcceptanceAbsent": true,
+      "ledgerUnchanged": true,
+      "keyboardRetryRestoredIdenticalBytes": true
+    }
+  ],
+  "posted": {
+    "draft": "supplier_invoice_draft_fb49cc7bf98d4f5eb08a2adfe5aeda12",
+    "reviewId": "supplier_review_5e4bdb3fc2bf41b7b47b8c152e48c490",
+    "postingReceipt": {
+      "id": "receipt_9d5f53d3c93a4d5796ee07e2892a4108",
+      "changeSetId": "change_8c2ee61b529e472789f835be1d60e125",
+      "voucherId": "voucher_8a02b9a87e064e0daf1921b3bf561461",
+      "planDigest": "sha256:2c4ce70dd56ec66723d49d5e08b8f1d3f15fa5e17c5160117e822789213ff7eb",
+      "sequence": "1",
+      "voucherNumber": "1",
+      "committedAt": "2026-10-10 09:36:50.872107+02"
+    },
+    "ledgerBefore": "0",
+    "ledgerAfter": "1",
+    "voucherAndOriginalUnchangedAfterReload": true
+  },
+  "changed": {
+    "selectedReviewId": "supplier_review_ace538f1378345919906afd025dc935a",
+    "replacementRevision": "2",
+    "sealedOriginalHash": "sha256:7f544d68809707d96de642cf403873f85dedeca2be9b58616aec8a486d12976e",
+    "dependenciesCurrent": false,
+    "approvalAbsent": true,
+    "ledgerBefore": "1",
+    "ledgerAfter": "1",
+    "supersededReviewExcluded": true
+  },
+  "qualification": "Local synthetic native filesystem loss/corruption and changed draft; no provider/optical/native200/production claim"
+}

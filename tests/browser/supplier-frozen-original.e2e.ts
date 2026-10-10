@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import * as Schema from "effect/Schema";
 import * as Accounting from "../../packages/contracts/src/accounting";
 import * as Commerce from "../../packages/contracts/src/commerce";
@@ -318,6 +318,86 @@ for (const changed of [false, true]) {
     await expect(screen.getByRole("region", "Beslut", { exact: true })).toContainText(
       `Vinter & Co AB, faktura ${content.supplierDocumentNumber}`,
     );
+    const originalRecovery: Array<{ fault: string; code: string; screenshot: string }> = [];
+
+    if (!changed) {
+      const session = process.env.OPENERP_E2E_SESSION;
+
+      if (!session || !basename(dirname(session)).startsWith("openerp-paper-"))
+        throw new Error("Original recovery requires the disposable native launcher");
+
+      const object = join(
+        dirname(session),
+        "objects",
+        "v1",
+        occurrence.scope.bookId,
+        expectedHash.slice(7),
+      );
+
+      const backup = `${object}.dra194-backup`;
+
+      expect(await readFile(object)).toEqual(bytes);
+
+      for (const fault of ["missing", "corrupt"]) {
+        await rename(object, backup);
+
+        try {
+          if (fault === "corrupt")
+            await writeFile(object, Buffer.alloc(bytes.length, 120), { flag: "wx" });
+
+          const missing = await fetch(`${base}/source-occurrences/${occurrence.id}`, {
+            headers: { cookie, origin },
+            signal: AbortSignal.timeout(20000),
+          });
+
+          expect(missing.status).toBe(422);
+
+          const refusal = Schema.decodeSync(Schema.fromJsonString(Accounting.AccountingError))(
+            await missing.text(),
+          );
+
+          expect(refusal.code).toBe("MissingEvidence");
+          await browser.reload();
+          await expect(
+            screen.getByRole("button", "Försök läsa originalet igen", { exact: true }),
+          ).toBeVisible();
+          await expect(screen.getByRole("img", `${filename}, sida 1`)).toHaveCount(0);
+
+          const failed = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+
+          expect(failed.plan).toEqual(plan);
+          expect(failed.approval).toBeNull();
+          expect(failed.acceptance).toBeNull();
+          expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+
+          const failureScreenshot = await app.screenshot(`original-${fault}-read`);
+
+          originalRecovery.push({ fault, code: refusal.code, screenshot: failureScreenshot });
+        } finally {
+          await rm(object, { force: true });
+          await rename(backup, object);
+        }
+
+        await screen.getByRole("button", "Försök läsa originalet igen", { exact: true }).focus();
+        await screen
+          .getByRole("button", "Försök läsa originalet igen", { exact: true })
+          .press("Enter");
+        await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({
+          timeout: 30000,
+        });
+
+        const restored = await call(
+          `/source-occurrences/${occurrence.id}`,
+          Source.SourceOccurrenceView,
+        );
+
+        expect(restored.occurrence.sha256).toBe(expectedHash);
+        expect(Buffer.from(restored.contentBase64, "base64")).toEqual(bytes);
+        expect(await readFile(object)).toEqual(bytes);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      }
+    }
+
     await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
 
     const originalConditions = await browser.evaluate(async () => {
@@ -422,6 +502,56 @@ for (const changed of [false, true]) {
       expect(BigInt(after.sequence) - BigInt(before.sequence)).toBe(1n);
     }
 
+    let postedCapture: { screenshot: string; conditions: typeof originalConditions } | null = null;
+
+    if (view.acceptance) {
+      const voucher = await call(
+        `/vouchers/${view.acceptance.postingReceipt.voucherId}`,
+        Accounting.Voucher,
+      );
+
+      expect(
+        voucher.action.evidenceRefs.some((reference) => reference.evidenceId === entry.id),
+      ).toBe(true);
+      expect(voucher.action.lines.map((line) => [line.debitMinor, line.creditMinor])).toEqual([
+        ["1250000", "0"],
+        ["0", "1250000"],
+      ]);
+      await app.open(
+        `${workspace}/books?${new URLSearchParams({ view: "vouchers", q: voucher.action.description })}`,
+      );
+      await expect(
+        screen.getByRole("heading", voucher.action.description, { exact: true }),
+      ).toBeVisible();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).focus();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).press("Enter");
+      await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+
+      const conditions = {
+        ...originalConditions,
+        ...(await browser.evaluate(async () => {
+          await document.fonts.ready;
+
+          return {
+            time: new Date().toISOString(),
+            resolvedRoute: `${window.location.pathname}${window.location.search}`,
+          };
+        })),
+      };
+
+      const postedScreenshot = await app.screenshot("posted-voucher-original");
+
+      postedCapture = { screenshot: postedScreenshot, conditions };
+      await browser.reload();
+      await expect(
+        screen.getByRole("heading", voucher.action.description, { exact: true }),
+      ).toBeVisible();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).click();
+      await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+      expect(await call(`/vouchers/${voucher.id}`, Accounting.Voucher)).toEqual(voucher);
+      expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(after);
+    }
+
     await writeFile(
       join(
         output,
@@ -440,6 +570,8 @@ for (const changed of [false, true]) {
           before,
           after,
           screenshot,
+          originalRecovery,
+          postedCapture,
           originalConditions,
           originalScreenshot,
           nativeL2Screenshot,
