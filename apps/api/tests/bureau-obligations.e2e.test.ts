@@ -1,7 +1,12 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+import { createServer } from "node:net";
 import { expect, test } from "vitest";
 import { createTestHarness } from "wrangler";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { createInterface } from "node:readline";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bureau from "@open-erp/contracts/bureau-obligations";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -21,6 +26,77 @@ import {
 
 // Failure contract: a production Worker refuses clock injection; malformed instants fail;
 // a pinned E2E request reports retained revision age, not worker or database wall time.
+// Native and Worker harnesses must agree on the same request-scoped clock; the
+// production Worker and production Bun entrypoints must refuse clock headers.
+test("native synthetic browser API pins bureau time without changing stored obligations", async () => {
+  const book = await fixture();
+  const objectDirectory = join(environment().scratch, "native-clock-objects");
+  await mkdir(objectDirectory, { mode: 0o700 });
+  const socket = createServer();
+  socket.listen(0, "127.0.0.1");
+  await once(socket, "listening");
+  const address = socket.address();
+
+  if (!address || typeof address === "string") throw new Error("No native test port");
+
+  const origin = `http://127.0.0.1:${address.port}`;
+  await new Promise<void>((resolve, reject) =>
+    socket.close((error) => (error ? reject(error) : resolve())),
+  );
+
+  const native = spawn("bun", ["scripts/native-browser-api.ts"], {
+    cwd: apiDirectory,
+    env: {
+      ...process.env,
+      DATABASE_URL: environment().runtimeUrl,
+      BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      BETTER_AUTH_URL: origin,
+      OPENERP_OBJECT_DIRECTORY: objectDirectory,
+    },
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const lines = createInterface({ input: native.stdout });
+  let output = "";
+  native.stderr.on("data", (chunk: Buffer) => {
+    output += chunk.toString();
+  });
+
+  try {
+    const startup = new Promise<string>((resolve, reject) => {
+      native.once("error", reject);
+      native.once("exit", () => reject(new Error(`Native API exited: ${output}`)));
+      lines.on("line", (line) => {
+        if (line.startsWith('{"nativeApi":true,')) resolve(JSON.parse(line).url as string);
+      });
+    });
+
+    const url = await startup;
+    const pin = "2026-10-02T06:54:00.000Z";
+
+    const response = await fetch(`${url}${book.path}/bureau-obligations`, {
+      headers: { authorization: `Bearer ${book.token}`, "x-openerp-test-now": pin },
+    });
+
+    const obligations = await decoded(response, Bureau.BureauObligations);
+
+    expect(obligations.checkedAt).toBe(pin);
+    await writeFile(
+      join(environment().artifacts, "native-clock.json"),
+      JSON.stringify({ checkedAt: obligations.checkedAt, coverage: obligations.coverage }, null, 2),
+    );
+  } finally {
+    lines.close();
+
+    if (native.pid && native.exitCode === null) {
+      const exited = once(native, "exit");
+      process.kill(-native.pid, "SIGTERM");
+      await exited;
+    }
+  }
+});
+
 test("production Worker refuses client-supplied time with a real PostgreSQL binding", async () => {
   const book = await fixture();
 
