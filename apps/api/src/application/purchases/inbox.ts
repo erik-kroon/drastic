@@ -171,12 +171,17 @@ export const listSupplierInboxes = Effect.fn("purchases.inbox.list")(function* (
           occurrenceId,
         );
 
+        const provenance =
+          (yield* IntakeDb.readProvenance(transaction, command.scope.bookId, occurrenceId))[0] ??
+          null;
+
         items.push(
           yield* Shared.toJsonObject(
             Object.assign(
               {},
               {
                 occurrence: occurrenceSummary(occurrence),
+                intakeProvenance: provenance,
                 channel: stored.channel,
                 messageIdentity: stored.messageIdentity,
                 draftId: stored.draftId,
