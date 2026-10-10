@@ -9,6 +9,10 @@ Drastic keeps its own versioned copy of public Swedish sources, so it can answer
 ## Changes
 
 - Tables for sources, snapshots and sections. Each snapshot keeps the publisher URL, retrieval time, content hash and effective interval, in the same shape as `RulePrimarySource`.
+  - Legal validity time and observation time are stored separately. A source found in October may describe a rule that took effect in April. A published statute may not take effect until 2028.
+  - The raw source is kept beside the normalised text, with the extraction version.
+  - A rights ledger records each source's reuse basis. Riksdagen open data requires attribution. Upphovsrättslagen § 9 covers statutes and authority decisions, not every public page.
+  - Amendments and transitional provisions are stored as relationships, not just as whole-document changes.
 - A fetcher. Tests use fixtures only. Live fetching waits for the owner. It covers:
   - Riksdagen open data, for consolidated statute text with its amended-up-to marker;
   - Skatteverket's legal guidance by yearly edition, and its official positions;

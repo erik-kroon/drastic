@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "numPassedTests": 2,
+  "numFailedTests": 0,
+  "numPendingTests": 1,
+  "tests": [
+    {
+      "name": "presence off leaves an operator session's signature intent unchanged",
+      "status": "skipped"
+    },
+    {
+      "name": "presence proof binds one person, session and exact request to one signature gesture",
+      "status": "passed"
+    },
+    {
+      "name": "zero-counter authenticator accepts successive fresh exact signature proofs once each",
+      "status": "passed"
+    }
+  ]
+}

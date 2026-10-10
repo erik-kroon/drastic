@@ -11,6 +11,7 @@ import {
   environment,
   failure,
   key,
+  post,
   request,
   run,
   type BookFixture,
@@ -372,5 +373,142 @@ test("presence proof binds one person, session and exact request to one signatur
       null,
       2,
     ),
+  );
+});
+
+test("zero-counter authenticator accepts successive fresh exact signature proofs once each", async () => {
+  const context = await signingFixture();
+  const { hostname } = origin();
+  const authenticator = new SoftwareAuthenticator(origin().origin, hostname);
+  const observations = [];
+
+  await operatorConsole("policy", context.book.bookId, "required", "off");
+  const ticket = await operatorConsole("presence-ticket", context.book.actorId);
+
+  const enrolled = await decoded(
+    await enroll(context.book, authenticator, ticket),
+    Presence.EnrolledAuthenticator,
+  );
+
+  expect(enrolled.credentialId).toBe(authenticator.id);
+
+  const credential = await admin(
+    async (client) =>
+      (
+        await client.query(
+          "SELECT initial_counter::text AS counter FROM openerp.presence_authenticators WHERE credential_id=$1",
+          [enrolled.credentialId],
+        )
+      ).rows[0],
+  );
+
+  expect(credential.counter).toBe("0");
+
+  const secondManifest = await post(
+    context.book,
+    `${documents}/manifests`,
+    {
+      artifactId: context.artifact.id,
+      validationId: context.validation.id,
+      governanceId: context.governance.id,
+      purpose: "annual_report_signing",
+      consentText: "Sign this second exact synthetic annual report manifest",
+      policyRelease: "synthetic-signature-v1",
+    },
+    Documents.DocumentManifest,
+  );
+
+  const first = intentRequest(context, key());
+  const second = { ...intentRequest(context, key()), manifestId: secondManifest.id };
+
+  expect(first.idempotencyKey).not.toBe(second.idempotencyKey);
+  expect(first.manifestId).not.toBe(second.manifestId);
+
+  for (const [index, intent] of [first, second].entries()) {
+    const issued = await decoded(await challenge(context.book, intent), Presence.PresenceChallenge);
+
+    const assertion = authenticator.assert(
+      { challenge: challengeOf(issued.options) },
+      { counter: 0 },
+    );
+
+    const proof = await decoded(
+      await request(context.book, `/presence/challenges/${issued.id}/assertion`, {
+        method: "POST",
+        body: JSON.stringify({ response: assertion }),
+      }),
+      Presence.PresenceProof,
+    );
+
+    expect(proof).toEqual({ challengeId: issued.id, verified: true });
+    await failure(
+      await createIntent(context, { ...intent, idempotencyKey: key() }),
+      403,
+      "PresenceRequired",
+    );
+    expect(await consumptionCount(context.book.bookId)).toBe(index);
+
+    const created = await decoded(
+      await createIntent(context, intent),
+      Documents.DocumentSignatureIntent,
+    );
+
+    const replayed = await decoded(
+      await createIntent(context, intent),
+      Documents.DocumentSignatureIntent,
+    );
+
+    expect(created.manifestId).toBe(intent.manifestId);
+    expect(created.signerId).toBe(context.book.actorId);
+    expect(replayed.id).toBe(created.id);
+    expect(await consumptionCount(context.book.bookId)).toBe(index + 1);
+    expect(await intentCount(context.book.bookId)).toBe(index + 1);
+    await failure(
+      await request(context.book, `/presence/challenges/${issued.id}/assertion`, {
+        method: "POST",
+        body: JSON.stringify({ response: assertion }),
+      }),
+      403,
+      "Forbidden",
+    );
+
+    expect(await consumptionCount(context.book.bookId)).toBe(index + 1);
+
+    const stored = await admin(
+      async (client) =>
+        (
+          await client.query(
+            `SELECT a.counter::text AS counter, c.id AS challenge_id, c.binding_digest,
+          count(u.challenge_id)::int AS consumptions
+        FROM openerp.presence_challenges c
+        JOIN openerp.presence_assertions a ON a.challenge_id=c.id
+        LEFT JOIN openerp.presence_consumptions u ON u.challenge_id=c.id
+        WHERE c.id=$1 AND a.credential_id=$2 GROUP BY a.counter,c.id,c.binding_digest`,
+            [issued.id, enrolled.credentialId],
+          )
+        ).rows[0],
+    );
+
+    expect(stored.counter).toBe("0");
+    expect(stored.binding_digest).toBe(issued.bindingDigest);
+    expect(stored.consumptions).toBe(1);
+    observations.push({
+      issued,
+      proof,
+      stored,
+      intentKey: intent.idempotencyKey,
+      createdId: created.id,
+      replayedId: replayed.id,
+    });
+  }
+
+  expect(observations[0]!.issued.id).not.toBe(observations[1]!.issued.id);
+  expect(challengeOf(observations[0]!.issued.options)).not.toBe(
+    challengeOf(observations[1]!.issued.options),
+  );
+  expect(observations[0]!.issued.bindingDigest).not.toBe(observations[1]!.issued.bindingDigest);
+  await writeFile(
+    join(environment().artifacts, "presence-zero-counter.json"),
+    JSON.stringify({ credential, observations }, null, 2),
   );
 });

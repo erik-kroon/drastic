@@ -1,3 +1,7 @@
+import { sql } from "drizzle-orm";
+import * as Extraction from "@open-erp/contracts/supplier-extraction";
+import * as Provenance from "@open-erp/contracts/decision-provenance";
+import * as ExtractionDb from "../../src/db/purchases/extraction";
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -9,6 +13,9 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Intake from "@open-erp/contracts/source-intake";
 import { databaseLayer } from "../../src/db/connection";
 import { RequestEnvironment } from "../../src/runtime/environment";
+import { logFailure } from "../../src/application/failures";
+import { recordSuggestion } from "../../src/application/decision-provenance";
+import { withBook } from "../../src/application/commerce/support";
 import { handleExtraction } from "../../src/runtime/preparation-queue";
 import {
   claimPendingSupplierExtractions,
@@ -17,11 +24,15 @@ import {
 import { retainSource } from "../../src/application/source-retention";
 
 const Input = Schema.Struct({
-  mode: Schema.Literals(["retain", "run", "claim", "stop"]),
+  mode: Schema.Literals(["retain", "run", "claim", "stop", "capture"]),
   scope: Accounting.Scope,
   requestId: Schema.String,
   store: Schema.String,
   pause: Schema.Boolean,
+  captureKind: Schema.optional(
+    Schema.Literals(["extraction", "extraction_value", "bank", "supplier", "native"]),
+  ),
+  suggestionId: Schema.optional(Accounting.Identifier),
   source: Schema.optional(Intake.RetainSource),
 });
 
@@ -32,6 +43,91 @@ const input = Schema.decodeSync(Schema.fromJsonString(Input))(
 const token = process.env.OPENERP_PREPARATION_TOKEN!;
 
 const operation = Effect.gen(function* () {
+  if (input.mode === "capture") {
+    return yield* withBook(token, input.scope, false, function* (transaction, principal) {
+      if (input.captureKind === "native") {
+        const records = yield* transaction.execute<{ body: Schema.JsonObject }>(
+          sql`select body from openerp.suggestion_records where book_id=${input.scope.bookId} and id=${input.suggestionId}`,
+          "objects",
+        );
+
+        const served = yield* Schema.decodeUnknownEffect(Provenance.SuggestionRecord)(
+          records[0]?.body,
+        );
+
+        const attempts = yield* ExtractionDb.readAttemptForRequest(
+          transaction,
+          input.scope.bookId,
+          input.requestId,
+        );
+
+        const attempt = yield* Schema.decodeUnknownEffect(
+          Schema.Struct({
+            fields: Schema.Array(Extraction.ExtractedField),
+            candidateLines: Schema.Array(Extraction.ExtractedLine),
+          }),
+        )(attempts.at(-1)?.body.extraction);
+
+        return yield* recordSuggestion(transaction, input.scope.bookId, principal, served.subject, {
+          source: "extraction",
+          version: "extraction_merge_v1",
+          options: [
+            ...attempt.fields.map((field) => ({
+              lineOrdinal: 0,
+              fieldKey: field.fieldKey,
+              value: field.proposedValue,
+            })),
+            ...attempt.candidateLines.flatMap((line, index) =>
+              line.fields.map((field) => ({
+                lineOrdinal: index + 1,
+                fieldKey: field.fieldKey,
+                value: field.proposedValue,
+              })),
+            ),
+          ].filter((field) => field.value !== null),
+        });
+      }
+
+      const subject = {
+        kind: "supplier_draft",
+        draftId: "synthetic_invalid_capture",
+        revision: "1",
+      } as const;
+
+      if (input.captureKind === "bank")
+        return yield* recordSuggestion(transaction, input.scope.bookId, principal, subject, {
+          source: "bank_ranking_v2",
+          version: "retained_then_reference_amount_date_v2",
+          options: Array.from({ length: 1001 }, () => ({
+            voucherId: "synthetic_voucher",
+            lineId: "synthetic_line",
+            amountMinor: "10000",
+          })),
+        });
+
+      if (input.captureKind === "supplier")
+        return yield* recordSuggestion(transaction, input.scope.bookId, principal, subject, {
+          source: "firm_memory_v0",
+          version: "supplier_account_history_v1",
+          options: Array.from({ length: 6 }, () => ({
+            expenseAccountId: "account_bank",
+            vatRatePercent: 0 as const,
+            sourceInvoiceId: "synthetic_invoice",
+          })),
+        });
+
+      return yield* recordSuggestion(transaction, input.scope.bookId, principal, subject, {
+        source: "extraction",
+        version: "extraction_merge_v1",
+        options: Array.from({ length: input.captureKind === "extraction_value" ? 1 : 865 }, () => ({
+          lineOrdinal: 0,
+          fieldKey: "title",
+          value: input.captureKind === "extraction_value" ? "x".repeat(1001) : "Synthetic",
+        })),
+      });
+    });
+  }
+
   if (input.mode === "retain") {
     if (!input.source) throw new Error("Retain requires source input");
 
@@ -53,6 +149,7 @@ const operation = Effect.gen(function* () {
 
 const result = await Effect.runPromise(
   operation.pipe(
+    Effect.tapError(logFailure),
     Effect.provide(
       databaseLayer({
         connectionString: Redacted.make(process.env.DATABASE_URL!),

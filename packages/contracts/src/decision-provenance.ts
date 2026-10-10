@@ -1,3 +1,4 @@
+import { maximumExtractionReviewFields } from "./extraction-limits";
 import * as Memory from "@open-erp/domain/firm-memory";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
@@ -59,7 +60,7 @@ export const SuggestionOptions = Schema.Union([
         fieldKey: Schema.String,
         value: Schema.NullOr(Schema.String.check(Schema.isMaxLength(1000))),
       }),
-    ).check(Schema.isMaxLength(400)),
+    ).check(Schema.isMaxLength(maximumExtractionReviewFields)),
   }),
   Schema.Struct({
     source: Schema.Literal("bank_ranking_v2"),

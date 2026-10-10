@@ -23,6 +23,19 @@ The preparation runner advances runs one step at a time. A kill at any step boun
   - `reconcile` effects read the owner's receipt by idempotency key. They are never cancelled blindly and never retried blindly.
   - If settlement fails after the owner committed, the next claim reconciles.
 - Executors re-check the run and node state with compare-and-set before calling an owner. A late or duplicate claim then does nothing.
+- The fence is checked in the transaction that changes state, not only when the job is claimed.
+- The kill matrix stops the runner at each of these points:
+  1. before intent;
+  2. after intent;
+  3. after dispatch;
+  4. after the owner succeeded but before the local acknowledgement;
+  5. after the database commit but before acknowledgement.
+- Further cases:
+  - a zombie worker resuming after it lost its lease;
+  - an approval revoked concurrently;
+  - a request key reused with a new digest;
+  - a deployment that changes a step schema.
+- Every case asserts one committed accounting effect, preserved audit evidence, and either a reconciled result or an explicit unresolved item.
 - Inbox entries are consumed only at node boundaries.
 
 ## Data structures

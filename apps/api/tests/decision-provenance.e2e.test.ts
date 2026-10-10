@@ -6,6 +6,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Bank from "@open-erp/contracts/reconciliation";
+import * as Settlement from "@open-erp/contracts/settlements";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
 import * as Examples from "@open-erp/contracts/decision-examples";
 import { createDraft, supplierFixture, purchaseEvidence } from "./support/supplier-review";
@@ -27,7 +28,7 @@ import {
 
 import { provenanceRows } from "./support/decision-provenance";
 
-async function bankFixture() {
+async function bankFixture(rowCount = 1) {
   const book = await fixture();
 
   const source = await evidence(book);
@@ -48,17 +49,15 @@ async function bankFixture() {
     startsOn: "2026-09-01",
     endsOn: "2026-09-30",
     openingMinor: "0",
-    closingMinor: "100",
+    closingMinor: String(100 * rowCount),
     completeness: { declaredComplete: false, basis: "Synthetic provenance journey" },
-    rows: [
-      {
-        rowOrdinal: 1,
-        providerId: null,
-        date: "2026-09-22",
-        description: "Synthetic ranking exposure",
-        amountMinor: "100",
-      },
-    ],
+    rows: Array.from({ length: rowCount }, (_, index) => ({
+      rowOrdinal: index + 1,
+      providerId: null,
+      date: "2026-09-22",
+      description: "Synthetic ranking exposure",
+      amountMinor: "100",
+    })),
   };
 
   const original = await post(
@@ -595,3 +594,428 @@ test("empty supplier hints preserve independent labels and actual posted account
     ),
   );
 });
+
+test("same bank subject stale citation returns StaleDependency after another row matches", async () => {
+  const setup = await bankFixture(2);
+
+  const first = await post(
+    setup.book,
+    "/bank-match-candidates",
+    { statementId: setup.statementId, rowOrdinal: 1 },
+    Candidates.BankMatchCandidates,
+  );
+
+  const second = await post(
+    setup.book,
+    "/bank-match-candidates",
+    { statementId: setup.statementId, rowOrdinal: 2 },
+    Candidates.BankMatchCandidates,
+  );
+
+  const selectedA = first.candidates.find((candidate) => candidate.eligible)!;
+
+  const selectedB = second.candidates.find(
+    (candidate) => candidate.eligible && candidate.voucherId !== selectedA.voucherId,
+  )!;
+
+  expect(selectedB).toBeDefined();
+  await post(
+    setup.book,
+    "/bank-matches",
+    {
+      statementId: setup.statementId,
+      rowOrdinal: 1,
+      voucherId: selectedA.voucherId,
+      lineId: selectedA.lineId,
+      presentedSuggestionIds: [first.suggestionRecordId],
+    },
+    Bank.BankMatchReceipt,
+  );
+
+  const localInput = {
+    statementId: setup.statementId,
+    rowOrdinal: 2,
+    voucherId: selectedB.voucherId,
+    lineId: selectedB.lineId,
+  };
+
+  await failure(
+    await request(setup.book, "/bank-matches", {
+      method: "POST",
+      body: JSON.stringify({ ...localInput, presentedSuggestionIds: [first.suggestionRecordId] }),
+    }),
+    403,
+    "Forbidden",
+  );
+  const differentSession = { ...setup.book, token: (await createSession(setup.book)).token };
+  await failure(
+    await request(differentSession, "/bank-matches", {
+      method: "POST",
+      body: JSON.stringify({ ...localInput, presentedSuggestionIds: [second.suggestionRecordId] }),
+    }),
+    403,
+    "Forbidden",
+  );
+
+  const response = await request(setup.book, "/bank-matches", {
+    method: "POST",
+    body: JSON.stringify({
+      statementId: setup.statementId,
+      rowOrdinal: 2,
+      voucherId: selectedB.voucherId,
+      lineId: selectedB.lineId,
+      presentedSuggestionIds: [second.suggestionRecordId],
+    }),
+  });
+
+  await writeFile(
+    join(environment().artifacts, "bank-citation-freshness.json"),
+    JSON.stringify(
+      { first, second, status: response.status, body: await response.clone().json() },
+      null,
+      2,
+    ),
+  );
+  await failure(response, 409, "StaleDependency");
+});
+
+async function advanceBankSource(
+  book: Awaited<ReturnType<typeof fixture>>,
+  observedOn = "2026-10-01",
+) {
+  const content = {
+    kind: "synthetic_bank_statement_v1",
+    statementIdentifier: key(),
+    sourceBankAccountId: "synthetic_bank",
+    accountId: "account_bank",
+    currency: "SEK",
+    startsOn: observedOn,
+    endsOn: observedOn,
+    openingMinor: "0",
+    closingMinor: "1",
+    completeness: { declaredComplete: false, basis: "Unrelated synthetic source revision" },
+    rows: [
+      {
+        rowOrdinal: 1,
+        providerId: null,
+        date: observedOn,
+        description: "Unrelated source observation",
+        amountMinor: "1",
+      },
+    ],
+  };
+
+  const source = await post(
+    book,
+    "/evidence",
+    {
+      title: "Unrelated synthetic statement",
+      mediaType: "application/json",
+      content: JSON.stringify(content),
+      origin: "Bug6 source revision fixture",
+    },
+    Accounting.Evidence,
+  );
+
+  return post(
+    book,
+    "/bank-statements",
+    { ...content, evidenceId: source.id, existingMatches: [] },
+    Bank.StatementImportReceipt,
+  );
+}
+
+test("bank request driver refreshes equal options once and refuses changed options or repeated staleness", async () => {
+  const { submitBankWithCitationRefresh } = await import("../../web/src/lib/bank-citation-request");
+  const outcomes = [];
+
+  for (const mode of ["unchanged", "changed", "twice_stale"] as const) {
+    const setup = await bankFixture(2);
+    const discovery = { statementId: setup.statementId, rowOrdinal: 2 };
+
+    const found = await post(
+      setup.book,
+      "/bank-match-candidates",
+      discovery,
+      Candidates.BankMatchCandidates,
+    );
+
+    const captureDb = await database();
+
+    try {
+      const capture = (
+        await captureDb.query(
+          "SELECT body->>'optionSetDigest' AS digest FROM openerp.suggestion_records WHERE book_id=$1 AND id=$2",
+          [setup.book.bookId, found.suggestionRecordId],
+        )
+      ).rows[0];
+
+      expect(found.optionSetDigest).toBe(capture.digest);
+      expect(found.optionSetDigest).not.toBe(found.digest);
+    } finally {
+      await captureDb.end();
+    }
+
+    const selected = found.candidates[1]!;
+
+    if (mode === "changed") {
+      const first = await post(
+        setup.book,
+        "/bank-match-candidates",
+        { ...discovery, rowOrdinal: 1 },
+        Candidates.BankMatchCandidates,
+      );
+
+      const other = first.candidates.find(
+        (candidate) => candidate.voucherId !== selected.voucherId,
+      )!;
+
+      await post(
+        setup.book,
+        "/bank-matches",
+        {
+          statementId: setup.statementId,
+          rowOrdinal: 1,
+          voucherId: other.voucherId,
+          lineId: other.lineId,
+          presentedSuggestionIds: [first.suggestionRecordId],
+        },
+        Bank.BankMatchReceipt,
+      );
+    } else await advanceBankSource(setup.book);
+    const initialKey = key();
+    const retained: { key: string; input: typeof Settlement.PrepareBankAllocation.Type }[] = [];
+    let refreshes = 0;
+
+    const input: typeof Settlement.PrepareBankAllocation.Type = {
+      presentedSuggestionIds: [found.suggestionRecordId],
+      accountId: "account_bank",
+      reason: "Independent synthetic bank choice",
+      ambiguityAcknowledged: true,
+      legs: [
+        {
+          ...discovery,
+          voucherId: selected.voucherId,
+          lineId: selected.lineId,
+          amountMinor: "100",
+        },
+      ],
+    };
+
+    let fresh: typeof Candidates.BankMatchCandidates.Type | undefined;
+    let plan: typeof Settlement.BankAllocationPlan.Type | undefined;
+    let error: unknown;
+
+    try {
+      plan = await submitBankWithCitationRefresh({
+        path: `${environment().baseUrl}${setup.book.path}/bank-allocation-plans`,
+        output: Settlement.BankAllocationPlan,
+        request: { key: initialKey, input },
+        optionSetDigest: found.optionSetDigest,
+        options: { headers: { authorization: `Bearer ${setup.book.token}` } },
+        retain: (value) => retained.push(value),
+        refresh: async () => {
+          refreshes++;
+          fresh = await post(
+            setup.book,
+            "/bank-match-candidates",
+            discovery,
+            Candidates.BankMatchCandidates,
+          );
+
+          if (mode === "twice_stale") await advanceBankSource(setup.book, "2026-10-02");
+
+          return fresh;
+        },
+      });
+    } catch (failure) {
+      error = failure;
+    }
+
+    outcomes.push({
+      mode,
+      found,
+      fresh,
+      retained,
+      refreshes,
+      plan: plan ?? null,
+      error:
+        error instanceof Accounting.AccountingError
+          ? error.code
+          : error instanceof Error
+            ? error.message
+            : null,
+    });
+    await writeFile(
+      join(environment().artifacts, "bank-request-refresh.json"),
+      JSON.stringify(outcomes, null, 2),
+    );
+    expect(refreshes, mode).toBe(1);
+    expect(fresh).toBeDefined();
+
+    if (mode === "unchanged") {
+      expect(error).toBeUndefined();
+      expect(plan).toBeDefined();
+      expect(fresh!.optionSetDigest).toBe(found.optionSetDigest);
+      expect(retained).toHaveLength(2);
+      expect(retained[1]!.key).not.toBe(initialKey);
+      expect(retained[1]!.input.presentedSuggestionIds).toEqual([fresh!.suggestionRecordId]);
+
+      const approval = await post(
+        setup.book,
+        `/bank-allocation-plans/${plan!.id}/approve`,
+        {
+          digest: plan!.digest,
+          version: plan!.version,
+          presentedSuggestionIds: [fresh!.suggestionRecordId],
+        },
+        Settlement.BankAllocationApproval,
+      );
+
+      expect(approval.planId).toBe(plan!.id);
+    } else {
+      expect(error).toBeInstanceOf(Accounting.AccountingError);
+      expect((error as Accounting.AccountingError).code).toBe("StaleDependency");
+      expect(plan).toBeUndefined();
+      expect(retained).toHaveLength(mode === "changed" ? 1 : 2);
+
+      if (mode === "changed") expect(fresh!.optionSetDigest).not.toBe(found.optionSetDigest);
+    }
+  }
+}, 60_000);
+
+test("bank exposure equivalent options across revisions remain cited but changed options stay unknown", async () => {
+  const observations = [];
+
+  for (const mode of ["changed", "unchanged"] as const) {
+    const setup = await bankFixture(2);
+    const discovery = { statementId: setup.statementId, rowOrdinal: 2 };
+
+    const old = await post(
+      setup.book,
+      "/bank-match-candidates",
+      discovery,
+      Candidates.BankMatchCandidates,
+    );
+
+    if (mode === "changed") {
+      const first = await post(
+        setup.book,
+        "/bank-match-candidates",
+        { ...discovery, rowOrdinal: 1 },
+        Candidates.BankMatchCandidates,
+      );
+
+      const consumed = first.candidates[0]!;
+
+      await post(
+        setup.book,
+        "/bank-matches",
+        {
+          statementId: setup.statementId,
+          rowOrdinal: 1,
+          voucherId: consumed.voucherId,
+          lineId: consumed.lineId,
+          presentedSuggestionIds: [first.suggestionRecordId],
+        },
+        Bank.BankMatchReceipt,
+      );
+    } else await advanceBankSource(setup.book);
+
+    const fresh = await post(
+      setup.book,
+      "/bank-match-candidates",
+      discovery,
+      Candidates.BankMatchCandidates,
+    );
+
+    const selected = fresh.candidates.find((candidate) => candidate.eligible)!;
+
+    const input = {
+      ...discovery,
+      voucherId: selected.voucherId,
+      lineId: selected.lineId,
+    };
+
+    await failure(
+      await request(setup.book, "/bank-matches", {
+        method: "POST",
+        body: JSON.stringify({ ...input, presentedSuggestionIds: [old.suggestionRecordId] }),
+      }),
+      409,
+      "StaleDependency",
+    );
+
+    if (mode === "unchanged") {
+      const otherSubject = await post(
+        setup.book,
+        "/bank-match-candidates",
+        { ...discovery, rowOrdinal: 1 },
+        Candidates.BankMatchCandidates,
+      );
+
+      expect(otherSubject.optionSetDigest).toBe(fresh.optionSetDigest);
+      await failure(
+        await request(setup.book, "/bank-matches", {
+          method: "POST",
+          body: JSON.stringify({
+            ...input,
+            presentedSuggestionIds: [otherSubject.suggestionRecordId],
+          }),
+        }),
+        403,
+        "Forbidden",
+      );
+    }
+
+    const receipt = await post(
+      setup.book,
+      "/bank-matches",
+      { ...input, presentedSuggestionIds: [fresh.suggestionRecordId] },
+      Bank.BankMatchReceipt,
+    );
+
+    const admin = await database();
+    let captures;
+
+    try {
+      captures = (
+        await admin.query(
+          `SELECT id, actor_id, session_id, subject_identity, subject_digest,
+            body->>'optionSetDigest' AS option_set_digest
+          FROM openerp.suggestion_records WHERE book_id=$1 AND id IN ($2,$3) ORDER BY id`,
+          [setup.book.bookId, old.suggestionRecordId, fresh.suggestionRecordId],
+        )
+      ).rows;
+    } finally {
+      await admin.end();
+    }
+
+    const oldCapture = captures.find((capture) => capture.id === old.suggestionRecordId)!;
+    const freshCapture = captures.find((capture) => capture.id === fresh.suggestionRecordId)!;
+    const provenance = await provenanceRows(setup.book);
+
+    const decision = provenance.find(
+      (row) => row.decision_id === `${setup.statementId}:2` && row.decision_kind === "bank_match",
+    )!;
+
+    observations.push({ mode, receipt, captures, provenance });
+    await writeFile(
+      join(environment().artifacts, "exposure-equivalence.json"),
+      JSON.stringify(observations, null, 2),
+    );
+
+    expect(oldCapture.subject_identity).toBe(freshCapture.subject_identity);
+    expect(oldCapture.subject_digest).not.toBe(freshCapture.subject_digest);
+    expect(oldCapture.actor_id).toBe(freshCapture.actor_id);
+    expect(oldCapture.session_id).toBe(freshCapture.session_id);
+
+    if (mode === "unchanged") {
+      expect(oldCapture.option_set_digest).toBe(freshCapture.option_set_digest);
+      expect(decision.classification).toBe("accepted_unchanged");
+    } else {
+      expect(oldCapture.option_set_digest).not.toBe(freshCapture.option_set_digest);
+      expect(decision.classification).toBe("unknown_exposure");
+    }
+  }
+}, 60_000);

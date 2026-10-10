@@ -60,17 +60,6 @@ AUT-01 (`e685811`) and AUT-02 (`15a1b5c`) are implemented locally and in review 
 - Shared mutable state. Each suggestion and decision retains book/subject/actor/session identity. Provenance writes use the decision's existing transaction.
 - Smallest safe decomposition. Implement AUT-01 as one coherent change because contracts, suggestion serving and decision recording must agree. Run required checks sequentially and one focused E2E journey.
 
-## Task steps
-
-1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero).
-2. Pick the wake mechanism from CODEX.md.
-3. Each iteration makes the smallest change the evidence justifies, verifies it against the predicate, commits if it advanced, discards changes that didn't help.
-4. Address discoveries within the authorized task.
-5. Checkpoint every iteration.
-6. Stop when the predicate is met.
-
-The active goal owns continuation. No future heartbeat is configured.
-
 ## AUT-01 design
 
 Model the Domain led to explicit subject and selection variants. Supplier treatment,
@@ -161,6 +150,31 @@ Four focused workflows passed across retained runs: memory vectors, the Swedish 
 
 AUT-11 is now in progress: immutable requests/results, fenced background dispatch, read-only runtime policies and bounded synthetic budgets. Independent failure cases are already committed. Add a bounded machine-runner processing surface so the Cloudflare entry can genuinely inject its AI binding into the shared processor; configuring or invoking a live deployment remains gated. AUT-12 evaluation and remaining anomaly/verification work follow.
 
+## PR 19 owner review, 2026-10-10
+
+AUT-11 is parked in unpushed local checkpoint `4958339` on `automation/aut11-parked-2026-10-10`. One focused workflow passed and one failed at queued delivery; full and owners checks were not run. It remains incomplete and will resume after the owner review fixes.
+
+Accepted ADR 0021 and the handoff are committed in `36711e2`. Main through `295d0b4` is merged in `6a73127`; migrations 0106 and 0107 follow main's 0105. Main's design entries and immutable references are retained. K-10, K-11 and K-21 are unverified because their retained source hashes predate request transport changes; no composition, baseline or new visual evidence is adopted. Erik Kroon adopted the AUT-01 request transport scope on 2026-10-10.
+
+A clean worktree at `6a73127` ran the seven affected automation suites: 15 of 16 tests passed. The stale consequence test expected export v2 despite current v3 exports; `477f381` corrects that assertion. Its two-test suite passed in a clean worktree at that commit. Artifacts are `test-results/pr19-main-merge` and `test-results/pr19-main-merge-consequence` in `/tmp/drastic-pr19-review-6a73127`. Final clean-worktree checks against the PR base remain outstanding.
+
+## Merged PR and follow-up checkpoint
+
+PR 19 merged at `8cc665e` before the owner corrections. They continue in draft [PR 20](https://github.com/erik-kroon/drastic/pull/20), on `automation/pr19-review-fixes`; main is not pushed by this work. The accepted documents and transport adoption are included in that follow-up.
+
+Clean worktree `400e569`, against main `8cc665e`, passed `check:changed:full origin/main`, `check:owners` (55/55), and `check:design origin/main`; tracked status remained clean. The preceding full check at `6e9b3d1` against older main failed on missing generated web route/localization types and is not a passing qualification. No current visual parity is claimed.
+
+The independently authored [owner review failure cases](automation-review-failure-cases.md) govern the remaining fixes in owner order. AUT-11 remains parked locally at `4958339` until those fixes and their evidence are complete.
+
+## Owner review: extraction bounds and capture resilience
+
+The extraction envelope now derives from its contract bounds: 64 header fields plus 50 lines with 16 fields each, or 864 fields. Every suggestion variant decodes before insertion. An undecodable retained suggestion is a counted `undecodable_capture` exclusion, without aborting valid examples in the same seal. Other retained review, correction and document schemas remain strict.
+
+The fully unfixed public preparation failed with 457 merged fields; a separate unfixed export failed on a malformed capture. Supplemental evidence restored only the old 400-option schema and is explicitly distinguished from a fully unfixed checkout. Four focused workflows passed across retained runs: three in `pr20-extraction-final`, then the corrected native eligibility assertion in `pr20-extraction-native-final`. The native path commits 457 decisions with a 407-option native-derived citation, while its ordinary preview serves seven header options. It seals successfully with 457 `source_text_not_captured` exclusions and zero native training examples; the existing hash-only owner is preserved. The malformed-capture seal retains one valid example and one exclusion. Four invalid suggestion variants insert no rows.
+
+[Extraction evidence](../../verification/extraction-review-bounds/README.md) records exact hashes, commands, fixture corrections and the observed summary. The changed check and read-only review passed. Clean-HEAD full/owners/design and required MCP deterministic/evaluation checks are the gate before advancing to bank citations. No provider, browser parity, visual baseline, history rewrite or statutory qualification is claimed. Implementation is isolated in `/tmp/drastic-pr19-review-6a73127`; concurrent AUT-28 edits in the primary workspace are preserved.
+
+That gate passed at clean HEAD `111f1e9` against main `8cc665e`: full changed checks, owners (55/55), design contract, three deterministic MCP tests and one pinned Luna MCP evaluation. Tracked status stayed clean. MCP evidence is `test-results/pr20-extraction-mcp` and `test-results/mcpjam/3ad212d9-2437-473e-9cbe-97d01efed133`. The design contract measured zero matching screens and is not visual comparison evidence. The verified source is pushed only to draft PR 20. Bank citations are next; other owner review items and AUT-11 remain incomplete.
 ## Approved phase issue map, evening update
 
 | Handoff | Phase | Linear issue |
@@ -195,3 +209,37 @@ The owner sequence and gates are recorded in the handoff evening update. The det
 Commit `eee5faa` preserves the 20 supplied plan documents in draft [PR #22](https://github.com/erik-kroon/drastic/pull/22). All 43 local file links resolve. Clean-worktree owners passed at 55/55. Changed and full checks are blocked by main's stale K-10/K-11 supplier evidence and missing handoff reference. No runtime, browser or production qualification is claimed.
 
 Linear AUT-06 was rewritten for Phase 1; AUT-28 through AUT-36, phase children and AUT-D11/D12 are mapped above. AUT-00 retains provider, client-role, mandate and live-fetching decisions. AUT-31 is related to AUT-26.
+
+## Bank citation freshness checkpoint
+
+The retained failure in `test-results/pr20-bank-freshness-before` returned Forbidden for a same-subject stale citation. The fix returns StaleDependency after foreign identity checks and uses one subject builder across discovery, matching, preparation and approval. Candidate responses carry the stored option-set digest. The screen request driver refreshes once, retains a new request key before retry, and requires unchanged options. Saved replay keeps its original payload.
+
+Two focused real HTTP workflows passed in `test-results/pr20-bank-freshness-resumed`; all three retry outcomes are retained. Changed-file checks passed before source integration. [Evidence](../../verification/bank-citation-freshness/README.md) records the before, intermediate invalid fixture and final run. Browser storage, screen rendering and visual parity remain unverified. Clean committed full/owners/design and MCP checks are pending. Exposure equivalence remains the next unit.
+
+Clean committed HEAD `af7efe1` against main `4380287` passed full changed checks, owners (55/55), design contract, deterministic MCP (3/3) and pinned Luna MCP evaluation (1/1). Tracked status remained clean. MCP artifacts are `test-results/pr20-bank-mcp` and `test-results/mcpjam/844d91a8-a2a5-49c5-b46b-ad525b660fdd`. The design check measured zero matching screens and is not visual evidence. The source is ready for the next review unit, exposure equivalence.
+
+## PR #20 exposure-equivalence checkpoint
+
+Owner review item 7 compares earlier suggestion exposure using the stable subject identity and option-set digest for the same actor and book. Direct citation authorization still rejects foreign identity and stale revisions. A changed option set still yields unknown exposure. No historical decision is rewritten.
+
+The reproducing HTTP E2E failed before the SQL change; three selected workflows passed afterward, including unequal options and existing authorization/freshness boundaries. Evidence is retained in `verification/exposure-equivalence/`. Changed-file checks passed. Clean-commit qualification is recorded separately; this does not establish model or representative accounting accuracy. The remaining state-limit failure specification now uses the owner's 24,576-token hosted Clef-flash window and the complete request.
+
+## Owner research follow-up checkpoint
+
+The supplied plan amendments distinguish month completion from run settlement, pin effect and version protocols, extend recovery and blind evaluation cases, and retain fixture-only legal-source work. Hosted Clef-flash is specified as 24,576 tokens; complete request fit is checked before dispatch and probability thresholds confer no authority. No implementation or legal/provider qualification is implied by these plan amendments.
+
+The ADR 0020 counter table now matches existing SimpleWebAuthn behavior. Before editing that wording, the unchanged-runtime synthetic HTTP suite passed two selected tests: successive fresh zero-counter assertions with exact binding and single consumption, and the existing positive-counter clone refusal. Evidence is retained in `verification/presence-zero-counter/`. Hardware and browser authenticator behavior remain unverified.
+
+The initial changed check passed formatting and lint, then stopped on main's stale K-10/K-11 supplier design evidence. No baseline or unrelated design evidence was regenerated. The shared main worktree's supplied edits were preserved; this unit uses an isolated branch.
+
+Clean source `b2d6e5a` full check against main `4380287` passed the design contract and formatting, then timed out in type-aware lint after 60 seconds; process-group cleanup reported EPERM. This is incomplete validation, not a pass. The separate research test compiler was stopped after more than four minutes and remains unverified. Main's merged research follow-up is incorporated before the next unit.
+
+Clean committed source `517640e` against main `b53db7f` passed full changed checks, owners (55/55) and the design contract with tracked status clean. Heavy checks were serialized after the earlier timeout. The changed test project passed in 15.66 seconds; this covers the merged zero-counter regression's static types as well. The design contract measured zero matching screens and provides no visual qualification. Exposure equivalence has three passing selected HTTP workflows; extraction read and suggestion identity are next.
+
+## PR #20 extraction read checkpoint
+
+Owner review item 8 now reads review basis without inbox or lifecycle row locks. A typed stale/missing basis returns retained extraction state and attempt diagnostics with no suggestion citation; database and decoding errors still propagate. Preparation and commit retain locked strict reads. Suggestion identity is the next separate unit.
+
+Failure-first HTTP artifacts reproduced inbox lock timeout and stale-basis 409, then a separate lifecycle lock timeout before that reader was fixed. Four final selected workflows passed, including the ordinary extraction read/prepare/commit/cancel/replay path. Evidence is retained in `verification/extraction-read-state/`; changed checks passed. The unavailable-basis fixture is explicitly fault-injected mutable history, not a claimed public lifecycle. No schema, MCP description, screen composition, baseline or provider changed. Clean qualification follows the source commit.
+
+Clean committed source `b28342f` against main `b53db7f` passed full changed checks, owners (55/55) and design contract; tracked status stayed clean. The design contract measures zero matching screens, not visual parity. No MCP catalog/schema changed in this unit, so no new MCP qualification is claimed. Suggestion identity follows.

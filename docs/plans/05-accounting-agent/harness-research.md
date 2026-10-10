@@ -154,6 +154,19 @@ Gaps that Phase 12 must close:
 
 Compared with Yielded (Worker Loader isolates, broker authorization, Cloudflare only) and Pi (QuickJS WebAssembly, `eval` allowed, no schema validation), OpenCode's interpreter is the only one that combines a fixed program, Effect Schema contracts, and pure JavaScript that runs on both Bun and workerd.
 
+## Social-media claims checked (2026-10-10)
+
+| Claim | Status | Consequence |
+| --- | --- | --- |
+| Clef and Clef-flash have open weights under Apache 2.0 and are compatible with the Jev API | Verified, from the Cloudflare launch | Already behind the AUT-10 adapter |
+| Clef-flash has a 64k window | Wrong. The hosted window is 24,576 tokens | Preflight the fit in Phase 11 |
+| TypeSafe raised $870M at a $7.5B valuation | Reported only, in secondary coverage | No product consequence |
+| Jev or Clef auto-posts receipts above 0.85 confidence | Not verified. It conflicts with ADR 0020 and with the rule that no document text enters a model | Not adopted. No threshold in the authority layer |
+| Unsloth trains decision models | Verified guide. It uses the Clef dataset format, and its accuracy claim is the vendor's | A later input to firm adapters (AUT-19), after retrieval plateaus |
+| `@effect/ai-cloudflare` ships a Clef decision provider | Not found. Alchemy documents an Effect AI layer for Workers AI | Keep our own adapter |
+| Tardigrade (clavia-labs), Decis, Kev, Microsoft Decision-1, system1-decision-benchmark | Not found or not verified. Laya exists, cited by Unsloth | Look at again only with a primary link |
+| Durable Objects as the agent engine | Not applicable | PostgreSQL plus effect-mq per ADR 0009 |
+
 ## Frameworks considered
 
 Checked on 2026-10-10.
@@ -186,4 +199,8 @@ Read by the research agents:
 - [Cloudflare Agents SDK and Workflows changelog](https://developers.cloudflare.com/changelog/2026-02-03-agents-workflows-integration)
 - [DBOS AI quickstart](https://docs.dbos.dev/ai/ai-quickstart)
 - [Yielded Agent](https://yielded.dev/agent/), [durability](https://yielded.dev/agent/concepts/durability/), [code mode](https://yielded.dev/agent/guide/code-mode/) and [yielded-dev/agent](https://github.com/yielded-dev/agent)
+- [Unsloth, train your own decision model](https://unsloth.ai/docs/basics/train-your-own-decision-model-with-unsloth)
+- [Cloudflare, Clef decision models and RL fine-tuning](https://blog.cloudflare.com/clef-decision-models/)
+- [Alchemy, Effect AI on Workers AI](https://alchemy.run/cloudflare/ai/effect-ai)
+- The owner's external research report, `drastic-accounting-agent-research-2026-10-10.md`, kept outside the repository
 - [Bedrock model card, Claude Sonnet 4](https://docs.aws.eu/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-4.html) and [Opus 4.5](https://docs.aws.eu/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-5.html)

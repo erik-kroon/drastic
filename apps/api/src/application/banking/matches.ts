@@ -1,3 +1,4 @@
+import { bankRowSubjects } from "./subjects";
 import { citedSuggestions, recordDecision, type Comparison } from "../decision-provenance";
 import { admitBankMatch } from "../resource-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -194,12 +195,7 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
         observation.accountId,
       );
 
-      const subject = {
-        kind: "bank_row" as const,
-        statementId: observation.statementId,
-        rowOrdinal: observation.rowOrdinal,
-        revision: checkpoint.sourceRevision,
-      };
+      const subject = bankRowSubjects([observation], checkpoint.sourceRevision)[0]!;
 
       const exposure = yield* citedSuggestions(
         transaction,

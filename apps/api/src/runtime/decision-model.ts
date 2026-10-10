@@ -4,8 +4,9 @@ import {
   type WorkersAi,
   type DecisionIdentity,
 } from "../adapters/decision-models/systemone";
+import { configuredAiProvider, type AiEgressConfiguration } from "./ai-egress";
 
-export interface DecisionModelConfiguration {
+export interface DecisionModelConfiguration extends AiEgressConfiguration {
   readonly OPENERP_DECISION_MODEL?: string;
   readonly OPENERP_DECISION_MODEL_RELEASE?: string;
   readonly OPENERP_DECISION_MODEL_SELECTOR?: string;
@@ -67,6 +68,13 @@ export function configuredDecisionModel(
         expectedReportedModel,
         workersAiSelector: selector,
         releaseQualification: "unsubstantiated",
+        egressPolicy: configuredAiProvider(
+          config,
+          "workers-ai",
+          configuredRelease,
+          false,
+          selector,
+        ),
       },
       { kind: "binding", binding, selector },
       timeoutMs,
@@ -82,6 +90,13 @@ export function configuredDecisionModel(
     expectedReportedModel,
     workersAiSelector: null,
     releaseQualification: "unsubstantiated",
+    egressPolicy: configuredAiProvider(
+      config,
+      "http-systemone",
+      configuredRelease,
+      mode === "local-systemone-fixture",
+      transport.endpoint.origin,
+    ),
   };
 
   return systemOneModel(identity, transport, timeoutMs);

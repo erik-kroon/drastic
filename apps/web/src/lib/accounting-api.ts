@@ -1,5 +1,13 @@
+import * as Match from "effect/Match";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
+
+const responseStatuses = new WeakMap<Accounting.AccountingError, number>();
+
+export function accountingResponseStatus(error: Accounting.AccountingError) {
+  return responseStatuses.get(error);
+}
 
 export const booksKey = ["accounting", "books"];
 
@@ -33,16 +41,18 @@ export async function readAccounting<S extends Schema.Top & { readonly DecodingS
     const payload: unknown = await response.json().catch(() => null);
     const failure = Schema.decodeUnknownOption(Accounting.AccountingError)(payload);
 
-    if (failure._tag === "Some") throw failure.value;
+    if (Option.isSome(failure)) {
+      responseStatuses.set(failure.value, response.status);
 
-    const accessCode =
-      response.status === 401
-        ? "Unauthorized"
-        : response.status === 403
-          ? "Forbidden"
-          : response.status === 404
-            ? "NotFound"
-            : null;
+      throw failure.value;
+    }
+
+    const accessCode = Match.value(response.status).pipe(
+      Match.when(401, () => "Unauthorized" as const),
+      Match.when(403, () => "Forbidden" as const),
+      Match.when(404, () => "NotFound" as const),
+      Match.orElse(() => null),
+    );
 
     if (accessCode !== null) {
       throw new Accounting.AccountingError({

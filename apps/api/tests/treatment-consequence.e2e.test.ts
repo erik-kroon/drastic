@@ -331,7 +331,7 @@ test("public decision export preserves captured deduction and reports missing co
   );
 
   expect(exported.examples).toHaveLength(1);
-  expect(exported.versions.schema).toBe("decision_examples_v2");
+  expect(exported.versions.schema).toBe("decision_examples_v3");
   const consequence = exported.examples[0]!.consequence!;
   expect(consequence.builderVersion).toBe("treatment_consequence_v1");
   expect(consequence.treatments).toHaveLength(1);

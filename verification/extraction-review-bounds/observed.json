@@ -1,0 +1,61 @@
+{
+  "native": {
+    "suggestionRecordId": "suggestion_de95c5ab6f7d4d75a991842c9448f377",
+    "previewOptions": 7,
+    "nativeOptions": 407,
+    "committedFields": 457,
+    "denominators": {
+      "inventory": 457,
+      "selected": 457,
+      "exported": 0,
+      "excluded": 457
+    },
+    "reasons": {
+      "source_text_not_captured": 457
+    }
+  },
+  "malformed": {
+    "status": 200,
+    "originalDecisionId": "supplier_approval_03efcbc92c8e4b23aae1396705a475c3",
+    "badDecisionId": "legacy_malformed_643dce4bde8445a1a505eebe37b8bc9e",
+    "denominators": {
+      "inventory": 2,
+      "selected": 2,
+      "exported": 1,
+      "excluded": 1
+    },
+    "exclusions": [
+      {
+        "owner": "supplier_approval",
+        "id": "legacy_malformed_643dce4bde8445a1a505eebe37b8bc9e",
+        "reason": "undecodable_capture"
+      }
+    ],
+    "invalidCaptures": [
+      {
+        "captureKind": "extraction",
+        "ok": false,
+        "before": 0,
+        "after": 0
+      },
+      {
+        "captureKind": "extraction_value",
+        "ok": false,
+        "before": 0,
+        "after": 0
+      },
+      {
+        "captureKind": "bank",
+        "ok": false,
+        "before": 0,
+        "after": 0
+      },
+      {
+        "captureKind": "supplier",
+        "ok": false,
+        "before": 0,
+        "after": 0
+      }
+    ]
+  }
+}

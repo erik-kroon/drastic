@@ -1,0 +1,6 @@
+{
+  "bookId": "book_164febf67b5e3675",
+  "occurrenceId": "source_07f7003596724e5aa3d6057f1fc7e571",
+  "lockHeld": true,
+  "observed": { "status": null, "error": "TimeoutError" }
+}

@@ -1,0 +1,50 @@
+{
+  "sourceIntegrity": {
+    "status": "stable",
+    "changedPaths": [],
+    "sourceInventorySha256": "d687fa1d22fee93f2604e14623ed3c25acf95778642499c051a2eb98e34f5719",
+    "finalSourceInventorySha256": "d687fa1d22fee93f2604e14623ed3c25acf95778642499c051a2eb98e34f5719",
+    "checkedAt": "2026-10-10T15:49:18.451Z"
+  },
+  "artifactDirectory": "test-results/pr20-bank-freshness-resumed",
+  "outcomes": [
+    {
+      "mode": "unchanged",
+      "refreshes": 1,
+      "retainedRequests": 2,
+      "keys": [
+        "cfc26793-21f9-41c9-ae53-67b3acaca990",
+        "39cb74c2-beee-401b-a24f-31c6fdac0b47"
+      ],
+      "initialOptionSetDigest": "sha256:1a6728a3f3e150c01d9e2bed31e220be5a28e1996205056f5e24e37fe8553990",
+      "freshOptionSetDigest": "sha256:1a6728a3f3e150c01d9e2bed31e220be5a28e1996205056f5e24e37fe8553990",
+      "planId": "bankplan_49d691dd424b43e180cb1ee89e9ea349",
+      "error": null
+    },
+    {
+      "mode": "changed",
+      "refreshes": 1,
+      "retainedRequests": 1,
+      "keys": [
+        "0654357c-ff1f-4fdb-a694-eaa6a149f83e"
+      ],
+      "initialOptionSetDigest": "sha256:ed7c133d04782638a680c50e9526e901b2400f2902414f345a1a586fbd3764bc",
+      "freshOptionSetDigest": "sha256:72110e5d17764e28f504df4a6cebbe7e6a181b934861c7614eb5b87251994813",
+      "planId": null,
+      "error": "StaleDependency"
+    },
+    {
+      "mode": "twice_stale",
+      "refreshes": 1,
+      "retainedRequests": 2,
+      "keys": [
+        "0993cd37-05a4-47a0-a3b6-812618a33b09",
+        "da4fc1d0-90ac-4930-8f77-27dd43fa8274"
+      ],
+      "initialOptionSetDigest": "sha256:e348437f60bfc4e086014378a8a186a29d609ab59ef9d6f970384a8a87608ee6",
+      "freshOptionSetDigest": "sha256:e348437f60bfc4e086014378a8a186a29d609ab59ef9d6f970384a8a87608ee6",
+      "planId": null,
+      "error": "StaleDependency"
+    }
+  ]
+}

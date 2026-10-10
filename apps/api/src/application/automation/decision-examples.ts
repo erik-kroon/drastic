@@ -7,6 +7,7 @@ import * as Provenance from "@open-erp/contracts/decision-provenance";
 import * as Consequence from "@open-erp/domain/treatment-consequence";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Result from "effect/Result";
 import * as Db from "../../db/decision-examples";
 import { withBook, decode, toJsonObject } from "../commerce/support";
 import { failure } from "../failures";
@@ -343,7 +344,12 @@ export const projectDecisionExample = Effect.fn("decisionExamples.project")(func
   const optionRecords: Schema.JsonObject[] = [];
 
   for (const item of suggestions) {
-    const record = yield* decode(Provenance.SuggestionRecord, Shared.objectField(item, "body"));
+    const decodedRecord = Schema.decodeUnknownResult(Provenance.SuggestionRecord)(
+      Shared.objectField(item, "body"),
+    );
+
+    if (Result.isFailure(decodedRecord)) return { excluded: "undecodable_capture" };
+    const record = decodedRecord.success;
 
     const ranked =
       record.ranked.source === "extraction"
