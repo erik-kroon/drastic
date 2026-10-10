@@ -1,6 +1,6 @@
 # Firm memory v2
 
-V1 `rank` and `baseline` remain available with exact normalized description matching. V2 uses a separately versioned exact nonempty token-set key: NFC/lowercase Unicode letters, full Swedish/English month lexicon, numeric/date token removal and whole English/Swedish ordinal removal (`31st`, `1st`, `1:a`, `2:e`). Order and duplicate words do not matter. Changed remaining words reject; there is no fuzzy score.
+V1 `rank` and `baseline` remain available with exact normalized description matching. V2 uses a separately versioned exact nonempty token-set key: NFC/lowercase Unicode letters, full Swedish/English month-name lexicon, numeric/date token removal and whole English/Swedish ordinal removal (`31st`, `1st`, `1:a`, `2:e`). Order and duplicate words do not matter. Changed remaining words reject; there is no fuzzy score.
 
 The shared book/counterparty/kind/currency/scale, related-lineage, cutoff and missing-fact guards remain unchanged. Both baseline algorithms use the same raw target eligibility population. An empty v2 key yields no suggestion and remains an unmatched raw-eligible target; it cannot shrink coverage denominators. Amount-band distance, receipt recency and ID tie ordering remain unchanged.
 
@@ -23,3 +23,5 @@ The legacy proof appends an explicitly authored, valid retained v1 capture from 
 Focused type-aware lint and `bun run check:changed` passed. The report has no dedicated tsconfig; it is linted/formatted and exercised through the actual HTTP CLI. Parent clean full/owners/design and required MCP qualification follow the additive source/response schema change. No model call, live books, statutory qualification, UI composition or browser parity is claimed.
 
 Clean committed source d246ebf against main6e2a0ae passed frozen install, full changed checks, owners55/55 and design contract (two measured matching screens; no visual comparison), with tracked status clean. MCP admission1 passed and two upstream protocol cases skipped; pinned Luna eval1 passed, evidence run e456009b-5c77-45f3-9477-01f25959f56a. These skips remain unverified. Retained evidence is synthetic only.
+
+The pinned v2 key removes every digit, including invoice and instalment identifiers. Within one supplier, `Lån 3 av 12` and `Lån 4 av 12` can collide, as can `Faktura 1048` and `Faktura 2207`. The remaining hard eligibility filters and amount-band ranking still apply; this recall key does not prove transaction identity or authorize posting. V2 retains its approved semantics. Month abbreviations such as `okt` and `sept` are not removed. Broader identifier or abbreviation handling requires a new algorithm release and separate evaluation.
