@@ -160,3 +160,38 @@ Local commit `d5c199d` replaces the latest-five query with retained same-book pr
 Four focused workflows passed across retained runs: memory vectors, the Swedish hint/provenance regression, the shared public reversal/export workflow and the corrected public serving/CLI workflow. The synthetic baseline has two eligible targets, one suggestion and zero known comparable consequences: coverage 1/2 and accuracy unavailable. Changed/full checks and owners (55/55) passed. `verification/firm-memory/README.md` records commands, artifacts, CLI fixes and the distinction between retained behavior-run hash and final type hardening. No browser parity, live-provider performance, training or production qualification is claimed.
 
 AUT-11 is now in progress: immutable requests/results, fenced background dispatch, read-only runtime policies and bounded synthetic budgets. Independent failure cases are already committed. Add a bounded machine-runner processing surface so the Cloudflare entry can genuinely inject its AI binding into the shared processor; configuring or invoking a live deployment remains gated. AUT-12 evaluation and remaining anomaly/verification work follow.
+
+## Approved phase issue map, evening update
+
+| Handoff | Phase | Linear issue |
+| --- | --- | --- |
+| AUT-28 | Egress | [DRA-256](https://linear.app/drastic-dev/issue/DRA-256/aut-28-enforce-the-ai-egress-boundary) |
+| AUT-06 | Plan 05 | [DRA-224](https://linear.app/drastic-dev/issue/DRA-224/aut-06-verification-coverage-per-book-and-period) |
+| AUT-33 | Plan 05 | [DRA-257](https://linear.app/drastic-dev/issue/DRA-257/aut-33-supporting-document-per-voucher) |
+| AUT-32 | Plan 05 | [DRA-258](https://linear.app/drastic-dev/issue/DRA-258/aut-32-synthetic-bureau-month-and-deterministic-baseline) |
+| AUT-29 | Plan 05 | [DRA-259](https://linear.app/drastic-dev/issue/DRA-259/aut-29-run-engine-and-deterministic-playbooks) |
+| AUT-29-P4 | Plan 05 | [DRA-260](https://linear.app/drastic-dev/issue/DRA-260/aut-29-p4-run-model-and-architect-arena) |
+| AUT-29-P5 | Plan 05 | [DRA-261](https://linear.app/drastic-dev/issue/DRA-261/aut-29-p5-fenced-step-executor-and-recovery) |
+| AUT-29-P6 | Plan 05 | [DRA-262](https://linear.app/drastic-dev/issue/DRA-262/aut-29-p6-playbook-registry-and-supplier-invoices) |
+| AUT-29-P7 | Plan 05 | [DRA-263](https://linear.app/drastic-dev/issue/DRA-263/aut-29-p7-att-gora-read-model-pause-and-hand-over) |
+| AUT-31 | Plan 05 | [DRA-264](https://linear.app/drastic-dev/issue/DRA-264/aut-31-completeness-and-batched-questions) |
+| AUT-31-P8 | Plan 05 | [DRA-265](https://linear.app/drastic-dev/issue/DRA-265/aut-31-p8-missing-fact-model) |
+| AUT-31-P9 | Plan 05 | [DRA-266](https://linear.app/drastic-dev/issue/DRA-266/aut-31-p9-batched-question-with-typed-answers) |
+| AUT-29-P10 | Plan 05 | [DRA-267](https://linear.app/drastic-dev/issue/DRA-267/aut-29-p10-deterministic-month-close-playbook) |
+| AUT-34 | Plan 05 | [DRA-268](https://linear.app/drastic-dev/issue/DRA-268/aut-34-decision-model-steps-evaluated-against-deterministic-close) |
+| AUT-35 | Plan 05 | [DRA-269](https://linear.app/drastic-dev/issue/DRA-269/aut-35-llm-steps-and-code-mode-investigation) |
+| AUT-D11 | Plan 05 | [DRA-270](https://linear.app/drastic-dev/issue/DRA-270/aut-d11-design-the-run-view) |
+| AUT-D12 | Plan 05 | [DRA-271](https://linear.app/drastic-dev/issue/DRA-271/aut-d12-design-the-batched-client-question) |
+| AUT-36 | Plan 05 | [DRA-272](https://linear.app/drastic-dev/issue/DRA-272/aut-36-mcp-playbook-prompts-and-resources) |
+| AUT-30 | Plan 06 | [DRA-273](https://linear.app/drastic-dev/issue/DRA-273/aut-30-fixture-backed-rule-sources) |
+| AUT-30-P1 | Plan 06 | [DRA-274](https://linear.app/drastic-dev/issue/DRA-274/aut-30-p1-point-in-time-source-corpus) |
+| AUT-30-P2 | Plan 06 | [DRA-275](https://linear.app/drastic-dev/issue/DRA-275/aut-30-p2-deterministic-rule-lookup-over-http-and-mcp) |
+| AUT-30-P3 | Plan 06 | [DRA-276](https://linear.app/drastic-dev/issue/DRA-276/aut-30-p3-source-change-monitor-and-reviewed-dossiers) |
+
+The owner sequence and gates are recorded in the handoff evening update. The deterministic baseline must precede engine implementation. New boards remain design-pending.
+
+## Plan and issue publication checkpoint
+
+Commit `eee5faa` preserves the 20 supplied plan documents in draft [PR #22](https://github.com/erik-kroon/drastic/pull/22). All 43 local file links resolve. Clean-worktree owners passed at 55/55. Changed and full checks are blocked by main's stale K-10/K-11 supplier evidence and missing handoff reference. No runtime, browser or production qualification is claimed.
+
+Linear AUT-06 was rewritten for Phase 1; AUT-28 through AUT-36, phase children and AUT-D11/D12 are mapped above. AUT-00 retains provider, client-role, mandate and live-fetching decisions. AUT-31 is related to AUT-26.
