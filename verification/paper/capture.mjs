@@ -46,8 +46,8 @@ async function main() {
     return;
   }
 
-  if (positionals.length !== 1 || !/^K-\d{2}$/.test(positionals[0]))
-    throw new Error("Supply exactly one K-xx board ID (see --help)");
+  if (positionals.length !== 1 || !/^[A-Z]-\d{2}$/.test(positionals[0]))
+    throw new Error("Supply exactly one adopted board ID (see --help)");
 
   const entry = json("verification/paper/kanon-manifest.json").entries.find(
     (candidate) => candidate.id === positionals[0],

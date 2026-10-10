@@ -103,6 +103,7 @@ type DetailPanelProps = {
   secondary?: ReactNode;
   /** One line above the buttons when the step has two parts: "Förberedelsen bokför inget." */
   note?: string;
+  tertiary?: ReactNode;
   label: string;
 };
 
@@ -152,7 +153,8 @@ export function DetailPanelActions({
   primary,
   secondary,
   note,
-}: Pick<DetailPanelProps, "primary" | "secondary" | "note">) {
+  tertiary,
+}: Pick<DetailPanelProps, "primary" | "secondary" | "note" | "tertiary">) {
   return (
     <>
       <div {...stylex.props(styles.spacer)} />
@@ -160,6 +162,7 @@ export function DetailPanelActions({
         {note !== undefined && <p {...stylex.props(styles.note)}>{note}</p>}
         {primary}
         {secondary !== undefined && <div {...stylex.props(styles.secondaryRow)}>{secondary}</div>}
+        {tertiary}
       </div>
     </>
   );

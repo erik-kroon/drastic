@@ -1,0 +1,111 @@
+{
+  "agreement": {
+    "id": "recurring_agreement_8f97e4f34ff943749492fa9307d0af83",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "revision": "1",
+    "customerId": "counterparty_370b4cbc03024848af7dcb6848073528",
+    "title": "Redovisning varje månad",
+    "schedule": {
+      "anchorLocalDate": "2026-10-01",
+      "timeZone": "Europe/Stockholm",
+      "cadence": {
+        "kind": "monthly",
+        "monthInterval": "1",
+        "dayInterval": null,
+        "monthAnchorPolicy": "anchor_day_clamped"
+      },
+      "firstCycleOrdinal": "1"
+    },
+    "reason": "Synthetic visual qualification of future recurring billing",
+    "createdAt": "2026-10-10T21:09:24.148Z",
+    "receipt": {
+      "key": "recurring_target_a14f5fca9df8c65bc4e120fed6249c42ef0eaa3c184aa30335f09fc66da6054c",
+      "operation": "propose_recurring_agreement",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:e34ce0c5030d1fb74c2f23ba9275e1d3cfb08f0f7ef1064509c856369635286a"
+  },
+  "customer": {
+    "kind": "synthetic_counterparty_v1",
+    "externalKey": "recurring_targets_nordhamn",
+    "role": "customer",
+    "displayName": "Nordhamn Studio AB",
+    "evidenceId": "evidence_62fe59836cec491ba678218f61e2a7cb",
+    "reason": "Synthetic adopted recurring target",
+    "id": "counterparty_370b4cbc03024848af7dcb6848073528",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "revision": "1",
+    "evidence": {
+      "evidenceId": "evidence_62fe59836cec491ba678218f61e2a7cb",
+      "sha256": "c840b65e6f844bd0c5c14447b335eb1b37f61c1e0b553f5971747a71bcc0b6e1"
+    },
+    "legalIdentityVerified": false,
+    "createdAt": "2026-10-10T21:09:24.058870Z",
+    "receipt": {
+      "key": "recurring_target_1e88c9dcc2c532537440b6251c22edab2b86084f04d462e991ec948f60aea640",
+      "operation": "commerce_create_counterparty",
+      "actorId": "actor_operator"
+    }
+  },
+  "source": {
+    "id": "evidence_62fe59836cec491ba678218f61e2a7cb",
+    "sha256": "c840b65e6f844bd0c5c14447b335eb1b37f61c1e0b553f5971747a71bcc0b6e1"
+  },
+  "occurrence": {
+    "id": "recurring_occurrence_record_aa4ae203247f43748d4327f31954d009",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "agreementId": "recurring_agreement_8f97e4f34ff943749492fa9307d0af83",
+    "cycleOrdinal": "1",
+    "cycleDate": "2026-11-01",
+    "serviceInterval": {
+      "serviceStartsOn": "2026-10-01",
+      "serviceEndsOn": "2026-11-01"
+    },
+    "chargeComponentKeys": [
+      "monthly_service"
+    ],
+    "selectedTemplateRevision": "1",
+    "selectedTemplateDigest": "sha256:6b34e5285f728b8fa64e498998688deeab2964fad012134fbfcd1b573b43998d",
+    "selectedScheduleRevision": "1",
+    "status": "drafted",
+    "draftId": "invoice_draft_3a75ba78edd940a2a1fdc98a8064787f",
+    "createdAt": "2026-10-10T21:09:24.356Z",
+    "receipt": {
+      "key": "recurring_target_8e6acc2d57ac8e5a624d8b9c35fdd7f28a5e40d9da5d788feda1333bb512bcca",
+      "operation": "materialize_recurring_occurrence",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:09aa4a6fa04bdc93a4edf793ce2e02c79f995d1e940fe82fc6b138d3c43d8959"
+  },
+  "boards": {
+    "R-01": {
+      "route": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&record=recurring_agreement_8f97e4f34ff943749492fa9307d0af83",
+      "state": "selected saved agreement with one unprepared cycle",
+      "readyText": "Förbered fakturautkast"
+    },
+    "R-02": {
+      "route": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&recurringForm=create",
+      "state": "empty creation form",
+      "readyText": "Spara avtal"
+    },
+    "R-03": {
+      "route": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&record=recurring_agreement_8f97e4f34ff943749492fa9307d0af83&recurringForm=schedule",
+      "state": "future schedule before edits",
+      "readyText": "Spara framtida schema"
+    },
+    "R-04": {
+      "route": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&record=recurring_agreement_8f97e4f34ff943749492fa9307d0af83&recurringForm=template",
+      "state": "future template with no source selected",
+      "readyText": "Spara framtida mallrevision"
+    }
+  }
+}

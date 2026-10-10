@@ -1,17 +1,26 @@
+import { useState } from "react";
+import * as Commerce from "@open-erp/contracts/commerce";
+import {
+  FormColumn,
+  FormText as Text,
+  FormNote as PageCaption,
+  FormLink as Link,
+  FormAction as Button,
+  FormTitle,
+  PlainFacts,
+  RecordHeader,
+  ActionRow,
+  RecordSection,
+} from "@open-erp/ui/kanon/form";
+import { Action, InlineAction } from "@open-erp/ui/kanon/action";
+import { PanelSection, DetailPanelActions } from "@open-erp/ui/kanon/detail-panel";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { defaultStringifySearch } from "@tanstack/react-router";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
-import { Box } from "@open-erp/ui/components/box";
-import { Button } from "@open-erp/ui/components/button";
-import { Link } from "@open-erp/ui/components/link";
-import { PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
-import { RecordSection } from "@open-erp/ui/components/record-layout";
-import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
-import { RecurringAgreementControls } from "./recurring-agreement-controls";
 import { RecurringDraftRecovery } from "./recurring-draft-recovery";
 
 type Props = CommerceProps & {
@@ -20,6 +29,7 @@ type Props = CommerceProps & {
   jobId?: string;
   work?: string;
   returnTo?: string;
+  onEdit: (mode: "schedule" | "template") => void;
 };
 
 export function RecurringDetail(props: Props) {
@@ -28,6 +38,42 @@ export function RecurringDetail(props: Props) {
   const sv = locale === "sv";
   const path = `${commercePath(book)}/recurring-invoices/${encodeURIComponent(agreementId)}`;
   const sales = `${workspacePath(book)}/sales`;
+
+  const [showRecovery, setShowRecovery] = useState(Boolean(props.jobId));
+
+  const agreement = useQuery({
+    queryKey: [...commerceKey(book), "recurring-agreement", agreementId],
+    queryFn: async ({ signal }) => {
+      const value = await readAccounting(path, Recurring.RecurringAgreementView, { signal });
+      checkScope(book, value.agreement.scope);
+
+      if (value.agreement.id !== agreementId)
+        throw new Error("Recurring agreement identity mismatch");
+
+      return value;
+    },
+    retry: false,
+  });
+
+  const customer = useQuery({
+    queryKey: [...commerceKey(book), "party", agreement.data?.agreement.customerId],
+    enabled: agreement.isSuccess,
+    queryFn: async ({ signal }) => {
+      const value = await readAccounting(
+        `${commercePath(book)}/counterparties/${encodeURIComponent(agreement.data?.agreement.customerId ?? "")}`,
+        Commerce.CounterpartyRevision,
+        { signal },
+      );
+
+      checkScope(book, value.scope);
+
+      if (value.id !== agreement.data?.agreement.customerId)
+        throw new Error("Recurring customer mismatch");
+
+      return value;
+    },
+    retry: false,
+  });
 
   const occurrences = useInfiniteQuery({
     queryKey: [...commerceKey(book), "recurring-occurrences", agreementId],
@@ -90,69 +136,72 @@ export function RecurringDetail(props: Props) {
 
   const items = occurrences.data?.pages.flatMap((page) => page.items) ?? [];
   const selected = occurrence.isError ? undefined : occurrence.data;
-  const yesNo = (value: boolean) => (value ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No");
 
   return (
-    <Box display="grid" gap="xl" minWidth="zero">
-      <Link href={`${sales}${defaultStringifySearch({ view: "recurring", work, returnTo })}`}>
-        {sv ? "Alla återkommande avtal" : "All recurring agreements"}
-      </Link>
-      <RecurringDraftRecovery {...props} />
-      <RecurringAgreementControls {...props} />
-      <RecordSection title={sv ? "Fakturacykler" : "Invoice cycles"}>
-        <PageCaption>
-          {sv
-            ? "Förberedelse, godkännande och utfärdande är sparad historik. Granska fakturan för aktuell giltighet. Ingen av dessa uppgifter bevisar leverans."
-            : "Preparation, approval and issuance are saved history. Review the invoice for current validity. None of these facts proves delivery."}
-        </PageCaption>
-        <Button
-          variant="outline"
-          disabled={occurrences.isFetching}
-          onClick={() => void occurrences.refetch()}
-        >
-          {sv ? "Uppdatera fakturacykler" : "Refresh invoice cycles"}
-        </Button>
+    <>
+      <AccountingStatus
+        locale={locale}
+        pending={agreement.isPending || customer.isPending}
+        error={agreement.error ?? customer.error}
+      />
+      {agreement.data ? (
+        <>
+          <SavedAgreement view={agreement.data} customerName={customer.data?.displayName} sv={sv} />
+        </>
+      ) : null}
+      {showRecovery ? <RecurringDraftRecovery {...props} embedded /> : null}
+      <RecordSection label={sv ? "Fakturacykler" : "Invoice cycles"}>
         <AccountingStatus
           locale={locale}
           pending={occurrences.isPending}
           error={occurrences.error}
         />
         {occurrences.isSuccess && items.length === 0 ? (
-          <PageEmpty
-            title={sv ? "Inga skapade fakturacykler" : "No materialized invoice cycles"}
-            detail={
-              sv
-                ? "Schemaläggning skapar utkast för separat granskning."
-                : "Scheduling creates drafts for separate review."
-            }
-          />
+          <Text>{sv ? "Inga skapade fakturacykler" : "No materialized invoice cycles"}</Text>
         ) : null}
         {items.map((item) => (
-          <Box key={item.occurrenceId} display="grid" gap="sm">
-            <Link
-              href={`${sales}${defaultStringifySearch({ view: "recurring", record: agreementId, cycle: item.cycleOrdinal, work, returnTo })}`}
-            >
-              {sv ? "Fakturacykel" : "Invoice cycle"} {item.cycleOrdinal}, {item.cycleDate}
-            </Link>
-            <Text>
-              {item.serviceInterval.serviceStartsOn} – {item.serviceInterval.serviceEndsOn}
-            </Text>
-            <Text>
-              {sv ? "Förberedd" : "Prepared"}: {yesNo(item.prepared)}
-            </Text>
-            <Text>
-              {sv ? "Godkänd" : "Approved"}: {yesNo(item.approved)}
-            </Text>
-            <Text>
-              {sv ? "Utfärdad" : "Issued"}: {yesNo(item.issued)}
-            </Text>
-            {item.documentNumber ? (
-              <Text>
-                {sv ? "Fakturanummer" : "Invoice number"}: {item.documentNumber}
-              </Text>
-            ) : null}
-          </Box>
+          <PlainFacts
+            key={item.occurrenceId}
+            align="end"
+            facts={[
+              {
+                label: `${sv ? "Cykel" : "Cycle"} ${item.cycleOrdinal}`,
+                renderLabel: (
+                  <Link
+                    href={`${sales}${defaultStringifySearch({ view: "recurring", record: agreementId, cycle: item.cycleOrdinal, work, returnTo })}`}
+                  >
+                    {sv ? "Cykel" : "Cycle"} {item.cycleOrdinal}
+                  </Link>
+                ),
+                value: item.issued
+                  ? sv
+                    ? "Utfärdad"
+                    : "Issued"
+                  : item.approved
+                    ? sv
+                      ? "Godkänd"
+                      : "Approved"
+                    : item.prepared
+                      ? sv
+                        ? "Förberedd"
+                        : "Prepared"
+                      : sv
+                        ? "Inte förberedd"
+                        : "Not prepared",
+              },
+            ]}
+          />
         ))}
+        <PageCaption>
+          {sv
+            ? "Förbered ett utkast och granska det före godkännande. Sparad historik bevisar inte leverans."
+            : "Prepare a draft and review it before approval. Saved history does not prove delivery."}
+        </PageCaption>
+        {occurrences.isError ? (
+          <Button variant="outline" onClick={() => void occurrences.refetch()}>
+            {sv ? "Uppdatera fakturacykler" : "Refresh invoice cycles"}
+          </Button>
+        ) : null}
         {occurrences.hasNextPage ? (
           <Button
             variant="outline"
@@ -164,7 +213,7 @@ export function RecurringDetail(props: Props) {
         ) : null}
       </RecordSection>
       {cycleOrdinal !== undefined ? (
-        <RecordSection title={sv ? "Vald fakturacykel" : "Selected invoice cycle"}>
+        <PanelSection label={sv ? "Vald fakturacykel" : "Selected invoice cycle"}>
           <AccountingStatus
             locale={locale}
             pending={occurrence.isPending}
@@ -176,6 +225,24 @@ export function RecurringDetail(props: Props) {
                 {selected.occurrence.serviceInterval.serviceStartsOn} –{" "}
                 {selected.occurrence.serviceInterval.serviceEndsOn}
               </Text>
+              {items
+                .filter((item) => item.cycleOrdinal === cycleOrdinal)
+                .map((item) => (
+                  <FormColumn key={item.occurrenceId}>
+                    <Text>
+                      {sv ? "Förberedd" : "Prepared"}:{" "}
+                      {item.prepared ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No"}
+                    </Text>
+                    <Text>
+                      {sv ? "Godkänd" : "Approved"}:{" "}
+                      {item.approved ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No"}
+                    </Text>
+                    <Text>
+                      {sv ? "Utfärdad" : "Issued"}:{" "}
+                      {item.issued ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No"}
+                    </Text>
+                  </FormColumn>
+                ))}
               <Link
                 href={`${sales}${defaultStringifySearch({ view: "drafts", record: selected.occurrence.draftId, work, returnTo })}`}
               >
@@ -189,7 +256,7 @@ export function RecurringDetail(props: Props) {
                 </Text>
               ) : null}
               {selected.coverage.map((coverage) => (
-                <Box key={coverage.id} display="grid" gap="sm">
+                <FormColumn key={coverage.id}>
                   <Text>
                     {coverage.chargeComponentKey}, {coverage.documentNumber}
                   </Text>
@@ -198,7 +265,7 @@ export function RecurringDetail(props: Props) {
                   >
                     {sv ? "Granska fakturans betalningar" : "Review invoice payments"}
                   </Link>
-                </Box>
+                </FormColumn>
               ))}
             </>
           ) : (
@@ -210,8 +277,156 @@ export function RecurringDetail(props: Props) {
               {sv ? "Försök läsa cykeln igen" : "Retry reading the cycle"}
             </Button>
           )}
-        </RecordSection>
+        </PanelSection>
       ) : null}
-    </Box>
+      <DetailPanelActions
+        primary={
+          <Action
+            kind="secondary"
+            presentation="record"
+            besidePrimary
+            fill
+            onClick={() => setShowRecovery((shown) => !shown)}
+          >
+            {sv ? "Förbered fakturautkast" : "Prepare invoice draft"}
+          </Action>
+        }
+        secondary={
+          <Action
+            kind="secondary"
+            presentation="record"
+            fill
+            onClick={() => props.onEdit("schedule")}
+          >
+            {sv ? "Ändra framtida cykler" : "Change future cycles"}
+          </Action>
+        }
+        tertiary={
+          <ActionRow spread padded>
+            <InlineAction onClick={() => props.onEdit("template")}>
+              {sv ? "Ändra fakturamall" : "Change invoice template"}
+            </InlineAction>
+            <InlineAction onClick={() => setShowRecovery(true)}>
+              {sv ? "Pausa avtalet" : "Pause agreement"}
+            </InlineAction>
+          </ActionRow>
+        }
+      />
+    </>
+  );
+}
+
+function SavedAgreement(props: {
+  view: Recurring.RecurringAgreementView;
+  customerName?: string;
+  sv: boolean;
+}) {
+  const sv = props.sv;
+
+  return (
+    <>
+      <RecordHeader roomy>
+        <PageCaption compact>{sv ? "Aktivt avtal" : "Active agreement"}</PageCaption>
+        <FormTitle record>{props.view.agreement.title}</FormTitle>
+        <Text compact>
+          {props.customerName ??
+            (sv ? "Kundnamnet är inte tillgängligt" : "Customer name unavailable")}
+        </Text>
+      </RecordHeader>
+      <RecordSection label={sv ? "Sparat avtal" : "Saved agreement"}>
+        <PlainFacts
+          presentation="record"
+          align="end"
+          facts={[
+            {
+              label: sv ? "Startdatum" : "Anchor date",
+              value: props.view.agreement.schedule.anchorLocalDate,
+            },
+            {
+              label: sv ? "Intervall" : "Cadence",
+              value:
+                props.view.agreement.schedule.cadence.kind === "monthly"
+                  ? props.view.agreement.schedule.cadence.monthInterval === "1"
+                    ? sv
+                      ? "Varje månad"
+                      : "Every month"
+                    : `${props.view.agreement.schedule.cadence.monthInterval} ${sv ? "månader" : "months"}`
+                  : `${props.view.agreement.schedule.cadence.dayInterval} ${sv ? "dagar" : "days"}`,
+            },
+            {
+              label: sv ? "Månadsregel" : "Monthly rule",
+              value:
+                props.view.agreement.schedule.cadence.kind === "monthly"
+                  ? props.view.agreement.schedule.cadence.monthAnchorPolicy === "end_of_month"
+                    ? sv
+                      ? "Månadens sista dag"
+                      : "Last day of month"
+                    : sv
+                      ? "Startdag, till månadens slut"
+                      : "Anchor day, capped at month end"
+                  : sv
+                    ? "Gäller inte"
+                    : "Not applicable",
+            },
+            {
+              label: sv ? "Tidszon" : "Time zone",
+              value: props.view.agreement.schedule.timeZone,
+            },
+            {
+              label: sv ? "Fakturamall" : "Invoice template",
+              value: props.view.revisions.length ? (
+                <AgreementRevisionHistory view={props.view} sv={sv} />
+              ) : sv ? (
+                "Ingen mall sparad"
+              ) : (
+                "No saved template"
+              ),
+            },
+          ]}
+        />
+        <PageCaption record>
+          {sv
+            ? "Cykel 1 slutar efter ett intervall. Startdagen är tjänsteperiodens början."
+            : "Cycle 1 ends after one interval. The anchor starts the service period."}
+        </PageCaption>
+      </RecordSection>
+    </>
+  );
+}
+
+function AgreementRevisionHistory({
+  view,
+  sv,
+}: {
+  view: Recurring.RecurringAgreementView;
+  sv: boolean;
+}) {
+  return (
+    <details>
+      <summary aria-label={sv ? "Avtalets versionshistorik" : "Agreement revision history"}>
+        Revision {view.revisions.at(-1)?.revision}
+      </summary>
+      <FormColumn>
+        {view.schedules.map((schedule) => (
+          <Text key={schedule.revision}>
+            {sv ? "Schema" : "Schedule"} {schedule.revision}, {sv ? "från cykel" : "from cycle"}{" "}
+            {schedule.effectiveFromCycle}:{" "}
+            {schedule.cadenceKind === "monthly"
+              ? sv
+                ? "Månader"
+                : "Months"
+              : sv
+                ? "Dagar"
+                : "Days"}
+          </Text>
+        ))}
+        {view.revisions.map((revision) => (
+          <Text key={revision.revision}>
+            {sv ? "Mall" : "Template"} {revision.revision}, {sv ? "från cykel" : "from cycle"}{" "}
+            {revision.effectiveFromCycle}: {revision.chargeComponentKeys.join(", ")}
+          </Text>
+        ))}
+      </FormColumn>
+    </details>
   );
 }

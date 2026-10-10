@@ -1,0 +1,64 @@
+{
+  "scope": "R-03",
+  "sourceRevision": "dcbab376a675d992aa58614c0abcfee2dd5c997c",
+  "comparatorRevision": "dcbab376a675d992aa58614c0abcfee2dd5c997c",
+  "referenceSha256": "1e16e154dc8e6cf65f36f783118d2871db6d25efafc615caf83c42a61c7f065d",
+  "actualSha256": "20d088811bc17ec4870d55ea7bab8ceb98d30a18df09fb8df956e7cfbc3741f0",
+  "diffSha256": "7a72281fe605d65ef9aeeee498ef25c727934be85d3015d06c0bc5bda3e71c07",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/recurring-agreement-controls.tsx": "61a00528cf394c9a56673866a3e5f62da7b667ea9cb4c11b1eb83ce526a7da28",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx": "52f4a591396c2775a7b3fc04c0a56eb2011f2bc11d1a96bd1a5d98a87ccb978e",
+    "packages/ui/src/kanon/form.tsx": "8bd02f345d1c182cf51bccd4f7a8aef01c4bd988b5d6d93da03d801f5003cded",
+    "packages/ui/src/kanon/register.tsx": "cf02408c7a31bdffd267a8f697bb5924d8533e68d4623dbfdbbe6c3097b2ce0a",
+    "packages/ui/src/kanon/action.tsx": "f8a5670b1508bd1ac99b521e1175ba1664bafa9746e94399433d6090aedb7c88",
+    "packages/ui/src/theme/kanon.stylex.ts": "09b1777b5e80f289ac220ca04f17336b4bed809926cf98fadc95a487c29fcfc7",
+    "apps/web/src/components/commerce/shared.tsx": "89b812219a21d3b246eb28b65e0691f19db3255ab5bafc3b7f268c94fcf8887d",
+    "apps/web/src/components/book-workspace.tsx": "0d56c255088a399fb36b1188b86ad1cd92898fc9a8e002233fdd1be530394644"
+  },
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-reconcile-originals/verification/paper/capture.mjs R-03",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-reconcile-originals/verification/paper/compare.mjs R-03 test-results/recurring-targets/R-03/capture.json test-results/recurring-targets/R-03",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&record=recurring_agreement_8f97e4f34ff943749492fa9307d0af83&recurringForm=schedule",
+    "time": "2026-10-10T21:23:10.206Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "future schedule before edits",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.013653549382716049,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/recurring-closeout/2026-10-10/R-03/actual.png",
+  "diff": "verification/recurring-closeout/2026-10-10/R-03/diff.png",
+  "passed": true
+}

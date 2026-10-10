@@ -1,0 +1,82 @@
+{
+  "scope": "R-04",
+  "output": "/Users/admin/drastic-reconcile-originals/test-results/recurring-targets/R-04",
+  "adoptedComparisonEligible": true,
+  "comparatorStatus": 0,
+  "difference": 0.017116512345679014,
+  "parityQualified": false,
+  "limitations": [
+    "Pixel comparison is not behavior/state or production qualification"
+  ],
+  "grid": [
+    {
+      "row": 0,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 1825,
+      "difference": 0.012673611111111111
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 6806,
+      "difference": 0.04726388888888889
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 1652,
+      "difference": 0.011472222222222222
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 1978,
+      "difference": 0.01373611111111111
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 8022,
+      "difference": 0.05570833333333333
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 1299,
+      "difference": 0.009020833333333334
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 601,
+      "difference": 0.0041736111111111114
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 0,
+      "difference": 0
+    }
+  ],
+  "gridCanvas": {
+    "width": 1440,
+    "height": 900
+  },
+  "sameDimensions": true,
+  "channelTolerance": 16
+}

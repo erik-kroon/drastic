@@ -19,6 +19,7 @@ export function RecurringDraftRecovery(
     jobId?: string;
     work?: string;
     returnTo?: string;
+    embedded?: boolean;
   },
 ) {
   const { book, locale, agreementId, jobId } = props;
@@ -90,9 +91,13 @@ export function RecurringDraftRecovery(
       <Link href={`${workspacePath(book)}/work${props.work ?? ""}`}>
         {sv ? "Till Att göra" : "Back to work"}
       </Link>
-      <RecordHeading
-        title={agreement.data?.agreement.title ?? (sv ? "Återkommande utkast" : "Recurring drafts")}
-      />
+      {props.embedded ? null : (
+        <RecordHeading
+          title={
+            agreement.data?.agreement.title ?? (sv ? "Återkommande utkast" : "Recurring drafts")
+          }
+        />
+      )}
       <AccountingStatus
         locale={locale}
         pending={agreement.isPending || (agreement.isSuccess && scheduling.isPending)}

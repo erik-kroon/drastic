@@ -56,8 +56,6 @@ test("a recurring failure recovers the same draft after a lost response with key
     draftId: null,
   });
   await app.open(`${workspace}/sales?view=recurring`);
-  await expect(screen.getByText("Automatiska utkast aktiva", { exact: true })).toBeVisible();
-  await expect(screen.getByText(before.nextCycleDate, { exact: true })).toBeVisible();
   await screen.getByRole("link", fixture.title, { exact: true }).press("Enter");
   await expect(screen.getByRole("heading", "Fakturacykler", { exact: true })).toBeVisible();
   await expect(screen.getByText("Inga skapade fakturacykler", { exact: true })).toBeVisible();
@@ -138,6 +136,7 @@ test("a recurring failure recovers the same draft after a lost response with key
     screen.getByText("Ingen fakturerad täckning för denna cykel.", { exact: true }),
   ).toBeVisible();
   await app.screenshot("recurring-occurrence-review-320");
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await screen
     .getByLabel("Orsak till schemaläggning", { exact: true })
     .fill("Pausa automatiken efter granskning");
@@ -145,6 +144,7 @@ test("a recurring failure recovers the same draft after a lost response with key
   await screen.getByRole("button", "Pausa automatiska utkast", { exact: true }).press("Enter");
   await expect.poll(async () => (await scheduling()).enabled).toBe(false);
   await browser.reload();
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await expect(screen.getByText(/Automatiska utkast: Pausade/)).toBeVisible();
   await screen
     .getByLabel("Orsak till schemaläggning", { exact: true })
@@ -154,6 +154,7 @@ test("a recurring failure recovers the same draft after a lost response with key
   await expect.poll(async () => (await scheduling()).enabled).toBe(true);
 
   await browser.reload();
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await screen.getByRole("link", /Cykel 1, .*Utkast skapat/).press("Enter");
   const review = screen.getByRole("link", "Granska utkast", { exact: true });
   await expect(review).toHaveAttribute(
@@ -239,7 +240,7 @@ test("a recurring failure recovers the same draft after a lost response with key
   expect(occurrences.items[0]?.draftId).toBe(draftId);
   await browser.setViewport({ width: 1440, height: 900 });
   await app.open(`${workspace}/sales?view=recurring`);
-  await screen.getByText("Skapa återkommande avtal", { exact: true }).click();
+  await screen.getByRole("button", "Nytt avtal", { exact: true }).click();
   await agent.act(
     `Create a recurring agreement for the saved customer '${draft.record.counterparty.displayName}'. Set Avtalsnamn to 'Synthetic future agreement', Startdatum to 2026-12-01, Tidszon to Europe/Stockholm, Intervalltyp to Månader, Antal månader eller dagar to 1, Månadsregel to Startdag limited to month end, Första cykelnummer to 1 and Orsak to 'Synthetic future billing review'. Click Spara avtal. Do not issue invoices.`,
   );
@@ -249,24 +250,26 @@ test("a recurring failure recovers the same draft after a lost response with key
   const createdId = new URL(await browser.url()).searchParams.get("record");
 
   if (!createdId) throw new Error("Saved agreement identity must remain in the route");
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await expect(
     screen.getByText("Automatiska utkast är inte schemalagda för avtalet.", { exact: true }),
   ).toBeVisible();
-  await screen.getByText("Ändra framtida fakturering", { exact: true }).click();
-  await screen.getByText("Ändra intervall och startdatum", { exact: true }).click();
+  await screen.getByRole("button", "Ändra framtida cykler", { exact: true }).click();
   await agent.act(
     "Change the future schedule: Gäller från cykel is 2, Startdatum 2027-01-01, Första cykelnummer 2, interval 1 month, Europe/Stockholm. Use Orsak 'Reviewed future cadence' in this schedule form, then Spara framtida schema. Do not change template or issue invoices.",
   );
-  await expect(screen.getByText("Schema 2, från cykel 2: Månader", { exact: true })).toBeVisible();
-  await screen.getByText("Ändra intervall och startdatum", { exact: true }).click();
-  await screen.getByText("Ny framtida mallrevision", { exact: true }).click();
+  await expect(
+    screen.getByText("Sparat schema gäller från cykel 2", { exact: true }),
+  ).toBeVisible();
+  await screen.getByRole("button", "Avbryt", { exact: true }).click();
+  await screen.getByRole("button", "Ändra fakturamall", { exact: true }).click();
 
   const templateResponse = browser.waitForResponse(
     `**/commerce/recurring-invoices/${createdId}/template-revisions`,
   );
 
   await agent.act(
-    `Select the saved recurring invoice draft for '${draft.record.counterparty.displayName}' in Sparat fakturautkast. In the future template form set Gäller från cykel to 1, Debiteringskomponenter to 'service_base', Utfärdande days to 0, Leveransdatum days to 0, Förfallodatum days to 30 and Orsak to 'Reviewed saved template'. Save with Spara framtida mallrevision. Do not issue invoices or start automation.`,
+    `Select the saved recurring invoice draft for '${draft.record.counterparty.displayName}' in Sparat fakturautkast. In the future template form set Gäller från cykel to 1, Rader som ska faktureras select every reviewed source row, Utfärdande days to 0, Leveransdatum days to 0, Förfallodatum days to 30 and Orsak to 'Reviewed saved template'. Save with Spara framtida mallrevision. Do not issue invoices or start automation.`,
   );
 
   const template = Schema.decodeUnknownSync(Recurring.RecurringTemplateRevision)(
@@ -275,22 +278,21 @@ test("a recurring failure recovers the same draft after a lost response with key
 
   expect(template).toMatchObject({
     effectiveFromCycle: "1",
-    chargeComponentKeys: ["service_base"],
+    chargeComponentKeys: ["line_1"],
     template: { dateOffsets: { issueDays: "0", supplyDays: "0", dueDays: "30" } },
   });
   expect(template.template.lines).toEqual(
     revised.purpose === "commercial" ? revised.commercialInput.lines : revised.content.lines,
   );
-  await expect(
-    screen.getByText("Mall 1, från cykel 1: service_base", { exact: true }),
-  ).toBeVisible();
+  await screen.getByRole("button", "Avbryt", { exact: true }).click();
+  await screen.getByLabel("Avtalets versionshistorik", { exact: true }).click();
+  await expect(screen.getByText("Mall 1, från cykel 1: line_1", { exact: true })).toBeVisible();
   await browser.reload();
-  await screen.getByText("Ändra framtida fakturering", { exact: true }).click();
+  await screen.getByLabel("Avtalets versionshistorik", { exact: true }).click();
   await expect(screen.getByText("Schema 2, från cykel 2: Månader", { exact: true })).toBeVisible();
-  await expect(
-    screen.getByText("Mall 1, från cykel 1: service_base", { exact: true }),
-  ).toBeVisible();
+  await expect(screen.getByText("Mall 1, från cykel 1: line_1", { exact: true })).toBeVisible();
   await expect(screen.getByText("Inga skapade fakturacykler", { exact: true })).toBeVisible();
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await screen.getByLabel("Första automatiska cykel", { exact: true }).fill("1");
   await screen
     .getByLabel("Orsak till schemaläggning", { exact: true })
@@ -319,6 +321,7 @@ test("a recurring failure recovers the same draft after a lost response with key
     history: [],
   });
   await browser.reload();
+  await screen.getByRole("button", "Förbered fakturautkast", { exact: true }).click();
   await expect(screen.getByText(/Automatiska utkast: Aktiva/)).toBeVisible();
   await app.screenshot("recurring-create-schedule-template-retained");
 

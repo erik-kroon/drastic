@@ -1,7 +1,6 @@
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { RecurringDetail } from "@/components/commerce/recurring-detail";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import { RecurringRegister } from "@/components/commerce/recurring-register";
 import * as Sales from "@open-erp/contracts/sales-register";
@@ -29,6 +28,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
         ]),
       ),
       view: Schema.optional(Schema.String),
+      recurringForm: Schema.optional(Schema.Literals(["create", "schedule", "template"])),
       record: Schema.optional(Schema.String),
       reminder: Schema.optional(Accounting.Identifier),
       job: Schema.optional(Accounting.Identifier),
@@ -152,23 +152,16 @@ function CollectionsPage() {
 }
 
 function RecurringPage() {
-  const { book, locale } = useBookWorkspace();
   const search = Route.useSearch();
 
-  if (!search.record) return <RecurringRegister work={search.work} returnTo={search.returnTo} />;
-
   return (
-    <PageContent>
-      <RecurringDetail
-        key={`${book.entityId}:${book.id}:${search.record}`}
-        book={book}
-        locale={locale}
-        agreementId={search.record}
-        jobId={search.job}
-        cycleOrdinal={search.cycle === undefined ? undefined : String(search.cycle)}
-        work={search.work}
-        returnTo={search.returnTo}
-      />
-    </PageContent>
+    <RecurringRegister
+      work={search.work}
+      returnTo={search.returnTo}
+      record={search.record}
+      cycle={search.cycle === undefined ? undefined : String(search.cycle)}
+      job={search.job}
+      form={search.recurringForm}
+    />
   );
 }

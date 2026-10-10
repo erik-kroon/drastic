@@ -46,6 +46,7 @@ const styles = stylex.create({
     color: kanon.colorOnAction,
     fontWeight: kanon.weightSemibold,
   },
+  record: { color: kanon.colorAction, fontFamily: kanon.fontControl },
   secondary: {
     backgroundColor: { default: kanon.colorSurface, ":hover": kanon.colorSideSurface },
     borderColor: kanon.colorControl,
@@ -64,6 +65,14 @@ const styles = stylex.create({
     backgroundColor: kanon.colorError,
     color: kanon.colorOnAction,
     fontWeight: kanon.weightSemibold,
+  },
+  disabled: {
+    backgroundColor: kanon.colorSideSurface,
+    borderColor: kanon.colorControl,
+    boxShadow: "none",
+    color: kanon.colorCaption,
+    cursor: "not-allowed",
+    fontWeight: kanon.weightRegular,
   },
   blocked: {
     backgroundColor: kanon.colorRule,
@@ -85,6 +94,7 @@ const kindStyle = {
 
 type ActionProps = {
   kind: ActionKind;
+  presentation?: "record";
   children: ReactNode;
   onClick?: () => void;
   /** Use "submit" only inside a form. */
@@ -93,6 +103,8 @@ type ActionProps = {
   render?: ComponentProps<typeof ButtonPrimitive>["render"];
   /** Set when the action cannot run. The reason replaces the label: "Välj kund för att skicka". */
   blockedBy?: string;
+  /** Required form fields explain inhibition while the adopted submit label remains visible. */
+  disabled?: boolean;
   /** Top bars, list rows and file rows use the 28 px size. */
   compact?: boolean;
   /** In a footer row beside the primary, as in dialogs and drawers: match its 36 px height. */
@@ -113,12 +125,14 @@ export function Action(props: ActionProps) {
       render={props.render}
       nativeButton={props.render === undefined}
       role={props.render === undefined ? undefined : "link"}
-      disabled={blockedBy !== undefined}
-      focusableWhenDisabled={blockedBy !== undefined}
+      disabled={blockedBy !== undefined || props.disabled === true}
+      focusableWhenDisabled={blockedBy !== undefined || props.disabled === true}
       {...stylex.props(
         styles.root,
         height,
         kindStyle[kind],
+        props.presentation === "record" && styles.record,
+        props.disabled === true && styles.disabled,
         blockedBy !== undefined && styles.blocked,
         props.fill === true && styles.fill,
       )}

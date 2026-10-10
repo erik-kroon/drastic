@@ -1,0 +1,9 @@
+{
+  "path": "POST /commerce/invoice-drafts",
+  "fixtures": 25,
+  "p50Ms": 21.38229199999978,
+  "p95Ms": 33.5824590000002,
+  "acceptedP95Ms": 79.6235,
+  "baselineSource": "docs/plans/evidence/recurring-commercial-drafts.md",
+  "feature": "existing commercial draft admission"
+}
