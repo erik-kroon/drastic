@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useRef, useState, type ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reports from "@open-erp/contracts/register-reports";
@@ -121,6 +121,15 @@ export function RegisterReports(
             label={copy.captureRegister}
             input={(fields) => ({ asOfDate: fields.get("asOfDate") })}
             onSuccess={(report) => setSelected(report.id)}
+            operation={(client, requestOptions) =>
+              client.registerReports.createRegisterReport(
+                httpRequest(
+                  Api.groups.registerReports.endpoints.createRegisterReport,
+                  { params: { ...bookScope(book) } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <Field name="asOfDate" label={copy.asOfDate} type="date" />
           </CommandForm>

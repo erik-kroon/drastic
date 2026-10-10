@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -124,6 +125,15 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
               acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
             })}
             onSuccess={(result) => setReviewId(result.id)}
+            operation={(client, requestOptions) =>
+              client.supplierCredits.prepareSupplierCredit(
+                httpRequest(
+                  Api.groups.supplierCredits.endpoints.prepareSupplierCredit,
+                  { params: { ...bookScope(props.book) } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <Text>
               {invoice.documentNumber},{" "}
@@ -283,6 +293,15 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
                   digest: view.review.digest,
                   acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
                 })}
+                operation={(client, requestOptions) =>
+                  client.supplierCredits.approveSupplierCredit(
+                    httpRequest(
+                      Api.groups.supplierCredits.endpoints.approveSupplierCredit,
+                      { params: { ...bookScope(props.book), id: props.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               >
                 <label>
                   <input name="acknowledgeSyntheticOnly" type="checkbox" required />{" "}
@@ -312,6 +331,15 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
                     approvalId: view.approval?.id,
                     acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
                   })}
+                  operation={(client, requestOptions) =>
+                    client.supplierCredits.executeSupplierCredit(
+                      httpRequest(
+                        Api.groups.supplierCredits.endpoints.executeSupplierCredit,
+                        { params: { ...bookScope(props.book), id: props.id } },
+                        requestOptions,
+                      ),
+                    )
+                  }
                 >
                   <label>
                     <input name="acknowledgeSyntheticOnly" type="checkbox" required />{" "}

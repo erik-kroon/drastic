@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
@@ -218,6 +218,16 @@ export function AllocationReleaseStatus(
                 allowed={ready && status.data.active}
                 input={(fields) => ({ receiptId: id, reason: fields.get("reason") })}
                 onSuccess={(plan) => props.onOpen?.(plan.id)}
+                operation={(client, requestOptions) =>
+                  client.commerceAllocationReversals.prepareCommerceAllocationReversal(
+                    httpRequest(
+                      Api.groups.commerceAllocationReversals.endpoints
+                        .prepareCommerceAllocationReversal,
+                      { params: { ...bookScope(book) } },
+                      requestOptions,
+                    ),
+                  )
+                }
               >
                 <Field name="reason" label={copy.reason} />
               </CommandForm>

@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import * as Collections from "@open-erp/contracts/collections";
@@ -217,6 +218,15 @@ function ReminderRetainedReview(props: {
               },
             })}
             onSuccess={props.refresh}
+            operation={(client, requestOptions) =>
+              client.collections.replaceReminder(
+                httpRequest(
+                  Api.groups.collections.endpoints.replaceReminder,
+                  { params: { ...bookScope(book), id: message.id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
         ) : null}
         {!terminal ? (
@@ -232,6 +242,15 @@ function ReminderRetainedReview(props: {
             label="Avbryt påminnelsen"
             input={() => ({ messageDigest: message.digest })}
             onSuccess={props.refresh}
+            operation={(client, requestOptions) =>
+              client.collections.cancelReminder(
+                httpRequest(
+                  Api.groups.collections.endpoints.cancelReminder,
+                  { params: { ...bookScope(book), id: message.id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
         ) : null}
         {terminal?.kind === "replaced" ? (

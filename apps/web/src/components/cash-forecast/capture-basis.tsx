@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import type { CommandKeys } from "@/lib/command-keys";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient, skipToken } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -71,7 +72,7 @@ export function CaptureCashBasis({ onSaved }: { onSaved: (id: string) => void })
   });
 
   const capture = useMutation({
-    mutationFn: (selection: Selection) => saveBasis(bookPath(book), selection, keys.current, sv),
+    mutationFn: (selection: Selection) => saveBasis(book, selection, keys.current, sv),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: [...bookKey(book), "cash-bases"] });
     },
@@ -296,11 +297,24 @@ function BasisReview(props: {
   );
 }
 
-async function saveBasis(base: string, selection: Selection, keys: CommandKeys, sv: boolean) {
+async function saveBasis(
+  book: typeof Accounting.Book.Type,
+  selection: Selection,
+  keys: CommandKeys,
+  sv: boolean,
+) {
+  const base = bookPath(book);
   const evidencePath = `${base}/evidence`;
 
   const evidence = await readAccounting(
-    evidencePath,
+    (client, options) =>
+      client.accounting.createEvidence(
+        httpRequest(
+          Api.groups.accounting.endpoints.createEvidence,
+          { params: bookScope(book) },
+          options,
+        ),
+      ),
     Accounting.Evidence,
     keys.options(
       evidencePath,
@@ -326,7 +340,14 @@ async function saveBasis(base: string, selection: Selection, keys: CommandKeys, 
     const path = `${base}/bank-capacity-reconciliations`;
 
     const reconciliation = await readAccounting(
-      path,
+      (client, options) =>
+        client.settlements.reconcileBankCapacity(
+          httpRequest(
+            Api.groups.settlements.endpoints.reconcileBankCapacity,
+            { params: bookScope(book) },
+            options,
+          ),
+        ),
       Settlement.BankCapacityReconciliation,
       keys.options(
         path,
@@ -360,5 +381,16 @@ async function saveBasis(base: string, selection: Selection, keys: CommandKeys, 
     expectedDates: [],
   });
 
-  return readAccounting(path, Cash.CashBasis, keys.options(path, JSON.stringify(input)));
+  return readAccounting(
+    (client, options) =>
+      client.cashForecast.captureCashBasis(
+        httpRequest(
+          Api.groups.cashForecast.endpoints.captureCashBasis,
+          { params: bookScope(book) },
+          options,
+        ),
+      ),
+    Cash.CashBasis,
+    keys.options(path, JSON.stringify(input)),
+  );
 }

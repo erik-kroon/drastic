@@ -1,3 +1,6 @@
+import * as Option from "effect/Option";
+import type * as Effect from "effect/Effect";
+import type { AccountingClient } from "@/lib/contract-client";
 import { useId, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -28,6 +31,10 @@ export function EvidenceCommandForm<
 >(
   props: CommerceProps & {
     path: string;
+    operation: (
+      client: AccountingClient,
+      options: RequestInit,
+    ) => Effect.Effect<O["Type"], unknown>;
     schema: S;
     output: O;
     source: (fields: FormData) => typeof Accounting.CreateEvidence.Type;
@@ -78,7 +85,7 @@ export function EvidenceCommandForm<
         request.build(retained.outcome.result),
       );
 
-      if (parsed._tag === "None")
+      if (Option.isNone(parsed))
         throw new InvalidRecordInput(
           sv
             ? "Kontrollera datum, belopp och obligatoriska uppgifter."
@@ -86,7 +93,7 @@ export function EvidenceCommandForm<
         );
       setCapturedCommand({ key: request.key, input: parsed.value });
 
-      const result = await readAccounting(props.path, props.output, {
+      const result = await readAccounting(props.operation, props.output, {
         method: "POST",
         body: JSON.stringify(parsed.value),
         headers: { "Idempotency-Key": request.key },
@@ -125,9 +132,9 @@ export function EvidenceCommandForm<
         if (locked || props.canSubmit === false || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const source = Schema.decodeOption(Accounting.CreateEvidence)(props.source(fields));
-        setInvalid(source._tag === "None");
+        setInvalid(Option.isNone(source));
 
-        if (source._tag === "None") return;
+        if (Option.isNone(source)) return;
         const build = props.input;
         save.mutate({
           key: crypto.randomUUID(),

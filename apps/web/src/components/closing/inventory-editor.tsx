@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Closing from "@open-erp/contracts/closing";
 import { Check, Circle } from "lucide-react";
@@ -92,6 +94,15 @@ export function PeriodInventoryEditor({
         families: decisions.map((item) => ({ ...item, evidenceId: evidence.id })),
       })}
       onSuccess={onSaved}
+      operation={(client, requestOptions) =>
+        client.closing.declareClosingInventory(
+          httpRequest(
+            Api.groups.closing.endpoints.declareClosingInventory,
+            { params: { ...bookScope(book), periodId: basis.periodId } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <PageCaption>
         {sv

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Firms from "@open-erp/contracts/firms";
 import { Button } from "@open-erp/ui/components/button";
@@ -107,6 +109,15 @@ export function FirmTeam({
             active: fields.get("active") === "true",
             expectedRevision: editing.member?.revision ?? 0,
           })}
+          operation={(client, requestOptions) =>
+            client.firms.saveFirmMember(
+              httpRequest(
+                Api.groups.firms.endpoints.saveFirmMember,
+                { params: { firmId: workspace.firm.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           {!editing.member ? (
             <InputField

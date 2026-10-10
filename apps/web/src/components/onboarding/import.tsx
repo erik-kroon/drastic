@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { importReadiness, missingSourceAccounts } from "./import-readiness";
 import * as Match from "effect/Match";
 import {
@@ -59,7 +61,17 @@ export function OnboardingImport({
   const run = workspace.imports.find((item) => item.sourcePlanId === sie.latest?.planId);
 
   const capture = useOnboardingCommand(
-    `${bookPath(book)}/source-occurrences/${encodeURIComponent(sie.source?.occurrence.id ?? "unselected")}/sie-previews`,
+    {
+      identity: `${bookPath(book)}/source-occurrences/${encodeURIComponent(sie.source?.occurrence.id ?? "unselected")}/sie-previews`,
+      execute: (client, requestOptions) =>
+        client.sieImport.captureSieSource(
+          httpRequest(
+            Api.groups.sieImport.endpoints.captureSieSource,
+            { params: { ...bookScope(book), id: sie.source?.occurrence.id ?? "unselected" } },
+            requestOptions,
+          ),
+        ),
+    },
     Schema.Struct({ encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]) }),
     Sie.SiePreview,
   );
@@ -317,7 +329,17 @@ function useMappingSelection(workspace: Workspace, open: OpenOnboardingView) {
   const choice = selected || currentChoice || proposed || "";
 
   const map = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/account-mappings`,
+    {
+      identity: `${bookPath(book)}/onboarding/account-mappings`,
+      execute: (client, requestOptions) =>
+        client.onboardingMappings.saveOnboardingMapping(
+          httpRequest(
+            Api.groups.onboardingMappings.endpoints.saveOnboardingMapping,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Mapping.SaveOnboardingMapping,
     Mapping.OnboardingMapping,
     () => open("import"),

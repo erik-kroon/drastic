@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookPath } from "@/lib/accounting-api";
@@ -89,7 +91,17 @@ export function useSnapshotCapture(onSuccess?: (snapshot: Snapshot) => void) {
   const { book } = useBookWorkspace();
 
   return useOnboardingCommand(
-    `${bookPath(book)}/onboarding/snapshots`,
+    {
+      identity: `${bookPath(book)}/onboarding/snapshots`,
+      execute: (client, requestOptions) =>
+        client.onboarding.captureOnboardingSnapshot(
+          httpRequest(
+            Api.groups.onboarding.endpoints.captureOnboardingSnapshot,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Onboarding.CaptureOnboardingSnapshot,
     Onboarding.OnboardingSnapshot,
     onSuccess,
@@ -100,7 +112,17 @@ export function useSnapshotDecision(onSuccess?: () => void) {
   const { book } = useBookWorkspace();
 
   return useOnboardingCommand(
-    `${bookPath(book)}/onboarding/decisions`,
+    {
+      identity: `${bookPath(book)}/onboarding/decisions`,
+      execute: (client, requestOptions) =>
+        client.onboarding.decideOnboardingSnapshot(
+          httpRequest(
+            Api.groups.onboarding.endpoints.decideOnboardingSnapshot,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Onboarding.DecideOnboardingSnapshot,
     Onboarding.OnboardingDecision,
     onSuccess,

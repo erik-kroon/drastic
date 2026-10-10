@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Tax from "@open-erp/contracts/expense-tax";
 import { ChoiceField } from "@open-erp/ui/components/choice-field";
@@ -74,6 +76,15 @@ export function ExpenseReviewForm(
           roundingPolicy: fields.get("roundingPolicy"),
         },
       })}
+      operation={(client, requestOptions) =>
+        client.expenseTax.reviewExpenseTaxSource(
+          httpRequest(
+            Api.groups.expenseTax.endpoints.reviewExpenseTaxSource,
+            { params: { ...bookScope(props.book), id: source.current.sourceId } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <RecordColumns>
         <RecordSection sticky title={sv ? "Underlag" : "Source document"}>

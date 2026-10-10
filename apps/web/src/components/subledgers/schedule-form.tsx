@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -56,6 +58,23 @@ export function ScheduleForm(props: {
 
   return (
     <EvidenceCommandForm
+      operation={(client, options) =>
+        current
+          ? client.subledgers.reviseSchedule(
+              httpRequest(
+                Api.groups.subledgers.endpoints.reviseSchedule,
+                { params: { ...bookScope(book), id: current.scheduleId } },
+                options,
+              ),
+            )
+          : client.subledgers.createSchedule(
+              httpRequest(
+                Api.groups.subledgers.endpoints.createSchedule,
+                { params: bookScope(book) },
+                options,
+              ),
+            )
+      }
       book={book}
       locale={locale}
       path={

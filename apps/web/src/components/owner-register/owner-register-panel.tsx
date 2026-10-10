@@ -1,3 +1,7 @@
+import type * as Effect from "effect/Effect";
+import type { AccountingClient } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Schema from "effect/Schema";
@@ -65,14 +69,19 @@ function OwnerCommand<
 
 function useOwnerRead<S extends Schema.Top & { readonly DecodingServices: never }>(
   props: Props,
-  suffix: string,
+  request: {
+    readonly identity: string;
+    readonly execute: (
+      client: AccountingClient,
+      options: RequestInit,
+    ) => Effect.Effect<S["Type"], unknown>;
+  },
   schema: S,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: [...ownerKey(props.book), suffix],
-    queryFn: ({ signal }) =>
-      readAccounting(`${ownerPath(props.book)}${suffix}`, schema, { signal }),
+    queryKey: [...ownerKey(props.book), request.identity],
+    queryFn: ({ signal }) => readAccounting(request.execute, schema, { signal }),
     enabled,
     retry: false,
     staleTime: 0,
@@ -251,11 +260,30 @@ function OwnerIdentities(props: Props) {
 
   const page = useOwnerRead(
     props,
-    `/owners${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+    {
+      identity: `/owners${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+      execute: (client) =>
+        client.ownerRegister.ownersListOwners({
+          params: { ...bookScope(props.book) },
+          query: httpQuery(
+            Api.groups.ownerRegister.endpoints.ownersListOwners,
+            `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+          ),
+        }),
+    },
     Owners.OwnerPage,
   );
 
-  const detail = useOwnerRead(props, `/owners/${encodeURIComponent(id)}`, Owners.Owner, !!id);
+  const detail = useOwnerRead(
+    props,
+    {
+      identity: `/owners/${encodeURIComponent(id)}`,
+      execute: (client) =>
+        client.ownerRegister.ownersGetOwner({ params: { ...bookScope(props.book), id: id } }),
+    },
+    Owners.Owner,
+    !!id,
+  );
 
   return (
     <Box display="grid" gap="lg">
@@ -273,6 +301,15 @@ function OwnerIdentities(props: Props) {
           reason: fields.get("reason"),
         })}
         onSuccess={(value) => setId(value.id)}
+        operation={(client, requestOptions) =>
+          client.ownerRegister.ownersCreateOwner(
+            httpRequest(
+              Api.groups.ownerRegister.endpoints.ownersCreateOwner,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Field
           name="sourceKey"
@@ -342,7 +379,17 @@ function OwnerRecords(props: Props) {
 
   const page = useOwnerRead(
     props,
-    `/records${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+    {
+      identity: `/records${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+      execute: (client) =>
+        client.ownerRegister.ownersListRecords({
+          params: { ...bookScope(props.book) },
+          query: httpQuery(
+            Api.groups.ownerRegister.endpoints.ownersListRecords,
+            `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+          ),
+        }),
+    },
     Owners.RecordPage,
   );
 
@@ -383,6 +430,15 @@ function OwnerRecords(props: Props) {
                 : null,
             ...revisionInput(fields),
           })}
+          operation={(client, requestOptions) =>
+            client.ownerRegister.ownersCreateRecord(
+              httpRequest(
+                Api.groups.ownerRegister.endpoints.ownersCreateRecord,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
             <Field
@@ -539,11 +595,30 @@ function OwnerRecords(props: Props) {
 function OwnerRecordDetail(props: Props & { id: string }) {
   const { locale, id } = props;
   const [after, setAfter] = useState("");
-  const view = useOwnerRead(props, `/records/${encodeURIComponent(id)}`, Owners.RecordView);
+
+  const view = useOwnerRead(
+    props,
+    {
+      identity: `/records/${encodeURIComponent(id)}`,
+      execute: (client) =>
+        client.ownerRegister.ownersGetRecord({ params: { ...bookScope(props.book), id: id } }),
+    },
+    Owners.RecordView,
+  );
 
   const history = useOwnerRead(
     props,
-    `/records/${encodeURIComponent(id)}/revisions${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+    {
+      identity: `/records/${encodeURIComponent(id)}/revisions${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+      execute: (client) =>
+        client.ownerRegister.ownersRecordHistory({
+          params: { ...bookScope(props.book), id: id },
+          query: httpQuery(
+            Api.groups.ownerRegister.endpoints.ownersRecordHistory,
+            `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+          ),
+        }),
+    },
     Owners.RecordHistory,
   );
 
@@ -677,6 +752,15 @@ function RecordActions(
             expectedRevision: fields.get("expectedRevision"),
             evidenceId: fields.get("evidenceId"),
           })}
+          operation={(client, requestOptions) =>
+            client.ownerRegister.ownersReviseRecord(
+              httpRequest(
+                Api.groups.ownerRegister.endpoints.ownersReviseRecord,
+                { params: { ...bookScope(book), id: id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Field
             name="expectedRevision"
@@ -711,6 +795,15 @@ function RecordActions(
               evidenceId: fields.get("evidenceId"),
               reason: fields.get("reason"),
             })}
+            operation={(client, requestOptions) =>
+              client.ownerRegister.ownersReviewRecord(
+                httpRequest(
+                  Api.groups.ownerRegister.endpoints.ownersReviewRecord,
+                  { params: { ...bookScope(book), id: id } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <Facts
               title={words(
@@ -806,6 +899,15 @@ function RecordActions(
             changeSetId: fields.get("changeSetId"),
             lineId: fields.get("lineId"),
           })}
+          operation={(client, requestOptions) =>
+            client.ownerRegister.ownersAttachProposal(
+              httpRequest(
+                Api.groups.ownerRegister.endpoints.ownersAttachProposal,
+                { params: { ...bookScope(book), id: id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Field
             name="reviewId"
@@ -837,6 +939,15 @@ function RecordActions(
             voucherId: fields.get("voucherId"),
             lineId: fields.get("lineId"),
           })}
+          operation={(client, requestOptions) =>
+            client.ownerRegister.ownersAttachPostedLine(
+              httpRequest(
+                Api.groups.ownerRegister.endpoints.ownersAttachPostedLine,
+                { params: { ...bookScope(book), id: id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Field
             name="reviewId"
@@ -892,6 +1003,15 @@ function OwnerAllocations(props: Props) {
             amountMinor: fields.get(`amount-${leg}`),
           })),
         })}
+        operation={(client, requestOptions) =>
+          client.ownerRegister.ownersPrepareAllocation(
+            httpRequest(
+              Api.groups.ownerRegister.endpoints.ownersPrepareAllocation,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Field
           name="settlementId"
@@ -980,7 +1100,11 @@ function OwnerAllocationReview(props: Props & { id: string }) {
 
   const view = useOwnerRead(
     props,
-    `/allocation-plans/${encodeURIComponent(id)}`,
+    {
+      identity: `/allocation-plans/${encodeURIComponent(id)}`,
+      execute: (client) =>
+        client.ownerRegister.ownersGetAllocation({ params: { ...bookScope(props.book), id: id } }),
+    },
     Owners.AllocationView,
   );
 
@@ -1094,6 +1218,15 @@ function OwnerAllocationReview(props: Props & { id: string }) {
               )}
               allowed={actionable}
               input={() => ({ version: plan.version, planDigest: plan.digest })}
+              operation={(client, requestOptions) =>
+                client.ownerRegister.ownersApproveAllocation(
+                  httpRequest(
+                    Api.groups.ownerRegister.endpoints.ownersApproveAllocation,
+                    { params: { ...bookScope(book), id: id } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <Box as="label" display="flex" gap="md" alignItems="start">
                 <input type="checkbox" required />
@@ -1123,6 +1256,15 @@ function OwnerAllocationReview(props: Props & { id: string }) {
               planDigest: plan.digest,
               approvalId: fields.get("approvalId"),
             })}
+            operation={(client, requestOptions) =>
+              client.ownerRegister.ownersApplyAllocation(
+                httpRequest(
+                  Api.groups.ownerRegister.endpoints.ownersApplyAllocation,
+                  { params: { ...bookScope(book), id: id } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <Field
               name="approvalId"
@@ -1149,7 +1291,18 @@ function OwnerAllocationReview(props: Props & { id: string }) {
 function OwnerControls(props: Props) {
   const { book, locale } = props;
   const [id, setId] = useState("");
-  const view = useOwnerRead(props, `/controls/${encodeURIComponent(id)}`, Owners.ControlView, !!id);
+
+  const view = useOwnerRead(
+    props,
+    {
+      identity: `/controls/${encodeURIComponent(id)}`,
+      execute: (client) =>
+        client.ownerRegister.ownersGetControl({ params: { ...bookScope(props.book), id: id } }),
+    },
+    Owners.ControlView,
+    !!id,
+  );
+
   const snapshot = view.data?.snapshot;
 
   const currentnessKnown =
@@ -1176,6 +1329,15 @@ function OwnerControls(props: Props) {
           startsOn: fields.get("startsOn"),
           endsOn: fields.get("endsOn"),
         })}
+        operation={(client, requestOptions) =>
+          client.ownerRegister.ownersPrepareControl(
+            httpRequest(
+              Api.groups.ownerRegister.endpoints.ownersPrepareControl,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Field name="ownerId" label={words(locale, "Retained owner ID", "Bevarat ägar-ID")} />
         <Field
@@ -1424,7 +1586,13 @@ function OwnerRecovery(props: Props) {
 
   const result = useOwnerRead(
     props,
-    `/commands/${encodeURIComponent(key)}`,
+    {
+      identity: `/commands/${encodeURIComponent(key)}`,
+      execute: (client) =>
+        client.ownerRegister.ownersRecoverCommand({
+          params: { ...bookScope(props.book), key: key },
+        }),
+    },
     Owners.CommandRecovery,
     !!key,
   );

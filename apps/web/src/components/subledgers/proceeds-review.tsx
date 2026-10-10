@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -209,6 +210,15 @@ export function AssetDisposalReview(props: {
                   setApproved(value);
                   props.onRefresh();
                 }}
+                operation={(client, requestOptions) =>
+                  client.assetDisposals.approveAssetProceedsDisposal(
+                    httpRequest(
+                      Api.groups.assetDisposals.endpoints.approveAssetProceedsDisposal,
+                      { params: { ...bookScope(book), id: review.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               />
             ) : (
               <CommandForm
@@ -231,6 +241,15 @@ export function AssetDisposalReview(props: {
                     throw new Error("Disposal execution identity mismatch");
                 }}
                 onSuccess={props.onRefresh}
+                operation={(client, requestOptions) =>
+                  client.assetDisposals.executeAssetProceedsDisposal(
+                    httpRequest(
+                      Api.groups.assetDisposals.endpoints.executeAssetProceedsDisposal,
+                      { params: { ...bookScope(book), id: review.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               />
             )}
             <Link href={props.backHref}>Avbryt</Link>

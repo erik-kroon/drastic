@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Documents from "@open-erp/contracts/invoice-documents";
@@ -115,6 +116,15 @@ function DocumentPanel(props: IssuedDocumentProps) {
             throw new Error("Invoice document capture source mismatch");
           setId(view.capture.id);
         }}
+        operation={(client, requestOptions) =>
+          client.invoiceDocuments.prepareInvoiceDocument(
+            httpRequest(
+              Api.groups.invoiceDocuments.endpoints.prepareInvoiceDocument,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       />
       {history.isSuccess && earlier.length ? (
         <Disclosure label={copy.earlier} variant="toolbar">

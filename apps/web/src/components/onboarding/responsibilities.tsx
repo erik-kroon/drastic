@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { SelectControl } from "@open-erp/ui/components/select";
 import {
   SetupBlock,
@@ -145,7 +147,17 @@ export function OnboardingResponsibilities({
   );
 
   const save = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/responsibilities`,
+    {
+      identity: `${bookPath(book)}/onboarding/responsibilities`,
+      execute: (client, requestOptions) =>
+        client.onboarding.saveOnboardingResponsibilities(
+          httpRequest(
+            Api.groups.onboarding.endpoints.saveOnboardingResponsibilities,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Onboarding.SaveOnboardingResponsibilities,
     Onboarding.OnboardingResponsibilities,
   );

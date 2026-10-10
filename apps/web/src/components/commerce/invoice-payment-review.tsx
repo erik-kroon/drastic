@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
@@ -198,6 +199,15 @@ function InvoicePaymentActions(
           if (result.planId !== plan.id || result.planDigest !== plan.digest)
             throw new Error("Allocation approval binding mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.commerce.commerceApproveAllocation(
+            httpRequest(
+              Api.groups.commerce.endpoints.commerceApproveAllocation,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Box as="label" display="flex" gap="md" alignItems="start">
           <input type="checkbox" required />
@@ -225,6 +235,15 @@ function InvoicePaymentActions(
           if (result.planId !== plan.id || result.planDigest !== plan.digest)
             throw new Error("Allocation application binding mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.commerce.commerceApplyAllocation(
+            httpRequest(
+              Api.groups.commerce.endpoints.commerceApplyAllocation,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
     </Box>
   );

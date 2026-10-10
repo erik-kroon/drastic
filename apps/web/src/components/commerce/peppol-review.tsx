@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Peppol from "@open-erp/contracts/peppol-exchange";
@@ -247,6 +247,15 @@ function PeppolRetainedReview(props: {
               variant="outline"
               canSubmit={review.outcome === "blocked" && !view.returned}
               onSuccess={props.refresh}
+              operation={(client, requestOptions) =>
+                client.peppolExchange.returnPeppolReview(
+                  httpRequest(
+                    Api.groups.peppolExchange.endpoints.returnPeppolReview,
+                    { params: { ...bookScope(book), id: review.id } },
+                    requestOptions,
+                  ),
+                )
+              }
             />
           </AssetActionActions>
           <AssetActionNote>

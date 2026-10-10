@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import type { CommandKeys } from "@/lib/command-keys";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -36,13 +37,22 @@ type SaveResult =
 type SaveRequest = { kind: "dimension"; item: Item } | { kind: "value"; item: Value };
 
 async function saveDimensionRequest(
-  path: string,
+  book: typeof Accounting.Book.Type,
   keys: CommandKeys,
   request: SaveRequest,
 ): Promise<SaveResult> {
+  const path = `${bookPath(book)}/dimensions`;
+
   if (request.kind === "dimension") {
     const result = await readAccounting(
-      path,
+      (client, options) =>
+        client.dimensions.saveDimension(
+          httpRequest(
+            Api.groups.dimensions.endpoints.saveDimension,
+            { params: bookScope(book) },
+            options,
+          ),
+        ),
       Dimensions.DimensionSaved,
       mutationOptions(path, JSON.stringify(request.item), keys),
     );
@@ -53,7 +63,14 @@ async function saveDimensionRequest(
   const target = `${path}/values`;
 
   const result = await readAccounting(
-    target,
+    (client, options) =>
+      client.dimensions.saveDimensionValue(
+        httpRequest(
+          Api.groups.dimensions.endpoints.saveDimensionValue,
+          { params: bookScope(book) },
+          options,
+        ),
+      ),
     Dimensions.DimensionValueSaved,
     mutationOptions(target, JSON.stringify(request.item), keys),
   );
@@ -100,7 +117,6 @@ export function DimensionSettings({
   const [value, setValue] = useState<Value>({ ...empty, dimensionCode: "" });
   const [saved, setSaved] = useState(false);
   const { current: keys } = useCommandKeys();
-  const path = `${bookPath(book)}/dimensions`;
   const key = [...bookKey(book), "dimensions"];
 
   const list = useQuery(
@@ -116,7 +132,7 @@ export function DimensionSettings({
   );
 
   const save = useMutation<SaveResult, Error, SaveRequest>({
-    mutationFn: (request) => saveDimensionRequest(path, keys, request),
+    mutationFn: (request) => saveDimensionRequest(book, keys, request),
     onSuccess: async ({ result }) => {
       updateSavedForm(result, setDimension, setValue);
       setSaved(true);

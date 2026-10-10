@@ -36,7 +36,10 @@ export function FinancialImport({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/sie-runs/${encodeURIComponent(sourceRunId)}/financial-workspace`,
+        (client) =>
+          client.historicalMigration.getSieFinancialWorkspace({
+            params: { ...bookScope(book), id: sourceRunId },
+          }),
         Historical.FinancialWorkspace,
         { signal },
       );
@@ -58,7 +61,14 @@ export function FinancialImport({
   const start = useMutation({
     mutationFn: () =>
       readAccounting(
-        startPath,
+        (client, options) =>
+          client.historicalMigration.startSieFinancialRun(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.startSieFinancialRun,
+              { params: { ...bookScope(book), id: sourceRunId } },
+              options,
+            ),
+          ),
         Historical.RunStart,
         keys.current.options(
           startPath,

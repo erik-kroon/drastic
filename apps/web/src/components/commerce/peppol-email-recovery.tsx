@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Peppol from "@open-erp/contracts/peppol-exchange";
 import * as Pdf from "@open-erp/contracts/legal-invoice-pdf";
@@ -86,6 +87,15 @@ export function PeppolEmailRecovery({ review }: { review: typeof Peppol.Review.T
           onSuccess={() => {
             void client.invalidateQueries({ queryKey: key });
           }}
+          operation={(client, requestOptions) =>
+            client.legalInvoicePdfs.prepareLegalInvoicePdf(
+              httpRequest(
+                Api.groups.legalInvoicePdfs.endpoints.prepareLegalInvoicePdf,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
       {pdf.data?.verified && !pdf.isError ? <PdfDownload verified={pdf.data.verified} /> : null}
@@ -161,6 +171,15 @@ function EmailHandoff(props: {
           providerProfileKey: "manual_email_handoff_v1",
           reason: formText(fields, "reason"),
         })}
+        operation={(client, requestOptions) =>
+          client.legalDeliveries.prepareLegalDelivery(
+            httpRequest(
+              Api.groups.legalDeliveries.endpoints.prepareLegalDelivery,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <InputField name="destination" type="email" label="Till" required />
         <InputField name="reason" label="Anledning" required />
@@ -187,6 +206,15 @@ function EmailHandoff(props: {
                       reason: formText(fields, "reason"),
                       approveSendHandoff: true,
                     })}
+                    operation={(client, requestOptions) =>
+                      client.legalDeliveries.approveLegalDelivery(
+                        httpRequest(
+                          Api.groups.legalDeliveries.endpoints.approveLegalDelivery,
+                          { params: { ...bookScope(book), id: item.request.id } },
+                          requestOptions,
+                        ),
+                      )
+                    }
                   >
                     <InputField name="reason" label="Anledning" required />
                   </CommandForm>

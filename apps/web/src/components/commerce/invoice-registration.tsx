@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -129,6 +129,15 @@ export function InvoiceRegistration(
         evidenceId: source?.evidenceId,
         description: fields.get("description"),
       })}
+      operation={(client, requestOptions) =>
+        client.commerce.commerceCreateInvoice(
+          httpRequest(
+            Api.groups.commerce.endpoints.commerceCreateInvoice,
+            { params: { ...bookScope(props.book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <PageCaption>{labels.linkTheOriginalInvoiceTo}</PageCaption>
       <SelectField

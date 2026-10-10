@@ -42,7 +42,22 @@ export function RateForm(
       const payload = current ? { expectedDigest: current.digest, terms: input.terms } : input;
 
       const result = await readAccounting(
-        path,
+        (client, options) =>
+          current
+            ? client.exchangeRates.reviseExchangeRate(
+                httpRequest(
+                  Api.groups.exchangeRates.endpoints.reviseExchangeRate,
+                  { params: { ...bookScope(book), id: current.observationId } },
+                  options,
+                ),
+              )
+            : client.exchangeRates.createExchangeRate(
+                httpRequest(
+                  Api.groups.exchangeRates.endpoints.createExchangeRate,
+                  { params: bookScope(book) },
+                  options,
+                ),
+              ),
         Rates.ExchangeRateRevision,
         keys.current.options(path, JSON.stringify(payload)),
       );

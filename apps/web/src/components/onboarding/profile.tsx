@@ -149,7 +149,22 @@ export function OnboardingProfile({
   const [reviewing, setReviewing] = useState<Fact | null>(null);
 
   const confirm = useOnboardingCommand(
-    `${bookPath(book)}/company-facts/${encodeURIComponent(confirming?.revision.id ?? "unselected")}/reviews`,
+    {
+      identity: `${bookPath(book)}/company-facts/${encodeURIComponent(confirming?.revision.id ?? "unselected")}/reviews`,
+      execute: (client, requestOptions) =>
+        client.companyProfile.reviewCompanyFact(
+          httpRequest(
+            Api.groups.companyProfile.endpoints.reviewCompanyFact,
+            {
+              params: {
+                ...bookScope(book),
+                factRevisionId: confirming?.revision.id ?? "unselected",
+              },
+            },
+            requestOptions,
+          ),
+        ),
+    },
     Profiles.ReviewFactRevision,
     Profiles.FactReview,
     () => setConfirming(null),

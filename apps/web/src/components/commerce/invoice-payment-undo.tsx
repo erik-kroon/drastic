@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import type * as Commerce from "@open-erp/contracts/commerce";
@@ -211,6 +212,15 @@ function PrepareUndo(props: UndoProps & { ready: boolean }) {
             throw new Error("Prepared invoice undo mismatch");
           props.navigation.onRelease(result.id);
         }}
+        operation={(client, requestOptions) =>
+          client.commerceAllocationReversals.prepareCommerceAllocationReversal(
+            httpRequest(
+              Api.groups.commerceAllocationReversals.endpoints.prepareCommerceAllocationReversal,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Field name="reason" label={copy.reason} />
       </CommandForm>

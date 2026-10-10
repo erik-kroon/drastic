@@ -1141,7 +1141,7 @@
       {
         "path": "apps/web/src/components/bank-transaction-match.tsx",
         "beforeSha256": "bae0e5cd2366a075026e0fed05e384f85277a2d4bc671ef063885e17f5ad0d13",
-        "afterSha256": "f4fadafe188708d707a6b78752a79e40c24604cd54e5d446a86e11cf9e617c42"
+        "afterSha256": "c3fee4fbcc004731525dae046327223f9bf567ea5944373a09b5e2aa0e324d4a"
       },
       {
         "path": "apps/web/src/components/banking-setup/consent-detail.tsx",
@@ -1196,7 +1196,7 @@
       {
         "path": "apps/web/src/components/cash-forecast/capture-basis.tsx",
         "beforeSha256": "98f14d9d1e8bf658e3cfe4b9186219ea95587f4401fc50ec471fd098f66ec750",
-        "afterSha256": "66df550c4d435b621d9ea30d8224d3fce9162f569c4d89960dd5d986f1999a48"
+        "afterSha256": "792289d0cc0e60fa15969aae8d7454101bca1ff899a39e0c5184e79b8147ee54"
       },
       {
         "path": "apps/web/src/components/cash-forecast/capture-forecast.tsx",
@@ -1207,6 +1207,11 @@
         "path": "apps/web/src/components/cash-forecast/workspace.tsx",
         "beforeSha256": "64edb4528417c6c8d2b163fe8a4644484c097d854e1e99e56c4880079e129f4e",
         "afterSha256": "2d71c31282fcb57fb035c40012068023a2dbad25140bbb6b8852e9f7562da2e8"
+      },
+      {
+        "path": "apps/web/src/components/closing/inventory-editor.tsx",
+        "beforeSha256": "40fa9e6ac39518c0316193fef30779293cb402484ac99898c8e399ce6c0eb3db",
+        "afterSha256": "32a10d96468da86b55e9e80b2ad686e974add02b5c9757a63ca9e9388c000398"
       },
       {
         "path": "apps/web/src/components/closing/panel.tsx",
@@ -1226,17 +1231,17 @@
       {
         "path": "apps/web/src/components/commerce/allocation-reversal-review.tsx",
         "beforeSha256": "bbca9ee947dd6648a8d99526a2cbfdf50ae5d5d71f0f66ab9da9d42ecab8b3e6",
-        "afterSha256": "5d69b32e912644270eda176cf1a02ae6dee9bdf5f23c4f6d296cfa1fac7e747c"
+        "afterSha256": "e02ed0b4b691bd5d3ea16c8beb57a96a8002b2f74c6be68bc880891a3dcff668"
       },
       {
         "path": "apps/web/src/components/commerce/allocation-reversals.tsx",
         "beforeSha256": "89fba75170a163b83aa39b720f06950a5076df978ffe473c5523c00426b78349",
-        "afterSha256": "20cfd05daf2f94b2f380aaf08f7a27c2d6c1dd96f551fc7f244b454dd40ebfdc"
+        "afterSha256": "73b5e7e72358f5757ff49d0f373967b2b8428f7e4bb36db00b97f8f0e5592195"
       },
       {
         "path": "apps/web/src/components/commerce/allocations.tsx",
         "beforeSha256": "866658036039b5109d2129cb1e99633bae0d73324f81e7998fbec2c678ce97bc",
-        "afterSha256": "f2f23ff0fd8bafb60bb19a67ea00e50177598bc63a70c222f95f4b392b2dbc38"
+        "afterSha256": "0d3d2a4be22b7e8b1203510cff800ee2279dfc6ff92b9597e1346868a11dde66"
       },
       {
         "path": "apps/web/src/components/commerce/bank-account-hint-check.tsx",
@@ -1251,7 +1256,7 @@
       {
         "path": "apps/web/src/components/commerce/collections.tsx",
         "beforeSha256": "6d8e83b9b9875767ae00e52dfe7d91459dab6723c88a292febf3b184b12c4627",
-        "afterSha256": "39e62a2928b468b7135627fdb0e787aec74a2f5715f7ad9460936c9bc8d63fca"
+        "afterSha256": "4d0fd30f8d85271fb736ce4fa69b4947ecde1d46b78b7539736fa9f005ef7317"
       },
       {
         "path": "apps/web/src/components/commerce/contact-editor.tsx",
@@ -1276,12 +1281,12 @@
       {
         "path": "apps/web/src/components/commerce/invoice-cancellations.tsx",
         "beforeSha256": "cb6471259b42effc8f424f15738f3536c041a1133ec51bee911d90cf44eefeb5",
-        "afterSha256": "2aaeec5bd434cce2b6140bfdfd2dcb6b47e52b589a7651df508dd5470a649e70"
+        "afterSha256": "3612bf2058b616583f22e9cdd4812399a2d2895814a9d7fdd3452c2ecddda9b0"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-documents.tsx",
         "beforeSha256": "48c90b63aa0ebe899641ef48f01ee8d3207ab4d082fa077331e3651755a7d3fd",
-        "afterSha256": "c0122a26376e5915a02c9e3d24ac90ca98a477e6150976378455d3eecea14ef8"
+        "afterSha256": "033a9ddbdaf4b367a08fe9ca48fef26f66324e9fcb26234c5a599248df2964fc"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-draft-issue-overlay.tsx",
@@ -1291,7 +1296,7 @@
       {
         "path": "apps/web/src/components/commerce/invoice-draft-save.tsx",
         "beforeSha256": "7d2ea2e6edce314e5a8d971bbb6bd70a53a968cf6ba88b0d619954e882d20c69",
-        "afterSha256": "cd18245a881fff7e2e44b1f2a50feee9d451ede0988f6716428f250360663b62"
+        "afterSha256": "339497b29f0a6cfe813ff3066a8f0f258b53d296707ea68aa8ee9d9d44684d3a"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-drafts.tsx",
@@ -1306,37 +1311,37 @@
       {
         "path": "apps/web/src/components/commerce/invoice-issuance.tsx",
         "beforeSha256": "550ff9d9637cdd762e9309eb1a7bac7f6bc245a071d44de0b80e6759db90b466",
-        "afterSha256": "7a544c1a1ae3ea78736944927ffac1b3f753a3e744180c7634027c603c9092c0"
+        "afterSha256": "0fa005155b29dfeab8925ab75699a3bbc7ad82ec07a9a52a264a37290d2db9e8"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-payment-review.tsx",
         "beforeSha256": "030769ef1fb95ca98bcc959886ad05246c38dc807c12cc7b9284abda92f15c5d",
-        "afterSha256": "1737f832d3e129a2d7c33fde3bf17ae6151d1e10b429d12a831b59be3f71302f"
+        "afterSha256": "5314869060b8a0a0d7ba705a1c56369584fa3445fc7e2d54b04a41d20ae5dea0"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-payment-undo.tsx",
         "beforeSha256": "b52d4300f7ede5a52773a39fb37a3beb9a6de9d332336267e9f56304f6efd0f2",
-        "afterSha256": "155ba234f61d68af4790f6881b7358cad07c1149f48917dea610570d5fff1694"
+        "afterSha256": "acf5bddfdb13369221c2c53a3a4fb46a8e61bec487e49b1a531b6d918e850a20"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-payments.tsx",
         "beforeSha256": "6beda995303b23bcc5d7ea0d14633fdf77379f84508ceb297ba5a4d4811c1d6a",
-        "afterSha256": "a4211d1b5c43b351f14a97c4eee1ed91a9218c7d3158647b6e707b69d73f2e4f"
+        "afterSha256": "ec62080d5d38da0eba69dedd363de60fedbe68aad4bc343228126edb1011abf1"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-registration.tsx",
         "beforeSha256": "ddb182e1c9913fa34aae753491620d4eac3e7bfa802e5b5c0236fcb37a438ea1",
-        "afterSha256": "52657f82770f6aafdbee60b6c6d3b6b1eb347100db788f653b6e7101780e3f2f"
+        "afterSha256": "2c59bcda3662de1da3fffdb4788560d6b074edc003ea7a88665751e796a29133"
       },
       {
         "path": "apps/web/src/components/commerce/invoice-templates.tsx",
         "beforeSha256": "d0608dd8f70ee2ded757113dc20342d8c0d36456b6789b29b0ef5d3e1fdaba76",
-        "afterSha256": "14a85828457a8ee642d51af31ffbfe05208a0ed62048b763d7240d3573c62c3b"
+        "afterSha256": "65985f11e7a61dbb404707afc56b8730777acdd7a15a883679514e5a3084cd92"
       },
       {
         "path": "apps/web/src/components/commerce/invoices.tsx",
         "beforeSha256": "86b11e9548fa5ee5ea39fe9d694c4880419fcda018b821c1f5c6869545a274e5",
-        "afterSha256": "3d8a37ea9c36375d48cfca31e1f659e511efd4df2e9574dc4e89efad1a3d3e5a"
+        "afterSha256": "d340fff18b4068db3a2d2d8200a202aac1c12111133f926402a61d9c6e831f48"
       },
       {
         "path": "apps/web/src/components/commerce/issued-invoice-document.tsx",
@@ -1351,17 +1356,17 @@
       {
         "path": "apps/web/src/components/commerce/peppol-credit-recovery.tsx",
         "beforeSha256": "c8860177040a52dad632f23109c7903786e4cfc8b28c28b409221620063766ff",
-        "afterSha256": "ddcca7eb4e1ca4b4b739b154a7645e2219a869fd0927212af6518141626e4793"
+        "afterSha256": "4a315265fc21abf77ec8f86250fff726851d6261c051bf075996e1475fbb6229"
       },
       {
         "path": "apps/web/src/components/commerce/peppol-email-recovery.tsx",
         "beforeSha256": "76032cd40d8bff40d1d47132170aaf83d31cb05944050720caf8811c575419d0",
-        "afterSha256": "9152a6578b3fde21c5eab586f62374715e0da5c8e00bea6c099f81b3e51d6c75"
+        "afterSha256": "72c55c58ab48a7135ebe6037399fd73bf71ced6fd48e88f8dfdaf94f5b88a686"
       },
       {
         "path": "apps/web/src/components/commerce/peppol-review.tsx",
         "beforeSha256": "85490db9cfab206229fc4f59dd23452a8014ca6d809ebb15ef4050ffca286718",
-        "afterSha256": "5aea88fc6c4e89ea19f025e8dc10b04ff106c8b454de0c31091156ceffefa6da"
+        "afterSha256": "c2d54a08587bbde7741d79d25de6be2ab002625365714c8d3058f3145e6cc918"
       },
       {
         "path": "apps/web/src/components/commerce/purchase-register.tsx",
@@ -1371,7 +1376,7 @@
       {
         "path": "apps/web/src/components/commerce/recurring-draft-recovery.tsx",
         "beforeSha256": "0edbee016d44502c066e2ebcbe4704dc82650df24568de1125d303136c9173e1",
-        "afterSha256": "d2384b5a2b6959f0cc0d2005d89cc0926d67f191d264e9a243e45089d14a1d3c"
+        "afterSha256": "893d470efb533cac293384a4a5eb8497f5a20ac78fb713e8a9946a13f35dd5f6"
       },
       {
         "path": "apps/web/src/components/commerce/recurring-register.tsx",
@@ -1381,7 +1386,7 @@
       {
         "path": "apps/web/src/components/commerce/register-reports.tsx",
         "beforeSha256": "2cc8f8d2edf861b39855b2258feb23c5336abac318c15a252ecc4f4d08cf29a9",
-        "afterSha256": "dd7a98cc8de6e89dc2ce0d1bf2d75a2a3a6881babd0ed00502c492c11c64547c"
+        "afterSha256": "9494cddf8758407256b096411382ff7184749a1de89c2c97d9705f015297a80d"
       },
       {
         "path": "apps/web/src/components/commerce/reminder-history.tsx",
@@ -1391,22 +1396,22 @@
       {
         "path": "apps/web/src/components/commerce/reminder-message-workspace.tsx",
         "beforeSha256": "e9e3ab50c0a95e1107c1611bc2e9be57a02b6067f6a23fc29507df11b40b6def",
-        "afterSha256": "00951f9972cc5186a8b22335eda22096e8f158d57c03409c740da6a678735459"
+        "afterSha256": "30d82522466fefce28ccb725edcc21fd658eae46261ee40a63d958e64b0430ec"
       },
       {
         "path": "apps/web/src/components/commerce/reminder-retained-review.tsx",
         "beforeSha256": "9f17145cac23a1ef9fcfe377ad15d2438817b7b19a72dc36929ef54729e08754",
-        "afterSha256": "ae3ee933fcbbc6739c3ed7544023d2aed021b1f327a6316bed413eb25eedc1be"
+        "afterSha256": "9b69ede7fb0091b33b5a4e9da11a00524310fc7a68ba24c8fe8b77fc495610fb"
       },
       {
         "path": "apps/web/src/components/commerce/reminder-review.tsx",
         "beforeSha256": "dd2ef68422a5b686efb121c3ca9cbd035b7711234bd85bd8514ef626437f69ad",
-        "afterSha256": "4e3f6524e20f59c0f27c300ab9f24d2c51c84ec37d3a384b3d01d0eb3c2f3f9c"
+        "afterSha256": "82396c5160b17757190ecfba86b660c0f2806ef3caa82481cb1015a63c159fdb"
       },
       {
         "path": "apps/web/src/components/commerce/sales-orders.tsx",
         "beforeSha256": "f9e5471b395d6e6fe6d583ed94cfac00091ba9a674c5afefd5cf8614f9065678",
-        "afterSha256": "3933b4bb3768a388fb7b1e73bc8963cc1d36d2d3534fee4d6c1dc38349aaa660"
+        "afterSha256": "035c44a45535b0615f91e2beae3a3f34c8f6cbf14ce13bd708d9e388513e3d80"
       },
       {
         "path": "apps/web/src/components/commerce/sales-workspace.tsx",
@@ -1416,27 +1421,32 @@
       {
         "path": "apps/web/src/components/commerce/shared.tsx",
         "beforeSha256": "1c51db6087a8d6790a115bd24eeceda05bed955538a794478c5231da2016aa11",
-        "afterSha256": "34f8fe24ab50102f03fcb6e07eda0c08b7254fedd853cc72c3931ee359a97643"
+        "afterSha256": "ff1bfaeba8ff41c8b9a53f0f2f4f22a8d9193746dbb2793c85b9583f594a29eb"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-acceptance.tsx",
         "beforeSha256": "8a5c8d4e9048d81d818d3398054db90fc97659b85f4495874ab3cd054b2eaa40",
-        "afterSha256": "6ab6b86749bc8d528d11dc59305e4c5595fbef1c03ba6aa55a0d0e5b88961ff1"
+        "afterSha256": "6a754d7112d3a818a25c8dc4fcd4a6cf34bebd93366a7ca570707bcb0dcb82ea"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-approval-expiry.tsx",
+        "beforeSha256": "3225776d04ab1e174ed35bd6eb1bf776092ea9be8ceea1c47da140d9dbbe54ba",
+        "afterSha256": "1a7d186ec640cd6de68176a4a94c4d4b8c47a042ef7bbda716b69f0c9b7337e6"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-credit-panel.tsx",
         "beforeSha256": "2a76a2313125b1c4e360cc216354b96c98a82618ede4f6f5295a27cf7c806d06",
-        "afterSha256": "ea641f3f3f3920c423d562217c2958e624581d1f0100cbad0ffa72dd383015c9"
+        "afterSha256": "63516912d31dcdc7b0016ca3d4f9b134437522411bdbb96a6c1981213022d7b2"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-extraction.tsx",
         "beforeSha256": "fb1b64e15778b848ecfff3f88adf9aee7fbc8e4eb2b4862a69a81b2823f01823",
-        "afterSha256": "653318cd841a17e8cc0579f5512f98338f49180947a06c36ac8fc74a7bce0406"
+        "afterSha256": "134f5c7eb32c8f79b57dc75ab93a8a72c8a2ff80c11efbc5e2d3bdec55772c0f"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-inbox.tsx",
         "beforeSha256": "ac10c5f737e0e3026234ca3e075df47ab6ae8a43c16efae203cedca83776f5a0",
-        "afterSha256": "2c44a07444f481881bbacb10357e439f2e89717c565fab2f49b086a6731cebbc"
+        "afterSha256": "6efebf7e87188abe5cd7b8661f3a68750a49bee24725aa3cac1488b5a6163b00"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-invoice-drafts.tsx",
@@ -1446,12 +1456,17 @@
       {
         "path": "apps/web/src/components/commerce/supplier-invoice-editor.tsx",
         "beforeSha256": "9844a152c3b5cc6ea5c8f0a42c22cbd4d373b4c8669b7327b31eee91ee898d6c",
-        "afterSha256": "52d74c8b5dd38b9a4e639ab711737ab129487a291c6e1488e10aa4fcd15b6255"
+        "afterSha256": "965a1c2813e0376d2b7144e73af448629c69e732546953f2d26452f61c5e7681"
       },
       {
         "path": "apps/web/src/components/commerce/supplier-invoice-pickers.tsx",
         "beforeSha256": "c1766f266aa268e05ea13aaad2f8dd87fc2d86026f4f9da326de2d79c319fe0d",
         "afterSha256": "329b5096730acb9f6dc2e3fafc1a0a815617978dd3186445cc2ea6af20da85f9"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-payment-files.tsx",
+        "beforeSha256": "1ed8b576eb6fc88344bf95f7d56535906c9fcbafcdfe4d2468822e12b66ba074",
+        "afterSha256": "7a522a6ee40f7b33852ce6be9fdfa65057f10d5fec54b98348f7d418c9b68c4a"
       },
       {
         "path": "apps/web/src/components/company-admission/panel.tsx",
@@ -1501,22 +1516,27 @@
       {
         "path": "apps/web/src/components/deadline-fulfillment-link.tsx",
         "beforeSha256": "31c1b9ac3f0f133cc19415bfdd92f22f1a2eec64226f7fb65e1658b1782f5f28",
-        "afterSha256": "5a90ddf85050f286edbc242391ca728b9513e1662a2718a22f9625320bee3df9"
+        "afterSha256": "9feb722aa6fc12eb4b64d8f0c43aecb343ecfae52b2a0e6579170977224ea717"
       },
       {
         "path": "apps/web/src/components/deadline-obligations.tsx",
         "beforeSha256": "0954ec589cd917fb95fe217c9e50032e32a89e714c0fc880570d464fce8127ab",
-        "afterSha256": "2b71d343e81e011b2d9042df365d4767448ce7e3eff9e256df7a84312eea753f"
+        "afterSha256": "e9bc1bd82195008bb8fa2704185e15e791113d36edd9e537d521b729ec0e4d69"
       },
       {
         "path": "apps/web/src/components/dimension-settings.tsx",
         "beforeSha256": "01ff9a239f5e2f5a61ef6105aebdef056476bef5d35595f605bb9cde0b2f22af",
-        "afterSha256": "1b7be3b9ffad03540e8a556537fe72d1b115a32d33d5a07236167b82738e0ae5"
+        "afterSha256": "3f5e8c7a8252fb91b702042f56e4ae75ab5c055579c3975c8804e463ff68aad4"
       },
       {
         "path": "apps/web/src/components/document-inbox.tsx",
         "beforeSha256": "71b10eead4577628b0be74ea1ee071b67793974372c33ccc53db1c5b4591adf8",
-        "afterSha256": "bb3c7cf7b589bb3ead203ae6dcaaf24e6570a10328ec532a89fa5b2f5f13a81c"
+        "afterSha256": "ae2755343a5c82d7628fecb40a8a6637766cb2e82a03f78de9b8d90d51010e6e"
+      },
+      {
+        "path": "apps/web/src/components/evidence-command-form.tsx",
+        "beforeSha256": "c00a687533f08c852448ea64929094dfa9dda97022c9aaa1e073e04f63501121",
+        "afterSha256": "2a46e72150c011a78a57ad52fd72207e35cd3fb6c947cc7ff9b2eedaeea7458e"
       },
       {
         "path": "apps/web/src/components/evidence-inspector.tsx",
@@ -1526,7 +1546,7 @@
       {
         "path": "apps/web/src/components/exchange-rates/forms.tsx",
         "beforeSha256": "61724cc16d30feef8d2a951c8f56674ff91588156ee64b22c5744b988d5d8a82",
-        "afterSha256": "e690ca5ce22f0d630e6fa8d06cd0185aa8264007d5845060b57f50ed5be1076d"
+        "afterSha256": "81a1fffc9bb123d15eb71436544ffde44ff26ef16eefe33f338bd56c2a8d3e98"
       },
       {
         "path": "apps/web/src/components/exchange-rates/panel.tsx",
@@ -1546,7 +1566,7 @@
       {
         "path": "apps/web/src/components/expense-tax/expense-editor.tsx",
         "beforeSha256": "e80bd23db0ac4de0abd32ac42ba511f22f66c09eb7f6018b0a27f3966b614d95",
-        "afterSha256": "bd42139a7f855cdf23c801561439079bc1e3d580acaacc6177e1ee359f9a0e3f"
+        "afterSha256": "642a49df4033024702f75720d7747bf57671458315a8b039248d23aab7255505"
       },
       {
         "path": "apps/web/src/components/expense-tax/forms.tsx",
@@ -1559,14 +1579,34 @@
         "afterSha256": "726856f00de865a95a8d3cd8a4777a46654a7bfcb0d80e874a4fa5664352dd5e"
       },
       {
+        "path": "apps/web/src/components/expense-tax/review-editor.tsx",
+        "beforeSha256": "0cee2f86a6ac3329d8681e9848dd3aba3b7ad2b8ff0cdd93b173ee0054315d3b",
+        "afterSha256": "363b2e06b9f71cc79f87f7c988c777136a2952f4c5ae3ae5bf0312d0549c24ea"
+      },
+      {
+        "path": "apps/web/src/components/firms/access-request-dialog.tsx",
+        "beforeSha256": "a74f5eb5963de9f5f5b748bbb19c80ff9f37d893ad207c296cda2c2a743edf95",
+        "afterSha256": "286d4205e4b71c2d4c65a06d13c17c163fee8a1329d9a28dcbc499eaadfafc6a"
+      },
+      {
+        "path": "apps/web/src/components/firms/client-dialog.tsx",
+        "beforeSha256": "627ab6ef43c5c30737f2483528711bedb255796c7f07e46eb39151ed124ca677",
+        "afterSha256": "ae34a577f36e1e0181f8ca6e2f022c1aec5b87602318d40f81250a5ee84d6c5f"
+      },
+      {
         "path": "apps/web/src/components/firms/form.tsx",
         "beforeSha256": "dcc8d1d86bd8062e7073a6d1222aa4ada26d978f2eb2262b030136195e2633d1",
-        "afterSha256": "d0266428719bac9e43d842420f480ca81e70d7b9831c2dea915dcd5f5e5c0aea"
+        "afterSha256": "9200302fd66ff16b84d207a191dd4261d211ee14d391604e7b004589feb4e036"
       },
       {
         "path": "apps/web/src/components/firms/index.tsx",
         "beforeSha256": "ed9f748bbff467ae29ab14dc057206354f783a83748483343ce9be4a9b11a99a",
-        "afterSha256": "e402c41d64cb05c9f43210a31e5582a10f865b5324a5dfce063d0d4a46a7dd62"
+        "afterSha256": "d1ec58fa8839c253103ef43cbaed0dcb0f7976d7ae1b7e4ed4efea9ee725a516"
+      },
+      {
+        "path": "apps/web/src/components/firms/team.tsx",
+        "beforeSha256": "ac1fad05b898cd46fa94f163654eae352949a5118df0b4833aa036a6756da435",
+        "afterSha256": "dc54fdbf7c97013bd2585d69e2f6855ed7d751d4b28d34c32b94cc761d5f1cad"
       },
       {
         "path": "apps/web/src/components/foreign-cash-directory.tsx",
@@ -1576,7 +1616,7 @@
       {
         "path": "apps/web/src/components/foreign-cash-workspace.tsx",
         "beforeSha256": "d476fa0f6806c053d8cbd9f1789161b187e808ce37cf3b3a0c80dc4cc1f58013",
-        "afterSha256": "12531fd916df78f7ebe57ff554ee2c5808683d356552085aa709b231a1cbfe97"
+        "afterSha256": "fc29a0c35cb1d9fe7ed61aae697cb36dfbae87ca514417145e244dd6584fd11e"
       },
       {
         "path": "apps/web/src/components/general-ledger.tsx",
@@ -1591,7 +1631,7 @@
       {
         "path": "apps/web/src/components/historical-intake/adoption-workspace.tsx",
         "beforeSha256": "ec6cb4731de9ec34b2cb801abceac3cd14765d815d546951a8f5af2e8c49d240",
-        "afterSha256": "b32740e777a2adb591c249415e1d77db94545cd64857f6cdabc6ab571e695f20"
+        "afterSha256": "bfe493bdff10961e67727c582fd32e6de40735fb0786bb1b21b00aa079c983de"
       },
       {
         "path": "apps/web/src/components/historical-intake/basis.tsx",
@@ -1611,7 +1651,7 @@
       {
         "path": "apps/web/src/components/historical-intake/financial.tsx",
         "beforeSha256": "edda7a0ce68753334161f373b52ea5e63736172557c5b9dacf86d1032f8daded",
-        "afterSha256": "3271671eecf576068fc3b762a785734a67c9d6084fa52b12dcf12a5e666a75ee"
+        "afterSha256": "52c99d54ddd146f4dffc5b7a5faa4f765c840f9d7d4d8d4600297b5328a74e57"
       },
       {
         "path": "apps/web/src/components/historical-intake/panel.tsx",
@@ -1636,7 +1676,7 @@
       {
         "path": "apps/web/src/components/historical-intake/select-basis.tsx",
         "beforeSha256": "31ef394f3f48b95da5a390c02226529eff7675bc0f41fa48707760dab189cac1",
-        "afterSha256": "d81c09d1273768910a274db70655e392ad77ce4df42e1023d4dff38da261002c"
+        "afterSha256": "6e9a7905ef0fc5ce5d03ea13e86d43b8f4aa19351e7ee5bbf8b59c6291091990"
       },
       {
         "path": "apps/web/src/components/internal-reports.tsx",
@@ -1666,32 +1706,47 @@
       {
         "path": "apps/web/src/components/onboarding/data.ts",
         "beforeSha256": "467effad2f0bfb189c669cc8e4d13cceef7153aa30e8aa42df8411031ca190ca",
-        "afterSha256": "16430d3792ac20c6c1d7fbcfc332c8793cfa54790a669584d4827bf95b9b1b02"
+        "afterSha256": "956bbbad673b36e3d146a5ccc0e590c2b4656b8222b95df26a67f9279e507b08"
       },
       {
         "path": "apps/web/src/components/onboarding/delta-effects.tsx",
         "beforeSha256": "ce35d04f03cde4907552d09a8aa2683d1bccc1962de9e2a52ce4bb295ee30527",
-        "afterSha256": "5bd95f2beb7bbea667426d933fe6ae1cbf2969474716a6729329f79aad758b17"
+        "afterSha256": "980c3e74ac6dd1794ed2723a08f0510bcd86dba65e085ea7d275ee1783d49033"
       },
       {
         "path": "apps/web/src/components/onboarding/delta.tsx",
         "beforeSha256": "b21408b62c1d8fefb9cab85d433c07f2289f26d58675a6c41aae77823ddf207d",
-        "afterSha256": "cb49dd9faa44c2bc34366055a210aa389e55cc7b338e6fd862b98a466a20aaf2"
+        "afterSha256": "2901d8ae0a87915ae920fc35a1d3533eb02f91b9f1f90826621aa5c915014fba"
       },
       {
         "path": "apps/web/src/components/onboarding/import-actions.tsx",
         "beforeSha256": "641b2a4d7a3cbe34a9fb414a343afdb7502d4120dea06433ae4aa48e302b7ddd",
-        "afterSha256": "14e133d2b99b0e6b190a9a929ef05801ac965ec5b49ab4934a1e79710edf6664"
+        "afterSha256": "d7681b913c426b24b80403a3a2ecb6b2b903de851786fda550176844fbe22e9d"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/import.tsx",
+        "beforeSha256": "4cad97875bf55f9bef8ad06e7e606873e5b5e9d3a7102077a4b96f29a460b6b4",
+        "afterSha256": "9569fbf937e57d81e70cc4bcf2a58f03f5f351bc323c93b2f1dff9bd62285115"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/lifecycle.ts",
+        "beforeSha256": "560782bea2271ac89698f884e37d999739569438cf416bd57dbedc953a2dc026",
+        "afterSha256": "3dbacd5d61fd2f9f73ce28e6cbb8dc39b36e69a6e38c9167ce6210d4393165b9"
       },
       {
         "path": "apps/web/src/components/onboarding/panel.tsx",
         "beforeSha256": "16b0c6be72455fb0f31b853e551f70c3cf3f531949d816d8634f29e1d9966365",
-        "afterSha256": "d870a037557b3243e0d2e29f3bd737836d03a35e705f3caeed862d85e8483e04"
+        "afterSha256": "ccf79a01111e7e0817deaa7a4fcb787abfc8a7e41527710cbe74011dd976a841"
       },
       {
         "path": "apps/web/src/components/onboarding/profile.tsx",
         "beforeSha256": "73e5ca25bec1a3f726816ffb55e6a4a769b968223f98787c5ef0bd4c09110690",
-        "afterSha256": "8e83544abcbeb6a504057dc47fcfe84e546e556b415039953693b85bcd5f0328"
+        "afterSha256": "e102646f882045697c2cf3cc4d6e483f30bce82b1136650706ea8375bce3573a"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/responsibilities.tsx",
+        "beforeSha256": "f52da91a6adf38421ccf720a6492dcff79c15734d437f831d476e67f6dc113b0",
+        "afterSha256": "9f321015845d78f8d2561c74e60851d58fffc473d7af567df2fb8f33db72c6b1"
       },
       {
         "path": "apps/web/src/components/onboarding/sources.tsx",
@@ -1706,7 +1761,12 @@
       {
         "path": "apps/web/src/components/onboarding/transition.tsx",
         "beforeSha256": "536f385b993b5772e23dc685cf984ad70472c5d7f3f9065a7a77163e4554d6af",
-        "afterSha256": "e1507603928cf1b9b5623b6e46d2f7e8158454106f4657b42d14e2bb29734841"
+        "afterSha256": "0c0682a04acb18166d77a9983c8c07f5b151d258f9c253bc207fec4c0afc84ac"
+      },
+      {
+        "path": "apps/web/src/components/owner-register/owner-register-panel.tsx",
+        "beforeSha256": "0b75e79dd9808d66cf8ee88e0d870a199f8aba7535c302a420a2de63f21c16d3",
+        "afterSha256": "28c5a6ad255e7ca4e50599a384fa50fc630235015020a2ea1b1fcaa382eef70f"
       },
       {
         "path": "apps/web/src/components/payroll-foundation.tsx",
@@ -1736,12 +1796,12 @@
       {
         "path": "apps/web/src/components/payroll/use-employee-claim-review.ts",
         "beforeSha256": "6f40cf0f131631af11dd247cfb01ab0e02fa607a739958d4e595e496ab39ca7f",
-        "afterSha256": "85ca52eab202c608dbb34f725fdf46c05112dc241e389fe29c48d628e16abd37"
+        "afterSha256": "eb58a5385711f54ea15d04e93fbd9365e47c8d9f79bab65916bdb438aad7af85"
       },
       {
         "path": "apps/web/src/components/payroll/use-mileage-correction.ts",
         "beforeSha256": "5588d51ba6c443ceca31ce5f9343bd393b64bba71082c25cfc1244d8b18d8171",
-        "afterSha256": "01fa1f0aa18314af421fc0f5d90736f380b5e870e497f72e858351c38dc5c865"
+        "afterSha256": "ba3d9eaba5ab52b83fb33719a3064eef06e48d0060ad884cad3ece0df483c964"
       },
       {
         "path": "apps/web/src/components/payroll/use-variable-pay-review.ts",
@@ -1796,7 +1856,7 @@
       {
         "path": "apps/web/src/components/preparation-background.tsx",
         "beforeSha256": "10ff3d2b7439b2a6d671c9283ed8b88e087ad192ce38b830a8f5f11df9511a37",
-        "afterSha256": "28bc6eba9c002160aaad12ac4798feebddf2fe425a4c9f221e36b0b208801953"
+        "afterSha256": "5ffe926972d50723ad0d67354b9017a947580c888f369e32ef1d8a34204c1634"
       },
       {
         "path": "apps/web/src/components/preparation-run.tsx",
@@ -1811,7 +1871,7 @@
       {
         "path": "apps/web/src/components/processor-workspace.tsx",
         "beforeSha256": "65170d04ac45d49f274c6c0ea1cc8e49f920d981a4f1cbf0302b69917d8bff4a",
-        "afterSha256": "78ddab4d3dfc50172f7f528fd4a7d71455ab583a28d6e20010f7e5ef69981332"
+        "afterSha256": "d054a2e39a6ba437a8da234b29cc231ce8387c975646a68478b473025801e715"
       },
       {
         "path": "apps/web/src/components/recurring-rule-form.tsx",
@@ -1837,6 +1897,11 @@
         "path": "apps/web/src/components/rule-impact-panel.tsx",
         "beforeSha256": "b5308c0e6da0884195c05e2a9632671ee5f13eba9bfd31fd58554e84e432b802",
         "afterSha256": "da4e9a455b340c90cfb45f993fcafd483e4a3f9acdf37770e0d5787fae6079c0"
+      },
+      {
+        "path": "apps/web/src/components/saved-work-views.tsx",
+        "beforeSha256": "0570625613bafccfdb4a57bf98b2c59fd17d222ca41612a8d67d73aa7c1539fb",
+        "afterSha256": "4f4e982f4d43d672a4990c5f9afe5fbb04aa22b317afb47fc800e288c7401422"
       },
       {
         "path": "apps/web/src/components/settlements/index.tsx",
@@ -1899,9 +1964,14 @@
         "afterSha256": "7304144f425489a6f35c14da1ef334e097b9fbce28ae1540b64ab94698ed66b0"
       },
       {
+        "path": "apps/web/src/components/subledgers/disposal-source-selection.tsx",
+        "beforeSha256": "691c806bca67290186d966dd192005459d3b75cdd37d1505b38a9d3d5ba9d4b3",
+        "afterSha256": "edb737eeac0a3e4f32cb272cd67a23dbc7449c0014592466a6fcc4899d6d7ce5"
+      },
+      {
         "path": "apps/web/src/components/subledgers/proceeds-review.tsx",
         "beforeSha256": "135660d105a0d85198b5bf80481dc69871b4b779ea209f6b6faea8137c90aed1",
-        "afterSha256": "be1a50686cb35a55eb48b8751b9fa5190ceff8e1593d253c1e4afc09aa51127a"
+        "afterSha256": "5b35260fdc3e838dd6f3e24ccc6a2ebf80c3c1595f5faf9f59d9af56abc61e5f"
       },
       {
         "path": "apps/web/src/components/subledgers/schedule-evidence.tsx",
@@ -1909,9 +1979,14 @@
         "afterSha256": "e0374932aff986ab6e1375c9332110790d12c3a6f9b1c5c9ae8a54e4122f91cc"
       },
       {
+        "path": "apps/web/src/components/subledgers/schedule-form.tsx",
+        "beforeSha256": "f5d4acd8c59560fffa9c4dda581467804663240579e0cd88381f0299c44acecf",
+        "afterSha256": "196aa2b904212adb2facbc1178723e4380ff02f04d5418784fab0112da5af339"
+      },
+      {
         "path": "apps/web/src/components/subledgers/schedules.tsx",
         "beforeSha256": "718a7735c7f8e86c5fd2bc3655808c40edbf1874a5db27e89eea50ff590aeebe",
-        "afterSha256": "7897788db5b701d2d0fd8259ed77658b4770068bb7f8171595a5d941cfcc5380"
+        "afterSha256": "cb1c79f0a8388039d677df850b0c4668f01628777c000647bf31d28674be399c"
       },
       {
         "path": "apps/web/src/components/subledgers/valuation-directory.tsx",
@@ -1931,7 +2006,7 @@
       {
         "path": "apps/web/src/components/treasury-loan-workspace.tsx",
         "beforeSha256": "6dc5d398989434e991838ef934a4634953c4bbf54a0bf4a4d8b4a106fde0de3d",
-        "afterSha256": "31c35b86e5b1eb879b64ae3623c2d8eb70f5e5d982cea00ce280068ee80f8665"
+        "afterSha256": "e197b5400e7d4e1e270fd03f086a6248a6da505d7f55d0b15fda3583930fe876"
       },
       {
         "path": "apps/web/src/components/trial-balance.tsx",
@@ -1941,12 +2016,12 @@
       {
         "path": "apps/web/src/components/vat-returns/actual-panel.tsx",
         "beforeSha256": "d415e5125c2dca6fb0a9be6410222681cd56d29a52e23ca43f590461e08baa6a",
-        "afterSha256": "99e63305ebbb6d5b52697403e735eaa7a75f3d1753e85edc5e0471b96b54f22f"
+        "afterSha256": "a41549d9df90897afd5ec8ba7460eec6d498463cb916277dbfa5c86f351ae9fc"
       },
       {
         "path": "apps/web/src/components/vat-returns/fact-editor.tsx",
         "beforeSha256": "43b250e42ca5d32560419e8612475a24c718aba9aceac7c8db2146fe2cd16a7c",
-        "afterSha256": "fc8b207513e1f715a380fca01a3fc48d9ccde8448bbac0deff01c9a03d8140a8"
+        "afterSha256": "34441963aaa99ebbe46aa9315cab91eb449a9231b87b4dc799fd7722781dac03"
       },
       {
         "path": "apps/web/src/components/vat-returns/forms.tsx",
@@ -1974,6 +2049,11 @@
         "afterSha256": "59b12f4e31ed659cf24a41f97fb91bd6fb9fd613615f48ec96189cef6bf052d2"
       },
       {
+        "path": "apps/web/src/components/work-handoff.tsx",
+        "beforeSha256": "5290675e2903abe24028686fb918511fdbf8b363c8105765e84f3141a4e2c8dd",
+        "afterSha256": "622c8c5051dbf3497b5acedbfca8d92a841e81f838fcea1663d5848b3b78419a"
+      },
+      {
         "path": "apps/web/src/components/work-home.tsx",
         "beforeSha256": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
         "afterSha256": "1d9a7056a707328ee230eeb99fc12364c883081ff22219e5c10c8b428aabe846"
@@ -1981,7 +2061,7 @@
       {
         "path": "apps/web/src/components/work-questions.tsx",
         "beforeSha256": "ebed02457c050d37cef7b0cc90800b3bef2c91e6c10aa46e2f4208baf3c1925a",
-        "afterSha256": "4b072f1828d2d2dd55ac4aefb2cc913130cfcd31db089a31092f91e57b145691"
+        "afterSha256": "ee5e192f8e5a5db16342312264d433b2671887bbfb5c3ce8128a2da113315141"
       },
       {
         "path": "apps/web/src/components/work-supplier-preview.tsx",

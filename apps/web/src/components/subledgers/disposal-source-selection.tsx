@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Disposals from "@open-erp/contracts/asset-disposals";
 import * as Subledgers from "@open-erp/contracts/subledgers";
@@ -190,6 +192,15 @@ export function DisposalSourceSelection(props: {
               throw new Error("Disposal selection identity mismatch");
           }}
           onSuccess={(value) => props.onPrepared(value.id)}
+          operation={(client, requestOptions) =>
+            client.assetDisposals.prepareAssetProceedsDisposal(
+              httpRequest(
+                Api.groups.assetDisposals.endpoints.prepareAssetProceedsDisposal,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         />
         <Button variant="outline" nativeButton={false} render={<Link href={props.bankHref} />}>
           Välj bankhändelse i stället

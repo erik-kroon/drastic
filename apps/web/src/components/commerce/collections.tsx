@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -321,7 +321,7 @@ function CollectionHistory(
     setDownloading(statementId);
 
     try {
-      await downloadCollectionStatement(book, base, statementId);
+      await downloadCollectionStatement(book, statementId);
     } catch (error: unknown) {
       setDownloadError(error instanceof Error ? error : new Error("Unable to download statement"));
     } finally {
@@ -338,6 +338,15 @@ function CollectionHistory(
         book={book}
         locale={locale}
         path={`${base}/statements`}
+        operation={(client, requestOptions) =>
+          client.collections.captureCollectionStatement(
+            httpRequest(
+              Api.groups.collections.endpoints.captureCollectionStatement,
+              { params: bookScope(book) },
+              requestOptions,
+            ),
+          )
+        }
         schema={Collections.CaptureCollectionStatement}
         output={Collections.CollectionStatement}
         recoveryId={`statement:${props.customerId}`}
@@ -446,13 +455,12 @@ function CollectionHistory(
   );
 }
 
-async function downloadCollectionStatement(
-  book: CommerceProps["book"],
-  base: string,
-  statementId: string,
-) {
+async function downloadCollectionStatement(book: CommerceProps["book"], statementId: string) {
   const result = await readAccounting(
-    `${base}/statements/${encodeURIComponent(statementId)}/export`,
+    (client) =>
+      client.collections.collectionStatementExport({
+        params: { ...bookScope(book), id: statementId },
+      }),
     Collections.CollectionStatementExport,
   );
 
@@ -538,6 +546,15 @@ function CollectionActions(
             book={book}
             locale={locale}
             path={`${base}/disputes`}
+            operation={(client, requestOptions) =>
+              client.collections.openCollectionDispute(
+                httpRequest(
+                  Api.groups.collections.endpoints.openCollectionDispute,
+                  { params: bookScope(book) },
+                  requestOptions,
+                ),
+              )
+            }
             schema={Collections.OpenCollectionDispute}
             output={Collections.CollectionDispute}
             recoveryId={`dispute:${props.invoiceId}`}
@@ -570,6 +587,15 @@ function CollectionActions(
             book={book}
             locale={locale}
             path={`${base}/actions`}
+            operation={(client, requestOptions) =>
+              client.collections.recordCollectionAction(
+                httpRequest(
+                  Api.groups.collections.endpoints.recordCollectionAction,
+                  { params: bookScope(book) },
+                  requestOptions,
+                ),
+              )
+            }
             schema={Collections.RecordCollectionAction}
             output={Collections.CollectionAction}
             recoveryId={`action:${props.invoiceId}`}

@@ -1,3 +1,5 @@
+import type * as Effect from "effect/Effect";
+import type { AccountingClient } from "@/lib/contract-client";
 import type { CommandKeys } from "@/lib/command-keys";
 import { checkScope } from "@/lib/commerce-scope";
 import { useId, useRef, useState, type ReactNode } from "react";
@@ -167,6 +169,10 @@ export function CommandForm<
 >(
   props: CommerceProps & {
     path: string;
+    operation: (
+      client: AccountingClient,
+      options: RequestInit,
+    ) => Effect.Effect<O["Type"], unknown>;
     schema: S;
     output: O;
     input: (fields: FormData) => unknown;
@@ -221,7 +227,7 @@ export function CommandForm<
             },
             replay,
           )
-        : await readAccounting(path, props.output, {
+        : await readAccounting(props.operation, props.output, {
             method: "POST",
             body: JSON.stringify(request.input),
             headers: { "Idempotency-Key": request.key },

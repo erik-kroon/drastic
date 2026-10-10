@@ -1,5 +1,7 @@
+import type * as Accounting from "@open-erp/contracts/accounting";
+import type * as Effect from "effect/Effect";
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, type AccountingClient } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 
@@ -9,8 +11,16 @@ import * as Profiles from "@open-erp/contracts/company-profiles";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookKey, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 
-export async function readOnboardingWorkspace(path: string, signal: AbortSignal) {
-  const first = await readAccounting(path, Onboarding.OnboardingWorkspace, { signal });
+export async function readOnboardingWorkspace(
+  book: typeof Accounting.Book.Type,
+  signal: AbortSignal,
+) {
+  const first = await readAccounting(
+    (client) => client.onboarding.getOnboarding({ params: bookScope(book), query: {} }),
+    Onboarding.OnboardingWorkspace,
+    { signal },
+  );
+
   const sources = [...first.sources];
   const imports = [...first.imports];
   let sourceAfter = first.nextSourceCursor;
@@ -28,9 +38,17 @@ export async function readOnboardingWorkspace(path: string, signal: AbortSignal)
     if (cursors.has(cursor)) throw new Error("Onboarding pagination did not advance.");
     cursors.add(cursor);
 
-    const page = await readAccounting(`${path}?${cursor}`, Onboarding.OnboardingWorkspace, {
-      signal,
-    });
+    const page = await readAccounting(
+      (client) =>
+        client.onboarding.getOnboarding({
+          params: bookScope(book),
+          query: httpQuery(Api.groups.onboarding.endpoints.getOnboarding, query),
+        }),
+      Onboarding.OnboardingWorkspace,
+      {
+        signal,
+      },
+    );
 
     if (
       page.sourceCount !== first.sourceCount ||
@@ -65,7 +83,18 @@ export async function readOnboardingWorkspace(path: string, signal: AbortSignal)
 export function useOnboardingCommand<
   I extends Schema.Top & { readonly DecodingServices: never },
   O extends Schema.Top & { readonly DecodingServices: never },
->(path: string, input: I, output: O, onSuccess?: (result: O["Type"]) => void) {
+>(
+  command: {
+    readonly identity: string;
+    readonly execute: (
+      client: AccountingClient,
+      options: RequestInit,
+    ) => Effect.Effect<O["Type"], unknown>;
+  },
+  input: I,
+  output: O,
+  onSuccess?: (result: O["Type"]) => void,
+) {
   const { book } = useBookWorkspace();
   const cache = useQueryClient();
   const keys = useCommandKeys();
@@ -73,9 +102,12 @@ export function useOnboardingCommand<
   const mutation = useMutation({
     mutationFn: (value: I["Type"]) =>
       readAccounting(
-        path,
+        command.execute,
         output,
-        keys.current.options(path, JSON.stringify(Schema.decodeUnknownSync(input)(value))),
+        keys.current.options(
+          command.identity,
+          JSON.stringify(Schema.decodeUnknownSync(input)(value)),
+        ),
       ),
     onSuccess: async (result) => {
       await cache.invalidateQueries({ queryKey: bookKey(book) });

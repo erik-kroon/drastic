@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import type * as Commerce from "@open-erp/contracts/commerce";
@@ -272,6 +273,15 @@ function UndoActions(
           if (result.planId !== plan.id || result.digest !== plan.digest)
             throw new Error("Undo approval mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.commerceAllocationReversals.approveCommerceAllocationReversal(
+            httpRequest(
+              Api.groups.commerceAllocationReversals.endpoints.approveCommerceAllocationReversal,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Box as="label" display="flex" gap="md" alignItems="start">
           <input type="checkbox" required />
@@ -303,6 +313,15 @@ function UndoActions(
           )
             throw new Error("Undo execution mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.commerceAllocationReversals.executeCommerceAllocationReversal(
+            httpRequest(
+              Api.groups.commerceAllocationReversals.endpoints.executeCommerceAllocationReversal,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
       {view.approvals.length ? (
         <Details title={copy.approvalHistory}>
@@ -330,6 +349,16 @@ function UndoActions(
                   if (result.approvalId !== entry.approval.id)
                     throw new Error("Undo withdrawal mismatch");
                 }}
+                operation={(client, requestOptions) =>
+                  client.commerceAllocationReversals.revokeCommerceAllocationReversalApproval(
+                    httpRequest(
+                      Api.groups.commerceAllocationReversals.endpoints
+                        .revokeCommerceAllocationReversalApproval,
+                      { params: { ...bookScope(book), id: entry.approval.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               >
                 <Field name="reason" label={copy.withdrawReason} />
               </CommandForm>

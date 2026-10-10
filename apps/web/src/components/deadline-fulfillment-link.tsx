@@ -1,3 +1,6 @@
+import type * as Accounting from "@open-erp/contracts/accounting";
+import { bookScope, httpRequest } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -51,6 +54,7 @@ function SelectInput(props: {
 }
 
 export function DeadlineFulfillmentLink(props: {
+  book: typeof Accounting.Book.Type;
   obligation: Deadline;
   path: string;
   locale: Locale;
@@ -81,7 +85,14 @@ export function DeadlineFulfillmentLink(props: {
       const body = JSON.stringify({ reference });
 
       return readAccounting(
-        endpoint,
+        (client, options) =>
+          client.deadlines.linkDeadlineFulfillment(
+            httpRequest(
+              Api.groups.deadlines.endpoints.linkDeadlineFulfillment,
+              { params: { ...bookScope(props.book), id: obligation.id } },
+              options,
+            ),
+          ),
         Deadlines.FulfillmentResult,
         keys.current.options(endpoint, body),
       );

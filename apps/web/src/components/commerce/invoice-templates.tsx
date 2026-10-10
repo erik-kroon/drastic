@@ -1,5 +1,6 @@
+import type * as Effect from "effect/Effect";
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest, type AccountingClient } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -87,6 +88,24 @@ type Draft = typeof Drafts.InvoiceDraftRevision.Type;
 
 type CommercialDraft = Extract<Draft, { purpose: "commercial" }>;
 
+type TemplateTarget =
+  | {
+      readonly path: string;
+      readonly apply: true;
+      readonly execute: (
+        client: AccountingClient,
+        options: RequestInit,
+      ) => Effect.Effect<typeof Drafts.InvoiceDraftRevision.Type, unknown>;
+    }
+  | {
+      readonly path: string;
+      readonly apply: false;
+      readonly execute: (
+        client: AccountingClient,
+        options: RequestInit,
+      ) => Effect.Effect<typeof Templates.InvoiceTemplateRevision.Type, unknown>;
+    };
+
 export function InvoiceTemplateActions(
   props: CommerceProps & { record: Draft; editable: boolean; onSaved: (id: string) => void },
 ) {
@@ -158,17 +177,22 @@ function CommercialTemplateActions(
   const selected = templates.find((item) => item.id === selectedId);
 
   const save = useMutation({
-    mutationFn: async (command: { path: string; input: unknown; apply: boolean }) => {
+    mutationFn: async (command: TemplateTarget & { readonly input: unknown }) => {
       const options = keys.current.options(command.path, JSON.stringify(command.input));
 
       if (command.apply) {
-        const result = await readAccounting(command.path, Drafts.InvoiceDraftRevision, options);
+        const result = await readAccounting(command.execute, Drafts.InvoiceDraftRevision, options);
         checkScope(props.book, result.scope);
 
         return { kind: "draft" as const, record: result };
       }
 
-      const result = await readAccounting(command.path, Templates.InvoiceTemplateRevision, options);
+      const result = await readAccounting(
+        command.execute,
+        Templates.InvoiceTemplateRevision,
+        options,
+      );
+
       checkScope(props.book, result.scope);
 
       return { kind: "template" as const, record: result };
@@ -196,29 +220,37 @@ function CommercialTemplateActions(
 
   function submit<S extends Schema.Top & { readonly DecodingServices: never }>(
     schema: S,
-    commandPath: string,
+    target: TemplateTarget,
     value: unknown,
-    applyDraft: boolean,
   ) {
     const input = Schema.decodeUnknownOption(schema)(value);
     setInvalid(Option.isNone(input));
 
-    if (Option.isSome(input) && !save.isPending)
-      save.mutate({ path: commandPath, input: input.value, apply: applyDraft });
+    if (Option.isSome(input) && !save.isPending) save.mutate({ ...target, input: input.value });
   }
 
   function apply(target: (typeof Templates.ApplyInvoiceTemplate.Type)["target"]) {
     if (!selected || save.isPending) return;
     submit(
       Templates.ApplyInvoiceTemplate,
-      `${path}/${selected.id}/applications`,
+      {
+        path: `${path}/${selected.id}/applications`,
+        apply: true,
+        execute: (client, options) =>
+          client.invoiceTemplates.applyInvoiceTemplate(
+            httpRequest(
+              Api.groups.invoiceTemplates.endpoints.applyInvoiceTemplate,
+              { params: { ...bookScope(props.book), id: selected.id } },
+              options,
+            ),
+          ),
+      },
       {
         revision: selected.revision,
         digest: selected.digest,
         target,
         reason: copy.applyReason,
       },
-      true,
     );
   }
 
@@ -271,7 +303,18 @@ function CommercialTemplateActions(
               const fields = new FormData(event.currentTarget);
               submit(
                 Templates.CreateInvoiceTemplate,
-                path,
+                {
+                  path: path,
+                  apply: false,
+                  execute: (client, options) =>
+                    client.invoiceTemplates.createInvoiceTemplate(
+                      httpRequest(
+                        Api.groups.invoiceTemplates.endpoints.createInvoiceTemplate,
+                        { params: bookScope(props.book) },
+                        options,
+                      ),
+                    ),
+                },
                 {
                   name: fields.get("name"),
                   currency: props.record.content.currency,
@@ -279,7 +322,6 @@ function CommercialTemplateActions(
                   content: contentOf(props.record),
                   reason: fields.get("reason"),
                 },
-                false,
               );
             }}
           >
@@ -416,7 +458,18 @@ function CommercialTemplateActions(
                   onClick={() =>
                     submit(
                       Templates.ReviseInvoiceTemplate,
-                      `${path}/${selected.id}/revisions`,
+                      {
+                        path: `${path}/${selected.id}/revisions`,
+                        apply: false,
+                        execute: (client, options) =>
+                          client.invoiceTemplates.reviseInvoiceTemplate(
+                            httpRequest(
+                              Api.groups.invoiceTemplates.endpoints.reviseInvoiceTemplate,
+                              { params: { ...bookScope(props.book), id: selected.id } },
+                              options,
+                            ),
+                          ),
+                      },
                       {
                         expectedRevision: selected.revision,
                         expectedDigest: selected.digest,
@@ -424,7 +477,6 @@ function CommercialTemplateActions(
                         content: contentOf(props.record),
                         reason: copy.updateReason,
                       },
-                      false,
                     )
                   }
                 >
@@ -437,13 +489,23 @@ function CommercialTemplateActions(
                   onClick={() =>
                     submit(
                       Templates.ArchiveInvoiceTemplate,
-                      `${path}/${selected.id}/archive`,
+                      {
+                        path: `${path}/${selected.id}/archive`,
+                        apply: false,
+                        execute: (client, options) =>
+                          client.invoiceTemplates.archiveInvoiceTemplate(
+                            httpRequest(
+                              Api.groups.invoiceTemplates.endpoints.archiveInvoiceTemplate,
+                              { params: { ...bookScope(props.book), id: selected.id } },
+                              options,
+                            ),
+                          ),
+                      },
                       {
                         expectedRevision: selected.revision,
                         expectedDigest: selected.digest,
                         reason: copy.archiveReason,
                       },
-                      false,
                     )
                   }
                 >

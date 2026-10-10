@@ -703,6 +703,15 @@ function MatchChoice(
         legs,
       })}
       onSuccess={(plan) => props.onPlan(plan.id)}
+      operation={(client, requestOptions) =>
+        client.settlements.prepareBankAllocation(
+          httpRequest(
+            Api.groups.settlements.endpoints.prepareBankAllocation,
+            { params: { ...bookScope(props.book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <MatchAmountInput
         data={data}
@@ -1344,6 +1353,15 @@ function MatchingReview(props: Props & { id: string }) {
             label={sv ? "Godkänn matchning" : "Approve match"}
             input={() => ({ digest: data.plan.digest, version: data.plan.version })}
             onSuccess={() => setReviewed(false)}
+            operation={(client, requestOptions) =>
+              client.settlements.approveBankAllocation(
+                httpRequest(
+                  Api.groups.settlements.endpoints.approveBankAllocation,
+                  { params: { ...bookScope(book), id: id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
           <CommandForm
             {...props}
@@ -1359,6 +1377,15 @@ function MatchingReview(props: Props & { id: string }) {
               version: data.plan.version,
               approvalId: data.approval?.id,
             })}
+            operation={(client, requestOptions) =>
+              client.settlements.executeBankAllocation(
+                httpRequest(
+                  Api.groups.settlements.endpoints.executeBankAllocation,
+                  { params: { ...bookScope(book), id: id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
         </>
       ) : null}

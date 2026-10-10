@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -171,6 +172,15 @@ function PaymentAllocation(
             })),
           })}
           onSuccess={(plan) => onPrepared(plan.id)}
+          operation={(client, requestOptions) =>
+            client.commerce.commercePrepareAllocation(
+              httpRequest(
+                Api.groups.commerce.endpoints.commercePrepareAllocation,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Text>{copy.legsHelp}</Text>
           <Text>
@@ -364,6 +374,15 @@ function AllocationReview(props: CommerceProps & { id: string }) {
               label={copy.approve}
               allowed={actionable && book.role === "operator"}
               input={() => ({ version: plan.version, planDigest: plan.digest })}
+              operation={(client, requestOptions) =>
+                client.commerce.commerceApproveAllocation(
+                  httpRequest(
+                    Api.groups.commerce.endpoints.commerceApproveAllocation,
+                    { params: { ...bookScope(book), id: id } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <Text>
                 {copy.digest}: {plan.digest}
@@ -393,6 +412,15 @@ function AllocationReview(props: CommerceProps & { id: string }) {
               planDigest: plan.digest,
               approvalId: approval?.id,
             })}
+            operation={(client, requestOptions) =>
+              client.commerce.commerceApplyAllocation(
+                httpRequest(
+                  Api.groups.commerce.endpoints.commerceApplyAllocation,
+                  { params: { ...bookScope(book), id: id } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <Text>{copy.newProposal}</Text>
           </CommandForm>

@@ -1,3 +1,5 @@
+import type * as Effect from "effect/Effect";
+import type { AccountingClient } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +19,10 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
   title: string;
   label: string;
   path: string;
+  operation: (
+    client: AccountingClient,
+    options: RequestInit,
+  ) => Effect.Effect<typeof Firms.CommandResult.Type, unknown>;
   schema: S;
   input: (fields: FormData) => unknown;
   locale: Locale;
@@ -31,7 +37,7 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
   const mutation = useMutation({
     mutationFn: (input: S["Type"]) =>
       readAccounting(
-        props.path,
+        props.operation,
         Firms.CommandResult,
         keys.current.options(props.path, JSON.stringify(input)),
       ),

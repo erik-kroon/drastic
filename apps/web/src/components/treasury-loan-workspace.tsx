@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -434,6 +435,15 @@ function LoanApprovalCommands(props: {
           if (result.reviewId !== review.id || result.reviewDigest !== review.digest)
             throw new Error("Loan approval identity mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.treasuryLoan.approveLoanReview(
+            httpRequest(
+              Api.groups.treasuryLoan.endpoints.approveLoanReview,
+              { params: { ...bookScope(book), id: review.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
       <CommandForm
         book={book}
@@ -450,6 +460,15 @@ function LoanApprovalCommands(props: {
           if (result.reviewId !== review.id || result.loanId !== review.loanId)
             throw new Error("Loan event identity mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.treasuryLoan.executeLoanReview(
+            httpRequest(
+              Api.groups.treasuryLoan.endpoints.executeLoanReview,
+              { params: { ...bookScope(book), id: review.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
     </AssetActionActions>
   );

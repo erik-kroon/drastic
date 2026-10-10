@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Cash from "@open-erp/contracts/foreign-cash";
@@ -389,6 +390,15 @@ function ForeignCashApproval(props: {
           if (result.reviewId !== review.id || result.digest !== review.digest)
             throw new Error("Foreign cash approval identity mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.foreignCash.approveForeignCash(
+            httpRequest(
+              Api.groups.foreignCash.endpoints.approveForeignCash,
+              { params: { ...bookScope(book), id: review.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
       <CommandForm
         book={book}
@@ -405,6 +415,15 @@ function ForeignCashApproval(props: {
           if (result.reviewId !== review.id || result.digest !== review.digest)
             throw new Error("Foreign cash execution identity mismatch");
         }}
+        operation={(client, requestOptions) =>
+          client.foreignCash.executeForeignCash(
+            httpRequest(
+              Api.groups.foreignCash.endpoints.executeForeignCash,
+              { params: { ...bookScope(book), id: review.id } },
+              requestOptions,
+            ),
+          )
+        }
       />
     </AssetActionActions>
   );
