@@ -3,13 +3,10 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
-import {
-  RegisterDetailHeading,
-  RegisterDetailLines,
-} from "@open-erp/ui/components/register-workspace";
+import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { Text } from "@open-erp/ui/components/typography";
 import { ReviewPanes, ReviewContent, OriginalViewerSurface } from "@open-erp/ui/kanon/layouts";
-import { DetailPanelSurface } from "@open-erp/ui/kanon/detail-panel";
+import { DetailPanelSurface, DetailPanelHeader } from "@open-erp/ui/kanon/detail-panel";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { WorkReviewFooter } from "@open-erp/ui/components/work-controls";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -120,15 +117,15 @@ export function SupplierFocusedReview(
       }
       decision={
         <DetailPanelSurface as="section" label={sv ? "Beslut" : "Decision"}>
-          <RegisterDetailHeading
-            presentation="focused"
-            caption={sv ? "Leverantörsfaktura, förslag" : "Supplier invoice, proposal"}
-            title={
+          <DetailPanelHeader
+            figureAs="h2"
+            kicker={sv ? "Leverantörsfaktura, förslag" : "Supplier invoice, proposal"}
+            figure={
               snapshot.totals.grossMinor === null
                 ? "—"
                 : `${formatMinorAmount(snapshot.totals.grossMinor, snapshot.content.currencyScale, locale)} ${sv ? "att betala" : "payable"}`
             }
-            note={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}`}
+            subtitle={`${snapshot.counterparty.displayName}, ${sv ? "faktura" : "invoice"} ${snapshot.content.supplierDocumentNumber ?? "—"}`}
           />
           {isSupplierApprovalExpired(view) ? (
             <SupplierApprovalExpiry

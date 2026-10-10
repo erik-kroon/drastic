@@ -1,0 +1,2332 @@
+{
+  "scope": "synthetic original and completed supplier stage selection, reload and keyboard return",
+  "original": {
+    "id": "source_cae843a00c3c4e92ba02161b6a37371b",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "sourceSystem": "synthetic-home-return",
+    "sourceAccountId": "synthetic_originals",
+    "occurrenceKey": "f37adc68-89c1-4cac-b721-9b24a8141e4d",
+    "sourceRevision": "1",
+    "filename": "home-original-selected.pdf",
+    "sha256": "sha256:d63ecdf6b1f3e52c87b42aa44f6a82bd99a7637b5ffda02fa768723719942cc4",
+    "byteLength": 885,
+    "mediaType": "application/pdf",
+    "retainedBy": "actor_operator",
+    "retainedAt": "2026-10-10T06:25:37.868Z",
+    "receipt": {
+      "key": "cd740efb-a616-4a8b-a3d0-a13a3c355cb0",
+      "operation": "retain_source_object",
+      "actorId": "actor_operator"
+    }
+  },
+  "pagination": {
+    "continuation": "document_source_ea9dd9b79d32484eb9edc8311735959a",
+    "first": {
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "checkedAt": "2026-10-10T06:25:38.072Z",
+      "coverage": "journals_invoice_drafts_expense_reviews_documents_supplier_drafts_recurring_failures",
+      "filters": {
+        "period": null,
+        "status": "open",
+        "sort": "oldest",
+        "q": "",
+        "kind": "all"
+      },
+      "total": "52",
+      "counts": {
+        "open": "52",
+        "completed": "0"
+      },
+      "items": [
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_a1955fa3cc1340268ea578661a11e3f9",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_a1955fa3cc1340268ea578661a11e3f9/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_a1955fa3cc1340268ea578661a11e3f9",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_a1955fa3cc1340268ea578661a11e3f9",
+          "revision": "sha256:bcef14a1753e3ea7729bb6f5c1fc7c9f74701fb415bb6101bd0c98636aa46435",
+          "title": "home-page-first-0.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.415Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_233fed1f66404d51a7a85a7b65205949",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_233fed1f66404d51a7a85a7b65205949/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_233fed1f66404d51a7a85a7b65205949",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_233fed1f66404d51a7a85a7b65205949",
+          "revision": "sha256:256a46fc85cda65377cd825a9ff5c485e0f845aa8ec0e9f2bbcafbe7dda2f6b7",
+          "title": "home-page-first-1.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.481Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_ffec4ea8f8f3432fa5be37b66b33366f",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_ffec4ea8f8f3432fa5be37b66b33366f/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_ffec4ea8f8f3432fa5be37b66b33366f",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_ffec4ea8f8f3432fa5be37b66b33366f",
+          "revision": "sha256:0e654a84b8582e98872e413d1d940e06ba5e29fdfea86e40d88c414f87f3a513",
+          "title": "home-page-first-2.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.530Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_0b7e3e12799a418eb2f5c23a7ecf3784",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_0b7e3e12799a418eb2f5c23a7ecf3784/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_0b7e3e12799a418eb2f5c23a7ecf3784",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_0b7e3e12799a418eb2f5c23a7ecf3784",
+          "revision": "sha256:0e6b13101f9245fd397ef8567ee7e12ee26b9db131e0cc590623443d7c059fe1",
+          "title": "home-page-first-3.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.582Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_d0b007ae73ad406da3964b92b4e70e69",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_d0b007ae73ad406da3964b92b4e70e69/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_d0b007ae73ad406da3964b92b4e70e69",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_d0b007ae73ad406da3964b92b4e70e69",
+          "revision": "sha256:f2d29ff3b652e532c3f898cb0124a1ae037a20dbce316204c44a789cb626f768",
+          "title": "home-page-first-4.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.628Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_6cdc4ce23225458b990385392f1c4ea3",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_6cdc4ce23225458b990385392f1c4ea3/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_6cdc4ce23225458b990385392f1c4ea3",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_6cdc4ce23225458b990385392f1c4ea3",
+          "revision": "sha256:b35da34eb164878750b851be1b71da7634243dce9f50d3941a420c49b73d2077",
+          "title": "home-page-first-5.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.672Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c45e032101cc4c9fa7ede90510a0dd84",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c45e032101cc4c9fa7ede90510a0dd84/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c45e032101cc4c9fa7ede90510a0dd84",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c45e032101cc4c9fa7ede90510a0dd84",
+          "revision": "sha256:da3265e5a190b3b4b94e86527b491239507cf657c76bf9f3df526329e91f03aa",
+          "title": "home-page-first-6.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.727Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_eefa6c6ecb5f493daa889e921209a26c",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_eefa6c6ecb5f493daa889e921209a26c/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_eefa6c6ecb5f493daa889e921209a26c",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_eefa6c6ecb5f493daa889e921209a26c",
+          "revision": "sha256:0fd27435086462bfc512fe0cbd68af49bb8f8817daf74e78fbfc9e400a6712be",
+          "title": "home-page-first-7.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.772Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_5c75439512df48bf8e54d73fb7df881d",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_5c75439512df48bf8e54d73fb7df881d/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_5c75439512df48bf8e54d73fb7df881d",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_5c75439512df48bf8e54d73fb7df881d",
+          "revision": "sha256:4683430dea4c41543d719cfd49a54d53739cb63b29fcdbd35ac1a28175627ca7",
+          "title": "home-page-first-8.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.817Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c7e072e466fe41f08377bb867d0c337f",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c7e072e466fe41f08377bb867d0c337f/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c7e072e466fe41f08377bb867d0c337f",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c7e072e466fe41f08377bb867d0c337f",
+          "revision": "sha256:3a674e189e4ee0f0faa0d83752f64f720342f9f29590aa0abbd73a0fb09f9aa0",
+          "title": "home-page-first-9.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.869Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_8b8b194f39824b4cae564e49ac151b41",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_8b8b194f39824b4cae564e49ac151b41/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_8b8b194f39824b4cae564e49ac151b41",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_8b8b194f39824b4cae564e49ac151b41",
+          "revision": "sha256:1db69137a9a77391d94e03bac19ac8bba51d2ebd11675bd552caf74030f86538",
+          "title": "home-page-first-10.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:35.911Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_38ed831ac2ac4bf5b1b9cea7235ba149",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_38ed831ac2ac4bf5b1b9cea7235ba149/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_38ed831ac2ac4bf5b1b9cea7235ba149",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_38ed831ac2ac4bf5b1b9cea7235ba149",
+          "revision": "sha256:11dfc730356d7ea6c407b1ad6818dc5493639a166b122abfe6312bdbc9b11bcb",
+          "title": "home-page-first-11.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.054Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_8fce2e95ad4c461a9c0d17400290d134",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_8fce2e95ad4c461a9c0d17400290d134/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_8fce2e95ad4c461a9c0d17400290d134",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_8fce2e95ad4c461a9c0d17400290d134",
+          "revision": "sha256:a71523fbd52a749f6b22f7f6c7a90473ac466a74173925ffdd947ef0646f1caa",
+          "title": "home-page-first-12.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.111Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_46aac3321f7f4093827797a8f87d5263",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_46aac3321f7f4093827797a8f87d5263/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_46aac3321f7f4093827797a8f87d5263",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_46aac3321f7f4093827797a8f87d5263",
+          "revision": "sha256:9ab728016cc35ce663f40feb2462a667f0889a9a1ebfbefa652505800d3927ad",
+          "title": "home-page-first-13.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.159Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_07226c807aa64e88b3d06e0d470c0e7b",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_07226c807aa64e88b3d06e0d470c0e7b/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_07226c807aa64e88b3d06e0d470c0e7b",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_07226c807aa64e88b3d06e0d470c0e7b",
+          "revision": "sha256:96398fbeb35148bc6b6d99c5c261adedcfd79d93ae4501cc0f83dd07ecbee661",
+          "title": "home-page-first-14.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.210Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_e5b56dec0e164a4b8e31c775bafe9039",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_e5b56dec0e164a4b8e31c775bafe9039/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_e5b56dec0e164a4b8e31c775bafe9039",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_e5b56dec0e164a4b8e31c775bafe9039",
+          "revision": "sha256:2bbaf2107f0e98add30efa8d15ea3f79db393bbd7b4e2a7997d8383823ef53ed",
+          "title": "home-page-first-15.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.261Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_11cb8cb8477a4ba489f0fe70c011fe9a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_11cb8cb8477a4ba489f0fe70c011fe9a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_11cb8cb8477a4ba489f0fe70c011fe9a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_11cb8cb8477a4ba489f0fe70c011fe9a",
+          "revision": "sha256:94bfa221e2994486f2ca89fe5c71323273c5fe3063e9fdfbf1cceb47f59399f2",
+          "title": "home-page-first-16.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.315Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_7a67c31a54b54adca7d6cc353b22c923",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_7a67c31a54b54adca7d6cc353b22c923/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_7a67c31a54b54adca7d6cc353b22c923",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_7a67c31a54b54adca7d6cc353b22c923",
+          "revision": "sha256:461b76e9f18425ce5c061cb36c2f8ba06289eabae8a8558fc06e7d23c6ab9074",
+          "title": "home-page-first-17.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.378Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_97d97d77a42d4384be97b02e5a8cf47a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_97d97d77a42d4384be97b02e5a8cf47a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_97d97d77a42d4384be97b02e5a8cf47a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_97d97d77a42d4384be97b02e5a8cf47a",
+          "revision": "sha256:68f7ac2d0d444abc9aed621c085d2d5dbe5c4d2dfda0232150aefc5430a0cc79",
+          "title": "home-page-first-18.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.425Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_d668169186554c2cb319d4df4bfb35d6",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_d668169186554c2cb319d4df4bfb35d6/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_d668169186554c2cb319d4df4bfb35d6",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_d668169186554c2cb319d4df4bfb35d6",
+          "revision": "sha256:c4d13b240efb31703b8d0640fac116e17fcc62d477e1a41bd09519698227e834",
+          "title": "home-page-first-19.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.472Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_f0d0b6be72ab4ed1a61f87e8ac13446b",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_f0d0b6be72ab4ed1a61f87e8ac13446b/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_f0d0b6be72ab4ed1a61f87e8ac13446b",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_f0d0b6be72ab4ed1a61f87e8ac13446b",
+          "revision": "sha256:3ad4cc2b59cc40e121f2cd7c1ef4dbea707ef0457c9f61d093169e540f2fe404",
+          "title": "home-page-first-20.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.524Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_70411178ecd84f0996ea84584fca1fdf",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_70411178ecd84f0996ea84584fca1fdf/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_70411178ecd84f0996ea84584fca1fdf",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_70411178ecd84f0996ea84584fca1fdf",
+          "revision": "sha256:6bf092b6ee58ddc616dc302a6d1710cf73f7a79215ac232de59f5e2afe6dd263",
+          "title": "home-page-first-21.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.568Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c9b74f64b4d24a3faf9b3d1ca083629f",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c9b74f64b4d24a3faf9b3d1ca083629f/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c9b74f64b4d24a3faf9b3d1ca083629f",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c9b74f64b4d24a3faf9b3d1ca083629f",
+          "revision": "sha256:f32773cfc8336d7f7868c47fb046202d6886955380489e4217f8f51d0af479de",
+          "title": "home-page-first-22.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.611Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c86f177748954f2e903ad20bd9a19ba8",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c86f177748954f2e903ad20bd9a19ba8/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c86f177748954f2e903ad20bd9a19ba8",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c86f177748954f2e903ad20bd9a19ba8",
+          "revision": "sha256:2ccecaaab70a4d8213f85a65de564de49cad213513715f2abc04f066fd7f2af9",
+          "title": "home-page-first-23.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.652Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_659ef6d339a449ae92b7de028916e834",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_659ef6d339a449ae92b7de028916e834/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_659ef6d339a449ae92b7de028916e834",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_659ef6d339a449ae92b7de028916e834",
+          "revision": "sha256:987b12f42facb9fe198c01c2e4aea142d20f9f563e08abb811bc1c577331599c",
+          "title": "home-page-first-24.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.699Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_5aeb8f72ba5f44d9a8063fb1e8a9dc63",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_5aeb8f72ba5f44d9a8063fb1e8a9dc63/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_5aeb8f72ba5f44d9a8063fb1e8a9dc63",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_5aeb8f72ba5f44d9a8063fb1e8a9dc63",
+          "revision": "sha256:4a87a45bfad5dc84df815b87d99d62cf0d2472db80ed1d9ac184f5830e3877dc",
+          "title": "home-page-first-25.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.739Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_378e50dd7e0c4c678a3c54eb6639545c",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_378e50dd7e0c4c678a3c54eb6639545c/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_378e50dd7e0c4c678a3c54eb6639545c",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_378e50dd7e0c4c678a3c54eb6639545c",
+          "revision": "sha256:8214dda3be4fc9a3f0bf87c47089bed39e039c1e31fdecfc74c3562906993a94",
+          "title": "home-page-first-26.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.779Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c7c5871a7a174c3daf4fadb6ca4cc58f",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c7c5871a7a174c3daf4fadb6ca4cc58f/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c7c5871a7a174c3daf4fadb6ca4cc58f",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c7c5871a7a174c3daf4fadb6ca4cc58f",
+          "revision": "sha256:45fffa67bd0f83721e753ce67ff1ed19ad64cbd2d1dea9c782c273483164444e",
+          "title": "home-page-first-27.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.818Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_93344bdafdd24b299f2bee0b304b344d",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_93344bdafdd24b299f2bee0b304b344d/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_93344bdafdd24b299f2bee0b304b344d",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_93344bdafdd24b299f2bee0b304b344d",
+          "revision": "sha256:d0276f98f05137eaf8a448488fc88978486b6f2065a8f47810d680d69c596ffe",
+          "title": "home-page-first-28.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.862Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_d81a667c11fd4d3a8e9b917c813be551",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_d81a667c11fd4d3a8e9b917c813be551/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_d81a667c11fd4d3a8e9b917c813be551",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_d81a667c11fd4d3a8e9b917c813be551",
+          "revision": "sha256:4a0618911f9ce011bd851b9f02a0e19e108a161ca3fbee98794c91e9495295af",
+          "title": "home-page-first-29.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.905Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_dbd0429f03c84a489bcf55775f3bcdb4",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_dbd0429f03c84a489bcf55775f3bcdb4/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_dbd0429f03c84a489bcf55775f3bcdb4",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_dbd0429f03c84a489bcf55775f3bcdb4",
+          "revision": "sha256:b819eb967d9fba2efd1e735a2e411aadc19fe5a2f76839bac12285e53a463b0c",
+          "title": "home-page-first-30.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.947Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_cb9aff3b41b24618814b400d90f7dabb",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_cb9aff3b41b24618814b400d90f7dabb/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_cb9aff3b41b24618814b400d90f7dabb",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_cb9aff3b41b24618814b400d90f7dabb",
+          "revision": "sha256:8f39ccc8041ee9c98b4e2decc785b636de1e8da6c004f6b249f44ec02d4446c6",
+          "title": "home-page-first-31.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:36.996Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_77518e9e6dd8445189eb1a602a10ea7c",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_77518e9e6dd8445189eb1a602a10ea7c/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_77518e9e6dd8445189eb1a602a10ea7c",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_77518e9e6dd8445189eb1a602a10ea7c",
+          "revision": "sha256:461ad1d55129ae847a92ab90e89149574396ba2ca755bfd2f98aec27b0dbefe7",
+          "title": "home-page-first-32.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.039Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_867cc9aca9b84700992345ad28064d9f",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_867cc9aca9b84700992345ad28064d9f/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_867cc9aca9b84700992345ad28064d9f",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_867cc9aca9b84700992345ad28064d9f",
+          "revision": "sha256:8389eeac93cfebe0502de6760553f9128bbfc945c646f642c72ff414f82c879d",
+          "title": "home-page-first-33.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.088Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_4ac7e970cbb946318a0a60bdec914852",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_4ac7e970cbb946318a0a60bdec914852/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_4ac7e970cbb946318a0a60bdec914852",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_4ac7e970cbb946318a0a60bdec914852",
+          "revision": "sha256:5484f017e68c7819163b93baa88a6d82dc22d8053ad679d85e2bf9464ec295a7",
+          "title": "home-page-first-34.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.132Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_3234033b9abd40f999130ea1a03b4ec2",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_3234033b9abd40f999130ea1a03b4ec2/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_3234033b9abd40f999130ea1a03b4ec2",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_3234033b9abd40f999130ea1a03b4ec2",
+          "revision": "sha256:eed05ba3414fb5f7ec83c94e89aaa90e49cb2994369ec1ddb2b9ef37fae04a09",
+          "title": "home-page-first-35.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.182Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_a2a5654ef72e49a8ab77f8a81d29e35a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_a2a5654ef72e49a8ab77f8a81d29e35a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_a2a5654ef72e49a8ab77f8a81d29e35a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_a2a5654ef72e49a8ab77f8a81d29e35a",
+          "revision": "sha256:37ac90994f6352557cf6ace81b0f8da4f637970b2a5ff7ef3a56a1c0dadf6ff2",
+          "title": "home-page-first-36.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.222Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c46f07a197b54916b61e82ce5490628c",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c46f07a197b54916b61e82ce5490628c/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c46f07a197b54916b61e82ce5490628c",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c46f07a197b54916b61e82ce5490628c",
+          "revision": "sha256:6acb0673e50c904c41aee80ca6f29679d0dae5b05dad61b1f1b2e1e7c3405a3b",
+          "title": "home-page-first-37.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.264Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_6091f2ff54a945e089200cd4bb5ba472",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_6091f2ff54a945e089200cd4bb5ba472/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_6091f2ff54a945e089200cd4bb5ba472",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_6091f2ff54a945e089200cd4bb5ba472",
+          "revision": "sha256:4d120a56d51d75503ee826ef41e38a7b0ad49c913dd7fc00057829ddb9ffc85f",
+          "title": "home-page-first-38.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.310Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_2a10d1b6375c4676871837d92ee62195",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_2a10d1b6375c4676871837d92ee62195/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_2a10d1b6375c4676871837d92ee62195",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_2a10d1b6375c4676871837d92ee62195",
+          "revision": "sha256:ff7cc404ac84a6261dcf6f3a68ba5b6745ca0041b68f90441c643bf429210ce6",
+          "title": "home-page-first-39.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.354Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_10e651c06240467f9c3633f9681ef3d4",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_10e651c06240467f9c3633f9681ef3d4/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_10e651c06240467f9c3633f9681ef3d4",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_10e651c06240467f9c3633f9681ef3d4",
+          "revision": "sha256:374f740375981523835528141bf3e3fe1ca20119d5773a7b0102a0137a300fcf",
+          "title": "home-page-first-40.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.396Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_7fe20a9aded14eb3ba79f0eff065739a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_7fe20a9aded14eb3ba79f0eff065739a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_7fe20a9aded14eb3ba79f0eff065739a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_7fe20a9aded14eb3ba79f0eff065739a",
+          "revision": "sha256:ac8e6538496ebc53b71b981e1723916fe89256edbcecbc4b68e254b63677b2a4",
+          "title": "home-page-first-41.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.435Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_f740c025f2b5410aa8de8f1018e5a307",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_f740c025f2b5410aa8de8f1018e5a307/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_f740c025f2b5410aa8de8f1018e5a307",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_f740c025f2b5410aa8de8f1018e5a307",
+          "revision": "sha256:6d78c2198f0c1dccc89d963353d461e3f69efc75a9a0d30721bd830db76e135a",
+          "title": "home-page-first-42.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.479Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_55871e5e5e6247f7a4f0c664e8eec908",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_55871e5e5e6247f7a4f0c664e8eec908/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_55871e5e5e6247f7a4f0c664e8eec908",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_55871e5e5e6247f7a4f0c664e8eec908",
+          "revision": "sha256:e2dc48b140c098406a210cf26d5c0d5c18dc16b982e9ef7067c6f1604b99853a",
+          "title": "home-page-first-43.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.520Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_c5039fcfe4d449e5b3a65c2ffc74205c",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_c5039fcfe4d449e5b3a65c2ffc74205c/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_c5039fcfe4d449e5b3a65c2ffc74205c",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_c5039fcfe4d449e5b3a65c2ffc74205c",
+          "revision": "sha256:67346e4c192c7a4db6f0183722cb7d846d5057b45077688f0d673369804a8459",
+          "title": "home-page-first-44.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.562Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_3ca8aa76fe984e06a8f231aff98c3502",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_3ca8aa76fe984e06a8f231aff98c3502/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_3ca8aa76fe984e06a8f231aff98c3502",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_3ca8aa76fe984e06a8f231aff98c3502",
+          "revision": "sha256:609cc849987e2a8aa7c3881d3bdcce77cb7ec488e4627abc5b45c5c77f23cd6c",
+          "title": "home-page-first-45.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.613Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_feaccf05eba546c08b3afc1765b0f222",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_feaccf05eba546c08b3afc1765b0f222/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_feaccf05eba546c08b3afc1765b0f222",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_feaccf05eba546c08b3afc1765b0f222",
+          "revision": "sha256:00153c58ab34e7059b25e819c8553eed656c068e4e7cc7aca164dfe158e2976c",
+          "title": "home-page-first-46.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.654Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_7e422a56a5014d18a32d9caff6ba6b6b",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_7e422a56a5014d18a32d9caff6ba6b6b/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_7e422a56a5014d18a32d9caff6ba6b6b",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_7e422a56a5014d18a32d9caff6ba6b6b",
+          "revision": "sha256:596497cd1536e821fad5736234ba40990fb679202b6c3142a9edee6bcb8e5525",
+          "title": "home-page-first-47.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.700Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_5d2d909c8f2844e2a732657e3c18ad10",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_5d2d909c8f2844e2a732657e3c18ad10/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_5d2d909c8f2844e2a732657e3c18ad10",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_5d2d909c8f2844e2a732657e3c18ad10",
+          "revision": "sha256:1ad6eaa7b31e86dec09a92a20d8fd2b05c86a7d750c5961326bc576f7692f0b3",
+          "title": "home-page-first-48.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.743Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_ea9dd9b79d32484eb9edc8311735959a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_ea9dd9b79d32484eb9edc8311735959a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_ea9dd9b79d32484eb9edc8311735959a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_ea9dd9b79d32484eb9edc8311735959a",
+          "revision": "sha256:5c63a4cf9caf93c3462a299d49fe35edd63cca0595eaddb9758a641165b6b694",
+          "title": "home-page-first-49.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.789Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        }
+      ],
+      "next": "document_source_ea9dd9b79d32484eb9edc8311735959a"
+    },
+    "second": {
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "checkedAt": "2026-10-10T06:25:38.115Z",
+      "coverage": "journals_invoice_drafts_expense_reviews_documents_supplier_drafts_recurring_failures",
+      "filters": {
+        "period": null,
+        "status": "open",
+        "sort": "oldest",
+        "q": "",
+        "kind": "all"
+      },
+      "total": "52",
+      "counts": {
+        "open": "52",
+        "completed": "0"
+      },
+      "items": [
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_abd87872ec9a429e9a3d66497b90ea9a",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_abd87872ec9a429e9a3d66497b90ea9a/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_abd87872ec9a429e9a3d66497b90ea9a",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_abd87872ec9a429e9a3d66497b90ea9a",
+          "revision": "sha256:63637d358ec4262cb6aa226fccf54e0be0a970d3b09ac9f7ce82331a1ac2e75b",
+          "title": "home-original-first.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.829Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        },
+        {
+          "questionRoot": {
+            "kind": "document",
+            "recordId": "source_cae843a00c3c4e92ba02161b6a37371b",
+            "rowOrdinal": null,
+            "key": "entity_synthetic/book_synthetic/document/source_cae843a00c3c4e92ba02161b6a37371b/"
+          },
+          "questionSummary": {
+            "unresolved": 0,
+            "open": 0,
+            "answered": 0,
+            "waitingOn": []
+          },
+          "recurringAgreementId": null,
+          "supplierReview": null,
+          "key": "document_source_cae843a00c3c4e92ba02161b6a37371b",
+          "assignment": null,
+          "kind": "document",
+          "id": "source_cae843a00c3c4e92ba02161b6a37371b",
+          "revision": "sha256:7bece9ccfd04a68e9cf3015753f80128c9af55ae55d15f3c16b01299d2dec40d",
+          "title": "home-original-selected.pdf",
+          "date": null,
+          "updatedAt": "2026-10-10T06:25:37.868Z",
+          "amountMinor": null,
+          "currency": null,
+          "currencyScale": null,
+          "state": "open",
+          "reason": "document_review"
+        }
+      ],
+      "next": null
+    }
+  },
+  "task": {
+    "kind": "document",
+    "recordId": "source_cae843a00c3c4e92ba02161b6a37371b",
+    "rowOrdinal": null,
+    "key": "entity_synthetic/book_synthetic/document/source_cae843a00c3c4e92ba02161b6a37371b/"
+  },
+  "ownerReturn": "owner:%7B%22owner%22%3A%22home%22%2C%22search%22%3A%7B%22after%22%3A%22document_source_ea9dd9b79d32484eb9edc8311735959a%22%2C%22status%22%3A%22open%22%2C%22task%22%3A%22entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_cae843a00c3c4e92ba02161b6a37371b%2F%22%7D%7D",
+  "before": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "selectedHeader": {
+    "figure": "Okänt",
+    "title": "home-original-selected.pdf",
+    "figureSize": "32px",
+    "figureWhiteSpace": "nowrap"
+  },
+  "headerAction": {
+    "tag": "A",
+    "text": "Granska alla",
+    "height": "28px",
+    "borderWidth": "1px"
+  },
+  "reviewAllKeyboardNavigation": true,
+  "handoffHeader": {
+    "figure": "100,00",
+    "title": "Synthetic selected home draft",
+    "figureSize": "32px",
+    "figureWhiteSpace": "nowrap"
+  },
+  "selectedConditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T06:25:40.099Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_ea9dd9b79d32484eb9edc8311735959a&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_cae843a00c3c4e92ba02161b6a37371b%2F"
+  },
+  "selectedScreenshot": "screenshots/001-home-selected-original-after-reload.png",
+  "narrow": {
+    "width": 375,
+    "overflow": false,
+    "rowFits": true,
+    "panelFits": true,
+    "panelBelowRow": true
+  },
+  "narrowScreenshot": "screenshots/002-home-selected-original-narrow.png",
+  "returnedScreenshot": "screenshots/004-home-returned-selected-original-focused.png",
+  "handoff": {
+    "inbox": {
+      "occurrence": {
+        "occurrence": {
+          "id": "source_cae843a00c3c4e92ba02161b6a37371b",
+          "scope": {
+            "entityId": "entity_synthetic",
+            "bookId": "book_synthetic"
+          },
+          "sourceSystem": "synthetic-home-return",
+          "sourceAccountId": "synthetic_originals",
+          "occurrenceKey": "f37adc68-89c1-4cac-b721-9b24a8141e4d",
+          "sourceRevision": "1",
+          "filename": "home-original-selected.pdf",
+          "sha256": "sha256:d63ecdf6b1f3e52c87b42aa44f6a82bd99a7637b5ffda02fa768723719942cc4",
+          "byteLength": 885,
+          "mediaType": "application/pdf",
+          "retainedBy": "actor_operator",
+          "retainedAt": "2026-10-10T06:25:37.868Z",
+          "receipt": {
+            "key": "cd740efb-a616-4a8b-a3d0-a13a3c355cb0",
+            "operation": "retain_source_object",
+            "actorId": "actor_operator"
+          }
+        },
+        "latestPreviewId": null,
+        "admission": null
+      },
+      "channel": "upload",
+      "messageIdentity": null,
+      "draftId": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+      "reviewReason": "Synthetic public API handoff, not approval or posting",
+      "reviewAttemptId": null,
+      "attempts": []
+    },
+    "draft": {
+      "id": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "ap_25611d2093d25fe9f8df8f2690a4fe4057062c7435b7f49ab6394d6a7f7e",
+      "revision": "1",
+      "status": "draft",
+      "acceptanceSupported": false,
+      "recognitionSupported": false,
+      "recognitionAssessment": "not_assessed",
+      "calculationBasis": "explicit_line_amounts_v1",
+      "content": {
+        "title": "Synthetic selected home draft",
+        "counterpartyId": "counterparty_41113594e31b49d3be6819d5374eff9e",
+        "counterpartyRevision": "1",
+        "supplier": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b"
+        },
+        "buyer": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b"
+        },
+        "sourceEvidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "supplierDocumentNumber": "HOME-001",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "documentDate": "2026-10-03",
+        "supplyDate": "2026-10-03",
+        "dueDate": "2026-10-14",
+        "paymentTerms": "Synthetic terms",
+        "sourceTotalMinor": "10000",
+        "lines": [
+          {
+            "id": "synthetic_service",
+            "description": "Synthetic service",
+            "quantity": "1",
+            "unitPriceMinor": "10000",
+            "baseMinor": "10000",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic zero tax",
+            "taxEvidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+            "sourceGrossMinor": "10000"
+          }
+        ]
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "home_5eaf3914-52c6-4776-8890-61bf3d6c5c45",
+        "role": "supplier",
+        "displayName": "Synthetic home supplier",
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "reason": "Synthetic handoff fixture",
+        "id": "counterparty_41113594e31b49d3be6819d5374eff9e",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+          "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-10T06:25:44.248176Z",
+        "receipt": {
+          "key": "97266d17-c871-4c58-b28e-db1256e97865",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "supplierEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "buyerEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "sourceEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "totals": {
+        "baseMinor": "10000",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "10000",
+        "taxMinor": "0",
+        "grossMinor": "10000",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "synthetic_service",
+          "calculatedBaseMinor": "10000",
+          "netMinor": "10000",
+          "grossMinor": "10000",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+            "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "acceptance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "recognition_not_implemented",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial supplier commercial draft",
+      "createdAt": "2026-10-10T06:25:44.293Z",
+      "receipt": {
+        "key": "supplier_draft_5ca31e6de16c47d49df6ca0cfd9f8cd8",
+        "operation": "create_supplier_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb"
+    }
+  },
+  "stage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_cae843a00c3c4e92ba02161b6a37371b",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_cae843a00c3c4e92ba02161b6a37371b/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": null,
+    "key": "supplier_supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+    "assignment": null,
+    "kind": "supplier",
+    "id": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+    "revision": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-10T06:25:44.293Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "open",
+    "reason": "supplier_draft"
+  },
+  "handoffScreenshot": "screenshots/005-home-same-root-new-supplier-stage.png",
+  "missingTask": "document:882ff488-a4e2-4739-bbcd-483f535cf23c",
+  "missingScreenshot": "screenshots/006-home-missing-root-heading-focused.png",
+  "plan": {
+    "id": "supplier_review_2d15ddb14dcf42c6bea3f4ac53a89375",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "version": 1,
+    "profile": "synthetic-manual-supplier-v1",
+    "ordinal": 1,
+    "input": {
+      "profile": "synthetic-manual-supplier-v1",
+      "draftId": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+      "expectedRevision": "1",
+      "expectedDigest": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb",
+      "controlAccountId": "account_clearing",
+      "accountingPeriodId": "period_synthetic_2026",
+      "series": "A",
+      "reason": "Synthetic completed-history qualification",
+      "acknowledgeSyntheticOnly": true,
+      "debitAccountId": "account_bank"
+    },
+    "draftSnapshot": {
+      "id": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "ap_25611d2093d25fe9f8df8f2690a4fe4057062c7435b7f49ab6394d6a7f7e",
+      "revision": "1",
+      "status": "draft",
+      "acceptanceSupported": false,
+      "recognitionSupported": false,
+      "recognitionAssessment": "not_assessed",
+      "calculationBasis": "explicit_line_amounts_v1",
+      "content": {
+        "title": "Synthetic selected home draft",
+        "counterpartyId": "counterparty_41113594e31b49d3be6819d5374eff9e",
+        "counterpartyRevision": "1",
+        "supplier": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b"
+        },
+        "buyer": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b"
+        },
+        "sourceEvidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "supplierDocumentNumber": "HOME-001",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "documentDate": "2026-10-03",
+        "supplyDate": "2026-10-03",
+        "dueDate": "2026-10-14",
+        "paymentTerms": "Synthetic terms",
+        "sourceTotalMinor": "10000",
+        "lines": [
+          {
+            "id": "synthetic_service",
+            "description": "Synthetic service",
+            "quantity": "1",
+            "unitPriceMinor": "10000",
+            "baseMinor": "10000",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic zero tax",
+            "taxEvidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+            "sourceGrossMinor": "10000"
+          }
+        ]
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "home_5eaf3914-52c6-4776-8890-61bf3d6c5c45",
+        "role": "supplier",
+        "displayName": "Synthetic home supplier",
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "reason": "Synthetic handoff fixture",
+        "id": "counterparty_41113594e31b49d3be6819d5374eff9e",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+          "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-10T06:25:44.248176Z",
+        "receipt": {
+          "key": "97266d17-c871-4c58-b28e-db1256e97865",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "supplierEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "buyerEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "sourceEvidence": {
+        "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+        "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+      },
+      "totals": {
+        "baseMinor": "10000",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "10000",
+        "taxMinor": "0",
+        "grossMinor": "10000",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "synthetic_service",
+          "calculatedBaseMinor": "10000",
+          "netMinor": "10000",
+          "grossMinor": "10000",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+            "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "acceptance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "recognition_not_implemented",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial supplier commercial draft",
+      "createdAt": "2026-10-10T06:25:44.293Z",
+      "receipt": {
+        "key": "supplier_draft_5ca31e6de16c47d49df6ca0cfd9f8cd8",
+        "operation": "create_supplier_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb"
+    },
+    "postingPlan": {
+      "schemaVersion": "1",
+      "canonicalization": "openerp-c14n-v1",
+      "id": "change_715486a7e85348ceb7451abbed72ebc1",
+      "version": 1,
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "createdAt": "2026-10-10T06:25:45.549Z",
+      "dependencies": [
+        {
+          "kind": "profile",
+          "resourceId": "book_synthetic",
+          "version": "1",
+          "reason": "Book currency and supported profile"
+        },
+        {
+          "kind": "writer_epoch",
+          "resourceId": "book_synthetic",
+          "version": "1",
+          "reason": "Single authoritative writer"
+        },
+        {
+          "kind": "period",
+          "resourceId": "period_synthetic_2026",
+          "version": "1",
+          "reason": "Posting dates and lock state"
+        },
+        {
+          "kind": "account",
+          "resourceId": "account_bank",
+          "version": "1",
+          "reason": "Exact account configuration"
+        },
+        {
+          "kind": "account",
+          "resourceId": "account_clearing",
+          "version": "1",
+          "reason": "Exact account configuration"
+        }
+      ],
+      "groups": [
+        {
+          "id": "group_fa08020951cc492d96eba00f65152e4d",
+          "dependsOnGroupIds": [],
+          "actions": [
+            {
+              "kind": "post_voucher",
+              "correctsVoucherId": null,
+              "eventId": "event_03251e3924c044ea9449dc2fa0e3279a",
+              "postingPurpose": "adjustment",
+              "occurrenceKey": "manual_journal",
+              "fiscalYearId": "year_synthetic_2026",
+              "accountingPeriodId": "period_synthetic_2026",
+              "postingDate": "2026-10-03",
+              "series": "A",
+              "currency": "SEK",
+              "description": "Synthetic selected home draft",
+              "rationale": "Synthetic completed-history qualification",
+              "taxAssessment": "not_applicable",
+              "lines": [
+                {
+                  "accountId": "account_bank",
+                  "debitMinor": "10000",
+                  "creditMinor": "0",
+                  "description": "Explicit supplier expense",
+                  "lineId": "line_1db584a7a96c4462920784a761f37232",
+                  "originalDimensions": []
+                },
+                {
+                  "accountId": "account_clearing",
+                  "debitMinor": "0",
+                  "creditMinor": "10000",
+                  "description": "Explicit supplier payable",
+                  "lineId": "line_0ba265dfadf24ad6b5b654d72b3484fc",
+                  "originalDimensions": []
+                }
+              ],
+              "evidenceRefs": [
+                {
+                  "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+                  "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196",
+                  "locator": "synthetic_supplier_supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "planDigest": "sha256:4dd88293f0d5fef23f808a0ec4e248771ae6ae82de33dffa914adfe0b4daf521"
+    },
+    "evidence": {
+      "evidenceId": "evidence_76c3ee687c9a49f2bc4cdc757a8a349b",
+      "sha256": "fba6d24193b790af95e7c228def46ca4cd46bf4c6b3770301e8d1bba3932f196"
+    },
+    "legalBlockers": [
+      "legal_identity_not_verified",
+      "tax_profile_not_activated",
+      "payment_not_initiated"
+    ],
+    "createdAt": "2026-10-10T06:25:45.552Z",
+    "receipt": {
+      "key": "a737c894-9d38-4cc8-9d46-4e8d7ba9f6b6",
+      "operation": "prepare_supplier_acceptance",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:36dc83859200bfeb739441828584789c5f63a4683df3047f0761bf1e6ecc94c2"
+  },
+  "approval": {
+    "id": "supplier_approval_ac126df5e2974e23b83f7e0f2b4557ff",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "reviewId": "supplier_review_2d15ddb14dcf42c6bea3f4ac53a89375",
+    "digest": "sha256:36dc83859200bfeb739441828584789c5f63a4683df3047f0761bf1e6ecc94c2",
+    "version": 1,
+    "actorId": "actor_operator",
+    "ordinal": 1,
+    "expiresAt": "2026-10-10T07:25:45.586Z",
+    "createdAt": "2026-10-10T06:25:45.591Z",
+    "receipt": {
+      "key": "00b7c2e4-a7fe-4c3f-bdc0-0761931bd611",
+      "operation": "approve_supplier_acceptance",
+      "actorId": "actor_operator"
+    }
+  },
+  "receipt": {
+    "id": "supplier_acceptance_a96b3a0b45554113aef3a2399874e102",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "reviewId": "supplier_review_2d15ddb14dcf42c6bea3f4ac53a89375",
+    "reviewDigest": "sha256:36dc83859200bfeb739441828584789c5f63a4683df3047f0761bf1e6ecc94c2",
+    "approvalId": "supplier_approval_ac126df5e2974e23b83f7e0f2b4557ff",
+    "profile": "synthetic-manual-supplier-v1",
+    "draftId": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+    "draftRevision": "1",
+    "draftDigest": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb",
+    "supplierDocumentNumber": "HOME-001",
+    "accepted": true,
+    "recognized": true,
+    "paid": false,
+    "postingReceipt": {
+      "id": "receipt_3435872e2d604da9939c6b80e723c7ed",
+      "changeSetId": "change_715486a7e85348ceb7451abbed72ebc1",
+      "voucherId": "voucher_00d775d2391f4a6db25db9fc7d1b4a20",
+      "planDigest": "sha256:4dd88293f0d5fef23f808a0ec4e248771ae6ae82de33dffa914adfe0b4daf521",
+      "sequence": "1",
+      "voucherNumber": "1",
+      "committedAt": "2026-10-10 08:25:45.677294+02"
+    },
+    "registerInvoiceId": "invoice_f5fb1f2a91344daaa84b6ecef4204613",
+    "recognitionId": null,
+    "taxFactIds": [],
+    "legalBlockers": [
+      "legal_identity_not_verified",
+      "tax_profile_not_activated",
+      "payment_not_initiated"
+    ],
+    "createdAt": "2026-10-10T06:25:45.735Z",
+    "receipt": {
+      "key": "276dcf6d-fa72-4685-85a5-0bf66891aca1",
+      "operation": "execute_supplier_acceptance",
+      "actorId": "actor_operator"
+    },
+    "digest": "sha256:9eb0bc17f97f40182811c7f18905ab25f198921f77649613f0149ee5f7b8c353"
+  },
+  "completedStage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_cae843a00c3c4e92ba02161b6a37371b",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_cae843a00c3c4e92ba02161b6a37371b/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": null,
+    "key": "supplier_supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+    "assignment": null,
+    "kind": "supplier",
+    "id": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+    "revision": "sha256:6a9824f8bf0dbbaee45db606fe377d2325a88cdaf64ca3e6dc197d9c22a905bb",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-10T06:25:44.293Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "completed",
+    "reason": "supplier_accepted"
+  },
+  "completedScreenshot": "screenshots/007-home-exact-completed-supplier-stage-focused.png",
+  "postedStage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_cae843a00c3c4e92ba02161b6a37371b",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_cae843a00c3c4e92ba02161b6a37371b/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": {
+      "draftId": "supplier_invoice_draft_fd9157e138f84760a42f48a8233c8af1",
+      "reviewId": "supplier_review_2d15ddb14dcf42c6bea3f4ac53a89375",
+      "digest": "sha256:36dc83859200bfeb739441828584789c5f63a4683df3047f0761bf1e6ecc94c2",
+      "approvalObservation": {
+        "state": "consumed",
+        "observedAt": "2026-10-10 08:25:45.777654+02",
+        "callerMatches": true,
+        "proposalMatches": true,
+        "actorName": "Elin Sund"
+      },
+      "approvalExpiresAt": "2026-10-10T07:25:45.586Z",
+      "dependenciesCurrent": false
+    },
+    "key": "journal_change_715486a7e85348ceb7451abbed72ebc1",
+    "assignment": null,
+    "kind": "journal",
+    "id": "change_715486a7e85348ceb7451abbed72ebc1",
+    "revision": "sha256:4dd88293f0d5fef23f808a0ec4e248771ae6ae82de33dffa914adfe0b4daf521",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-10T06:25:45.550802Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "completed",
+    "reason": "journal_posted"
+  },
+  "postedReturnScreenshot": "screenshots/008-home-returned-exact-posted-stage-focused.png",
+  "missingStageScreenshot": "screenshots/009-home-unavailable-completed-stage-heading-focused.png",
+  "otherRoot": {
+    "kind": "document",
+    "recordId": "source_a1955fa3cc1340268ea578661a11e3f9",
+    "rowOrdinal": null,
+    "key": "entity_synthetic/book_synthetic/document/source_a1955fa3cc1340268ea578661a11e3f9/"
+  },
+  "mismatchedStageScreenshot": "screenshots/010-home-other-root-stage-refused.png",
+  "afterCompletion": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "10000",
+        "creditMinor": "0",
+        "balanceMinor": "10000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "10000",
+        "balanceMinor": "-10000"
+      }
+    ]
+  }
+}

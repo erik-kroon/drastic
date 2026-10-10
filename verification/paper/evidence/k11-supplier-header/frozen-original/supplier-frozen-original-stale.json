@@ -1,0 +1,372 @@
+{
+  "synthetic": true,
+  "fixtureProfile": "synthetic-manual-supplier-v1",
+  "occurrence": {
+    "id": "source_e80634efeb02439b86249f0b4107f5f0",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "sourceSystem": "manual-upload",
+    "sourceAccountId": "book_synthetic",
+    "occurrenceKey": "1250cd9d-9b70-45c5-9b03-d88c5e46e3c0",
+    "sourceRevision": "1",
+    "filename": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+    "sha256": "sha256:d63ecdf6b1f3e52c87b42aa44f6a82bd99a7637b5ffda02fa768723719942cc4",
+    "byteLength": 885,
+    "mediaType": "application/pdf",
+    "retainedBy": "actor_operator",
+    "retainedAt": "2026-10-10T06:08:43.438Z",
+    "receipt": {
+      "key": "b495a2ab-c836-40da-927d-7fd24d972af7",
+      "operation": "retain_source_object",
+      "actorId": "actor_operator"
+    }
+  },
+  "expectedHash": "sha256:d63ecdf6b1f3e52c87b42aa44f6a82bd99a7637b5ffda02fa768723719942cc4",
+  "draft": "supplier_invoice_draft_358e55632a334133bfad18deb1a50acb",
+  "selectedReviewId": "supplier_review_593498d019214c1092361d01360b6102",
+  "replacementRevision": "2",
+  "view": {
+    "plan": {
+      "id": "supplier_review_593498d019214c1092361d01360b6102",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "version": 1,
+      "profile": "synthetic-manual-supplier-v1",
+      "ordinal": 1,
+      "input": {
+        "profile": "synthetic-manual-supplier-v1",
+        "draftId": "supplier_invoice_draft_358e55632a334133bfad18deb1a50acb",
+        "expectedRevision": "1",
+        "expectedDigest": "sha256:33995a25579ceaac8564b769629c69e9f29f344c32309c8eb1770171edd27674",
+        "controlAccountId": "account_clearing",
+        "accountingPeriodId": "period_synthetic_2026",
+        "series": "A",
+        "reason": "Local synthetic reviewed original",
+        "acknowledgeSyntheticOnly": true,
+        "debitAccountId": "account_bank"
+      },
+      "draftSnapshot": {
+        "id": "supplier_invoice_draft_358e55632a334133bfad18deb1a50acb",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "draftKey": "ap_904953f13155de6367b8f02b56968077ce3b0e28ece22dc68707d808fd04",
+        "revision": "1",
+        "status": "draft",
+        "acceptanceSupported": false,
+        "recognitionSupported": false,
+        "recognitionAssessment": "not_assessed",
+        "calculationBasis": "explicit_line_amounts_v1",
+        "content": {
+          "title": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+          "counterpartyId": "counterparty_db3c023ec8544a65b1f0b3f43fc8b02e",
+          "counterpartyRevision": "1",
+          "supplier": {
+            "legalName": "Synthetic identity",
+            "registrationId": "SYNTHETIC",
+            "taxId": null,
+            "address": "Synthetic address",
+            "countryCode": "SE",
+            "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e"
+          },
+          "buyer": {
+            "legalName": "Synthetic identity",
+            "registrationId": "SYNTHETIC",
+            "taxId": null,
+            "address": "Synthetic address",
+            "countryCode": "SE",
+            "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e"
+          },
+          "sourceEvidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+          "supplierDocumentNumber": "FROZEN-CHANGED",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "documentDate": "2026-10-03",
+          "supplyDate": "2026-10-03",
+          "dueDate": "2026-10-14",
+          "paymentTerms": "Synthetic terms",
+          "sourceTotalMinor": "125000",
+          "lines": [
+            {
+              "id": "line_frozen_source",
+              "description": "Synthetic gross cost",
+              "quantity": "1",
+              "unitPriceMinor": "125000",
+              "baseMinor": "125000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "0",
+              "taxDescription": "Synthetic no tax treatment",
+              "taxEvidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+              "sourceGrossMinor": "125000"
+            }
+          ]
+        },
+        "counterparty": {
+          "kind": "synthetic_counterparty_v1",
+          "externalKey": "frozen_8d1da357-6695-468a-89a7-f138791a750d",
+          "role": "supplier",
+          "displayName": "Frozen original supplier",
+          "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+          "reason": "Local synthetic qualification",
+          "id": "counterparty_db3c023ec8544a65b1f0b3f43fc8b02e",
+          "scope": {
+            "entityId": "entity_synthetic",
+            "bookId": "book_synthetic"
+          },
+          "revision": "1",
+          "evidence": {
+            "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+            "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+          },
+          "legalIdentityVerified": false,
+          "createdAt": "2026-10-10T06:08:43.532816Z",
+          "receipt": {
+            "key": "9a519ae2-ac92-4ef5-97b8-6a897685b96f",
+            "operation": "commerce_create_counterparty",
+            "actorId": "actor_operator"
+          }
+        },
+        "supplierEvidence": {
+          "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+          "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+        },
+        "buyerEvidence": {
+          "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+          "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+        },
+        "sourceEvidence": {
+          "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+          "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+        },
+        "totals": {
+          "baseMinor": "125000",
+          "discountMinor": "0",
+          "chargeMinor": "0",
+          "netMinor": "125000",
+          "taxMinor": "0",
+          "grossMinor": "125000",
+          "sourceTotalMatches": true
+        },
+        "calculatedLines": [
+          {
+            "id": "line_frozen_source",
+            "calculatedBaseMinor": "125000",
+            "netMinor": "125000",
+            "grossMinor": "125000",
+            "sourceGrossMatches": true,
+            "taxEvidence": {
+              "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+              "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+            }
+          }
+        ],
+        "blockers": [
+          {
+            "code": "acceptance_not_implemented",
+            "lineId": null
+          },
+          {
+            "code": "legal_identity_not_verified",
+            "lineId": null
+          },
+          {
+            "code": "tax_profile_not_activated",
+            "lineId": null
+          },
+          {
+            "code": "recognition_not_implemented",
+            "lineId": null
+          }
+        ],
+        "reason": "Initial supplier commercial draft",
+        "createdAt": "2026-10-10T06:08:43.565Z",
+        "receipt": {
+          "key": "supplier_draft_d83b942f91c845cbadeef4d2d2d84f3a",
+          "operation": "create_supplier_invoice_draft",
+          "actorId": "actor_operator"
+        },
+        "digest": "sha256:33995a25579ceaac8564b769629c69e9f29f344c32309c8eb1770171edd27674"
+      },
+      "postingPlan": {
+        "schemaVersion": "1",
+        "canonicalization": "openerp-c14n-v1",
+        "id": "change_8c3a69377dc7424fb7a5d52c13fb635f",
+        "version": 1,
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "createdAt": "2026-10-10T06:08:43.605Z",
+        "dependencies": [
+          {
+            "kind": "profile",
+            "resourceId": "book_synthetic",
+            "version": "1",
+            "reason": "Book currency and supported profile"
+          },
+          {
+            "kind": "writer_epoch",
+            "resourceId": "book_synthetic",
+            "version": "1",
+            "reason": "Single authoritative writer"
+          },
+          {
+            "kind": "period",
+            "resourceId": "period_synthetic_2026",
+            "version": "1",
+            "reason": "Posting dates and lock state"
+          },
+          {
+            "kind": "account",
+            "resourceId": "account_bank",
+            "version": "1",
+            "reason": "Exact account configuration"
+          },
+          {
+            "kind": "account",
+            "resourceId": "account_clearing",
+            "version": "1",
+            "reason": "Exact account configuration"
+          }
+        ],
+        "groups": [
+          {
+            "id": "group_e78fc0b879b348c7b4c98bf823529921",
+            "dependsOnGroupIds": [],
+            "actions": [
+              {
+                "kind": "post_voucher",
+                "correctsVoucherId": null,
+                "eventId": "event_b6ef40dfbcac49e99343b1092c231416",
+                "postingPurpose": "adjustment",
+                "occurrenceKey": "manual_journal",
+                "fiscalYearId": "year_synthetic_2026",
+                "accountingPeriodId": "period_synthetic_2026",
+                "postingDate": "2026-10-03",
+                "series": "A",
+                "currency": "SEK",
+                "description": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+                "rationale": "Local synthetic reviewed original",
+                "taxAssessment": "not_applicable",
+                "lines": [
+                  {
+                    "accountId": "account_bank",
+                    "debitMinor": "125000",
+                    "creditMinor": "0",
+                    "description": "Explicit supplier expense",
+                    "lineId": "line_006c60302d9c44828b2f9dc488b0622d",
+                    "originalDimensions": []
+                  },
+                  {
+                    "accountId": "account_clearing",
+                    "debitMinor": "0",
+                    "creditMinor": "125000",
+                    "description": "Explicit supplier payable",
+                    "lineId": "line_dd3812e65aca4919b5f82f78e9adbca4",
+                    "originalDimensions": []
+                  }
+                ],
+                "evidenceRefs": [
+                  {
+                    "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+                    "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3",
+                    "locator": "synthetic_supplier_supplier_invoice_draft_358e55632a334133bfad18deb1a50acb"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "planDigest": "sha256:80e87246e24699251eb3e5b78c374614ebcbf3bbda3973e9340903e165e9bd1a"
+      },
+      "evidence": {
+        "evidenceId": "evidence_00fccc17be1c48f587ed78c57fa1f24e",
+        "sha256": "6a170b4610c55c7ff647ce8aa4f4c48a6300cb71e43e5e131348517632d30cf3"
+      },
+      "legalBlockers": [
+        "legal_identity_not_verified",
+        "tax_profile_not_activated",
+        "payment_not_initiated"
+      ],
+      "createdAt": "2026-10-10T06:08:43.607Z",
+      "receipt": {
+        "key": "c1197a76-8373-4de5-a1b9-1549026388b4",
+        "operation": "prepare_supplier_acceptance",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:2f60ce7a5cb706c3d8cb0b7b955c3d0ceda7d9487809dd153519a05f13179acb"
+    },
+    "dependenciesCurrent": false,
+    "acceptance": null,
+    "blockers": [
+      "The supplier draft changed after this review was prepared."
+    ]
+  },
+  "before": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "125000",
+        "creditMinor": "0",
+        "balanceMinor": "125000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "125000",
+        "balanceMinor": "-125000"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "125000",
+        "creditMinor": "0",
+        "balanceMinor": "125000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "125000",
+        "balanceMinor": "-125000"
+      }
+    ]
+  },
+  "screenshot": "screenshots/002-frozen-original-stale-review.png",
+  "nativeL2Screenshot": null,
+  "returnContext": {
+    "purchasesQuery": {
+      "view": "supplier-drafts",
+      "record": "supplier_invoice_draft_358e55632a334133bfad18deb1a50acb",
+      "review": "supplier_review_593498d019214c1092361d01360b6102",
+      "q": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+      "filename": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+      "currency": "SEK"
+    },
+    "workQuery": {
+      "q": "frozen-original-521af76f-04d0-499b-9f69-399f011acf85.pdf",
+      "kind": "journal",
+      "status": "open",
+      "sort": "newest"
+    }
+  },
+  "supersededReviewExcluded": true
+}

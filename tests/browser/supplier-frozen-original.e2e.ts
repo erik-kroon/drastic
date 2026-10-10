@@ -300,6 +300,20 @@ for (const changed of [false, true]) {
     await screen.getByRole("link", "Granska", { exact: true }).focus();
     await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
     await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+    expect(plan.draftSnapshot.totals.grossMinor).toBe("125000");
+    await expect(
+      screen.getByRole("heading", "1\u00a0250,00 att betala", { exact: true }),
+    ).toBeVisible();
+    expect(
+      await browser.evaluate(() =>
+        Array.from(document.querySelectorAll("main section[aria-label='Beslut'] h2"))
+          .filter((heading) => heading.textContent === "1\u00a0250,00 att betala")
+          .map((heading) => heading.tagName),
+      ),
+    ).toEqual(["H2"]);
+    await expect(screen.getByRole("region", "Beslut", { exact: true })).toContainText(
+      `Frozen original supplier, faktura ${content.supplierDocumentNumber}`,
+    );
     await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
     await expect(screen.getByRole("combobox", "Sida", { exact: true })).toHaveCount(1);
     await screen.getByRole("combobox", "Sida", { exact: true }).click();

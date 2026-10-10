@@ -1,0 +1,26 @@
+{
+  "runId": "1d8b894d-21d5-4f0e-8ec8-9bae228b1190",
+  "sourceStatus": "stable",
+  "baseRevision": "89760e7c768bdd20cef3e58ce942ffc264c4c147",
+  "workingTreeCandidate": true,
+  "beforeDigest": "e52ac3992f15b3472f3850dc7d019715a3460a96e7c4e69ea71bbd6079d6f680",
+  "afterDigest": "e52ac3992f15b3472f3850dc7d019715a3460a96e7c4e69ea71bbd6079d6f680",
+  "exitCode": 0,
+  "sourceHashes": {
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "0b5c37e468975f8fb06e706df4bea693641855d093b3c59c1dc80a0ef9b04b91",
+    "packages/ui/src/kanon/layouts.tsx": "2ea353a6c273488d53927c659a97710a361cc61a1c38d978ea4b0463eb80d9f2",
+    "packages/ui/src/kanon/work-list.tsx": "5b7a2266b60de66a81601e41a4c27cde443cc0061c1a741567aec768f919a468",
+    "packages/ui/src/kanon/detail-panel.tsx": "b5aa5f03b9b67619d9de506be230c6186bf731a3df6d4be07731a4030145d0b9",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e",
+    "tests/browser/work-home-return.e2e.ts": "1364abdbe363cfd4651ad458c594a4dba5029bb7e87623ac9042fe464f62803d"
+  },
+  "runtimeCleaned": true,
+  "model": "codex.chat/gpt-6-luna",
+  "modelCalls": 1,
+  "limitations": [
+    "No production qualification",
+    "Native200% zoom/dark unverified",
+    "Board content differs and clock unpinned"
+  ]
+}

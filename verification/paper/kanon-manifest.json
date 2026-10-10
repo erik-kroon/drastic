@@ -29,7 +29,7 @@
         "loading",
         "error"
       ],
-      "evidence": "verification/paper/evidence/k10-header-action/result.json",
+      "evidence": "verification/paper/evidence/k10-supplier-header/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -50,7 +50,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Canonical compact secondary Review all header preserves the native scoped queue link, status/kind/sort/cursor, keyboard navigation and selected-row focus. Synthetic home-return passes with stable source and cleaned runtime. Full-frame drift 5.7936% exceeds 2%; fixture differs from board and clock is unpinned. Complete-state, dark and native 200% zoom parity remain unverified; no production qualification."
+      "notes": "Canonical header default paragraph and selected subtitle h2 remain intact after supplier figureAs addition. Native scope/stage/cursor/header keyboard return, reload and375px stacking pass with stable source and cleaned runtime. Full-frame drift4.3622% exceeds2%; differing board fixture and unpinned clock. Complete-state/dark/native200 parity unverified; no production qualification."
     },
     {
       "id": "K-40",
@@ -139,7 +139,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -149,7 +149,7 @@
         "approving",
         "approved"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k11-supplier-header/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -160,7 +160,8 @@
         "layouts",
         "status",
         "action",
-        "@open-erp/ui/kanon/feedback"
+        "@open-erp/ui/kanon/feedback",
+        "detail-panel"
       ],
       "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "comparison": {
@@ -169,7 +170,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Actual canonical ReviewFrame/DetailBar/queue plus shared ReviewPanes/OriginalViewerSurface/section DetailPanelSurface. Matched saved supplier views use one pair; pending/refusal and standalone owners retain ReviewContent. Exact digest/review/frozen SHA, existing heading/lines/expiry/commands preserved. Native375px pane keyboard/mounted counts/acknowledgement retention, mounted expiry/renewal/refusal/one receipt, uploaded frozen source and superseded review exclusion, standalone interrupted recovery pass. Full-frame drift33.6807% exceeds2%; fixture differs from board and clock unpinned. Full header/card/action migration, dark/native200% and complete-state comparison remain open; no production qualification. Shared SavedPostingOutcome maps only a decoded stored null outcome to canonical unknown Banner; exact request identity/time siblings, terminal diagnosis/details and recovery controls stay owned. Real consumers selected saved requests on Work and standalone review CommandOutcome; Books draft/Tools receive the shared passive presentation without whole-screen adoption. Supplier CommandForm is separate. New route proof required. Native posting-recovery journey qualifies the shared standalone consumer workflow with one receipt; previous supplier drift proof is retained separately. New shared source ownership keeps visual status unverified until a fresh corresponding K11 capture."
+      "notes": "Canonical supplier Header retains stored gross as native h2 and frozen counterparty/document paragraph. Expiry/renewal/wrong digest/mobile acknowledgment/lost-response one receipt and frozen-original posted/stale journeys pass with stable source and cleaned runtime. Full-frame drift33.8178% exceeds2%; board content differs and clock is unpinned. Null/English/large figure/dark/native200 and complete-state parity remain unverified; no production qualification."
     },
     {
       "id": "K-70",
@@ -993,7 +994,7 @@
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
       "implementationNote": "Shared shell implementation moved to kanon; existing authority, focused review, pathname scroll reset, mobile dialog and legacy page gutters retained. Literal K-06 shell values have separate browser obligations. Explanatory board needs owner-adopted specimens before visual comparison.",
-      "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures never wrap. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required."
+      "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures never wrap. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required. DetailPanelHeader supports native figure h2 for the actual supplier owner while default figure p and subtitle options remain unchanged."
     },
     {
       "id": "K-07",

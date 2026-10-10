@@ -121,13 +121,15 @@ export function DetailPanelSurface({
   );
 }
 
-export function DetailPanelHeader({
-  kicker,
-  figure,
-  subtitle,
-  subtitleAs = "p",
-}: Pick<DetailPanelProps, "kicker" | "figure" | "subtitle"> & { subtitleAs?: "p" | "h2" }) {
-  const Subtitle = subtitleAs;
+export function DetailPanelHeader(
+  props: Pick<DetailPanelProps, "kicker" | "figure" | "subtitle"> & {
+    subtitleAs?: "p" | "h2";
+    figureAs?: "p" | "h2";
+  },
+) {
+  const { kicker, figure, subtitle } = props;
+  const Subtitle = props.subtitleAs ?? "p";
+  const Figure = props.figureAs ?? "p";
 
   return (
     <header {...stylex.props(styles.header)}>
@@ -139,7 +141,7 @@ export function DetailPanelHeader({
           {kicker.text}
         </span>
       )}
-      <p {...stylex.props(styles.figure)}>{figure}</p>
+      <Figure {...stylex.props(styles.figure)}>{figure}</Figure>
       <Subtitle {...stylex.props(styles.subtitle)}>{subtitle}</Subtitle>
     </header>
   );

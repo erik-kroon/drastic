@@ -244,6 +244,36 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
     selectedTitle: true,
   });
 
+  expect(renewed.plan.draftSnapshot.totals.grossMinor).toBe(fixture.expectedGrossMinor);
+  expect(renewed.plan.draftSnapshot.content.currencyScale).toBe(2);
+
+  const supplierHeader = await browser.evaluate(() => {
+    const header = document.querySelector("main section[aria-label='Beslut'] header");
+    const figure = header?.querySelector("h2");
+    const subtitle = header?.querySelector("p");
+    const style = figure ? getComputedStyle(figure) : null;
+
+    return {
+      headerCount: document.querySelectorAll("main section[aria-label='Beslut'] header").length,
+      nativeFigure: figure?.tagName ?? null,
+      figure: figure?.textContent ?? null,
+      subtitle: subtitle?.textContent ?? null,
+      size: style?.fontSize ?? null,
+      lineHeight: style?.lineHeight ?? null,
+      whiteSpace: style?.whiteSpace ?? null,
+    };
+  });
+
+  expect(supplierHeader).toEqual({
+    headerCount: 1,
+    nativeFigure: "H2",
+    figure: "2\u00a0490,00 att betala",
+    subtitle: "Vinter & Co AB, faktura 882",
+    size: "32px",
+    lineHeight: "38px",
+    whiteSpace: "nowrap",
+  });
+
   const focusedScreenshot = await app.screenshot("supplier-canonical-frame-ready");
 
   await browser.setViewport({ width: 375, height: 812 });
@@ -289,6 +319,15 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
 
   const narrowScreenshot = await app.screenshot("supplier-review-decision-narrow");
 
+  await writeFile(
+    join(output, "supplier-header-observation.json"),
+    JSON.stringify(
+      { frame, supplierHeader, narrowPanes, focusedScreenshot, narrowScreenshot },
+      null,
+      2,
+    ),
+  );
+
   await browser.setViewport({ width: 1440, height: 900 });
   await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
   await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
@@ -324,6 +363,26 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   expect(mountedAvailable.approval?.id).toBe(timerFixture.id);
   expect(mountedAvailable.approvalObservation.state).toBe("available");
   expect(mountedAvailable.approvalUsable).toBe(true);
+
+  const mountedRuntime = await browser.evaluate(() => ({
+    visibility: document.visibilityState,
+    focused: document.hasFocus(),
+    browserTime: new Date().toISOString(),
+  }));
+
+  await writeFile(
+    join(output, "supplier-mounted-expiry-observation.json"),
+    JSON.stringify(
+      {
+        timerFixture,
+        observedAt: mountedAvailable.approvalObservation.observedAt,
+        state: mountedAvailable.approvalObservation.state,
+        mountedRuntime,
+      },
+      null,
+      2,
+    ),
+  );
   await expect(screen.getByRole("region", "Godkännandet")).toBeVisible({ timeout: 25000 });
   await expect(screen.getByRole("button", "Bokför", { exact: true })).toBeDisabled();
   await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
@@ -537,6 +596,7 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
           paid: false,
         },
         frame,
+        supplierHeader,
         narrowPanes,
         paneAcknowledgmentRetained: true,
         focusedRoute: focusedUrl,
