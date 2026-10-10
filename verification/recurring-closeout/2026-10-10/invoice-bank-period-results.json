@@ -1,0 +1,1133 @@
+{
+  "syntheticOnly": true,
+  "plan": {
+    "id": "bankplan_fe85118e3ae943a2a10052601bede22c",
+    "version": 1,
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "input": {
+      "accountId": "account_bank",
+      "reason": "Synthetic partial matching review",
+      "ambiguityAcknowledged": true,
+      "legs": [
+        {
+          "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+          "rowOrdinal": 1,
+          "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+          "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+          "amountMinor": "-50000"
+        }
+      ]
+    },
+    "snapshot": {
+      "versions": {
+        "profileVersion": "1",
+        "writerEpoch": "1",
+        "accountVersion": "1",
+        "sourceRevision": "1",
+        "accountLedgerSequence": "2"
+      },
+      "capacities": [
+        {
+          "leg": {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000"
+          },
+          "sourceAmountMinor": "-125000",
+          "sourceAllocatedMinor": "0",
+          "lineAmountMinor": "-125000",
+          "lineAllocatedMinor": "0",
+          "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+          "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+          "providerId": null,
+          "sourceBankAccountId": "synthetic_bank",
+          "observedOn": "2026-10-03",
+          "postedOn": "2026-10-03",
+          "candidateCount": 2
+        }
+      ]
+    },
+    "createdBy": "actor_operator",
+    "createdAt": "2026-10-10T21:26:23.870Z",
+    "digest": "sha256:8e9deb1e54c9e60afadf3095f664f8b66123528638b62bcab013285568b56fed",
+    "receipt": {
+      "key": "377e33e5-41d4-4c90-9d7a-d6e3bda1233e",
+      "operation": "prepare_bank_allocation",
+      "actorId": "actor_operator"
+    }
+  },
+  "approval": {
+    "digest": "sha256:8e9deb1e54c9e60afadf3095f664f8b66123528638b62bcab013285568b56fed",
+    "version": 1,
+    "id": "bankapproval_5b6c06a351354de0bcc7186bc74e64c8",
+    "planId": "bankplan_fe85118e3ae943a2a10052601bede22c",
+    "actorId": "actor_operator",
+    "expiresAt": "2026-10-10T22:26:23.901Z",
+    "receipt": {
+      "key": "5e3d5bba-0635-41c6-b16f-b862902cbc53",
+      "operation": "approve_bank_allocation",
+      "actorId": "actor_operator"
+    }
+  },
+  "stale": {
+    "plan": {
+      "id": "bankplan_fe85118e3ae943a2a10052601bede22c",
+      "version": 1,
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "input": {
+        "accountId": "account_bank",
+        "reason": "Synthetic partial matching review",
+        "ambiguityAcknowledged": true,
+        "legs": [
+          {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000"
+          }
+        ]
+      },
+      "snapshot": {
+        "versions": {
+          "profileVersion": "1",
+          "writerEpoch": "1",
+          "accountVersion": "1",
+          "sourceRevision": "1",
+          "accountLedgerSequence": "2"
+        },
+        "capacities": [
+          {
+            "leg": {
+              "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+              "rowOrdinal": 1,
+              "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+              "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+              "amountMinor": "-50000"
+            },
+            "sourceAmountMinor": "-125000",
+            "sourceAllocatedMinor": "0",
+            "lineAmountMinor": "-125000",
+            "lineAllocatedMinor": "0",
+            "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+            "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+            "providerId": null,
+            "sourceBankAccountId": "synthetic_bank",
+            "observedOn": "2026-10-03",
+            "postedOn": "2026-10-03",
+            "candidateCount": 2
+          }
+        ]
+      },
+      "createdBy": "actor_operator",
+      "createdAt": "2026-10-10T21:26:23.870Z",
+      "digest": "sha256:8e9deb1e54c9e60afadf3095f664f8b66123528638b62bcab013285568b56fed",
+      "receipt": {
+        "key": "377e33e5-41d4-4c90-9d7a-d6e3bda1233e",
+        "operation": "prepare_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "approval": {
+      "digest": "sha256:8e9deb1e54c9e60afadf3095f664f8b66123528638b62bcab013285568b56fed",
+      "version": 1,
+      "id": "bankapproval_5b6c06a351354de0bcc7186bc74e64c8",
+      "planId": "bankplan_fe85118e3ae943a2a10052601bede22c",
+      "actorId": "actor_operator",
+      "expiresAt": "2026-10-10T22:26:23.901Z",
+      "receipt": {
+        "key": "5e3d5bba-0635-41c6-b16f-b862902cbc53",
+        "operation": "approve_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "execution": null,
+    "dependenciesCurrent": false,
+    "unmatch": null
+  },
+  "fresh": {
+    "id": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+    "version": 1,
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "input": {
+      "accountId": "account_bank",
+      "reason": "Fresh review of remaining stored capacity",
+      "ambiguityAcknowledged": true,
+      "legs": [
+        {
+          "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+          "rowOrdinal": 1,
+          "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+          "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+          "amountMinor": "-50000"
+        }
+      ]
+    },
+    "snapshot": {
+      "versions": {
+        "profileVersion": "1",
+        "writerEpoch": "1",
+        "accountVersion": "1",
+        "sourceRevision": "2",
+        "accountLedgerSequence": "2"
+      },
+      "capacities": [
+        {
+          "leg": {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000"
+          },
+          "sourceAmountMinor": "-125000",
+          "sourceAllocatedMinor": "0",
+          "lineAmountMinor": "-125000",
+          "lineAllocatedMinor": "-50000",
+          "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+          "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+          "providerId": null,
+          "sourceBankAccountId": "synthetic_bank",
+          "observedOn": "2026-10-03",
+          "postedOn": "2026-10-03",
+          "candidateCount": 2
+        }
+      ]
+    },
+    "createdBy": "actor_operator",
+    "createdAt": "2026-10-10T21:26:25.065Z",
+    "digest": "sha256:47050f0075ca0d2bccca2e1fc80ce3dcea6cb583805e1676cfe2a301fbb986ef",
+    "receipt": {
+      "key": "74e93314-31ec-4b87-833e-b96d24965a75",
+      "operation": "prepare_bank_allocation",
+      "actorId": "actor_operator"
+    }
+  },
+  "saved": {
+    "plan": {
+      "id": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+      "version": 1,
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "input": {
+        "accountId": "account_bank",
+        "reason": "Fresh review of remaining stored capacity",
+        "ambiguityAcknowledged": true,
+        "legs": [
+          {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000"
+          }
+        ]
+      },
+      "snapshot": {
+        "versions": {
+          "profileVersion": "1",
+          "writerEpoch": "1",
+          "accountVersion": "1",
+          "sourceRevision": "2",
+          "accountLedgerSequence": "2"
+        },
+        "capacities": [
+          {
+            "leg": {
+              "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+              "rowOrdinal": 1,
+              "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+              "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+              "amountMinor": "-50000"
+            },
+            "sourceAmountMinor": "-125000",
+            "sourceAllocatedMinor": "0",
+            "lineAmountMinor": "-125000",
+            "lineAllocatedMinor": "-50000",
+            "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+            "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+            "providerId": null,
+            "sourceBankAccountId": "synthetic_bank",
+            "observedOn": "2026-10-03",
+            "postedOn": "2026-10-03",
+            "candidateCount": 2
+          }
+        ]
+      },
+      "createdBy": "actor_operator",
+      "createdAt": "2026-10-10T21:26:25.065Z",
+      "digest": "sha256:47050f0075ca0d2bccca2e1fc80ce3dcea6cb583805e1676cfe2a301fbb986ef",
+      "receipt": {
+        "key": "74e93314-31ec-4b87-833e-b96d24965a75",
+        "operation": "prepare_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "approval": {
+      "digest": "sha256:47050f0075ca0d2bccca2e1fc80ce3dcea6cb583805e1676cfe2a301fbb986ef",
+      "version": 1,
+      "id": "bankapproval_3da204c632b74cb08c77491deb77e784",
+      "planId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+      "actorId": "actor_operator",
+      "expiresAt": "2026-10-10T22:26:25.107Z",
+      "receipt": {
+        "key": "33e30e12-1dcf-4813-9239-474d14c7c818",
+        "operation": "approve_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "execution": {
+      "digest": "sha256:47050f0075ca0d2bccca2e1fc80ce3dcea6cb583805e1676cfe2a301fbb986ef",
+      "version": 1,
+      "approvalId": "bankapproval_3da204c632b74cb08c77491deb77e784",
+      "planId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "accountId": "account_bank",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "legs": [
+        {
+          "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+          "rowOrdinal": 1,
+          "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+          "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+          "amountMinor": "-50000",
+          "planId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+          "ordinal": 1
+        }
+      ],
+      "executedAt": "2026-10-10T21:26:27.540Z",
+      "receipt": {
+        "key": "8d73b291-7675-41e3-8027-e65a7cb9dbf6",
+        "operation": "execute_bank_allocation",
+        "actorId": "actor_operator"
+      }
+    },
+    "dependenciesCurrent": false,
+    "unmatch": null
+  },
+  "matched": {
+    "suggestionRecordId": "suggestion_e1a87c543cec4a7c8f0178aa5fc4ce0a",
+    "optionSetDigest": "sha256:ad577cfdaf4ccddc1d6d4f59f3974f35f7bcc0909c490078f878ffb13584ec1a",
+    "version": "bank_match_candidates_v1",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "window": {
+      "accountId": "account_bank",
+      "startsOn": "2026-10-01",
+      "endsOn": "2026-10-31",
+      "lineLimit": 1000,
+      "completeWithinScope": true
+    },
+    "cutoff": {
+      "committedSequence": "2",
+      "sourceRevision": "3",
+      "accountVersion": "1",
+      "profileVersion": "1",
+      "writerEpoch": "1",
+      "periodDigest": "sha256:54919a467182a468e22be67dfb749f1c79cb6ce80631cde76b87fec87d77f472"
+    },
+    "source": {
+      "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+      "rowOrdinal": 1,
+      "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+      "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+      "sourceBankAccountId": "synthetic_bank",
+      "providerId": null,
+      "observedOn": "2026-10-03",
+      "description": "BG EXEMPEL KONTORSSERVICE",
+      "amountMinor": "-125000",
+      "allocatedMinor": "-50000",
+      "remainingMinor": "-75000",
+      "eligible": true,
+      "blockedReasons": [],
+      "paymentReference": null
+    },
+    "candidates": [
+      {
+        "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+        "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-03",
+        "sequence": "1",
+        "description": "DEMO-2026-0037",
+        "amountMinor": "-125000",
+        "allocatedMinor": "-100000",
+        "remainingMinor": "-25000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": true,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": false,
+        "amountDistanceMinor": "50000",
+        "dayDistance": 0,
+        "rankingReasons": [
+          "retained_relationship_history",
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      },
+      {
+        "voucherId": "voucher_4bb9f34253184b7e858df5032288f4f8",
+        "lineId": "line_ea6145cc62c24355bfd229f5a9ae6414",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-02",
+        "sequence": "2",
+        "description": "DEMO-2026-0038",
+        "amountMinor": "-125000",
+        "allocatedMinor": "0",
+        "remainingMinor": "-125000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": false,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": false,
+        "amountDistanceMinor": "50000",
+        "dayDistance": 1,
+        "rankingReasons": [
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      }
+    ],
+    "eligibleCount": 2,
+    "equalAmountEligibleCount": 0,
+    "multipleEligibleCandidates": true,
+    "identityEstablished": false,
+    "providerReferenceComparison": "unavailable",
+    "rankingPolicy": "retained_then_reference_amount_date_v2",
+    "coverage": "not_established",
+    "coverSearch": {
+      "status": "no_match_within_declared_pool",
+      "limits": {
+        "maxCandidates": 40,
+        "maxSetSize": 4,
+        "maxVisited": 10000
+      },
+      "populationCount": 2,
+      "searchedCount": 2,
+      "visited": 3,
+      "poolComplete": true,
+      "searchedSetSize": 2,
+      "limitReasons": [],
+      "rankingPolicy": "fewest_lines_then_smallest_maximum_day_gap_v1",
+      "covers": []
+    },
+    "coverConflicts": {
+      "scope": "same_statement_v1",
+      "populationCount": 1,
+      "searchedCount": 1,
+      "completeWithinStatement": true,
+      "conflicts": []
+    },
+    "digest": "sha256:ee4065afc351c0fae58e56b1a6953a9f851dd5c9bbf1b8dca001348c52dcd045",
+    "previousDigestMatches": null
+  },
+  "reversal": {
+    "id": "bankunmatch_9749f706725945df95248e4ac061d8da",
+    "version": 1,
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "input": {
+      "target": {
+        "kind": "allocation",
+        "allocationPlanId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725"
+      },
+      "reason": "Synthetic correction of the selected partial match"
+    },
+    "snapshot": {
+      "accountId": "account_bank",
+      "original": {
+        "digest": "sha256:47050f0075ca0d2bccca2e1fc80ce3dcea6cb583805e1676cfe2a301fbb986ef",
+        "version": 1,
+        "approvalId": "bankapproval_3da204c632b74cb08c77491deb77e784",
+        "planId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "accountId": "account_bank",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "legs": [
+          {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000",
+            "planId": "bankplan_e9ddc90b56c5409c9f9d3444e3345725",
+            "ordinal": 1
+          }
+        ],
+        "executedAt": "2026-10-10T21:26:27.540Z",
+        "receipt": {
+          "key": "8d73b291-7675-41e3-8027-e65a7cb9dbf6",
+          "operation": "execute_bank_allocation",
+          "actorId": "actor_operator"
+        }
+      },
+      "legs": [
+        {
+          "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+          "rowOrdinal": 1,
+          "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+          "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+          "amountMinor": "-50000"
+        }
+      ],
+      "periods": [
+        {
+          "id": "period_synthetic_2026",
+          "version": "1"
+        }
+      ],
+      "versions": {
+        "profileVersion": "1",
+        "writerEpoch": "1",
+        "accountVersion": "1",
+        "sourceRevision": "3",
+        "accountLedgerSequence": "2"
+      },
+      "capacities": [
+        {
+          "leg": {
+            "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+            "rowOrdinal": 1,
+            "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+            "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+            "amountMinor": "-50000"
+          },
+          "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+          "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+          "observedOn": "2026-10-03",
+          "postedOn": "2026-10-03",
+          "sourceAmountMinor": "-125000",
+          "sourceAllocatedMinor": "-50000",
+          "lineAmountMinor": "-125000",
+          "lineAllocatedMinor": "-100000"
+        }
+      ]
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "createdBy": "actor_operator",
+    "createdAt": "2026-10-10T21:26:30.225Z",
+    "digest": "sha256:9af83451eb900c0afdd7f19ca639f12e628c0c66a9b4b681a2859405482a9a7d",
+    "receipt": {
+      "key": "5c11adc8-bbf8-4a40-871a-16d96950616f",
+      "operation": "prepare_bank_match_reversal",
+      "actorId": "actor_operator"
+    }
+  },
+  "corrected": {
+    "suggestionRecordId": "suggestion_d64b8fc44d8548f691702fd10f261357",
+    "optionSetDigest": "sha256:0a58fad749d14d95833b15063b8dec51951369f7a5f17e188d524a6bc0f36cdc",
+    "version": "bank_match_candidates_v1",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "currency": "SEK",
+    "currencyScale": 2,
+    "window": {
+      "accountId": "account_bank",
+      "startsOn": "2026-10-01",
+      "endsOn": "2026-10-31",
+      "lineLimit": 1000,
+      "completeWithinScope": true
+    },
+    "cutoff": {
+      "committedSequence": "2",
+      "sourceRevision": "4",
+      "accountVersion": "1",
+      "profileVersion": "1",
+      "writerEpoch": "1",
+      "periodDigest": "sha256:54919a467182a468e22be67dfb749f1c79cb6ce80631cde76b87fec87d77f472"
+    },
+    "source": {
+      "statementId": "statement_56f2ce4372fb4189be6b92bae101050a",
+      "rowOrdinal": 1,
+      "evidenceId": "evidence_88ba4e46469a478982fdeefb274d218d",
+      "evidenceSha256": "bc97b19f87b2c88bbd5e1f7144f369eb5b6957be241e33463115c0edcd6c80fa",
+      "sourceBankAccountId": "synthetic_bank",
+      "providerId": null,
+      "observedOn": "2026-10-03",
+      "description": "BG EXEMPEL KONTORSSERVICE",
+      "amountMinor": "-125000",
+      "allocatedMinor": "0",
+      "remainingMinor": "-125000",
+      "eligible": true,
+      "blockedReasons": [],
+      "paymentReference": null
+    },
+    "candidates": [
+      {
+        "voucherId": "voucher_66d369f5559c4c0aa717dbc94ab24854",
+        "lineId": "line_c8d24eb15bcf4afc8ea824254775dc62",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-03",
+        "sequence": "1",
+        "description": "DEMO-2026-0037",
+        "amountMinor": "-125000",
+        "allocatedMinor": "-50000",
+        "remainingMinor": "-75000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": true,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": false,
+        "amountDistanceMinor": "50000",
+        "dayDistance": 0,
+        "rankingReasons": [
+          "retained_relationship_history",
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      },
+      {
+        "voucherId": "voucher_4bb9f34253184b7e858df5032288f4f8",
+        "lineId": "line_ea6145cc62c24355bfd229f5a9ae6414",
+        "accountId": "account_bank",
+        "postedOn": "2026-10-02",
+        "sequence": "2",
+        "description": "DEMO-2026-0038",
+        "amountMinor": "-125000",
+        "allocatedMinor": "0",
+        "remainingMinor": "-125000",
+        "eligible": true,
+        "blockedReasons": [],
+        "sameAccount": true,
+        "sameCurrency": true,
+        "sameSign": true,
+        "retainedRelationship": false,
+        "statementEvidenceCited": false,
+        "equalRemainingAmount": true,
+        "amountDistanceMinor": "0",
+        "dayDistance": 1,
+        "rankingReasons": [
+          "equal_remaining_amount",
+          "amount_proximity_heuristic",
+          "date_proximity_heuristic"
+        ],
+        "referenceComparison": "unavailable",
+        "referenceEvidence": []
+      }
+    ],
+    "eligibleCount": 2,
+    "equalAmountEligibleCount": 1,
+    "multipleEligibleCandidates": true,
+    "identityEstablished": false,
+    "providerReferenceComparison": "unavailable",
+    "rankingPolicy": "retained_then_reference_amount_date_v2",
+    "coverage": "not_established",
+    "coverSearch": {
+      "status": "unique_within_declared_pool",
+      "limits": {
+        "maxCandidates": 40,
+        "maxSetSize": 4,
+        "maxVisited": 10000
+      },
+      "populationCount": 2,
+      "searchedCount": 2,
+      "visited": 3,
+      "poolComplete": true,
+      "searchedSetSize": 1,
+      "limitReasons": [],
+      "rankingPolicy": "fewest_lines_then_smallest_maximum_day_gap_v1",
+      "covers": [
+        {
+          "legs": [
+            {
+              "voucherId": "voucher_4bb9f34253184b7e858df5032288f4f8",
+              "lineId": "line_ea6145cc62c24355bfd229f5a9ae6414",
+              "amountMinor": "-125000"
+            }
+          ],
+          "totalMinor": "-125000",
+          "leftoverMinor": "0",
+          "maximumDayDistance": 1
+        }
+      ]
+    },
+    "coverConflicts": {
+      "scope": "same_statement_v1",
+      "populationCount": 1,
+      "searchedCount": 1,
+      "completeWithinStatement": true,
+      "conflicts": []
+    },
+    "digest": "sha256:f9eb0f041971feb2bf4cb863e125ff73c5780ed8e79620ac8477b7a51b1830cb",
+    "previousDigestMatches": null
+  },
+  "readiness": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "periodId": "period_synthetic_2026",
+    "startsOn": "2026-01-01",
+    "endsOn": "2026-12-31",
+    "locked": false,
+    "inventory": null,
+    "ownerTaxStatus": {
+      "owners": {
+        "schemaVersion": 1,
+        "coverage": "not_established",
+        "startsOn": "2026-01-01",
+        "endsOn": "2026-12-31",
+        "registeredRecordCount": 0,
+        "unresolvedReviewCount": 0,
+        "unlinkedRecordCount": 0,
+        "sourceDigest": "sha256:2291b726dff9e0f2e0bd020132bbeccf7ef7634e636d3d714650a2bd913d12ef",
+        "blockers": []
+      },
+      "expenseTax": {
+        "basisDigest": "sha256:1d5900140b4f9553f2dbc1bb33837a0b2b419897a3bde4a4e3eb50820db41319",
+        "sourceCount": 0,
+        "withdrawnSourceCount": 0,
+        "missingOrStaleReviewCount": 0,
+        "coverageEstablished": false,
+        "productionProfileApproved": false,
+        "vatReturnReady": false,
+        "postingEnabled": false
+      },
+      "vatReturns": {
+        "basisDigest": "sha256:d436cbd2a9a0f07e8d349909cd4aebc1a7464d39d9ccbfcdb555c5a86c2ca818",
+        "sourceCount": 0,
+        "draftCount": 0,
+        "taxAccounts": {
+          "statementCount": 0,
+          "controlCount": 0,
+          "statementInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "controlInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "matching": {
+            "matchCount": 0,
+            "unmatchCount": 0,
+            "matchInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "unmatchInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "activeStateDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        },
+        "profileCount": 0,
+        "profileInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "obligationCount": 0,
+        "obligationInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "reviewCount": 0,
+        "reviewInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "approvalCount": 0,
+        "approvalInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "effectCount": 0,
+        "effectInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "contributionCount": 0,
+        "contributionInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "amendmentCount": 0,
+        "amendmentInventoryDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "coverageEstablished": false,
+        "ledgerReconciled": false,
+        "legalProfileActive": false,
+        "filingReady": false
+      }
+    },
+    "inventoryScope": "synthetic_family_inventory_v1",
+    "families": [
+      {
+        "family": "bank_sources",
+        "declaration": null,
+        "providerVersion": "bank_close_dependencies",
+        "representedCount": 1,
+        "checks": [
+          {
+            "code": "DeclaredBankInventory",
+            "status": "failed",
+            "detail": "An operator must explicitly declare expected synthetic bank accounts with evidence. Every expected account needs a retained source, and every observed source must be declared."
+          },
+          {
+            "code": "RepresentedBankSources",
+            "status": "failed",
+            "detail": "Every represented bank source needs a fresh complete reconciliation for this exact period; missing sources are not inferred absent."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "invoices",
+        "declaration": null,
+        "providerVersion": "commerce_period_status_v1",
+        "representedCount": 0,
+        "checks": [
+          {
+            "code": "RegisteredCommerce",
+            "status": "passed",
+            "detail": "Registered invoices and allocations must remain valid and conserve exact amounts. Unpaid invoices are allowed; company invoice completeness is not established."
+          },
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "tax",
+        "declaration": null,
+        "providerVersion": "expense_tax_and_vat_return_dependencies_v2",
+        "representedCount": 0,
+        "checks": [
+          {
+            "code": "ExpenseControlCoverage",
+            "status": "passed",
+            "detail": "Known expense sources lack supported posting and ledger-reconciliation coverage in this provider version, even with a digest-current review. They block technical close. No represented sources is not proof of company completeness or no tax obligations."
+          },
+          {
+            "code": "ExpenseReviewCurrentness",
+            "status": "passed",
+            "detail": "Every represented expense source needs a review of its current source digest. Current review is not supported tax treatment, deduction eligibility, ledger reconciliation or company completeness."
+          },
+          {
+            "code": "VatReturnControlCoverage",
+            "status": "passed",
+            "detail": "Represented VAT facts, saved VAT drafts, tax-account statements or saved tax-account controls require complete tax controls, which this provider does not supply. A zero tax-account balance difference is not row matching or complete coverage. Synthetic calculations and actual-review exclusions do not establish filing readiness. Empty inventories do not establish no tax obligations."
+          },
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "payroll",
+        "declaration": null,
+        "providerVersion": "unavailable",
+        "representedCount": null,
+        "checks": [
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "assets_deferrals",
+        "declaration": null,
+        "providerVersion": "subledger_and_control_dependencies_v1",
+        "representedCount": 0,
+        "checks": [
+          {
+            "code": "RepresentedSchedules",
+            "status": "passed",
+            "detail": "Represented due schedule occurrences must be posted and unreversed; schedule inventory and control-account completeness remain unestablished."
+          },
+          {
+            "code": "ScheduleBasisCoverage",
+            "status": "passed",
+            "detail": "Every represented schedule needs a retained carrying basis. Missing acquisition or imported-opening evidence cannot be waived by a family declaration."
+          },
+          {
+            "code": "SubledgerControlCoverage",
+            "status": "passed",
+            "detail": "Represented schedules, carrying bases or control snapshots require complete source and accounting controls, which this synthetic provider does not establish. A zero control difference is not complete coverage. Empty inventories do not establish no asset obligations."
+          },
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "foreign_currency",
+        "declaration": null,
+        "providerVersion": "unavailable",
+        "representedCount": null,
+        "checks": [
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "owner_balances",
+        "declaration": null,
+        "providerVersion": "owner_period_status_v1",
+        "representedCount": 0,
+        "checks": [
+          {
+            "code": "OwnerSourceReview",
+            "status": "passed",
+            "detail": "Owner sources through period end need resolved reviews and posted-reference coverage. Unpaid linked claims are allowed; this does not certify opening balances or completeness."
+          },
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "other_balances",
+        "declaration": null,
+        "providerVersion": "unavailable",
+        "representedCount": null,
+        "checks": [
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "external_schedules",
+        "declaration": null,
+        "providerVersion": "unavailable",
+        "representedCount": null,
+        "checks": [
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      },
+      {
+        "family": "disclosures",
+        "declaration": null,
+        "providerVersion": "unavailable",
+        "representedCount": null,
+        "checks": [
+          {
+            "code": "FullFamilyCoverage",
+            "status": "unavailable",
+            "detail": "Complete source inventory and required family control coverage are not implemented. A required declaration remains blocked."
+          },
+          {
+            "code": "ReviewedApplicability",
+            "status": "failed",
+            "detail": "No family decision is retained. Declare required, not applicable with evidence, unsupported or unknown."
+          }
+        ],
+        "passed": false,
+        "coverage": "not_established"
+      }
+    ],
+    "dependencies": {
+      "periodVersion": "1",
+      "ledgerSequence": "2",
+      "profileVersion": "1",
+      "writerEpoch": "1",
+      "periodDigest": "sha256:300ceec056bd043a2293f3ab9657592dcc477b4f7d4c4b0706b307e9e8090313",
+      "accountsDigest": "sha256:832451157bc5c4b1a6d0563ec45e9ad9442e66624a3379d1c85de8aa62969286",
+      "bankDigest": "sha256:93d4ae7dd680fa9a44389d7301d6dec2795205a9594f85f779dce7d4f2cc2341",
+      "scheduleDigest": "sha256:a10d67ad5985b6548a71c4ac991fc5c6fadc3a1e927cdf105fa6e927d5f81621",
+      "inventoryDigest": "sha256:8d0eb4ce6d122ae824c7d9da60a05fe23047d81e4b172cb1fa5ead38742f9ef0",
+      "ownerSourceDigest": "sha256:2291b726dff9e0f2e0bd020132bbeccf7ef7634e636d3d714650a2bd913d12ef",
+      "expenseTaxBasisDigest": "sha256:1d5900140b4f9553f2dbc1bb33837a0b2b419897a3bde4a4e3eb50820db41319",
+      "vatReturnDependencyDigest": "sha256:2d0eedae3fdd7c900f59f78164d9d4e326f88002a74a4fe90b8207a23e0ee2e1",
+      "subledgerControls": {
+        "version": "synthetic_subledger_controls_v1",
+        "basisDigest": "sha256:db459e79015dfdadd849155820c76823a59dc5d62e09f90d4f430279e1ce77aa",
+        "basisCount": 0,
+        "snapshotCount": 0,
+        "missingBasisCount": 0,
+        "coverageEstablished": false,
+        "controlAccountReconciled": false,
+        "financialCloseReady": false
+      },
+      "familyInventoryDigest": "sha256:c328c8c2867e80dd115c9d69f40a3a58025efc4b1ab30fc88c83c69f3891d698",
+      "reportId": null
+    },
+    "checks": [
+      {
+        "code": "DeclaredBankInventory",
+        "passed": false,
+        "detail": "An operator must explicitly declare expected synthetic bank accounts with evidence. Every expected account needs a retained source, and every observed source must be declared."
+      },
+      {
+        "code": "SyntheticNativeProfile",
+        "passed": true,
+        "detail": "Only the native synthetic profile supports this technical lock."
+      },
+      {
+        "code": "PeriodBoundaries",
+        "passed": true,
+        "detail": "The period must fit its fiscal year and must not overlap another posting period."
+      },
+      {
+        "code": "CurrentTrialBalance",
+        "passed": false,
+        "detail": "A current balanced internal trial balance must cover this exact period. It is not an annual report."
+      },
+      {
+        "code": "RepresentedBankSources",
+        "passed": false,
+        "detail": "Every represented bank source needs a fresh complete reconciliation for this exact period; missing sources are not inferred absent."
+      },
+      {
+        "code": "RegisteredCommerce",
+        "passed": true,
+        "detail": "Registered invoices and allocations must remain valid and conserve exact amounts. Unpaid invoices are allowed; company invoice completeness is not established."
+      },
+      {
+        "code": "OwnerSourceReview",
+        "passed": true,
+        "detail": "Owner sources through period end need resolved reviews and posted-reference coverage. Unpaid linked claims are allowed; this does not certify opening balances or completeness."
+      },
+      {
+        "code": "ExpenseReviewCurrentness",
+        "passed": true,
+        "detail": "Every represented expense source needs a review of its current source digest. Current review is not supported tax treatment, deduction eligibility, ledger reconciliation or company completeness."
+      },
+      {
+        "code": "ExpenseControlCoverage",
+        "passed": true,
+        "detail": "Known expense sources lack supported posting and ledger-reconciliation coverage in this provider version, even with a digest-current review. They block technical close. No represented sources is not proof of company completeness or no tax obligations."
+      },
+      {
+        "code": "VatReturnControlCoverage",
+        "passed": true,
+        "detail": "Represented VAT facts, saved VAT drafts, tax-account statements or saved tax-account controls require complete tax controls, which this provider does not supply. A zero tax-account balance difference is not row matching or complete coverage. Synthetic calculations and actual-review exclusions do not establish filing readiness. Empty inventories do not establish no tax obligations."
+      },
+      {
+        "code": "ScheduleBasisCoverage",
+        "passed": true,
+        "detail": "Every represented schedule needs a retained carrying basis. Missing acquisition or imported-opening evidence cannot be waived by a family declaration."
+      },
+      {
+        "code": "SubledgerControlCoverage",
+        "passed": true,
+        "detail": "Represented schedules, carrying bases or control snapshots require complete source and accounting controls, which this synthetic provider does not establish. A zero control difference is not complete coverage. Empty inventories do not establish no asset obligations."
+      },
+      {
+        "code": "RepresentedSchedules",
+        "passed": true,
+        "detail": "Represented due schedule occurrences must be posted and unreversed; schedule inventory and control-account completeness remain unestablished."
+      },
+      {
+        "code": "CompleteFamilyInventory",
+        "passed": false,
+        "detail": "Every close family needs an evidenced decision. Required unavailable controls, unknown obligations and contradictions block this technical scope."
+      }
+    ],
+    "technicalCloseAllowed": false,
+    "statutoryReady": false,
+    "statutoryBlockers": [
+      "Actual company profile, accounting method, obligations and complete expected source inventory are not established.",
+      "Tax, receivables/payables, owner balances, assets, payroll, valuation and control-account completeness are not certified.",
+      "Technical locking does not perform year-end transfers, tax calculation, annual reporting, SIE or iXBRL validation.",
+      "Retention, restore, reviewed statutory schemas, signing authority and filing acceptance remain unverified."
+    ]
+  },
+  "ledgerUnchanged": true
+}

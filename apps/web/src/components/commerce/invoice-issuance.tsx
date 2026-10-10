@@ -1404,10 +1404,18 @@ export function InvoiceIssueReviewPanel(
   const { book, locale, id } = props;
   const copy = invoiceIssueCopy(locale);
 
-  const review = useQuery({
+  const review = useQuery<typeof Issuance.InvoiceIssueView.Type>({
     queryKey: [...commerceKey(book), "invoice-issue-review", id, props.draftId ?? ""],
     staleTime: 0,
     refetchOnMount: "always",
+    refetchInterval: (query) => {
+      const view = query.state.data;
+      const expiresAt = view?.approval?.expiresAt;
+
+      if (!view || !expiresAt || view.issue || Date.parse(expiresAt) <= Date.now()) return false;
+
+      return Math.max(1000, Date.parse(expiresAt) - Date.now() + 20);
+    },
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(id)}`,

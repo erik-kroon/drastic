@@ -4,7 +4,7 @@ import { FinanceArea } from "@/components/finance-area";
 import { BankAccountWorkspace } from "@/components/bank-account-workspace";
 import { ProcessorWorkspace } from "@/components/processor-workspace";
 import { ForeignCashWorkspace } from "@/components/foreign-cash-workspace";
-import { BankOwnerQuery, OwnerReturnSearch } from "@/lib/work-return";
+import { BankOwnerQuery, OwnerReturnSearch, WorkReturnSearch } from "@/lib/work-return";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts")({
   validateSearch: Schema.decodeUnknownSync(
@@ -12,6 +12,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts
       ...BankOwnerQuery.fields,
       cashApproval: Schema.optional(Schema.Boolean),
       returnTo: OwnerReturnSearch,
+      work: WorkReturnSearch,
     }),
   ),
   component: Page,

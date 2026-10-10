@@ -431,6 +431,15 @@ export const RecurringAgreementPage = Schema.Struct({
   scope: Accounting.Scope,
   items: Schema.Array(RecurringAgreement).check(Schema.isMaxLength(100)),
   continuation: Schema.NullOr(Accounting.Identifier),
+  scheduling: Schema.Array(
+    Schema.Struct({
+      agreementId: Accounting.Identifier,
+      enabled: Schema.Boolean,
+      nextCycleOrdinal: CycleOrdinal,
+      nextCycleDate: Accounting.AccountingDate,
+      timeZone: TimeZone,
+    }),
+  ).check(Schema.isMaxLength(100)),
 });
 
 const agreementPath = Schema.Struct({

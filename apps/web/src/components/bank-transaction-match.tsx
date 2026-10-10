@@ -43,7 +43,7 @@ import {
   RecordColumns,
 } from "@open-erp/ui/components/record-layout";
 import { PageCaption, PageEmpty, PageAction } from "@open-erp/ui/components/accounting-page";
-import { workspacePath } from "@/lib/book-context";
+import { workspacePath, useBookWorkspace } from "@/lib/book-context";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -61,6 +61,7 @@ import {
   useBankMatchDocument,
 } from "@/components/bank-match-original";
 import { coordinationOptions } from "@/lib/workspace-coordination";
+import { DailyLoopReviewLinks } from "./daily-loop-review-links";
 
 type Props = CommerceProps & {
   statementId?: string;
@@ -1077,7 +1078,32 @@ function MatchExplanation({
         </BankReviewWarning>
       ) : null}
       <MatchReviewWarning state={state} sv={sv} />
+      <BankInvoiceLinks candidate={candidate} />
     </BankReviewSection>
+  );
+}
+
+function BankInvoiceLinks({ candidate }: { candidate: typeof Candidates.BankMatchCandidate.Type }) {
+  const { book, locale } = useBookWorkspace();
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
+
+  const invoices = new Map(
+    candidate.referenceEvidence.map((reference) => [reference.invoiceId, reference]),
+  );
+
+  return (
+    <Box display="grid" gap="sm">
+      {[...invoices.values()].map((invoice) => (
+        <PageAction
+          key={invoice.invoiceId}
+          quiet
+          href={`${workspacePath(book)}/sales${defaultStringifySearch({ record: invoice.invoiceId, kind: "invoice", stage: "payments", work: search.work, returnTo: encodeOwnerReturn({ owner: "bank", search }) })}`}
+        >
+          {locale === "sv" ? "Granska fakturans betalningar" : "Review invoice payments"}{" "}
+          {invoice.value}
+        </PageAction>
+      ))}
+    </Box>
   );
 }
 
@@ -1166,6 +1192,7 @@ function MatchLineChoices({
 function MatchingReview(props: Props & { id: string }) {
   const { book, locale, id } = props;
   const sv = locale === "sv";
+  const ownerSearch = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
   const base = `${bookPath(book)}/bank-allocation-plans/${encodeURIComponent(id)}`;
   const [reviewed, setReviewed] = useState(false);
   const [planOpened, setPlanOpened] = useState(false);
@@ -1186,6 +1213,15 @@ function MatchingReview(props: Props & { id: string }) {
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchInterval: (query) => {
+      const view = query.state.data;
+      const expiresAt = view?.approval?.expiresAt;
+
+      if (!view || !expiresAt || view.execution || Date.parse(expiresAt) <= Date.now())
+        return false;
+
+      return Math.max(1000, Date.parse(expiresAt) - Date.now() + 20);
+    },
   });
 
   const data = review.isSuccess ? review.data : undefined;
@@ -1204,7 +1240,7 @@ function MatchingReview(props: Props & { id: string }) {
     !!data?.dependenciesCurrent && !review.isFetching && !data.execution && !data.unmatch;
 
   const approvalValid =
-    !!data?.approval && new Date(data.approval.expiresAt).getTime() > Date.now();
+    ready && !!data?.approval && new Date(data.approval.expiresAt).getTime() > Date.now();
 
   const money = (value: string) =>
     data
@@ -1304,6 +1340,13 @@ function MatchingReview(props: Props & { id: string }) {
             );
           })}
           <MatchCompletion {...props} view={data} allocationId={id} />
+          {data.execution ? (
+            <DailyLoopReviewLinks
+              book={book}
+              locale={locale}
+              owner={{ owner: "bank", search: ownerSearch }}
+            />
+          ) : null}
           {ready && !approvalValid ? (
             <InputField
               label={
@@ -1496,15 +1539,19 @@ function MatchBadge({
       : "Undone"
     : view.execution
       ? sv
-        ? "Matchad"
-        : "Matched"
-      : approved
+        ? "Matchning sparad"
+        : "Match saved"
+      : !view.dependenciesCurrent
         ? sv
-          ? "Godkänd för matchning"
-          : "Approved for matching"
-        : sv
-          ? "Att godkänna"
-          : "Needs approval";
+          ? "Underlaget har ändrats"
+          : "The basis has changed"
+        : approved
+          ? sv
+            ? "Godkänd för matchning"
+            : "Approved for matching"
+          : sv
+            ? "Att godkänna"
+            : "Needs approval";
 
   return (
     <Box>

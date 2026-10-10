@@ -1,7 +1,7 @@
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { RecurringDraftRecovery } from "@/components/commerce/recurring-draft-recovery";
+import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import { RecurringRegister } from "@/components/commerce/recurring-register";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
@@ -28,9 +28,16 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
         ]),
       ),
       view: Schema.optional(Schema.String),
+      recurringForm: Schema.optional(Schema.Literals(["create", "schedule", "template"])),
       record: Schema.optional(Schema.String),
       reminder: Schema.optional(Accounting.Identifier),
       job: Schema.optional(Accounting.Identifier),
+      cycle: Schema.optional(
+        Schema.Union([
+          Recurring.CycleOrdinal,
+          Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })),
+        ]),
+      ),
       work: WorkReturnSearch,
       returnTo: OwnerReturnSearch,
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
@@ -145,19 +152,16 @@ function CollectionsPage() {
 }
 
 function RecurringPage() {
-  const { book, locale } = useBookWorkspace();
   const search = Route.useSearch();
 
-  if (!search.record) return <RecurringRegister work={search.work} returnTo={search.returnTo} />;
-
   return (
-    <PageContent>
-      <RecurringDraftRecovery
-        book={book}
-        locale={locale}
-        agreementId={search.record}
-        jobId={search.job}
-      />
-    </PageContent>
+    <RecurringRegister
+      work={search.work}
+      returnTo={search.returnTo}
+      record={search.record}
+      cycle={search.cycle === undefined ? undefined : String(search.cycle)}
+      job={search.job}
+      form={search.recurringForm}
+    />
   );
 }

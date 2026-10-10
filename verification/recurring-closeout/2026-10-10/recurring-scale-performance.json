@@ -1,0 +1,13 @@
+{
+  "agreements": 1000,
+  "elapsedMs": 89775.69150000002,
+  "claimedToDraftP50Ms": 22.239,
+  "claimedToDraftP95Ms": 148.30859999999998,
+  "queueWaitP50Ms": 4602.671,
+  "queueWaitP95Ms": 9379.110149999999,
+  "dueScanMs": 88996.512,
+  "admissionSpanMs": 88412.163,
+  "examined": 1000,
+  "drafts": 1000,
+  "pages": 1000
+}

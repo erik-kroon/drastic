@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-10",
+  "browserRun": "61eddfb5-f77b-40fb-8fd0-d31a05025aff",
+  "sourceIntegrity": "stable",
+  "checks": [
+    "check:changed:full after integrating accessibility",
+    "two real browser journeys with Luna",
+    "16 recurring API checks pass in the full run; 205-draft admission passes separately with --testTimeout=120000 and unchanged 79.6235ms p95 limit",
+    "test:mcp: one passed, two MCPJam protocol tests intentionally skipped per prior user authorization",
+    "test:mcp:eval: Luna scoped-ledger and approval-refusal evaluation passed"
+  ],
+  "limits": [
+    "Synthetic only",
+    "Existing invoice/VAT/period appearance explicitly authorized with parity unverified",
+    "Four adopted recurring initial states, not broader-state qualification"
+  ],
+  "apiQualification": {
+    "fullRunPassed": 16,
+    "fullRunFailed": 1,
+    "fullRunFailure": "205-draft admission exceeded default 30s wall time; focused no-build repeat passed in 22.14s",
+    "focusedAdmissionPassed": 1,
+    "ordinaryDraftP95Ms": 33.5824590000002
+  }
+}

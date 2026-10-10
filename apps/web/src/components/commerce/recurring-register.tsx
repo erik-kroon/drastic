@@ -1,18 +1,32 @@
+import { useState } from "react";
+import { Action } from "@open-erp/ui/kanon/action";
+import { FormLink, FormText } from "@open-erp/ui/kanon/form";
+import { AreaBar, FocusPage, ListDetailPage } from "@open-erp/ui/kanon/layouts";
+import { RegisterSearch, RegisterTable } from "@open-erp/ui/kanon/register";
+import { DetailPanelSurface } from "@open-erp/ui/kanon/detail-panel";
+import { RecurringDetail } from "./recurring-detail";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { defaultStringifySearch } from "@tanstack/react-router";
+import { defaultStringifySearch, useNavigate } from "@tanstack/react-router";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
-import { Button } from "@open-erp/ui/components/button";
-import { DataTable } from "@open-erp/ui/components/data-table";
-import { Link } from "@open-erp/ui/components/link";
-import { PageEmpty } from "@open-erp/ui/components/accounting-page";
-import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { readAccounting } from "@/lib/accounting-api";
 import { checkScope, commerceKey, commercePath } from "./shared";
+import {
+  CreateRecurringAgreement,
+  RecurringAgreementControls,
+} from "./recurring-agreement-controls";
 import { SalesNavigation } from "./sales-navigation";
 
-export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?: string }) {
+export function RecurringRegister(props: {
+  work?: string;
+  returnTo?: string;
+  record?: string;
+  cycle?: string;
+  job?: string;
+  form?: "create" | "schedule" | "template";
+}) {
+  const { work, returnTo } = props;
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
 
@@ -40,52 +54,131 @@ export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?
 
   const items = agreements.data?.pages.flatMap((page) => page.items) ?? [];
 
-  return (
-    <RegisterWorkspace
+  const [filter, setFilter] = useState("");
+  const navigate = useNavigate({ from: "/entities/$entityId/books/$bookId/sales" });
+
+  const openForm = (recurringForm?: "create" | "schedule" | "template") => {
+    void navigate({ search: (previous) => ({ ...previous, recurringForm }) });
+  };
+
+  const bar = (
+    <AreaBar
       title={sv ? "Försäljning" : "Sales"}
       tabs={<SalesNavigation view="recurring" work={work} returnTo={returnTo} />}
-    >
-      <AccountingStatus pending={agreements.isPending} error={agreements.error} locale={locale} />
-      {agreements.isSuccess && items.length === 0 ? (
-        <PageEmpty
-          title={sv ? "Inga återkommande avtal" : "No recurring agreements"}
-          detail={sv ? "Sparade avtal visas här." : "Saved agreements appear here."}
-        />
-      ) : null}
-      {items.length > 0 ? (
-        <DataTable
-          title={sv ? "Återkommande avtal" : "Recurring agreements"}
-          narrow="stack"
-          columns={[
-            { id: "title", label: sv ? "Avtal" : "Agreement", width: "fill" },
-            { id: "interval", label: sv ? "Intervall" : "Interval", width: 130 },
-            { id: "anchor", label: sv ? "Startdatum" : "Anchor date", width: 150 },
-          ]}
-          rows={items.map((agreement) => ({
-            id: agreement.id,
-            cells: [
-              <Link
-                key="title"
-                href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "recurring", record: agreement.id, work, returnTo })}`}
-              >
-                {agreement.title}
-              </Link>,
-              cadenceLabel(agreement.schedule.cadence, sv),
-              agreement.schedule.anchorLocalDate,
-            ],
-          }))}
-        />
-      ) : null}
-      {agreements.hasNextPage ? (
-        <Button
-          variant="outline"
-          disabled={agreements.isFetchingNextPage}
-          onClick={() => void agreements.fetchNextPage()}
+      action={
+        <Action
+          kind="secondary"
+          compact
+          onClick={() => openForm(props.form ? undefined : "create")}
         >
-          {sv ? "Läs in fler avtal" : "Load more agreements"}
-        </Button>
-      ) : null}
-    </RegisterWorkspace>
+          {props.form
+            ? sv
+              ? "Alla avtal"
+              : "All agreements"
+            : sv
+              ? "Nytt avtal"
+              : "New agreement"}
+        </Action>
+      }
+    />
+  );
+
+  if (props.form === "create")
+    return (
+      <FocusPage bar={bar}>
+        <CreateRecurringAgreement
+          book={book}
+          locale={locale}
+          work={work}
+          returnTo={returnTo}
+          onClose={() => openForm()}
+        />
+      </FocusPage>
+    );
+
+  if (props.record && (props.form === "schedule" || props.form === "template"))
+    return (
+      <FocusPage bar={bar}>
+        <RecurringAgreementControls
+          book={book}
+          locale={locale}
+          agreementId={props.record}
+          mode={props.form}
+          onClose={() => openForm()}
+        />
+      </FocusPage>
+    );
+
+  return (
+    <ListDetailPage
+      bar={bar}
+      list={
+        <>
+          <RegisterSearch
+            label={sv ? "Sök avtal" : "Search agreements"}
+            value={filter}
+            onChange={setFilter}
+          />
+          <AccountingStatus
+            pending={agreements.isPending}
+            error={agreements.error}
+            locale={locale}
+          />
+          {agreements.isSuccess && items.length === 0 ? (
+            <FormText>{sv ? "Inga återkommande avtal" : "No recurring agreements"}</FormText>
+          ) : null}
+          <RegisterTable
+            label={sv ? "Återkommande avtal" : "Recurring agreements"}
+            columns={[
+              { label: sv ? "Avtal" : "Agreement" },
+              { label: sv ? "Intervall" : "Interval", width: "interval" },
+              { label: sv ? "Startdatum" : "Anchor date", width: "date" },
+            ]}
+            selected={props.record}
+            rows={items
+              .filter((item) => item.title.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
+              .map((agreement) => ({
+                id: agreement.id,
+                cells: [
+                  <FormLink
+                    href={`${workspacePath(book)}/sales${defaultStringifySearch({ view: "recurring", record: agreement.id, work, returnTo })}`}
+                  >
+                    {agreement.title}
+                  </FormLink>,
+                  cadenceLabel(agreement.schedule.cadence, sv),
+                  agreement.schedule.anchorLocalDate,
+                ],
+              }))}
+          />
+          {agreements.hasNextPage ? (
+            <Action
+              kind="secondary"
+              disabled={agreements.isFetchingNextPage}
+              onClick={() => void agreements.fetchNextPage()}
+            >
+              {sv ? "Läs in fler avtal" : "Load more agreements"}
+            </Action>
+          ) : null}
+        </>
+      }
+      panel={
+        props.record ? (
+          <DetailPanelSurface label={sv ? "Valt avtal" : "Selected agreement"}>
+            <RecurringDetail
+              key={props.record}
+              book={book}
+              locale={locale}
+              agreementId={props.record}
+              cycleOrdinal={props.cycle}
+              jobId={props.job}
+              work={work}
+              returnTo={returnTo}
+              onEdit={openForm}
+            />
+          </DetailPanelSurface>
+        ) : null
+      }
+    />
   );
 }
 

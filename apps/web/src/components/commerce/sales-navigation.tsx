@@ -20,7 +20,7 @@ export function SalesNavigation(props: {
     { view: undefined, label: sv ? "Fakturor" : "Invoices" },
     { view: "parties", label: sv ? "Kunder" : "Customers" },
     { view: "recurring", label: sv ? "Återkommande" : "Recurring" },
-    { view: "orders", label: sv ? "Offerter" : "Quotes" },
+    { view: "orders", label: sv ? "Offerter och order" : "Quotes and orders" },
     { view: "articles", label: sv ? "Artiklar" : "Articles" },
     { view: "collections", label: sv ? "Krav" : "Collections" },
   ];
