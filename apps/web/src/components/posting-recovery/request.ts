@@ -1,11 +1,9 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Schema from "effect/Schema";
 import { bookPath, readAccounting } from "@/lib/accounting-api";
-
-export function savedPostingPath(book: typeof Accounting.Book.Type) {
-  return `${bookPath(book)}/saved-posting-requests`;
-}
 
 export async function readSavedPostingRequest(
   book: typeof Accounting.Book.Type,
@@ -13,7 +11,8 @@ export async function readSavedPostingRequest(
   signal?: AbortSignal,
 ) {
   const result = await readAccounting(
-    `${savedPostingPath(book)}/${encodeURIComponent(key)}`,
+    (client) =>
+      client.postingRecovery.getSavedPostingRequest({ params: { ...bookScope(book), key } }),
     Recovery.SavedPostingRequest,
     { signal },
   );
@@ -35,8 +34,18 @@ export async function runSavedPostingRequest(
   const authority =
     saved.command.operation === "approve_change" || saved.command.operation === "revoke_approval";
 
-  const path = `${bookPath(book)}/${authority ? "saved-posting-authority-requests" : "saved-posting-requests"}/${encodeURIComponent(saved.request.key)}/run`;
-  const result = await readAccounting(path, Recovery.SavedPostingRequest, { method: "POST" });
+  const result = await readAccounting(
+    (client) =>
+      authority
+        ? client.postingRecovery.runPostingAuthorityRequest({
+            params: { ...bookScope(book), key: saved.request.key },
+          })
+        : client.postingRecovery.runPostingRequest({
+            params: { ...bookScope(book), key: saved.request.key },
+          }),
+    Recovery.SavedPostingRequest,
+    { method: "POST" },
+  );
 
   if (
     result.scope.bookId !== book.id ||
@@ -88,11 +97,31 @@ export async function sendSavedPostingCommand(request: {
       throw new Error(request.storageMessage);
     }
 
-    const saved = await readAccounting(path, Recovery.SavedPostingRequest, {
-      method: "POST",
-      body,
-      headers: { "Idempotency-Key": originalKey },
-    });
+    const saved = await readAccounting(
+      (client, options) =>
+        request.command.operation === "approve_change" ||
+        request.command.operation === "revoke_approval"
+          ? client.postingRecovery.savePostingAuthorityRequest(
+              httpRequest(
+                Api.groups.postingRecovery.endpoints.savePostingAuthorityRequest,
+                { params: bookScope(request.book) },
+                options,
+              ),
+            )
+          : client.postingRecovery.savePostingRequest(
+              httpRequest(
+                Api.groups.postingRecovery.endpoints.savePostingRequest,
+                { params: bookScope(request.book) },
+                options,
+              ),
+            ),
+      Recovery.SavedPostingRequest,
+      {
+        method: "POST",
+        body,
+        headers: { "Idempotency-Key": originalKey },
+      },
+    );
 
     if (
       saved.scope.bookId !== request.book.id ||

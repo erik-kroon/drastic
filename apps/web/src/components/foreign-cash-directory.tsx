@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Cash from "@open-erp/contracts/foreign-cash";
@@ -6,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "./accounting-status";
 import { checkScope } from "./commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 
 export function ForeignCashDirectory({ accountId }: { accountId?: string }) {
@@ -17,13 +19,16 @@ export function ForeignCashDirectory({ accountId }: { accountId?: string }) {
     queryKey: [...bookKey(book), "foreign-cash-directory", accountId, after],
     retry: false,
     queryFn: async ({ signal }) => {
-      const base = `${bookPath(book)}/banking/foreign-cash/accounts`;
       const cursor = after ? `?after=${encodeURIComponent(after)}` : "";
       const href = `${workspacePath(book)}/accounts?view=foreign-cash`;
 
       if (accountId) {
         const page = await readAccounting(
-          `${base}/${encodeURIComponent(accountId)}/reviews${cursor}`,
+          (client) =>
+            client.foreignCash.listForeignCashReviews({
+              params: { ...bookScope(book), id: accountId },
+              query: httpQuery(Api.groups.foreignCash.endpoints.listForeignCashReviews, cursor),
+            }),
           Cash.ReviewPage,
           { signal },
         );
@@ -52,7 +57,15 @@ export function ForeignCashDirectory({ accountId }: { accountId?: string }) {
         };
       }
 
-      const page = await readAccounting(`${base}${cursor}`, Cash.HoldingPage, { signal });
+      const page = await readAccounting(
+        (client) =>
+          client.foreignCash.listForeignCashHoldings({
+            params: bookScope(book),
+            query: httpQuery(Api.groups.foreignCash.endpoints.listForeignCashHoldings, cursor),
+          }),
+        Cash.HoldingPage,
+        { signal },
+      );
 
       checkScope(book, page.scope);
 

@@ -50,7 +50,7 @@ export function PeriodWorkPanel({
   const run = useMutation({
     mutationFn: async (command: PeriodWorkCommand) => {
       const result = await readAccounting(
-        command.path,
+        command.execute,
         PeriodWork.PeriodWorkRunProgress,
         command.request,
       );

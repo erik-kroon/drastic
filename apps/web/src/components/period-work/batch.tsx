@@ -83,8 +83,12 @@ export function PeriodWorkBatch(props: {
   const boundedCount = Number(bounded);
 
   const seal = useMutation({
-    mutationFn: async (command: PeriodWorkCommand) => {
-      const sealed = await readAccounting(command.path, PeriodWork.ApprovalBatch, command.request);
+    mutationFn: async (command: PeriodWorkCommand<Batch>) => {
+      const sealed = await readAccounting(
+        command.execute,
+        PeriodWork.ApprovalBatch,
+        command.request,
+      );
 
       if (
         sealed.scope.entityId !== book.entityId ||
@@ -104,9 +108,9 @@ export function PeriodWorkBatch(props: {
   });
 
   const approve = useMutation({
-    mutationFn: async (input: { command: PeriodWorkCommand; batchId: string }) => {
+    mutationFn: async (input: { command: PeriodWorkCommand<Batch>; batchId: string }) => {
       const approved = await readAccounting(
-        input.command.path,
+        input.command.execute,
         PeriodWork.ApprovalBatch,
         input.command.request,
       );
@@ -118,9 +122,9 @@ export function PeriodWorkBatch(props: {
   });
 
   const execute = useMutation({
-    mutationFn: async (input: { command: PeriodWorkCommand; batchId: string }) => {
+    mutationFn: async (input: { command: PeriodWorkCommand<Execution>; batchId: string }) => {
       const result = await readAccounting(
-        input.command.path,
+        input.command.execute,
         PeriodWork.PeriodWorkExecutionResult,
         input.command.request,
       );

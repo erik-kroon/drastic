@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Loans from "@open-erp/contracts/treasury-loans";
@@ -7,7 +9,7 @@ import { Link } from "@open-erp/ui/components/link";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 
 export function TreasuryLoanDirectory({ loanId }: { loanId?: string }) {
@@ -19,10 +21,18 @@ export function TreasuryLoanDirectory({ loanId }: { loanId?: string }) {
     queryKey: [...bookKey(book), "treasury-loans", "directory", loanId, after],
     retry: false,
     queryFn: async ({ signal }) => {
-      const path = `${bookPath(book)}/treasury/loans${loanId ? `/${encodeURIComponent(loanId)}/reviews` : ""}${after ? `?after=${encodeURIComponent(after)}` : ""}`;
+      const cursor = after ? `?after=${encodeURIComponent(after)}` : "";
 
       if (loanId) {
-        const value = await readAccounting(path, Loans.LoanReviewPage, { signal });
+        const value = await readAccounting(
+          (client) =>
+            client.treasuryLoan.listLoanReviews({
+              params: { ...bookScope(book), id: loanId },
+              query: httpQuery(Api.groups.treasuryLoan.endpoints.listLoanReviews, cursor),
+            }),
+          Loans.LoanReviewPage,
+          { signal },
+        );
 
         checkScope(book, value.scope);
 
@@ -39,7 +49,15 @@ export function TreasuryLoanDirectory({ loanId }: { loanId?: string }) {
         };
       }
 
-      const value = await readAccounting(path, Loans.LoanPage, { signal });
+      const value = await readAccounting(
+        (client) =>
+          client.treasuryLoan.listLoans({
+            params: bookScope(book),
+            query: httpQuery(Api.groups.treasuryLoan.endpoints.listLoans, cursor),
+          }),
+        Loans.LoanPage,
+        { signal },
+      );
 
       checkScope(book, value.scope);
 
