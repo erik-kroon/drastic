@@ -361,6 +361,8 @@ try {
   await source.query(
     "insert into openerp.intake_contents(book_id,sha256,bytes) select 'ops-book','sha256:'||encode(sha256(convert_to('original synthetic statement','UTF8')),'hex'),convert_to('original synthetic statement','UTF8')",
   );
+  await source.query("SELECT setval('openerp.ai_identity_tokens_ordinal_seq', 7, true)");
+  await source.query("SELECT setval('openerp.ai_egress_admissions_sequence_seq', 11, true)");
 
   const originalBytes = new TextEncoder().encode("Retained synthetic object actual bytes");
   const originalSha256 = hash(originalBytes);
@@ -569,8 +571,31 @@ try {
     join(scratch, "checkpoint"),
   ]);
   const checkpointPath = join(scratch, "checkpoint", "checkpoint.json");
-  const checkpointDigest = hash(await readFile(checkpointPath));
   const checkpoint = JSON.parse(await readFile(checkpointPath, "utf8"));
+  assert.deepEqual(
+    checkpoint.inventory.applicationSequences.filter((sequence: { table: string }) =>
+      sequence.table.startsWith("ai_"),
+    ),
+    [
+      {
+        schema: "openerp",
+        name: "ai_egress_admissions_sequence_seq",
+        table: "ai_egress_admissions",
+        column: "sequence",
+        lastValue: "11",
+        isCalled: true,
+      },
+      {
+        schema: "openerp",
+        name: "ai_identity_tokens_ordinal_seq",
+        table: "ai_identity_tokens",
+        column: "ordinal",
+        lastValue: "7",
+        isCalled: true,
+      },
+    ],
+  );
+  const checkpointDigest = hash(await readFile(checkpointPath));
   assert.equal(checkpoint.sourceDigest, sourceDigest);
   assert.deepEqual(checkpoint.acceptanceLedger.waitingHandoffs, []);
   const supplementary = join(scratch, "supplementary");
