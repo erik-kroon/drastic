@@ -987,24 +987,28 @@ test("retained VAT discrepancies cannot qualify exact consequence classes", asyn
       }
 
       const input = preparation(draft, "25", supportId);
+
       for (const selection of input.lineAssignments) {
         if (mode !== "exact") {
           selection.treatment.acceptancePolicy = "qualified_tolerance";
           selection.treatment.toleranceMinor = "1";
         }
       }
+
       const review = await post(
         f.book,
         "/commerce/supplier-acceptance-reviews",
         input,
         Acceptance.SupplierAcceptanceReview,
       );
+
       const approval = await post(
         f.book,
         `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
         { version: 1, digest: review.digest, acknowledgeSyntheticOnly: true },
         Acceptance.SupplierAcceptanceApproval,
       );
+
       const receipt = await post(
         f.book,
         `/commerce/supplier-acceptance-reviews/${review.id}/execute`,
@@ -1016,24 +1020,28 @@ test("retained VAT discrepancies cannot qualify exact consequence classes", asyn
         },
         Acceptance.SupplierAcceptanceReceipt,
       );
+
       const exported = await post(
         f.book,
         "/automation/decision-examples",
         { purpose: "training", selectedDecisionIds: [approval.id] },
         Examples.DecisionExampleExport,
       );
+
       const provenance = (
         await admin.query(
           "SELECT body FROM openerp.decision_provenance WHERE book_id=$1 AND decision_id=$2",
           [f.book.bookId, approval.id],
         )
       ).rows[0].body;
+
       const voucher = (
         await admin.query("SELECT action FROM openerp.vouchers WHERE book_id=$1 AND id=$2", [
           f.book.bookId,
           receipt.postingReceipt.voucherId,
         ])
       ).rows[0].action;
+
       const actualTax = voucher.lines
         .filter((line: { accountId: string }) => line.accountId === "account_input_vat")
         .reduce(
@@ -1041,6 +1049,7 @@ test("retained VAT discrepancies cannot qualify exact consequence classes", asyn
           0n,
         )
         .toString();
+
       if (mode === "exact") exactExport = exported;
       observations.push({ mode, review, approval, receipt, provenance, exported, actualTax });
     }
@@ -1049,6 +1058,7 @@ test("retained VAT discrepancies cannot qualify exact consequence classes", asyn
       await request(f.book, `/automation/decision-examples/${exactExport!.id}`),
       Examples.DecisionExampleExport,
     );
+
     await writeFile(
       join(environment().artifacts, "vat-discrepancy-consequences.json"),
       JSON.stringify(
