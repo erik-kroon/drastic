@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import * as Schema from "effect/Schema";
 import app from "../src/index";
 import type { Bindings } from "../src/runtime/environment";
 import * as C from "@open-erp/contracts/decision-jobs";
@@ -84,7 +85,13 @@ async function bridge(bindings: Bindings) {
 
       outgoing.writeHead(response.status, Object.fromEntries(response.headers));
       outgoing.end(Buffer.from(await response.arrayBuffer()));
-    })().catch(() => {
+    })().catch((error: unknown) => {
+      failures.push({
+        stage,
+        code: Schema.is(Schema.Struct({ code: Schema.String }))(error)
+          ? error.code
+          : "fixture_handler_error",
+      });
       if (!outgoing.headersSent) outgoing.writeHead(500);
       outgoing.end("Synthetic fixture handler failed");
     });
@@ -116,20 +123,27 @@ async function provider(book: BookFixture) {
   const calls: { case: string; questions: unknown; state: string; bookLockReleased: boolean }[] =
     [];
 
+  const failures: { stage: string; code: string }[] = [];
+  let transportAttempts = 0;
   const holds = new Map<string, () => void>();
 
   const server = createServer((incoming, outgoing) => {
+    transportAttempts++;
+    let stage = "request_body";
+
     void (async () => {
       const chunks: Buffer[] = [];
 
       for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const scenario = control.scenario;
+      stage = "database_connect";
       const admin = await database();
       let bookLockReleased = false;
 
       try {
         await admin.query("BEGIN");
+        stage = "book_lock_probe";
         await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE NOWAIT", [
           book.bookId,
         ]);
@@ -139,6 +153,7 @@ async function provider(book: BookFixture) {
         await admin.end();
       }
 
+      stage = "response";
       calls.push({
         case: scenario,
         questions: body.questions,
@@ -190,6 +205,10 @@ async function provider(book: BookFixture) {
   return {
     endpoint: `http://127.0.0.1:${address.port}`,
     calls,
+    failures,
+    get transportAttempts() {
+      return transportAttempts;
+    },
     holds,
     async close() {
       for (const resolve of holds.values()) resolve();
@@ -1045,6 +1064,8 @@ test("decision queue resumes through the current egress port", async () => {
           status: observed.status,
           reason: observed.reason,
           dispatchCount: fixture.calls.length,
+          transportAttempts: fixture.transportAttempts,
+          providerFailures: fixture.failures,
           jobs,
           runnerFailures: runner.diagnostics.failures,
         },
