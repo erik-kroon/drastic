@@ -345,17 +345,12 @@ test("public decision export preserves captured deduction and reports missing co
       resolvedRate: { numerator: "25", denominator: "100" },
       deduction: { numerator: "1", denominator: "1" },
     },
-    period: { id: "period_2026", startsOn: null, endsOn: null },
+    period: { id: "period_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" },
+    dimensions: { requirements: [], assignments: [] },
   });
   expect(consequence.treatments[0]!.result).toEqual({
     status: "unknown",
-    reasons: [
-      "mapping_not_captured",
-      "vat_category_not_captured",
-      "vat_profile_not_captured",
-      "period_bounds_not_captured",
-      "dimension_requirements_not_captured",
-    ],
+    reasons: ["vat_category_not_captured", "vat_profile_not_captured"],
   });
   expect(consequence.treatments[0]!.result).not.toHaveProperty("identity");
   await writeFile(

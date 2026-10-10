@@ -252,4 +252,16 @@ Sequential and concurrent HTTP growth reproduced before implementation; the firs
 
 Clean committed source `041fd9e` against main `ff21273` passed full changed checks, owners (55/55) and design contract with tracked status clean. PR #20 was merged by the owner at the preceding extraction-read checkpoint; suggestion identity is published as a new draft follow-up. The owner approval record is incorporated, with its remaining data and enablement gates preserved. No live qualification call is part of this unit.
 
+## Approval consequences and synthetic SE mapping checkpoint
+
+Owner items 10–11 capture new approval facts in the approval transaction: actual period bounds, the existing path's known-empty dimensions, retained AUT04 VAT reasoning, exact source/posting correspondence and versioned synthetic statement mapping identity/line. Export reads the immutable capture. Historical absence and older reviews without bindings remain unknown; no history or nonempty-dimension feature is backfilled.
+
+Two real HTTP failures reproduced missing captures before implementation. Three HTTP workflows and one separately selected mapping workflow passed afterward; changed checks passed. Retained evidence is `verification/approval-consequences/`. Controlled account/period mutations and public dimension/VAT commands are distinguished. The older-prepared compatibility branch is inspected, not exercised. Mapping is synthetic-only with no statutory qualification. The additive review output schema requires MCP checks at the clean source checkpoint.
+
+Clean committed source `2e8aa3d` against pinned main `ff21273` passed full changed checks, owners (55/55) and design contract, with tracked status clean. Three deterministic MCP workflows and the pinned Luna eval test passed. Evidence summaries and source inventories are retained in `verification/approval-consequences/mcp/` and `mcp-eval/`. Zero measured screens is not visual parity. The initial projection lint failure is retained as a failed check; the explicit-field fix passed without suppression. No live provider, statutory mapping or nonempty-dimension qualification is claimed.
+
 Owner main `6e2a0ae` integrated into the follow-up stack. Main migrations0109–0111 are preserved; the unpublished suggestion registry is renumbered0112. Earlier0109 artifacts remain historical evidence. Upstream temporarily skips two MCPJam protocol workflows; they are not silently re-enabled or claimed passing on the integrated tree. Clean qualification follows integration.
+
+### Approval consequence review, retained VAT discrepancies
+
+Failure-first `72ff0e5` reproduced a tolerated source-tax discrepancy qualifying as known. Fix `5268d43` passed all five VAT workflows, with a null captured rate on retained discrepancies and exact source-line binding for repeated accounts. The lower PR27 owns the cherry-picked test/fix at `df1cae9`/`852f92d`; its clean focused replay passed one workflow, four unselected, after a frozen install. Original sealed export bytes remained unchanged. Proof is in `verification/approval-consequences/vat-discrepancy/`. Final clean integrated gates remain pending. These are synthetic fixtures, not statutory VAT qualification.

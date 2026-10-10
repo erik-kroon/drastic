@@ -125,7 +125,8 @@
     "./filing-lifecycle": "./src/filing-lifecycle.ts",
     "./peppol-exchange": "./src/peppol-exchange.ts",
     "./presence": "./src/presence.ts",
-    "./posting-mandates": "./src/posting-mandates.ts"
+    "./posting-mandates": "./src/posting-mandates.ts",
+    "./approval-consequences": "./src/approval-consequences.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

@@ -5,6 +5,7 @@ import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Provenance from "@open-erp/contracts/decision-provenance";
 import * as Consequence from "@open-erp/domain/treatment-consequence";
+import * as ApprovalCapture from "@open-erp/contracts/approval-consequences";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
@@ -74,11 +75,60 @@ function capturedVatCategory(review: typeof Acceptance.SupplierAcceptanceReview.
   return review.originalLines?.[0]?.treatment.categoryResolution?.categoryId ?? "not_captured";
 }
 
+function appendMissingMapping(missingFacts: string[], inputs: Consequence.CapturedTreatment[]) {
+  if (inputs.length === 0 || inputs.some((capture) => capture.mapping === null))
+    missingFacts.push("statement_mapping_not_captured");
+}
+
 function appendMissingVatCategory(missingFacts: string[], inputs: Consequence.CapturedTreatment[]) {
   if (inputs.length === 0 || inputs.some((capture) => capture.vat.category === null)) {
     missingFacts.push("vat_category_not_captured");
   }
 }
+
+const approvalConsequences = Effect.fn("decisionExamples.approvalConsequences")(function* (
+  selected: Schema.JsonObject,
+  review: typeof Acceptance.SupplierAcceptanceReview.Type,
+  action: typeof Accounting.VoucherPostingAction.Type,
+  cutoff: string,
+) {
+  const chosenTreatment = yield* toJsonObject({
+    journal: journal(action),
+    reviewedTreatments: review.originalLines ?? [],
+    vatCategory: capturedVatCategory(review),
+  });
+
+  const legacy = (reason: string) => ({
+    inputs: consequenceCaptures(action, cutoff, review.originalLines, review.profileWitness),
+    missingFacts: [reason],
+    chosenTreatment,
+  });
+
+  if (selected.consequenceCapture === undefined)
+    return legacy("approval_consequence_capture_not_retained");
+
+  const capture = yield* decode(
+    ApprovalCapture.ApprovalConsequenceCapture,
+    object(selected.consequenceCapture),
+  );
+
+  if (capture.status !== "captured") return legacy(capture.status);
+
+  return {
+    inputs: capture.sourceLines.map((line) => line.capture),
+    missingFacts: [],
+    chosenTreatment: yield* toJsonObject({
+      journal: journal(action),
+      reviewedTreatments: review.originalLines ?? [],
+      vatCategory: capturedVatCategory(review),
+      sourcePostingBindings: capture.sourceLines.map((line) => ({
+        sourceLineId: line.sourceLineId,
+        postingLineId: line.postingLineId,
+      })),
+      mappingRelease: capture.mappingRelease,
+    }),
+  };
+});
 
 function consequenceCaptures(
   action: typeof Accounting.VoucherPostingAction.Type,
@@ -381,7 +431,7 @@ export const projectDecisionExample = Effect.fn("decisionExamples.project")(func
   const evidence: Schema.JsonObject[] = [];
   const lineage: Schema.JsonObject[] = [];
 
-  const missingFacts = ["historical_chart_universe_not_captured", "statement_mapping_not_captured"];
+  const missingFacts = ["historical_chart_universe_not_captured"];
 
   if (row.body.uncitedExposure === true) missingFacts.push("uncited_option_records_not_bound");
 
@@ -423,17 +473,11 @@ export const projectDecisionExample = Effect.fn("decisionExamples.project")(func
     const action = review.postingPlan.groups[0]?.actions[0];
 
     if (!action || action.kind !== "post_voucher") return { excluded: "missing_posting_snapshot" };
-    chosenTreatment = yield* toJsonObject({
-      journal: journal(action),
-      reviewedTreatments: review.originalLines ?? [],
-      vatCategory: capturedVatCategory(review),
-    });
-    consequenceInputs = consequenceCaptures(
-      action,
-      cutoff,
-      review.originalLines,
-      review.profileWitness,
-    );
+    const retainedConsequence = yield* approvalConsequences(selected, review, action, cutoff);
+
+    consequenceInputs = retainedConsequence.inputs;
+    missingFacts.push(...retainedConsequence.missingFacts);
+    chosenTreatment = retainedConsequence.chosenTreatment;
 
     if (retained.mediaType === "text/plain" && typeof retained.content === "string") {
       const text = redact(retained.content);
@@ -531,6 +575,8 @@ export const projectDecisionExample = Effect.fn("decisionExamples.project")(func
       value: fieldValue(textField(selected, "fieldKey"), selected.selectedValue),
     });
   }
+
+  appendMissingMapping(missingFacts, consequenceInputs);
 
   appendMissingVatCategory(missingFacts, consequenceInputs);
 

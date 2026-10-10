@@ -9,7 +9,8 @@
     "./vat": "./src/vat/calculation.ts",
     "./vat-actual": "./src/vat/actual.ts",
     "./sie": "./src/sie/encoder.ts",
-    "./sie4e": "./src/sie/sie4e.ts"
+    "./sie4e": "./src/sie/sie4e.ts",
+    "./synthetic-statement-mapping": "./src/statements/synthetic-mapping.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
