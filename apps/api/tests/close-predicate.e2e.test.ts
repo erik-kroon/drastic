@@ -39,7 +39,12 @@ const Check = Schema.Struct({
   checkId: Schema.String,
   status: Schema.String,
   reasons: Schema.Array(Schema.String),
-  freshness: Schema.Struct({ status: Schema.String, reasons: Schema.Array(Schema.String) }),
+  freshness: Schema.Struct({
+    status: Schema.String,
+    reasons: Schema.Array(Schema.String),
+    dependencyDigests: Schema.Record(Schema.String, Schema.String),
+    observedBookSequence: Schema.optionalKey(Schema.String),
+  }),
   retained: Schema.NullOr(Schema.JsonObject),
   observedCutoff: Schema.optionalKey(
     Schema.Struct({
@@ -130,6 +135,7 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     expect(check(initial, "facts_complete").status).toBe("not_established");
     expect(initial.verdict).toBe("inconclusive");
     const signed = await signedSeptemberBank(sessionBook);
+    observations.bankSources = signed;
     const input = { bankInventoryPlanId: signed.plan.id, actualVatReturnId: null };
     const key = randomUUID();
 
@@ -143,6 +149,13 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     expect(replayed.capture).toEqual(saved.capture);
     expect(check(saved, "bank_reconciliation").status).toBe("pass");
     expect(check(saved, "bank_reconciliation").freshness.status).toBe("fresh");
+    const bankCaptureCheckpoint = await persisted(book);
+
+    if (bankCaptureCheckpoint === undefined) throw new Error("Synthetic book checkpoint missing");
+    observations.bankCaptureCheckpoint = bankCaptureCheckpoint;
+    expect(check(saved, "bank_reconciliation").freshness.observedBookSequence).toBe(
+      bankCaptureCheckpoint.sequence,
+    );
     expect(saved.verdict).toBe("inconclusive");
     expect(saved.reported.every((c) => c.status !== "pass")).toBe(true);
     const runtime = new Client({ connectionString: environment().runtimeUrl });
@@ -282,6 +295,13 @@ test("AUT06 monthly bank capture preserves outcomes, owner freshness, replay and
     observations.stale = stale;
     expect(check(stale, "bank_reconciliation").status).toBe("pass");
     expect(check(stale, "bank_reconciliation").freshness.status).toBe("stale");
+    const bankCurrentCheckpoint = await persisted(book);
+
+    if (bankCurrentCheckpoint === undefined) throw new Error("Synthetic book checkpoint missing");
+    observations.bankCurrentCheckpoint = bankCurrentCheckpoint;
+    expect(check(stale, "bank_reconciliation").freshness.observedBookSequence).toBe(
+      bankCurrentCheckpoint.sequence,
+    );
     expect(stale.capture).toEqual(saved.capture);
     expect((await capture(book, input, key)).capture).toEqual(saved.capture);
   } finally {
@@ -371,6 +391,13 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     const saved = await capture(book, { bankInventoryPlanId: null, actualVatReturnId: vat.id });
     observations.saved = saved;
     expect(check(saved, "vat_control").status).toBe("pass");
+    const vatCaptureCheckpoint = await persisted(book);
+
+    if (vatCaptureCheckpoint === undefined) throw new Error("Synthetic book checkpoint missing");
+    observations.vatCaptureCheckpoint = vatCaptureCheckpoint;
+    expect(check(saved, "vat_control").freshness.observedBookSequence).toBe(
+      vatCaptureCheckpoint.sequence,
+    );
     expect(saved.verdict).toBe("inconclusive");
 
     const original = await post(
@@ -442,6 +469,13 @@ test("AUT06 actual VAT zero without coverage remains incomplete and global ledge
     observations.stale = stale;
     expect(check(stale, "vat_control").status).toBe("pass");
     expect(check(stale, "vat_control").freshness.status).toBe("stale");
+    const vatCurrentCheckpoint = await persisted(book);
+
+    if (vatCurrentCheckpoint === undefined) throw new Error("Synthetic book checkpoint missing");
+    observations.vatCurrentCheckpoint = vatCurrentCheckpoint;
+    expect(check(stale, "vat_control").freshness.observedBookSequence).toBe(
+      vatCurrentCheckpoint.sequence,
+    );
     expect(check(stale, "vat_control").freshness.reasons).toContain("ledger_boundary_moved");
 
     const incomplete = await post(
