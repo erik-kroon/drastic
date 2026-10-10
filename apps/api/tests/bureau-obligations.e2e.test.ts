@@ -129,5 +129,5 @@ test("bureau obligations read canonical stored residual once with two retained s
   );
   expect(response.items.filter((entry) => entry.obligationId === invoice.id)).toHaveLength(1);
   const artifact = join(environment().artifacts, "bureau-obligations.json");
-  await writeFile(artifact, JSON.stringify({ scope: book.bookId, response }, null, 2));
+  await writeFile(artifact, JSON.stringify({ scope: book.bookId, current: response }, null, 2));
 });
