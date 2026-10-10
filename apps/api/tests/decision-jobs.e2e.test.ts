@@ -15,6 +15,7 @@ import { systemOneModel } from "../src/adapters/decision-models/systemone";
 import { acceptDraft, createDraft, supplierFixture } from "./support/supplier-review";
 import {
   createSession,
+  deleteSession,
   database,
   decoded,
   environment,
@@ -215,7 +216,7 @@ async function inventory(book: BookFixture) {
   try {
     return (
       await admin.query(
-        `SELECT (SELECT count(*)::int FROM openerp.decision_requests WHERE book_id=$1) requests,(SELECT count(*)::int FROM openerp.decision_results WHERE book_id=$1) results,(SELECT count(*)::int FROM openerp.decision_attempts WHERE book_id=$1 AND body->>'usageStatus'='unknown') unknown_usage,(SELECT count(*)::int FROM openerp.suggestion_records WHERE book_id=$1) exposures,(SELECT count(*)::int FROM openerp.decision_attempts WHERE book_id=$1) attempts,(SELECT count(*)::int FROM public.effect_mq_jobs WHERE name='decision' AND metadata->>'bookId'=$1) decision_jobs`,
+        `SELECT (SELECT count(*)::int FROM openerp.decision_request_controls WHERE book_id=$1) controls,(SELECT count(*)::int FROM openerp.decision_requests WHERE book_id=$1) requests,(SELECT count(*)::int FROM openerp.decision_results WHERE book_id=$1) results,(SELECT count(*)::int FROM openerp.decision_attempts WHERE book_id=$1 AND body->>'usageStatus'='unknown') unknown_usage,(SELECT count(*)::int FROM openerp.suggestion_records WHERE book_id=$1) exposures,(SELECT count(*)::int FROM openerp.decision_attempts WHERE book_id=$1) attempts,(SELECT count(*)::int FROM public.effect_mq_jobs WHERE name='decision' AND metadata->>'bookId'=$1) decision_jobs`,
         [book.bookId],
       )
     ).rows[0];
@@ -1222,3 +1223,103 @@ test("expired guard refuses transport before dispatch intent", async () => {
     await fixture.close();
   }
 }, 30_000);
+
+test("decision request admission and diagnostic read require operator authority", async () => {
+  const f = await supplierFixture();
+  const foreign = await supplierFixture();
+  const fixture = await provider(f.book);
+  const localSession = await createSession(f.book);
+  const foreignSession = await createSession(foreign.book);
+  const observations: { [key: string]: object | string | number | boolean | null | undefined } = {};
+
+  try {
+    await policy(f.book, "shadow");
+    await policy(foreign.book, "shadow");
+    const draft = await fixtureDraft(f, "valid");
+
+    const admitted = await post(
+      f.book,
+      "/automation/decision-requests",
+      admission(draft),
+      C.DecisionAdmission,
+    );
+
+    expect(admitted.request).not.toBeNull();
+
+    if (admitted.request === null) throw new Error("Synthetic operator request missing");
+    const path = `/automation/decision-requests/${admitted.request.id}`;
+    const operatorRead = await decoded(await request(f.book, path), C.DecisionRequestView);
+    observations.operatorRequestId = admitted.request.id;
+    observations.operatorRead = operatorRead;
+    const before = await inventory(f.book);
+    observations.before = before;
+
+    const agentRead = await request(f.book, path, {
+      headers: { authorization: `Bearer ${f.book.agentToken}` },
+    });
+
+    const agentAdmission = await request(f.book, "/automation/decision-requests", {
+      method: "POST",
+      headers: { authorization: `Bearer ${f.book.agentToken}` },
+      body: JSON.stringify(admission(draft)),
+    });
+
+    const after = await inventory(f.book);
+    observations.after = after;
+    observations.agentRead = { status: agentRead.status, body: await agentRead.clone().text() };
+    observations.agentAdmission = {
+      status: agentAdmission.status,
+      body: await agentAdmission.clone().text(),
+    };
+    observations.providerCalls = fixture.calls.length;
+
+    const localSessionRead = await request(f.book, path, {
+      headers: { authorization: `Bearer ${localSession.token}` },
+    });
+
+    const foreignSessionRead = await request(f.book, path, {
+      headers: { authorization: `Bearer ${foreignSession.token}` },
+    });
+
+    const foreignBookRead = await request(foreign.book, path);
+
+    const foreignBookAdmission = await request(foreign.book, "/automation/decision-requests", {
+      method: "POST",
+      body: JSON.stringify(admission(draft)),
+    });
+
+    observations.sessionAndBookScope = {
+      localSessionRead: localSessionRead.status,
+      foreignSessionRead: foreignSessionRead.status,
+      foreignBookRead: foreignBookRead.status,
+      foreignBookAdmission: foreignBookAdmission.status,
+    };
+    expect(agentRead.status).toBe(403);
+    expect(agentAdmission.status).toBe(403);
+
+    const readError = Schema.decodeSync(Schema.fromJsonString(A.AccountingError))(
+      await agentRead.text(),
+    );
+
+    const admissionError = Schema.decodeSync(Schema.fromJsonString(A.AccountingError))(
+      await agentAdmission.text(),
+    );
+
+    expect(readError.code).toBe("Forbidden");
+    expect(admissionError.code).toBe("Forbidden");
+    expect(after).toEqual(before);
+    expect(fixture.calls).toHaveLength(0);
+    expect(localSessionRead.status).toBe(200);
+    expect(foreignSessionRead.status).toBe(403);
+    expect(foreignBookRead.status).toBe(404);
+    expect(foreignBookAdmission.status).toBe(404);
+  } finally {
+    await writeFile(
+      join(environment().artifacts, "decision-request-authority.json"),
+      JSON.stringify(observations, null, 2),
+    );
+    await deleteSession(localSession.id);
+    await deleteSession(foreignSession.id);
+    await fixture.close();
+  }
+});
