@@ -53,3 +53,5 @@ OPENERP_E2E_ARTIFACTS=test-results/decision-shadow-view-qualified bun run test:e
 ```
 
 The request-view rerun passed all five selected workflows. Its stable behavior-source hash is `68336fae5f8481261d0bda06681c4995d2b30e0d89263a521697e323a9b3d30b`; results, lifecycle/queue/refusal artifacts and source integrity are retained in `test-results/decision-shadow-view-qualified`. Direct type-aware lint for the changed source/test and `bun run check:changed` passed. This final evidence paragraph was added after those checks; runtime/test code is unchanged. Clean full/owners/design remain a separate parent qualification.
+
+Clean committed1e3a712 against main6e2a0ae passed full changed checks, owners55/55 and design contract (two measured matching screens; no visual comparison), tracked status clean before and after. Frozen install passed on the isolated check tree. No MCP catalog/schema/transport change; MCP/Luna not rerun for this unit. Parent protocol skips remain unverified. No live, statutory, model-accuracy or browser qualification.
