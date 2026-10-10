@@ -79,6 +79,7 @@ async function nativeApi<T>(run: (url: string) => Promise<T>): Promise<T> {
       DATABASE_URL: environment().runtimeUrl,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
       BETTER_AUTH_URL: origin,
+      OPENERP_NATIVE_API_PORT: String(address.port),
       OPENERP_OBJECT_DIRECTORY: objects,
       OPENERP_INTAKE_FEED: "local-fixture",
       OPENERP_INTAKE_ENDPOINT: environment().intakeFixtureUrl,

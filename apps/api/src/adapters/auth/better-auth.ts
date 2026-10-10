@@ -61,7 +61,16 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
       storeTokens: { hash: oauthTokenHash },
       postLogin: {
         page: "/oauth/select",
-        shouldRedirect: () => false,
+        shouldRedirect: async ({ session, scopes }) => {
+          if (!scopes.includes("mcp:read")) return false;
+
+          const selected = await client.query(
+            "select session_id from openerp.oauth_agent_selections where session_id = $1",
+            [session.id],
+          );
+
+          return selected.rowCount === 0;
+        },
         consentReferenceId: async ({ user, session, scopes }) => {
           if (!scopes.includes("mcp:read")) return undefined;
 
@@ -75,9 +84,8 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
                        on firm_member.firm_id = grant_record.firm_id and firm_member.actor_id = grant_record.actor_id and firm_member.active
                      join openerp.memberships book_member
                        on book_member.book_id = grant_record.book_id and book_member.actor_id = grant_record.actor_id and book_member.role = 'operator'
-                     join openerp.identity_admissions admission
-                       on admission.actor_id = grant_record.actor_id and admission.enabled
                      where selection.session_id = $1 and grant_record.actor_id = $2
+                       and not exists (select 1 from openerp.identity_admissions a where a.actor_id = grant_record.actor_id and not a.enabled)
                        and not exists (
                          select 1 from openerp.oauth_agent_revocations revocation
                          where revocation.grant_id = grant_record.id
@@ -160,6 +168,70 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
   });
 }
 
+async function selectedOAuthGrant(request: Request, bindings: Bindings) {
+  if (request.headers.get("sec-fetch-site") === "cross-site")
+    return Response.json({ message: "Forbidden" }, { status: 403 });
+
+  return Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const auth = yield* makeAuth(bindings);
+
+        const session = yield* Effect.tryPromise({
+          try: () =>
+            auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } }),
+          catch: () => failure("Unavailable"),
+        });
+
+        if (!session) return Response.json({ message: "Sign in" }, { status: 401 });
+        const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
+
+        if (!connectionString) return Response.json({ message: "Unavailable" }, { status: 503 });
+
+        const client = yield* acquirePostgres({
+          connectionString: Redacted.make(connectionString),
+          applicationName: "open-erp-oauth-selection-view",
+          connectTimeoutMs: 5000,
+          statementTimeoutMs: 15000,
+        }).pipe(Effect.mapError(() => failure("Unavailable")));
+
+        const result = yield* Effect.tryPromise({
+          try: () =>
+            client.query<{
+              id: string;
+              firmId: string;
+              bookId: string;
+              firmName: string;
+              bookName: string;
+              available: boolean;
+            }>(
+              `select g.id, g.firm_id as "firmId", g.book_id as "bookId", f.name as "firmName", b.name as "bookName",
+          exists (
+            select 1 from openerp.firm_members fm
+            join openerp.firm_clients fc on fc.firm_id = fm.firm_id and fc.book_id = g.book_id
+            join openerp.memberships m on m.book_id = g.book_id and m.actor_id = g.actor_id and m.role = 'operator'
+            where fm.firm_id = g.firm_id and fm.actor_id = g.actor_id and fm.active
+              and not exists (select 1 from openerp.identity_admissions a where a.actor_id = g.actor_id and not a.enabled)
+              and not exists (select 1 from openerp.oauth_agent_revocations r where r.grant_id = g.id)
+          ) as available
+          from openerp.oauth_agent_selections s
+          join openerp.oauth_agent_grants g on g.id = s.grant_id
+          join openerp.firms f on f.id = g.firm_id join openerp.books b on b.id = g.book_id
+          where s.session_id = $1 and g.actor_id = $2`,
+              [session.session.id, session.user.id],
+            ),
+          catch: () => failure("Unavailable"),
+        });
+
+        return Response.json(
+          { grant: result.rows[0] ?? null },
+          { headers: { "cache-control": "no-store" } },
+        );
+      }),
+    ).pipe(Effect.orElseSucceed(() => Response.json({ message: "Unavailable" }, { status: 503 }))),
+  );
+}
+
 async function selectOAuthGrant(request: Request, bindings: Bindings) {
   const origin = bindings.BETTER_AUTH_URL ? new URL(bindings.BETTER_AUTH_URL).origin : null;
 
@@ -223,6 +295,26 @@ async function selectOAuthGrant(request: Request, bindings: Bindings) {
           try {
             await client.query("BEGIN");
 
+            await client.query("select id from openerp.actors where id = $1 for share", [
+              session.user.id,
+            ]);
+
+            const retainedSession = await client.query(
+              "select id from openerp_auth.session where id = $1 and user_id = $2 and expires_at > clock_timestamp() for share",
+              [session.session.id, session.user.id],
+            );
+
+            if (retainedSession.rowCount !== 1) {
+              await client.query("ROLLBACK");
+
+              return Response.json({ message: "Sign in" }, { status: 401 });
+            }
+
+            await client.query(
+              "select enabled from openerp.identity_admissions where actor_id = $1 for share",
+              [session.user.id],
+            );
+
             const issued = await client.query<{ id: string }>(
               `insert into openerp.oauth_agent_grants (id, session_id, actor_id, firm_id, book_id)
          select $1, $2, $3, client_book.firm_id, client_book.book_id
@@ -231,8 +323,8 @@ async function selectOAuthGrant(request: Request, bindings: Bindings) {
            on firm_member.firm_id = client_book.firm_id and firm_member.actor_id = $3 and firm_member.active
          join openerp.memberships book_member
            on book_member.book_id = client_book.book_id and book_member.actor_id = $3 and book_member.role = 'operator'
-         join openerp.identity_admissions admission on admission.actor_id = $3 and admission.enabled
          where client_book.firm_id = $4 and client_book.book_id = $5
+           and not exists (select 1 from openerp.identity_admissions a where a.actor_id = $3 and not a.enabled)
          returning id`,
               [grantId, session.session.id, session.user.id, firmId, bookId],
             );
@@ -324,13 +416,30 @@ async function revokeOAuthGrant(request: Request, bindings: Bindings) {
         }).pipe(Effect.mapError(() => failure("Unavailable")));
 
         const revocation = yield* Effect.tryPromise({
-          try: () =>
-            client.query<{ grant_id: string }>(
-              `insert into openerp.oauth_agent_revocations (grant_id)
+          try: async () => {
+            await client.query("BEGIN");
+
+            try {
+              await client.query(
+                "select id from openerp.oauth_agent_grants where id = $1 and actor_id = $2 for update",
+                [grantId, session.user.id],
+              );
+
+              const result = await client.query<{ grant_id: string }>(
+                `insert into openerp.oauth_agent_revocations (grant_id)
          select id from openerp.oauth_agent_grants where id = $1 and actor_id = $2
          on conflict (grant_id) do nothing returning grant_id`,
-              [grantId, session.user.id],
-            ),
+                [grantId, session.user.id],
+              );
+
+              await client.query("COMMIT");
+
+              return result;
+            } catch (error) {
+              await client.query("ROLLBACK");
+              throw error;
+            }
+          },
           catch: () => failure("Unavailable"),
         });
 
@@ -400,6 +509,39 @@ async function handleTokenRequest(
 
             await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [family]);
 
+            const grantId = record.rows[0]?.reference_id;
+
+            if (grantId) {
+              await client.query(
+                "select a.id from openerp.actors a join openerp.oauth_agent_grants g on g.actor_id = a.id where g.id = $1 for share of a",
+                [grantId],
+              );
+              await client.query(
+                "select a.enabled from openerp.identity_admissions a join openerp.oauth_agent_grants g on g.actor_id = a.actor_id where g.id = $1 for share of a",
+                [grantId],
+              );
+              await client.query(
+                "select id from openerp.oauth_agent_grants where id = $1 for share",
+                [grantId],
+              );
+
+              const admitted = await client.query(
+                `select g.id from openerp.oauth_agent_grants g
+                 join openerp.firm_members fm on fm.firm_id = g.firm_id and fm.actor_id = g.actor_id and fm.active
+                 join openerp.firm_clients fc on fc.firm_id = g.firm_id and fc.book_id = g.book_id
+                 join openerp.memberships m on m.book_id = g.book_id and m.actor_id = g.actor_id and m.role = 'operator'
+                      where g.id = $1 and not exists (select 1 from openerp.identity_admissions a where a.actor_id = g.actor_id and not a.enabled) and not exists (select 1 from openerp.oauth_agent_revocations r where r.grant_id = g.id)
+                 for share of fm, fc, m`,
+                [grantId],
+              );
+
+              if (admitted.rowCount !== 1) {
+                await client.query("COMMIT");
+
+                return Response.json({ error: "invalid_grant" }, { status: 400 });
+              }
+            }
+
             const response = await handle();
 
             await client.query("COMMIT");
@@ -417,6 +559,12 @@ async function handleTokenRequest(
 }
 
 export function authHandler(request: Request, bindings: Bindings) {
+  if (
+    request.method === "GET" &&
+    new URL(request.url).pathname === "/api/auth/oauth2/selected-grant"
+  )
+    return Effect.promise(() => selectedOAuthGrant(request, bindings));
+
   if (
     request.method === "POST" &&
     new URL(request.url).pathname === "/api/auth/oauth2/select-grant"

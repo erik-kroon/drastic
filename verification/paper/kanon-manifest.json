@@ -961,6 +961,77 @@
       "comparison": null,
       "adoptionNote": "AUT-01 authorizes citation transport for existing rendered suggestions. No new screen composition or visual baseline is adopted by this contract.",
       "implementationNote": "Request and cache bindings only. Existing visual adoption remains with each screen owner; no browser or visual parity claim."
+    },
+    {
+      "id": "O-01",
+      "name": "O-01 Ge appen läsåtkomst",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=40O8-0",
+      "baseline": "verification/paper/baseline/oauth-2026-10-10/O-01.png",
+      "baselineSha256": "5a94ab8f0ff9d1300104ae5743900f32d9abf53036cfa7e28c5aeb89402ad536",
+      "jsx": "verification/paper/baseline/oauth-2026-10-10/O-01.jsx.json",
+      "jsxSha256": "aecf714b5977eb00d7d168f3c4b055875b823b06a184f2e047797fa6e5009bb7",
+      "files": [
+        "apps/web/src/components/oauth-access.tsx",
+        "apps/web/src/routes/oauth.consent.tsx",
+        "packages/ui/src/kanon/access.tsx",
+        "packages/ui/src/theme/access.stylex.ts",
+        "apps/web/src/routes/login.tsx"
+      ],
+      "route": "/oauth/consent",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/oauth-mcp.md",
+      "requiredStates": ["consent", "loading", "error", "revoked", "keyboard"],
+      "evidence": "verification/paper/evidence/oauth-2026-10-10/O-01/result.json",
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": ["access", "action"],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
+      "notes": "Adopted light state measured on its real OAuth route with the actual synthetic provider flow. Empty selections, retained consent reload, keyboard consent, denial without code and revoked grant refusal pass deterministic TesterArmy E2E. No Luna agent step or production onboarding claim. Dark, native zoom and management-screen qualification are separate. Fresh source capture pending after guarded SSR query read and component factoring; earlier measured receipt retained historically."
+    },
+    {
+      "id": "O-02",
+      "name": "O-02 Välj byrå och bok",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=40P2-0",
+      "baseline": "verification/paper/baseline/oauth-2026-10-10/O-02.png",
+      "baselineSha256": "32b4ca24448c5e7429457d7be43ca46ce0aae5ba3808b45916cb1dd09f415094",
+      "jsx": "verification/paper/baseline/oauth-2026-10-10/O-02.jsx.json",
+      "jsxSha256": "5f539b8dae3e2d73b5fb03d319583df5c0cb42ae814d177d466aec8490357b20",
+      "files": [
+        "apps/web/src/components/oauth-access.tsx",
+        "apps/web/src/routes/oauth.select.tsx",
+        "packages/ui/src/kanon/access.tsx",
+        "packages/ui/src/theme/access.stylex.ts"
+      ],
+      "route": "/oauth/select",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/oauth-mcp.md",
+      "requiredStates": ["empty", "loading", "error", "revoked", "keyboard"],
+      "evidence": "verification/paper/evidence/oauth-2026-10-10/O-02/result.json",
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": ["access", "action"],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
+      "notes": "Adopted light state measured on its real OAuth route with the actual synthetic provider flow. Empty selections, retained consent reload, keyboard consent, denial without code and revoked grant refusal pass deterministic TesterArmy E2E. No Luna agent step or production onboarding claim. Dark, native zoom and management-screen qualification are separate. Fresh source capture pending after guarded SSR query read and component factoring; earlier measured receipt retained historically."
     }
   ]
 }

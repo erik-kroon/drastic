@@ -18,3 +18,14 @@ CREATE TABLE openerp.oauth_agent_revocations (
 );
 GRANT SELECT, INSERT ON TABLE openerp.oauth_agent_grants,
   openerp.oauth_agent_selections, openerp.oauth_agent_revocations TO openerp_runtime;
+
+-- Row locks serialize revocation with admission. The update privilege permits
+-- locking; the trigger forbids changing a previously issued ceiling.
+GRANT UPDATE (id) ON openerp.oauth_agent_grants TO openerp_runtime;
+CREATE FUNCTION openerp.refuse_oauth_grant_mutation() RETURNS trigger
+LANGUAGE plpgsql AS $$ BEGIN
+  RAISE EXCEPTION 'OAuth grant ceilings are immutable';
+END $$;
+CREATE TRIGGER immutable_oauth_agent_grant BEFORE UPDATE OR DELETE
+ON openerp.oauth_agent_grants FOR EACH ROW
+EXECUTE FUNCTION openerp.refuse_oauth_grant_mutation();

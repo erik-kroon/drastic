@@ -1,3 +1,4 @@
+import { McpReadResource } from "../db/oauth-admission";
 import { AccountingError, failureRecovery } from "@open-erp/contracts/accounting";
 import { AccountingErrorStatus } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
@@ -65,7 +66,22 @@ function rpcResult<A>(id: McpSchema.RequestId, result: A) {
   return HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, result });
 }
 
-function dispatch(request: typeof McpRequest.Type, token: string) {
+type CatalogInput = (typeof catalog)[number]["inputSchema"];
+
+function hasBookScope(input: CatalogInput) {
+  const decoded = Schema.decodeUnknownResult(Schema.Struct({ properties: Schema.JsonObject }))(
+    input,
+  );
+
+  return Result.isSuccess(decoded) && Object.hasOwn(decoded.success.properties, "scope");
+}
+
+const oauthCatalog = catalog.filter(
+  (tool) =>
+    tool.annotations.readOnlyHint && (tool.name === "book_list" || hasBookScope(tool.inputSchema)),
+);
+
+function dispatch(request: typeof McpRequest.Type, token: string, oauth: boolean) {
   return Effect.gen(function* () {
     if (request.id === undefined) {
       if (
@@ -96,8 +112,9 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
           protocolVersion: protocolVersions.includes(offered) ? offered : latestProtocolVersion,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "open-erp-accounting", version: "1.0.0" },
-          instructions:
-            "Discover available operations with tools/list and inspect book_get_status for scope and blockers. Installed capabilities are not proof of production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact approved digest and version. Failures carry a recovery class: permanent requires repairing the stated issue before retry; transient permits an unchanged same-key retry after a known rollback or pre-routing refusal; outcome-unknown requires reading durable status or receipts before retrying the original command. Unrecognized codes are outcome-unknown. Never replace a key to escape uncertainty. These classes do not override saved-request retry rules or current authority. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
+          instructions: oauth
+            ? "Read-only delegated access to the one consented book. Discover tools with tools/list. Every read rechecks token expiry, the immutable book ceiling, current membership and grant revocation. Prepare, approve, execute and external delivery are unavailable. Reads do not establish production qualification or complete company coverage."
+            : "Discover available operations with tools/list and inspect book_get_status for scope and blockers. Installed capabilities are not proof of production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact approved digest and version. Failures carry a recovery class: permanent requires repairing the stated issue before retry; transient permits an unchanged same-key retry after a known rollback or pre-routing refusal; outcome-unknown requires reading durable status or receipts before retrying the original command. Unrecognized codes are outcome-unknown. Never replace a key to escape uncertainty. These classes do not override saved-request retry rules or current authority. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
         });
       }
 
@@ -110,7 +127,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
           return rpcError(id, -32602, "This catalog does not use a cursor.");
         }
 
-        return rpcResult(id, { tools: catalog });
+        return rpcResult(id, { tools: oauth ? oauthCatalog : catalog });
       }
 
       case "tools/call": {
@@ -119,7 +136,8 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
         if (Result.isFailure(input)) return rpcError(id, -32602, "Invalid tool call parameters.");
         const tool = tools.find((entry) => entry.name === input.success.name);
 
-        if (!tool) return rpcError(id, -32602, "Unknown tool.");
+        if (!tool || (oauth && !oauthCatalog.some((entry) => entry.name === tool.name)))
+          return rpcError(id, -32602, "Unknown tool.");
 
         const call: Effect.Effect<
           Schema.Json,
@@ -171,7 +189,17 @@ const handleMcp = Effect.gen(function* () {
   if (request.headers.authorization === undefined) return yield* failure("Unauthorized");
   const token = yield* authenticate;
   // Catalog discovery and initialization also verify the credential in PostgreSQL.
-  yield* capabilities.book_list.execute(token, {});
+  const ordinary = yield* Effect.result(capabilities.book_list.execute(token, {}));
+  const oauth = Result.isFailure(ordinary);
+  const environment = yield* RequestEnvironment;
+  const resource = `${new URL(environment.bindings.BETTER_AUTH_URL ?? environment.url.origin).origin}/api/mcp`;
+
+  if (oauth) {
+    if (ordinary.failure.code !== "Unauthorized") return yield* ordinary.failure;
+    yield* capabilities.book_list
+      .execute(token, {})
+      .pipe(Effect.provideService(McpReadResource, resource));
+  }
 
   if (request.method !== "POST") {
     return yield* failure("MethodNotAllowed");
@@ -212,7 +240,9 @@ const handleMcp = Effect.gen(function* () {
     return rpcError(input.id ?? null, -32600, "Send a supported MCP-Protocol-Version header.", 400);
   }
 
-  return yield* dispatch(input, token);
+  return yield* dispatch(input, token, oauth).pipe(
+    Effect.provideService(McpReadResource, oauth ? resource : null),
+  );
 }).pipe(Effect.catch((error) => rpcAuthenticationError(error)));
 
 function rpcAuthenticationError(error: AccountingError) {

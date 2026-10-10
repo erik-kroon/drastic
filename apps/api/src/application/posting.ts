@@ -1,3 +1,4 @@
+import { admitOAuthRead, McpReadResource } from "../db/oauth-admission";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import { requireOnboardingResponsibility } from "./onboarding-policy";
 import * as OnboardingCaseDb from "../db/onboarding";
@@ -893,22 +894,29 @@ function admitBookDirectoryActor(transaction: Transaction, token: string) {
 export const listBooks = Effect.fn("posting.listBooks")(function* (token: string) {
   return yield* withTransaction((transaction) =>
     Effect.gen(function* () {
-      const actorId = yield* admitBookDirectoryActor(transaction, token);
+      const oauth =
+        (yield* McpReadResource) === null
+          ? null
+          : yield* admitOAuthRead(transaction, yield* hashToken(token));
+
+      const actorId = oauth?.actorId ?? (yield* admitBookDirectoryActor(transaction, token));
       const admission = yield* Db.readActorAdmission(transaction, actorId);
 
       if (admission[0]?.enabled === false) return yield* failure("Unauthorized");
       const rows = yield* Db.readBooksForActor(transaction, actorId);
 
       return yield* Schema.decodeEffect(BookDirectorySchema)(
-        rows.map((row) => ({
-          entityId: row.entityId,
-          id: row.id,
-          name: row.name,
-          currency: row.currency,
-          profile: row.profile,
-          role: row.role,
-          sequence: row.sequence.toString(),
-        })),
+        rows
+          .filter((row) => oauth === null || row.id === oauth.bookId)
+          .map((row) => ({
+            entityId: row.entityId,
+            id: row.id,
+            name: row.name,
+            currency: row.currency,
+            profile: row.profile,
+            role: row.role,
+            sequence: row.sequence.toString(),
+          })),
       ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
     }),
   );

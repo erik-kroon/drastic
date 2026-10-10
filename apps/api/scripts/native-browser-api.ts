@@ -51,9 +51,17 @@ const bindings: Bindings = {
   }),
 };
 
+const listenPort = Number(process.env.OPENERP_NATIVE_API_PORT ?? "0");
+
+if (
+  !Number.isInteger(listenPort) ||
+  (listenPort !== 0 && (listenPort < 1024 || listenPort > 65535))
+)
+  throw new Error("Native browser API requires an allocated loopback port");
+
 const server = Bun.serve({
   hostname: "127.0.0.1",
-  port: Number(origin.port) || 0,
+  port: listenPort,
   maxRequestBodySize: 8 * 1024 * 1024,
   fetch(request, server) {
     const host = request.headers.get("host");

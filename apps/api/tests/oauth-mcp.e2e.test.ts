@@ -6,14 +6,16 @@ import { createInterface } from "node:readline";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { apiDirectory, database, environment, fixture, run } from "./support/fixtures";
+import { apiDirectory, database, environment, fixture, ledger, run } from "./support/fixtures";
 
 // Failure contract: an unauthenticated client cannot approve itself; only the
 // signed-in operator can consent. An S256 code is single-use, cannot be exchanged
 // with a different verifier/redirect URI, and never extends firm/book authority.
 // Refresh rotation races and revocation must not restore a revoked authorization.
-test("signed-in operator completes S256 OAuth code exchange against real PostgreSQL", async () => {
+test("OAuth code, bounded reads, membership removal, expiry and revocation races preserve authority and journals", async () => {
   const book = await fixture();
+  const foreign = await fixture();
+  const before = await ledger(book);
   const email = `${book.actorId}@oauth.e2e.invalid`;
   const password = randomBytes(24).toString("hex");
   await run("bun", ["--no-env-file", "scripts/create-user.ts", book.actorId], {
@@ -26,17 +28,6 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
       OPENERP_PASSWORD: password,
     },
   });
-  const admin = await database();
-
-  try {
-    await admin.query(
-      "INSERT INTO openerp.identity_admissions(actor_id, provider_id, subject, enabled) VALUES ($1, 'oauth-synthetic', $2, true)",
-      [book.actorId, book.actorId],
-    );
-  } finally {
-    await admin.end();
-  }
-
   const socket = createServer();
   socket.listen(0, "127.0.0.1");
   await once(socket, "listening");
@@ -58,6 +49,7 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
       DATABASE_URL: environment().runtimeUrl,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
       BETTER_AUTH_URL: issuer,
+      OPENERP_NATIVE_API_PORT: String(address.port),
       OPENERP_OBJECT_DIRECTORY: objectDirectory,
     },
     detached: true,
@@ -79,12 +71,12 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
 
     const url = await startup;
 
-    const issuerRequest = async (path: string, init?: RequestInit) =>
-      fetch(`${url}${path}`, {
-        ...init,
-        redirect: "manual",
-        headers: { origin: issuer, ...init?.headers },
-      });
+    const issuerRequest = async (path: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      headers.set("origin", issuer);
+
+      return fetch(`${url}${path}`, { ...init, redirect: "manual", headers });
+    };
 
     const signin = await issuerRequest("/api/auth/sign-in/email", {
       method: "POST",
@@ -172,6 +164,13 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
 
     expect(linked.status).toBe(200);
 
+    const unselected = await issuerRequest("/api/auth/oauth2/selected-grant", {
+      headers: { cookie },
+    });
+
+    expect(unselected.status).toBe(200);
+    expect(await unselected.json()).toEqual({ grant: null });
+
     const selected = await issuerRequest("/api/auth/oauth2/select-grant", {
       method: "POST",
       headers: { "content-type": "application/json", cookie },
@@ -182,6 +181,15 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
     const grant = (await selected.json()) as { grantId: string; firmId: string; bookId: string };
     expect(grant.firmId).toBe(firm.firmId);
     expect(grant.bookId).toBe(book.bookId);
+
+    const selectedView = await issuerRequest("/api/auth/oauth2/selected-grant", {
+      headers: { cookie },
+    });
+
+    expect(selectedView.status).toBe(200);
+    expect(await selectedView.json()).toMatchObject({
+      grant: { id: grant.grantId, firmId: firm.firmId, bookId: book.bookId, available: true },
+    });
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
     const authorize = new URL("/api/auth/oauth2/authorize", issuer);
@@ -254,10 +262,144 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
     });
 
-    expect(prematureMcp.status).toBe(401);
-    expect(prematureMcp.headers.get("www-authenticate")).toContain(
-      `resource_metadata="${issuer}/.well-known/oauth-protected-resource/api/mcp"`,
+    expect(prematureMcp.status).toBe(200);
+
+    const catalog = (await prematureMcp.json()) as {
+      result: { tools: Array<{ name: string; annotations: { readOnlyHint: boolean } }> };
+    };
+
+    expect(catalog.result.tools.length).toBeGreaterThan(0);
+    expect(catalog.result.tools.every((tool) => tool.annotations.readOnlyHint)).toBe(true);
+    expect(catalog.result.tools.some((tool) => tool.name === "ledger_snapshot")).toBe(true);
+    expect(catalog.result.tools.some((tool) => tool.name === "changes_execute")).toBe(false);
+
+    const ordinaryHttp = await issuerRequest("/api/v1/books", {
+      headers: { authorization: `Bearer ${token.access_token}` },
+    });
+
+    expect(ordinaryHttp.status).toBeGreaterThanOrEqual(400);
+
+    const callMcp = (name: string, argumentsForTool: object) =>
+      issuerRequest("/api/mcp", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token.access_token}`,
+          "content-type": "application/json",
+          accept: "application/json",
+          "MCP-Protocol-Version": "2025-11-25",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name, arguments: argumentsForTool },
+        }),
+      });
+
+    const scope = { entityId: book.entityId, bookId: book.bookId };
+    const snapshot = await callMcp("ledger_snapshot", { scope });
+    expect(snapshot.status).toBe(200);
+    expect(
+      (
+        (await snapshot.json()) as {
+          result: { isError: boolean; structuredContent: { result: unknown } };
+        }
+      ).result,
+    ).toMatchObject({ isError: false, structuredContent: { result: before } });
+    const refusedWrite = await callMcp("changes_execute", { scope });
+    expect(((await refusedWrite.json()) as { error: { code: number } }).error.code).toBe(-32602);
+    const provisioning = await database();
+
+    try {
+      await provisioning.query(
+        "insert into openerp.memberships(book_id, actor_id, role) values ($1, $2, 'operator')",
+        [foreign.bookId, book.actorId],
+      );
+
+      const foreignRead = await callMcp("ledger_snapshot", {
+        scope: { entityId: foreign.entityId, bookId: foreign.bookId },
+      });
+
+      expect(((await foreignRead.json()) as { result: { isError: boolean } }).result.isError).toBe(
+        true,
+      );
+
+      const directory = await callMcp("book_list", {});
+      expect(
+        (
+          (await directory.json()) as {
+            result: { structuredContent: { result: Array<{ id: string }> } };
+          }
+        ).result.structuredContent.result.map((entry) => entry.id),
+      ).toEqual([book.bookId]);
+
+      for (const removal of [
+        {
+          sql: "update openerp.firm_members set active = false where firm_id = $1 and actor_id = $2",
+          restore:
+            "update openerp.firm_members set active = true where firm_id = $1 and actor_id = $2",
+          values: [firm.firmId, book.actorId],
+        },
+        {
+          sql: "update openerp.memberships set role = 'agent' where book_id = $1 and actor_id = $2",
+          restore:
+            "update openerp.memberships set role = 'operator' where book_id = $1 and actor_id = $2",
+          values: [book.bookId, book.actorId],
+        },
+      ]) {
+        await provisioning.query(removal.sql, removal.values);
+        expect((await callMcp("ledger_snapshot", { scope })).status).toBeGreaterThanOrEqual(400);
+        await provisioning.query(removal.restore, removal.values);
+      }
+
+      await provisioning.query(
+        "insert into openerp.identity_admissions(actor_id, provider_id, subject, enabled) values ($1, 'oauth-synthetic', $1, false)",
+        [book.actorId],
+      );
+      expect((await callMcp("ledger_snapshot", { scope })).status).toBe(401);
+      await provisioning.query(
+        "update openerp.identity_admissions set enabled = true where actor_id = $1",
+        [book.actorId],
+      );
+      expect((await callMcp("ledger_snapshot", { scope })).status).toBe(200);
+
+      const accessHash = createHash("sha256").update(token.access_token).digest("hex");
+      await provisioning.query(
+        "update openerp_auth.oauth_access_token set expires_at = clock_timestamp() - interval '1 second' where token = $1",
+        [accessHash],
+      );
+      expect((await callMcp("ledger_snapshot", { scope })).status).toBe(401);
+      await provisioning.query(
+        "update openerp_auth.oauth_access_token set expires_at = clock_timestamp() + interval '1 hour' where token = $1",
+        [accessHash],
+      );
+    } finally {
+      await provisioning.end();
+    }
+
+    const invalidResource = new URL(authorize);
+    invalidResource.searchParams.set("resource", "https://foreign.e2e.invalid/api/mcp");
+
+    const wrongResourceResponse = await issuerRequest(
+      `${invalidResource.pathname}${invalidResource.search}`,
+      { headers: { cookie } },
     );
+
+    const wrongResourceBody = (await wrongResourceResponse.json()) as {
+      url?: string;
+      error?: string;
+    };
+
+    const wrongResourceError =
+      wrongResourceBody.error ??
+      (wrongResourceBody.url
+        ? new URL(wrongResourceBody.url, issuer).searchParams.get("error")
+        : null);
+
+    expect(
+      wrongResourceResponse.status >= 400 || Boolean(wrongResourceError),
+      `Wrong resource error: ${wrongResourceError}`,
+    ).toBe(true);
 
     const persisted = await database();
     let referenceBound = false;
@@ -277,6 +419,55 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
       expect(referenceBound).toBe(true);
     } finally {
       await persisted.end();
+    }
+
+    async function freshCode() {
+      const fresh = new URL(authorize);
+      fresh.searchParams.set("prompt", "consent");
+      fresh.searchParams.set("state", crypto.randomUUID());
+
+      const response = await issuerRequest(`${fresh.pathname}${fresh.search}`, {
+        headers: { cookie },
+      });
+
+      expect(response.status).toBe(200);
+      const redirect = new URL(((await response.json()) as { url: string }).url, issuer);
+      expect(redirect.pathname).toBe("/oauth/consent");
+
+      const consent = await issuerRequest("/api/auth/oauth2/consent", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({
+          accept: true,
+          oauth_query: redirect.search.slice(1),
+          scope: "openid offline_access mcp:read",
+        }),
+      });
+
+      expect(consent.status).toBe(200);
+
+      return (
+        new URL(((await consent.json()) as { url: string }).url).searchParams.get("code") ?? ""
+      );
+    }
+
+    const exchange = (body: URLSearchParams) =>
+      issuerRequest("/api/auth/oauth2/token", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+      });
+
+    for (const field of ["code_verifier", "redirect_uri"]) {
+      const invalid = new URLSearchParams(form);
+      invalid.set("code", await freshCode());
+      invalid.set(
+        field,
+        field === "code_verifier"
+          ? randomBytes(32).toString("base64url")
+          : "https://foreign.e2e.invalid/callback",
+      );
+      expect((await exchange(invalid)).status).toBeGreaterThanOrEqual(400);
     }
 
     const refresh = new URLSearchParams({
@@ -347,13 +538,76 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
 
     expect(replay.status).toBeGreaterThanOrEqual(400);
 
-    const revoked = await issuerRequest("/api/auth/oauth2/revoke-grant", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie },
-      body: JSON.stringify({ grantId: grant.grantId }),
-    });
+    const freshExchange = new URLSearchParams(form);
+    freshExchange.set("code", await freshCode());
+    const freshResponse = await exchange(freshExchange);
+    expect(freshResponse.status).toBe(200);
+
+    const raceToken = (await freshResponse.json()) as {
+      access_token: string;
+      refresh_token: string;
+    };
+
+    const [revoked, raceRefresh] = await Promise.all([
+      issuerRequest("/api/auth/oauth2/revoke-grant", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ grantId: grant.grantId }),
+      }),
+      exchange(
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: client.client_id,
+          refresh_token: raceToken.refresh_token,
+        }),
+      ),
+    ]);
+
+    if (raceRefresh.ok) {
+      const issued = (await raceRefresh.json()) as { access_token: string; refresh_token: string };
+
+      const revokedAccess = await issuerRequest("/api/mcp", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${issued.access_token}`,
+          "content-type": "application/json",
+          "MCP-Protocol-Version": "2025-11-25",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "tools/list", params: {} }),
+      });
+
+      expect(revokedAccess.status).toBe(401);
+      expect(
+        (
+          await exchange(
+            new URLSearchParams({
+              grant_type: "refresh_token",
+              client_id: client.client_id,
+              refresh_token: issued.refresh_token,
+            }),
+          )
+        ).status,
+      ).toBeGreaterThanOrEqual(400);
+    } else {
+      expect(raceRefresh.status).toBe(400);
+    }
 
     expect(revoked.status).toBe(200);
+    expect((await callMcp("ledger_snapshot", { scope })).status).toBe(401);
+    expect(await ledger(book)).toEqual(before);
+    expect(
+      (
+        await issuerRequest("/api/auth/oauth2/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: client.client_id,
+            refresh_token: token.refresh_token ?? "",
+          }),
+        })
+      ).status,
+    ).toBeGreaterThanOrEqual(400);
 
     const afterRevocation = await database();
 
@@ -379,7 +633,7 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
       join(environment().artifacts, "oauth-mcp-code-flow.json"),
       JSON.stringify(
         {
-          status: "code_flow_only",
+          status: "scoped_read_only_mcp",
           provider: "@better-auth/oauth-provider@1.7.5",
           issuerMatchesDiscovery: config.issuer === `${issuer}/api/auth`,
           mcpResourceDiscoveryMatchesIssuer: resource.resource === `${issuer}/api/mcp`,
@@ -390,7 +644,7 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
           consentAccepted: accepted.status === 200,
           codeExchanged: exchanged.status === 200,
           tokenBoundToImmutableReferenceAndResource: referenceBound,
-          mcpBearerDisabledUntilScopedAdmission: prematureMcp.status === 401,
+          mcpBearerAdmittedToReadOnlyCatalog: prematureMcp.status === 200,
           codeReplayRefused: replay.status >= 400,
           baselineRefreshSucceeded: baselineRefresh.status === 200,
           concurrentRefreshStatuses: refreshStatuses,
@@ -398,12 +652,15 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
           refreshFamilyInvalidatedAfterReplay: afterConcurrentReplay.status >= 400,
           appendOnlyRevocationRecorded: revoked.status === 200,
           authorizationAfterRevocationRefused: authorizationAfterRevocation.status >= 400,
-          pending: [
-            "transactional firm/book ceiling admission",
-            "MCP bearer admission",
-            "grant revocation",
-            "refresh-family race",
-          ],
+          foreignBookRefusedAfterMembershipAdded: true,
+          removedMembershipRefused: true,
+          expiredTokenRefused: true,
+          ordinaryHttpRefused: ordinaryHttp.status === 401,
+          revokedGrantRefused: true,
+          unchangedLedger: true,
+          invalidVerifierAndRedirectRefused: true,
+          refreshVersusRevocationDidNotRestoreAccess: true,
+          pending: ["consent UI browser qualification"],
         },
         null,
         2,
@@ -419,21 +676,3 @@ test("signed-in operator completes S256 OAuth code exchange against real Postgre
     }
   }
 });
-
-test.todo("invalid verifier, wrong redirect, wrong resource and expired token refuse");
-
-test.todo(
-  "added membership never widens token ceiling; revoked firm/book membership and grant deny admission and transaction recheck",
-);
-
-test.todo(
-  "refresh rotation/replay and concurrent rotation never restore revoked grant or broaden token family",
-);
-
-test.todo(
-  "MCP discovery and invocation agree on effect classification and delegated HTTP human approval refuses",
-);
-
-test.todo(
-  "sanitized repeatable proof records resource discovery, issuer discovery, scope and unchanged journals",
-);
