@@ -184,9 +184,8 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
           )
         ).rows;
         stage = "book_lock_probe";
-        await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE NOWAIT", [
-          book.bookId,
-        ]);
+        await admin.query("SET LOCAL lock_timeout='1s'");
+        await admin.query("SELECT id FROM openerp.books WHERE id=$1 FOR UPDATE", [book.bookId]);
         bookLockReleased = true;
         await admin.query("ROLLBACK");
       } finally {
@@ -1135,6 +1134,7 @@ test("decision queue resumes through the current egress port", async () => {
     try {
       await holder.query("BEGIN");
       await holder.query("SELECT id FROM openerp.books WHERE id=$1 FOR SHARE", [f.book.bookId]);
+
       const response = await fetch(blocked.endpoint, {
         method: "POST",
         body: JSON.stringify({
