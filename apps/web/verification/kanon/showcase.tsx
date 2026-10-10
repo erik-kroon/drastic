@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute, useLocation } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { Route as RootRoute } from "../../src/routes/__root";
 
@@ -39,7 +39,7 @@ export const Route = createRoute({
 });
 
 function KanonReference() {
-  const screen = Route.useParams().screen;
+  const screen = useLocation({ select: (location) => location.pathname.split("/").at(-1) });
 
   return (
     <Toaster>
@@ -63,23 +63,14 @@ function ListScreen() {
           title="Att göra"
           tabs={
             <>
-              <BarTab
-                label="Väntar på dig"
-                count={5}
-                active
-                render={<Link to="/kanon/$screen" params={{ screen: "list" }} />}
-              />
+              <BarTab label="Väntar på dig" count={5} active render={<a href="/kanon/list" />} />
               <BarTab
                 label="Bevakas"
                 count={3}
                 active={false}
-                render={<Link to="/kanon/$screen" params={{ screen: "review" }} />}
+                render={<a href="/kanon/review" />}
               />
-              <BarTab
-                label="Klart"
-                active={false}
-                render={<Link to="/kanon/$screen" params={{ screen: "focus" }} />}
-              />
+              <BarTab label="Klart" active={false} render={<a href="/kanon/focus" />} />
             </>
           }
           action={
@@ -209,9 +200,7 @@ function ReviewScreen() {
     <ReviewPage
       bar={
         <DetailBar
-          crumbs={[
-            { label: "Bank", render: <Link to="/kanon/$screen" params={{ screen: "list" }} /> },
-          ]}
+          crumbs={[{ label: "Bank", render: <a href="/kanon/list" /> }]}
           current="Granska matchning, 3 okt"
         />
       }

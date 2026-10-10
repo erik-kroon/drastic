@@ -91,6 +91,22 @@ try {
     readFileSync(path.join(root, "verification/paper/kanon-manifest.json"), "utf8"),
   );
 
+  // Transport approvals bind production commit history, which this synthetic
+  // repository does not contain. Fixture screens use their own mapping below.
+  delete manifest.transportOnlyChanges;
+
+  for (const entry of manifest.entries) {
+    if (!["matches", "drifts"].includes(entry.status)) continue;
+    entry.status = "unverified";
+    entry.evidence = null;
+    entry.notes = "Disposable lint fixture mapping only; no design adoption or parity claim.";
+  }
+
+  writeFileSync(
+    path.join(sandbox, "verification/paper/kanon-manifest.json"),
+    JSON.stringify(manifest),
+  );
+
   const inventory = JSON.parse(
     readFileSync(path.join(root, "docs/design/legacy-ui-imports.json"), "utf8"),
   );
@@ -132,6 +148,11 @@ try {
   git("add", ".");
   git("commit", "--quiet", "-m", "Synthetic baseline");
 
+  const ledger = command("node", ["verification/paper/check.mjs", "HEAD", "--write-ledger"]);
+
+  assert.equal(ledger.status, 0, ledger.output);
+  git("add", "docs/design/parity-ledger.md");
+  git("commit", "--quiet", "-m", "Synthetic mapping ledger");
   const base = git("rev-parse", "HEAD");
 
   writeFileSync(path.join(sandbox, "fixture.js"), 'export const initial = "changed";\n');
