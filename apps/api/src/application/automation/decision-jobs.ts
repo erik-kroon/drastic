@@ -171,7 +171,7 @@ export const admitDecisionRequest = Effect.fn("decisionJobs.admit")(function* (
   return yield* withBook(
     token,
     command.scope,
-    false,
+    true,
     function* (tx, principal) {
       const policy = yield* currentPolicy(tx, command.scope);
       const existing = (yield* Db.readKey(tx, command.scope.bookId, command.idempotencyKey))[0];
@@ -234,7 +234,7 @@ export const getDecisionRequest = Effect.fn("decisionJobs.get")(function* (
   token: string,
   command: { scope: Scope; id: string },
 ) {
-  return yield* withBook(token, command.scope, false, function* (tx) {
+  return yield* withBook(token, command.scope, true, function* (tx) {
     const row = (yield* Db.readRequest(tx, command.scope.bookId, command.id))[0];
 
     if (!row) return yield* failure("NotFound");

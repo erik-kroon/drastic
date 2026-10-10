@@ -101,7 +101,7 @@ export function readEvidence(tx: Transaction, bookId: string, id: string) {
 export function readRequester(tx: Transaction, bookId: string, row: RequestRow) {
   return tx.execute<{ live: boolean }>(
     sql`
- select exists(select 1 from openerp.memberships m where m.book_id=${bookId} and m.actor_id=${row.actorId})
+ select exists(select 1 from openerp.memberships m where m.book_id=${bookId} and m.actor_id=${row.actorId} and m.role='operator')
  and not exists(select 1 from openerp.identity_admissions a where a.actor_id=${row.actorId} and not a.enabled)
  and (${row.credentialHash}::text is not null and exists(select 1 from openerp.credentials x where x.token_hash=${row.credentialHash} and x.actor_id=${row.actorId} and x.revoked_at is null and x.expires_at>clock_timestamp())
  or ${row.sessionId}::text is not null and exists(select 1 from openerp_auth.session x where x.id=${row.sessionId} and x.user_id=${row.actorId} and x.expires_at>clock_timestamp())) as live`,
