@@ -1,7 +1,7 @@
 # Automation handoff — layered accounting automation
 
 Snapshot: 10 October 2026, `main` at `fd5b4b2`. Decision record:
-[ADR 0021](../adr/0021-layered-accounting-automation.md) (accepted direction; legal
+[ADR 0021](https://github.com/erik-kroon/drastic/blob/automation/pr19-review-fixes/docs/adr/0021-layered-accounting-automation.md) (accepted direction; legal
 footing and bars open). Builds on
 [ADR 0017](../adr/0017-bureau-first-product-focus.md) and
 [ADR 0020](../adr/0020-authorization-basis-presence-and-mandates.md).
@@ -18,8 +18,17 @@ Readiness labels:
 - **Design-pending:** UI needs Paper adoption under the page 00 contract.
 - **Gated:** needs a data-use or provider authorization.
 
-No model is called, trained or served anywhere today. Nothing below claims accuracy,
+The earlier issue blocks are historical scope where the evening owner update supersedes them. No live model is approved. Nothing below claims accuracy,
 time saving or legal clearance.
+
+
+## Evening owner update, 2026-10-10
+
+Plans [05](../plans/05-accounting-agent/overview.md) and [06](../plans/06-rule-sources/overview.md) are approved. Their phase specifications define the new engine and source work. The owner order is PR #20 review fixes, AUT-11 shadow jobs, AUT-06 close predicate, voucher support, synthetic baseline, then run engine and deterministic month close. Models must improve the deterministic result. Rule-source work uses fixtures while the engine waits on review.
+
+No model reads document text or client free text. Build the engine, inner loop and interpreter from the specifications without copying source. Effect AI stays behind a Drastic port. No billing, metering or managed-plan caps belong in this repository. People start and stop runs; agent tools read plan previews only. Modes remain per question and book in the operator console.
+
+ADR 0019 blocks client delivery. ADR 0020 remains proposed. Bedrock EU hosting and live source fetching remain AUT-00 decisions. AUT-D11 and AUT-D12 are not adopted.
 
 ## Rules for every issue
 
@@ -74,6 +83,8 @@ AUT-24 ◄─ AUT-12        AUT-25 ◄─ AUT-01        AUT-26 ◄─ AUT-01
 ---
 
 ## AUT-00 Decide the automation basis and firm-learning legal footing
+
+Open evening decisions include Claude on Bedrock through an EU geographic inference profile, proposed ADR 0019 client roles, proposed ADR 0020 mandates, and live public-source fetching. Plan approval resolves none of these. AUT-D11 and AUT-D12 await adoption.
 
 **Readiness:** Decision · **Owner:** founder, with counsel · **Size:** not engineering
 
@@ -268,7 +279,34 @@ both a product feature and the baseline every model must beat.
 - [ ] An offline report over AUT-02 examples records consequence accuracy and coverage
       for firm memory alone. This is the baseline artifact.
 
-## AUT-06 Verification coverage per book and period
+## AUT-06 Close predicate and verification coverage
+
+## Phase specification
+
+[phase-01-close-predicate.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-01-close-predicate.md)
+
+One read operation answers "is this book and period done?" as typed check results. Every later phase uses it as its exit predicate. This is the riskiest unknown. If "done" cannot be expressed in code, no run can be verified.
+
+This phase is the AUT-06 implementation. Its independent expectations already exist in `docs/operations/automation-coverage-vectors.md` and are not rewritten here.
+
+## Dependencies
+
+None.
+
+## Failure cases to write first
+
+The AUT-06 vectors, plus these:
+
+- [ ] A check outside the gated set changes the verdict.
+- [ ] An old passing record counts after its dependencies changed.
+- [ ] A read through MCP writes anything. Row counts must be unchanged.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+The original coverage scope remains below.
+
 
 **Readiness:** Ready · **Size:** M · **Depends on:** none
 
@@ -419,8 +457,8 @@ distributions. Add the dependency only if needed, and verify the lockfile.
 - Policy `off` enqueues nothing.
 - Shadow mode leaves every product read and queue identical, shown by comparing
   persisted state with shadow on and off.
-- Budget exhaustion is an explicit skip, and unknown usage is counted.
-- Injected instructions in document text change nothing beyond that one claim.
+- Oversized model state is refused locally. Provider usage is diagnostic evidence only; managed billing and plan caps stay outside this repository.
+- Document text and client free text never enter decision-model state. An attempted disclosure is refused before dispatch.
 
 **Acceptance**
 
@@ -658,7 +696,9 @@ required.
 
 ## AUT-28 AI egress boundary
 
-**Readiness:** Implementation and synthetic verification tracked in [the AUT-28 record](ai-egress-implementation.md). Live-provider qualification remains gated by AUT-00.
+Linear [DRA-256](https://linear.app/drastic-dev/issue/DRA-256/aut-28-enforce-the-ai-egress-boundary). PR #21 is merged into PR #20; live authorization remains open.
+
+**Readiness:** Implementation and synthetic verification tracked in [the AUT-28 record](https://github.com/erik-kroon/drastic/blob/automation/pr19-review-fixes/docs/operations/ai-egress-implementation.md). Live-provider qualification remains gated by AUT-00.
 
 Every product model call uses one boundary. The boundary loads stored identities under book authority, assigns stable book tokens and retains disclosure admissions before dispatch. Client names, owners, employees and private or unclassified counterparties are masked. Evidence-backed company counterparties keep their names. Sole-trader names are masked, while separately typed industry and tax attributes remain usable.
 
@@ -899,3 +939,540 @@ Add a second-approver step:
 - A new OCR dependency.
 - Payroll learning.
 - Investor claims of accuracy or time saving.
+
+## Approved plan phase issues
+
+
+## AUT-33 Supporting document per voucher
+
+## Phase specification
+
+[phase-02-voucher-support.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-02-voucher-support.md)
+
+Every voucher in a period either cites a supporting document or carries an explicit reason why none exists. This is the most common missing fact in small-company books, and today nothing checks it. `evidenceRefs` may be empty and posting only verifies hashes (`domain/ledger.ts:110`, `posting.ts:531-534`).
+
+## Dependencies
+
+AUT-06
+
+## Failure cases to write first
+
+- [ ] A voucher whose only reference points at a missing or replaced document passes. It must fail.
+- [ ] An agent credential records a no-document reason. It must be refused.
+- [ ] A corrected voucher inherits the original's support without saying so.
+- [ ] The check counts vouchers outside the period or after the cutoff.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-32 Synthetic bureau month and deterministic baseline
+
+## Phase specification
+
+[phase-03-synthetic-month.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-03-synthetic-month.md)
+
+Build the lever every later phase is measured with. A script creates a synthetic bureau month. A scorer compares any end state with independently authored gold expectations. The baseline is captured before any run exists, so later results read as "old value against new value".
+
+## Dependencies
+
+AUT-06, AUT-33
+
+## Failure cases to write first
+
+- [ ] The generator writes to PostgreSQL outside the operator seeding step.
+- [ ] Two runs with the same seed produce different projection digests.
+- [ ] The scorer passes when the predicate is `inconclusive`.
+- [ ] Gold expectations are edited after implementation starts without a recorded reason.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-29 Run engine and deterministic playbooks
+
+## Phase specification
+
+[phase-04-run-model.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-04-run-model.md), [phase-05-step-executor.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-05-step-executor.md), [phase-06-supplier-playbook.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-06-supplier-playbook.md), [phase-07-att-gora.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-07-att-gora.md), [phase-10-month-close.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-10-month-close.md)
+
+Choose and land the data shape of a playbook run. This is a one-way door. Every later phase reads and writes it. Run the `architect` skill with an arena and a judge from a different model family before writing the migration. Use the harness research in [harness-research.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/harness-research.md) as input.
+
+The preparation runner advances runs one step at a time. A kill at any step boundary followed by a restart reaches the same end state.
+
+Playbooks are data, not code branches. The first playbook prepares a period's supplier invoices using only existing owners, firm memory and rules. No model runs. This proves the orchestration value on its own.
+
+A person sees exactly one Att göra item per step that waits on them, with its cause. A run can be paused, resumed and handed to a colleague.
+
+"Gör september klart för Fjällby" runs end to end on the synthetic month and meets the program definition of done in the overview. It uses code, rules, firm memory and people only. Models come afterwards, in Phases 11 and 12, as measured improvements on this result.
+
+## Dependencies
+
+AUT-06, AUT-32
+
+## Failure cases to write first
+
+- [ ] Two runners advance the same step. The fence must refuse the second.
+- [ ] A stopped run advances.
+- [ ] A step result from an older playbook version finalises a newer run.
+- [ ] An agent credential starts or stops a run.
+- [ ] A pending approval is lost or expires because the runner restarted.
+- [ ] An approval resolves for records whose digest changed after it was requested.
+- [ ] One inbox entry is consumed twice.
+
+- [ ] A crash after the owner commits and before the step finalises produces a second owner effect. Replay must return the first.
+- [ ] A lease expires mid-step and a second runner finalises a stale result.
+- [ ] A permanent failure is retried.
+- [ ] Budget exhaustion is reported as success.
+
+- [ ] A skipped step is missing from the preview. Every skip must carry a reason.
+- [ ] The playbook posts anything without approval or a valid mandate.
+- [ ] The builder reads sources twice and the selection differs from the capture.
+- [ ] Rerunning the playbook on a finished period creates duplicate reviews.
+
+- [ ] One waiting step yields two items, or none.
+- [ ] A resolved step leaves its item open.
+- [ ] Hand-over loses the decision trail.
+- [ ] A paused run advances when the runner restarts.
+
+- [ ] The run reports done while any gated check is not a fresh `pass`.
+- [ ] Filing, payment or signing happens without a presence gesture.
+- [ ] A kill at any step boundary changes the canonical projection.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-29-P4 Run model and architect arena
+
+## Phase specification
+
+[phase-04-run-model.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-04-run-model.md)
+
+Choose and land the data shape of a playbook run. This is a one-way door. Every later phase reads and writes it. Run the `architect` skill with an arena and a judge from a different model family before writing the migration. Use the harness research in [harness-research.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/harness-research.md) as input.
+
+## Dependencies
+
+AUT-06, AUT-32
+
+## Failure cases to write first
+
+- [ ] Two runners advance the same step. The fence must refuse the second.
+- [ ] A stopped run advances.
+- [ ] A step result from an older playbook version finalises a newer run.
+- [ ] An agent credential starts or stops a run.
+- [ ] A pending approval is lost or expires because the runner restarted.
+- [ ] An approval resolves for records whose digest changed after it was requested.
+- [ ] One inbox entry is consumed twice.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Compare candidates A, B and D in an architect arena. Use a judge from a different model family. Retain the verdict in `verification/agent-mode/` for owner review.
+
+## AUT-29-P5 Fenced step executor and recovery
+
+## Phase specification
+
+[phase-05-step-executor.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-05-step-executor.md)
+
+The preparation runner advances runs one step at a time. A kill at any step boundary followed by a restart reaches the same end state.
+
+## Dependencies
+
+AUT-29-P4
+
+## Failure cases to write first
+
+- [ ] A crash after the owner commits and before the step finalises produces a second owner effect. Replay must return the first.
+- [ ] A lease expires mid-step and a second runner finalises a stale result.
+- [ ] A permanent failure is retried.
+- [ ] Budget exhaustion is reported as success.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-29-P6 Playbook registry and supplier invoices
+
+## Phase specification
+
+[phase-06-supplier-playbook.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-06-supplier-playbook.md)
+
+Playbooks are data, not code branches. The first playbook prepares a period's supplier invoices using only existing owners, firm memory and rules. No model runs. This proves the orchestration value on its own.
+
+## Dependencies
+
+AUT-32, AUT-29-P5
+
+## Failure cases to write first
+
+- [ ] A skipped step is missing from the preview. Every skip must carry a reason.
+- [ ] The playbook posts anything without approval or a valid mandate.
+- [ ] The builder reads sources twice and the selection differs from the capture.
+- [ ] Rerunning the playbook on a finished period creates duplicate reviews.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-29-P7 Att göra read model, pause and hand-over
+
+## Phase specification
+
+[phase-07-att-gora.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-07-att-gora.md)
+
+A person sees exactly one Att göra item per step that waits on them, with its cause. A run can be paused, resumed and handed to a colleague.
+
+## Dependencies
+
+AUT-29-P6
+
+## Failure cases to write first
+
+- [ ] One waiting step yields two items, or none.
+- [ ] A resolved step leaves its item open.
+- [ ] Hand-over loses the decision trail.
+- [ ] A paused run advances when the runner restarts.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-31 Completeness and batched questions
+
+## Phase specification
+
+[phase-08-missing-facts.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-08-missing-facts.md), [phase-09-client-question.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-09-client-question.md)
+
+The system can say, deterministically, which facts are missing for a book and period. This is the largest lever on accountant time. A model cannot book a receipt nobody sent.
+
+A run asks each client once, with every askable fact in one question, and turns the answers back into facts. Today a question targets one record and can only be addressed to a book operator (`work-questions.ts:519-525`).
+
+## Dependencies
+
+AUT-06, AUT-33, AUT-32
+
+## Failure cases to write first
+
+- [ ] A fully allocated bank row is reported missing.
+- [ ] A fact resolved after the observed cutoff counts as resolved at that cutoff.
+- [ ] The same gap appears twice under two kinds.
+- [ ] An unknown read is reported as "nothing missing". It must be `not_established`.
+
+- [ ] Two runs ask the same client about the same fact.
+- [ ] An answer to one slot resolves a different fact.
+- [ ] An agent answers or closes a bundle.
+- [ ] An attachment that is not an already retained original is accepted.
+- [ ] Client free text reaches any model call.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-31-P8 Missing-fact model
+
+## Phase specification
+
+[phase-08-missing-facts.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-08-missing-facts.md)
+
+The system can say, deterministically, which facts are missing for a book and period. This is the largest lever on accountant time. A model cannot book a receipt nobody sent.
+
+## Dependencies
+
+AUT-06, AUT-33, AUT-32
+
+## Failure cases to write first
+
+- [ ] A fully allocated bank row is reported missing.
+- [ ] A fact resolved after the observed cutoff counts as resolved at that cutoff.
+- [ ] The same gap appears twice under two kinds.
+- [ ] An unknown read is reported as "nothing missing". It must be `not_established`.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-31-P9 Batched question with typed answers
+
+## Phase specification
+
+[phase-09-client-question.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-09-client-question.md)
+
+A run asks each client once, with every askable fact in one question, and turns the answers back into facts. Today a question targets one record and can only be addressed to a book operator (`work-questions.ts:519-525`).
+
+## Dependencies
+
+AUT-31-P8
+
+## Failure cases to write first
+
+- [ ] Two runs ask the same client about the same fact.
+- [ ] An answer to one slot resolves a different fact.
+- [ ] An agent answers or closes a bundle.
+- [ ] An attachment that is not an already retained original is accepted.
+- [ ] Client free text reaches any model call.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Client delivery is blocked by proposed ADR 0019. The ready implementation may address a bureau operator only. Client UI also waits for AUT-D12 adoption.
+
+## AUT-29-P10 Deterministic month-close playbook
+
+## Phase specification
+
+[phase-10-month-close.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-10-month-close.md)
+
+"Gör september klart för Fjällby" runs end to end on the synthetic month and meets the program definition of done in the overview. It uses code, rules, firm memory and people only. Models come afterwards, in Phases 11 and 12, as measured improvements on this result.
+
+## Dependencies
+
+AUT-29-P7, AUT-31-P9
+
+## Failure cases to write first
+
+- [ ] The run reports done while any gated check is not a fresh `pass`.
+- [ ] Filing, payment or signing happens without a presence gesture.
+- [ ] A kill at any step boundary changes the canonical projection.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-34 Decision-model steps evaluated against deterministic close
+
+## Phase specification
+
+[phase-11-decision-steps.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-11-decision-steps.md)
+
+Decision models enter runs as a measured improvement on the Phase 10 result. Each closed choice goes to the cheapest role that decides it with known reliability.
+
+## Dependencies
+
+AUT-29-P10, AUT-11, AUT-12, AUT-28
+
+## Failure cases to write first
+
+- [ ] A model decides where a ratified rule applies.
+- [ ] Shadow output reaches any product read. Compare persisted state with shadow on and off.
+- [ ] A provider call bypasses the egress boundary.
+- [ ] An abstention is treated as a decision. It must become a person step.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-35 LLM steps and code-mode investigation
+
+## Phase specification
+
+[phase-12-llm-steps.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-12-llm-steps.md)
+
+Add an LLM only where judgement or language is needed, and keep it only if it measurably beats the Phase 11 result. An LLM never makes a closed accounting choice and never posts.
+
+## Dependencies
+
+AUT-34, AUT-24, AUT-00
+
+## Failure cases to write first
+
+- [ ] An LLM output names an account or VAT treatment that is then used without a decision step or a person.
+- [ ] Instructions inside source data change the agent's tools or targets. The AUT-24 watchdog question must trip.
+- [ ] An unknown token appears in output and is restored.
+- [ ] The budget is exceeded and the step reports success.
+- [ ] A program reaches the network, a `prepare` capability, or a capability added after the run started.
+- [ ] A replay of a stored program at its as-of snapshot produces a different finding.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Effect AI is behind a Drastic port. Build our own inner loop and interpreter from the specification without copying source. Bedrock EU is an unapproved AUT-00 candidate. Deterministic technical execution limits remain separate from managed billing or plan caps.
+
+## AUT-D11 Design the run view
+
+## Phase specification
+
+[phase-13-surface.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-13-surface.md)
+
+People can start, watch, pause and hand over a run, and answer its questions. Bureaus' own agents can follow the same playbooks over MCP.
+
+## Dependencies
+
+None.
+
+## Failure cases to write first
+
+- [ ] A screen introduces a ninth status, or a percentage in a work screen.
+- [ ] A baseline is regenerated from candidate code.
+- [ ] An MCP prompt lists a step whose tool the agent policy withholds.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Readiness is design-pending. These boards are not adopted. No implementation or baseline regeneration is authorized by this issue.
+
+## AUT-D12 Design the batched client question
+
+## Phase specification
+
+[phase-13-surface.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-13-surface.md)
+
+People can start, watch, pause and hand over a run, and answer its questions. Bureaus' own agents can follow the same playbooks over MCP.
+
+## Dependencies
+
+None.
+
+## Failure cases to write first
+
+- [ ] A screen introduces a ninth status, or a percentage in a work screen.
+- [ ] A baseline is regenerated from candidate code.
+- [ ] An MCP prompt lists a step whose tool the agent policy withholds.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Readiness is design-pending. These boards are not adopted. No implementation or baseline regeneration is authorized by this issue.
+
+## AUT-36 MCP playbook prompts and resources
+
+## Phase specification
+
+[phase-13-surface.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/05-accounting-agent/phase-13-surface.md)
+
+People can start, watch, pause and hand over a run, and answer its questions. Bureaus' own agents can follow the same playbooks over MCP.
+
+## Dependencies
+
+AUT-29-P7
+
+## Failure cases to write first
+
+- [ ] A screen introduces a ninth status, or a percentage in a work screen.
+- [ ] A baseline is regenerated from candidate code.
+- [ ] An MCP prompt lists a step whose tool the agent policy withholds.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+## AUT-30 Fixture-backed rule sources
+
+## Phase specification
+
+[phase-01-corpus.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-01-corpus.md), [phase-02-lookup.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-02-lookup.md), [phase-03-monitor.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-03-monitor.md)
+
+Drastic keeps its own versioned copy of public Swedish sources, so it can answer "what applied on this date". Today it stores no sources, has no fetcher, and has no search.
+
+One operation answers a question for a given date with ranked passages, their authority and their validity. The same operation serves the app, MCP and run steps. Explanations may cite it. Treatments never come from it.
+
+When a source changes, Drastic proposes a release dossier with citations and names the books it affects. An operator reviews and installs it. Today `rule_change_notices` are entered by hand with free-text evidence (`migrations/0010-next-49.sql:18-75`).
+
+## Dependencies
+
+None.
+
+## Failure cases to write first
+
+- [ ] A snapshot is overwritten instead of appended.
+- [ ] A section is returned for a date outside its effective interval.
+- [ ] A date before the first snapshot returns text instead of `unknown`.
+- [ ] A citation that does not parse is dropped silently. It must be counted.
+- [ ] A fetch failure leaves the corpus marked current.
+
+- [ ] A passage valid only after the asked date is returned.
+- [ ] A weaker source outranks a stronger one on the same point.
+- [ ] An official position is presented as law.
+- [ ] The query text reaches any external service. Queries reveal client situations.
+
+- [ ] A dossier is selectable for any treatment before installation.
+- [ ] The author installs their own dossier.
+- [ ] A checksum that differs from the canonical body is accepted.
+- [ ] A change reaches books that never used the affected rule.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+
+## AUT-30-P1 Point-in-time source corpus
+
+## Phase specification
+
+[phase-01-corpus.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-01-corpus.md)
+
+Drastic keeps its own versioned copy of public Swedish sources, so it can answer "what applied on this date". Today it stores no sources, has no fetcher, and has no search.
+
+## Dependencies
+
+None.
+
+## Failure cases to write first
+
+- [ ] A snapshot is overwritten instead of appended.
+- [ ] A section is returned for a date outside its effective interval.
+- [ ] A date before the first snapshot returns text instead of `unknown`.
+- [ ] A citation that does not parse is dropped silently. It must be counted.
+- [ ] A fetch failure leaves the corpus marked current.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+
+## AUT-30-P2 Deterministic rule lookup over HTTP and MCP
+
+## Phase specification
+
+[phase-02-lookup.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-02-lookup.md)
+
+One operation answers a question for a given date with ranked passages, their authority and their validity. The same operation serves the app, MCP and run steps. Explanations may cite it. Treatments never come from it.
+
+## Dependencies
+
+AUT-30-P1
+
+## Failure cases to write first
+
+- [ ] A passage valid only after the asked date is returned.
+- [ ] A weaker source outranks a stronger one on the same point.
+- [ ] An official position is presented as law.
+- [ ] The query text reaches any external service. Queries reveal client situations.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
+
+## AUT-30-P3 Source change monitor and reviewed dossiers
+
+## Phase specification
+
+[phase-03-monitor.md](https://github.com/erik-kroon/drastic/blob/eee5faa/docs/plans/06-rule-sources/phase-03-monitor.md)
+
+When a source changes, Drastic proposes a release dossier with citations and names the books it affects. An operator reviews and installs it. Today `rule_change_notices` are entered by hand with free-text evidence (`migrations/0010-next-49.sql:18-75`).
+
+## Dependencies
+
+AUT-30-P1
+
+## Failure cases to write first
+
+- [ ] A dossier is selectable for any treatment before installation.
+- [ ] The author installs their own dossier.
+- [ ] A checksum that differs from the canonical body is accepted.
+- [ ] A change reaches books that never used the affected rule.
+
+## Delivery
+
+Synthetic data and fixture providers only. Write reproducing E2E failure cases before implementation and retain artifacts under `test-results/`. Claim checks only from a clean worktree. No model reads client free text or document text. No runtime harness dependency, billing, metering or managed-plan caps. People start and stop runs. Per-question/book modes are operator-controlled. ADR 0020 remains proposed; deterministic playbooks work without mandates.
+
+Start only while the engine track waits on review. Use fixtures; live public-source fetching remains an AUT-00 decision.
