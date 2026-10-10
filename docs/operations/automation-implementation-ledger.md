@@ -152,3 +152,11 @@ Local commit `7bd752d` adds the shared HTTP adapter, injected Workers AI port an
 Three focused workflows passed, including two authored adapter fixtures and the existing Azure failure regression. Changed/full checks, owners (54/54) and diff checks passed. Evidence and repeatable commands are in `verification/decision-models/README.md` and `test-results/dra228-focused`, stable source hash `3d4765067b96742f090d523965e3d28a48c947572ddfb63be0f19107d0a4d6bd`. No live binding activation, provider call, deployment or new MCP surface occurred.
 
 AUT-05 is now in progress. Its independent memory vectors predate implementation. Same-book retained facts, correction lineage and temporal holdout determine precedent and baseline evidence; missing historical facts remain unknown. Shadow jobs and evaluation follow this prerequisite, with anomaly and remaining ready work retained in the goal.
+
+## AUT-05 checkpoint
+
+Local commit `d5c199d` replaces the latest-five query with retained same-book precedent, correction-aware labels and deterministic ranking. Suggestion records preserve both full precedents and the exact compatible items returned to the current client. New sealed examples are v3; old immutable exports remain readable.
+
+Four focused workflows passed across retained runs: memory vectors, the Swedish hint/provenance regression, the shared public reversal/export workflow and the corrected public serving/CLI workflow. The synthetic baseline has two eligible targets, one suggestion and zero known comparable consequences: coverage 1/2 and accuracy unavailable. Changed/full checks and owners (55/55) passed. `verification/firm-memory/README.md` records commands, artifacts, CLI fixes and the distinction between retained behavior-run hash and final type hardening. No browser parity, live-provider performance, training or production qualification is claimed.
+
+AUT-11 is now in progress: immutable requests/results, fenced background dispatch, read-only runtime policies and bounded synthetic budgets. Independent failure cases are already committed. Add a bounded machine-runner processing surface so the Cloudflare entry can genuinely inject its AI binding into the shared processor; configuring or invoking a live deployment remains gated. AUT-12 evaluation and remaining anomaly/verification work follow.

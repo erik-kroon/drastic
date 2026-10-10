@@ -33,3 +33,18 @@ For synthetic fixtures, a policy can use an explicit bounded dispatch-count budg
 The non-interference artifact compares equivalent synthetic workflows with shadow off and on. It separately inventories expected differences in decision-owned requests, attempts, results, reservations and dedicated effect-mq jobs. Product read models, ordinary product queues, approval bindings, exact financial amounts, execution receipts and immutable posted history must agree after stable identity/time normalization. No suggestion record is served merely by computing shadow precedents.
 
 Use the existing preparation runner, effect-mq scheduling and delivery reconciliation. Short claim/admission/finalization transactions own database state; the provider call runs between them. Runtime policy privileges are SELECT-only; privileged console writes must be separate from ordinary runtime credentials. A product client cannot grant itself a mode, budget, release or data-use permission.
+
+## Cloudflare processing surface
+
+The current Cloudflare entry exposes only fetch; Bun cannot supply a Workers AI binding. Add a bounded internal processing endpoint using the same application processor/fences as the queue runner. Authentication must require a live machine credential with the exact configured runner identity, not any valid API credential. New machine run/publication gestures do not grant human accounting authority.
+
+| Authored endpoint action | Required observation |
+| --- | --- |
+| No bearer, human session, expired/revoked token or a different valid machine credential | Refusal before claim, budget reservation or provider disclosure |
+| Correct runner credential, wrong book/request scope | Refusal; no cross-book information or dispatch |
+| No configured runner identity | Disabled/refused processing, never arbitrary credential fallback |
+| Correct runner processes the same request twice | Same terminal/uncertain outcome, no second disclosure |
+| Authored binding supplied through the processing environment | Same short-transaction/outside-provider/fenced-finalization behavior as HTTP fixture |
+| Endpoint exists but no live AI binding or scheduler is deployed | Source capability only, never a claim of live execution |
+
+Admission APIs cannot call this processor with an interactive user's identity to make an immediate model decision. Background runner invocation is separate from approval/posting. Source wiring does not activate a live binding, establish provider data-use permission or qualify immutable weights.
