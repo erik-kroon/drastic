@@ -1,0 +1,78 @@
+{
+  "synthetic": true,
+  "sourceRevision": "295d0b4ca3e763664331136eec9c761271587ab8",
+  "sourceHashes": {
+    "apps/api/src/application/company-setup.ts": "95cb251e8bca372217b003a094889d3d9e23e92a3b648acdf6aee1bf0bda966e",
+    "apps/api/src/application/firms.ts": "c78cc197ea19cd310089cd7c2dc0a0ebf57f45db97f8dc5d83e0a5e38a72c04a",
+    "apps/api/src/application/firm-portfolio.ts": "844957f2b007358bb3da3870eb1141b852139b3416e4b3156c08e3edbfda2f20",
+    "apps/api/src/db/connection.ts": "e18be279e72ee8eac73ca47d597032db20d118947dcfa2ddf4043c3e1fbd9789",
+    "apps/api/src/db/transaction.ts": "202f8234cddc43a733abb9acde03ce5a6fb96bc3a0d84c10cff618c583fb2ef6",
+    "apps/api/src/index.ts": "117564da48902ac034685aa44b79d0d99d1128ba41b0d610e38af650ca8777d9",
+    "packages/contracts/src/firms.ts": "5fd8de8e74be2a9f1636d2f3de7f745da66a982434cdd0e122e5e0ca8ae53ce3",
+    "apps/web/src/components/firms/index.tsx": "ed9f748bbff467ae29ab14dc057206354f783a83748483343ce9be4a9b11a99a",
+    "apps/web/src/lib/accounting-api.ts": "17a2513c1ed5e823cf864436bf1ada1a9dbcf5e45d5030285025659b4010ec6d",
+    "verification/paper/seed-demo.mjs": "095e06f7d1e8990b4c72e65bba22a8ba925647422c4a145ec5140271c3eeb2e7",
+    "verification/paper/verify-demo.mjs": "00f98a7ec4a7a0e85b36e366c65c03fc3d8629300de0c89335189018ca21ecd7"
+  },
+  "modes": {
+    "demo": {
+      "passed": true,
+      "retainedClients": 3,
+      "waitingItems": 3,
+      "retainedBankRows": 2
+    },
+    "worst": {
+      "passed": true,
+      "retainedClients": 1284,
+      "waitingItems": 5,
+      "retainedBankRows": 3
+    },
+    "empty": {
+      "passed": true,
+      "retainedClients": 0,
+      "waitingItems": 0,
+      "retainedBankRows": 0
+    },
+    "one": {
+      "passed": true,
+      "retainedClients": 1,
+      "waitingItems": 1,
+      "retainedBankRows": 1
+    },
+    "many": {
+      "passed": true,
+      "retainedClients": 1284,
+      "waitingItems": 1003,
+      "retainedBankRows": 1001
+    }
+  },
+  "capacity": {
+    "createdCompaniesPerActor": 2000,
+    "clientsPerFirm": 2000,
+    "boundaryReceipt": "verification/paper/evidence/demo-2026-10-10/capacity-boundaries.json"
+  },
+  "checks": {
+    "focusedApiTests": {
+      "passed": 26,
+      "failed": 0,
+      "command": "bun run test:e2e apps/api/tests/posting.e2e.test.ts apps/api/tests/company-ledger-setup.e2e.test.ts apps/api/tests/firm-portfolio.e2e.test.ts"
+    },
+    "changed": true,
+    "changedFull": true,
+    "owners": true,
+    "design": true,
+    "browserTypes": true,
+    "sharedReaderHealthyAndUnauthorized": true
+  },
+  "mcp": {
+    "directProtocolPassed": true,
+    "mcpjamPassed": false,
+    "failures": [
+      "2025-06-18: fetch failed / other side closed",
+      "2025-11-25: fetch failed / other side closed"
+    ],
+    "modelEvalRun": false
+  },
+  "parityQualified": false,
+  "productionQualified": false
+}
