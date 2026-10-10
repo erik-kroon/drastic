@@ -1,0 +1,37 @@
+$ bun scripts/check-changed.ts --type-aware origin/main
+Design contract passed; 8 measured matching screens. This is not a visual comparison.
+Checking 13 changed file(s) against origin/main:
+  apps/web/src/components/book-workspace.tsx
+  apps/web/src/components/commerce/catalog-articles.tsx
+  apps/web/src/components/commerce/sales-orders.tsx
+  apps/web/src/components/commerce/shared.tsx
+  packages/ui/src/kanon/action.tsx
+  packages/ui/src/kanon/form.tsx
+  packages/ui/src/kanon/layouts.tsx
+  packages/ui/src/kanon/register.tsx
+  packages/ui/src/theme/kanon.stylex.ts
+  tests/browser/article-register.e2e.ts
+  tests/browser/quote-revision.e2e.ts
+  verification/paper/capture.mjs
+  verification/paper/seed-commercial-targets.mjs
+
+oxfmt --write
+Finished in 11ms on 13 files using 1 threads.
+oxfmt --write: 0.06s
+
+oxlint (type-aware)
+oxlint (type-aware): 2.93s
+
+React Doctor
+React Doctor: 33.97s
+
+tsc --noEmit (apps/web/tsconfig.json)
+tsc --noEmit (apps/web/tsconfig.json): 8.76s
+
+tsc --noEmit (packages/ui/tsconfig.json)
+tsc --noEmit (packages/ui/tsconfig.json): 0.25s
+
+tsc --noEmit (tests/browser/tsconfig.json)
+tsc --noEmit (tests/browser/tsconfig.json): 0.89s
+
+check:changed passed.

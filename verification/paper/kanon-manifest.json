@@ -56,8 +56,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-10 composes stored attention, unmatched bank and overdue sales work, with an owner-total aggregate count. Single remaining bank events expose their stored description and remaining amount; larger accounts keep their summary and bank-owner destination. Overdue amounts and age use the sales owner's outstanding amount and asOf. Valid prepared supplier reviews show proposal status without changing approval or expiry checks. The header displays the attention owner's actual checkedAt, not a fabricated board clock. Database-derived read time and overdue age remain different from the Effect test clock. State columns, plain tab counts, filter outline and 14px card gutters follow stored JSX. Comparison remains above unchanged 2%; missing watch facts, Vinter's unknown calculated gross, Sara/agent activity and unsupported board-only actions are not fabricated. Current-source mode, interaction and visual checks are retained separately; dark/narrow are diagnostics, not adopted parity. Native zoom and complete state qualification remain pending. The retained demo receipt also predates the integrated bureau-intake work and requires fresh source qualification; baseline and comparison policy remain unchanged.\nRecurring R-01 uses an optional tertiary action row; existing parity is not asserted.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.",
-      "implementationNote": "Recovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified."
+      "notes": "K-10 composes stored attention, unmatched bank and overdue sales work, with an owner-total aggregate count. Single remaining bank events expose their stored description and remaining amount; larger accounts keep their summary and bank-owner destination. Overdue amounts and age use the sales owner's outstanding amount and asOf. Valid prepared supplier reviews show proposal status without changing approval or expiry checks. The header displays the attention owner's actual checkedAt, not a fabricated board clock. Database-derived read time and overdue age remain different from the Effect test clock. State columns, plain tab counts, filter outline and 14px card gutters follow stored JSX. Comparison remains above unchanged 2%; missing watch facts, Vinter's unknown calculated gross, Sara/agent activity and unsupported board-only actions are not fabricated. Current-source mode, interaction and visual checks are retained separately; dark/narrow are diagnostics, not adopted parity. Native zoom and complete state qualification remain pending. The retained demo receipt also predates the integrated bureau-intake work and requires fresh source qualification; baseline and comparison policy remain unchanged. Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture.\nMerged recurring detail-panel tertiary action retains defaults. Commercial integration does not establish fresh parity for this screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.",
+      "implementationNote": "Main screen contract and immutable references retained. Automation changes request transport only; retained visual evidence predates the merged transport code. Current visual parity is unverified; no screen composition or baseline is adopted or regenerated."
     },
     {
       "id": "K-40",
@@ -182,8 +182,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-11 uses adopted 14px card gutters and compact queue name lines. Full stored titles remain accessible; schema-maximum amounts still wrap. The focused review now shows the stored due date's due-today caption against the existing setup business date, matching K-10 without inventing a clock. Browser checks distinguish the due date from the following day and retain unchanged ledger history. Valid prepared supplier status retains expiry and dependency guards. Refreshed comparison remains above unchanged 2%. The real original, exact approval, synthetic acknowledgment, detailed facts and separate execution remain. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Continuous browser proof and light, dark and narrow captures remain separate from parity; broader states and native zoom remain unqualified. The retained demo receipt also predates the integrated bureau-intake work and requires fresh source qualification; baseline and comparison policy remain unchanged. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending.\nRecurring R-01 uses an optional tertiary action row; existing parity is not asserted.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.",
-      "implementationNote": "Main screen contract and immutable references retained. Automation changes request transport only; retained visual evidence predates the merged transport code. Current visual parity is unverified; no screen composition or baseline is adopted or regenerated.\nRecovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified."
+      "notes": "K-11 uses adopted 14px card gutters and compact queue name lines. Full stored titles remain accessible; schema-maximum amounts still wrap. The focused review now shows the stored due date's due-today caption against the existing setup business date, matching K-10 without inventing a clock. Browser checks distinguish the due date from the following day and retain unchanged ledger history. Valid prepared supplier status retains expiry and dependency guards. Refreshed comparison remains above unchanged 2%. The real original, exact approval, synthetic acknowledgment, detailed facts and separate execution remain. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Continuous browser proof and light, dark and narrow captures remain separate from parity; broader states and native zoom remain unqualified. The retained demo receipt also predates the integrated bureau-intake work and requires fresh source qualification; baseline and comparison policy remain unchanged. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending. Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture.\nMerged recurring detail-panel tertiary action retains defaults. Commercial integration does not establish fresh parity for this screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source.",
+      "implementationNote": "Main screen contract and immutable references retained. Automation changes request transport only; retained visual evidence predates the merged transport code. Current visual parity is unverified; no screen composition or baseline is adopted or regenerated."
     },
     {
       "id": "K-70",
@@ -274,16 +274,12 @@
       "files": [
         "apps/web/src/components/commerce/invoice-drafts.tsx"
       ],
-      "route": "/entities/$entityId/books/$bookId/sales",
+      "route": null,
       "audience": "bureau",
       "status": "unverified",
-      "adoption": "approved",
+      "adoption": "visual direction; exact route/state mapping requires review",
       "behaviorSource": "docs/domain.md",
-      "requiredStates": [
-        "current-draft",
-        "historical-revision-refused",
-        "return-to-origin"
-      ],
+      "requiredStates": [],
       "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
@@ -293,13 +289,7 @@
       "jsxSha256": "1bd08902ae61d3df3f9503650390cd0165fbff23ab461260ab4c9bf9843804fd",
       "parts": [],
       "candidateRoute": "/entities/$entityId/books/$bookId/sales",
-      "comparison": null,
-      "implementationAuthorization": {
-        "by": "Erik Kroon",
-        "date": "2026-10-10",
-        "source": "docs/operations/closeout-existing-screen-exception.md",
-        "scope": "Existing appearance, historical invoice-revision refusal and return navigation only"
-      }
+      "comparison": null
     },
     {
       "id": "K-60",
@@ -623,7 +613,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-16 shared ledger card now uses the adopted 14px gutter. Existing books route, 420px record dialog, side totals, seven immutable lines, evidence, corrections and return owners remain unchanged. Refreshed comparison remains above unchanged 2%; the register background differs from the board's completed-work queue. Real continuous browser proof checks one balanced voucher and original checksum after reload. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution or unsupported payment/activity/next-task facts. Prior dark/narrow and original zoom evidence is historical; native zoom and complete-state qualification remain pending. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending.\nRecurring R-01 uses an optional tertiary action row; existing parity is not asserted.\nPrior K-16 capture predates the optional tertiary footer slot added for R-01; it is retained as historical proof only. Recomparison is required for current source qualification.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "K-16 shared ledger card now uses the adopted 14px gutter. Existing books route, 420px record dialog, side totals, seven immutable lines, evidence, corrections and return owners remain unchanged. Refreshed comparison remains above unchanged 2%; the register background differs from the board's completed-work queue. Real continuous browser proof checks one balanced voucher and original checksum after reload. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution or unsupported payment/activity/next-task facts. Prior dark/narrow and original zoom evidence is historical; native zoom and complete-state qualification remain pending. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending.\nMerged recurring detail-panel tertiary action retains defaults. Commercial integration does not establish fresh parity for this screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "K-20",
@@ -706,8 +696,8 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states xnd cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes. AUT-01 adds citation transport of the rendered immutable ranking id to preparation. No visual composition change or fresh parity claim., K-21 is recaptured after the unchanged bank query is extracted into its shared read owner. One-candidate review remains above unchanged 2%; capture waits for the rendered original. Existing identity acknowledgment, preparation, approval and execution owners are untouched. Continuous real browser proof checks each allocation stage, zero source remaining and retained receipt after reload, with unchanged posted history. Candidate uses the retained synthetic Kontorsservice PDF, not the board's supplier or receipt. No complete coverage or pixel parity qualification is claimed; broader states and native zoom remain unqualified. Owner review bug6 shares bank subject construction and refreshes the citation once only when the stored option-set digest is unchanged. Request transport and exact uncertain-request recovery only; no composition or browser parity qualification. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending.\n",
-      "implementationNote": "Main screen contract and immutable references retained. Automation changes request transport only; retained visual evidence predates the merged transport code. Current visual parity is unverified; no screen composition or baseline is adopted or regenerated.\nRecovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified."
+      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states xnd cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes. AUT-01 adds citation transport of the rendered immutable ranking id to preparation. No visual composition change or fresh parity claim., K-21 is recaptured after the unchanged bank query is extracted into its shared read owner. One-candidate review remains above unchanged 2%; capture waits for the rendered original. Existing identity acknowledgment, preparation, approval and execution owners are untouched. Continuous real browser proof checks each allocation stage, zero source remaining and retained receipt after reload, with unchanged posted history. Candidate uses the retained synthetic Kontorsservice PDF, not the board's supplier or receipt. No complete coverage or pixel parity qualification is claimed; broader states and native zoom remain unqualified. Owner review bug6 shares bank subject construction and refreshes the citation once only when the stored option-set digest is unchanged. Request transport and exact uncertain-request recovery only; no composition or browser parity qualification. 2026-10-10: PDF viewport containment changed for native 200% zoom; current behavior and default visual qualification pending.",
+      "implementationNote": "Main screen contract and immutable references retained. Automation changes request transport only; retained visual evidence predates the merged transport code. Current visual parity is unverified; no screen composition or baseline is adopted or regenerated."
     },
     {
       "id": "K-30",
@@ -837,6 +827,7 @@
         "light",
         "dark"
       ],
+      "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -849,8 +840,8 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Named light and dark palette verification uses the real synthetic overview appearance menu, reload and bookkeeping route. Contract and browser evidence live in verification/paper/evidence/k01-palette/. No specimen comparison or full K-10/K-11 qualification is claimed; visual status remains unverified.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.",
-      "implementationNote": "Recovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified."
+      "notes": "Named light and dark palette verification uses the real synthetic overview appearance menu, reload and bookkeeping route. Contract and browser evidence live in verification/paper/evidence/k01-palette/. No specimen comparison or full K-10/K-11 qualification is claimed; visual status remains unverified. Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture.",
+      "implementationNote": "Shared token owner includes the adopted card's 14px inline gutter as space35. Existing palette, navigation type, mark radius and spacing remain; no foundation specimen parity claim."
     },
     {
       "id": "K-02",
@@ -873,6 +864,7 @@
         "focus-visible",
         "disabled with stated reason"
       ],
+      "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -885,8 +877,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "InlineAction adds the adopted 24px dashed filter presentation using kanon tokens; ordinary links and native actions retain their semantics. K-10 filter destination and Review all behavior are unchanged. Native label-preserving form inhibition needs an explicit owner contract alongside blockedBy; focused submit forms remain unchanged. No foundation specimen parity claim.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.",
-      "implementationNote": "Recovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified."
+      "notes": "InlineAction adds the adopted 24px dashed filter presentation using kanon tokens; ordinary links and native actions retain their semantics. K-10 filter destination and Review all behavior are unchanged. Native label-preserving form inhibition needs an explicit owner contract alongside blockedBy; focused submit forms remain unchanged. No foundation specimen parity claim. Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture."
     },
     {
       "id": "K-03",
@@ -921,7 +912,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "WorkRow state column retains its adopted 150px width without the extra 16px inline padding. Native selection, autofocus and responsive collapse remain. Group pills retain stored counts; schema-maximum amounts wrap in the unchanged amount column. Foundation specimen and native200% qualification remain pending.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "WorkRow state column retains its adopted 150px width without the extra 16px inline padding. Native selection, autofocus and responsive collapse remain. Group pills retain stored counts; schema-maximum amounts wrap in the unchanged amount column. Foundation specimen and native200% qualification remain pending.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "K-04",
@@ -1036,8 +1027,8 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "implementationNote": "Recovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified.",
-      "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures wrap only when needed, including schema-maximum amounts, without truncating stored values. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required. DetailPanelHeader supports native figure h2 for the actual supplier owner while default figure p and subtitle options remain unchanged. DRA-216 main Bank accessible identity includes the current stored book name while its visible caption, root destination, preload and audience/currentness remain unchanged. The exact Bank source recovery link retains coverage destination; candidate native proof pending.\nRecurring R-01 uses an optional tertiary action row; existing parity is not asserted.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "implementationNote": "BarTab now uses the adopted plain inline count and medium weight. Queue titles use one-line ellipsis while full stored names remain accessible and in hover titles; maximum amounts still wrap. Sidebar counts use the attention owner's stored total instead of the first page's length, with no numeric conversion. Existing authority, route state, focus, mobile dialog and 60rem pane behavior remain. Explanatory board still needs owner-adopted specimens before comparison.",
+      "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures wrap only when needed, including schema-maximum amounts, without truncating stored values. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required. DetailPanelHeader supports native figure h2 for the actual supplier owner while default figure p and subtitle options remain unchanged. DRA-216 main Bank accessible identity includes the current stored book name while its visible caption, root destination, preload and audience/currentness remain unchanged. The exact Bank source recovery link retains coverage destination; candidate native proof pending. Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture.\nMerged recurring detail-panel tertiary action retains defaults. Commercial integration does not establish fresh parity for this screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "K-07",
@@ -1106,6 +1097,7 @@
         "changed bank option digest refreshes candidates for a new decision",
         "uncertain refreshed request retains its exact payload and key"
       ],
+      "evidence": null,
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -1115,11 +1107,11 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-10 by Erik Kroon for request transport only. No visual composition or baseline is adopted. Existing screen references are retained; browser and visual parity remain unverified.",
-      "implementationNote": "Recovered recurring kanon composition and retained review return links integrated 2026-10-10. Existing measurements do not qualify these changes; visual status remains unverified.",
+      "implementationNote": "Request and cache bindings only. Existing visual adoption remains with each screen owner; no browser or visual parity claim. Owner review bug6 changes citation freshness and bounded request refresh only; real HTTP driver tests do not verify browser storage or visual parity.",
       "adoptedBy": "Erik Kroon",
       "adoptedOn": "2026-10-10",
       "adoptionScope": "request transport only",
-      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": " Commercial register integration changes shared owners; prior pixel evidence requires a fresh capture."
     },
     {
       "id": "O-01",
@@ -1211,6 +1203,110 @@
       "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
     },
     {
+      "id": "C-01",
+      "name": "C-01 Artiklar",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=43T4-0",
+      "baseline": "verification/paper/baseline/product-closeout-2026-10-10/C-01.png",
+      "baselineSha256": "76309a4e3048451764acabf3ddf096f81c3a7a8e4969be55c38f0a37c41e89ad",
+      "jsx": "verification/paper/baseline/product-closeout-2026-10-10/C-01.jsx.json",
+      "jsxSha256": "463bd5190503551941685e99ea3ddabb4d6072eaa1ad6a822f13a9b1e52265f9",
+      "files": [
+        "apps/web/src/components/commerce/catalog-articles.tsx",
+        "apps/web/src/components/book-workspace.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/layouts.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=articles",
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=articles",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/commercial-registers.md",
+      "requiredStates": [
+        "selected unqualified article",
+        "empty",
+        "loading",
+        "error",
+        "edit",
+        "archived",
+        "stale revision"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "detail-panel",
+        "action"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
+      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+    },
+    {
+      "id": "C-02",
+      "name": "C-02 Offerter och order",
+      "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=440W-0",
+      "baseline": "verification/paper/baseline/product-closeout-2026-10-10/C-02.png",
+      "baselineSha256": "db843ce9668866336731324e65914a31f99a26ebbadb8cf6bccbe7cff2acaf0c",
+      "jsx": "verification/paper/baseline/product-closeout-2026-10-10/C-02.jsx.json",
+      "jsxSha256": "2fc7ea2c7c26a7a244886bd5fef15a318abd27aa49adaf8ef2e47fb87002518c",
+      "files": [
+        "apps/web/src/components/commerce/sales-orders.tsx",
+        "apps/web/src/components/book-workspace.tsx",
+        "apps/web/src/components/commerce/sales-navigation.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "packages/ui/src/kanon/form.tsx",
+        "packages/ui/src/kanon/register.tsx",
+        "packages/ui/src/kanon/layouts.tsx",
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "apps/web/src/components/commerce/shared.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/sales?view=orders",
+      "candidateRoute": "/entities/$entityId/books/$bookId/sales?view=orders",
+      "audience": "bureau",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/commercial-registers.md",
+      "requiredStates": [
+        "selected draft quote",
+        "empty",
+        "loading",
+        "error",
+        "replacement preview",
+        "stale revision",
+        "accepted",
+        "cancelled"
+      ],
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [
+        "layouts",
+        "detail-panel",
+        "action"
+      ],
+      "comparison": {
+        "channelTolerance": 16,
+        "maxDiffRatio": 0.02,
+        "adoptedBy": "Erik Kroon"
+      },
+      "adoptionNote": "Explicitly adopted by Erik Kroon in session on 10 October 2026 at the existing 2% visual limit. Selected board composition is the implementation target. Example data does not establish accounting policy. Additional workflow states retain the application contract and require behavior qualification.",
+      "notes": "Adopted targets. Selected register and detail-panel implementation is underway; behavior and visual comparison require fresh evidence. Missing retained facts stay explicit.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
+    },
+    {
       "id": "R-01",
       "name": "R-01 \u00c5terkommande avtal och historik",
       "boardUrl": "https://app.paper.design/file/01M3M9A2DA2G08DSJA5K8ZE68S/p-1E-0?node=44G2-0",
@@ -1260,7 +1356,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "R-02",
@@ -1310,7 +1406,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "R-03",
@@ -1360,7 +1456,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "R-04",
@@ -1410,7 +1506,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026: all four at 2%. Saved Paper exports are immutable design references; synthetic example values are not product policy.",
-      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "Adopted initial state passes the unchanged 2%/channel-16 comparison. Exact source hashes, actual and diff are retained. Browser behavior is independently qualified in verification/recurring-closeout/2026-10-10. Shell navigation counts differ from board example data; values are read from owners and are never fabricated. This does not qualify all loading/error states, native zoom or production use.\nCommercial shared controls integrated; recurring comparison must be refreshed before claiming current parity.\nReal synthetic route measured after recurring/commercial integration at immutable adopted 2%/16 policy. Only the captured light state is qualified.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "CLOSEOUT-INVOICE",
@@ -1468,7 +1564,7 @@
         "scope": "Existing appearance for recovered behavior and navigation only; visual parity unverified",
         "source": "docs/operations/closeout-existing-screen-exception.md"
       },
-      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     },
     {
       "id": "P-01",
@@ -1522,7 +1618,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicit user adoption of P-01 at 2% in this session. No change to financial authority or original posted history.",
-      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen."
+      "notes": "\nPaid recovery is reconciled with merged recurring owners. Opt-in record presentation and recovery navigation require their own P-01 evidence; no parity claim for this existing screen.\nPaid recovery integration adds opt-in record styles and recovery navigation. Previous comparisons remain historical until refreshed on the integrated source."
     }
   ]
 }

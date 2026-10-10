@@ -1,6 +1,13 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type KeyboardEventHandler,
+} from "react";
 
 import { StatusIcon, statusTextStyle, type Status } from "@open-erp/ui/kanon/status";
 import { CountPill } from "@open-erp/ui/kanon/work-list";
@@ -347,13 +354,15 @@ export function ListDetailPage({
   bar,
   list,
   panel,
+  onKeyDown,
 }: {
   bar: ReactNode;
   list: ReactNode;
   panel: ReactNode;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }) {
   return (
-    <div {...stylex.props(styles.page)}>
+    <div onKeyDown={onKeyDown} {...stylex.props(styles.page)}>
       {bar}
       <div {...stylex.props(styles.body)}>
         <div {...stylex.props(styles.scroll)}>{list}</div>
