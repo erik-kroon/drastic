@@ -279,6 +279,15 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
           selected: yield* Shared.toJsonObject({
             ...selected,
             bookCommitSequence: checkpoint.sequence,
+            bankBasis: {
+              observedOn: observation.observedOn,
+              description: observation.description,
+              amountMinor: observation.amountMinor,
+              accountId: observation.accountId,
+              evidenceId: observation.evidenceId,
+              evidenceDigest: observation.evidenceSha256,
+              sourceRevision: checkpoint.sourceRevision,
+            },
           }),
           exposure,
           comparisons,

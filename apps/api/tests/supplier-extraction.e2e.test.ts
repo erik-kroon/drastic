@@ -1,3 +1,4 @@
+import * as Examples from "@open-erp/contracts/decision-examples";
 import { provenanceRows } from "./support/decision-provenance";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -279,6 +280,23 @@ test("runtime-role extraction admits, reads, reviews, cancels and replays withou
     );
 
     expect(committed.draft?.content.title).toBe("Extracted title");
+
+    const exported = await post(
+      book,
+      "/automation/decision-examples",
+      { purpose: "training", selectedDecisionIds: [] },
+      Examples.DecisionExampleExport,
+    );
+
+    expect(exported.exclusions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: committed.fieldDecisions[0]?.id,
+          reason: "source_text_not_captured",
+        }),
+      ]),
+    );
+
     expect(committed.fieldDecisions).toHaveLength(1);
     expect(
       (await provenanceRows(book)).filter((row) => row.decision_kind === "extraction_field"),

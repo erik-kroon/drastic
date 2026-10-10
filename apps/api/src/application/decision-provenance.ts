@@ -175,6 +175,7 @@ export const recordDecision = Effect.fn("decisions.recordDecision")(function* (
     id: input.id,
     classification,
     body: yield* toJsonObject({
+      captureVersion: "decision_provenance_v1",
       subject: input.subject,
       selected: input.selected,
       presentedSuggestionIds: exposure?.records.map((record) => record.id) ?? [],

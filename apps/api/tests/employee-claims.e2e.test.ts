@@ -1,3 +1,4 @@
+import { assertPersonalOwnersExcluded } from "./support/decision-examples";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -28,6 +29,8 @@ test("R40 retains three outcomes, recognizes once, exports separately and consum
     { ...f.review, revisionDigest: revision.digest },
     Claims.EmployeeClaimReview,
   );
+
+  await assertPersonalOwnersExcluded(f.book, "employee_claim");
 
   expect(review.items.map((item) => [item.outcome, item.reimbursementMinor])).toEqual([
     ["qualified", "1250000"],

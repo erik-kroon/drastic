@@ -1548,6 +1548,11 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
           subject: yield* Shared.toJsonObject(subject),
           selected: yield* Shared.toJsonObject({
             ...record,
+            mergedField:
+              merge.fields.find(
+                (field) =>
+                  field.lineOrdinal === record.lineOrdinal && field.fieldKey === record.fieldKey,
+              ) ?? null,
             bookCommitSequence: book.committedSequence,
           }),
           exposure: {

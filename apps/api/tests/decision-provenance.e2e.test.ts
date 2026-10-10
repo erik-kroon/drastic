@@ -1,3 +1,4 @@
+import { assertEvaluationRefused } from "./support/decision-examples";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -6,6 +7,7 @@ import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
+import * as Examples from "@open-erp/contracts/decision-examples";
 import { createDraft, supplierFixture, purchaseEvidence } from "./support/supplier-review";
 import {
   createSession,
@@ -232,6 +234,26 @@ test("bank exposure derives unchanged, corrected and cross-session unknown with 
     expect(rows).toHaveLength(1);
 
     expect(rows[0]?.classification).toBe(expected);
+
+    if (expected === "unknown_exposure") {
+      await assertEvaluationRefused(book, rows[0]!.decision_id);
+
+      const exported = await post(
+        book,
+        "/automation/decision-examples",
+        { purpose: "training", selectedDecisionIds: [rows[0]!.decision_id] },
+        Examples.DecisionExampleExport,
+      );
+
+      expect(exported.examples).toHaveLength(1);
+      expect(exported.examples[0]!.options.capture).toBe("uncited_exposure");
+      expect(exported.examples[0]!.missingFacts).toContain("uncited_option_records_not_bound");
+      await writeFile(
+        join(environment().artifacts, "decision-examples-uncited.json"),
+        JSON.stringify(exported, null, 2),
+      );
+    }
+
     artifact.push({ bookId: book.bookId, suggestionRecordId: found.suggestionRecordId, rows });
   }
 

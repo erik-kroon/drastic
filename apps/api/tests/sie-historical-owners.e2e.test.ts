@@ -1,3 +1,4 @@
+import { assertEvaluationRefused } from "./support/decision-examples";
 import { provenanceRows } from "./support/decision-provenance";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -1090,6 +1091,7 @@ test("SIE multi-member chunk rolls back the first posted member when the second 
   const provenance = await provenanceRows(book);
   expect(provenance).toHaveLength(2);
   expect(provenance.every((row) => row.classification === "historical_import")).toBe(true);
+  await assertEvaluationRefused(book, provenance[0]!.decision_id);
   await writeFile(
     join(environment().artifacts, "sie-all-or-none.json"),
     JSON.stringify(
