@@ -1,3 +1,4 @@
+import { SourcePostingBindings } from "./approval-consequences";
 import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
@@ -92,6 +93,7 @@ export const SupplierAcceptanceReview = Schema.Struct({
     ),
   ),
   recognition: Schema.optional(Recognition.RecognitionPlan),
+  sourcePostingBindings: Schema.optional(SourcePostingBindings),
   profileWitness: Schema.optional(Profiles.ProfileWitness),
   profileGaps: Schema.optional(Schema.Array(Profiles.ProfileGap).check(Schema.isMaxLength(40))),
   inputVatAccountId: Schema.optional(Accounting.Identifier),

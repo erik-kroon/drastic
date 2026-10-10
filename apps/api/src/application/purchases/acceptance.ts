@@ -4,6 +4,7 @@ import {
   recordDecision,
   type Comparison,
 } from "../decision-provenance";
+import { recognitionExtras, captureApprovalConsequences } from "./consequences";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as PostingDb from "../../db/posting";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -555,7 +556,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       }
 
       if (recognition !== undefined) {
-        extras.push({ recognition: yield* Shared.toJsonObject(recognition) });
+        extras.push(yield* recognitionExtras(recognition, plan, originalLines));
       }
 
       if (profileWitness !== undefined && profileWitness !== null) {
@@ -941,6 +942,12 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
         input: proposal.input,
         originalLines: proposal.originalLines ?? null,
         postingPlan: proposal.postingPlan,
+        consequenceCapture: yield* captureApprovalConsequences(
+          transaction,
+          command.scope.bookId,
+          book.committedSequence,
+          proposal,
+        ),
       }),
       exposure,
       comparisons,

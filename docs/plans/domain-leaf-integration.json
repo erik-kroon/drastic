@@ -22,6 +22,7 @@
       "status": "wired",
       "consumers": [
         "apps/api/src/application/automation/decision-examples.ts",
+        "apps/api/src/application/purchases/consequences.ts",
         "packages/contracts/src/decision-examples.ts"
       ]
     },
