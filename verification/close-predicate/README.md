@@ -35,3 +35,7 @@ Each directory retains results, source-integrity and runtime logs; successful wo
 Final worker `bun run check:changed` passed after explicit freshness-metadata edits. Those edits postdate the worker behavior hashes above; clean committed three-workflow qualification, full/owners/design checks and required global MCP/pinned Luna evaluation are coordinated separately by the parent. No final-source runtime qualification is claimed here yet.
 
 No browser rendering, UI parity, production close, statutory validity, live provider or unavailable owner qualification is claimed. The new MCP read-selection evaluator is authored but not run by the worker. Existing upstream protocol-matrix skips remain unchanged.
+
+## Clean-source optional-field correction
+
+The parent clean committed run at `c43d8a3` failed all three workflows at capture with HTTP 500. Its retained `test-results/close-predicate-qualified` artifact and `/tmp/aut06-clean-e2e.log` identify a present `observedBookSequence: undefined` on unavailable check freshness, which strict `Schema.optionalKey` correctly rejects. The correction omits the optional property when no current book sequence was supplied; it does not relax the wire schema. This clean failure is the before-fix reproduction. Parent final clean runtime qualification remains pending.

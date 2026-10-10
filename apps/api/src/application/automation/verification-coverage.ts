@@ -147,23 +147,25 @@ function currentView(
   dependencies: Record["observedCutoff"]["dependencyDigests"] = {},
   observedBookSequence?: string,
 ): View {
+  const freshness = {
+    status:
+      retained.status === "not_established" || retained.status === "not_run"
+        ? "unavailable"
+        : fresh
+          ? "fresh"
+          : "stale",
+    reasons,
+    dependencyDigests: dependencies,
+  } satisfies View["freshness"];
+
   return {
     checkId: retained.checkId,
     status: retained.status,
     reasons: retained.reasons,
     retained,
     evidenceRefs: retained.evidenceRefs,
-    freshness: {
-      observedBookSequence,
-      status:
-        retained.status === "not_established" || retained.status === "not_run"
-          ? "unavailable"
-          : fresh
-            ? "fresh"
-            : "stale",
-      reasons,
-      dependencyDigests: dependencies,
-    },
+    freshness:
+      observedBookSequence === undefined ? freshness : { ...freshness, observedBookSequence },
   };
 }
 
