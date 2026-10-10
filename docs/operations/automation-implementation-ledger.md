@@ -144,3 +144,11 @@ Local commit `922bc73` adds the admitted book catalog, strict SystemOne schemas 
 Final workflows passed 2/2 with nine independent gold vectors, fourteen response refusals, four invalid requests, five invalid scores, limit boundaries and digest checks. Evidence is `test-results/dra227-final`, source hash `dd40dc3c5fd0f30d1f6f80eae68bf7fed3115230d2420afca75ae9430ee82670`; repeat commands and protocol limits are in `verification/decision-questions/README.md`. Changed/full checks and owners (54/54) passed. No provider, queue, stored result, UI, MCP or production qualification was added.
 
 AUT-10 is now in progress: shared HTTP validation and a genuine injected Workers AI port. Its independent failure cases predate implementation. Disabled mode remains the default. Reported hosted selectors and immutable weight revisions remain separate facts; source wiring does not qualify a live provider or deploy it.
+
+## AUT-10 checkpoint
+
+Local commit `7bd752d` adds the shared HTTP adapter, injected Workers AI port and explicit runtime configuration. Disabled mode makes no calls; bounded wire JSON rejects duplicate keys, malformed UTF-8 and oversized responses. Deadlines cover headers and body. Reported identity remains separate from configured release; immutable-weight qualification remains unsubstantiated.
+
+Three focused workflows passed, including two authored adapter fixtures and the existing Azure failure regression. Changed/full checks, owners (54/54) and diff checks passed. Evidence and repeatable commands are in `verification/decision-models/README.md` and `test-results/dra228-focused`, stable source hash `3d4765067b96742f090d523965e3d28a48c947572ddfb63be0f19107d0a4d6bd`. No live binding activation, provider call, deployment or new MCP surface occurred.
+
+AUT-05 is now in progress. Its independent memory vectors predate implementation. Same-book retained facts, correction lineage and temporal holdout determine precedent and baseline evidence; missing historical facts remain unknown. Shadow jobs and evaluation follow this prerequisite, with anomaly and remaining ready work retained in the goal.
