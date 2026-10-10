@@ -1,0 +1,62 @@
+{
+  "originalId": "suggestion_8d74819da794411c83f59028ebc5f76a",
+  "copies": [
+    { "id": "suggestion_ffbf236358524f4dbbeb9e4bf5ffa568", "malformed": true },
+    { "id": "suggestion_e3b35a43e5744615bcbae3177159c539", "malformed": false },
+    { "id": "suggestion_9b0fc599c8d446c7a74084e1e780a8fb", "malformed": false }
+  ],
+  "status": 200,
+  "observed": {
+    "suggestionRecordId": "suggestion_9b0fc599c8d446c7a74084e1e780a8fb",
+    "currencyScale": 2,
+    "documentReaderAvailable": false,
+    "scope": { "entityId": "entity_f9fc6cc439bd0380", "bookId": "book_f9fc6cc439bd0380" },
+    "occurrenceId": "source_42ce9fecc972457087f4e51744878533",
+    "requests": [
+      {
+        "id": "supplier_extraction_request_38a0024eb9044e7da37dcf3dba5e89df",
+        "occurrenceId": "source_42ce9fecc972457087f4e51744878533",
+        "generation": 1,
+        "originalHash": "sha256:3236f98b3a174ce9bb51f757afefe62da73d9f1217f0d990218e06b1086d87c3",
+        "originalBytes": 58,
+        "engineRelease": "native-text-v1",
+        "attemptIdentity": "sha256:698cd357f449b835fcadf6e90661d84961a290f7c5524355862569a449344362",
+        "state": "completed",
+        "cancelVersion": 0,
+        "attemptsMade": 0,
+        "requestedBy": "operator_f9fc6cc439bd0380",
+        "requestedAt": "2026-10-10T17:08:38.067000Z",
+        "digest": "sha256:fa9db460b9203f3406f9c42329eab31dde228824eee2ab3c2d8a43b60227d188"
+      }
+    ],
+    "attempt": {
+      "requestId": "supplier_extraction_request_38a0024eb9044e7da37dcf3dba5e89df",
+      "attemptId": "supplier_extraction_aeff4f2e0d114add8f8333713a27994d",
+      "engineRelease": "native-text-v1",
+      "sourceHash": "sha256:3236f98b3a174ce9bb51f757afefe62da73d9f1217f0d990218e06b1086d87c3",
+      "originalHashUnchanged": true,
+      "result": "succeeded",
+      "textDigest": null,
+      "textByteLength": 58,
+      "retainedOutputHash": "sha256:2a84927bf74341e39d9f8dc50e938d316fab1f4fc110450ca1d2cfac31b0ccf2",
+      "fields": [
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "title",
+          "proposedValue": "Extracted title",
+          "sourceLocators": ["span:7-22"]
+        },
+        {
+          "lineOrdinal": 0,
+          "fieldKey": "supplierDocumentNumber",
+          "proposedValue": "REVIEW-001",
+          "sourceLocators": ["span:47-57"]
+        }
+      ],
+      "candidateLines": [],
+      "diagnostics": [],
+      "createdAt": "2026-10-10T17:08:38.376Z"
+    },
+    "fieldDecisions": []
+  }
+}

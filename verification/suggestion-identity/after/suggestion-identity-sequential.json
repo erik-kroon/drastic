@@ -1,0 +1,14 @@
+{
+  "ids": [
+    "suggestion_3589a15942e84361a18f1a8cef9a7a17",
+    "suggestion_3589a15942e84361a18f1a8cef9a7a17"
+  ],
+  "captures": [
+    {
+      "id": "suggestion_3589a15942e84361a18f1a8cef9a7a17",
+      "session_id": null,
+      "subject_digest": "sha256:0d777195def10c589e805992df75a420abe6ec17f61132e8f830ee2fb6bfd7d8",
+      "options_digest": "sha256:da106e632134cd7347a760caf7c5c1f5bceb61283a6c98e0a9aea4dd23791f1f"
+    }
+  ]
+}
