@@ -18,3 +18,14 @@ Run posting-admission, financial workflow and scoped-authority journeys on the
 isolated current-main checkout, retain synthetic results, and run the full changed
 check and ownership guard. This change does not qualify the broader refactor,
 new UI, providers or production.
+
+## Verified reconciliation
+
+The isolated current-main candidate passes the full changed/type-aware check,
+the 55-leaf ownership guard and all 43 tests across admission, posting authority,
+failure recovery and payroll settlements. The repeatable command, source hashes
+and test results are in `verification/closeout-imports/2026-10-10/`.
+
+The posting owner retains compatibility exports for existing callers. Three
+pre-existing chained literal selections were rewritten with Effect Match when
+the changed-file lint gate brought them into scope; their mappings are unchanged.
