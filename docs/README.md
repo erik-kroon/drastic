@@ -10,6 +10,7 @@ Start with [local development](local-development.md) or [self-hosting](../infra/
 - [Authentication](../apps/api/docs/AUTH.md) and [MCP](../apps/api/docs/MCP.md): browser and agent access.
 - [Application-owned accounting](adr/0010-application-owned-accounting-replacement.md), [exact approval](adr/0002-exact-posting-and-approval.md) and [background jobs](adr/0009-effect-mq-background-jobs.md): selected engineering decisions.
 - [API E2E](../apps/api/tests/README.md) and [browser verification](../verification/testerarmy/README.md): execution recipes and saved artifacts.
+- [AI egress](../verification/ai-egress/README.md): typed identity tokens, disclosure admissions and synthetic verification.
 - [Document intelligence](../verification/document-intelligence/README.md): isolated inspection, extraction diagnostics and source-highlight verification.
 
 Product development belongs to `erik-kroon/drastic`. The private `openERP`

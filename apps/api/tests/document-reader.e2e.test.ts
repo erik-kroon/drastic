@@ -505,7 +505,12 @@ test("retains geometric evidence, uncertainty and separate off/shadow diagnostic
     expect(off.diagnostics).toEqual([]);
     const after = await decoded(await ctx.apiCall(ctx.path), Extraction.SupplierExtractionState);
 
-    expect(after).toEqual(before);
+    const { suggestionRecordId: beforeExposure, ...beforeState } = before;
+    const { suggestionRecordId: afterExposure, ...afterState } = after;
+
+    expect(afterState).toEqual(beforeState);
+    expect(beforeExposure).toMatch(/^suggestion_/);
+    expect(afterExposure).toMatch(/^suggestion_/);
     expect(ctx.counts()).toEqual({ submissions: 1, polls: 1 });
     await writeFile(
       join(environment().artifacts, "document-reader-diagnostics.json"),

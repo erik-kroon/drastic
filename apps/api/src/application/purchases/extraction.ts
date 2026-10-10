@@ -12,6 +12,8 @@ import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import { DocumentOutputError } from "../../adapters/document-reading/azure";
+import { AiEgressError } from "../../adapters/ai-egress";
+import { openAiEgress } from "../ai-egress";
 import { DocumentReadingError, interpretDocument } from "./document-reading";
 import { requireOriginalEvidence } from "./inbox";
 
@@ -2165,11 +2167,22 @@ function runDocumentReader(
     if (claimed === null) return null;
 
     let operation: string;
+    const egress = yield* openAiEgress(token, scope, "document");
 
     if (claimed.length > 0) {
-      const submitted = yield* Effect.tryPromise(() => reader.submit(bytes)).pipe(Effect.option);
+      const submitted = yield* Effect.tryPromise({
+        try: () => reader.submit(bytes, egress),
+        catch: (error) =>
+          error instanceof AiEgressError ? "ai_egress_refused" : "submission_unknown",
+      }).pipe(Effect.result);
 
-      if (Option.isNone(submitted))
+      if (Result.isFailure(submitted) && submitted.failure === "ai_egress_refused")
+        return failedReading(
+          "ai_egress_refused",
+          "AI disclosure admission was refused before submission.",
+        );
+
+      if (Result.isFailure(submitted))
         return {
           ...failedReading(
             "submission_unknown",
@@ -2177,7 +2190,7 @@ function runDocumentReader(
           ),
           result: "unknown" as const,
         };
-      operation = submitted.value;
+      operation = submitted.success;
       yield* Shared.withBook(token, scope, false, "update", (transaction) =>
         ExtractionDb.saveDocumentOperation(transaction, scope.bookId, request.id, operation).pipe(
           Effect.mapError(databaseFailure),
@@ -2214,12 +2227,20 @@ function runDocumentReader(
     }
 
     const polled = yield* Effect.tryPromise({
-      try: () => reader.poll(operation),
+      try: () => reader.poll(operation, egress),
       catch: (error) =>
-        error instanceof DocumentOutputError
-          ? ("invalid_output" as const)
-          : ("poll_unavailable" as const),
+        error instanceof AiEgressError
+          ? ("ai_egress_refused" as const)
+          : error instanceof DocumentOutputError
+            ? ("invalid_output" as const)
+            : ("poll_unavailable" as const),
     }).pipe(Effect.result);
+
+    if (Result.isFailure(polled) && polled.failure === "ai_egress_refused")
+      return failedReading(
+        "ai_egress_refused",
+        "AI disclosure admission was refused before polling.",
+      );
 
     if (Result.isFailure(polled))
       return polled.failure === "invalid_output"
