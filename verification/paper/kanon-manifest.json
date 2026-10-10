@@ -29,7 +29,7 @@
         "loading",
         "error"
       ],
-      "evidence": "verification/paper/evidence/k10-supplier-header/result.json",
+      "evidence": "verification/paper/evidence/k10-core-finish/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -50,7 +50,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Canonical header default paragraph and selected subtitle h2 remain intact after supplier figureAs addition. Native scope/stage/cursor/header keyboard return, reload and375px stacking pass with stable source and cleaned runtime. Full-frame drift4.3622% exceeds2%; differing board fixture and unpinned clock. Complete-state/dark/native200 parity unverified; no production qualification."
+      "notes": "Core retry native GET failure, keyboard inhibition and ledger preservation pass with stable source and cleaned runtime. Supplier Questions uses native h3 and normal receipt/actions use canonical footer; expiry, renewal, wrong digest, mobile acknowledgment and lost-response one receipt pass. Full-frame drift 3.9974% exceeds2%; differing fixture and unpinned clock. Complete states, dark theme and native200% remain unverified; no production qualification."
     },
     {
       "id": "K-40",
@@ -135,7 +135,8 @@
         "packages/ui/src/kanon/detail-panel.tsx",
         "apps/web/src/components/posting-recovery/saved-requests.tsx",
         "apps/web/src/components/posting-recovery/copy.ts",
-        "packages/ui/src/kanon/feedback.tsx"
+        "packages/ui/src/kanon/feedback.tsx",
+        "packages/ui/src/kanon/action.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
@@ -149,7 +150,7 @@
         "approving",
         "approved"
       ],
-      "evidence": "verification/paper/evidence/k11-supplier-header/result.json",
+      "evidence": "verification/paper/evidence/k11-core-finish/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -170,7 +171,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Canonical supplier Header retains stored gross as native h2 and frozen counterparty/document paragraph. Expiry/renewal/wrong digest/mobile acknowledgment/lost-response one receipt and frozen-original posted/stale journeys pass with stable source and cleaned runtime. Full-frame drift33.8178% exceeds2%; board content differs and clock is unpinned. Null/English/large figure/dark/native200 and complete-state parity remain unverified; no production qualification."
+      "notes": "Core retry native GET failure, keyboard inhibition and ledger preservation pass with stable source and cleaned runtime. Supplier Questions uses native h3 and normal receipt/actions use canonical footer; expiry, renewal, wrong digest, mobile acknowledgment and lost-response one receipt pass. Full-frame drift 33.9283% exceeds2%; differing fixture and unpinned clock. Complete states, dark theme and native200% remain unverified; no production qualification."
     },
     {
       "id": "K-70",

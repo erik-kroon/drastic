@@ -191,6 +191,107 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
 
   const focusedUrl = await browser.url();
 
+  const retryReads = [
+    {
+      path: `${base}/review-targets/${encodeURIComponent(renewed.plan.postingPlan.id)}`,
+      label: "Försök igen",
+    },
+    { path: `${base}${reviewPath}`, label: "Uppdatera granskning" },
+  ];
+
+  const reviewReadRetries: Array<{ path: string; requests: number; workingReason: string }> = [];
+
+  for (const read of retryReads) {
+    await screen.getByRole("link", "Inköp /", { exact: true }).focus();
+    await screen.getByRole("link", "Inköp /", { exact: true }).press("Enter");
+    await expect(openFocused).toBeVisible();
+
+    const pendingRead = Promise.withResolvers<void>();
+    let requests = 0;
+    let failReads = true;
+
+    await browser.route(read.path, async (route) => {
+      requests += 1;
+
+      if (failReads) {
+        await route.abort();
+
+        return;
+      }
+
+      await pendingRead.promise;
+      await route.continue();
+    });
+
+    try {
+      if (read.label === "Försök igen") {
+        const staleAfter = Date.now() + 31_000;
+
+        await expect.poll(() => Date.now(), { timeout: 40_000 }).toBeGreaterThanOrEqual(staleAfter);
+      }
+
+      await openFocused.focus();
+      await openFocused.press("Enter");
+
+      const retry = screen.getByRole("button", read.label, { exact: true });
+
+      await expect(retry).toBeVisible();
+      await expect(screen.getByRole("region", "Beslut", { exact: true })).toHaveCount(0);
+      await retry.focus();
+
+      const requestsBeforeRetry = requests;
+
+      failReads = false;
+
+      const retryPress = retry.press("Enter");
+
+      try {
+        await expect.poll(() => requests).toBe(requestsBeforeRetry + 1);
+
+        const retryState = await browser.evaluate(() =>
+          Array.from(document.querySelectorAll("main button"))
+            .filter((button) =>
+              ["Försök igen", "Uppdatera granskning", "Begäran pågår…"].includes(
+                button.textContent ?? "",
+              ),
+            )
+            .map((button) => ({
+              text: button.textContent,
+              blocked: button.getAttribute("aria-disabled"),
+            })),
+        );
+
+        expect(retryState).toEqual([{ text: "Begäran pågår…", blocked: "true" }]);
+
+        const working = screen.getByRole("button", "Begäran pågår…", { exact: true });
+
+        await working.focus();
+        await working.press("Enter");
+        expect(requests).toBe(requestsBeforeRetry + 1);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      } finally {
+        pendingRead.resolve();
+
+        await retryPress;
+      }
+
+      await expect(retry).toHaveCount(0);
+      await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+      reviewReadRetries.push({ path: read.path, requests, workingReason: "Begäran pågår…" });
+    } finally {
+      pendingRead.resolve();
+      await browser.unroute(read.path);
+    }
+  }
+
+  expect(
+    await browser.evaluate(() =>
+      Array.from(document.querySelectorAll("main section[aria-label='Beslut'] h3"))
+        .filter((heading) => heading.textContent === "FRÅGOR")
+        .map((heading) => heading.tagName),
+    ),
+  ).toEqual(["H3"]);
+
   await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
   await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
   await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
@@ -597,6 +698,7 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
         },
         frame,
         supplierHeader,
+        reviewReadRetries,
         narrowPanes,
         paneAcknowledgmentRetained: true,
         focusedRoute: focusedUrl,

@@ -4,7 +4,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cases from "@open-erp/contracts/cases";
 import { ReviewContent } from "@open-erp/ui/kanon/layouts";
 import { Box } from "@open-erp/ui/components/box";
-import { Button } from "@open-erp/ui/components/button";
+import { Action } from "@open-erp/ui/kanon/action";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
@@ -109,15 +109,15 @@ export function ReviewOwner(props: {
         {target?.kind === "ambiguous" ? <Text role="alert">{copy.case_owner_conflict}</Text> : null}
         {resolution.isError || target?.kind === "ambiguous" ? (
           <Box>
-            <Button
-              variant="outline"
-              disabled={resolution.isFetching}
+            <Action
+              kind="secondary"
+              blockedBy={resolution.isFetching ? copy.journal_working : undefined}
               onClick={() => {
                 void resolution.refetch();
               }}
             >
               {copy.journal_retry}
-            </Button>
+            </Action>
           </Box>
         ) : null}
       </Box>

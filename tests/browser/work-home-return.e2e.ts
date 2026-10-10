@@ -176,6 +176,94 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
+  const retryReads = [
+    `${base}/attention?${new URLSearchParams({ status: "open", sort: "oldest", kind: "all", after: continuation })}`,
+    `${base}/bank-workspace?*`,
+  ];
+
+  const readRetries: Array<{ path: string; requests: number; workingReason: string }> = [];
+
+  for (const path of retryReads) {
+    const pendingRead = Promise.withResolvers<void>();
+    let requests = 0;
+    let failReads = true;
+
+    await browser.route(path, async (route) => {
+      requests += 1;
+
+      if (failReads) {
+        await route.abort();
+
+        return;
+      }
+
+      await pendingRead.promise;
+      await route.continue();
+    });
+
+    try {
+      const staleAfter = Date.now() + 31_000;
+
+      await expect.poll(() => Date.now(), { timeout: 40_000 }).toBeGreaterThanOrEqual(staleAfter);
+      await reviewAll.focus();
+      await reviewAll.press("Enter");
+      await expect(screen.getByRole("searchbox", "Sök arbete", { exact: true })).toBeVisible();
+      await browser.evaluate(() => {
+        history.back();
+
+        return null;
+      });
+      await expect.poll(async () => await browser.url()).toBe(selectedHomeUrl);
+
+      const retry = screen.getByRole("button", "Uppdatera", { exact: true });
+
+      await expect(retry).toBeVisible();
+
+      if (path === retryReads[0]) await expect(row).toHaveCount(0);
+      await retry.focus();
+
+      const requestsBeforeRetry = requests;
+
+      failReads = false;
+
+      const retryPress = retry.press("Enter");
+
+      try {
+        await expect.poll(() => requests).toBe(requestsBeforeRetry + 1);
+
+        const retryState = await browser.evaluate(() =>
+          Array.from(document.querySelectorAll("main button"))
+            .filter((button) => ["Uppdatera", "Begäran pågår…"].includes(button.textContent ?? ""))
+            .map((button) => ({
+              text: button.textContent,
+              blocked: button.getAttribute("aria-disabled"),
+            })),
+        );
+
+        expect(retryState).toEqual([{ text: "Begäran pågår…", blocked: "true" }]);
+
+        const working = screen.getByRole("button", "Begäran pågår…", { exact: true });
+
+        await expect(working).toHaveAttribute("aria-disabled", "true");
+        await working.focus();
+        await working.press("Enter");
+        expect(requests).toBe(requestsBeforeRetry + 1);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      } finally {
+        pendingRead.resolve();
+
+        await retryPress;
+      }
+
+      await expect(retry).toHaveCount(0);
+      await expect(row).toHaveAttribute("aria-pressed", "true");
+      readRetries.push({ path, requests, workingReason: "Begäran pågår…" });
+    } finally {
+      pendingRead.resolve();
+      await browser.unroute(path);
+    }
+  }
+
   const previewHeader = () =>
     browser.evaluate(() => {
       const header = document.querySelector("main aside[aria-label='Nästa steg'] header");
@@ -556,6 +644,7 @@ test("home retains the selected original and scoped keyboard return after reload
         after,
         selectedHeader,
         headerAction,
+        readRetries,
         reviewAllKeyboardNavigation: true,
         handoffHeader,
         selectedConditions,

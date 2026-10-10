@@ -1,14 +1,18 @@
 import * as Cases from "@open-erp/contracts/cases";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
-import { Button } from "@open-erp/ui/components/button";
+import { Action } from "@open-erp/ui/kanon/action";
 import { Link } from "@open-erp/ui/components/link";
 import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { Text } from "@open-erp/ui/components/typography";
 import { ReviewPanes, ReviewContent, OriginalViewerSurface } from "@open-erp/ui/kanon/layouts";
-import { DetailPanelSurface, DetailPanelHeader } from "@open-erp/ui/kanon/detail-panel";
+import {
+  DetailPanelSurface,
+  DetailPanelHeader,
+  DetailPanelActions,
+  PanelSection,
+} from "@open-erp/ui/kanon/detail-panel";
 import { Disclosure } from "@open-erp/ui/components/workflow";
-import { WorkReviewFooter } from "@open-erp/ui/components/work-controls";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { WorkQuestionsEntry } from "@/components/work-questions";
@@ -64,13 +68,13 @@ export function SupplierFocusedReview(
             </>
           ) : null}
           <Box>
-            <Button
-              variant="outline"
-              disabled={query.isFetching}
+            <Action
+              kind="secondary"
+              blockedBy={query.isFetching ? copy.journal_working : undefined}
               onClick={() => void query.refetch()}
             >
               {sv ? "Uppdatera granskning" : "Refresh review"}
-            </Button>
+            </Action>
           </Box>
         </Box>
       </ReviewContent>
@@ -163,35 +167,35 @@ export function SupplierFocusedReview(
                   </Text>
                 </Disclosure>
               </Box>
-              <Box display="grid" gap="xs" marginBlockStart="md">
-                <Text variant="caption" weight="semibold">
-                  {sv ? "FRÅGOR" : "QUESTIONS"}
-                </Text>
+              <PanelSection label={sv ? "FRÅGOR" : "QUESTIONS"}>
                 <WorkQuestionsEntry
                   book={book}
                   locale={locale}
                   target={{ kind: "journal", recordId: owner.changeSetId }}
                 />
-              </Box>
-              <WorkReviewFooter presentation="focused">
-                {view.acceptance ? (
-                  <SupplierAcceptanceResult
-                    book={book}
-                    locale={locale}
-                    receipt={view.acceptance}
-                    draftId={owner.draftId}
-                    reviewId={owner.reviewId}
-                  />
-                ) : null}
-                <SupplierAcceptanceActions
-                  book={book}
-                  locale={locale}
-                  view={view}
-                  ready={ready}
-                  presentation="focused"
-                  onChanged={() => void query.refetch()}
-                />
-              </WorkReviewFooter>
+              </PanelSection>
+              <DetailPanelActions
+                primary={
+                  view.acceptance ? (
+                    <SupplierAcceptanceResult
+                      book={book}
+                      locale={locale}
+                      receipt={view.acceptance}
+                      draftId={owner.draftId}
+                      reviewId={owner.reviewId}
+                    />
+                  ) : (
+                    <SupplierAcceptanceActions
+                      book={book}
+                      locale={locale}
+                      view={view}
+                      ready={ready}
+                      presentation="focused"
+                      onChanged={() => void query.refetch()}
+                    />
+                  )
+                }
+              />
             </>
           )}
         </DetailPanelSurface>

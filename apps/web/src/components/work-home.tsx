@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import type * as Workspace from "@open-erp/contracts/workspace";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
-import { Button } from "@open-erp/ui/components/button";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
 import { AreaBar, BarTab, ListDetailPage } from "@open-erp/ui/kanon/layouts";
@@ -24,6 +23,7 @@ import {
   attentionState,
   attentionStatus,
 } from "@/lib/attention";
+import { accountingCopy } from "@/lib/accounting-copy";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
@@ -79,6 +79,12 @@ export function WorkHome() {
   groups.sort((left, right) => Number(right === reviewGroup) - Number(left === reviewGroup));
 
   const activeQuery = status === "watch" ? work.sales : query;
+
+  const retryReasons = {
+    idle: undefined,
+    fetching: accountingCopy(locale).journal_working,
+    paused: undefined,
+  };
 
   return (
     <>
@@ -150,15 +156,15 @@ export function WorkHome() {
                   error={activeQuery.error}
                 />
                 {activeQuery.isError ? (
-                  <Button
-                    variant="outline"
-                    disabled={activeQuery.isFetching}
+                  <Action
+                    kind="secondary"
+                    blockedBy={retryReasons[activeQuery.fetchStatus]}
                     onClick={() => {
                       void activeQuery.refetch();
                     }}
                   >
                     {copy.refresh}
-                  </Button>
+                  </Action>
                 ) : null}
               </Box>
             ) : null}
@@ -435,15 +441,15 @@ function HomeBankStatus({
   return (
     <Box padding="lg">
       <AccountingStatus locale={work.locale} error={work.bank.error} />
-      <Button
-        variant="outline"
-        disabled={work.bank.isFetching}
+      <Action
+        kind="secondary"
+        blockedBy={work.bank.isFetching ? accountingCopy(work.locale).journal_working : undefined}
         onClick={() => {
           void work.bank.refetch();
         }}
       >
         {copy.refresh}
-      </Button>
+      </Action>
     </Box>
   );
 }
