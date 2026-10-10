@@ -277,17 +277,23 @@ function SupplierAcceptancePreparation(
       ...commerceKey(props.book),
       "supplier-account-suggestions",
       props.draft.content.counterpartyId,
+      props.draft.id,
+      props.draft.revision,
     ],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-account-suggestions/${encodeURIComponent(props.draft.content.counterpartyId)}`,
+        `${commercePath(props.book)}/supplier-account-suggestions/${encodeURIComponent(props.draft.content.counterpartyId)}?draftId=${encodeURIComponent(props.draft.id)}&draftRevision=${encodeURIComponent(props.draft.revision)}`,
         Drafts.SupplierAccountSuggestions,
         { signal },
       );
 
       checkScope(props.book, result.scope);
 
-      if (result.counterpartyId !== props.draft.content.counterpartyId)
+      if (
+        result.counterpartyId !== props.draft.content.counterpartyId ||
+        result.draftId !== props.draft.id ||
+        result.draftRevision !== props.draft.revision
+      )
         throw new Error("Supplier account suggestions mismatch");
 
       return result;
@@ -331,7 +337,11 @@ function SupplierAcceptancePreparation(
         output={Acceptance.SupplierAcceptanceReview}
         label={sv ? "Förbered bokföring" : "Prepare posting"}
         allowed={props.current && setup.isSuccess && props.book.role === "operator"}
-        input={(fields) => acceptanceCommand(props.draft, fields)}
+        input={(fields) => ({
+          ...acceptanceCommand(props.draft, fields),
+          presentedSuggestionIds:
+            suggestedAccount && suggestions.data ? [suggestions.data.suggestionRecordId] : [],
+        })}
         onSuccess={props.onPrepared}
       >
         <SelectField

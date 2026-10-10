@@ -1,3 +1,4 @@
+import { provenanceRows } from "./support/decision-provenance";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as PeriodWork from "@open-erp/contracts/period-work";
@@ -177,6 +178,9 @@ test.each(["aggregate", "child"] as const)(
       { expectedDigest: batch.digest, acknowledgeSyntheticOnly: true },
       PeriodWork.ApprovalBatch,
     );
+    const provenance = await provenanceRows(book);
+    expect(provenance).toHaveLength(batch.members.length);
+    expect(provenance.every((row) => row.classification === "batch_approved")).toBe(true);
     const changed = await database();
 
     try {
@@ -339,6 +343,7 @@ test.each(["aggregate", "child"] as const)(
           batch,
           result,
           recovered,
+          provenance,
           expected: { vouchers: 1, debit: "10000", credit: "10000" },
         },
         null,

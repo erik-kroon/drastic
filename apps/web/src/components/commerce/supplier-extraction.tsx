@@ -526,6 +526,7 @@ function ExtractionMerge(
               .map((line) => lines[line.candidateLineId])
               .filter((decision): decision is LineDecision => decision !== undefined),
             fields: decisions,
+            presentedSuggestionIds: [preparation.suggestionRecordId],
           })}
         >
           <Text>{text.confirm}</Text>

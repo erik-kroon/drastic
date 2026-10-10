@@ -1,3 +1,4 @@
+import { recordDecision } from "../decision-provenance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -13,7 +14,7 @@ import { requireAcceptedOnboardingOpening } from "../onboarding-lifecycle";
 import * as Ledger from "../../db/posting";
 import * as SourceDb from "../../db/sie-import";
 import type { Transaction } from "../../db/transaction";
-import { decode, withBook, type Principal, type Scope } from "../commerce/support";
+import { decode, toJsonObject, withBook, type Principal, type Scope } from "../commerce/support";
 import { failure } from "../failures";
 import {
   createEvidenceInTransaction,
@@ -726,6 +727,34 @@ export const advanceFinancialRunInTransaction = Effect.fn(
       sourceDigest: yield* digest(voucher),
       ledgerReceipt: receipt,
     };
+
+    const approval = (yield* Ledger.readApproval(tx, scope.bookId, binding.approvalId))[0];
+
+    if (!approval) return yield* failure("InternalError");
+
+    yield* recordDecision(tx, {
+      bookId: scope.bookId,
+      actorId: approval.actorId,
+      kind: "historical_voucher",
+      id: change.id,
+      subject: {
+        kind: "historical_voucher",
+        runId: run.id,
+        sourceOrdinal,
+        sourceDigest: item.sourceDigest,
+      },
+      selected: yield* toJsonObject({
+        sourceReference: item.sourceReference,
+        changeSetId: change.id,
+        planDigest: change.planDigest,
+        approvalId: binding.approvalId,
+        approvedBy: approval.actorId,
+        executedBy: principal.actorId,
+        ledgerReceipt: receipt,
+        sourceVoucher: voucher,
+      }),
+      forced: "historical_import",
+    });
 
     yield* Db.insertPosting(tx, scope.bookId, run.id, item, change.id);
     items.push(item);

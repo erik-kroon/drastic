@@ -642,7 +642,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
-      "status": "drifts",
+      "status": "unverified",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -666,7 +666,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states and cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes."
+      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states and cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes. AUT-01 adds citation transport of the rendered immutable ranking id to preparation. No visual composition change or fresh parity claim."
     },
     {
       "id": "K-30",
@@ -1034,6 +1034,42 @@
       "candidateRoute": "/kanon/charts",
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+    },
+    {
+      "id": "AUT-01-request-provenance",
+      "name": "AUT-01 Existing review request provenance",
+      "boardUrl": null,
+      "baseline": null,
+      "baselineSha256": null,
+      "jsx": null,
+      "jsxSha256": null,
+      "files": [
+        "apps/web/src/components/commerce/supplier-acceptance.tsx",
+        "apps/web/src/components/commerce/supplier-extraction.tsx",
+        "apps/web/src/components/bank-match-candidates/results.tsx",
+        "apps/web/src/components/settlements/index.tsx"
+      ],
+      "route": "/entities/$entityId/books/$bookId/",
+      "audience": "bureau and operator",
+      "status": "unverified",
+      "adoption": "approved",
+      "behaviorSource": "docs/operations/automation-handoff-2026-10-10.md",
+      "requiredStates": [
+        "supplier preparation carries rendered hint ids",
+        "extraction review carries rendered merge id",
+        "bank selection carries ranking id through allocation approval"
+      ],
+      "evidence": null,
+      "owner": "Erik Kroon",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "parts": [],
+      "candidateRoute": null,
+      "comparison": null,
+      "adoptionNote": "AUT-01 authorizes citation transport for existing rendered suggestions. No new screen composition or visual baseline is adopted by this contract.",
+      "implementationNote": "Request and cache bindings only. Existing visual adoption remains with each screen owner; no browser or visual parity claim."
     }
   ]
 }

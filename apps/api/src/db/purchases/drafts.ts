@@ -315,16 +315,17 @@ export function readSupplierAccountSuggestions(
         invoice_id as "sourceInvoiceId"
       from (
         select * from (
-          select distinct on (x.value->>'expenseAccountId', x.value->>'vatRatePercent')
+          select distinct on (x.value->>'expenseAccountId', ((x.value->'treatment'->'rate'->>'numerator')::numeric * 100 / (x.value->'treatment'->'rate'->>'denominator')::numeric))
             x.value->>'expenseAccountId' as expense_account_id,
-            (x.value->>'vatRatePercent')::integer as vat_rate_percent,
+            (((x.value->'treatment'->'rate'->>'numerator')::numeric * 100 / (x.value->'treatment'->'rate'->>'denominator')::numeric))::integer as vat_rate_percent,
             a.register_invoice_id as invoice_id, a.body->>'createdAt' as accepted_at
           from openerp.supplier_acceptances a
           join openerp.supplier_acceptance_reviews r on r.book_id = a.book_id and r.id = a.review_id
           cross join lateral jsonb_array_elements(r.body->'originalLines') x(value)
           where a.book_id = ${bookId} and a.body->>'profile' = 'swedish-purchase-v1'
             and r.body->'draftSnapshot'->'content'->>'counterpartyId' = ${counterpartyId}
-          order by x.value->>'expenseAccountId', x.value->>'vatRatePercent',
+            and ((x.value->'treatment'->'rate'->>'numerator')::numeric * 100 / (x.value->'treatment'->'rate'->>'denominator')::numeric) in (0,6,12,25)
+          order by x.value->>'expenseAccountId', ((x.value->'treatment'->'rate'->>'numerator')::numeric * 100 / (x.value->'treatment'->'rate'->>'denominator')::numeric),
             a.body->>'createdAt' desc, a.register_invoice_id desc
         ) latest
         order by accepted_at desc, invoice_id desc

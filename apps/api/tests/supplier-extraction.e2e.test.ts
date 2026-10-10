@@ -1,3 +1,4 @@
+import { provenanceRows } from "./support/decision-provenance";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
@@ -144,6 +145,80 @@ async function extractionFixture() {
   return { book, source, path, input, options, reviewed };
 }
 
+test("uncited extraction acceptance remains unknown while retained manual values are independent", async () => {
+  const context = await extractionFixture();
+  const { book, path, options } = context;
+  const admin = await database();
+
+  try {
+    expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+    const attempts = await admin.query<{ id: string }>(
+      "select id from openerp.supplier_extraction_attempts where book_id = $1 and body->>'requestId' = $2 order by ordinal desc limit 1",
+      [book.bookId, options.requestId],
+    );
+
+    const exposures = await admin.query<{ count: string }>(
+      "select count(*) from openerp.suggestion_records where book_id = $1",
+      [book.bookId],
+    );
+
+    expect(exposures.rows[0]?.count).toBe("0");
+
+    const committed = await post(
+      book,
+      `${path}/${options.requestId}/review`,
+      {
+        requestId: options.requestId,
+        attemptId: attempts.rows[0]?.id,
+        expectedDraftRevision: context.reviewed.draft.revision,
+        expectedDraftDigest: context.reviewed.draft.digest,
+        baseContent: null,
+        reason: "Synthetic acceptance without served suggestion",
+        lines: [],
+        fields: [
+          {
+            lineOrdinal: 0,
+            fieldKey: "title",
+            decisionKind: "accepted_suggestion",
+            selectedValue: "Extracted title",
+          },
+          {
+            lineOrdinal: 0,
+            fieldKey: "supplierDocumentNumber",
+            decisionKind: "retained_reviewed",
+            selectedValue: context.reviewed.draft.content.supplierDocumentNumber,
+          },
+        ],
+      },
+      Extraction.SupplierExtractionReview,
+    );
+
+    const rows = await provenanceRows(book);
+
+    expect(
+      rows.find(
+        (row) =>
+          row.decision_id ===
+          committed.fieldDecisions.find((field) => field.fieldKey === "title")?.id,
+      ),
+    ).toMatchObject({ classification: "unknown_exposure" });
+    expect(
+      rows.find(
+        (row) =>
+          row.decision_id ===
+          committed.fieldDecisions.find((field) => field.fieldKey === "supplierDocumentNumber")?.id,
+      ),
+    ).toMatchObject({ classification: "independent" });
+    await writeFile(
+      join(environment().artifacts, "extraction-uncited-provenance.json"),
+      JSON.stringify({ bookId: book.bookId, committed, rows }, null, 2),
+    );
+  } finally {
+    await admin.end();
+  }
+});
+
 test("runtime-role extraction admits, reads, reviews, cancels and replays without immutable UPDATE grants", async () => {
   const context = await extractionFixture();
   const { book, path, options } = context;
@@ -189,6 +264,7 @@ test("runtime-role extraction admits, reads, reviews, cancels and replays withou
         expectedDraftDigest: context.reviewed.draft.digest,
         baseContent: null,
         reason: "Accept extracted title",
+        presentedSuggestionIds: [prepared.suggestionRecordId],
         lines: [],
         fields: [
           {
@@ -204,6 +280,11 @@ test("runtime-role extraction admits, reads, reviews, cancels and replays withou
 
     expect(committed.draft?.content.title).toBe("Extracted title");
     expect(committed.fieldDecisions).toHaveLength(1);
+    expect(
+      (await provenanceRows(book)).filter((row) => row.decision_kind === "extraction_field"),
+    ).toMatchObject([
+      { classification: "accepted_unchanged", decision_id: committed.fieldDecisions[0]?.id },
+    ]);
 
     const next = await post(book, path, context.input, Extraction.SupplierExtractionRequestResult);
 
@@ -233,7 +314,15 @@ test("runtime-role extraction admits, reads, reviews, cancels and replays withou
     await writeFile(
       join(environment().artifacts, "supplier-extraction-journey.json"),
       JSON.stringify(
-        { bookId: book.bookId, grants: grants.rows[0], state, prepared, committed, cancelled },
+        {
+          bookId: book.bookId,
+          grants: grants.rows[0],
+          state,
+          prepared,
+          committed,
+          cancelled,
+          provenance: await provenanceRows(book),
+        },
         null,
         2,
       ),

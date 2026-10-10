@@ -1,3 +1,4 @@
+import { recordDecision } from "./decision-provenance";
 // NEXT-16: the period-work application owner.
 //
 // Evidence-aware period preparation over the operations that already own each
@@ -359,6 +360,8 @@ function approveMemberInTransaction(
     readonly owner: string;
     readonly ownerReviewId: string;
     readonly ownerReviewDigest: string;
+    readonly batchId: string;
+    readonly ordinal: number;
   },
 ) {
   if (!isOwnerName(member.owner)) return failure("StaleDependency");
@@ -380,6 +383,7 @@ function approveMemberInTransaction(
         reviewId: member.ownerReviewId,
         idempotencyKey,
         input: { version: 1, digest: member.ownerReviewDigest, acknowledgeSyntheticOnly: true },
+        provenanceContext: { batchId: member.batchId, ordinal: member.ordinal },
       }).pipe(Effect.map((approval) => approval.id));
     case "purchases.credits":
       return approveSupplierCreditInTransaction(transaction, principal, {
@@ -1324,8 +1328,33 @@ export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(funct
             owner: member.owner,
             ownerReviewId: member.ownerReviewId,
             ownerReviewDigest: member.ownerReviewDigest,
+            batchId: command.batchId,
+            ordinal: Number(member.ordinal),
           },
         );
+
+        if (member.owner !== "purchases.recognition") {
+          yield* recordDecision(transaction, {
+            bookId: command.scope.bookId,
+            actorId: principal.actorId,
+            kind: "batch_member",
+            id: `${command.batchId}:${member.ordinal}`,
+            subject: {
+              kind: "batch_member",
+              batchId: command.batchId,
+              ordinal: Number(member.ordinal),
+              owner: member.owner,
+              ownerReviewId: member.ownerReviewId,
+            },
+            selected: {
+              ownerApprovalId: approvalId,
+              ownerReviewDigest: member.ownerReviewDigest,
+              planId: member.planId,
+              planDigest: member.planDigest,
+            },
+            forced: "batch_approved",
+          });
+        }
 
         yield* Db.insertBatchApproval(transaction, {
           bookId: command.scope.bookId,

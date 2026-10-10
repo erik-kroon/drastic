@@ -1,3 +1,9 @@
+import {
+  recordSuggestion,
+  citedSuggestions,
+  recordDecision,
+  type Comparison,
+} from "../decision-provenance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
@@ -617,7 +623,7 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
 ) {
   const documentReaderAvailable = Boolean((yield* RequestEnvironment).bindings.DOCUMENT_READER);
 
-  return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, extractionTables);
 
@@ -668,7 +674,68 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
               entry.draftId,
             );
 
+      let suggestionRecordId: string | null = null;
+
+      if (
+        latest &&
+        attempt &&
+        Shared.textField(attemptBody(attempt, latest.id), "result") === "succeeded"
+      ) {
+        const basis = yield* readReviewBasis(
+          transaction,
+          command.scope.bookId,
+          command.occurrenceId,
+          latest.id,
+          attempt.id,
+          previewExpectations,
+        );
+
+        const retained = yield* readRetainedDecisions(
+          transaction,
+          command.scope.bookId,
+          basis.current?.id ?? null,
+        );
+
+        const merge = proposalState(
+          basis.base ?? {},
+          basis.current?.content ?? basis.base ?? {},
+          attemptBody(attempt, latest.id),
+          [],
+          retained,
+        );
+
+        const fields = yield* Schema.decodeUnknownEffect(Schema.Array(Extraction.MergedField))(
+          merge.fields,
+        ).pipe(Effect.mapError(() => failure("InternalError")));
+
+        suggestionRecordId = yield* recordSuggestion(
+          transaction,
+          command.scope.bookId,
+          principal,
+          {
+            kind: "extraction_attempt",
+            occurrenceId: command.occurrenceId,
+            requestId: latest.id,
+            attemptId: attempt.id,
+            draftId: basis.current?.id ?? null,
+            revision: basis.current?.revision ?? null,
+          },
+          {
+            source: "extraction",
+            version: "extraction_merge_v1",
+            options: fields
+              .filter((field) => field.suggestion !== null)
+              .map((field) => ({
+                lineOrdinal: field.lineOrdinal,
+                fieldKey: field.fieldKey,
+                value: field.suggestion,
+              })),
+          },
+        );
+      }
+
       return yield* Shared.decode(StateSchema, {
+        suggestionRecordId,
         currencyScale: book.currencyScale,
         scope: command.scope,
         occurrenceId: command.occurrenceId,
@@ -965,7 +1032,7 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
     readonly attemptId: string;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, true, "update", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireExtractionAccess(transaction);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
@@ -1009,7 +1076,37 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
           ? yield* calculateSupplierDraft(transaction, command.scope.bookId, book, merge.proposed)
           : null;
 
+      const preparedFields = yield* Schema.decodeUnknownEffect(
+        Schema.Array(Extraction.MergedField),
+      )(merge.fields).pipe(Effect.mapError(() => failure("InternalError")));
+
+      const suggestionRecordId = yield* recordSuggestion(
+        transaction,
+        command.scope.bookId,
+        principal,
+        {
+          kind: "extraction_attempt",
+          occurrenceId: command.occurrenceId,
+          requestId: command.requestId,
+          attemptId: command.attemptId,
+          draftId: basis.current?.id ?? null,
+          revision: basis.current?.revision ?? null,
+        },
+        {
+          source: "extraction",
+          version: "extraction_merge_v1",
+          options: preparedFields
+            .filter((field) => field.suggestion !== null)
+            .map((field) => ({
+              lineOrdinal: field.lineOrdinal,
+              fieldKey: field.fieldKey,
+              value: field.suggestion,
+            })),
+        },
+      );
+
       return yield* Shared.decode(PreparationSchema, {
+        suggestionRecordId,
         currencyScale: book.currencyScale,
         scope: command.scope,
         occurrenceId: command.occurrenceId,
@@ -1280,6 +1377,23 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
 
       if (basis.base === null) return yield* failure("InvalidJournal");
 
+      const subject = {
+        kind: "extraction_attempt" as const,
+        occurrenceId: command.occurrenceId,
+        requestId: command.requestId,
+        attemptId: command.input.attemptId,
+        draftId: basis.current?.id ?? null,
+        revision: basis.current?.revision ?? null,
+      };
+
+      const exposure = yield* citedSuggestions(
+        transaction,
+        command.scope.bookId,
+        principal,
+        [subject],
+        command.input.presentedSuggestionIds ?? [],
+      );
+
       const retained = yield* readRetainedDecisions(
         transaction,
         command.scope.bookId,
@@ -1399,6 +1513,52 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
         chosen.selected,
         principal.actorId,
       );
+
+      const fieldRecords = yield* Schema.decodeUnknownEffect(
+        Schema.Array(Extraction.SupplierFieldDecisionRecord),
+      )(records).pipe(Effect.mapError(() => failure("InternalError")));
+
+      for (const record of fieldRecords) {
+        const comparisons: Comparison[] = exposure.records.map((suggestion) => {
+          const option =
+            suggestion.ranked.source === "extraction"
+              ? suggestion.ranked.options.find(
+                  (field) =>
+                    field.lineOrdinal === record.lineOrdinal && field.fieldKey === record.fieldKey,
+                )
+              : undefined;
+
+          return {
+            coverage: "complete",
+            comparison:
+              option === undefined
+                ? "not_comparable"
+                : option.value === record.selectedValue
+                  ? "unchanged"
+                  : "changed",
+            dimensions: { lineOrdinal: record.lineOrdinal, fieldKey: record.fieldKey },
+          };
+        });
+
+        yield* recordDecision(transaction, {
+          bookId: command.scope.bookId,
+          actorId: principal.actorId,
+          kind: "extraction_field",
+          id: record.id,
+          subject: yield* Shared.toJsonObject(subject),
+          selected: yield* Shared.toJsonObject({
+            ...record,
+            bookCommitSequence: book.committedSequence,
+          }),
+          exposure: {
+            ...exposure,
+            uncited:
+              exposure.uncited ||
+              (record.decisionKind === "accepted_suggestion" && exposure.records.length === 0),
+          },
+          comparisons,
+        });
+      }
 
       const result = yield* Shared.decode(ReviewSchema, {
         occurrenceId: command.occurrenceId,

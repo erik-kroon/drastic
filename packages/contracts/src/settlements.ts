@@ -1,3 +1,4 @@
+import { PresentedSuggestionIds } from "./decision-provenance";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -13,6 +14,7 @@ export const AllocationLeg = Schema.Struct({
 });
 
 export const PrepareBankAllocation = Schema.Struct({
+  presentedSuggestionIds: PresentedSuggestionIds,
   accountId: Accounting.Identifier,
   reason: Accounting.Description,
   ambiguityAcknowledged: Schema.Literal(true),
@@ -60,6 +62,7 @@ export const BankAllocationPlan = Schema.Struct({
 });
 
 export const ApproveBankAllocation = Schema.Struct({
+  presentedSuggestionIds: PresentedSuggestionIds,
   digest: Accounting.Digest,
   version: Schema.Literal(1),
 });

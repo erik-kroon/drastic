@@ -1,3 +1,4 @@
+import { citedSuggestions, recordDecision, type Comparison } from "../decision-provenance";
 import { admitBankMatch } from "../resource-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -178,6 +179,43 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
       if (request.previous) return request.previous;
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
+      const observation = (yield* StatementDb.readObservation(
+        transaction,
+        command.scope.bookId,
+        command.input.statementId,
+        command.input.rowOrdinal,
+      ))[0];
+
+      if (!observation) return yield* failure("NotFound");
+
+      const checkpoint = yield* Shared.readCheckpoint(
+        transaction,
+        command.scope.bookId,
+        observation.accountId,
+      );
+
+      const subject = {
+        kind: "bank_row" as const,
+        statementId: observation.statementId,
+        rowOrdinal: observation.rowOrdinal,
+        revision: checkpoint.sourceRevision,
+      };
+
+      const exposure = yield* citedSuggestions(
+        transaction,
+        command.scope.bookId,
+        principal,
+        [subject],
+        command.input.presentedSuggestionIds ?? [],
+      );
+
+      const retainedMatch = (yield* StatementDb.readObservationMatch(
+        transaction,
+        command.scope.bookId,
+        command.input.statementId,
+        command.input.rowOrdinal,
+      ))[0];
+
       const matched = yield* addMatch(
         transaction,
         command.scope.bookId,
@@ -212,6 +250,39 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
           principal.actorId,
         ),
       } satisfies JsonObject);
+
+      const selected = yield* Shared.decode(Bank.BankMatch, matched);
+
+      const comparisons: Comparison[] = exposure.records.map((record) => {
+        const first =
+          record.ranked.source === "bank_ranking_v2" ? record.ranked.options[0] : undefined;
+
+        return {
+          coverage: "complete",
+          comparison:
+            first === undefined
+              ? "not_comparable"
+              : first.voucherId === selected.voucherId && first.lineId === selected.lineId
+                ? "unchanged"
+                : "changed",
+          dimensions: { voucherId: selected.voucherId, lineId: selected.lineId },
+        };
+      });
+
+      if (!retainedMatch)
+        yield* recordDecision(transaction, {
+          bookId: command.scope.bookId,
+          actorId: principal.actorId,
+          kind: "bank_match",
+          id: `${selected.statementId}:${selected.rowOrdinal}`,
+          subject: yield* Shared.toJsonObject(subject),
+          selected: yield* Shared.toJsonObject({
+            ...selected,
+            bookCommitSequence: checkpoint.sequence,
+          }),
+          exposure,
+          comparisons,
+        });
 
       const receipt = yield* Shared.decode(MatchReceiptSchema, body);
       yield* saveCommand(

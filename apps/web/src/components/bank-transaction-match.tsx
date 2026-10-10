@@ -658,6 +658,7 @@ function MatchChoice(
       canSubmit={valid && acknowledged && !!reason.trim() && (!candidate || originalAvailable)}
       input={(fields) => ({
         accountId: data.window.accountId,
+        presentedSuggestionIds: [data.suggestionRecordId],
         reason: fields.get("reason"),
         ambiguityAcknowledged: acknowledged,
         legs,

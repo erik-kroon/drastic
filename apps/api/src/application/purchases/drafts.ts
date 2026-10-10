@@ -1,3 +1,5 @@
+import * as Provenance from "@open-erp/contracts/decision-provenance";
+import { recordSuggestion } from "../decision-provenance";
 import { readSealedDraft } from "../../db/posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
@@ -659,8 +661,16 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
 });
 
 export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSuggestions")(
-  function* (token: string, command: { readonly scope: Scope; readonly counterpartyId: string }) {
-    return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
+  function* (
+    token: string,
+    command: {
+      readonly scope: Scope;
+      readonly counterpartyId: string;
+      readonly draftId: string;
+      readonly draftRevision: string;
+    },
+  ) {
+    return yield* Shared.withBook(token, command.scope, false, "share", (transaction, principal) =>
       Effect.gen(function* () {
         yield* Shared.requireTables(transaction, draftTables);
 
@@ -674,13 +684,50 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
           return yield* failure("NotFound");
         }
 
+        const head = (yield* DraftDb.readHeadRevision(
+          transaction,
+          command.scope.bookId,
+          command.draftId,
+          command.draftRevision,
+        ))[0];
+
+        if (!head) return yield* failure("NotFound");
+
+        const draft = yield* Shared.decode(RevisionSchema, head.body);
+
+        if (draft.content.counterpartyId !== command.counterpartyId)
+          return yield* failure("Forbidden");
+
         const rows = yield* DraftDb.readSupplierAccountSuggestions(
           transaction,
           command.scope.bookId,
           command.counterpartyId,
         );
 
+        const items = rows.map((row) => ({
+          expenseAccountId: row.expenseAccountId,
+          vatRatePercent: row.vatRatePercent,
+          sourceInvoiceId: row.sourceInvoiceId,
+        }));
+
+        const ranked = yield* Shared.decode(Provenance.SuggestionOptions, {
+          source: "firm_memory_v0",
+          version: "supplier_account_history_v1",
+          options: items,
+        });
+
+        const suggestionRecordId = yield* recordSuggestion(
+          transaction,
+          command.scope.bookId,
+          principal,
+          { kind: "supplier_draft", draftId: command.draftId, revision: command.draftRevision },
+          ranked,
+        );
+
         return yield* Shared.decode(SuggestionsSchema, {
+          suggestionRecordId,
+          draftId: command.draftId,
+          draftRevision: command.draftRevision,
           scope: command.scope,
           counterpartyId: command.counterpartyId,
           items: rows.map((row) => ({

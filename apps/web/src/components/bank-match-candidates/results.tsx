@@ -22,6 +22,7 @@ export interface BankCandidateSelection {
   readonly voucherId: string;
   readonly lineId: string;
   readonly discoveryDigest: string;
+  readonly suggestionRecordId: string;
   readonly aggregateLegs?: readonly {
     voucherId: string;
     lineId: string;
@@ -235,6 +236,7 @@ export function BankCandidateResults({
                       voucherId: aggregateFirst.voucherId,
                       lineId: aggregateFirst.lineId,
                       discoveryDigest: result.digest,
+                      suggestionRecordId: result.suggestionRecordId,
                       aggregateLegs: aggregate.map((candidate) => ({
                         voucherId: candidate.voucherId,
                         lineId: candidate.lineId,
@@ -318,6 +320,7 @@ export function BankCandidateResults({
                           voucherId: candidate.voucherId,
                           lineId: candidate.lineId,
                           discoveryDigest: result.digest,
+                          suggestionRecordId: result.suggestionRecordId,
                         };
 
                         setSelected(selection);

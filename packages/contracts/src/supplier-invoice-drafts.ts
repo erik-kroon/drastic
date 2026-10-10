@@ -114,6 +114,9 @@ export const SupplierInvoiceDraftHistory = Schema.Struct({
 });
 
 export const SupplierAccountSuggestions = Schema.Struct({
+  suggestionRecordId: Accounting.Identifier,
+  draftId: Accounting.Identifier,
+  draftRevision: Commerce.Version,
   scope: Accounting.Scope,
   counterpartyId: Accounting.Identifier,
   items: Schema.Array(
@@ -169,6 +172,7 @@ export const SupplierInvoiceDraftsApi = HttpApiGroup.make("supplierInvoiceDrafts
     "/v1/entities/:entityId/books/:bookId/commerce/supplier-account-suggestions/:counterpartyId",
     {
       params: Schema.Struct({ ...Accounting.Scope.fields, counterpartyId: Accounting.Identifier }),
+      query: Schema.Struct({ draftId: Accounting.Identifier, draftRevision: Commerce.Version }),
       success: SupplierAccountSuggestions,
       error: accountingErrors,
     },
