@@ -947,7 +947,6 @@
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/button",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/data-grid",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/data-table",
-    "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/record-layout",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/select",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/posted-records.tsx:@open-erp/ui/components/workflow",
@@ -1238,7 +1237,6 @@
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/form-dialog",
-    "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/record-sheet",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/typography",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx:@open-erp/ui/components/workspace",
@@ -1274,7 +1272,5 @@
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/typography"
   ],
-  "infrastructureModules": [
-    "@open-erp/ui/components/workspace"
-  ]
+  "infrastructureModules": ["@open-erp/ui/components/workspace"]
 }

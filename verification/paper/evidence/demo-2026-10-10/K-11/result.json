@@ -1,7 +1,7 @@
 {
   "scope": "K-11",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
-  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
+  "comparatorRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
   "referenceSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
   "actualSha256": "90a32d690f633a61c37f5e5ebb9052d8f6c3bd2d40f9ed78498f300750e33b82",
   "diffSha256": "74c34a0db81bfc7c7762d0d8fd8b81ee706e4e6d8d33501511ddf9ee8066916e",
@@ -13,7 +13,7 @@
     "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
     "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx": "77af04c0038225a1f7b5df99d6167fccd5dabab99212f4b1d129272c65cbcc45",
     "apps/web/src/components/commerce/supplier-focused-review.tsx": "6a6ac9fb3ba62e725a9b8ae2257a079c09721eeb3186ba1b14515238015813fa",
-    "packages/ui/src/components/pdf-viewer.tsx": "09e127e6474f57342f2e84b9c54f9edeb36b314a6a4ff471d6561f4395212a9e",
+    "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
     "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
     "apps/web/src/components/posting-recovery/copy.ts": "809aa7f243aabf495e94bc5df77ff46e14b43550ce7217764cb84a33f1f63352",
@@ -46,8 +46,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_84c6a08b042947e99ace40fc7c086b28/sha256:292f59e2f4b825114f4ff66ae2ef3e47d50440cb16d8f3f7b1c40beb982e3b6f?sort=oldest",
-    "time": "2026-10-10T11:06:28.079Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_9ed805a50e4a4737b3d717e177018b3e/sha256:7381b5bab29df99d2d983a9942d849415d8b3e4d009d935c11fb83f24c0d3185?sort=oldest",
+    "time": "2026-10-10T11:41:58.754Z",
     "clockPinned": false,
     "fixture": {
       "synthetic": true,

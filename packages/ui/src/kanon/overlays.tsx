@@ -80,6 +80,14 @@ const styles = stylex.create({
     width: kanon.sizeDrawer,
     zIndex: 50,
   },
+  recordBackdrop: { backgroundColor: "transparent", opacity: 1 },
+  recordPanel: {
+    borderInlineStartColor: kanon.colorRule,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: 1,
+    boxShadow: "none",
+    width: kanon.sizePanel,
+  },
   drawerHead: {
     alignItems: "center",
     borderBottomColor: kanon.colorRule,
@@ -199,23 +207,35 @@ export function Drawer(props: {
   onOpenChange: (open: boolean) => void;
   title: string;
   children: ReactNode;
-  footer: ReactNode;
+  footer?: ReactNode;
+  presentation?: "record";
+  closeLabel?: string;
 }) {
   const copy = useKanonCopy();
 
   return (
     <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
-        <Dialog.Popup {...stylex.props(styles.drawer)}>
+        <Dialog.Backdrop
+          {...stylex.props(
+            styles.backdrop,
+            props.presentation === "record" && styles.recordBackdrop,
+          )}
+        />
+        <Dialog.Popup
+          {...stylex.props(styles.drawer, props.presentation === "record" && styles.recordPanel)}
+        >
           <div {...stylex.props(styles.drawerHead)}>
             <Dialog.Title {...stylex.props(styles.title)}>{props.title}</Dialog.Title>
-            <Dialog.Close aria-label={copy.close} {...stylex.props(styles.close)}>
+            <Dialog.Close
+              aria-label={props.closeLabel ?? copy.close}
+              {...stylex.props(styles.close)}
+            >
               ×
             </Dialog.Close>
           </div>
           <div {...stylex.props(styles.drawerBody)}>{props.children}</div>
-          <div {...stylex.props(styles.footer)}>{props.footer}</div>
+          {props.footer !== undefined && <div {...stylex.props(styles.footer)}>{props.footer}</div>}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

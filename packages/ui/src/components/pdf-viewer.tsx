@@ -41,6 +41,8 @@ const styles = stylex.create({
   },
   page: { display: "block", backgroundColor: tokens.card, marginInline: "auto" },
   pageFrame: { position: "relative", marginInline: "auto", width: "fit-content" },
+  fitFrame: { maxWidth: "100%" },
+  fitPage: { maxWidth: "100%", height: "auto" },
   hidden: { display: "none" },
   dimensions: (width: number, height: number) => ({ width, height }),
   text: {
@@ -339,7 +341,7 @@ export function PdfViewer(props: {
           props.presentation === "bank" && view.zoom > 100 && styles.bankZoomedViewport,
         )}
       >
-        <div {...stylex.props(styles.pageFrame)}>
+        <div {...stylex.props(styles.pageFrame, !focused && view.zoom <= 100 && styles.fitFrame)}>
           <canvas
             ref={canvas}
             role="img"
@@ -349,6 +351,7 @@ export function PdfViewer(props: {
               styles.page,
               !ready && styles.hidden,
               pageState.status === "ready" && styles.dimensions(pageState.width, pageState.height),
+              !focused && view.zoom <= 100 && styles.fitPage,
             )}
           />
           {ready && props.highlight?.page === view.page ? (

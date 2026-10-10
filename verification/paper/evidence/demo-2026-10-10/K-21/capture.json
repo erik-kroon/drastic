@@ -1,12 +1,12 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-21/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-21 --output verification/paper/evidence/demo-2026-10-10/K-21",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
   "sourceHashes": {
     "apps/web/src/components/bank-transaction-match.tsx": "6f7af8cc901012ea392a4c888e03fb5451e78a46bd1733ccbd09f04a94f07fda",
     "apps/web/src/components/bank-match-original.tsx": "ff9bd8716c2d64fda7fde28a16922a1b4fcf354c6ddeba8b914b8c750465a465",
     "apps/web/src/components/original-document.tsx": "7d0f3c7466698d859774792a20909751bd00e9a65c53d1028437088c19e09087",
-    "packages/ui/src/components/pdf-viewer.tsx": "09e127e6474f57342f2e84b9c54f9edeb36b314a6a4ff471d6561f4395212a9e"
+    "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3"
   },
   "reviewer": "Automated capture; no human review or production qualification",
   "conditions": {
@@ -42,8 +42,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/accounts",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_9de1fb6cd13f479ea4e28f58dda0794b&row=1",
-    "time": "2026-10-10T11:12:15.062Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_bf5aca23d0144016aac07f755d50751a&row=1",
+    "time": "2026-10-10T11:44:39.659Z",
     "clockPinned": false,
     "fixture": {
       "synthetic": true,

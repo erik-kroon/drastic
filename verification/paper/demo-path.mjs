@@ -94,6 +94,7 @@ try {
     const view = await read(`/commerce/supplier-acceptance-reviews/${seed.reviews[0].reviewId}`);
     assert.ok(view.acceptance, "Stored execution receipt");
     const vouchers = await read("/vouchers");
+    const after = await read("/ledger");
 
     const retained = vouchers.items.filter(
       (item) => item.id === view.acceptance.postingReceipt.voucherId,
@@ -113,6 +114,41 @@ try {
     await page.getByRole("link", { name: "Visa verifikation", exact: true }).click();
     await page.waitForLoadState("networkidle");
     await page.reload({ waitUntil: "networkidle" });
+    const dialog = page.getByRole("dialog", { name: "Verifikat", exact: true });
+    const summary = dialog.getByRole("table").first();
+    await summary.getByText("Summa", { exact: true }).waitFor();
+    const summarized = await summary.getByRole("row").all();
+
+    const cells = await Promise.all(
+      summarized
+        .slice(1)
+        .map(async (row) =>
+          (await row.getByRole("cell").allTextContents()).map((value) => value.replace(/\s/g, " ")),
+        ),
+    );
+
+    assert.deepEqual(
+      cells,
+      [
+        ["6550 Konsultarvoden", "10 000,00", ""],
+        ["2641 Debiterad ingående moms", "2 500,00", ""],
+        ["2440 Leverantörsskulder", "", "12 500,00"],
+        ["Summa", "12 500,00", "12 500,00"],
+      ],
+      "Posted account totals retain separate sides and empty cells",
+    );
+
+    const accountFit = await summary.evaluate((element) => {
+      const panel = element.closest('[role="dialog"]').getBoundingClientRect();
+      const table = element.getBoundingClientRect();
+
+      return table.left > panel.left && table.right < panel.right;
+    });
+
+    assert.ok(accountFit, "Posted account table stays inside the record panel gutters");
+    await dialog.getByRole("button", { name: "Bokförda rader", exact: true }).click();
+    assert.equal(await dialog.getByRole("table").nth(1).getByRole("row").count(), 8);
+    await dialog.getByRole("button", { name: "Bokförda rader", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Verifikat", exact: true })
       .getByRole("button", { name: "Underlag 1", exact: true })
@@ -129,6 +165,26 @@ try {
       "Retained original bytes match their checksum after posting and reload",
     );
     const route = new URL(page.url());
+    const originalCanvas = dialog.locator("canvas[role=img]");
+    await originalCanvas.waitFor({ state: "visible" });
+
+    const originalSize = await originalCanvas.evaluate((element) => ({
+      width: element.getBoundingClientRect().width,
+      available: element.parentElement.parentElement.clientWidth,
+    }));
+
+    assert.ok(
+      originalSize.width <= originalSize.available + 1,
+      "Posted original fits record panel",
+    );
+    await page.keyboard.press("Escape");
+    await page.waitForURL(`${session.workspace}/purchases?**`);
+    assert.equal(new URL(page.url()).searchParams.get("record"), seed.reviews[0].draftId);
+    assert.deepEqual(
+      await read("/ledger"),
+      after,
+      "Inspection and close never change posted history",
+    );
     session.boards["K-16"] = {
       route: `${route.pathname}${route.search}`,
       state: "posted voucher selected",
@@ -152,6 +208,11 @@ try {
             "one voucher",
             "balanced 1250000 minor units",
             "original retained after reload",
+            "separate account-side totals and empty cells",
+            "account table inside record panel gutters",
+            "all seven posted lines remain available",
+            "posted original fits record panel",
+            "Escape returns to supplier owner without ledger writes",
           ],
           geometry,
         },

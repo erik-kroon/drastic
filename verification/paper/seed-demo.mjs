@@ -404,6 +404,7 @@ export async function seedDemo(config) {
     result.boards["K-11"] = {
       route: `${workspace}/reviews/${first.planId}/${first.planDigest}?sort=oldest`,
       state: "ready to approve",
+      readyText: "Attestera bokföring",
     };
 
     if (mode !== "one") {
