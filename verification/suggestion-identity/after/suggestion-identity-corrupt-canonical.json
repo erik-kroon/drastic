@@ -1,0 +1,10 @@
+{
+  "canonicalId": "suggestion_b1133e8697c045138771d5d55dc95d0b",
+  "status": 500,
+  "body": {
+    "_tag": "AccountingError",
+    "code": "InternalError",
+    "message": "The accounting service could not complete this request.",
+    "recovery": "outcome-unknown"
+  }
+}

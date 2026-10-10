@@ -2,7 +2,7 @@ import * as Examples from "@open-erp/contracts/decision-examples";
 import { provenanceRows } from "./support/decision-provenance";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
@@ -11,6 +11,7 @@ import * as Intake from "@open-erp/contracts/source-intake";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as Provenance from "@open-erp/contracts/decision-provenance";
+import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
 import { acceptDraft, createDraft, supplierFixture } from "./support/supplier-review";
 import {
   apiDirectory,
@@ -36,6 +37,8 @@ const HostResult = Schema.Struct({
 type HostOptions = {
   mode: "retain" | "run" | "claim" | "stop" | "capture";
   suggestionId?: string;
+  rollback?: boolean;
+  captureVariant?: "omit_title";
   captureKind?: "extraction" | "extraction_value" | "bank" | "supplier" | "native";
   scope: typeof Accounting.Scope.Type;
   requestId: string;
@@ -900,6 +903,322 @@ test("extraction state GET completes while its lifecycle row is locked", async (
     }
   } finally {
     await admin.query("ROLLBACK");
+    await admin.end();
+  }
+});
+
+for (const mode of ["sequential", "concurrent"] as const) {
+  test(`suggestion identity deduplicates ${mode} null-session extraction reads`, async () => {
+    const { book, path, options, reviewed } = await extractionFixture();
+
+    expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+    const read = async (token = book.token) =>
+      decoded(await request({ ...book, token }, path), Extraction.SupplierExtractionState);
+
+    const states =
+      mode === "concurrent"
+        ? await Promise.all([read(), read(), read()])
+        : [await read(), await read()];
+
+    const admin = await database();
+
+    try {
+      const captures = (
+        await admin.query(
+          "SELECT id,session_id,subject_digest,body->>'optionSetDigest' AS options_digest FROM openerp.suggestion_records WHERE book_id=$1 ORDER BY id",
+          [book.bookId],
+        )
+      ).rows;
+
+      await writeFile(
+        join(environment().artifacts, `suggestion-identity-${mode}.json`),
+        JSON.stringify({ ids: states.map((state) => state.suggestionRecordId), captures }),
+      );
+      expect(new Set(states.map((state) => state.suggestionRecordId)).size).toBe(1);
+      expect(captures).toHaveLength(1);
+      expect(captures[0].session_id).toBeNull();
+
+      const sessions = [await createSession(book), await createSession(book)];
+      const sessionStates = await Promise.all(sessions.map((session) => read(session.token)));
+
+      expect(
+        new Set([
+          states[0]!.suggestionRecordId,
+          ...sessionStates.map((state) => state.suggestionRecordId),
+        ]).size,
+      ).toBe(3);
+
+      for (const [index, session] of sessions.entries()) {
+        expect((await read(session.token)).suggestionRecordId).toBe(
+          sessionStates[index]!.suggestionRecordId,
+        );
+        await deleteSession(session.id);
+      }
+
+      await post(
+        book,
+        `/commerce/supplier-invoice-drafts/${reviewed.draft.id}/revisions`,
+        {
+          expectedRevision: reviewed.draft.revision,
+          expectedDigest: reviewed.draft.digest,
+          content: { ...reviewed.draft.content, title: "Revised retained title" },
+          reason: "Synthetic identity revision",
+        },
+        SupplierDrafts.SupplierInvoiceDraftRevision,
+      );
+      const revised = await read();
+
+      expect(revised.suggestionRecordId).not.toBe(states[0]!.suggestionRecordId);
+      expect((await read()).suggestionRecordId).toBe(revised.suggestionRecordId);
+    } finally {
+      await admin.end();
+    }
+  });
+}
+
+test("suggestion identity retains valid legacy duplicates and skips malformed canonical candidates", async () => {
+  const { book, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const state = await decoded(await request(book, path), Extraction.SupplierExtractionState);
+  const admin = await database();
+  let session: Awaited<ReturnType<typeof createSession>> | undefined;
+
+  try {
+    const original = (
+      await admin.query("SELECT * FROM openerp.suggestion_records WHERE book_id=$1 AND id=$2", [
+        book.bookId,
+        state.suggestionRecordId,
+      ])
+    ).rows[0];
+
+    session = await createSession(book);
+    const legacyBook = { ...book, token: session.token };
+    const copies = [];
+
+    for (const malformed of [true, false, false]) {
+      const id = `suggestion_${key().replaceAll("-", "")}`;
+
+      const body = {
+        ...original.body,
+        id,
+        sessionId: session.id,
+        ...(malformed
+          ? {
+              ranked: {
+                ...original.body.ranked,
+                options: [{ lineOrdinal: 0, fieldKey: "title", value: "x".repeat(1001) }],
+              },
+            }
+          : {}),
+      };
+
+      await admin.query(
+        "INSERT INTO openerp.suggestion_records(book_id,id,actor_id,session_id,subject_identity,subject_digest,body,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+        [
+          book.bookId,
+          id,
+          original.actor_id,
+          session.id,
+          original.subject_identity,
+          original.subject_digest,
+          body,
+          malformed ? "2020-01-01" : "2021-01-01",
+        ],
+      );
+      copies.push({ id, malformed });
+    }
+
+    const response = await request(legacyBook, path);
+    const observed = await response.clone().json();
+
+    await writeFile(
+      join(environment().artifacts, "suggestion-identity-legacy.json"),
+      JSON.stringify({ originalId: original.id, copies, status: response.status, observed }),
+    );
+
+    const refreshed = await decoded(response, Extraction.SupplierExtractionState);
+
+    expect(copies.filter((copy) => !copy.malformed).map((copy) => copy.id)).toContain(
+      refreshed.suggestionRecordId,
+    );
+    expect(
+      (
+        await admin.query(
+          "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+          [book.bookId],
+        )
+      ).rows[0].count,
+    ).toBe(4);
+    expect(
+      (await decoded(await request(legacyBook, path), Extraction.SupplierExtractionState))
+        .suggestionRecordId,
+    ).toBe(refreshed.suggestionRecordId);
+  } finally {
+    if (session) await deleteSession(session.id);
+    await admin.end();
+  }
+});
+
+test("suggestion identity reservations rollback and retained rows remain immutable", async () => {
+  const { book, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const state = await decoded(await request(book, path), Extraction.SupplierExtractionState);
+  const admin = await database();
+
+  try {
+    const counts = async () =>
+      (
+        await admin.query(
+          "SELECT (SELECT count(*)::int FROM openerp.suggestion_records WHERE book_id=$1) AS captures,(SELECT count(*)::int FROM openerp.suggestion_identities WHERE book_id=$1) AS identities",
+          [book.bookId],
+        )
+      ).rows[0];
+
+    const subset = {
+      ...options,
+      mode: "capture" as const,
+      captureKind: "native" as const,
+      suggestionId: state.suggestionRecordId!,
+      captureVariant: "omit_title" as const,
+    };
+
+    const selected = await host(book, subset);
+    const repeated = await host(book, subset);
+
+    expect(selected.ok).toBe(true);
+    expect(repeated).toEqual(selected);
+    expect(selected.value).not.toBe(state.suggestionRecordId);
+
+    const captures = (
+      await admin.query(
+        "SELECT id,subject_digest,body->>'optionSetDigest' AS options_digest FROM openerp.suggestion_records WHERE book_id=$1 ORDER BY id",
+        [book.bookId],
+      )
+    ).rows;
+
+    expect(captures).toHaveLength(2);
+    expect(new Set(captures.map((capture) => capture.subject_digest)).size).toBe(1);
+    expect(new Set(captures.map((capture) => capture.options_digest)).size).toBe(2);
+
+    const before = await counts();
+
+    const outcome = await host(book, {
+      ...options,
+      mode: "capture",
+      captureKind: "native",
+      suggestionId: state.suggestionRecordId!,
+      rollback: true,
+    });
+
+    const after = await counts();
+
+    const retained = JSON.parse(
+      await readFile(join(options.store, "capture-rollback.json"), "utf8"),
+    );
+
+    await writeFile(
+      join(environment().artifacts, "suggestion-identity-rollback.json"),
+      JSON.stringify({ captures, selected, repeated, before, outcome, retained, after }),
+    );
+    expect(outcome).toMatchObject({ ok: false, code: "InvalidJournal" });
+    expect(retained.counts).toEqual({
+      captures: before.captures + 1,
+      identities: before.identities + 1,
+    });
+    expect(after).toEqual(before);
+
+    const grants = (
+      await admin.query(
+        "SELECT has_table_privilege('e2e_runtime','openerp.suggestion_identities','UPDATE') AS updates, has_table_privilege('e2e_runtime','openerp.suggestion_identities','DELETE') AS deletes",
+      )
+    ).rows[0];
+
+    expect(grants).toEqual({ updates: false, deletes: false });
+    await expect(
+      admin.query(
+        "UPDATE openerp.suggestion_identities SET suggestion_id=suggestion_id WHERE book_id=$1",
+        [book.bookId],
+      ),
+    ).rejects.toMatchObject({ code: "P0001" });
+    await expect(
+      admin.query("DELETE FROM openerp.suggestion_records WHERE book_id=$1", [book.bookId]),
+    ).rejects.toMatchObject({ code: "P0001" });
+  } finally {
+    await admin.end();
+  }
+});
+
+test("suggestion identity refuses a corrupted canonical capture", async () => {
+  const { book, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const state = await decoded(await request(book, path), Extraction.SupplierExtractionState);
+  const admin = await database();
+  const session = await createSession(book);
+
+  try {
+    const original = (
+      await admin.query("SELECT * FROM openerp.suggestion_records WHERE book_id=$1 AND id=$2", [
+        book.bookId,
+        state.suggestionRecordId,
+      ])
+    ).rows[0];
+
+    const id = `suggestion_${key().replaceAll("-", "")}`;
+
+    const body = {
+      ...original.body,
+      id,
+      sessionId: session.id,
+      ranked: {
+        ...original.body.ranked,
+        options: [{ lineOrdinal: 0, fieldKey: "title", value: "x".repeat(1001) }],
+      },
+    };
+
+    await admin.query(
+      "INSERT INTO openerp.suggestion_records(book_id,id,actor_id,session_id,subject_identity,subject_digest,body) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [
+        book.bookId,
+        id,
+        book.actorId,
+        session.id,
+        original.subject_identity,
+        original.subject_digest,
+        body,
+      ],
+    );
+    await admin.query(
+      "INSERT INTO openerp.suggestion_identities(book_id,actor_id,session_id,subject_digest,option_set_digest,suggestion_id) VALUES($1,$2,$3,$4,$5,$6)",
+      [
+        book.bookId,
+        book.actorId,
+        session.id,
+        original.subject_digest,
+        original.body.optionSetDigest,
+        id,
+      ],
+    );
+
+    const response = await request({ ...book, token: session.token }, path);
+
+    await writeFile(
+      join(environment().artifacts, "suggestion-identity-corrupt-canonical.json"),
+      JSON.stringify({
+        canonicalId: id,
+        status: response.status,
+        body: await response.clone().json(),
+      }),
+    );
+    await failure(response, 500, "InternalError");
+  } finally {
+    await deleteSession(session.id);
     await admin.end();
   }
 });

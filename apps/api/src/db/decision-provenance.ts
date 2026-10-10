@@ -60,3 +60,36 @@ export function insertProvenance(
     sql`insert into openerp.decision_provenance(book_id,decision_kind,decision_id,actor_id,classification,body) values (${input.bookId},${input.kind},${input.id},${input.actorId},${input.classification},${JSON.stringify(input.body)}::jsonb)`,
   );
 }
+
+export type SuggestionIdentity = {
+  readonly bookId: string;
+  readonly actorId: string;
+  readonly sessionId: string | null;
+  readonly subjectDigest: string;
+  readonly optionSetDigest: string;
+};
+
+export function readSuggestionIdentity(transaction: Transaction, input: SuggestionIdentity) {
+  return transaction.execute<{ id: string }>(
+    sql`select suggestion_id as id from openerp.suggestion_identities where book_id=${input.bookId} and actor_id=${input.actorId} and session_id is not distinct from ${input.sessionId} and subject_digest=${input.subjectDigest} and option_set_digest=${input.optionSetDigest}`,
+    "objects",
+  );
+}
+
+export function claimSuggestionIdentity(
+  transaction: Transaction,
+  input: SuggestionIdentity,
+  id: string,
+) {
+  return transaction.execute<{ id: string }>(
+    sql`insert into openerp.suggestion_identities(book_id,actor_id,session_id,subject_digest,option_set_digest,suggestion_id) values(${input.bookId},${input.actorId},${input.sessionId},${input.subjectDigest},${input.optionSetDigest},${id}) on conflict do nothing returning suggestion_id as id`,
+    "objects",
+  );
+}
+
+export function readLegacySuggestions(transaction: Transaction, input: SuggestionIdentity) {
+  return transaction.execute<{ id: string; identity: string; body: Schema.JsonObject }>(
+    sql`select id,subject_identity as identity,body from openerp.suggestion_records where book_id=${input.bookId} and actor_id=${input.actorId} and session_id is not distinct from ${input.sessionId} and subject_digest=${input.subjectDigest} and body->>'optionSetDigest'=${input.optionSetDigest} order by created_at,id limit 64`,
+    "objects",
+  );
+}

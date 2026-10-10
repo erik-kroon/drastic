@@ -13,7 +13,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Intake from "@open-erp/contracts/source-intake";
 import { databaseLayer } from "../../src/db/connection";
 import { RequestEnvironment } from "../../src/runtime/environment";
-import { logFailure } from "../../src/application/failures";
+import { failure, logFailure } from "../../src/application/failures";
 import { recordSuggestion } from "../../src/application/decision-provenance";
 import { withBook } from "../../src/application/commerce/support";
 import { handleExtraction } from "../../src/runtime/preparation-queue";
@@ -33,6 +33,8 @@ const Input = Schema.Struct({
     Schema.Literals(["extraction", "extraction_value", "bank", "supplier", "native"]),
   ),
   suggestionId: Schema.optional(Accounting.Identifier),
+  rollback: Schema.optional(Schema.Boolean),
+  captureVariant: Schema.optional(Schema.Literal("omit_title")),
   source: Schema.optional(Intake.RetainSource),
 });
 
@@ -68,24 +70,54 @@ const operation = Effect.gen(function* () {
           }),
         )(attempts.at(-1)?.body.extraction);
 
-        return yield* recordSuggestion(transaction, input.scope.bookId, principal, served.subject, {
-          source: "extraction",
-          version: "extraction_merge_v1",
-          options: [
-            ...attempt.fields.map((field) => ({
-              lineOrdinal: 0,
-              fieldKey: field.fieldKey,
-              value: field.proposedValue,
-            })),
-            ...attempt.candidateLines.flatMap((line, index) =>
-              line.fields.map((field) => ({
-                lineOrdinal: index + 1,
+        const id = yield* recordSuggestion(
+          transaction,
+          input.scope.bookId,
+          principal,
+          served.subject,
+          {
+            source: "extraction",
+            version: "extraction_merge_v1",
+            options: [
+              ...attempt.fields.map((field) => ({
+                lineOrdinal: 0,
                 fieldKey: field.fieldKey,
                 value: field.proposedValue,
               })),
+              ...attempt.candidateLines.flatMap((line, index) =>
+                line.fields.map((field) => ({
+                  lineOrdinal: index + 1,
+                  fieldKey: field.fieldKey,
+                  value: field.proposedValue,
+                })),
+              ),
+            ]
+              .filter((field) => field.value !== null)
+              .filter(
+                (field) =>
+                  !input.rollback &&
+                  (input.captureVariant !== "omit_title" || field.fieldKey !== "title"),
+              ),
+          },
+        );
+
+        if (input.rollback) {
+          const counts = yield* transaction.execute<{ captures: number; identities: number }>(
+            sql`select (select count(*)::int from openerp.suggestion_records where book_id=${input.scope.bookId}) as captures,(select count(*)::int from openerp.suggestion_identities where book_id=${input.scope.bookId}) as identities`,
+            "objects",
+          );
+
+          yield* Effect.promise(() =>
+            writeFile(
+              join(input.store, "capture-rollback.json"),
+              JSON.stringify({ id, counts: counts[0] }),
             ),
-          ].filter((field) => field.value !== null),
-        });
+          );
+
+          return yield* failure("InvalidJournal");
+        }
+
+        return id;
       }
 
       const subject = {

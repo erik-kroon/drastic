@@ -1,0 +1,5 @@
+{
+  "before": { "captures": 1, "identities": 1 },
+  "outcome": { "ok": false, "code": "InvalidJournal" },
+  "after": { "captures": 1, "identities": 1 }
+}

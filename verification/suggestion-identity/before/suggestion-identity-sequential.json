@@ -1,0 +1,20 @@
+{
+  "ids": [
+    "suggestion_06280c2e17794ba39176aecd96f76820",
+    "suggestion_d94753ba38724088b4d4a1a46b48898e"
+  ],
+  "captures": [
+    {
+      "id": "suggestion_06280c2e17794ba39176aecd96f76820",
+      "session_id": null,
+      "subject_digest": "sha256:48d52743ffd4e3732ad65d93a8ba51e76c9a39e691afa128673e7b37b3a4e7f5",
+      "options_digest": "sha256:da106e632134cd7347a760caf7c5c1f5bceb61283a6c98e0a9aea4dd23791f1f"
+    },
+    {
+      "id": "suggestion_d94753ba38724088b4d4a1a46b48898e",
+      "session_id": null,
+      "subject_digest": "sha256:48d52743ffd4e3732ad65d93a8ba51e76c9a39e691afa128673e7b37b3a4e7f5",
+      "options_digest": "sha256:da106e632134cd7347a760caf7c5c1f5bceb61283a6c98e0a9aea4dd23791f1f"
+    }
+  ]
+}

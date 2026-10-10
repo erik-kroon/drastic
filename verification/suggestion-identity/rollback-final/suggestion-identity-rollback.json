@@ -1,0 +1,23 @@
+{
+  "captures": [
+    {
+      "id": "suggestion_2cbaf0501157430db2969d43329fa474",
+      "subject_digest": "sha256:a1b6b27dfebc58d34fb21795066ca451ac9ae17b464737e69754ed556db19635",
+      "options_digest": "sha256:da106e632134cd7347a760caf7c5c1f5bceb61283a6c98e0a9aea4dd23791f1f"
+    },
+    {
+      "id": "suggestion_55e470ba70b545b2890a4fe3b38c72c0",
+      "subject_digest": "sha256:a1b6b27dfebc58d34fb21795066ca451ac9ae17b464737e69754ed556db19635",
+      "options_digest": "sha256:689d4dc8e9037021ddeb9b20694be07430790034f97815e245cec0549040f341"
+    }
+  ],
+  "selected": { "ok": true, "value": "suggestion_55e470ba70b545b2890a4fe3b38c72c0" },
+  "repeated": { "ok": true, "value": "suggestion_55e470ba70b545b2890a4fe3b38c72c0" },
+  "before": { "captures": 2, "identities": 2 },
+  "outcome": { "ok": false, "code": "InvalidJournal" },
+  "retained": {
+    "id": "suggestion_0a61ff1d32624e4c8f6c273766e33395",
+    "counts": { "captures": 3, "identities": 3 }
+  },
+  "after": { "captures": 2, "identities": 2 }
+}

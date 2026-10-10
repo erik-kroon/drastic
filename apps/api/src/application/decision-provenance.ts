@@ -1,6 +1,7 @@
 import * as Contract from "@open-erp/contracts/decision-provenance";
 import * as Effect from "effect/Effect";
-import type * as Schema from "effect/Schema";
+import * as Schema from "effect/Schema";
+import * as Result from "effect/Result";
 import type { Transaction } from "../db/transaction";
 import type { VerifiedPrincipal } from "../db/identity";
 import * as Db from "../db/decision-provenance";
@@ -33,6 +34,36 @@ function sessionId(principal: VerifiedPrincipal) {
   return "sessionId" in principal ? principal.sessionId : null;
 }
 
+const requireCanonicalSuggestion = Effect.fn("decisions.requireCanonicalSuggestion")(function* (
+  transaction: Transaction,
+  key: Db.SuggestionIdentity,
+  id: string,
+  subjectIdentity: string,
+) {
+  const row = (yield* Db.readCitedSuggestion(transaction, key.bookId, id))[0];
+
+  if (!row) return yield* failure("InternalError");
+
+  const candidate = yield* decode(Contract.SuggestionRecord, row.body);
+
+  if (
+    row.actorId !== key.actorId ||
+    row.sessionId !== key.sessionId ||
+    row.subjectDigest !== key.subjectDigest ||
+    row.subjectIdentity !== subjectIdentity ||
+    candidate.id !== id ||
+    candidate.actorId !== key.actorId ||
+    candidate.sessionId !== key.sessionId ||
+    identity(candidate.subject) !== subjectIdentity ||
+    candidate.optionSetDigest !== key.optionSetDigest ||
+    (yield* digest(candidate.subject)) !== key.subjectDigest ||
+    (yield* digest(candidate.ranked)) !== key.optionSetDigest
+  )
+    return yield* failure("InternalError");
+
+  return id;
+});
+
 export const recordSuggestion = Effect.fn("decisions.recordSuggestion")(function* (
   transaction: Transaction,
   bookId: string,
@@ -52,13 +83,66 @@ export const recordSuggestion = Effect.fn("decisions.recordSuggestion")(function
     }),
   );
 
+  const key = {
+    bookId,
+    actorId: principal.actorId,
+    sessionId: record.sessionId,
+    subjectDigest: yield* digest(subject),
+    optionSetDigest: record.optionSetDigest,
+  };
+
+  const existing = (yield* Db.readSuggestionIdentity(transaction, key))[0];
+
+  if (existing)
+    return yield* requireCanonicalSuggestion(transaction, key, existing.id, identity(subject));
+
+  let retainedId: string | null = null;
+
+  for (const row of yield* Db.readLegacySuggestions(transaction, key)) {
+    const decoded = yield* Schema.decodeUnknownEffect(Contract.SuggestionRecord)(row.body).pipe(
+      Effect.result,
+    );
+
+    if (Result.isFailure(decoded)) continue;
+
+    const candidate = decoded.success;
+
+    if (
+      candidate.id !== row.id ||
+      candidate.actorId !== key.actorId ||
+      candidate.sessionId !== key.sessionId ||
+      row.identity !== identity(subject) ||
+      identity(candidate.subject) !== row.identity ||
+      candidate.optionSetDigest !== key.optionSetDigest ||
+      (yield* digest(candidate.subject)) !== key.subjectDigest ||
+      (yield* digest(candidate.ranked)) !== key.optionSetDigest
+    )
+      continue;
+
+    retainedId = row.id;
+    break;
+  }
+
+  const canonicalId = retainedId ?? record.id;
+  const claimed = yield* Db.claimSuggestionIdentity(transaction, key, canonicalId);
+
+  if (claimed.length === 0) {
+    const winner = (yield* Db.readSuggestionIdentity(transaction, key))[0];
+
+    if (!winner) return yield* failure("InternalError");
+
+    return yield* requireCanonicalSuggestion(transaction, key, winner.id, identity(subject));
+  }
+
+  if (retainedId !== null) return retainedId;
+
   yield* Db.insertSuggestion(transaction, {
     bookId,
     id: record.id,
     actorId: principal.actorId,
     sessionId: record.sessionId,
     identity: identity(subject),
-    subjectDigest: yield* digest(subject),
+    subjectDigest: key.subjectDigest,
     body: yield* toJsonObject(record),
   });
 
