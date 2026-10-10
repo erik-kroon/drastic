@@ -1,7 +1,7 @@
 {
   "synthetic": true,
   "passed": true,
-  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_5884e151bcb5470d981510deff21226c%252F%2522%257D%257D&record=voucher_d107eb83b9ad4aaeab257bb691f5d84f&returnSupplier=supplier_invoice_draft_3659ffdfabf54b3788a83eb81d4a0e4e&returnSupplierReview=supplier_review_fb73e1222f5147999a25a32e0545d5e4",
+  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_89a72c1e73cb4e61a2ad1309061502a5%252F%2522%257D%257D&record=voucher_54061a932f2948ea98180f4989323c08&returnSupplier=supplier_invoice_draft_6a451f78b8004d08a161c842fc8daabd&returnSupplierReview=supplier_review_c4ffade254fe4d49830707ef8a3ac592",
   "checks": [
     "original independently checked",
     "uncropped original",
@@ -13,12 +13,34 @@
     "account table inside record panel gutters",
     "all seven posted lines remain available",
     "posted original fits record panel",
-    "Escape returns to supplier owner without ledger writes"
+    "Escape returns to supplier owner without ledger writes",
+    "bank original and acknowledgment gate",
+    "bank preparation and approval without allocation",
+    "one exact negative125000 allocation leg",
+    "bank execution retained after reload with zero remaining",
+    "overview shows retained bank balance and registered invoice coverage",
+    "bureau portfolio retains three permitted clients",
+    "saved unknown remains unattempted",
+    "continuation never changes posted history"
   ],
   "geometry": {
     "page": 720,
     "viewport": 720,
     "width": 532.078125,
     "available": 532
+  },
+  "continuation": {
+    "bankAllocationId": "bankplan_0f70c669ff524ed8ae364711654f7397",
+    "bankAmountMinor": "-125000",
+    "retainedClients": 3,
+    "retainedDeadlines": 0,
+    "sameBrowserSession": true,
+    "routeNavigation": "Real route URLs and bank row link; no mocked transport",
+    "parityQualified": false,
+    "limitations": [
+      "Overview is a ledger balance and registered-invoice view, not the board's result/coverage read model.",
+      "No illustrated deadlines, agent activity or complete source coverage are fabricated.",
+      "Unknown is a saved unattempted preparation, not proof of uncertain execution."
+    ]
   }
 }

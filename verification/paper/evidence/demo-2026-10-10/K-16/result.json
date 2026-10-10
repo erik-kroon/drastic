@@ -1,10 +1,10 @@
 {
   "scope": "K-16",
-  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
-  "comparatorRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
+  "sourceRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
+  "comparatorRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
   "referenceSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
-  "actualSha256": "f1fa8cde1a6002c7a6ab2eaa3b26b93773dfece16df7df991bb75fc829c52f67",
-  "diffSha256": "3b2febd11c34a99dfdde714c1f01df9451ee78d0cccac07d455f18f9dd8aaaa5",
+  "actualSha256": "16ad32712b847186076ed8d0aa8aafd0dcf815fdcbdacba83e037b5741b2198a",
+  "diffSha256": "5781c40f8eee9ac5dc67c5c98108cd05acc800d0cc2ea4d5dfa242dd06a1574b",
   "sourceHashes": {
     "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx": "ea04ba0aa0858c3387223acad24b1351120c9cbda96e0c00d90d58ea7f088cd3",
@@ -42,8 +42,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/books",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_5884e151bcb5470d981510deff21226c%252F%2522%257D%257D&record=voucher_d107eb83b9ad4aaeab257bb691f5d84f&returnSupplier=supplier_invoice_draft_3659ffdfabf54b3788a83eb81d4a0e4e&returnSupplierReview=supplier_review_fb73e1222f5147999a25a32e0545d5e4",
-    "time": "2026-10-10T11:44:12.263Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_89a72c1e73cb4e61a2ad1309061502a5%252F%2522%257D%257D&record=voucher_54061a932f2948ea98180f4989323c08&returnSupplier=supplier_invoice_draft_6a451f78b8004d08a161c842fc8daabd&returnSupplierReview=supplier_review_c4ffade254fe4d49830707ef8a3ac592",
+    "time": "2026-10-10T11:56:56.727Z",
     "clockPinned": false,
     "fixture": {
       "synthetic": true,

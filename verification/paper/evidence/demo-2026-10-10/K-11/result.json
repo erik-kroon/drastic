@@ -1,7 +1,7 @@
 {
   "scope": "K-11",
-  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
-  "comparatorRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
+  "sourceRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
+  "comparatorRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
   "referenceSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
   "actualSha256": "90a32d690f633a61c37f5e5ebb9052d8f6c3bd2d40f9ed78498f300750e33b82",
   "diffSha256": "74c34a0db81bfc7c7762d0d8fd8b81ee706e4e6d8d33501511ddf9ee8066916e",
@@ -46,8 +46,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_9ed805a50e4a4737b3d717e177018b3e/sha256:7381b5bab29df99d2d983a9942d849415d8b3e4d009d935c11fb83f24c0d3185?sort=oldest",
-    "time": "2026-10-10T11:41:58.754Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_e50792d089aa4b27af2153b6c29bf24d/sha256:08c6cabe85857e6fd2e3cd9566ac17565f3d3e6ac6eaad4b04ccf00fcfd20d93?sort=oldest",
+    "time": "2026-10-10T11:56:07.109Z",
     "clockPinned": false,
     "fixture": {
       "synthetic": true,

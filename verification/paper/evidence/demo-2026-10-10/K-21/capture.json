@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-21/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-21 --output verification/paper/evidence/demo-2026-10-10/K-21",
-  "sourceRevision": "1d8549e1a5768b8c58177f572f2e7bfefee05187",
+  "sourceRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
   "sourceHashes": {
     "apps/web/src/components/bank-transaction-match.tsx": "6f7af8cc901012ea392a4c888e03fb5451e78a46bd1733ccbd09f04a94f07fda",
     "apps/web/src/components/bank-match-original.tsx": "ff9bd8716c2d64fda7fde28a16922a1b4fcf354c6ddeba8b914b8c750465a465",
@@ -42,8 +42,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/accounts",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_bf5aca23d0144016aac07f755d50751a&row=1",
-    "time": "2026-10-10T11:44:39.659Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_ec48901d7fc845e48e89f4da6beadba8&row=1",
+    "time": "2026-10-10T11:56:13.659Z",
     "clockPinned": false,
     "fixture": {
       "synthetic": true,
