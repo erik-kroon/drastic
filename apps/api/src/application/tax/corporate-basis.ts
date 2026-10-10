@@ -82,7 +82,7 @@ export function roundRational(value: Exact, mode: Rounding["mode"]): bigint {
   const quotient = numerator / value.d;
   const remainder = numerator % value.d;
 
-  if (mode === "floor") return negative && remainder !== 0n ? -(quotient + 1n) : quotient;
+  if (mode === "floor") return negative ? -(quotient + (remainder === 0n ? 0n : 1n)) : quotient;
 
   let rounded = quotient;
 
