@@ -1204,3 +1204,190 @@ test("partial supplier hints distinguish observed corrections and report indepen
     exported: { independent: 1, corrected: 2, unknown_exposure: 1 },
   });
 });
+
+test("mixed changed and incomparable supplier citations retain unknown exposure", async () => {
+  const f = await supplierFixture([
+    { id: "account_payable", code: "2440", name: "Supplier payable" },
+    { id: "account_input_vat", code: "2641", name: "Input VAT" },
+    { id: "account_expense", code: "6000", name: "Expense" },
+    { id: "account_other", code: "6100", name: "Other expense" },
+  ]);
+  const book = { ...f.book, token: (await createSession(f.book)).token };
+  const makeDraft = async (ordinal: number) => {
+    const source = await purchaseEvidence(book, ordinal);
+    return createDraft(book, {
+      ...f.content,
+      sourceEvidenceId: source.id,
+      supplierDocumentNumber: `MIXED-${ordinal}`,
+      sourceTotalMinor: "12500",
+      lines: [
+        {
+          ...f.content.lines[0]!,
+          description: "Synthetic service",
+          taxEvidenceId: source.id,
+          taxMinor: "2500",
+          sourceGrossMinor: "12500",
+        },
+      ],
+    });
+  };
+  const decide = async (
+    draft: typeof Drafts.SupplierInvoiceDraftRevision.Type,
+    account: string,
+    citations: string[] = [],
+  ) => {
+    const review = await post(
+      book,
+      "/commerce/supplier-acceptance-reviews",
+      {
+        profile: "swedish-purchase-v1",
+        draftId: draft.id,
+        expectedRevision: draft.revision,
+        expectedDigest: draft.digest,
+        controlAccountId: "account_payable",
+        accountingPeriodId: "period_2026",
+        series: "A",
+        reason: "Synthetic mixed retained citations",
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: citations,
+        taxPoint: { taxPointOn: "2026-09-22", basis: "document_date" },
+        lineAssignments: draft.content.lines.map((line) => ({
+          lineId: line.id,
+          expenseAccountId: account,
+          treatment: {
+            basis: "full_deduction",
+            rate: { numerator: "25", denominator: "100" },
+            deduction: { numerator: "1", denominator: "1" },
+            invoiceTaxRounding: "half_up",
+            deductionRounding: "half_up",
+            acceptancePolicy: "exact_match",
+            toleranceMinor: "0",
+          },
+        })),
+      },
+      Acceptance.SupplierAcceptanceReview,
+    );
+    const approval = await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: citations,
+      },
+      Acceptance.SupplierAcceptanceApproval,
+    );
+    const receipt = await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/execute`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        approvalId: approval.id,
+      },
+      Acceptance.SupplierAcceptanceReceipt,
+    );
+    return { review, approval, receipt };
+  };
+  const seedA = await decide(await makeDraft(1), "account_expense");
+  const target = await makeDraft(2);
+  const path = `/commerce/supplier-account-suggestions/${f.supplier.id}?draftId=${target.id}&draftRevision=${target.revision}`;
+  const first = await decoded(await request(book, path), Drafts.SupplierAccountSuggestions);
+  expect(first.items[0]).toMatchObject({ expenseAccountId: "account_expense", vatRatePercent: 25 });
+  const seedB = await decide(await makeDraft(3), "account_other");
+  const second = await decoded(await request(book, path), Drafts.SupplierAccountSuggestions);
+  expect(second.items[0]).toMatchObject({ expenseAccountId: "account_other", vatRatePercent: 25 });
+  expect(second.suggestionRecordId).not.toBe(first.suggestionRecordId);
+  const citations = [first.suggestionRecordId, second.suggestionRecordId];
+  const decision = await decide(target, "account_expense", citations);
+  const provenance = (await provenanceRows(book)).find(
+    (row) => row.decision_id === decision.approval.id,
+  )!;
+  const admin = await database();
+  let records;
+  try {
+    records = (
+      await admin.query(
+        "SELECT id,subject_digest,body FROM openerp.suggestion_records WHERE book_id=$1 AND id=ANY($2::text[]) ORDER BY id",
+        [book.bookId, citations],
+      )
+    ).rows;
+  } finally {
+    await admin.end();
+  }
+  const exported = await post(
+    book,
+    "/automation/decision-examples",
+    {
+      purpose: "training",
+      selectedDecisionIds: [decision.approval.id],
+    },
+    Examples.DecisionExampleExport,
+  );
+  const reportDirectory = join(environment().artifacts, "mixed-report");
+  await mkdir(reportDirectory, { recursive: true });
+  await run(
+    [
+      "bun",
+      "verification/firm-memory/report.ts",
+      book.entityId,
+      book.bookId,
+      exported.id,
+      reportDirectory,
+    ],
+    {
+      env: {
+        ...process.env,
+        OPENERP_API_URL: environment().baseUrl,
+        OPENERP_OPERATOR_TOKEN: book.token,
+      },
+    },
+  );
+  const report = JSON.parse(await readFile(join(reportDirectory, "report.json"), "utf8"));
+  await writeFile(
+    join(environment().artifacts, "mixed-supplier-citations.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        seedA,
+        seedB,
+        target,
+        first,
+        second,
+        records,
+        decision,
+        provenance,
+        exported,
+        report,
+      },
+      null,
+      2,
+    ),
+  );
+  expect(records).toHaveLength(2);
+  expect(records.every((record) => record.body.ranked.options.length > 0)).toBe(true);
+  expect(new Set(records.map((record) => record.subject_digest)).size).toBe(1);
+  expect(new Set(records.map((record) => record.body.optionSetDigest)).size).toBe(2);
+  expect(provenance.body).toMatchObject({
+    presentedSuggestionIds: citations,
+    uncitedExposure: false,
+    comparisons: [
+      {
+        coverage: "partial",
+        comparison: "not_comparable",
+        dimensions: { account: "unchanged", vatRate: "unchanged" },
+      },
+      {
+        coverage: "partial",
+        comparison: "changed",
+        dimensions: { account: "changed", vatRate: "unchanged" },
+      },
+    ],
+  });
+  expect(provenance.classification).toBe("unknown_exposure");
+  expect(exported.examples[0]!.provenance.classification).toBe("unknown_exposure");
+  expect(report.populations.independent.exampleCount).toBe(0);
+  expect(report.populations.corrected.exampleCount).toBe(0);
+});
