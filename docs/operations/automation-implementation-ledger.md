@@ -330,3 +330,5 @@ Failure-first `72ff0e5` reproduced a tolerated source-tax discrepancy qualifying
 ## Owner stop checkpoint
 
 The owner stopped tests/checks before final stack qualification. Local combined source `d58579e` retained a stable inventory but its HTTP batch failed:20 passing,9 failing workflows. Earlier unit evidence is scoped to its recorded commits; the combined stack is not claimed clean or ready. Terminal off idempotency, the configured deadline margin, five VAT workflows and three close-predicate workflows passed in the batch. The close identity restore-after workflow and final static/MCP gates remain unverified. No rerun, new phase, main push or merge followed the stop. See `automation-review-handoff-2026-10-10.md` and `verification/agent-mode/review-stop/batch-receipt.json`. Draft commits remain local; pushing may trigger CI.
+
+The owner subsequently authorized a normal push of the draft stack. Publication does not establish passing verification or authorize new local tests/checks. The PR descriptions carry the known combined failure boundary; drafts remain for owner review.

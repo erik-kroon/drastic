@@ -1,6 +1,6 @@
 # Automation review stop handoff, 2026-10-10
 
-The owner stopped tests and checks. No new tests, checks, reruns or phase implementation are authorized by this handoff. The draft stack has local commits and remains unverified as a combined stack. These commits have not been pushed.
+The owner stopped tests and checks. No new tests, checks, reruns or phase implementation are authorized by this handoff. The draft stack remains unverified as a combined stack. The owner subsequently authorized publishing the local commits; that authorization does not permit new local tests or checks.
 
 ## Local implementation
 
@@ -22,7 +22,7 @@ Final combined clean-worktree `check:changed`, `check:changed:full`, owners, des
 ## Remaining work
 
 1. Resolve the final qualification failures and prove the close identity counter survives restore, only if the owner authorizes tests/checks again.
-2. Publish the local draft-branch commits and update the PR descriptions with the exact verification boundary. Do not merge or mark ready. Pushing could start CI; no push was performed after the stop instruction.
+2. Keep the published draft PR descriptions aligned with the exact verification boundary. Do not merge or mark ready. A normal branch push may start GitHub CI; local tests and checks remain stopped.
 3. Update Linear with published commit/PR links and the verification result, without marking unmerged work done.
 4. After the stack is reviewed, the next ready implementation is AUT33, voucher support, then AUT32, the synthetic-month baseline before engine code. AUT12 decision evaluation also remains pending. No new phase started.
 
