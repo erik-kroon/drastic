@@ -85,14 +85,7 @@ async function bridge(bindings: Bindings) {
 
       outgoing.writeHead(response.status, Object.fromEntries(response.headers));
       outgoing.end(Buffer.from(await response.arrayBuffer()));
-    })().catch((error: unknown) => {
-      failures.push({
-        stage,
-        lockCensus,
-        code: Schema.is(Schema.Struct({ code: Schema.String }))(error)
-          ? error.code
-          : "fixture_handler_error",
-      });
+    })().catch(() => {
       if (!outgoing.headersSent) outgoing.writeHead(500);
       outgoing.end("Synthetic fixture handler failed");
     });
@@ -125,6 +118,7 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
     [];
 
   type LockObservation = { mode: string; granted: boolean; state: string };
+
   const failures: { stage: string; code: string; lockCensus: LockObservation[] }[] = [];
   const readerHolds: { milliseconds: number; acquired: boolean; released: boolean }[] = [];
   const readerReleases: Promise<void>[] = [];
@@ -142,14 +136,17 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
       for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const scenario = control.scenario;
+
       if (readerHoldMilliseconds > 0) {
         stage = "independent_reader";
         const reader = await database();
+
         const observation = {
           milliseconds: readerHoldMilliseconds,
           acquired: false,
           released: false,
         };
+
         readerHolds.push(observation);
 
         try {
@@ -164,6 +161,7 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
         readerReleases.push(
           (async () => {
             await new Promise((resolve) => setTimeout(resolve, readerHoldMilliseconds));
+
             try {
               await reader.query("ROLLBACK");
               observation.released = true;
@@ -233,7 +231,15 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
           },
         }),
       );
-    })().catch(() => {
+    })().catch((error: unknown) => {
+      failures.push({
+        stage,
+        lockCensus,
+        code: Schema.is(Schema.Struct({ code: Schema.String }))(error)
+          ? error.code
+          : "fixture_handler_error",
+      });
+
       if (!outgoing.headersSent) outgoing.writeHead(500);
       outgoing.end("Synthetic fixture handler failed");
     });
@@ -255,6 +261,7 @@ async function provider(book: BookFixture, readerHoldMilliseconds = 0) {
     holds,
     async close() {
       await Promise.all(readerReleases);
+
       for (const resolve of holds.values()) resolve();
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) =>
