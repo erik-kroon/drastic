@@ -1,0 +1,35 @@
+{
+  "status": "scoped_read_only_mcp",
+  "provider": "@better-auth/oauth-provider@1.7.5",
+  "issuerMatchesDiscovery": true,
+  "mcpResourceDiscoveryMatchesIssuer": true,
+  "s256Advertised": true,
+  "signedIn": true,
+  "publicClientCreated": true,
+  "grantBoundToFirmAndBook": true,
+  "consentAccepted": true,
+  "codeExchanged": true,
+  "tokenBoundToImmutableReferenceAndResource": true,
+  "mcpBearerAdmittedToReadOnlyCatalog": true,
+  "codeReplayRefused": true,
+  "baselineRefreshSucceeded": true,
+  "concurrentRefreshStatuses": [
+    200,
+    400
+  ],
+  "concurrentRefreshDidNotDoubleIssue": true,
+  "refreshFamilyInvalidatedAfterReplay": true,
+  "appendOnlyRevocationRecorded": true,
+  "authorizationAfterRevocationRefused": true,
+  "foreignBookRefusedAfterMembershipAdded": true,
+  "removedMembershipRefused": true,
+  "expiredTokenRefused": true,
+  "ordinaryHttpRefused": true,
+  "revokedGrantRefused": true,
+  "unchangedLedger": true,
+  "invalidVerifierAndRedirectRefused": true,
+  "refreshVersusRevocationDidNotRestoreAccess": true,
+  "pending": [
+    "consent UI browser qualification"
+  ]
+}

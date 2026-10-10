@@ -4,6 +4,11 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import {
+  acquireCloudIntake,
+  acquireIntakeBatch,
+  getIntakeDestination,
+} from "../../../application/purchases/intake";
+import {
   getSupplierInbox,
   listSupplierInboxes,
   recordSupplierExtraction,
@@ -13,6 +18,27 @@ import {
 
 export const SupplierInboxHandlers = HttpApiBuilder.group(Api, "supplierInbox", (handlers) =>
   handlers
+    .handle("getIntakeDestination", ({ params }) =>
+      Effect.flatMap(authenticate, (token) => getIntakeDestination(token, scopeFromPath(params))),
+    )
+    .handle("acquireIntakeBatch", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        acquireIntakeBatch(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("acquireCloudIntake", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        acquireCloudIntake(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("listSupplierInboxes", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
         listSupplierInboxes(token, { scope: scopeFromPath(params), cursor: search.cursor }),
