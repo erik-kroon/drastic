@@ -119,3 +119,12 @@ Use the existing canon: evidence rather than percentages in ordinary review, con
 
 The independently written vectors in `automation-consequence-vectors.md` predate implementation. Mapping content checksum, explicit VAT category, normalized deduction, accounting period and captured dimensions determine known classes. Missing facts produce unknown; current mappings and rates cannot fill historical gaps.
 
+## AUT-03 checkpoint
+
+Local commit `8b2a1bb` adds the consequence classifier and its real sealed-export consumer. Known identities pin mapping and VAT profile content, normalized resolved rate/deduction, category, frozen period and required dimensions. Missing captures remain unknown. New exports are v2; immutable v1 seals remain readable.
+
+Four selected synthetic workflows passed, including 21 independent vectors (three equivalent, six different, twelve unknown), public review/export, correction lineage and identical export files. Artifacts are retained in `test-results/dra221-stable`; repeatable commands are in `verification/treatment-consequence/README.md`. Full changed checks and owners (53/53) passed. AUT-03 paths remained unchanged after verification; unrelated concurrent firm changes were preserved. No production mapping or VAT qualification, push, merge or deployment is claimed.
+
+## AUT-04 boundary
+
+Investigate the Swedish VAT owner before implementing explicit purchase categories. Existing approved rational rates remain authoritative. An opt-in category must resolve against the retained effective immutable profile and agree with the exact treatment. Missing category rules or entitlement evidence refuse that opt-in path. Synthetic release boundaries prove the mechanism, not legal qualification. Old posted history is not inferred or rewritten.
