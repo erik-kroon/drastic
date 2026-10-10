@@ -321,7 +321,7 @@ function useFirmReads(props: { firmId?: string; tab: "clients" | "team" }) {
     queryKey: ["accounting", "firms", current, "portfolio"],
     enabled: Boolean(current) && listed && firms.isSuccess && props.tab === "clients",
     queryFn: ({ signal }) =>
-      readAccounting(`/api/v1/firms/${current}/portfolio`, Firms.Portfolio, { signal }),
+      readAccounting(`/api/v1/firms/${current}/portfolio`, Firms.Portfolio, { signal }, 60_000),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
