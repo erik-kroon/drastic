@@ -16,6 +16,7 @@ export async function bankReviewFixture(
   browser: Browser,
   appUrl: string | undefined,
   mismatched = false,
+  original?: { bytes: Buffer; expectedHash: string },
 ) {
   const workspace = await signInSyntheticOperator(browser, appUrl);
 
@@ -54,11 +55,15 @@ export async function bankReviewFixture(
 
   const suffix = randomUUID();
 
-  const bytes = await readFile(
-    new URL("../../verification/testerarmy/bank-review-original.pdf", import.meta.url),
-  );
+  const bytes =
+    original?.bytes ??
+    (await readFile(
+      new URL("../../verification/testerarmy/bank-review-original.pdf", import.meta.url),
+    ));
 
-  const expectedHash = "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36";
+  const expectedHash =
+    original?.expectedHash ??
+    "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36";
 
   expect(`sha256:${createHash("sha256").update(bytes).digest("hex")}`).toBe(expectedHash);
 

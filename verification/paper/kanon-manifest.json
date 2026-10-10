@@ -642,7 +642,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -651,7 +651,7 @@
         "original unavailable",
         "prepared awaiting approval"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k21-original-acceptance/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -665,7 +665,8 @@
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states and cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes."
     },
     {
       "id": "K-30",
