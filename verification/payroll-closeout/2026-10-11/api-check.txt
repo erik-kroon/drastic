@@ -1,0 +1,113 @@
+$ vp test run "apps/api/tests/paid-payroll-recovery.e2e.test.ts" "apps/api/tests/paid-payroll-recovery.browser.e2e.test.ts" "apps/api/tests/employee-claims.e2e.test.ts" "apps/api/tests/mileage-corrections.e2e.test.ts"
+
+ RUN  v4.1.10 /Users/admin/drastic-finish-lanes
+
+ ✓ apps/api/tests/employee-claims.e2e.test.ts (6 tests) 65052ms
+   ✓ R40 retains three outcomes, recognizes once, exports separately and consumes fixed payroll capacity  4680ms
+   ✓ R40 current source drift refuses the old review while completion preserves originals and requires a fresh revision  4071ms
+   ✓ R40 all-direct mints one positive instruction and a no-review completion remains publicly recoverable  9215ms
+   ✓ R40 submitted originals fence previously approved legacy inputs and concurrent recognition posts only once  4077ms
+   ✓ R40 current V8 backup, inspect and fenced restore preserve retained claim decisions and fixed instructions  39766ms
+   ✓ R40 rejects another pending claim owner and prior recognized legacy source before retaining a fence  3224ms
+stderr | apps/api/tests/mileage-corrections.e2e.test.ts > each mileage persistence fault rolls back the complete approved financial state and permits exact retry
+POST http://127.0.0.1:60934/api/v1/entities/entity_e0579d6373fc1157/books/book_e0579d6373fc1157/payroll/settlement-reviews/payroll_settlement_review_725b385ddbe04977b3a9e14e4e5a41f4/executions: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=b5de3b1e-c454-4ec7-aba8-61116ff8d6dd; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/mileage-corrections.e2e.test.ts > each mileage persistence fault rolls back the complete approved financial state and permits exact retry
+POST http://127.0.0.1:60934/api/v1/entities/entity_3241cea40740e592/books/book_3241cea40740e592/payroll/settlement-reviews/payroll_settlement_review_ab9a8d64d5a8420c9c8ce0686b9cfc79/executions: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=5c35dc9e-9567-4cb7-8187-0d017f5d2ce8; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/mileage-corrections.e2e.test.ts > each mileage persistence fault rolls back the complete approved financial state and permits exact retry
+POST http://127.0.0.1:60934/api/v1/entities/entity_fbbe2ce47ba63104/books/book_fbbe2ce47ba63104/payroll/settlement-reviews/payroll_settlement_review_dfe974ccbf114ee7a2787df7f2ad2baf/executions: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=c0473076-13e0-4f89-9791-9a68c82a274d; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/mileage-corrections.e2e.test.ts > each mileage persistence fault rolls back the complete approved financial state and permits exact retry
+POST http://127.0.0.1:60934/api/v1/entities/entity_cc56d20884f2b298/books/book_cc56d20884f2b298/payroll/settlement-reviews/payroll_settlement_review_1b558490661848e99b377c3af4c3a8b1/executions: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=e3cbe14b-a5ac-4d3b-8fd6-5526a0832910; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/mileage-corrections.e2e.test.ts > each mileage persistence fault rolls back the complete approved financial state and permits exact retry
+POST http://127.0.0.1:60934/api/v1/entities/entity_fa6f20777f79741e/books/book_fa6f20777f79741e/payroll/settlement-reviews/payroll_settlement_review_9004978cb10a48d18b44661be2a7f5ba/executions: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=faf73660-51b2-4574-b57c-a20d81e0f8e8; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+ ✓ apps/api/tests/mileage-corrections.e2e.test.ts (15 tests) 220378ms
+   ✓ paid mileage retains exact correction, submits without posting, recovers6600 and amends only1100  3160ms
+   ✓ mileage aggregate contribution difference is345 when independently rounded paid totals differ  1944ms
+   ✓ unpaid mileage and incomplete sources remain retained blocked proposals  1762ms
+   ✓ cancelled mileage proposal retains source history and refuses approval  1845ms
+   ✓ reused revision, wrong predecessor and unreviewed route cannot prepare financial authority  1534ms
+   ✓ qualified future net offset consumes receivable6600 once while future gross and paid reporting stay unchanged  3897ms
+   ✓ second executed mileage revision uses150 to140 incremental lineage and cumulative paid reporting  3135ms
+   ✓ current recovery inventory retains executed successor, blocked review, submission and cancellation in a fenced restore  69642ms
+   ✓ ordinary salary recovery preserves executed mileage population and stale earlier comparisons refuse  8868ms
+   ✓ cancellation races execution with exactly one retained terminal consequence  6945ms
+   ✓ revoked independent approver payroll access makes approval unusable and refuses posting  8167ms
+   ✓ future NET cancellation retains originals, refuses reservations, releases insufficient-pay recovery to real cash  88342ms
+   ✓ NET cancellation races actual run approval and permits a fresh independently approved November recovery  4392ms
+   ✓ each mileage persistence fault rolls back the complete approved financial state and permits exact retry  13329ms
+   ✓ no-journal NET approval refuses an independent human without retained financial assignment  3403ms
+ ✓ apps/api/tests/paid-payroll-recovery.browser.e2e.test.ts (1 test) 20370ms
+   ✓ paid recovery browser retains blocked assessment, split, saved evidence and cancellation  20369ms
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_assessments fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_49a18d96f720d449/books/book_49a18d96f720d449/payroll/paid-recoveries: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=ce83d9bb-dfc9-4a58-8f07-9c1d3af551d3; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_drafts fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_02565e10fb81d24e/books/book_02565e10fb81d24e/payroll/paid-recoveries/paid_recovery_d11a663af88d44c6842c8106ef3ab577/splits: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=def872a9-7556-49e9-9ad6-380e49a1a331; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_legs fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_c4cd55e8896dfe94/books/book_c4cd55e8896dfe94/payroll/paid-recoveries/paid_recovery_6c16fd0b25a543d8a13af86618f80b29/splits: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=9f766097-1ed1-423c-b57c-4a2495cbe619; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_attachments fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_8f9a1788cc81b4f1/books/book_8f9a1788cc81b4f1/payroll/paid-recoveries/paid_recovery_ea12d5beff6c4b849255adbb89d86d16/attachments: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=a51a016f-8c4e-4932-8587-0cf1412d85e4; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_qualifications fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_0ea15fe8213f6f9e/books/book_0ea15fe8213f6f9e/payroll/paid-recoveries/paid_recovery_0226086384f74e1e80dcb5cd09a002e1/qualifications: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=cc12938e-4540-4a2c-93cb-634f0f34ba78; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_claim_reviews fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_c1c2a93b2d2a2fa1/books/book_c1c2a93b2d2a2fa1/payroll/paid-recoveries/paid_recovery_78fbb75e3dc147b0b05e2ddd58adb812/claim-reviews: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=8da416b5-a9f6-4590-bf07-e38cd02f4caf; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+stderr | apps/api/tests/paid-payroll-recovery.e2e.test.ts > R43 payroll_paid_recovery_cancellations fault rolls back every metadata and canonical child, then the original key succeeds once
+POST http://127.0.0.1:60934/api/v1/entities/entity_fc772f0452a07645/books/book_fc772f0452a07645/payroll/paid-recoveries/paid_recovery_fbb5c40ce2034fbeaa4b4cae07ce9e94/cancellations: 500
+{"_tag":"AccountingError","code":"InternalError","message":"The accounting service could not complete this request.","recovery":"outcome-unknown"}
+requestId=9300bcbb-bb4e-4d73-b6dc-c06de0d374aa; Worker logs: /Users/admin/drastic-finish-lanes/test-results/e2e/worker.json
+
+ ✓ apps/api/tests/paid-payroll-recovery.e2e.test.ts (15 tests) 153557ms
+   ✓ R43 retains simultaneous60000/45000 refusal, server45000/15000 split, unqualified evidence and cancellation without economics  2564ms
+   ✓ R43 refuses client money, wrong scope, employee, stale digests and revoked access before replay  4769ms
+   ✓ R43 qualification requires independent human and exact attachment; claim review remains nonfinancial  2764ms
+   ✓ R43 canonical claim and two retained installments conserve60000 and settle executed zero-net without a bank fiction  4122ms
+   ✓ R43 zero-net settlement refuses positive-net and unexecuted runs without paid children  2023ms
+   ✓ R43 concurrent retained retries converge and canonical cancellation cannot race past consumed capacity  12377ms
+   ✓ R43 payroll_paid_recovery_assessments fault rolls back every metadata and canonical child, then the original key succeeds once  2762ms
+   ✓ R43 payroll_paid_recovery_drafts fault rolls back every metadata and canonical child, then the original key succeeds once  2208ms
+   ✓ R43 payroll_paid_recovery_legs fault rolls back every metadata and canonical child, then the original key succeeds once  2091ms
+   ✓ R43 payroll_paid_recovery_attachments fault rolls back every metadata and canonical child, then the original key succeeds once  1871ms
+   ✓ R43 payroll_paid_recovery_qualifications fault rolls back every metadata and canonical child, then the original key succeeds once  1648ms
+   ✓ R43 payroll_paid_recovery_claim_reviews fault rolls back every metadata and canonical child, then the original key succeeds once  1962ms
+   ✓ R43 payroll_paid_recovery_cancellations fault rolls back every metadata and canonical child, then the original key succeeds once  1496ms
+   ✓ R43 V8 populated restore retains refusal, proposal, independent qualification, claim, cancellation and partial noncash links  107582ms
+   ✓ paid recovery source choices retain payroll access and book scope without exposing content  3302ms
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  23:27:44
+   Duration  495.05s (transform 1.94s, setup 0ms, import 5.90s, tests 459.36s, environment 0ms)
+
+JSON report written to /Users/admin/drastic-finish-lanes/test-results/e2e/results.json
+JUNIT report written to /Users/admin/drastic-finish-lanes/test-results/e2e/junit.xml

@@ -1,5 +1,6 @@
 import { DecisionQuestionsApi } from "./decisions";
 import { DecisionExamplesApi } from "./decision-examples";
+import { PaidRecoveryApi } from "./paid-payroll-recovery";
 import { EmployeeClaimsApi } from "./employee-claims";
 import { MileageCorrectionApi } from "./mileage-corrections";
 import { VariablePayReviewApi } from "./variable-pay-review";
@@ -309,6 +310,7 @@ export class Api extends HttpApi.make("open-erp")
     VariablePayReviewApi,
     AssetDisposalsApi,
     PayrollSettlementApi,
+    PaidRecoveryApi,
     LoanApi,
     CorporateTaxApi,
     AnnualReportApi,

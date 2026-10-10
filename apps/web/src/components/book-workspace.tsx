@@ -216,11 +216,13 @@ function useWorkspaceLayout(pathname: string, base: string) {
   });
 
   const sales = useMatch({ from: "/entities/$entityId/books/$bookId/sales", shouldThrow: false });
+  const tax = useMatch({ from: "/entities/$entityId/books/$bookId/tax", shouldThrow: false });
 
   return {
     contentInset:
       isHomePath(pathname, base) ||
       digestReview ||
+      tax?.search.view === "paid-recovery" ||
       sales?.search.view === "articles" ||
       sales?.search.view === "orders" ||
       sales?.search.view === "recurring"

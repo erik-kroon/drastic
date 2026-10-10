@@ -1,0 +1,1833 @@
+{
+  "schemaVersion": "report-1",
+  "run": {
+    "id": "01a127f6-8d45-7142-98a2-83eee4f3ccac",
+    "specVersion": "0.1",
+    "runner": {
+      "name": "e2e",
+      "version": "0.17.0"
+    },
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-10-10T22:37:12.680Z",
+    "finishedAt": "2026-10-10T22:37:19.205Z",
+    "project": {
+      "id": "drastic",
+      "configDigest": "d71eae054f63f0a1f2ab880ba1ae158b54ccebc9d93e48cc0e93cc4529df8fe5"
+    },
+    "environment": {
+      "ci": false,
+      "trustNoticeShown": false,
+      "os": "darwin 25.6.0",
+      "arch": "arm64",
+      "runtime": "node v26.4.0"
+    },
+    "vcs": {
+      "commit": "8fed0f300d10153def822cfe81a5a8f536c247af",
+      "branch": "finish/remaining-product-lanes",
+      "dirty": true
+    },
+    "targets": [
+      {
+        "id": "synthetic-chromium",
+        "index": 0,
+        "platform": "web",
+        "baseOrigin": "http://127.0.0.1:60891",
+        "environment": "test",
+        "engine": {
+          "name": "web",
+          "version": "0.12.0",
+          "spiVersion": 1
+        },
+        "capabilities": [
+          "actions",
+          "artifacts",
+          "browser",
+          "keyboard",
+          "location",
+          "observation",
+          "pointer",
+          "state"
+        ],
+        "artifactCapabilities": [
+          "screenshot",
+          "trace",
+          "video"
+        ],
+        "stateCapability": true
+      }
+    ],
+    "serialGroups": [],
+    "results": [
+      {
+        "id": "7d08aa1c2691823eeb7ea437ea5bbe5ec92e41158d0af52f7fe514993dade56d",
+        "testId": "tests/browser/article-register.e2e.ts::article%20edit%20and%20archive%20retain%20immutable%20defaults%2C%20honest%20unknowns%20and%20aligned%20register%20lanes",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "article edit and archive retain immutable defaults, honest unknowns and aligned register lanes"
+        ],
+        "file": "tests/browser/article-register.e2e.ts",
+        "source": {
+          "file": "tests/browser/article-register.e2e.ts",
+          "line": 14,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "b8894097c4dc8a5a28d048ae8caf691d09c56d2c45339aa4f14bcab40bbfb4c3",
+        "testId": "tests/browser/asset-disposal-source.e2e.ts::A%20claimed%20invoice%20line%20stays%20occupied%20while%20a%20free%20line%20creates%20a%20separate%20disposal%20review",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "A claimed invoice line stays occupied while a free line creates a separate disposal review"
+        ],
+        "file": "tests/browser/asset-disposal-source.e2e.ts",
+        "source": {
+          "file": "tests/browser/asset-disposal-source.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "917e686c385b7c6b39a66e7eab0df9c7d0bf0a0f010b03c7d7940c71859d6efe",
+        "testId": "tests/browser/asset-valuation-result.e2e.ts::A%20posted%20reversal%20retains%20its%20balanced%20voucher%20and%20replacement%20plan%20after%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "A posted reversal retains its balanced voucher and replacement plan after reload"
+        ],
+        "file": "tests/browser/asset-valuation-result.e2e.ts",
+        "source": {
+          "file": "tests/browser/asset-valuation-result.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "ad83412620d7647ca9704ed6e5ebd989d6e87ff548f217de6ced78fb09524f7a",
+        "testId": "tests/browser/audience-profile.e2e.ts::the%20audience%20profile%20changes%20navigation%20only%20and%20survives%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "the audience profile changes navigation only and survives reload"
+        ],
+        "file": "tests/browser/audience-profile.e2e.ts",
+        "source": {
+          "file": "tests/browser/audience-profile.e2e.ts",
+          "line": 11,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "dc62409c45170ba7dfc4b11f83aaff46f3cf8a4446796779921231086cbc29a9",
+        "testId": "tests/browser/bank-evidence-review.e2e.ts::bank%20review%20compares%20the%20retained%20original%20and%20prepares%20without%20allocating%20or%20posting",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "bank review compares the retained original and prepares without allocating or posting"
+        ],
+        "file": "tests/browser/bank-evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/bank-evidence-review.e2e.ts",
+          "line": 25,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "352588e6880b3cb6383e7b065285e23bbcfd996a2f888e8ab946798ad04e49e4",
+        "testId": "tests/browser/bank-evidence-review.e2e.ts::bank%20review%20refuses%20an%20original%20that%20differs%20from%20its%20retained%20expected%20checksum",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "bank review refuses an original that differs from its retained expected checksum"
+        ],
+        "file": "tests/browser/bank-evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/bank-evidence-review.e2e.ts",
+          "line": 207,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "aa1df0ed080d1f938193ae69983d8a2af576604767c63d0a9da4f3e6cf2d42ed",
+        "testId": "tests/browser/bank-evidence-review.e2e.ts::bank%20review%20preserves%20its%20draft%20but%20clears%20acknowledgment%20when%20real%20capacity%20changes",
+        "kind": "test",
+        "declarationIndex": 2,
+        "titlePath": [
+          "bank review preserves its draft but clears acknowledgment when real capacity changes"
+        ],
+        "file": "tests/browser/bank-evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/bank-evidence-review.e2e.ts",
+          "line": 313,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "2c7773ce76fb255a17ecd753dd6b682477fd41fd15004057c404cb3280cc15b5",
+        "testId": "tests/browser/bank-evidence-review.e2e.ts::bank%20review%20retains%20original%20zoom%20and%20visible%20keyboard%20review%20without%20financial%20effects",
+        "kind": "test",
+        "declarationIndex": 3,
+        "titlePath": [
+          "bank review retains original zoom and visible keyboard review without financial effects"
+        ],
+        "file": "tests/browser/bank-evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/bank-evidence-review.e2e.ts",
+          "line": 433,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "57aa799e3aeb4e20eac5bf67ece144b163afcdcd25bf7b6efd55f3ffb4079cd5",
+        "testId": "tests/browser/book-authority-refusal.e2e.ts::current%20book%20membership%20refuses%20posting%20without%20writes%20and%20restores%20receipt%20discovery",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "current book membership refuses posting without writes and restores receipt discovery"
+        ],
+        "file": "tests/browser/book-authority-refusal.e2e.ts",
+        "source": {
+          "file": "tests/browser/book-authority-refusal.e2e.ts",
+          "line": 12,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a882709ca8ad28a0ad2d8018e407fe18c6974dd94314594f6a04f981b2588241",
+        "testId": "tests/browser/bureau-portfolio.e2e.ts::native%20bureau%20portfolio%20retains%20fifty%20clients%20and%20scoped%20assignment%20filters",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "native bureau portfolio retains fifty clients and scoped assignment filters"
+        ],
+        "file": "tests/browser/bureau-portfolio.e2e.ts",
+        "source": {
+          "file": "tests/browser/bureau-portfolio.e2e.ts",
+          "line": 13,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "d28cdf75ddfc1b4298e8a36bf6f4d4f561608af4cb82912e599a565c17d9885d",
+        "testId": "tests/browser/cash-forecast.e2e.ts::Cash%20discovery%20exposes%20absent%20sources%20and%20retains%20accessible%20recovery%20after%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Cash discovery exposes absent sources and retains accessible recovery after reload"
+        ],
+        "file": "tests/browser/cash-forecast.e2e.ts",
+        "source": {
+          "file": "tests/browser/cash-forecast.e2e.ts",
+          "line": 16,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "7e1171f3386d0cfa9fbdd355d41cc986901d2950e40fe7e10916653d2fc795ac",
+        "testId": "tests/browser/cash-forecast.e2e.ts::known%20opening%20retains%20native%20forecast%20charts%2C%20exact%20tables%20and%20immutable%20original",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "known opening retains native forecast charts, exact tables and immutable original"
+        ],
+        "file": "tests/browser/cash-forecast.e2e.ts",
+        "source": {
+          "file": "tests/browser/cash-forecast.e2e.ts",
+          "line": 194,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "773e41329f315942a5718fb2f92f01a70202e8f786a9312beb3842437c67b5a3",
+        "testId": "tests/browser/company-bank-intake.e2e.ts::A%20native%20company%20reviews%20and%20imports%20its%20original%20bank%20CSV%20without%20postings",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "A native company reviews and imports its original bank CSV without postings"
+        ],
+        "file": "tests/browser/company-bank-intake.e2e.ts",
+        "source": {
+          "file": "tests/browser/company-bank-intake.e2e.ts",
+          "line": 7,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "e54e1d4698fde13d46e39368e2f21d6ce029390afa769c91fc6b372c8fc966b7",
+        "testId": "tests/browser/company-ledger-setup.e2e.ts::A%20new%20company%20configures%20its%20first%20native%20ledger%20without%20opening%20or%20posting%20effects",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "A new company configures its first native ledger without opening or posting effects"
+        ],
+        "file": "tests/browser/company-ledger-setup.e2e.ts",
+        "source": {
+          "file": "tests/browser/company-ledger-setup.e2e.ts",
+          "line": 9,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "ebc0d5ec48002bb60a6f7206ccd26c9f3e9f743d33d49ac722c5fbd028ec814a",
+        "testId": "tests/browser/company-profile.e2e.ts::Company%20facts%20retain%20sources%20and%20dates%20without%20treating%20saved%20input%20as%20confirmed",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Company facts retain sources and dates without treating saved input as confirmed"
+        ],
+        "file": "tests/browser/company-profile.e2e.ts",
+        "source": {
+          "file": "tests/browser/company-profile.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "173eb89f80900182f80bb337ac0596a772e51017346ca6ef79d6a8b1486be917",
+        "testId": "tests/browser/dark-theme.e2e.ts::the%20K-01%20palette%20switches%20appearance%20and%20survives%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "the K-01 palette switches appearance and survives reload"
+        ],
+        "file": "tests/browser/dark-theme.e2e.ts",
+        "source": {
+          "file": "tests/browser/dark-theme.e2e.ts",
+          "line": 7,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a0086bd232a8f0736f94f366c49c661aa836a5dbc18934c5ea021e39f7da932f",
+        "testId": "tests/browser/document-intelligence.e2e.ts::retained%20source%20regions%20follow%20page%20and%20zoom%20while%20uncertain%20values%20require%20review",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "retained source regions follow page and zoom while uncertain values require review"
+        ],
+        "file": "tests/browser/document-intelligence.e2e.ts",
+        "source": {
+          "file": "tests/browser/document-intelligence.e2e.ts",
+          "line": 34,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "c84891bae90f0965d2f72d59320c0a432b4747741465c1268dcb31abcc5a29b8",
+        "testId": "tests/browser/document-question-posting.e2e.ts::a%20retained%20original%20returns%20through%20questions%2C%20explicit%20review%2C%20posting%20and%20bank%20allocation",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "a retained original returns through questions, explicit review, posting and bank allocation"
+        ],
+        "file": "tests/browser/document-question-posting.e2e.ts",
+        "source": {
+          "file": "tests/browser/document-question-posting.e2e.ts",
+          "line": 250,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a93e842a1cb205ce83866a3c65185c3fa8383321bc09b189099ace851a36871e",
+        "testId": "tests/browser/employee-claims.e2e.ts::R40%20retains%20three%20receipt%20outcomes%20and%20independently%20recognizes%20one%20balanced%20debt",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "R40 retains three receipt outcomes and independently recognizes one balanced debt"
+        ],
+        "file": "tests/browser/employee-claims.e2e.ts",
+        "source": {
+          "file": "tests/browser/employee-claims.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "3aff3d97320b4a2ff40498d0ea4c223c8d9b0a6806c1737ee4897f5bd53373e0",
+        "testId": "tests/browser/evidence-review.e2e.ts::the%20retained%20original%20keeps%20page%20and%20zoom%20while%20supplier%20decisions%20change",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "the retained original keeps page and zoom while supplier decisions change"
+        ],
+        "file": "tests/browser/evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/evidence-review.e2e.ts",
+          "line": 151,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "53ed739117599a3ea28c213f1fe022b81ad2b4653da5d303cb1f5e3a16ff1a2c",
+        "testId": "tests/browser/evidence-review.e2e.ts::a%20corrupt%20original%20stays%20unavailable%20when%20its%20rendering%20is%20retried",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "a corrupt original stays unavailable when its rendering is retried"
+        ],
+        "file": "tests/browser/evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/evidence-review.e2e.ts",
+          "line": 232,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "d41b8b4e77949ccac67f2c7640c2183cbc1cd9855486c2751282f4bd51ebe4cf",
+        "testId": "tests/browser/evidence-review.e2e.ts::a%20retained%20proposal%20refuses%20an%20original%20with%20a%20different%20expected%20hash",
+        "kind": "test",
+        "declarationIndex": 2,
+        "titlePath": [
+          "a retained proposal refuses an original with a different expected hash"
+        ],
+        "file": "tests/browser/evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/evidence-review.e2e.ts",
+          "line": 272,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "666873a7f77851fa4a0aefdf19b97819fbe420fc7061730ec330c4806cdb8004",
+        "testId": "tests/browser/evidence-review.e2e.ts::a%20foreign%20retained%20original%20refuses%20both%20bytes%20and%20metadata%20to%20the%20current%20operator",
+        "kind": "test",
+        "declarationIndex": 3,
+        "titlePath": [
+          "a foreign retained original refuses both bytes and metadata to the current operator"
+        ],
+        "file": "tests/browser/evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/evidence-review.e2e.ts",
+          "line": 335,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "aa921de65e3c5e085fdaffb58bf142851115bcef2d0b88317666385c396b0271",
+        "testId": "tests/browser/evidence-review.e2e.ts::the%20same%20original%20and%20proposal%20survive%20a%20lost%20original%20response%20and%20a%20keyboard%20retry",
+        "kind": "test",
+        "declarationIndex": 4,
+        "titlePath": [
+          "the same original and proposal survive a lost original response and a keyboard retry"
+        ],
+        "file": "tests/browser/evidence-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/evidence-review.e2e.ts",
+          "line": 432,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "95ea7ff7509063f7af43719f60293743c153e4b7e133136d1de54c5f1cfbfb12",
+        "testId": "tests/browser/firm-access-requests.e2e.ts::firm%20access%20requests%20retain%20local%20scoped%20metadata%20without%20accounting%20powers",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "firm access requests retain local scoped metadata without accounting powers"
+        ],
+        "file": "tests/browser/firm-access-requests.e2e.ts",
+        "source": {
+          "file": "tests/browser/firm-access-requests.e2e.ts",
+          "line": 11,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "611e11789fe32425cc1ace9c8412b6e07943fbc6e2eb8976d9b98b3a62dcce91",
+        "testId": "tests/browser/firm-portfolio-bank.e2e.ts::portfolio%20preserves%20dated%20bank%20observations%20and%20signed%20whole-inventory%20identity%20through%20invalidation",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "portfolio preserves dated bank observations and signed whole-inventory identity through invalidation"
+        ],
+        "file": "tests/browser/firm-portfolio-bank.e2e.ts",
+        "source": {
+          "file": "tests/browser/firm-portfolio-bank.e2e.ts",
+          "line": 31,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "e656862179fab0c41ed984486a467a89cc20de625f5de4f3f6bc96fe6f761dc7",
+        "testId": "tests/browser/firm-portfolio-facts.e2e.ts::portfolio%20retains%20period%20and%20declared%20deadline%20while%20incomplete%20bank%20and%20closing%20remain%20explicit",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "portfolio retains period and declared deadline while incomplete bank and closing remain explicit"
+        ],
+        "file": "tests/browser/firm-portfolio-facts.e2e.ts",
+        "source": {
+          "file": "tests/browser/firm-portfolio-facts.e2e.ts",
+          "line": 14,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "b6445ea5efa35a7693b203555b8023c27104b66fe1d9f9efb45edb0a94c9a616",
+        "testId": "tests/browser/firm-portfolio-layout.e2e.ts::grouped%20portfolio%20keeps%20pending%20access%20metadata%20separate%20through%20edit%2C%20revoke%20and%20firm%20changes",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "grouped portfolio keeps pending access metadata separate through edit, revoke and firm changes"
+        ],
+        "file": "tests/browser/firm-portfolio-layout.e2e.ts",
+        "source": {
+          "file": "tests/browser/firm-portfolio-layout.e2e.ts",
+          "line": 11,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "3bf63d40c43e9414aee27012d7b2603e21bc911c4041c10749e2f4a293f208f1",
+        "testId": "tests/browser/foreign-cash-exchange.e2e.ts::EUR%20exchange%20keeps%20the%20fee%20outside%20gain%20and%20posts%20the%20retained%20bank%20rows",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "EUR exchange keeps the fee outside gain and posts the retained bank rows"
+        ],
+        "file": "tests/browser/foreign-cash-exchange.e2e.ts",
+        "source": {
+          "file": "tests/browser/foreign-cash-exchange.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "842981d8095e225209185dca1a8d95f0d29e4eacd716fe490c67eae3c78b13c2",
+        "testId": "tests/browser/historical-adoption-rereview.e2e.ts::Changed%20historical%20pool%20retains%20the%20approved%20basis%20and%20blocks%20adoption%20until%20reconciliation",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Changed historical pool retains the approved basis and blocks adoption until reconciliation"
+        ],
+        "file": "tests/browser/historical-adoption-rereview.e2e.ts",
+        "source": {
+          "file": "tests/browser/historical-adoption-rereview.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "17e912e1814e5b4241e86a7298c21a56997abc2d238444b1bde19c33eeee1a1b",
+        "testId": "tests/browser/invoice-bank-period.e2e.ts::partial%20bank%20matching%20refuses%20a%20stale%20approval%20and%20correction%20preserves%20the%20ledger%20before%20VAT%20and%20period%20review",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "partial bank matching refuses a stale approval and correction preserves the ledger before VAT and period review"
+        ],
+        "file": "tests/browser/invoice-bank-period.e2e.ts",
+        "source": {
+          "file": "tests/browser/invoice-bank-period.e2e.ts",
+          "line": 12,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "ac32785b928f87fae0d7b7133a7e9a244029d3a7f75f4fc684da15cec37f1db3",
+        "testId": "tests/browser/kanon-charts.e2e.ts::kanon%20charts%20draw%20page%2018%20data%20with%20exact%20table%20equivalents%20in%20light%20and%20dark",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "kanon charts draw page 18 data with exact table equivalents in light and dark"
+        ],
+        "file": "tests/browser/kanon-charts.e2e.ts",
+        "source": {
+          "file": "tests/browser/kanon-charts.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "d11e61c4495871a9298222a0478c6b43d739a4255b34a32a7e5e94a03d42cb09",
+        "testId": "tests/browser/mileage-corrections.e2e.ts::R41%20submits%20a%20retained%20paid%20mileage%20correction%20without%20posting",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "R41 submits a retained paid mileage correction without posting"
+        ],
+        "file": "tests/browser/mileage-corrections.e2e.ts",
+        "source": {
+          "file": "tests/browser/mileage-corrections.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "16f010e56d0082d5ab1225c010546b65434c1339365fec9c020a5906510c7ed1",
+        "testId": "tests/browser/oauth-consent.e2e.ts::bureau%20selects%20one%20book%20and%20explicitly%20consents%20to%20read-only%20OAuth%20access",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "bureau selects one book and explicitly consents to read-only OAuth access"
+        ],
+        "file": "tests/browser/oauth-consent.e2e.ts",
+        "source": {
+          "file": "tests/browser/oauth-consent.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "74438b9f0cd1b21b406eb6382cb75ee6cdef28004ddcad51a175a88e31ad69ff",
+        "testId": "tests/browser/paid-recovery-model-review.e2e.ts::Luna%20reviews%20the%20real%20blocked%20paid%20recovery%20without%20proposing%20a%20financial%20effect",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Luna reviews the real blocked paid recovery without proposing a financial effect"
+        ],
+        "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+          "line": 13,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": true,
+        "status": "passed",
+        "attempts": [
+          {
+            "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f",
+            "index": 0,
+            "status": "passed",
+            "startedAt": "2026-10-10T22:37:13.165Z",
+            "durationMs": 5999,
+            "artifacts": [
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:0",
+                "kind": "screenshot",
+                "mediaType": "image/png",
+                "redaction": "complete",
+                "producer": {
+                  "kind": "step",
+                  "stepId": "01a127f6-924d-75dc-9baa-1c55f6c3066f:5"
+                },
+                "path": "synthetic-chromium/tests_browser_paid-recovery-model-review.e2e.ts__Luna_20reviews_20the_20real_20blocked_20paid_20recovery_20with-b7b7c7d1/default/attempt-0/screenshots/001-assert.png",
+                "size": 97545,
+                "sha256": "43bcccd5f9e588a9b65aaa5e91b64ddfb636151845a5de56dd5d0dd0a4cad3b1"
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:1",
+                "kind": "screenshot",
+                "mediaType": "image/png",
+                "redaction": "complete",
+                "producer": {
+                  "kind": "step",
+                  "stepId": "01a127f6-924d-75dc-9baa-1c55f6c3066f:6"
+                },
+                "path": "synthetic-chromium/tests_browser_paid-recovery-model-review.e2e.ts__Luna_20reviews_20the_20real_20blocked_20paid_20recovery_20with-b7b7c7d1/default/attempt-0/screenshots/002-paid-recovery-luna-blocked-1440x900.png",
+                "size": 97545,
+                "sha256": "43bcccd5f9e588a9b65aaa5e91b64ddfb636151845a5de56dd5d0dd0a4cad3b1"
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:2",
+                "kind": "video",
+                "mediaType": "video/webm",
+                "startedAt": "2026-10-10T22:37:13.623Z",
+                "redaction": "incomplete",
+                "producer": {
+                  "kind": "attempt"
+                },
+                "path": "synthetic-chromium/tests_browser_paid-recovery-model-review.e2e.ts__Luna_20reviews_20the_20real_20blocked_20paid_20recovery_20with-b7b7c7d1/default/attempt-0/video/video.webm",
+                "size": 258146,
+                "sha256": "342db39e37f2f8143e4f72d4d5c55ed087789026bb150f6202a797410cb2d09b"
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:3",
+                "kind": "trace",
+                "mediaType": "application/zip",
+                "redaction": "not-required",
+                "producer": {
+                  "kind": "attempt"
+                },
+                "path": "synthetic-chromium/tests_browser_paid-recovery-model-review.e2e.ts__Luna_20reviews_20the_20real_20blocked_20paid_20recovery_20with-b7b7c7d1/default/attempt-0/trace/trace.zip",
+                "size": 1180530,
+                "sha256": "ae3b597097d54a973bb4d8fa237c403673e3834b59ffe2ae900c3f9a8fd6fbbf"
+              }
+            ],
+            "secondaryErrors": [],
+            "cleanup": "complete",
+            "steps": [
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:0",
+                "index": 0,
+                "kind": "resource",
+                "api": "browser.setCookies",
+                "label": "",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:13.667Z",
+                "durationMs": 7,
+                "events": [],
+                "artifacts": [],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 40,
+                  "column": 17
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:1",
+                "index": 1,
+                "kind": "app",
+                "api": "app.open",
+                "label": "/entities/entity_8024a05148224dbe/books/book_8024a05148224dbe/tax?view=paid-recovery&record=paid_recovery_15af820f9fbc43c49d7b4cc034785601",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:13.675Z",
+                "durationMs": 321,
+                "events": [],
+                "artifacts": [],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 48,
+                  "column": 13
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:2",
+                "index": 2,
+                "kind": "assertion",
+                "api": "expect.toBeVisible",
+                "label": "getByRole(\"heading\", name: \"600,00\")",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:13.997Z",
+                "durationMs": 1913,
+                "events": [],
+                "artifacts": [],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 51,
+                  "column": 72
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:3",
+                "index": 3,
+                "kind": "assertion",
+                "api": "expect.toBeVisible",
+                "label": "getByText(\"Underlag för kvittning saknas.\")",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:15.910Z",
+                "durationMs": 7,
+                "events": [],
+                "artifacts": [],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 52,
+                  "column": 85
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:4",
+                "index": 4,
+                "kind": "assertion",
+                "api": "expect.toHaveCount",
+                "label": "getByText(\"Begäran pågår...\")",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:15.918Z",
+                "durationMs": 5,
+                "events": [],
+                "artifacts": [],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 53,
+                  "column": 71
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:5",
+                "index": 5,
+                "kind": "agent",
+                "api": "agent.assert",
+                "label": "This real payroll recovery screen clearly says the 600,00 recovery cannot be offset yet: lawful evidence is missing, October capacity is 450,00 and 150,00 remains for November with unknown capacity. It distinguishes a saved split proposal from any posting and requires independent review. The amount, two blockers, source selector and actions are readable, with no overlapping text.",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:15.923Z",
+                "durationMs": 2767,
+                "events": [
+                  {
+                    "kind": "observation",
+                    "startedAt": "2026-10-10T22:37:15.924Z",
+                    "durationMs": 34,
+                    "status": "passed",
+                    "bytes": 3598,
+                    "count": 73
+                  },
+                  {
+                    "kind": "model",
+                    "startedAt": "2026-10-10T22:37:15.958Z",
+                    "durationMs": 2658,
+                    "status": "passed",
+                    "name": "agent-judgment-2",
+                    "count": 1960,
+                    "inputTokens": 1864,
+                    "outputTokens": 96
+                  }
+                ],
+                "agent": "default",
+                "artifacts": [
+                  "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:0"
+                ],
+                "metrics": {
+                  "modelCalls": 1,
+                  "actionSteps": 0,
+                  "observationBytes": 3598,
+                  "contextBytes": 37,
+                  "ledgerBytes": 0
+                },
+                "model": {
+                  "provider": "codex.chat",
+                  "model": "gpt-6-luna",
+                  "endpoint": "provider-default",
+                  "adapterVersion": "ai-sdk/0.17.0",
+                  "policyVersion": "policy-0.3",
+                  "calls": 1,
+                  "tokenAccounting": "provider",
+                  "inputTokens": 1864,
+                  "outputTokens": 96,
+                  "peakTokensPerCall": 1960,
+                  "cacheReadTokens": 0
+                },
+                "observationRevision": "b1",
+                "explanation": "The screen shows a 600,00 recovery marked as not offsettable, missing evidence, October capacity of 450,00 with 150,00 remaining and unknown November capacity. It says the split proposal posts nothing and requires separate evidence and approval, and shows the evidence selector, actions, and no indication of overlapping text.",
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 54,
+                  "column": 15
+                }
+              },
+              {
+                "id": "01a127f6-924d-75dc-9baa-1c55f6c3066f:6",
+                "index": 6,
+                "kind": "app",
+                "api": "app.screenshot",
+                "label": "paid-recovery-luna-blocked-1440x900",
+                "status": "passed",
+                "startedAt": "2026-10-10T22:37:18.691Z",
+                "durationMs": 44,
+                "events": [],
+                "artifacts": [
+                  "01a127f6-924d-75dc-9baa-1c55f6c3066f:artifact:1"
+                ],
+                "source": {
+                  "file": "tests/browser/paid-recovery-model-review.e2e.ts",
+                  "line": 57,
+                  "column": 13
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "a837405f28dd540b1232914bcc6865d1e1a3b9a52e5cd4ff74613965c2630b47",
+        "testId": "tests/browser/peppol-recovery-handoffs.e2e.ts::Peppol%20recovery%20retains%20a%20sealed%20PDF%20email%20intent%20and%20separate%20credit%20proposal",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Peppol recovery retains a sealed PDF email intent and separate credit proposal"
+        ],
+        "file": "tests/browser/peppol-recovery-handoffs.e2e.ts",
+        "source": {
+          "file": "tests/browser/peppol-recovery-handoffs.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "44d4b220aa2417ca03488345587047b98927938b77c3513a25a990e1d778cc91",
+        "testId": "tests/browser/peppol-validation-refusal.e2e.ts::Peppol%20refusal%20persists%20its%20rule%20failure%20and%20independent%20return%20after%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Peppol refusal persists its rule failure and independent return after reload"
+        ],
+        "file": "tests/browser/peppol-validation-refusal.e2e.ts",
+        "source": {
+          "file": "tests/browser/peppol-validation-refusal.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "c4c5f69481db83771e410765e219eeff3c6f177aa08dd37eb1d7a2f918e92f1f",
+        "testId": "tests/browser/posting-correction-recovery.e2e.ts::correction%20review%20recovers%20a%20lost%20aggregate%20response%20and%20blocks%20the%20competing%20alternative",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "correction review recovers a lost aggregate response and blocks the competing alternative"
+        ],
+        "file": "tests/browser/posting-correction-recovery.e2e.ts",
+        "source": {
+          "file": "tests/browser/posting-correction-recovery.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "23453efb2198b41398a0937b50c74a06be66b4842bb260e607b282b6005f934e",
+        "testId": "tests/browser/posting-document-performance.e2e.ts::P03%20and%20P04%20retain%20comparable%20painted%20public-owner%20latency",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "P03 and P04 retain comparable painted public-owner latency"
+        ],
+        "file": "tests/browser/posting-document-performance.e2e.ts",
+        "source": {
+          "file": "tests/browser/posting-document-performance.e2e.ts",
+          "line": 234,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "898f0994f5a1ff3b37d8d6df9c1c9909c714fa735aafdbc6e05ede66c2c94237",
+        "testId": "tests/browser/posting-recovery.e2e.ts::saved%20posting%20survives%20a%20lost%20execution%20response%20and%20reload%20with%20one%20durable%20receipt",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "saved posting survives a lost execution response and reload with one durable receipt"
+        ],
+        "file": "tests/browser/posting-recovery.e2e.ts",
+        "source": {
+          "file": "tests/browser/posting-recovery.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "5b96e188ec83d3f7f7467245b7a400c20b3e5ab12f91baf551c5d0fdd4ad4537",
+        "testId": "tests/browser/posting-supplier-expiry.e2e.ts::native%20supplier%20expiry%20renews%20unchanged%20approval%20and%20recovers%20one%20posting%20receipt",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "native supplier expiry renews unchanged approval and recovers one posting receipt"
+        ],
+        "file": "tests/browser/posting-supplier-expiry.e2e.ts",
+        "source": {
+          "file": "tests/browser/posting-supplier-expiry.e2e.ts",
+          "line": 30,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "72662bf9d696d3283a47a42d84d9caec633e61a72c9d52f951248f62cfdeb918",
+        "testId": "tests/browser/posting-work-group.e2e.ts::reviewed%20native%20group%20posts%20independent%20receipts%20and%20reloads%20retained%20results",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "reviewed native group posts independent receipts and reloads retained results"
+        ],
+        "file": "tests/browser/posting-work-group.e2e.ts",
+        "source": {
+          "file": "tests/browser/posting-work-group.e2e.ts",
+          "line": 12,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "c340f90c36c6520cf81ff75eddf6ef94e644c9a9aff673e28699bb75493b2337",
+        "testId": "tests/browser/processor-payout.e2e.ts::processor%20payout%20retains%20its%20first%20voucher%20and%20matches%20the%20bank%20through%20independent%20approval",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "processor payout retains its first voucher and matches the bank through independent approval"
+        ],
+        "file": "tests/browser/processor-payout.e2e.ts",
+        "source": {
+          "file": "tests/browser/processor-payout.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "cfa16d9bebe4639403665ace894879915a6c45f12b7548a8580cb58fe95821d7",
+        "testId": "tests/browser/processor-return.e2e.ts::returning%20a%20processor%20match%20persists%20the%20refusal%20and%20replacing%20its%20bank%20row%20requires%20a%20fresh%20reviewer",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "returning a processor match persists the refusal and replacing its bank row requires a fresh reviewer"
+        ],
+        "file": "tests/browser/processor-return.e2e.ts",
+        "source": {
+          "file": "tests/browser/processor-return.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "ecab2c34070fa25dc4ed9d3e09d183cf461a8988c2e25ec49842a53bbc46ab9a",
+        "testId": "tests/browser/quote-revision.e2e.ts::a%20reloaded%20quote%20deliberately%20reviews%20its%20own%20replacement%20and%20retains%20exact%20stored%20content",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "a reloaded quote deliberately reviews its own replacement and retains exact stored content"
+        ],
+        "file": "tests/browser/quote-revision.e2e.ts",
+        "source": {
+          "file": "tests/browser/quote-revision.e2e.ts",
+          "line": 203,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "ef5c1026d08d462839d43f49e9536f3c1d4e1c1e8ed56751cf1ef48fa0173529",
+        "testId": "tests/browser/quote-revision.e2e.ts::late%2C%20failed%20and%20mismatched%20source%20reads%20cannot%20qualify%20another%20quote%20replacement",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "late, failed and mismatched source reads cannot qualify another quote replacement"
+        ],
+        "file": "tests/browser/quote-revision.e2e.ts",
+        "source": {
+          "file": "tests/browser/quote-revision.e2e.ts",
+          "line": 326,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "22554557f9e0501421605157cf422c51ba1adb5186a1a61c134c009563a26efc",
+        "testId": "tests/browser/quote-revision.e2e.ts::stale%20quote%20commands%20refuse%20overwrite%20and%20lost%20responses%20recover%20the%20exact%20request%20after%20acceptance",
+        "kind": "test",
+        "declarationIndex": 2,
+        "titlePath": [
+          "stale quote commands refuse overwrite and lost responses recover the exact request after acceptance"
+        ],
+        "file": "tests/browser/quote-revision.e2e.ts",
+        "source": {
+          "file": "tests/browser/quote-revision.e2e.ts",
+          "line": 481,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "bc2c7fd4b94450bbf0be3c882051c2bc7ed85fb117ea688d0c3924b51bddfa7e",
+        "testId": "tests/browser/recurring-recovery.e2e.ts::a%20recurring%20failure%20recovers%20the%20same%20draft%20after%20a%20lost%20response%20with%20keyboard%20review%20at%20320px",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "a recurring failure recovers the same draft after a lost response with keyboard review at 320px"
+        ],
+        "file": "tests/browser/recurring-recovery.e2e.ts",
+        "source": {
+          "file": "tests/browser/recurring-recovery.e2e.ts",
+          "line": 18,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "c658a35c255ff36ff68304d0a5532f8f64cfa9da10369229376c4680658dda38",
+        "testId": "tests/browser/reminder-native-review.e2e.ts::review%20exact%20reminder%20at%20native%20200%20percent%20and%20approve%20with%20keyboard",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "review exact reminder at native 200 percent and approve with keyboard"
+        ],
+        "file": "tests/browser/reminder-native-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/reminder-native-review.e2e.ts",
+          "line": 8,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a838d23cc34d8e619b0ea001f2f23927ac36c8257a12620265d873be6b222af8",
+        "testId": "tests/browser/reminder-payment-refusal.e2e.ts::M60%20keeps%20changed-payment%20refusal%20and%20prepares%20a%20separately%20approved%20reminder",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "M60 keeps changed-payment refusal and prepares a separately approved reminder"
+        ],
+        "file": "tests/browser/reminder-payment-refusal.e2e.ts",
+        "source": {
+          "file": "tests/browser/reminder-payment-refusal.e2e.ts",
+          "line": 22,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a96c773f9ffe0a4e746222cb382588f54c1d73927e460f21a7e2500d4778591d",
+        "testId": "tests/browser/supplier-frozen-original.e2e.ts::a%20selected%20supplier%20review%20posts%20against%20its%20uploaded%20original",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "a selected supplier review posts against its uploaded original"
+        ],
+        "file": "tests/browser/supplier-frozen-original.e2e.ts",
+        "source": {
+          "file": "tests/browser/supplier-frozen-original.e2e.ts",
+          "line": 18,
+          "column": 3
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "87c0ca55a7bd1a8f3f180fa3d4741635af1aff4342107d603d6b88928ba9c506",
+        "testId": "tests/browser/supplier-frozen-original.e2e.ts::a%20selected%20supplier%20review%20keeps%20its%20original%20after%20a%20newer%20draft",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "a selected supplier review keeps its original after a newer draft"
+        ],
+        "file": "tests/browser/supplier-frozen-original.e2e.ts",
+        "source": {
+          "file": "tests/browser/supplier-frozen-original.e2e.ts",
+          "line": 18,
+          "column": 3
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "b3d7b5856c9068aa632d45e0f0174ef5ec45a85d3fa76b25a1859968057e476d",
+        "testId": "tests/browser/supplier.e2e.ts::a%20supplier%20survives%20reload%20and%20can%20be%20found%20by%20its%20retained%20reference",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "a supplier survives reload and can be found by its retained reference"
+        ],
+        "file": "tests/browser/supplier.e2e.ts",
+        "source": {
+          "file": "tests/browser/supplier.e2e.ts",
+          "line": 6,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "a3c6cb8ee04032201bf586ca6efe6e05bd567e2f3cda9f8f492288cb296248cf",
+        "testId": "tests/browser/treasury-loan-recalculation.e2e.ts::Backdated%20loan%20interest%20is%20reviewed%20and%20posted%20only%20as%20the%20retained%20difference",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "Backdated loan interest is reviewed and posted only as the retained difference"
+        ],
+        "file": "tests/browser/treasury-loan-recalculation.e2e.ts",
+        "source": {
+          "file": "tests/browser/treasury-loan-recalculation.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "8f5592c728d0a24713e0c6404961996819562cc6200fe60f392510c8bdf1f25c",
+        "testId": "tests/browser/variable-pay-review.e2e.ts::R42%20retains%20three%20blockers%20and%20returns%20the%20input%20without%20financial%20effects",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "R42 retains three blockers and returns the input without financial effects"
+        ],
+        "file": "tests/browser/variable-pay-review.e2e.ts",
+        "source": {
+          "file": "tests/browser/variable-pay-review.e2e.ts",
+          "line": 10,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      },
+      {
+        "id": "900d1a06335dc8b1a7dec552170bf1034cf47851aa2404efe813c84a41e92a88",
+        "testId": "tests/browser/work-home-return.e2e.ts::home%20retains%20the%20selected%20original%20and%20scoped%20keyboard%20return%20after%20reload",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "home retains the selected original and scoped keyboard return after reload"
+        ],
+        "file": "tests/browser/work-home-return.e2e.ts",
+        "source": {
+          "file": "tests/browser/work-home-return.e2e.ts",
+          "line": 16,
+          "column": 1
+        },
+        "targetId": "synthetic-chromium",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "file not selected by a positional argument"
+        },
+        "attempts": []
+      }
+    ],
+    "errors": [],
+    "summary": {
+      "discovered": 56,
+      "selected": 1,
+      "executed": 1,
+      "passed": 1,
+      "failed": 0,
+      "interrupted": 0,
+      "flaky": 0,
+      "skipped": 0
+    },
+    "limits": {
+      "maxAgentContextBytes": 16384,
+      "maxLedgerBytes": 8192,
+      "maxObservationBytes": 262144,
+      "maxEventsPerStep": 1000,
+      "maxModelTokensPerCall": 64000
+    },
+    "usage": {
+      "discoveredResults": 56,
+      "maxAgentContextBytes": 37,
+      "maxLedgerBytes": 0,
+      "maxObservationBytes": 3598,
+      "artifactBytes": 1633766,
+      "downloads": 0,
+      "events": 2,
+      "modelTokens": 1960,
+      "maxModelCallsInStep": 1,
+      "maxActionStepsInStep": 0,
+      "modelCachedTokens": 0
+    }
+  }
+}

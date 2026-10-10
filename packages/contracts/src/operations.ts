@@ -517,6 +517,51 @@ export const RecoveryWorkInventoryV7 = Schema.Struct({
   ).check(Schema.isMaxLength(10000)),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 
+export const PaidRecoveryWorkSummary = Schema.Struct({
+  ...PayrollReviewWorkSummary.fields,
+  paidRecoveryRecords: Count,
+});
+
+export const RecoveryWorkInventoryV8 = Schema.Struct({
+  ...RecoveryWorkInventoryV7.fields,
+  version: Schema.Literal(8),
+  summary: PaidRecoveryWorkSummary,
+  paidRecoveryRecords: Schema.Array(
+    Schema.Struct({
+      table: Schema.Literals([
+        "payroll_paid_recovery_assessments",
+        "payroll_paid_recovery_drafts",
+        "payroll_paid_recovery_legs",
+        "payroll_paid_recovery_attachments",
+        "payroll_paid_recovery_qualifications",
+        "payroll_paid_recovery_claim_reviews",
+        "payroll_paid_recovery_cancellations",
+      ]),
+      bookId: Schema.String,
+      id: Schema.String,
+      assessmentId: Schema.String,
+      bodySha256: Digest,
+      references: Schema.Array(
+        Schema.Struct({
+          table: Schema.Literals([
+            "payroll_paid_recovery_assessments",
+            "payroll_paid_recovery_drafts",
+            "payroll_paid_recovery_attachments",
+            "payroll_paid_recovery_qualifications",
+            "payroll_correction_comparisons",
+            "payroll_paid_events",
+            "payroll_calculations",
+            "payroll_adjustment_bases",
+            "payroll_settlement_reviews",
+            "evidence",
+          ]),
+          id: Schema.String,
+        }),
+      ),
+    }),
+  ).check(Schema.isMaxLength(70000)),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const RecoveryWorkInventory = Schema.Union([
   RecoveryWorkInventoryV2,
   RecoveryWorkInventoryV3,
@@ -524,12 +569,14 @@ export const RecoveryWorkInventory = Schema.Union([
   RecoveryWorkInventoryV5,
   RecoveryWorkInventoryV6,
   RecoveryWorkInventoryV7,
+  RecoveryWorkInventoryV8,
 ]);
 
 export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
   summary: Schema.Union([
+    PaidRecoveryWorkSummary,
     PayrollReviewWorkSummary,
     MileageCorrectionWorkSummary,
     EmployeeClaimWorkSummary,

@@ -1,0 +1,20 @@
+$ bun scripts/check-changed.ts --type-aware
+Design contract passed; 2 measured matching screens. This is not a visual comparison.
+Checking 2 changed file(s) against HEAD:
+  apps/api/tests/support/paid-recovery-model-review.ts
+  tests/browser/paid-recovery-model-review.e2e.ts
+
+oxfmt --write
+Finished in 6ms on 2 files using 1 threads.
+oxfmt --write: 0.06s
+
+oxlint (type-aware)
+oxlint (type-aware): 2.75s
+
+tsc --noEmit (apps/api/tests/tsconfig.json)
+tsc --noEmit (apps/api/tests/tsconfig.json): 0.45s
+
+tsc --noEmit (tests/browser/tsconfig.json)
+tsc --noEmit (tests/browser/tsconfig.json): 0.31s
+
+check:changed passed.

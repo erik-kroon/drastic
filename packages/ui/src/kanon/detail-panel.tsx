@@ -61,6 +61,7 @@ const styles = stylex.create({
   },
   section: { display: "flex", flexDirection: "column", gap: kanon.space2 },
   sectionHead: { alignItems: "baseline", display: "flex", justifyContent: "space-between" },
+  recordLabel: { fontFamily: kanon.fontControl, lineHeight: kanon.leadingSection },
   label: {
     color: kanon.colorSecondary,
     fontFamily: kanon.fontUi,
@@ -127,6 +128,7 @@ export function DetailPanelHeader(
   props: Pick<DetailPanelProps, "kicker" | "figure" | "subtitle"> & {
     subtitleAs?: "p" | "h2";
     figureAs?: "p" | "h2";
+    kickerTone?: Status;
   },
 ) {
   const { kicker, figure, subtitle } = props;
@@ -136,7 +138,15 @@ export function DetailPanelHeader(
   return (
     <header {...stylex.props(styles.header)}>
       {typeof kicker === "string" ? (
-        <span {...stylex.props(styles.kicker)}>{kicker}</span>
+        <span
+          {...stylex.props(
+            styles.kicker,
+            props.kickerTone && styles.kickerStatus,
+            props.kickerTone && statusTextStyle(props.kickerTone),
+          )}
+        >
+          {kicker}
+        </span>
       ) : (
         <span {...stylex.props(styles.kicker, styles.kickerStatus, statusTextStyle(kicker.status))}>
           <StatusIcon status={kicker.status} />
@@ -180,10 +190,12 @@ export function DetailPanel(props: DetailPanelProps) {
 
 /** A labelled block inside the panel or a focus page. `action` is a quiet link on the right. */
 export function PanelSection({
+  record,
   label,
   action,
   children,
 }: {
+  record?: boolean;
   label: string;
   action?: ReactNode;
   children: ReactNode;
@@ -191,7 +203,7 @@ export function PanelSection({
   return (
     <section {...stylex.props(styles.section)}>
       <div {...stylex.props(styles.sectionHead)}>
-        <h3 {...stylex.props(styles.label)}>{label}</h3>
+        <h3 {...stylex.props(styles.label, record && styles.recordLabel)}>{label}</h3>
         {action}
       </div>
       {children}

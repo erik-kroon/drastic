@@ -1,0 +1,63 @@
+{
+  "scope": "C-01",
+  "sourceRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "comparatorRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "referenceSha256": "76309a4e3048451764acabf3ddf096f81c3a7a8e4969be55c38f0a37c41e89ad",
+  "actualSha256": "d9deb7a6ffb8c1a4095d11d11b57fd0ce63eeade16c4f4e6c4746ac2538c0900",
+  "diffSha256": "64953a126a77b50bcfed6df61999ed33268716ca5ff7a2423bf0f09bd7649255",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/catalog-articles.tsx": "ce01c1813085413e53b3224555b65ba88c9384dbb4cb8bd131b28c419bf6ccf1",
+    "apps/web/src/components/book-workspace.tsx": "54e51d31d59c7483ed5912b1ba2ceba8cb733c63d087dc99b868f4340d089fad",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/kanon/form.tsx": "54ea4ac1d8b9bc880b1a7ec5c184d63607d8461715acfeeaf9a5bf3242c4cb6c",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "packages/ui/src/kanon/layouts.tsx": "0555a198d47fb779704db3e6b6daf89de3055107f0a5cd19994a74e93be58da2",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694"
+  },
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/capture.mjs C-01",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/compare.mjs C-01 test-results/payroll-shared-parity/C-01/capture.json test-results/payroll-shared-parity/C-01",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=articles",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=articles&record=RED-01",
+    "time": "2026-10-10T22:38:40.957Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "selected active article with unresolved VAT and missing account",
+      "selection": "Redovisningstj\u00e4nst",
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.01910570987654321,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/payroll-closeout/2026-10-11/C-01/actual.png",
+  "diff": "verification/payroll-closeout/2026-10-11/C-01/diff.png",
+  "passed": true
+}

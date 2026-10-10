@@ -1,0 +1,1260 @@
+{
+  "assessment": {
+    "id": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+    "scope": {
+      "entityId": "entity_c777d8f7a2197b3e",
+      "bookId": "book_c777d8f7a2197b3e"
+    },
+    "inputId": "payroll_input_71d378ec44f640e2a1bc70541238e21e",
+    "inputDigest": "sha256:8080901a7f4edc810618a8bd1f3690bf2b4dd31b5698fd17418ff2f529a7183a",
+    "digest": "sha256:86490e8caaec35ed7b4baa0793a222eadd9d86196abf793c8832312ce85308d9",
+    "sourceOccurrence": {
+      "occurrenceId": "source_a0b57c09c0ee48faa8f6860477b700f6",
+      "sha256": "sha256:a455dc42f1d8bb62133d555bf66a01a812c25ffdbbe7dcc1d9adbae75943d138"
+    },
+    "sourceProfile": {
+      "profile": "synthetic-variable-timesheet-v1",
+      "employeeId": "synthetic_employee_0",
+      "month": "2026-01",
+      "paymentOn": "2026-02-25",
+      "sourceSystem": "synthetic-variable-test",
+      "sourceAccountId": "synthetic_employee_0",
+      "occurrenceKey": "475044d3-5868-4037-948a-ee448e4b93ad",
+      "rows": [
+        {
+          "rowIdentity": "row_01",
+          "sourceId": "time_01",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-01\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "worked",
+          "scheduleDate": "2026-01-01",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_02",
+          "sourceId": "time_02",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-02\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "worked",
+          "scheduleDate": "2026-01-02",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_03",
+          "sourceId": "time_03",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-03\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "worked",
+          "scheduleDate": "2026-01-03",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_04",
+          "sourceId": "time_04",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-04\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "worked",
+          "scheduleDate": "2026-01-04",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_05",
+          "sourceId": "time_05",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-05\",\"worked\",\"08:00\",\"13:30\",\"0\"]",
+          "kind": "worked",
+          "scheduleDate": "2026-01-05",
+          "startLocal": "08:00",
+          "endLocal": "13:30",
+          "breakMinutes": "0",
+          "unitsMinor": "330",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_08",
+          "sourceId": "time_08",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-08\",\"sick\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "sick",
+          "scheduleDate": "2026-01-08",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        },
+        {
+          "rowIdentity": "row_09",
+          "sourceId": "time_09",
+          "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-09\",\"sick\",\"08:00\",\"16:00\",\"0\"]",
+          "kind": "sick",
+          "scheduleDate": "2026-01-09",
+          "startLocal": "08:00",
+          "endLocal": "16:00",
+          "breakMinutes": "0",
+          "unitsMinor": "480",
+          "rateMinor": "20000",
+          "priorRunRow": null
+        }
+      ]
+    },
+    "employee": {
+      "id": "synthetic_employee_0",
+      "personRef": "SYNTHETIC PERSON ORIGINAL"
+    },
+    "submitter": {
+      "actorId": "operator_c777d8f7a2197b3e",
+      "displayName": "Sara Lind"
+    },
+    "paymentOn": "2026-02-25",
+    "workedMinutes": "2250",
+    "rateMinor": "20000",
+    "workedAmountMinor": "750000",
+    "sickAmountMinor": null,
+    "holidayDeltaMinor": null,
+    "holidayControl": {
+      "accountId": "holiday_liability",
+      "accountCode": "2920",
+      "openingMinor": "1000000",
+      "ledgerMinor": "940000",
+      "differenceMinor": "60000",
+      "socialAccountId": "holiday_social",
+      "openingSocialMinor": "0",
+      "ledgerSocialMinor": "0"
+    },
+    "blockers": [
+      {
+        "code": "unsupported_work",
+        "sourceIds": [
+          "time_08",
+          "time_09"
+        ],
+        "dates": [
+          "2026-01-08",
+          "2026-01-09"
+        ],
+        "amountMinor": null,
+        "priorInputId": null,
+        "priorRunId": null,
+        "priorPaidEventId": null,
+        "priorPaidEventDigest": null,
+        "priorPaidEvidenceId": null,
+        "priorSettlementExecutionId": null,
+        "paidOn": null,
+        "priorRunRow": null
+      },
+      {
+        "code": "holiday_control",
+        "sourceIds": [],
+        "dates": [],
+        "amountMinor": "60000",
+        "priorInputId": null,
+        "priorRunId": null,
+        "priorPaidEventId": null,
+        "priorPaidEventDigest": null,
+        "priorPaidEvidenceId": null,
+        "priorSettlementExecutionId": null,
+        "paidOn": null,
+        "priorRunRow": null
+      },
+      {
+        "code": "duplicate_source",
+        "sourceIds": [
+          "time_04"
+        ],
+        "dates": [
+          "2026-01-04"
+        ],
+        "amountMinor": null,
+        "priorInputId": "payroll_input_c8669d6fc4a242ed91e9ccbd50176876",
+        "priorRunId": "payroll_run_dc99104195284daa9953bb74d53c4876",
+        "priorPaidEventId": "payroll_paid_event_a5c0514f94e045749398e3e2d999ec4c",
+        "priorPaidEventDigest": "sha256:b7179235e60907fff5c6a7c9fcfb79883ac9778054570e1e64a971906bbe977d",
+        "priorPaidEvidenceId": "evidence_a364aeca3ade4af9bb7884946efbd41f",
+        "priorSettlementExecutionId": "payroll_settlement_execution_48dc2a77289b475dafff996868067926",
+        "paidOn": "2026-01-31",
+        "priorRunRow": 4
+      }
+    ],
+    "dependencyDigest": "sha256:4fad0383989ec8ae6098e590afd738b2b84f0a0184f1a00d7e9709fb24009b4a",
+    "createdAt": "2026-10-10T22:47:18.111Z",
+    "createdBy": "operator_c777d8f7a2197b3e",
+    "receipt": {
+      "key": "bb5227d2-17ae-4ecd-9dce-8a9fac656e15",
+      "operation": "assess_variable_pay",
+      "actorId": "operator_c777d8f7a2197b3e"
+    }
+  },
+  "result": {
+    "assessment": {
+      "id": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+      "scope": {
+        "entityId": "entity_c777d8f7a2197b3e",
+        "bookId": "book_c777d8f7a2197b3e"
+      },
+      "inputId": "payroll_input_71d378ec44f640e2a1bc70541238e21e",
+      "inputDigest": "sha256:8080901a7f4edc810618a8bd1f3690bf2b4dd31b5698fd17418ff2f529a7183a",
+      "digest": "sha256:86490e8caaec35ed7b4baa0793a222eadd9d86196abf793c8832312ce85308d9",
+      "sourceOccurrence": {
+        "occurrenceId": "source_a0b57c09c0ee48faa8f6860477b700f6",
+        "sha256": "sha256:a455dc42f1d8bb62133d555bf66a01a812c25ffdbbe7dcc1d9adbae75943d138"
+      },
+      "sourceProfile": {
+        "profile": "synthetic-variable-timesheet-v1",
+        "employeeId": "synthetic_employee_0",
+        "month": "2026-01",
+        "paymentOn": "2026-02-25",
+        "sourceSystem": "synthetic-variable-test",
+        "sourceAccountId": "synthetic_employee_0",
+        "occurrenceKey": "475044d3-5868-4037-948a-ee448e4b93ad",
+        "rows": [
+          {
+            "rowIdentity": "row_01",
+            "sourceId": "time_01",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-01\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "worked",
+            "scheduleDate": "2026-01-01",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_02",
+            "sourceId": "time_02",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-02\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "worked",
+            "scheduleDate": "2026-01-02",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_03",
+            "sourceId": "time_03",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-03\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "worked",
+            "scheduleDate": "2026-01-03",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_04",
+            "sourceId": "time_04",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-04\",\"worked\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "worked",
+            "scheduleDate": "2026-01-04",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_05",
+            "sourceId": "time_05",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-05\",\"worked\",\"08:00\",\"13:30\",\"0\"]",
+            "kind": "worked",
+            "scheduleDate": "2026-01-05",
+            "startLocal": "08:00",
+            "endLocal": "13:30",
+            "breakMinutes": "0",
+            "unitsMinor": "330",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_08",
+            "sourceId": "time_08",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-08\",\"sick\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "sick",
+            "scheduleDate": "2026-01-08",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          },
+          {
+            "rowIdentity": "row_09",
+            "sourceId": "time_09",
+            "economicOccurrence": "[\"synthetic_employee_0\",\"2026-01-09\",\"sick\",\"08:00\",\"16:00\",\"0\"]",
+            "kind": "sick",
+            "scheduleDate": "2026-01-09",
+            "startLocal": "08:00",
+            "endLocal": "16:00",
+            "breakMinutes": "0",
+            "unitsMinor": "480",
+            "rateMinor": "20000",
+            "priorRunRow": null
+          }
+        ]
+      },
+      "employee": {
+        "id": "synthetic_employee_0",
+        "personRef": "SYNTHETIC PERSON ORIGINAL"
+      },
+      "submitter": {
+        "actorId": "operator_c777d8f7a2197b3e",
+        "displayName": "Sara Lind"
+      },
+      "paymentOn": "2026-02-25",
+      "workedMinutes": "2250",
+      "rateMinor": "20000",
+      "workedAmountMinor": "750000",
+      "sickAmountMinor": null,
+      "holidayDeltaMinor": null,
+      "holidayControl": {
+        "accountId": "holiday_liability",
+        "accountCode": "2920",
+        "openingMinor": "1000000",
+        "ledgerMinor": "940000",
+        "differenceMinor": "60000",
+        "socialAccountId": "holiday_social",
+        "openingSocialMinor": "0",
+        "ledgerSocialMinor": "0"
+      },
+      "blockers": [
+        {
+          "code": "unsupported_work",
+          "sourceIds": [
+            "time_08",
+            "time_09"
+          ],
+          "dates": [
+            "2026-01-08",
+            "2026-01-09"
+          ],
+          "amountMinor": null,
+          "priorInputId": null,
+          "priorRunId": null,
+          "priorPaidEventId": null,
+          "priorPaidEventDigest": null,
+          "priorPaidEvidenceId": null,
+          "priorSettlementExecutionId": null,
+          "paidOn": null,
+          "priorRunRow": null
+        },
+        {
+          "code": "holiday_control",
+          "sourceIds": [],
+          "dates": [],
+          "amountMinor": "60000",
+          "priorInputId": null,
+          "priorRunId": null,
+          "priorPaidEventId": null,
+          "priorPaidEventDigest": null,
+          "priorPaidEvidenceId": null,
+          "priorSettlementExecutionId": null,
+          "paidOn": null,
+          "priorRunRow": null
+        },
+        {
+          "code": "duplicate_source",
+          "sourceIds": [
+            "time_04"
+          ],
+          "dates": [
+            "2026-01-04"
+          ],
+          "amountMinor": null,
+          "priorInputId": "payroll_input_c8669d6fc4a242ed91e9ccbd50176876",
+          "priorRunId": "payroll_run_dc99104195284daa9953bb74d53c4876",
+          "priorPaidEventId": "payroll_paid_event_a5c0514f94e045749398e3e2d999ec4c",
+          "priorPaidEventDigest": "sha256:b7179235e60907fff5c6a7c9fcfb79883ac9778054570e1e64a971906bbe977d",
+          "priorPaidEvidenceId": "evidence_a364aeca3ade4af9bb7884946efbd41f",
+          "priorSettlementExecutionId": "payroll_settlement_execution_48dc2a77289b475dafff996868067926",
+          "paidOn": "2026-01-31",
+          "priorRunRow": 4
+        }
+      ],
+      "dependencyDigest": "sha256:4fad0383989ec8ae6098e590afd738b2b84f0a0184f1a00d7e9709fb24009b4a",
+      "createdAt": "2026-10-10T22:47:18.111Z",
+      "createdBy": "operator_c777d8f7a2197b3e",
+      "receipt": {
+        "key": "bb5227d2-17ae-4ecd-9dce-8a9fac656e15",
+        "operation": "assess_variable_pay",
+        "actorId": "operator_c777d8f7a2197b3e"
+      }
+    },
+    "current": {
+      "assessmentCurrent": true,
+      "holidayControl": {
+        "accountId": "holiday_liability",
+        "accountCode": "2920",
+        "openingMinor": "1000000",
+        "ledgerMinor": "940000",
+        "differenceMinor": "60000",
+        "socialAccountId": "holiday_social",
+        "openingSocialMinor": "0",
+        "ledgerSocialMinor": "0"
+      },
+      "canPrepareFinancialReview": false,
+      "canApprove": false,
+      "canReturn": false,
+      "canRemove": false,
+      "blockers": [
+        {
+          "code": "unsupported_work",
+          "sourceIds": [
+            "time_08",
+            "time_09"
+          ],
+          "dates": [
+            "2026-01-08",
+            "2026-01-09"
+          ],
+          "amountMinor": null,
+          "priorInputId": null,
+          "priorRunId": null,
+          "priorPaidEventId": null,
+          "priorPaidEventDigest": null,
+          "priorPaidEvidenceId": null,
+          "priorSettlementExecutionId": null,
+          "paidOn": null,
+          "priorRunRow": null
+        },
+        {
+          "code": "holiday_control",
+          "sourceIds": [],
+          "dates": [],
+          "amountMinor": "60000",
+          "priorInputId": null,
+          "priorRunId": null,
+          "priorPaidEventId": null,
+          "priorPaidEventDigest": null,
+          "priorPaidEvidenceId": null,
+          "priorSettlementExecutionId": null,
+          "paidOn": null,
+          "priorRunRow": null
+        },
+        {
+          "code": "duplicate_source",
+          "sourceIds": [
+            "time_04"
+          ],
+          "dates": [
+            "2026-01-04"
+          ],
+          "amountMinor": null,
+          "priorInputId": "payroll_input_c8669d6fc4a242ed91e9ccbd50176876",
+          "priorRunId": "payroll_run_dc99104195284daa9953bb74d53c4876",
+          "priorPaidEventId": "payroll_paid_event_a5c0514f94e045749398e3e2d999ec4c",
+          "priorPaidEventDigest": "sha256:b7179235e60907fff5c6a7c9fcfb79883ac9778054570e1e64a971906bbe977d",
+          "priorPaidEvidenceId": "evidence_a364aeca3ade4af9bb7884946efbd41f",
+          "priorSettlementExecutionId": "payroll_settlement_execution_48dc2a77289b475dafff996868067926",
+          "paidOn": "2026-01-31",
+          "priorRunRow": 4
+        }
+      ],
+      "status": "returned"
+    },
+    "selection": {
+      "id": "variable_selection_2040771b309442e5be996ebf0ea67d54",
+      "scope": {
+        "entityId": "entity_c777d8f7a2197b3e",
+        "bookId": "book_c777d8f7a2197b3e"
+      },
+      "inputId": "payroll_input_71d378ec44f640e2a1bc70541238e21e",
+      "inputDigest": "sha256:8080901a7f4edc810618a8bd1f3690bf2b4dd31b5698fd17418ff2f529a7183a",
+      "assessmentId": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+      "assessmentDigest": "sha256:86490e8caaec35ed7b4baa0793a222eadd9d86196abf793c8832312ce85308d9",
+      "digest": "sha256:3a40d1563493ad00bf0d4906741d462ef25a13606e9dad8154da758247bac56a",
+      "createdAt": "2026-10-10T22:47:18.146Z",
+      "createdBy": "operator_c777d8f7a2197b3e",
+      "receipt": {
+        "key": "ccccca3a-4c6b-4336-857f-8bca86fd5aad",
+        "operation": "select_variable_pay",
+        "actorId": "operator_c777d8f7a2197b3e"
+      }
+    },
+    "dispositions": [
+      {
+        "id": "variable_disposition_758b7ee4fc9f4c02bee9e2c08585510a",
+        "scope": {
+          "entityId": "entity_c777d8f7a2197b3e",
+          "bookId": "book_c777d8f7a2197b3e"
+        },
+        "inputId": "payroll_input_71d378ec44f640e2a1bc70541238e21e",
+        "inputDigest": "sha256:8080901a7f4edc810618a8bd1f3690bf2b4dd31b5698fd17418ff2f529a7183a",
+        "assessmentId": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+        "assessmentDigest": "sha256:86490e8caaec35ed7b4baa0793a222eadd9d86196abf793c8832312ce85308d9",
+        "selectionId": "variable_selection_2040771b309442e5be996ebf0ea67d54",
+        "kind": "returned",
+        "submitterActorId": "operator_c777d8f7a2197b3e",
+        "digest": "sha256:a8cbfd017406e20f0ecbbe79a4719d9337162f6ce8c643699a9f2d6937367e5d",
+        "createdAt": "2026-10-10T22:47:18.184Z",
+        "createdBy": "operator_c777d8f7a2197b3e",
+        "receipt": {
+          "key": "c305e50c-bce8-4499-9d0d-dd99d42a5c1d",
+          "operation": "dispose_variable_pay",
+          "actorId": "operator_c777d8f7a2197b3e"
+        }
+      }
+    ],
+    "financialReview": null,
+    "recognition": null,
+    "financialApproval": null
+  },
+  "recovery": [
+    {
+      "version": 8,
+      "historicalRevision": null,
+      "historicalTransfer": null,
+      "manifestDigest": "2a227b1237184561f856b7f4eb39ab0fe2c65ea585f7be916d47aeae95bf0531",
+      "sourceMigrationNames": [
+        "0001-schema.sql",
+        "0002-integrity.sql",
+        "0003-roles.sql",
+        "0004-next-02.sql",
+        "0005-next-13.sql",
+        "0006-next-03.sql",
+        "0007-next-11.sql",
+        "0008-next-20.sql",
+        "0009-next-26.sql",
+        "0010-next-49.sql",
+        "0011-next-15.sql",
+        "0012-next-17.sql",
+        "0013-next-22.sql",
+        "0014-next-14.sql",
+        "0015-next-04.sql",
+        "0016-next-06.sql",
+        "0017-next-16.sql",
+        "0018-next-29.sql",
+        "0019-owner-approval-digests.sql",
+        "0020-zero-tax-credit-lines.sql",
+        "0021-fulfillment-reverification.sql",
+        "0022-credit-document-artifacts.sql",
+        "0023-vat-owned-producers.sql",
+        "0024-document-reading.sql",
+        "0024-sie-object-openings.sql",
+        "0025-next-05.sql",
+        "0026-next-23.sql",
+        "0027-next-24.sql",
+        "0028-next-37.sql",
+        "0029-next-07.sql",
+        "0030-next-23-review.sql",
+        "0031-next-37-review.sql",
+        "0032-next-43-dimension-restatement.sql",
+        "0033-next-18-fx-remeasurement.sql",
+        "0034-next-30-customer-credits.sql",
+        "0035-next-41-fx-chain-repair.sql",
+        "0036-next-09-sync-windows.sql",
+        "0037-next-10-source-revisions.sql",
+        "0038-bank-capacity-reconciliation-insert.sql",
+        "0039-next-31-prepayments.sql",
+        "0040-next-38-cash-method.sql",
+        "0042-pdfcn-renderer.sql",
+        "0043-cash-method-commercial-invoices.sql",
+        "0043-posting-request-attempts.sql",
+        "0044-cash-method-allocation-recognition.sql",
+        "0044-voucher-period-date.sql",
+        "0045-bank-match-integrity.sql",
+        "0045-cash-method-complete-year-end.sql",
+        "0046-cash-method-unpaid-credits.sql",
+        "0046-period-lock-integrity.sql",
+        "0047-supplier-credit-cap.sql",
+        "0048-cash-invoice-recognition-period.sql",
+        "0048-next38-commercial-period-admission.sql",
+        "0049-evaluation-contracts.sql",
+        "0050-validate-vat-receipt-match.sql",
+        "0051-rule-selector-check-stability.sql",
+        "0052-supplier-settlement-pending.sql",
+        "0053-supplier-settlement-execution.sql",
+        "0054-supplier-cancellation-revocations.sql",
+        "0055-supplier-settlement-receipt-bindings.sql",
+        "0056-agent-context-continuation.sql",
+        "0057-period-work-execution-results.sql",
+        "0058-owner-funding-receipt-amounts.sql",
+        "0059-owner-loan-repayment.sql",
+        "0060-document-work-assignments.sql",
+        "0061-commercial-draft-purpose.sql",
+        "0062-customer-invoice-defaults.sql",
+        "0063-invoice-content-templates.sql",
+        "0064-document-library-source-evidence.sql",
+        "0065-recurring-commercial-drafts.sql",
+        "0066-payment-reminders.sql",
+        "0067-cash-basis.sql",
+        "0068-cash-forecast.sql",
+        "0069-onboarding-cases.sql",
+        "0070-onboarding-lifecycle.sql",
+        "0071-onboarding-operations.sql",
+        "0072-onboarding-mappings.sql",
+        "0073-onboarding-deltas.sql",
+        "0074-onboarding-account-chart.sql",
+        "0074-payroll-runs.sql",
+        "0075-asset-valuations.sql",
+        "0075-onboarding-delta-effects.sql",
+        "0076-treasury-loans.sql",
+        "0077-payroll-inputs.sql",
+        "0078-foreign-cash.sql",
+        "0079-asset-disposals.sql",
+        "0080-payroll-settlements.sql",
+        "0081-processor-clearing.sql",
+        "0082-sie-partitions.sql",
+        "0083-historical-adoptions.sql",
+        "0084-document-signatures.sql",
+        "0085-filing-lifecycle.sql",
+        "0086-peppol-exchange.sql",
+        "0087-loan-interest-corrections.sql",
+        "0088-historical-pool-revisions.sql",
+        "0089-processor-review-returns.sql",
+        "0090-peppol-review-provenance.sql",
+        "0091-reminder-terminal-review.sql",
+        "0092-work-questions.sql",
+        "0093-invoice-recognition-replacements.sql",
+        "0094-schedule-occurrence-corrections.sql",
+        "0095-employee-claims.sql",
+        "0096-retained-financial-instants.sql",
+        "0097-mileage-corrections.sql",
+        "0098-variable-pay-review.sql",
+        "0099-recurring-coverage-issue-owners.sql",
+        "0100-native-ledger-setup.sql",
+        "0101-reminder-explicit-dispatch.sql",
+        "0102-reminder-invoice-attachment.sql",
+        "0103-firm-access-requests.sql",
+        "0104-presence-proofs.sql",
+        "0105-posting-mandates.sql",
+        "0106-decision-provenance.sql",
+        "0107-decision-examples.sql",
+        "0108-ai-egress.sql",
+        "0109-oauth-provider.sql",
+        "0110-bureau-intake-envelopes.sql",
+        "0111-oauth-agent-grants.sql",
+        "0115-paid-payroll-recovery.sql"
+      ],
+      "sourceTables": [
+        {
+          "schema": "openerp",
+          "table": "reminder_approvals",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_attempts",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_messages",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_observations",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_outbox",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_refusals",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "schema": "openerp",
+          "table": "reminder_resolutions",
+          "rows": "0",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "inventory": {
+        "version": 8,
+        "queue": {
+          "tables": [
+            {
+              "schema": "public",
+              "table": "effect_mq_dedupe",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_flow_children",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_flow_outbox",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_job_attempts",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_jobs",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_queue_control",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_schedules",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "sequences": [
+            {
+              "name": "effect_mq_flow_outbox_id_seq",
+              "table": "effect_mq_flow_outbox",
+              "column": "id",
+              "lastValue": "1",
+              "isCalled": false
+            },
+            {
+              "name": "effect_mq_jobs_seq_seq",
+              "table": "effect_mq_jobs",
+              "column": "seq",
+              "lastValue": "1",
+              "isCalled": false
+            }
+          ]
+        },
+        "kind": "openerp-durable-work-inventory",
+        "snapshot": "00000031-00000003-1",
+        "books": [
+          {
+            "id": "book_940a356ce6cec3c7",
+            "authority": "native",
+            "writerEpoch": "1",
+            "committedSequence": "0"
+          },
+          {
+            "id": "book_c777d8f7a2197b3e",
+            "authority": "native",
+            "writerEpoch": "1",
+            "committedSequence": "4"
+          }
+        ],
+        "summary": {
+          "outboxRows": "5",
+          "undeliveredOutbox": "5",
+          "undeliveredWithAttempts": "0",
+          "outboxAttemptCount": "0",
+          "preparationRuns": "0",
+          "unfinishedRuns": "0",
+          "preparationJobs": "0",
+          "readyJobs": "0",
+          "blockedOrStoppedJobs": "0",
+          "savedRequests": "0",
+          "requestsWithoutOutcome": "0",
+          "recurringSchedules": "0",
+          "enabledRecurringSchedules": "0",
+          "recurringEvents": "0",
+          "recurringJobs": "0",
+          "readyRecurringJobs": "0",
+          "failedRecurringJobs": "0",
+          "reminderMessages": "0",
+          "reminderApprovals": "0",
+          "reminderAttempts": "0",
+          "reminderOutbox": "0",
+          "reminderObservations": "0",
+          "reminderRefusals": "0",
+          "reminderResolutions": "0",
+          "employeeClaimRecords": "0",
+          "mileageCorrectionRecords": "0",
+          "mileageCorrectionSuccessors": "0",
+          "payrollInputAssessmentRecords": "3",
+          "paidRecoveryRecords": "0"
+        },
+        "outbox": [
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_1275df329d124fb3a422005fd0aff2d2",
+            "receiptId": "receipt_65c942e50d80469db6fc579bca1d3a33",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.853526Z",
+            "deliveredAt": null,
+            "payloadSha256": "cfc14eaf69430fe0b6ae312b6ad20b7398579cb9cf884cb076e9376cfbd9048b"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_59938272dc8d489e9e5ec560889b12d3",
+            "receiptId": "receipt_4fcdd274d074440fa5736c587d062edf",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.336771Z",
+            "deliveredAt": null,
+            "payloadSha256": "463ba7338aa90669320f610ee92fa6c216cb2acb3f62c429b446412f187e8927"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_7c7daf16a227444fa2e6ac4adbe588ad",
+            "receiptId": "receipt_b3ff142393c349139e0905c7b43b0d1d",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:18.047537Z",
+            "deliveredAt": null,
+            "payloadSha256": "2f562f33849401cebc7ceea656df869e8492fdc7bb72e8c2d19247d316158784"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_c60aefe9baa44826ba882a9ed18abb8e",
+            "receiptId": "receipt_b28d027ae89f45c0ad099e231628a342",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.637734Z",
+            "deliveredAt": null,
+            "payloadSha256": "2cf3a3deeee929b4bde691f80159fb826bdbf16dc7cd71925acd570701b3d67e"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "payslip_render_7960aafbb9ee40b8935fb36cd0723973",
+            "receiptId": "receipt_65c942e50d80469db6fc579bca1d3a33",
+            "kind": "payroll.payslip.render_requested",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.858096Z",
+            "deliveredAt": null,
+            "payloadSha256": "843501b029c7dfbf01656ae075416a2a755a5e14869185c2c390aa16970816c4"
+          }
+        ],
+        "runs": [],
+        "jobs": [],
+        "savedRequests": [],
+        "providerAttemptHistory": "payment-reminder-attempts-retained",
+        "remoteWorkflowState": "not-inspected",
+        "resumptionAuthority": "not-granted",
+        "recurringSchedules": [],
+        "recurringEvents": [],
+        "recurringJobs": [],
+        "reminderMessages": [],
+        "reminderApprovals": [],
+        "reminderAttempts": [],
+        "reminderOutbox": [],
+        "reminderObservations": [],
+        "reminderRefusals": [],
+        "reminderResolutions": [],
+        "employeeClaimRecords": [],
+        "payrollInputAssessmentRecords": [
+          {
+            "table": "payroll_input_assessments",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+            "bodySha256": "70066cf6281f266765a1128d4613839195fb7ee0c579806acfd48af450171c01"
+          },
+          {
+            "table": "payroll_input_pending_selections",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_selection_2040771b309442e5be996ebf0ea67d54",
+            "bodySha256": "7ed779406495b589915dfb1a91b852c6a2d3d60eac3d51df3f3a07d74a4f52db"
+          },
+          {
+            "table": "payroll_input_dispositions",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_disposition_758b7ee4fc9f4c02bee9e2c08585510a",
+            "bodySha256": "bd5e47b99516dd9d1b846e3094490a26cd0a62a4e163546a640868b1d21079a3"
+          }
+        ],
+        "mileageCorrectionRecords": [],
+        "mileageCorrectionSuccessors": [],
+        "paidRecoveryRecords": []
+      },
+      "restoredInventory": {
+        "version": 8,
+        "queue": {
+          "tables": [
+            {
+              "schema": "public",
+              "table": "effect_mq_dedupe",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_flow_children",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_flow_outbox",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_job_attempts",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_jobs",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_queue_control",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "schema": "public",
+              "table": "effect_mq_schedules",
+              "rows": "0",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "sequences": [
+            {
+              "name": "effect_mq_flow_outbox_id_seq",
+              "table": "effect_mq_flow_outbox",
+              "column": "id",
+              "lastValue": "1",
+              "isCalled": false
+            },
+            {
+              "name": "effect_mq_jobs_seq_seq",
+              "table": "effect_mq_jobs",
+              "column": "seq",
+              "lastValue": "1",
+              "isCalled": false
+            }
+          ]
+        },
+        "kind": "openerp-durable-work-inventory",
+        "snapshot": "00000031-00000003-1",
+        "books": [
+          {
+            "id": "book_940a356ce6cec3c7",
+            "authority": "native",
+            "writerEpoch": "1",
+            "committedSequence": "0"
+          },
+          {
+            "id": "book_c777d8f7a2197b3e",
+            "authority": "native",
+            "writerEpoch": "1",
+            "committedSequence": "4"
+          }
+        ],
+        "summary": {
+          "outboxRows": "5",
+          "undeliveredOutbox": "5",
+          "undeliveredWithAttempts": "0",
+          "outboxAttemptCount": "0",
+          "preparationRuns": "0",
+          "unfinishedRuns": "0",
+          "preparationJobs": "0",
+          "readyJobs": "0",
+          "blockedOrStoppedJobs": "0",
+          "savedRequests": "0",
+          "requestsWithoutOutcome": "0",
+          "recurringSchedules": "0",
+          "enabledRecurringSchedules": "0",
+          "recurringEvents": "0",
+          "recurringJobs": "0",
+          "readyRecurringJobs": "0",
+          "failedRecurringJobs": "0",
+          "reminderMessages": "0",
+          "reminderApprovals": "0",
+          "reminderAttempts": "0",
+          "reminderOutbox": "0",
+          "reminderObservations": "0",
+          "reminderRefusals": "0",
+          "reminderResolutions": "0",
+          "employeeClaimRecords": "0",
+          "mileageCorrectionRecords": "0",
+          "mileageCorrectionSuccessors": "0",
+          "payrollInputAssessmentRecords": "3",
+          "paidRecoveryRecords": "0"
+        },
+        "outbox": [
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_1275df329d124fb3a422005fd0aff2d2",
+            "receiptId": "receipt_65c942e50d80469db6fc579bca1d3a33",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.853526Z",
+            "deliveredAt": null,
+            "payloadSha256": "cfc14eaf69430fe0b6ae312b6ad20b7398579cb9cf884cb076e9376cfbd9048b"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_59938272dc8d489e9e5ec560889b12d3",
+            "receiptId": "receipt_4fcdd274d074440fa5736c587d062edf",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.336771Z",
+            "deliveredAt": null,
+            "payloadSha256": "463ba7338aa90669320f610ee92fa6c216cb2acb3f62c429b446412f187e8927"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_7c7daf16a227444fa2e6ac4adbe588ad",
+            "receiptId": "receipt_b3ff142393c349139e0905c7b43b0d1d",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:18.047537Z",
+            "deliveredAt": null,
+            "payloadSha256": "2f562f33849401cebc7ceea656df869e8492fdc7bb72e8c2d19247d316158784"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "outbox_c60aefe9baa44826ba882a9ed18abb8e",
+            "receiptId": "receipt_b28d027ae89f45c0ad099e231628a342",
+            "kind": "voucher.posted.v1",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.637734Z",
+            "deliveredAt": null,
+            "payloadSha256": "2cf3a3deeee929b4bde691f80159fb826bdbf16dc7cd71925acd570701b3d67e"
+          },
+          {
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "payslip_render_7960aafbb9ee40b8935fb36cd0723973",
+            "receiptId": "receipt_65c942e50d80469db6fc579bca1d3a33",
+            "kind": "payroll.payslip.render_requested",
+            "attempts": "0",
+            "createdAt": "2026-10-10T22:47:17.858096Z",
+            "deliveredAt": null,
+            "payloadSha256": "843501b029c7dfbf01656ae075416a2a755a5e14869185c2c390aa16970816c4"
+          }
+        ],
+        "runs": [],
+        "jobs": [],
+        "savedRequests": [],
+        "providerAttemptHistory": "payment-reminder-attempts-retained",
+        "remoteWorkflowState": "not-inspected",
+        "resumptionAuthority": "not-granted",
+        "recurringSchedules": [],
+        "recurringEvents": [],
+        "recurringJobs": [],
+        "reminderMessages": [],
+        "reminderApprovals": [],
+        "reminderAttempts": [],
+        "reminderOutbox": [],
+        "reminderObservations": [],
+        "reminderRefusals": [],
+        "reminderResolutions": [],
+        "employeeClaimRecords": [],
+        "payrollInputAssessmentRecords": [
+          {
+            "table": "payroll_input_assessments",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_assessment_bb24b4e9a1754950a919bf6ac033a164",
+            "bodySha256": "70066cf6281f266765a1128d4613839195fb7ee0c579806acfd48af450171c01"
+          },
+          {
+            "table": "payroll_input_pending_selections",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_selection_2040771b309442e5be996ebf0ea67d54",
+            "bodySha256": "7ed779406495b589915dfb1a91b852c6a2d3d60eac3d51df3f3a07d74a4f52db"
+          },
+          {
+            "table": "payroll_input_dispositions",
+            "bookId": "book_c777d8f7a2197b3e",
+            "id": "variable_disposition_758b7ee4fc9f4c02bee9e2c08585510a",
+            "bodySha256": "bd5e47b99516dd9d1b846e3094490a26cd0a62a4e163546a640868b1d21079a3"
+          }
+        ],
+        "mileageCorrectionRecords": [],
+        "mileageCorrectionSuccessors": [],
+        "paidRecoveryRecords": []
+      },
+      "bodyHashes": [
+        {
+          "table": "payroll_paid_events",
+          "identity": "payroll_paid_event_a5c0514f94e045749398e3e2d999ec4c",
+          "bodySha256": "4d5228f8c8faa45355d54fa0d725524d250301988dab567599461b58f11cd6e2"
+        },
+        {
+          "table": "payroll_settlement_reviews",
+          "identity": "payroll_settlement_review_053dd31e08f34a3a9ba1e743d618d322",
+          "bodySha256": "53f2b671c1fc6fc9a9461a45d8183ea9a61f40b53abc6f6ca20ca6cd03972508"
+        },
+        {
+          "table": "payroll_settlement_approvals",
+          "identity": "payroll_settlement_approval_b5b923c824da4760b2f16fe25b48ea9d",
+          "bodySha256": "284a4882ae5ca76a3407589c37aa86d5b89c6712659ca9479b33dae0d23f11c8"
+        },
+        {
+          "table": "payroll_settlement_executions",
+          "identity": "payroll_settlement_execution_48dc2a77289b475dafff996868067926",
+          "bodySha256": "f0e8abbc03a00fb906c7ac77a4ce9b107d75405b7dfe307422087027f598182d"
+        },
+        {
+          "table": "payroll_runs",
+          "identity": "payroll_run_dc99104195284daa9953bb74d53c4876",
+          "bodySha256": "0ab5b07bd312c93a07e4a61f823edf3aadf6bbfb93293105896eb092c4435aab"
+        },
+        {
+          "table": "payroll_payslip_documents",
+          "identity": "payslip_dfcf2e4beda44cdb8fc9acd0c4909f03",
+          "bodySha256": "91688d0e616a738b6a287285822a315701a539b891c17e3b64734a733e0acf57"
+        }
+      ],
+      "inspection": {
+        "version": 1,
+        "kind": "openerp-local-bundle-inspection",
+        "inspectedAt": "2026-10-10T22:47:27.793Z",
+        "status": "complete",
+        "manifestSha256": "2a227b1237184561f856b7f4eb39ab0fe2c65ea585f7be916d47aeae95bf0531",
+        "database": "manifest-bound",
+        "objects": "matched",
+        "evidence": "manifest-bound",
+        "receipts": "manifest-bound",
+        "durableWork": "matched",
+        "applicationRecovery": "blocked-restricted-read-admission",
+        "writerPromotion": "not-performed",
+        "providerPromotion": "not-performed",
+        "productionAction": "disabled"
+      },
+      "receipt": {
+        "version": 2,
+        "kind": "openerp-local-restore",
+        "completedAt": "2026-10-10T22:47:32.989Z",
+        "durationMs": 5038,
+        "operatorId": "postgres",
+        "manifestSha256": "2a227b1237184561f856b7f4eb39ab0fe2c65ea585f7be916d47aeae95bf0531",
+        "destination": "openerp_restore_reminder_v8_fe3ab34fc620",
+        "systemIdentifier": "7695174497108167332",
+        "controls": {
+          "evidenceCount": "4",
+          "evidenceBytes": "4555",
+          "jsonEvidenceReferences": "241",
+          "voucherCount": "4",
+          "executionReceiptCount": "4",
+          "commandReceiptCount": "40",
+          "reportCount": "0",
+          "ledgerDebitMinor": "8314000",
+          "ledgerCreditMinor": "8314000",
+          "inlineEvidenceClosure": "matched",
+          "receiptLinks": "matched",
+          "historicalReportControls": "matched",
+          "externalObjects": "retained-originals-matched"
+        },
+        "tableFingerprints": "matched",
+        "migrationFiles": "matched",
+        "roleAttributesAndMemberships": "matched-before-restore",
+        "supplementaryFiles": "matched",
+        "configurationRecovery": "custody-declared-not-exercised",
+        "durableWork": {
+          "version": 1,
+          "inventoryVerification": "matched",
+          "suspensionReport": {
+            "path": "suspension-report.json",
+            "bytes": "1764",
+            "sha256": "dffefdfb7c1e8491f2efbf4e28cd412df44979bb09cfdbdf9203d785605767a9"
+          },
+          "resumeAllowed": false
+        },
+        "connections": "disabled",
+        "writerPromotion": "not-performed",
+        "applicationRecovery": "blocked-restricted-read-admission",
+        "archiveCompliance": "not-established",
+        "productionAction": "disabled"
+      },
+      "suspension": {
+        "version": 1,
+        "kind": "openerp-restore-suspension",
+        "recordedAt": "2026-10-10T22:47:32.989Z",
+        "manifestSha256": "2a227b1237184561f856b7f4eb39ab0fe2c65ea585f7be916d47aeae95bf0531",
+        "destination": "openerp_restore_reminder_v8_fe3ab34fc620",
+        "operatorId": "postgres",
+        "connections": "disabled",
+        "inventoryVerification": "matched",
+        "sourceInventory": {
+          "version": 1,
+          "file": {
+            "path": "durable-work-v8.json",
+            "bytes": "6493",
+            "sha256": "37650d8442c3c10fc2eff3aaba6db9f4274b42959b47381915323eb5436411f0"
+          },
+          "summary": {
+            "outboxRows": "5",
+            "undeliveredOutbox": "5",
+            "undeliveredWithAttempts": "0",
+            "outboxAttemptCount": "0",
+            "preparationRuns": "0",
+            "unfinishedRuns": "0",
+            "preparationJobs": "0",
+            "readyJobs": "0",
+            "blockedOrStoppedJobs": "0",
+            "savedRequests": "0",
+            "requestsWithoutOutcome": "0",
+            "recurringSchedules": "0",
+            "enabledRecurringSchedules": "0",
+            "recurringEvents": "0",
+            "recurringJobs": "0",
+            "readyRecurringJobs": "0",
+            "failedRecurringJobs": "0",
+            "reminderMessages": "0",
+            "reminderApprovals": "0",
+            "reminderAttempts": "0",
+            "reminderOutbox": "0",
+            "reminderObservations": "0",
+            "reminderRefusals": "0",
+            "reminderResolutions": "0",
+            "employeeClaimRecords": "0",
+            "mileageCorrectionRecords": "0",
+            "mileageCorrectionSuccessors": "0",
+            "payrollInputAssessmentRecords": "3",
+            "paidRecoveryRecords": "0"
+          },
+          "recoveryProcedurePath": "custody.txt"
+        },
+        "reconstructionChecks": "completed",
+        "jobRows": "not-modified-by-recovery",
+        "externalWorkers": "not-inspected",
+        "providerOutcomes": "not-reconciled",
+        "resumeAllowed": false
+      },
+      "fence": {
+        "allowConnections": false,
+        "connectionLimit": 0
+      },
+      "continuation": null
+    }
+  ]
+}

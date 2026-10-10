@@ -1,0 +1,14 @@
+$ vp test run "apps/api/tests/variable-pay-review.e2e.test.ts" -t "populated assessment selection" --testTimeout "180000"
+
+ RUN  v4.1.10 /Users/admin/drastic-finish-lanes
+
+ ✓ apps/api/tests/variable-pay-review.e2e.test.ts (20 tests | 19 skipped) 16947ms
+   ✓ populated assessment selection and disposition survive genuine V8 dump inspect and fenced restore  16947ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 19 skipped (20)
+   Start at  00:47:09
+   Duration  23.71s (transform 257ms, setup 0ms, import 970ms, tests 16.95s, environment 0ms)
+
+JSON report written to /Users/admin/drastic-finish-lanes/test-results/e2e/results.json
+JUNIT report written to /Users/admin/drastic-finish-lanes/test-results/e2e/junit.xml

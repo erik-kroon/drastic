@@ -24,7 +24,7 @@ export async function database() {
   return client;
 }
 
-export async function createSession(book: BookFixture) {
+export async function createSession(book: BookFixture, name = "E2E session operator") {
   const id = `session_${randomBytes(8).toString("hex")}`;
   const token = randomBytes(32).toString("hex");
   const admin = await database();
@@ -32,9 +32,9 @@ export async function createSession(book: BookFixture) {
   try {
     await admin.query(
       `INSERT INTO openerp_auth."user"(id, name, email)
-      VALUES ($1, 'E2E session operator', $2)
+      VALUES ($1, $3, $2)
       ON CONFLICT (id) DO NOTHING`,
-      [book.actorId, `${book.actorId}@e2e.invalid`],
+      [book.actorId, `${book.actorId}@e2e.invalid`, name],
     );
     await admin.query(
       `INSERT INTO openerp.identity_admissions(actor_id, provider_id, subject, enabled)
@@ -71,6 +71,7 @@ export async function fixture(
   periods: ReadonlyArray<{ id: string; startsOn: string; endsOn: string }> = [
     { id: "period_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" },
   ],
+  names?: { bookName: string },
 ) {
   const id = randomBytes(8).toString("hex");
   const token = randomBytes(32).toString("hex");
@@ -82,7 +83,12 @@ export async function fixture(
 
   const config = {
     entity: { id: entityId, name: "Synthetic E2E entity" },
-    book: { id: bookId, name: "Synthetic E2E book", currency: "SEK", profile: "synthetic-core-v1" },
+    book: {
+      id: bookId,
+      name: names?.bookName ?? "Synthetic E2E book",
+      currency: "SEK",
+      profile: "synthetic-core-v1",
+    },
     actor: {
       id: actorId,
       name: "E2E operator",
@@ -127,6 +133,7 @@ export async function fixture(
   return {
     entityId,
     bookId,
+    bookName: config.book.name,
     actorId,
     agentId,
     token,
@@ -135,7 +142,9 @@ export async function fixture(
   };
 }
 
-export type BookFixture = Awaited<ReturnType<typeof fixture>>;
+export type BookFixture = Omit<Awaited<ReturnType<typeof fixture>>, "bookName"> & {
+  bookName?: string;
+};
 
 const requestMethods = new WeakMap<Response, string>();
 

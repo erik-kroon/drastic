@@ -18,6 +18,12 @@ import {
 import { WorkReturnAction } from "@/components/work-return-action";
 import { frontendCopy } from "@/lib/frontend-copy";
 
+const PaidRecoveryWorkspace = lazy(() =>
+  import("@/components/payroll/paid-recovery-workspace").then((module) => ({
+    default: module.PaidRecoveryWorkspace,
+  })),
+);
+
 const DocumentInbox = lazy(() =>
   import("@/components/document-inbox").then((module) => ({ default: module.DocumentInbox })),
 );
@@ -243,6 +249,13 @@ export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
         ) : (
           <PayrollWorkspace />
         )}
+      </Suspense>
+    );
+
+  if (props.area === "tax" && props.view === "paid-recovery")
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        <PaidRecoveryWorkspace recordId={props.record} />
       </Suspense>
     );
 

@@ -1,9 +1,18 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId, type ComponentProps, type ReactNode } from "react";
 import { kanon } from "@open-erp/ui/theme/kanon.stylex";
+import { statusTextStyle, type Status } from "@open-erp/ui/kanon/status";
 import { Action, InlineAction } from "@open-erp/ui/kanon/action";
 
 const styles = stylex.create({
+  hiddenLabel: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    overflow: "hidden",
+    clipPath: "inset(50%)",
+    whiteSpace: "nowrap",
+  },
   column: {
     display: "grid",
     gap: kanon.space4,
@@ -130,21 +139,24 @@ export function FormTitle({ children, record }: { children: ReactNode; record?: 
   return <h2 {...stylex.props(styles.title, record && styles.recordFont)}>{children}</h2>;
 }
 
-export function FormText({
-  children,
-  role,
-  compact,
-  record,
-}: {
+export function FormText(props: {
+  tone?: Status;
   record?: boolean;
   children: ReactNode;
   role?: "status" | "alert";
   compact?: boolean;
 }) {
+  const { children, role, compact, record } = props;
+
   return (
     <p
       role={role}
-      {...stylex.props(styles.text, record && styles.recordFont, compact && styles.compactText)}
+      {...stylex.props(
+        styles.text,
+        record && styles.recordFont,
+        compact && styles.compactText,
+        props.tone && statusTextStyle(props.tone),
+      )}
     >
       {children}
     </p>
@@ -189,6 +201,7 @@ export function SelectField(
   props: Omit<ComponentProps<"select">, "onChange"> & {
     label: string;
     record?: boolean;
+    labelHidden?: boolean;
     options: readonly { value: string; label: string }[];
     onValueChange?: (value: string) => void;
   },
@@ -198,12 +211,19 @@ export function SelectField(
   Reflect.deleteProperty(select, "options");
   Reflect.deleteProperty(select, "onValueChange");
   Reflect.deleteProperty(select, "record");
+  Reflect.deleteProperty(select, "labelHidden");
   const generated = useId();
   const id = props.id ?? generated;
 
   return (
     <label htmlFor={id} {...stylex.props(styles.field, props.record && styles.recordField)}>
-      <span {...stylex.props(styles.label, props.record && styles.secondaryLabel)}>
+      <span
+        {...stylex.props(
+          styles.label,
+          props.record && styles.secondaryLabel,
+          props.labelHidden && styles.hiddenLabel,
+        )}
+      >
         {props.label}
       </span>
       <select

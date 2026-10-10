@@ -1,3 +1,4 @@
+import { PaidRecoveryCapabilities } from "./paid-payroll-recovery";
 import { EmployeeClaimCapabilities } from "./employee-claims";
 import { MileageCorrectionCapabilities } from "./mileage-corrections";
 import { VariablePayReviewCapabilities } from "./variable-pay-review";
@@ -209,6 +210,7 @@ export const Capabilities = {
   ...VariablePayReviewCapabilities,
   ...AssetDisposalsCapabilities,
   ...PayrollSettlementCapabilities,
+  ...PaidRecoveryCapabilities,
   ...ProcessorClearingCapabilities,
   ...DocumentSignatureCapabilities,
   ...FilingCapabilities,

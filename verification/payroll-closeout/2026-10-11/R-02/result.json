@@ -1,0 +1,64 @@
+{
+  "scope": "R-02",
+  "sourceRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "comparatorRevision": "8fed0f300d10153def822cfe81a5a8f536c247af",
+  "referenceSha256": "e8607bb0cec3d5172d8884ca5acee19e43502b2ee046d79d27717307a5f2d849",
+  "actualSha256": "760f289e7b0159376187552e9ec86c81a13c027ea4de325be192707ae986c40f",
+  "diffSha256": "140a1a8beac50bac978a8454faa1ea5528af2a4d579a2167f37265bff9125698",
+  "sourceHashes": {
+    "apps/web/src/components/commerce/recurring-agreement-controls.tsx": "61a00528cf394c9a56673866a3e5f62da7b667ea9cb4c11b1eb83ce526a7da28",
+    "apps/web/src/components/commerce/sales-navigation.tsx": "953d6b1d5780b1a1feea602438f66a68fb0db9c06dc532d8a475c30908d01da6",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.sales.tsx": "52f4a591396c2775a7b3fc04c0a56eb2011f2bc11d1a96bd1a5d98a87ccb978e",
+    "packages/ui/src/kanon/form.tsx": "54ea4ac1d8b9bc880b1a7ec5c184d63607d8461715acfeeaf9a5bf3242c4cb6c",
+    "packages/ui/src/kanon/register.tsx": "73382d99a615999e035f68c3e4d214664fd420b4f2217022f8667ab462f71845",
+    "packages/ui/src/kanon/action.tsx": "d8509bf57c5f2a17f53144d437ad3cc28356979d99b5c80abc48c6c79e4c79eb",
+    "packages/ui/src/theme/kanon.stylex.ts": "c722d80f4effede96d11bfc2f48359bea007c6d0e9e7320aae765266a6c38694",
+    "apps/web/src/components/commerce/shared.tsx": "20e2a9e570872f19e4a3e0bea9b99d794a3afa43269fef6c04253afb02788a5e",
+    "apps/web/src/components/book-workspace.tsx": "54e51d31d59c7483ed5912b1ba2ceba8cb733c63d087dc99b868f4340d089fad"
+  },
+  "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/capture.mjs R-02",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-finish-lanes/verification/paper/compare.mjs R-02 test-results/payroll-shared-parity/R-02/capture.json test-results/payroll-shared-parity/R-02",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/sales?view=recurring",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/sales?view=recurring&recurringForm=create",
+    "time": "2026-10-10T22:38:51.906Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "empty creation form",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.01303395061728395,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/payroll-closeout/2026-10-11/R-02/actual.png",
+  "diff": "verification/payroll-closeout/2026-10-11/R-02/diff.png",
+  "passed": true
+}

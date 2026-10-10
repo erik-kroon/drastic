@@ -51,6 +51,12 @@ export const PrepareSettlement = Schema.Union([
   }),
   Schema.Struct({ kind: Schema.Literal("cash_recovery"), claimId: Accounting.Identifier, ...bank }),
   Schema.Struct({
+    kind: Schema.Literal("noncash_payment"),
+    runId: Accounting.Identifier,
+    employeeId: Accounting.Identifier,
+    ...journal,
+  }),
+  Schema.Struct({
     kind: Schema.Literal("gross_recovery"),
     mileageSource: Schema.optional(
       Schema.Struct({ proposalId: Accounting.Identifier, proposalDigest: Accounting.Digest }),
@@ -64,6 +70,8 @@ export const PrepareSettlement = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("future_pay"),
     recoveryClaimId: Schema.optional(Accounting.Identifier),
+    paidRecoveryLegId: Schema.optional(Accounting.Identifier),
+    capacityCalculationId: Schema.optional(Accounting.Identifier),
     comparisonId: Accounting.Identifier,
     lawfulBasisId: Accounting.Identifier,
     recoveryReceivableAccountId: Schema.Null,
@@ -219,6 +227,7 @@ export const SettlementExecution = Schema.Struct({
   kind: Schema.Union([
     PrepareSettlement.members[0].fields.kind,
     Schema.Literal("cash_recovery"),
+    Schema.Literal("noncash_payment"),
     AdjustmentKind,
   ]),
   paidEvent: Schema.NullOr(PaidPayrollEvent),

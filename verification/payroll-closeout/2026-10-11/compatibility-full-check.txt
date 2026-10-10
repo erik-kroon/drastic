@@ -1,0 +1,22 @@
+$ bun scripts/check-changed.ts --type-aware
+Design contract passed; 9 measured matching screens. This is not a visual comparison.
+Checking 5 changed file(s) against HEAD:
+  apps/api/tests/reminder-historical-v4.e2e.test.ts
+  apps/api/tests/reminder-pdf-recovery.e2e.test.ts
+  apps/api/tests/support/fixtures.ts
+  apps/api/tests/support/workspace-browser.ts
+  apps/api/tests/variable-pay-review.e2e.test.ts
+
+oxfmt --write
+Finished in 8ms on 5 files using 1 threads.
+oxfmt --write: 0.06s
+
+oxlint (type-aware)
+oxlint (type-aware): 2.22s
+
+tsc --noEmit (apps/api/tests/tsconfig.json)
+apps/api/src/adapters/ai-egress.ts(121,27): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+apps/api/src/adapters/decision-models/systemone.ts(157,20): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+tsc --noEmit (apps/api/tests/tsconfig.json): 1.65s
+
+check:changed passed.

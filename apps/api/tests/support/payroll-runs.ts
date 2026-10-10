@@ -46,22 +46,42 @@ const profile: typeof P.PayrollRuleRelease.Type = {
   sourceManifest: "DRA-140 synthetic arithmetic only, no statutory qualification",
 };
 
-export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0") {
-  const book = await fixture([
-    { id: "salary_expense", code: "7010", name: "Synthetic salary expense" },
-    { id: "reimbursement_expense", code: "7390", name: "Synthetic reimbursement" },
-    { id: "salary_liability", code: "2910", name: "Synthetic net salary liability" },
-    { id: "withholding_liability", code: "2710", name: "Synthetic withholding provision" },
-    { id: "contribution_expense", code: "7510", name: "Synthetic contribution expense" },
-    { id: "contribution_liability", code: "2731", name: "Synthetic contribution provision" },
-    { id: "deduction_destination", code: "2890", name: "Synthetic deduction liability" },
-  ]);
+export async function payrollFixture(
+  employeeCount = 1,
+  reimbursementMinor = "0",
+  options: {
+    jurisdiction?: string;
+    employeeName?: string;
+    bookName?: string;
+    releaseId?: string;
+    contributionRate?: { numerator: string; denominator: string };
+    salaryMinor?: string;
+    deductionMinor?: string;
+    period?: { startsOn: string; endsOn: string };
+  } = {},
+) {
+  const jurisdiction = options.jurisdiction ?? "QZ";
+  const period = options.period ?? { startsOn: "2026-01-01", endsOn: "2026-01-31" };
+
+  const book = await fixture(
+    [
+      { id: "salary_expense", code: "7010", name: "Synthetic salary expense" },
+      { id: "reimbursement_expense", code: "7390", name: "Synthetic reimbursement" },
+      { id: "salary_liability", code: "2910", name: "Synthetic net salary liability" },
+      { id: "withholding_liability", code: "2710", name: "Synthetic withholding provision" },
+      { id: "contribution_expense", code: "7510", name: "Synthetic contribution expense" },
+      { id: "contribution_liability", code: "2731", name: "Synthetic contribution provision" },
+      { id: "deduction_destination", code: "2890", name: "Synthetic deduction liability" },
+    ],
+    undefined,
+    options.bookName ? { bookName: options.bookName } : undefined,
+  );
 
   const independent = await fixture();
   const reviewer = { ...book, actorId: independent.actorId, token: independent.token };
   const source = await evidence(book);
   const admin = await database();
-  const releaseId = "payroll_runs_synthetic_qz_v1";
+  const releaseId = options.releaseId ?? "payroll_runs_synthetic_qz_v1";
   const checksum = `sha256:${"b".repeat(64)}`;
 
   try {
@@ -70,13 +90,13 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QZ','payroll',1,$2,$3) on conflict(id) do nothing",
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,$4,'payroll',1,$2,$3) on conflict(id) do nothing",
       [
         releaseId,
         checksum,
         {
           id: releaseId,
-          jurisdiction: "QZ",
+          jurisdiction,
           family: "payroll",
           version: 1,
           checksum,
@@ -95,8 +115,18 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
           sourceManifest: "Synthetic QZ payroll run E2E only",
           qualificationStatus: "reviewed",
           recordClasses: ["synthetic"],
-          payroll: profile,
+          payroll: {
+            ...profile,
+            obligationProfiles: profile.obligationProfiles.map((row) => ({
+              ...row,
+              bands: row.bands.map((band) => ({
+                ...band,
+                rate: options.contributionRate ?? band.rate,
+              })),
+            })),
+          },
         },
+        jurisdiction,
       ],
     );
   } finally {
@@ -108,7 +138,7 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
     "/company-facts",
     {
       factKind: "jurisdiction",
-      value: { state: "known", value: "QZ" },
+      value: { state: "known", value: jurisdiction },
       effectiveFrom: "2026-01-01",
       effectiveTo: null,
       supersedesId: null,
@@ -153,8 +183,8 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
       supersedes: null,
       evidenceId: source.id,
       body: {
-        personRef: "SYNTHETIC PERSON ORIGINAL",
-        jurisdiction: "QZ",
+        personRef: options.employeeName ?? "SYNTHETIC PERSON ORIGINAL",
+        jurisdiction,
         residency: "Synthetic",
         payTerms: "Synthetic monthly salary",
         workSchedule: "Synthetic monthly",
@@ -179,8 +209,8 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
         supersedes: null,
         evidenceId: source.id,
         body: {
-          periodStart: "2026-01-01",
-          periodEnd: "2026-01-31",
+          periodStart: period.startsOn,
+          periodEnd: period.endsOn,
           inputs: ["Synthetic full month"],
         },
       },
@@ -209,7 +239,7 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
         employment: {
           employeeId,
           effectiveRevision: employment.id,
-          monthlyCashSalary: "3000000",
+          monthlyCashSalary: options.salaryMinor ?? "3000000",
           workPattern: "monthly_salaried",
           withholding: {
             ruleId: "synthetic_withholding",
@@ -234,7 +264,7 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
           deductionComponents: [
             {
               componentId: "synthetic_deduction",
-              minor: "10000",
+              minor: options.deductionMinor ?? "10000",
               description: "Synthetic post-tax deduction",
               destinationRole: "owner",
               reducesBenefit: null,
@@ -259,8 +289,8 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
         },
         work: {
           effectiveRevision: work.id,
-          earningsPeriod: { startsOn: "2026-01-01", endsOn: "2026-01-31" },
-          expectedPaymentOn: "2026-01-31",
+          earningsPeriod: period,
+          expectedPaymentOn: period.endsOn,
           absence: [],
           adjustments: [],
           reimbursements: [],
@@ -283,7 +313,7 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
   const input: typeof Runs.PreparePayrollRun.Type = {
     calculationIds: calculations.map((row) => row.id),
     accountingPeriodId: "period_2026",
-    postingDate: "2026-01-31",
+    postingDate: period.endsOn,
     evidenceId: source.id,
     series: "L",
     reason: "Synthetic payroll run accrual",
@@ -319,7 +349,7 @@ export async function payrollFixture(employeeCount = 1, reimbursementMinor = "0"
         {
           ...prior,
           supersedes: previous.id,
-          body: { ...prior.body, personRef: "SYNTHETIC PERSON CHANGED" },
+          body: { ...prior.body, personRef: options.employeeName ?? "SYNTHETIC PERSON CHANGED" },
         },
         Foundation.PayrollRevision,
       );

@@ -7,6 +7,7 @@ import { failure } from "../failures";
 import { digest } from "../json";
 import { claimBalance, readRetained } from "./settlement-support";
 import { verifyRecoveryLedger } from "./settlement-ledger";
+import { paidRecoveryLegCapacity } from "./paid-recovery-leg-basis";
 
 export const claimOffsetCapacity = Effect.fn("payroll.claimOffsetCapacity")(function* (
   tx: Transaction,
@@ -78,6 +79,21 @@ export const compileClaimNetOffset = Effect.fn("payroll.compileClaimNetOffset")(
 
   if (capacity.pending.length || input.futureMonth <= paid.reportingPeriod)
     return yield* failure("AlreadyPosted");
+  const retainedLeg = yield* paidRecoveryLegCapacity(tx, scope, input, capacity.claim);
+
+  if (input.capacityCalculationId && !retainedLeg) return yield* failure("UnsupportedProfile");
+  const amountMinor = retainedLeg?.leg.amountMinor ?? capacity.remaining;
+
+  if (BigInt(amountMinor) <= 0n || BigInt(amountMinor) > BigInt(capacity.remaining))
+    return yield* failure("StaleDependency");
+
+  const capacityDigest = retainedLeg
+    ? yield* digest({
+        claim: capacity.digest,
+        leg: retainedLeg.leg.digest,
+        calculation: retainedLeg.calculation.planDigest,
+      })
+    : capacity.digest;
 
   const lawfulBasis = yield* readRetained(
     tx,
@@ -104,11 +120,11 @@ export const compileClaimNetOffset = Effect.fn("payroll.compileClaimNetOffset")(
     lawfulBasis,
     claim: yield* decode(Settlement.RecoveryClaim, capacity.claim),
     cash: null,
-    economicKey: `net_recovery:${claimId}:${capacity.digest}`,
-    capacityDigest: capacity.digest,
+    economicKey: `net_recovery:${claimId}:${capacityDigest}`,
+    capacityDigest,
     outputs: {
       reportingReadiness: "not_applicable" as const,
-      amountMinor: capacity.remaining,
+      amountMinor,
       remainingReceivableMinor: capacity.remaining,
       signedGrossDeltaMinor: "0",
       contributionCorrectionMinor: "0",

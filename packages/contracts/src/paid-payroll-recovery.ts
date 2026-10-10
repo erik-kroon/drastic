@@ -1,7 +1,8 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
 import * as Settlement from "./payroll-settlements";
+import * as Runs from "./payroll-runs";
 import { CommandReceipt, EvidenceReference } from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 
@@ -125,12 +126,25 @@ export const PreparePaidRecoveryClaim = Schema.Struct({
 
 export const PaidRecoveryView = Schema.Struct({
   assessment: PaidRecoveryAssessment,
+  originalPaidEvent: Settlement.PaidPayrollEvent,
+  comparison: Settlement.CorrectionComparison,
   drafts: Schema.Array(PaidRecoveryDraft),
   attachments: Schema.Array(PaidRecoveryAttachment),
   qualifications: Schema.Array(PaidRecoveryQualification),
   cancellation: Schema.NullOr(PaidRecoveryCancellation),
   claimReview: Schema.NullOr(Settlement.SettlementReview),
   claimExecution: Schema.NullOr(Settlement.SettlementExecution),
+  claimSettlement: Schema.NullOr(Settlement.SettlementView),
+  claimRemainingMinor: Schema.NullOr(A.MinorUnits),
+  legs: Schema.Array(
+    Schema.Struct({
+      leg: PaidRecoveryLeg,
+      reviews: Schema.Array(Settlement.SettlementView),
+      capacityCalculationId: Schema.NullOr(A.Identifier),
+      payrollRun: Schema.NullOr(Runs.PayrollRunView),
+      noncash: Schema.NullOr(Settlement.SettlementView),
+    }),
+  ),
   current: Schema.Struct({
     assessmentCurrent: Schema.Boolean,
     canSplit: Schema.Boolean,
@@ -139,6 +153,20 @@ export const PaidRecoveryView = Schema.Struct({
     canPrepareClaim: Schema.Boolean,
     status: Schema.Literals(["blocked", "drafted", "cancelled", "claimed"]),
   }),
+});
+
+export const PaidRecoveryBasisSources = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      title: A.Description,
+      sha256: EvidenceReference.fields.sha256,
+      mediaType: Schema.String,
+      createdAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(20)),
+  next: Schema.NullOr(A.Identifier),
 });
 
 export const PaidRecoveryList = Schema.Struct({
@@ -201,13 +229,25 @@ const payload = <S extends Schema.Top>(schema: S) =>
 
 export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
   .add(
+    HttpApiEndpoint.get(
+      "listPaidRecoveryBasisSources",
+      "/v1/entities/:entityId/books/:bookId/payroll/paid-recovery-basis-sources",
+      {
+        params: A.Scope,
+        query: Schema.Struct({ cursor: Schema.optional(A.Identifier) }),
+        success: PaidRecoveryBasisSources,
+        error: accountingErrors,
+      },
+    ),
+  )
+  .add(
     HttpApiEndpoint.post("preparePaidRecovery", root, {
       params: A.Scope,
       headers: A.IdempotencyHeaders,
       payload: payload(PreparePaidRecovery),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("splitPaidRecovery", `${root}/:recoveryId/splits`, {
@@ -216,7 +256,7 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       payload: payload(SplitPaidRecovery),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("attachPaidRecovery", `${root}/:recoveryId/attachments`, {
@@ -225,7 +265,7 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       payload: payload(AttachPaidRecovery),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("qualifyPaidRecovery", `${root}/:recoveryId/qualifications`, {
@@ -234,7 +274,7 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       payload: payload(QualifyPaidRecovery),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("preparePaidRecoveryClaim", `${root}/:recoveryId/claim-reviews`, {
@@ -243,7 +283,7 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       payload: payload(PreparePaidRecoveryClaim),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("cancelPaidRecovery", `${root}/:recoveryId/cancellations`, {
@@ -252,14 +292,14 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       payload: payload(CancelPaidRecovery),
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.get("getPaidRecovery", `${root}/:recoveryId`, {
       params,
       success: PaidRecoveryView,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.get("listPaidRecoveries", root, {
@@ -267,5 +307,5 @@ export const PaidRecoveryApi = HttpApiGroup.make("paidRecovery")
       query: Schema.Struct({ cursor: Schema.optional(A.Identifier) }),
       success: PaidRecoveryList,
       error: accountingErrors,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   );
