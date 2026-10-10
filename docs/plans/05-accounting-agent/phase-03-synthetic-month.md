@@ -15,7 +15,14 @@ Build the lever every later phase is measured with. A script creates a synthetic
   - a private purchase and a duplicate invoice number;
   - a changed bankgiro and a foreign-currency invoice;
   - a partial payment;
-  - a rate change on a boundary date, modelled on the 2026-04-01 food VAT change.
+  - the food VAT change in SFS 2026:118 and SFS 2026:119, as paired cases with otherwise identical facts:
+    - 2026-03-31 against 2026-04-01;
+    - 2027-12-31 against 2028-01-01, the return to 12 per cent;
+    - food supply against restaurant and catering services;
+    - a later correction that concerns an earlier tax point.
+- **Evaluation partitions.** Training, calibration and blind test sets are frozen separately. They are split by time, business template and supplier family, so near-duplicates cannot leak into the holdout.
+- **Denominators** reported at every stage: all transactions, eligible, proposed, accepted, completed checks.
+- **Product proof.** The same synthetic month serves as the product demonstration, and as a competitor workflow comparison where lawful trial access allows.
 - **Operator seeding step** for rule releases. The runtime can only read `rule_releases` (`migrations/0004-next-02.sql:169`), and no install route exists. The generator therefore installs synthetic releases through a documented operator script, the way tests do. This is the only step that writes to PostgreSQL directly.
 - **Canonical end-state projection.** It compares business keys and amounts, and leaves out server ids, timestamps and voucher numbers, which differ between runs. Kill-and-resume checks and the scorer both use it.
 - **Scorer.** Reads the Phase 1 predicate and the projection, then writes one verdict per gold expectation, including which gated checks moved from fail to pass against the baseline.

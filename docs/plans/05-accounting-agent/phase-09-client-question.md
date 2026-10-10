@@ -13,6 +13,11 @@ There is no client role. ADR 0019 (client role, invitations and answers) is prop
 ## Changes
 
 - A question bundle over many records, built on `work-questions.ts`. It keeps the per-record question rows, so posting gates like `requireResolvedSupplierQuestions` keep working.
+- Each slot has a stable identity bound to the book and to the subject revision.
+  - The batch is a delivery envelope over slots, not one indivisible form. Partial answers save and resume.
+  - Every slot offers "I do not know" or "none of these applies" where that is truthful.
+  - Reminders cover only unanswered slots, at a cadence the owner approves.
+  - A materially revised transaction never inherits a stale answer.
 - Typed answer slots per fact kind.
   - Closed answers (private or business, which project, receipt attached) are parsed deterministically.
   - A free-text answer goes to a person, who records the fact. No model reads client free text. ADR 0021 data minimisation keeps it out of every model state.

@@ -53,6 +53,14 @@ At commit `8c777fb`, see [harness-research.md](harness-research.md#borrow-ledger
 - **Completion is a finalisation effect.** It runs through the outbox after the gated checks, under a deterministic command id.
 - **Fencing lives in PostgreSQL.** Compare-and-set on revision and active attempt. A lock held only in process memory is never the fence.
 
+## Fixed from the external research report (2026-10-10)
+
+- **Effect outcomes have four protocol states:** not dispatched, dispatched with an unresolved outcome, confirmed success, and confirmed failure. These are protocol states, not new work-screen statuses.
+- **Proof of non-execution needs an enforced path.** For example, a guarded transition shows dispatch was never authorised, or an owner reports an authoritative status. A missing log, a missing receipt or an expired lease is never that proof.
+- **Each run pins a semantic version bundle:** playbook version, step schemas, state and option builders, rule releases, source revisions, and model request and result identities. Replay serves committed outcomes and never makes a fresh model call.
+- **Migrating an in-flight run is an explicit event** with a compatibility check, never a side effect of a deployment.
+- **Authority is checked again** at each new consequential action, even when the run replays historical preparation.
+
 ## Decisions fixed before the arena
 
 - **No run-level mode.** ADR 0021 sets shadow or suggest per decision question per book, from the operator console only. Each decision step reads its mode from `book_decision_policies`.

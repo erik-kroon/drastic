@@ -17,6 +17,9 @@ Rule sources and lookup are a separate plan, [06 Rule sources](../06-rule-source
 The month-close playbook (Phase 10) runs on the Phase 3 synthetic bureau month (three firms, twelve books) and every book ends in this state:
 
 1. Every check in the gated set is a fresh `pass`, or it has exactly one waiting item or client question naming its cause. Each book's gold end state, written in Phase 3, says which gated checks must move from fail to pass. The scorer verifies those moves against the baseline.
+   - The report keeps two results apart.
+     - **The month is complete** only when every gated check passes.
+     - **The run is settled** when every check that does not pass has exactly one waiting item. A waiting item accounts for a blocker. It never satisfies the check.
 2. Checks outside the gated set are reported as `not_established` and never count toward done.
 3. No ledger posting exists without a human approval or a valid mandate.
 4. Every supplier treatment on the AUT-04 supported path pins a rule release valid on its transaction date, on both sides of the synthetic rate change. Other paths report the category as unknown.

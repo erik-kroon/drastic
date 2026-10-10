@@ -1,0 +1,73 @@
+{
+  "credential": {
+    "counter": "0"
+  },
+  "observations": [
+    {
+      "issued": {
+        "id": "presence_challenge_51ef2c934183416794d044bb11c4bacc",
+        "gesture": "prepare_document_signature",
+        "bindingDigest": "sha256:82affff95061b8391f7302c6fafcd561cf882321738b41d8fceea2f65f7cbf4c",
+        "expiresAt": "2026-10-10 18:48:43.495289+02",
+        "options": {
+          "rpId": "127.0.0.1",
+          "challenge": "PsM0JTQqWiC0wFi12VmaHLhXP8XqlJ6_bEoEVKrDl3w",
+          "allowCredentials": [
+            {
+              "id": "5XZyiu4uViuiuDcsoRIfPaXRAm8ad5Z3V9F-gk9znZA",
+              "type": "public-key"
+            }
+          ],
+          "timeout": 60000,
+          "userVerification": "required"
+        }
+      },
+      "proof": {
+        "challengeId": "presence_challenge_51ef2c934183416794d044bb11c4bacc",
+        "verified": true
+      },
+      "stored": {
+        "counter": "0",
+        "challenge_id": "presence_challenge_51ef2c934183416794d044bb11c4bacc",
+        "binding_digest": "sha256:82affff95061b8391f7302c6fafcd561cf882321738b41d8fceea2f65f7cbf4c",
+        "consumptions": 1
+      },
+      "intentKey": "015b0b85-7c32-4da4-b294-163bb693d197",
+      "createdId": "signature_intent_2b560e2034324b248fb0ee0f36cd8eba",
+      "replayedId": "signature_intent_2b560e2034324b248fb0ee0f36cd8eba"
+    },
+    {
+      "issued": {
+        "id": "presence_challenge_d61226d25a4044558c6124becc8d40c8",
+        "gesture": "prepare_document_signature",
+        "bindingDigest": "sha256:c3a153b76d008028e337cc84c964f93286879ac274538d5ed3947bbe59c7c24d",
+        "expiresAt": "2026-10-10 18:48:43.62692+02",
+        "options": {
+          "rpId": "127.0.0.1",
+          "challenge": "UowS9UhVt3B2pNb5Yhv2S9BDkFN1pQAQsaDYQKQVy6o",
+          "allowCredentials": [
+            {
+              "id": "5XZyiu4uViuiuDcsoRIfPaXRAm8ad5Z3V9F-gk9znZA",
+              "type": "public-key"
+            }
+          ],
+          "timeout": 60000,
+          "userVerification": "required"
+        }
+      },
+      "proof": {
+        "challengeId": "presence_challenge_d61226d25a4044558c6124becc8d40c8",
+        "verified": true
+      },
+      "stored": {
+        "counter": "0",
+        "challenge_id": "presence_challenge_d61226d25a4044558c6124becc8d40c8",
+        "binding_digest": "sha256:c3a153b76d008028e337cc84c964f93286879ac274538d5ed3947bbe59c7c24d",
+        "consumptions": 1
+      },
+      "intentKey": "7821c289-6365-4785-963a-fb055c65fc45",
+      "createdId": "signature_intent_d1dfedbc97bb410cbb37b287dda854ac",
+      "replayedId": "signature_intent_d1dfedbc97bb410cbb37b287dda854ac"
+    }
+  ]
+}

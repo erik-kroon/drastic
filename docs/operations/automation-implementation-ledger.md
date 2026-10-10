@@ -223,3 +223,13 @@ Clean committed HEAD `af7efe1` against main `4380287` passed full changed checks
 Owner review item 7 compares earlier suggestion exposure using the stable subject identity and option-set digest for the same actor and book. Direct citation authorization still rejects foreign identity and stale revisions. A changed option set still yields unknown exposure. No historical decision is rewritten.
 
 The reproducing HTTP E2E failed before the SQL change; three selected workflows passed afterward, including unequal options and existing authorization/freshness boundaries. Evidence is retained in `verification/exposure-equivalence/`. Changed-file checks passed. Clean-commit qualification is recorded separately; this does not establish model or representative accounting accuracy. The remaining state-limit failure specification now uses the owner's 24,576-token hosted Clef-flash window and the complete request.
+
+## Owner research follow-up checkpoint
+
+The supplied plan amendments distinguish month completion from run settlement, pin effect and version protocols, extend recovery and blind evaluation cases, and retain fixture-only legal-source work. Hosted Clef-flash is specified as 24,576 tokens; complete request fit is checked before dispatch and probability thresholds confer no authority. No implementation or legal/provider qualification is implied by these plan amendments.
+
+The ADR 0020 counter table now matches existing SimpleWebAuthn behavior. Before editing that wording, the unchanged-runtime synthetic HTTP suite passed two selected tests: successive fresh zero-counter assertions with exact binding and single consumption, and the existing positive-counter clone refusal. Evidence is retained in `verification/presence-zero-counter/`. Hardware and browser authenticator behavior remain unverified.
+
+The initial changed check passed formatting and lint, then stopped on main's stale K-10/K-11 supplier design evidence. No baseline or unrelated design evidence was regenerated. The shared main worktree's supplied edits were preserved; this unit uses an isolated branch.
+
+Clean source `b2d6e5a` full check against main `4380287` passed the design contract and formatting, then timed out in type-aware lint after 60 seconds; process-group cleanup reported EPERM. This is incomplete validation, not a pass. The separate research test compiler was stopped after more than four minutes and remains unverified. Main's merged research follow-up is incorporated before the next unit.
