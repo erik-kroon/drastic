@@ -1,3 +1,4 @@
+import * as Memory from "@open-erp/domain/firm-memory";
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -115,6 +116,11 @@ export const SupplierInvoiceDraftHistory = Schema.Struct({
 });
 
 export const SupplierAccountSuggestions = Schema.Struct({
+  algorithmVersion: Memory.AlgorithmVersion,
+  historyDigest: Accounting.Digest,
+  precedents: Schema.Array(Memory.Precedent).check(Schema.isMaxLength(5)),
+  eligibleCount: Schema.Int,
+  exclusions: Schema.Array(Schema.Struct({ id: Schema.String, reason: Schema.String })),
   suggestionRecordId: Accounting.Identifier,
   draftId: Accounting.Identifier,
   draftRevision: Commerce.Version,

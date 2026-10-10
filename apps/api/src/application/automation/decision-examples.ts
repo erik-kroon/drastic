@@ -1,3 +1,4 @@
+import * as Memory from "@open-erp/domain/firm-memory";
 import * as Contract from "@open-erp/contracts/decision-examples";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
@@ -13,7 +14,8 @@ import { digest, newId, replay, saveCommand } from "../posting";
 import * as Shared from "../purchases/shared";
 
 const versions = {
-  schema: "decision_examples_v2",
+  schema: "decision_examples_v3",
+  memory: "firm_memory_v1",
   consequence: "treatment_consequence_v1",
   state: "retained_snapshot_projection_v1",
   options: "served_options_projection_v1",
@@ -180,7 +182,136 @@ const projectBank = Effect.fn("decisionExamples.bank")(function* (
   };
 });
 
-const project = Effect.fn("decisionExamples.project")(function* (
+type PrecedentBasis = Omit<
+  Memory.Precedent,
+  | "chosenTreatment"
+  | "provenance"
+  | "consequences"
+  | "lineage"
+  | "digest"
+  | "labelSequence"
+  | "accountHints"
+>;
+
+type CompatibilityHint = {
+  expenseAccountId: string;
+  vatRatePercent: 0 | 6 | 12 | 25;
+  sourceInvoiceId: string;
+  categoryResolution?: Schema.JsonObject;
+};
+
+const attachPrecedent = Effect.fn("decisionExamples.attachPrecedent")(function* (
+  precedentBasis: PrecedentBasis | undefined,
+  chosenTreatment: Schema.JsonObject,
+  classification: string,
+  provenanceBody: Schema.JsonObject,
+  consequenceInputs: Consequence.CapturedTreatment[],
+  lineage: Schema.JsonObject[],
+  accountHints: Memory.Precedent["accountHints"],
+) {
+  let precedent: Memory.Precedent | undefined;
+
+  if (precedentBasis) {
+    const precedentBody = {
+      ...precedentBasis,
+      chosenTreatment,
+      provenance: { classification, digest: yield* digest(provenanceBody) },
+      consequences: consequenceInputs.map(Consequence.classify),
+      lineage,
+      labelSequence: lineage.length
+        ? textField(lineage[lineage.length - 1]!, "sequence")
+        : precedentBasis.receiptSequence,
+      relatedIds: [
+        ...precedentBasis.relatedIds,
+        ...lineage.flatMap((item) => [
+          `voucher:${textField(item, "voucherId")}`,
+          `voucher:${textField(item, "previousVoucherId")}`,
+        ]),
+      ],
+      accountHints: lineage.length ? [] : accountHints,
+    };
+
+    precedent = yield* decode(Memory.Precedent, {
+      ...precedentBody,
+      digest: yield* digest(precedentBody),
+    });
+  }
+
+  return precedent;
+});
+
+const retainedPrecedentBasis = Effect.fn("decisionExamples.precedentBasis")(function* (
+  row: Db.InventoryRow,
+  retained: Schema.JsonObject,
+  review: typeof Acceptance.SupplierAcceptanceReview.Type,
+  cutoff: string,
+) {
+  const content = review.draftSnapshot.content;
+  const accountHints: Memory.Precedent["accountHints"][number][] = [];
+
+  if (
+    retained.acceptedApprovalId === row.id &&
+    /^\d+$/.test(textField(retained, "receiptSequence")) &&
+    content.counterpartyId !== null
+  ) {
+    const sourceInvoiceId = textField(retained, "sourceInvoiceId");
+
+    const basis: PrecedentBasis = {
+      id: row.id,
+      bookId: review.scope.bookId,
+      counterpartyId: content.counterpartyId,
+      documentKind: "supplier_invoice",
+      currency: content.currency,
+      currencyScale: content.currencyScale,
+      description: content.lines.map((line) => redact(line.description)).join(" | "),
+      amountMinor: content.sourceTotalMinor,
+      originalCommitCutoff: cutoff,
+      receiptSequence: textField(retained, "receiptSequence"),
+      sourceInvoiceId: sourceInvoiceId || null,
+      sourceDecisionIds: [row.id],
+      relatedIds: [
+        `draft:${review.draftSnapshot.id}`,
+        `evidence:${content.sourceEvidenceId}`,
+        `invoice:${sourceInvoiceId}`,
+        `voucher:${textField(retained, "voucherId")}`,
+      ],
+    };
+
+    for (const line of review.originalLines ?? []) {
+      const numerator = BigInt(line.treatment.rate.numerator) * 100n;
+      const denominator = BigInt(line.treatment.rate.denominator);
+      const percent = Number(numerator / denominator);
+
+      if (
+        sourceInvoiceId &&
+        numerator % denominator === 0n &&
+        (percent === 0 || percent === 6 || percent === 12 || percent === 25)
+      ) {
+        const hint: CompatibilityHint = {
+          expenseAccountId: line.expenseAccountId,
+          vatRatePercent: percent,
+          sourceInvoiceId,
+        };
+
+        if (line.treatment.categoryResolution)
+          hint.categoryResolution = yield* toJsonObject(line.treatment.categoryResolution);
+        accountHints.push(hint);
+      }
+    }
+
+    return { basis, accountHints };
+  }
+
+  return { basis: undefined, accountHints };
+});
+
+function exposureCapture(uncited: Schema.Json | undefined, count: number) {
+  if (uncited === true) return "uncited_exposure";
+
+  return count === 0 ? "no_recorded_exposure" : "served_options_only";
+}
+
+export const projectDecisionExample = Effect.fn("decisionExamples.project")(function* (
   row: Db.InventoryRow,
   snapshot: Schema.JsonObject,
 ) {
@@ -236,6 +367,8 @@ const project = Effect.fn("decisionExamples.project")(function* (
     );
   }
 
+  let precedentBasis: PrecedentBasis | undefined;
+  let accountHints: Memory.Precedent["accountHints"] = [];
   let state: Schema.JsonObject;
   let chosenTreatment: Schema.JsonObject;
   let consequenceInputs: Consequence.CapturedTreatment[] = [];
@@ -305,6 +438,9 @@ const project = Effect.fn("decisionExamples.project")(function* (
         transcript: text,
       });
     } else missingFacts.push("source_text_not_captured");
+    const retainedBasis = yield* retainedPrecedentBasis(row, retained, review, cutoff);
+    precedentBasis = retainedBasis.basis;
+    accountHints = retainedBasis.accountHints;
     const voucherId = textField(retained, "voucherId");
     let current = voucherId;
     const vouchers = Shared.arrayField(snapshot, "vouchers").map(object);
@@ -396,30 +532,39 @@ const project = Effect.fn("decisionExamples.project")(function* (
     row.classification,
   ).pipe(Effect.mapError(() => failure("InternalError")));
 
-  const body = {
-    decision: { owner: row.owner, id: row.id },
-    subject,
-    originalCommitCutoff: cutoff,
-    stateBuilderVersion: versions.state,
-    optionBuilderVersion: versions.options,
-    state,
-    options: {
-      capture:
-        row.body.uncitedExposure === true
-          ? "uncited_exposure"
-          : ids.length === 0
-            ? "no_recorded_exposure"
-            : "served_options_only",
-      fullUniverseCaptured: false,
-      records: optionRecords,
-    },
+  const precedent = yield* attachPrecedent(
+    precedentBasis,
     chosenTreatment,
-    consequence: consequenceAttachment(consequenceInputs),
-    provenance: { classification, digest: yield* digest(row.body) },
+    classification,
+    row.body,
+    consequenceInputs,
     lineage,
-    evidence,
-    missingFacts,
+    accountHints,
+  );
+
+  const body = {
+    ...(yield* toJsonObject({
+      decision: { owner: row.owner, id: row.id },
+      subject,
+      originalCommitCutoff: cutoff,
+      stateBuilderVersion: versions.state,
+      optionBuilderVersion: versions.options,
+      state,
+      options: {
+        capture: exposureCapture(row.body.uncitedExposure, ids.length),
+        fullUniverseCaptured: false,
+        records: optionRecords,
+      },
+      chosenTreatment,
+      consequence: consequenceAttachment(consequenceInputs),
+      provenance: { classification, digest: yield* digest(row.body) },
+      lineage,
+      evidence,
+      missingFacts,
+    })),
   };
+
+  if (precedent) body.precedent = yield* toJsonObject(precedent);
 
   return {
     example: yield* decode(Contract.DecisionExample, { ...body, digest: yield* digest(body) }),
@@ -499,7 +644,7 @@ export const sealDecisionExamples = Effect.fn("decisionExamples.seal")(function*
           continue;
         }
 
-        const result = yield* project(row, snapshot);
+        const result = yield* projectDecisionExample(row, snapshot);
 
         if (result.example) examples.push(result.example);
         else

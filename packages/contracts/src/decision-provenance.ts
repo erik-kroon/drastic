@@ -1,3 +1,4 @@
+import * as Memory from "@open-erp/domain/firm-memory";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
@@ -30,6 +31,13 @@ export const DecisionSubject = Schema.Union([
 ]);
 
 export const SuggestionOptions = Schema.Union([
+  Schema.Struct({
+    source: Schema.Literal("firm_memory_v1"),
+    version: Memory.AlgorithmVersion,
+    historyDigest: Accounting.Digest,
+    legacyItems: Schema.Array(Memory.AccountHint).check(Schema.isMaxLength(5)),
+    options: Schema.Array(Memory.Precedent).check(Schema.isMaxLength(5)),
+  }),
   Schema.Struct({
     source: Schema.Literal("firm_memory_v0"),
     version: Schema.Literals(["supplier_account_history_v1", "supplier_account_history_v2"]),

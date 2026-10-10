@@ -42,7 +42,7 @@ export function snapshot(transaction: Transaction, bookId: string) {
     select jsonb_build_object(
       'cutoff',(select committed_sequence::text from openerp.books where id=${bookId}),
       'inventory',coalesce((select jsonb_agg(to_jsonb(r) order by owner,id) from refs r),'[]'::jsonb),
-      'reviews',coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'body',r.body,'evidenceId',e.id,'mediaType',e.media_type,'content',e.content,'sourceDigest',e.sha256,'voucherId',x.voucher_id) order by r.id)
+      'reviews',coalesce((select jsonb_agg(jsonb_build_object('id',r.id,'body',r.body,'evidenceId',e.id,'mediaType',e.media_type,'content',e.content,'sourceDigest',e.sha256,'voucherId',x.voucher_id,'sourceInvoiceId',a.register_invoice_id,'receiptSequence',x.body->>'sequence','acceptedApprovalId',a.approval_id) order by r.id)
         from openerp.supplier_acceptance_reviews r
         join refs p on p.owner='supplier_approval' and p.body->'selected'->>'reviewId'=r.id
         left join openerp.evidence e on e.book_id=r.book_id and e.id=r.body->'draftSnapshot'->'content'->>'sourceEvidenceId'

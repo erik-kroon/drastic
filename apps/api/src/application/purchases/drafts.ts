@@ -1,3 +1,4 @@
+import { readFirmMemory } from "../automation/firm-memory";
 import * as Provenance from "@open-erp/contracts/decision-provenance";
 import { recordSuggestion } from "../decision-provenance";
 import { readSealedDraft } from "../../db/posting-admission";
@@ -698,31 +699,38 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
         if (draft.content.counterpartyId !== command.counterpartyId)
           return yield* failure("Forbidden");
 
-        const rows = yield* DraftDb.readSupplierAccountSuggestions(
-          transaction,
-          command.scope.bookId,
-          command.counterpartyId,
-        );
-
-        const items = rows.map((row) => {
-          const item: Pick<
-            DraftDb.SuggestionRow,
-            "expenseAccountId" | "vatRatePercent" | "sourceInvoiceId"
-          > & { categoryResolution?: Schema.JsonObject } = {
-            expenseAccountId: row.expenseAccountId,
-            vatRatePercent: row.vatRatePercent,
-            sourceInvoiceId: row.sourceInvoiceId,
-          };
-
-          if (row.categoryResolution !== null) item.categoryResolution = row.categoryResolution;
-
-          return item;
+        const memory = yield* readFirmMemory(transaction, {
+          bookId: command.scope.bookId,
+          counterpartyId: command.counterpartyId,
+          documentKind: "supplier_invoice",
+          currency: draft.content.currency,
+          currencyScale: draft.content.currencyScale,
+          description: draft.content.lines.map((line) => line.description).join(" | "),
+          amountMinor: draft.content.sourceTotalMinor,
+          excludeRelatedIds: [
+            `draft:${command.draftId}`,
+            `evidence:${draft.content.sourceEvidenceId}`,
+          ],
         });
 
+        const items = memory.precedents
+          .flatMap((record) => record.accountHints)
+          .filter(
+            (item, index, all) =>
+              all.findIndex(
+                (other) =>
+                  other.expenseAccountId === item.expenseAccountId &&
+                  other.vatRatePercent === item.vatRatePercent,
+              ) === index,
+          )
+          .slice(0, 5);
+
         const ranked = yield* Shared.decode(Provenance.SuggestionOptions, {
-          source: "firm_memory_v0",
-          version: "supplier_account_history_v2",
-          options: items,
+          source: "firm_memory_v1",
+          version: memory.algorithmVersion,
+          historyDigest: memory.historyDigest,
+          legacyItems: items,
+          options: memory.precedents,
         });
 
         const suggestionRecordId = yield* recordSuggestion(
@@ -734,6 +742,11 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
         );
 
         return yield* Shared.decode(SuggestionsSchema, {
+          algorithmVersion: memory.algorithmVersion,
+          historyDigest: memory.historyDigest,
+          precedents: memory.precedents,
+          eligibleCount: memory.eligibleCount,
+          exclusions: memory.exclusions,
           suggestionRecordId,
           draftId: command.draftId,
           draftRevision: command.draftRevision,

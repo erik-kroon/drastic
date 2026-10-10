@@ -3,6 +3,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { DecisionClassification } from "./decision-provenance";
+import * as Memory from "@open-erp/domain/firm-memory";
 import * as Consequence from "@open-erp/domain/treatment-consequence";
 
 const DecisionKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
@@ -25,6 +26,7 @@ export const DecisionExample = Schema.Struct({
     records: Schema.Array(Schema.JsonObject),
   }),
   chosenTreatment: Schema.JsonObject,
+  precedent: Schema.optional(Memory.Precedent),
   consequence: Schema.optional(
     Schema.Struct({
       builderVersion: Consequence.BuilderVersion,
@@ -47,7 +49,12 @@ export const DecisionExampleExport = Schema.Struct({
   purpose: SealDecisionExamples.fields.purpose,
   lineageCutoff: A.MinorUnits,
   versions: Schema.Struct({
-    schema: Schema.Literals(["decision_examples_v1", "decision_examples_v2"]),
+    schema: Schema.Literals([
+      "decision_examples_v1",
+      "decision_examples_v2",
+      "decision_examples_v3",
+    ]),
+    memory: Schema.optional(Memory.AlgorithmVersion),
     consequence: Schema.optional(Consequence.BuilderVersion),
     state: Schema.Literal("retained_snapshot_projection_v1"),
     options: Schema.Literal("served_options_projection_v1"),
