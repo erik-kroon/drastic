@@ -9,6 +9,8 @@ import { BankInventorySignoffList, BankInventorySignoffView } from "./bank-inven
 import { ClosingReadiness } from "./closing";
 import { BureauObligations } from "./bureau-obligations";
 
+export const maximumFirmClients = 2000;
+
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
 
 export const FirmRole = Schema.Literals(["admin", "accountant"]);
@@ -68,7 +70,7 @@ export const SaveAccessRequest = Schema.Struct({
 export const Workspace = Schema.Struct({
   firm: Firm,
   actorId: Accounting.Identifier,
-  clients: Schema.Array(Client).check(Schema.isMaxLength(200)),
+  clients: Schema.Array(Client).check(Schema.isMaxLength(maximumFirmClients)),
   members: Schema.Array(Member).check(Schema.isMaxLength(100)),
   accessRequests: Schema.Array(AccessRequest).check(Schema.isMaxLength(200)),
 });
@@ -145,7 +147,7 @@ export const Portfolio = Schema.Struct({
   workspace: Workspace,
   observedFrom: Schema.String,
   observedUntil: Schema.String,
-  clients: Schema.Array(PortfolioClientFacts).check(Schema.isMaxLength(200)),
+  clients: Schema.Array(PortfolioClientFacts).check(Schema.isMaxLength(maximumFirmClients)),
   needsToday: Schema.Array(
     Schema.Struct({
       scope: Accounting.Scope,
@@ -220,8 +222,7 @@ export const FirmCapabilities = {
     readOnly: true,
   },
   firm_get: {
-    description:
-      "Read a firm team and only those client books the current human can access. Limited to 200 client links and 100 team members.",
+    description: `Read a firm team and only those client books the current human can access. Limited to ${maximumFirmClients} client links and 100 team members.`,
     input: path,
     output: Workspace,
     readOnly: true,

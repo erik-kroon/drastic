@@ -51,7 +51,7 @@ const historyChoices = ["new_business", "sie", "opening_balances"] as const;
 
 const bankChoices = ["connect", "file", "later"] as const;
 
-const maximumCreatedCompanies = 100;
+const maximumCreatedCompanies = 2000;
 
 const maximumCompanyName = 200;
 
