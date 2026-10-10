@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Claims from "@open-erp/contracts/employee-claims";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -65,20 +66,41 @@ export function useEmployeeClaimReview(props: { claimId: string }) {
 
       if (intent.kind === "review")
         return readAccounting(
-          `${root}/${encodeURIComponent(props.claimId)}/reviews`,
+          (client, options) =>
+            client.employeeClaims.reviewEmployeeClaim(
+              httpRequest(
+                Api.groups.employeeClaims.endpoints.reviewEmployeeClaim,
+                { params: { ...bookScope(book), claimId: props.claimId } },
+                options,
+              ),
+            ),
           Claims.EmployeeClaimReview,
           { ...options, body: JSON.stringify(intent.input) },
         );
 
       if (intent.kind === "approve")
         return readAccounting(
-          `${root}/reviews/${encodeURIComponent(intent.reviewId)}/approvals`,
+          (client, options) =>
+            client.employeeClaims.approveEmployeeClaim(
+              httpRequest(
+                Api.groups.employeeClaims.endpoints.approveEmployeeClaim,
+                { params: { ...bookScope(book), reviewId: intent.reviewId } },
+                options,
+              ),
+            ),
           Claims.EmployeeClaimRecognition,
           { ...options, body: JSON.stringify({ reviewDigest: intent.digest }) },
         );
 
       return readAccounting(
-        `${root}/${encodeURIComponent(props.claimId)}/completion-requests`,
+        (client, options) =>
+          client.employeeClaims.requestClaimCompletion(
+            httpRequest(
+              Api.groups.employeeClaims.endpoints.requestClaimCompletion,
+              { params: { ...bookScope(book), claimId: props.claimId } },
+              options,
+            ),
+          ),
         Claims.ClaimCompletionRequest,
         {
           ...options,

@@ -16,7 +16,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { sendSavedPostingCommand } from "@/components/posting-recovery/request";
 import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { InvoiceDraftDocument } from "./invoice-draft-document";
-import { Details, checkScope, commercePath, type CommerceProps } from "./shared";
+import { Details, checkScope, type CommerceProps } from "./shared";
 import type { DraftSession, DraftEditingState } from "./invoice-draft-session";
 
 type SaveProps = CommerceProps & {
@@ -38,7 +38,6 @@ export function InvoiceDraftSave(props: SaveProps) {
   const { book, locale, session } = props;
   const sv = locale === "sv";
   const baseline = session.state.baseline;
-  const path = `${commercePath(book)}/invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`;
   const schema = baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft;
   const client = useQueryClient();
   const [invalid, setInvalid] = useState(false);
@@ -123,11 +122,30 @@ export function InvoiceDraftSave(props: SaveProps) {
             : "Saving is paused. The request must be kept before it is sent.",
         );
 
-      const result = await readAccounting(path, Drafts.InvoiceDraftRevision, {
-        method: "POST",
-        body: JSON.stringify(command),
-        headers: { "Idempotency-Key": pending.key },
-      });
+      const result = await readAccounting(
+        (client, options) =>
+          baseline
+            ? client.invoiceDrafts.reviseInvoiceDraft(
+                httpRequest(
+                  Api.groups.invoiceDrafts.endpoints.reviseInvoiceDraft,
+                  { params: { ...bookScope(book), id: baseline.id } },
+                  options,
+                ),
+              )
+            : client.invoiceDrafts.createInvoiceDraft(
+                httpRequest(
+                  Api.groups.invoiceDrafts.endpoints.createInvoiceDraft,
+                  { params: bookScope(book) },
+                  options,
+                ),
+              ),
+        Drafts.InvoiceDraftRevision,
+        {
+          method: "POST",
+          body: JSON.stringify(command),
+          headers: { "Idempotency-Key": pending.key },
+        },
+      );
 
       checkScope(book, result.scope);
 

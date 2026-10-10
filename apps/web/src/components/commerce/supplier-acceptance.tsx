@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { defaultStringifySearch, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -412,6 +412,15 @@ function SupplierAcceptancePreparation(
             suggestedAccount && suggestions.data ? [suggestions.data.suggestionRecordId] : [],
         })}
         onSuccess={props.onPrepared}
+        operation={(client, requestOptions) =>
+          client.supplierAcceptance.prepareSupplierAcceptance(
+            httpRequest(
+              Api.groups.supplierAcceptance.endpoints.prepareSupplierAcceptance,
+              { params: { ...bookScope(props.book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <SelectField
           name="controlAccountId"
@@ -648,6 +657,15 @@ export function SupplierAcceptanceActions(
           digest: view.plan.digest,
           acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
         })}
+        operation={(client, requestOptions) =>
+          client.supplierAcceptance.approveSupplierAcceptance(
+            httpRequest(
+              Api.groups.supplierAcceptance.endpoints.approveSupplierAcceptance,
+              { params: { ...bookScope(props.book), id: view.plan.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <PostingAcknowledgment locale={props.locale} presentation={props.presentation} />
       </CommandForm>
@@ -673,6 +691,15 @@ export function SupplierAcceptanceActions(
             approvalId: view.approval?.id,
             acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
           })}
+          operation={(client, requestOptions) =>
+            client.supplierAcceptance.executeSupplierAcceptance(
+              httpRequest(
+                Api.groups.supplierAcceptance.endpoints.executeSupplierAcceptance,
+                { params: { ...bookScope(props.book), id: view.plan.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <PostingAcknowledgment locale={props.locale} presentation={props.presentation} />
         </CommandForm>

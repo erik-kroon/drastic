@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -176,6 +176,15 @@ export function ReminderReview({
                 search: { view: "collections", reminder: result.id },
               });
             }}
+            operation={(client, requestOptions) =>
+              client.collections.prepareReminder(
+                httpRequest(
+                  Api.groups.collections.endpoints.prepareReminder,
+                  { params: { ...bookScope(book) } },
+                  requestOptions,
+                ),
+              )
+            }
           />
         </Box>
       ) : null}
@@ -289,6 +298,15 @@ export function ReminderPreview({
             messageDigest: message.digest,
             acknowledgeExactMessage: true,
           })}
+          operation={(client, requestOptions) =>
+            client.collections.approveReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.approveReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
       {view?.status === "approved" && view.approvalUsable && !view.attempt ? (
@@ -301,6 +319,15 @@ export function ReminderPreview({
           allowed={book.role === "operator"}
           label={sv ? "Skicka påminnelsen" : "Send reminder"}
           input={() => ({ messageDigest: message.digest })}
+          operation={(client, requestOptions) =>
+            client.collections.requestReminderDispatch(
+              httpRequest(
+                Api.groups.collections.endpoints.requestReminderDispatch,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
       <ReminderCancellation book={book} locale={locale} message={message} view={view} />
@@ -314,6 +341,15 @@ export function ReminderPreview({
           allowed={book.role === "operator"}
           label={sv ? "Kontrollera samma leveransförsök" : "Check the same dispatch attempt"}
           input={() => ({ messageDigest: message.digest })}
+          operation={(client, requestOptions) =>
+            client.collections.reconcileReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.reconcileReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
     </Box>
@@ -378,6 +414,15 @@ function ReminderApprovalCheck({
           : "Check approval against current facts"
       }
       input={() => ({ messageDigest: message.digest })}
+      operation={(client, requestOptions) =>
+        client.collections.checkReminder(
+          httpRequest(
+            Api.groups.collections.endpoints.checkReminder,
+            { params: { ...bookScope(book), id: message.id } },
+            requestOptions,
+          ),
+        )
+      }
     />
   );
 }
@@ -403,6 +448,15 @@ function ReminderCancellation({
       allowed={book.role === "operator"}
       label={locale === "sv" ? "Avbryt före leveransförsök" : "Cancel before dispatch admission"}
       input={() => ({ messageDigest: message.digest })}
+      operation={(client, requestOptions) =>
+        client.collections.cancelReminder(
+          httpRequest(
+            Api.groups.collections.endpoints.cancelReminder,
+            { params: { ...bookScope(book), id: message.id } },
+            requestOptions,
+          ),
+        )
+      }
     />
   );
 }

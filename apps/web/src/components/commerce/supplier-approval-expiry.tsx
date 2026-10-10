@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import type { ReactNode } from "react";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import { SupplierApprovalExpiryPane } from "@open-erp/ui/components/supplier-approval-expiry";
@@ -111,6 +113,15 @@ export function SupplierApprovalExpiry(
           allowed={props.ready && props.book.role === "operator"}
           input={() => ({ version: 1, digest: view.plan.digest, acknowledgeSyntheticOnly: true })}
           onSuccess={props.onRenewed}
+          operation={(client, requestOptions) =>
+            client.supplierAcceptance.approveSupplierAcceptance(
+              httpRequest(
+                Api.groups.supplierAcceptance.endpoints.approveSupplierAcceptance,
+                { params: { ...bookScope(props.book), id: view.plan.id } },
+                requestOptions,
+              ),
+            )
+          }
         />
       }
     >

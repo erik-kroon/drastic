@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -530,6 +531,21 @@ function ExtractionMerge(
             fields: decisions,
             presentedSuggestionIds: [preparation.suggestionRecordId],
           })}
+          operation={(client, requestOptions) =>
+            client.supplierExtraction.commitSupplierExtractionReview(
+              httpRequest(
+                Api.groups.supplierExtraction.endpoints.commitSupplierExtractionReview,
+                {
+                  params: {
+                    ...bookScope(book),
+                    id: preparation.occurrenceId,
+                    requestId: preparation.request.id,
+                  },
+                },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Text>{text.confirm}</Text>
           <InputField name="reason" label={text.reason} required maxLength={2000} />
@@ -679,6 +695,15 @@ export function SupplierExtraction(
                   ],
                 }
           }
+          operation={(client, requestOptions) =>
+            client.supplierExtraction.requestSupplierExtraction(
+              httpRequest(
+                Api.groups.supplierExtraction.endpoints.requestSupplierExtraction,
+                { params: { ...bookScope(book), id: occurrenceId } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Text>
             {text.engine}:{" "}
@@ -742,6 +767,15 @@ export function SupplierExtraction(
             void state.refetch();
             props.onRefresh();
           }}
+          operation={(client, requestOptions) =>
+            client.supplierExtraction.cancelSupplierExtraction(
+              httpRequest(
+                Api.groups.supplierExtraction.endpoints.cancelSupplierExtraction,
+                { params: { ...bookScope(book), id: occurrenceId, requestId: current.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Text>
             {locale === "sv"
@@ -764,6 +798,7 @@ export function SupplierExtraction(
             {locale === "sv" ? "Läs om" : "Refresh"}
           </Button>
           <ReviewLoader
+            occurrenceId={occurrenceId}
             book={book}
             locale={locale}
             base={base}
@@ -781,6 +816,7 @@ export function SupplierExtraction(
 }
 
 function ReviewLoader(props: {
+  occurrenceId: string;
   book: CommerceProps["book"];
   locale: Locale;
   base: string;
@@ -792,12 +828,27 @@ function ReviewLoader(props: {
 
   const prepare = useMutation({
     mutationFn: async () => {
-      const path = `${props.base}/${encodeURIComponent(props.requestId)}/prepare`;
-
-      return readAccounting(path, Extraction.SupplierExtractionReviewPreparation, {
-        method: "POST",
-        body: JSON.stringify({ attemptId: props.attemptId }),
-      });
+      return readAccounting(
+        (client, options) =>
+          client.supplierExtraction.prepareSupplierExtractionReview(
+            httpRequest(
+              Api.groups.supplierExtraction.endpoints.prepareSupplierExtractionReview,
+              {
+                params: {
+                  ...bookScope(props.book),
+                  id: props.occurrenceId,
+                  requestId: props.requestId,
+                },
+              },
+              options,
+            ),
+          ),
+        Extraction.SupplierExtractionReviewPreparation,
+        {
+          method: "POST",
+          body: JSON.stringify({ attemptId: props.attemptId }),
+        },
+      );
     },
     onSuccess: (preparation) => props.onPrepared(preparation),
     retry: false,

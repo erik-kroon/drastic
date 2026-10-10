@@ -1,3 +1,5 @@
+import { bookScope, httpRequest } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useForm } from "@tanstack/react-form";
@@ -53,8 +55,32 @@ export function SelectHistoricalBasis({
       const options = keys.current.options(path, JSON.stringify(input));
 
       const result = opening
-        ? (await readAccounting(path, Historical.OpeningPreparation, options)).basis
-        : await readAccounting(path, Historical.Basis, options);
+        ? (
+            await readAccounting(
+              (client, options) =>
+                client.historicalMigration.prepareHistoricalOpening(
+                  httpRequest(
+                    Api.groups.historicalMigration.endpoints.prepareHistoricalOpening,
+                    { params: bookScope(book) },
+                    options,
+                  ),
+                ),
+              Historical.OpeningPreparation,
+              options,
+            )
+          ).basis
+        : await readAccounting(
+            (client, options) =>
+              client.historicalMigration.selectHistoricalBasis(
+                httpRequest(
+                  Api.groups.historicalMigration.endpoints.selectHistoricalBasis,
+                  { params: bookScope(book) },
+                  options,
+                ),
+              ),
+            Historical.Basis,
+            options,
+          );
 
       if (
         result.fiscalYearId !== year.id ||

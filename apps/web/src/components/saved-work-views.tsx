@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Workspace from "@open-erp/contracts/workspace";
@@ -105,6 +107,15 @@ export function SavedWorkViews(props: {
               filters: current,
             })}
             onSuccess={saved}
+            operation={(client, requestOptions) =>
+              client.workspace.saveWorkspaceView(
+                httpRequest(
+                  Api.groups.workspace.endpoints.saveWorkspaceView,
+                  { params: { ...bookScope(book) } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <ViewFields sv={sv} operator={book.role === "operator"} />
           </CommandForm>
@@ -125,6 +136,15 @@ export function SavedWorkViews(props: {
             label={sv ? "Ta bort sparad vy" : "Remove saved view"}
             input={() => ({ id: selected.id })}
             onSuccess={saved}
+            operation={(client, requestOptions) =>
+              client.workspace.deleteWorkspaceView(
+                httpRequest(
+                  Api.groups.workspace.endpoints.deleteWorkspaceView,
+                  { params: { ...bookScope(book) } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <PageCaption>
               {sv

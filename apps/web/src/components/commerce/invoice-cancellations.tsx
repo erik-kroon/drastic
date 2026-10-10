@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -227,6 +228,15 @@ function CancellationPreparation(
             throw new Error("Cancellation preparation identity mismatch");
           props.onOpen(review.id);
         }}
+        operation={(client, requestOptions) =>
+          client.invoiceCancellations.prepareInvoiceCancellation(
+            httpRequest(
+              Api.groups.invoiceCancellations.endpoints.prepareInvoiceCancellation,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Box display="grid" columns={2} gap="lg">
           <SelectField
@@ -420,6 +430,15 @@ function CancellationReviewContents(
           digest: review.digest,
           acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
         })}
+        operation={(client, requestOptions) =>
+          client.invoiceCancellations.approveInvoiceCancellation(
+            httpRequest(
+              Api.groups.invoiceCancellations.endpoints.approveInvoiceCancellation,
+              { params: { ...bookScope(book), id: review.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <CancellationAcknowledgment locale={locale} />
       </CommandForm>
@@ -446,6 +465,15 @@ function CancellationReviewContents(
               approvalId: entry.approval.id,
               acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
             })}
+            operation={(client, requestOptions) =>
+              client.invoiceCancellations.executeInvoiceCancellation(
+                httpRequest(
+                  Api.groups.invoiceCancellations.endpoints.executeInvoiceCancellation,
+                  { params: { ...bookScope(book), id: review.id } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <CancellationAcknowledgment locale={locale} />
           </CommandForm>
@@ -464,6 +492,15 @@ function CancellationReviewContents(
               label={copy.revoke}
               allowed={ready && book.role === "operator" && !cancellation && !entry.revocation}
               input={(fields) => ({ reason: fields.get("reason") })}
+              operation={(client, requestOptions) =>
+                client.invoiceCancellations.revokeInvoiceCancellationApproval(
+                  httpRequest(
+                    Api.groups.invoiceCancellations.endpoints.revokeInvoiceCancellationApproval,
+                    { params: { ...bookScope(book), id: entry.approval.id } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <InputField name="reason" label={copy.revokeReason} required maxLength={2000} />
             </CommandForm>

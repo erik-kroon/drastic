@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { httpRequest } from "@/lib/contract-client";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, BookOpen, Users, Plus } from "lucide-react";
@@ -280,6 +282,11 @@ function CreateFirmDialog(props: {
       locale={props.locale}
       onClose={props.onClose}
       onSaved={(result) => props.onSaved(result.firmId)}
+      operation={(client, requestOptions) =>
+        client.firms.createFirm(
+          httpRequest(Api.groups.firms.endpoints.createFirm, {}, requestOptions),
+        )
+      }
     >
       <InputField name="name" label={sv ? "Byråns namn" : "Firm name"} required maxLength={100} />
       <PageCaption>

@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Delta from "@open-erp/contracts/onboarding-deltas";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -35,7 +36,17 @@ function DeltaEffectRow({
   const effect = view.effects.find((entry) => entry.sourceReference === row.sourceReference);
 
   const prepare = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/source-delta-proposals`,
+    {
+      identity: `${bookPath(book)}/onboarding/source-delta-proposals`,
+      execute: (client, requestOptions) =>
+        client.onboardingDeltas.prepareOnboardingDeltaEffect(
+          httpRequest(
+            Api.groups.onboardingDeltas.endpoints.prepareOnboardingDeltaEffect,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Delta.PrepareOnboardingDeltaEffect,
     Delta.OnboardingDeltaProposal,
   );
@@ -134,13 +145,33 @@ function PreparedDeltaEffect({
   });
 
   const approve = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/source-delta-approvals`,
+    {
+      identity: `${bookPath(book)}/onboarding/source-delta-approvals`,
+      execute: (client, requestOptions) =>
+        client.onboardingDeltas.approveOnboardingDeltaEffect(
+          httpRequest(
+            Api.groups.onboardingDeltas.endpoints.approveOnboardingDeltaEffect,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Delta.ApproveOnboardingDeltaEffect,
     Delta.OnboardingDeltaApproval,
   );
 
   const execute = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/source-delta-effects`,
+    {
+      identity: `${bookPath(book)}/onboarding/source-delta-effects`,
+      execute: (client, requestOptions) =>
+        client.onboardingDeltas.executeOnboardingDeltaEffect(
+          httpRequest(
+            Api.groups.onboardingDeltas.endpoints.executeOnboardingDeltaEffect,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Delta.ExecuteOnboardingDeltaEffect,
     Delta.OnboardingDeltaEffect,
   );

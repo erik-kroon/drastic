@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -55,11 +56,22 @@ export function PreparationBackground(props: {
       scope: typeof Accounting.Scope.Type;
       runId: string;
     }) => {
-      const result = await readAccounting(request.path, PreparationJob, {
-        method: "POST",
-        body: "{}",
-        headers: { "Idempotency-Key": request.key },
-      });
+      const result = await readAccounting(
+        (client, options) =>
+          client.automation.startPreparationJob(
+            httpRequest(
+              Api.groups.automation.endpoints.startPreparationJob,
+              { params: { ...request.scope, id: request.runId } },
+              options,
+            ),
+          ),
+        PreparationJob,
+        {
+          method: "POST",
+          body: "{}",
+          headers: { "Idempotency-Key": request.key },
+        },
+      );
 
       if (
         result.scope.entityId !== request.scope.entityId ||

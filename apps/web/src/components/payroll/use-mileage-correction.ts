@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import * as Schema from "effect/Schema";
@@ -60,7 +61,22 @@ export function useMileageCorrection(proposalId: string) {
       recovery.retain(request);
 
       const view = await readAccounting(
-        `${root}/${encodeURIComponent(proposalId)}/${request.input.kind === "submit" ? "submissions" : "cancellations"}`,
+        (client, options) =>
+          request.input.kind === "submit"
+            ? client.mileageCorrections.submitMileageCorrection(
+                httpRequest(
+                  Api.groups.mileageCorrections.endpoints.submitMileageCorrection,
+                  { params: { ...bookScope(book), proposalId } },
+                  options,
+                ),
+              )
+            : client.mileageCorrections.cancelMileageCorrection(
+                httpRequest(
+                  Api.groups.mileageCorrections.endpoints.cancelMileageCorrection,
+                  { params: { ...bookScope(book), proposalId } },
+                  options,
+                ),
+              ),
         Mileage.MileageCorrectionView,
         {
           method: "POST",

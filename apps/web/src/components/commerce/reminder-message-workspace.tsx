@@ -1,4 +1,6 @@
-import { bookScope } from "@/lib/contract-client";
+import * as Match from "effect/Match";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import * as Collections from "@open-erp/contracts/collections";
@@ -45,6 +47,47 @@ export function ReminderMessageWorkspace({ view, refresh }: { view: View; refres
       fullWidthSubmit
       canSubmit={action !== "reconcile" || !["admitted", "reconciling"].includes(view.status)}
       path={`${base}/${action}`}
+      operation={(client, requestOptions) =>
+        Match.value(action).pipe(
+          Match.when("dispatch", () =>
+            client.collections.requestReminderDispatch(
+              httpRequest(
+                Api.groups.collections.endpoints.requestReminderDispatch,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            ),
+          ),
+          Match.when("reconcile", () =>
+            client.collections.reconcileReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.reconcileReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            ),
+          ),
+          Match.when("cancel", () =>
+            client.collections.cancelReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.cancelReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            ),
+          ),
+          Match.when("checks", () =>
+            client.collections.checkReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.checkReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        )
+      }
       schema={Collections.ReminderCommand}
       output={Collections.ReminderView}
       allowed={book.role === "operator"}
@@ -215,6 +258,15 @@ function ReminderApproval({ view, refresh }: { view: View; refresh: () => void }
       label="Godkänn utskick"
       input={() => ({ messageDigest: view.message.digest, acknowledgeExactMessage: true })}
       onSuccess={refresh}
+      operation={(client, requestOptions) =>
+        client.collections.approveReminder(
+          httpRequest(
+            Api.groups.collections.endpoints.approveReminder,
+            { params: { ...bookScope(book), id: view.message.id } },
+            requestOptions,
+          ),
+        )
+      }
     />
   );
 }
@@ -695,6 +747,15 @@ function ReminderNextStep(props: ReminderNextStepProps) {
             },
           })}
           onSuccess={refresh}
+          operation={(client, requestOptions) =>
+            client.collections.replaceReminder(
+              httpRequest(
+                Api.groups.collections.endpoints.replaceReminder,
+                { params: { ...bookScope(book), id: message.id } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
       <Button disabled variant="outline">

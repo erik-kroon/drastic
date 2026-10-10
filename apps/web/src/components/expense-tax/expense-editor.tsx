@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -138,6 +138,15 @@ export function ExpenseEditor(
           voucherId: baseline?.facts.voucherId ?? null,
         },
       })}
+      operation={(client, requestOptions) =>
+        client.expenseTax.recordExpenseTaxSource(
+          httpRequest(
+            Api.groups.expenseTax.endpoints.recordExpenseTaxSource,
+            { params: { ...bookScope(props.book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <RecordSection title={sv ? "Underlag" : "Source document"}>
         <SelectField

@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
@@ -151,6 +152,31 @@ function SupplierEditorForm(
       ) : null}
       <EvidenceCommandForm
         {...props}
+        operation={(client, options) =>
+          props.inboxId
+            ? client.supplierInbox.reviewSupplierInbox(
+                httpRequest(
+                  Api.groups.supplierInbox.endpoints.reviewSupplierInbox,
+                  { params: { ...bookScope(props.book), id: props.inboxId } },
+                  options,
+                ),
+              )
+            : baseline
+              ? client.supplierInvoiceDrafts.reviseSupplierInvoiceDraft(
+                  httpRequest(
+                    Api.groups.supplierInvoiceDrafts.endpoints.reviseSupplierInvoiceDraft,
+                    { params: { ...bookScope(props.book), id: baseline.id } },
+                    options,
+                  ),
+                )
+              : client.supplierInvoiceDrafts.createSupplierInvoiceDraft(
+                  httpRequest(
+                    Api.groups.supplierInvoiceDrafts.endpoints.createSupplierInvoiceDraft,
+                    { params: bookScope(props.book) },
+                    options,
+                  ),
+                )
+        }
         path={
           props.inboxId
             ? `${commercePath(props.book)}/supplier-inbox/${encodeURIComponent(props.inboxId)}/review`

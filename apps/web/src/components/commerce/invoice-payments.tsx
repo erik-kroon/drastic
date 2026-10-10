@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -306,6 +306,15 @@ function PrepareInvoicePayment(
           throw new Error("Prepared invoice payment mismatch");
         props.navigation.onPlan(plan.id);
       }}
+      operation={(client, requestOptions) =>
+        client.commerce.commercePrepareAllocation(
+          httpRequest(
+            Api.groups.commerce.endpoints.commercePrepareAllocation,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       {candidate ? (
         <RecordSection key={paymentKey} title={`${copy.match}, ${candidate.voucherLabel}`}>

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Payments from "@open-erp/contracts/supplier-payment-batches";
@@ -40,7 +42,14 @@ export function SupplierPaymentFiles(props: CommerceProps & { recordId?: string 
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const result = await readAccounting(
-        `${paymentPath(props)}/eligibility${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.supplierPaymentBatches.listSupplierPaymentEligibility({
+            params: bookScope(props.book),
+            query: httpQuery(
+              Api.groups.supplierPaymentBatches.endpoints.listSupplierPaymentEligibility,
+              pageParam ? `?after=${encodeURIComponent(pageParam)}` : "",
+            ),
+          }),
         Payments.PaymentEligibility,
         { signal },
       );
@@ -219,7 +228,10 @@ function PayeeSetup(
     enabled: !!props.payeeId,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${paymentPath(props)}/payees/${encodeURIComponent(props.payeeId)}`,
+        (client) =>
+          client.supplierPaymentBatches.getSupplierPayee({
+            params: { ...bookScope(props.book), id: props.payeeId },
+          }),
         Payments.PayeeReview,
         { signal },
       );
@@ -280,6 +292,15 @@ function PayeeSetup(
               evidenceId: field(fields, "evidenceId"),
               reason: field(fields, "reason"),
             })}
+            operation={(client, requestOptions) =>
+              client.supplierPaymentBatches.proposeSupplierPayee(
+                httpRequest(
+                  Api.groups.supplierPaymentBatches.endpoints.proposeSupplierPayee,
+                  { params: { ...bookScope(props.book) } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <InputField
               name="name"
@@ -333,6 +354,15 @@ function PayeeSetup(
                 reason: field(fields, "reason"),
                 confirmIndependentCheck: fields.has("independent"),
               })}
+              operation={(client, requestOptions) =>
+                client.supplierPaymentBatches.verifySupplierPayee(
+                  httpRequest(
+                    Api.groups.supplierPaymentBatches.endpoints.verifySupplierPayee,
+                    { params: { ...bookScope(props.book), id: props.payeeId } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <InputField
                 name="reason"
@@ -393,6 +423,15 @@ function PaymentPreparation(
           reason: field(fields, "reason"),
           acknowledgeOfflineOnly: fields.has("offline"),
         })}
+        operation={(client, requestOptions) =>
+          client.supplierPaymentBatches.prepareSupplierPaymentBatch(
+            httpRequest(
+              Api.groups.supplierPaymentBatches.endpoints.prepareSupplierPaymentBatch,
+              { params: { ...bookScope(props.book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Box display="grid" gap="sm">
           {props.invoices.map((invoice) => (
@@ -466,7 +505,10 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
     queryKey: [...commerceKey(props.book), "supplier-payment-batch", props.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${paymentPath(props)}/${encodeURIComponent(props.id)}`,
+        (client) =>
+          client.supplierPaymentBatches.getSupplierPaymentBatch({
+            params: { ...bookScope(props.book), id: props.id },
+          }),
         Payments.SupplierPaymentBatchView,
         { signal },
       );
@@ -525,6 +567,15 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
                 digest: view.preview.digest,
                 acknowledgeOfflineOnly: fields.has("offline"),
               })}
+              operation={(client, requestOptions) =>
+                client.supplierPaymentBatches.exportSupplierPaymentBatch(
+                  httpRequest(
+                    Api.groups.supplierPaymentBatches.endpoints.exportSupplierPaymentBatch,
+                    { params: { ...bookScope(props.book), id: props.id } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <label>
                 <input type="checkbox" name="offline" required />{" "}
@@ -555,6 +606,15 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
                   reason: field(fields, "reason"),
                   acknowledgeNoAccountingEffect: fields.has("noAccounting"),
                 })}
+                operation={(client, requestOptions) =>
+                  client.supplierPaymentBatches.reportSupplierPaymentOutcome(
+                    httpRequest(
+                      Api.groups.supplierPaymentBatches.endpoints.reportSupplierPaymentOutcome,
+                      { params: { ...bookScope(props.book), id: props.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               >
                 <ChoiceField
                   label={sv ? "Rapporterad status" : "Reported status"}

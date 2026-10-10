@@ -1,6 +1,6 @@
 import { Api } from "@open-erp/contracts/api";
 import * as Match from "effect/Match";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Badge } from "@open-erp/ui/components/badge";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
@@ -442,6 +442,15 @@ function InvoiceRevisionForm(
         evidenceId: fields.get("evidenceId"),
         reason: fields.get("reason"),
       })}
+      operation={(client, requestOptions) =>
+        client.commerce.commerceReviseInvoice(
+          httpRequest(
+            Api.groups.commerce.endpoints.commerceReviseInvoice,
+            { params: { ...bookScope(props.book), id: invoice.id } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <Text>{copy.recognitionHelp}</Text>
       <Text>

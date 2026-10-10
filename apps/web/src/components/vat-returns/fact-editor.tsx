@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -109,6 +110,15 @@ export function VatFactEditor(props: Props) {
           .filter(Boolean),
         expenseLink: initial?.expenseLink ?? null,
       })}
+      operation={(client, requestOptions) =>
+        client.vatReturns.recordVatFact(
+          httpRequest(
+            Api.groups.vatReturns.endpoints.recordVatFact,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <AccountingStatus locale={locale} pending={basis.isPending} error={basis.error} />
       <RecordColumns>

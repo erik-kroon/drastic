@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import {
   SetupBlock,
@@ -224,7 +224,17 @@ function ActivationConfirmation({
   const confirm = useSnapshotDecision();
 
   const intent = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/activation-intents`,
+    {
+      identity: `${bookPath(book)}/onboarding/activation-intents`,
+      execute: (client, requestOptions) =>
+        client.onboarding.requestOnboardingActivation(
+          httpRequest(
+            Api.groups.onboarding.endpoints.requestOnboardingActivation,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Onboarding.RequestOnboardingActivation,
     Onboarding.OnboardingActivationIntent,
   );
@@ -783,7 +793,17 @@ export function OnboardingFirstPeriod({
   const capture = useSnapshotCapture();
 
   const complete = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/first-period-completions`,
+    {
+      identity: `${bookPath(book)}/onboarding/first-period-completions`,
+      execute: (client, requestOptions) =>
+        client.onboarding.completeOnboardingFirstPeriod(
+          httpRequest(
+            Api.groups.onboarding.endpoints.completeOnboardingFirstPeriod,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Onboarding.CompleteOnboardingFirstPeriod,
     Onboarding.OnboardingFirstPeriodCompletion,
   );

@@ -8,7 +8,7 @@ import { AccountingError } from "@open-erp/contracts/accounting";
 import { SetupButton, SetupContent } from "@open-erp/ui/components/setup-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { OnboardingStart } from "./start";
 import { OnboardingProfile } from "./profile";
 import { OnboardingCompatibility } from "./compatibility";
@@ -28,7 +28,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
     queryKey: [...bookKey(book), "onboarding"],
     queryFn: async ({ signal }) => {
       try {
-        return await readOnboardingWorkspace(`${bookPath(book)}/onboarding`, signal);
+        return await readOnboardingWorkspace(book, signal);
       } catch (error) {
         if (error instanceof AccountingError && error.code === "NotFound") return null;
         throw error;

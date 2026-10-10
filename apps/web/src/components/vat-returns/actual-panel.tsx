@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Vat from "@open-erp/contracts/vat-returns";
@@ -215,6 +216,15 @@ function ActualPreparation({ onOpen }: { onOpen: (id: string) => void }) {
         })}
         validate={(result) => checkScope(book, result.scope)}
         onSuccess={(result) => onOpen(result.id)}
+        operation={(client, requestOptions) =>
+          client.vatReturns.prepareActualVatReturn(
+            httpRequest(
+              Api.groups.vatReturns.endpoints.prepareActualVatReturn,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <Box display="flex" flexWrap="wrap" gap="lg">
           <InputField

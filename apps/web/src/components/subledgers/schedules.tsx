@@ -971,6 +971,15 @@ function AssetImpairmentPrepareForm(props: {
           throw new Error("Impairment preparation binding mismatch");
         }
       }}
+      operation={(client, requestOptions) =>
+        client.subledgerControls.prepareAssetImpairment(
+          httpRequest(
+            Api.groups.subledgerControls.endpoints.prepareAssetImpairment,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        )
+      }
     >
       <Box display="grid" gap="lg" minWidth="zero">
         <Text>{copy.impairmentPrepareHelp}</Text>
@@ -1534,6 +1543,15 @@ function AssetImpairmentReviewActions(props: {
             if (approval.reviewId !== props.id || approval.reviewDigest !== review.digest)
               throw new Error("Impairment approval binding mismatch");
           }}
+          operation={(client, requestOptions) =>
+            client.subledgerControls.approveAssetImpairment(
+              httpRequest(
+                Api.groups.subledgerControls.endpoints.approveAssetImpairment,
+                { params: { ...bookScope(book), id: props.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Box as="label" display="flex" alignItems="start" gap="md">
             <input type="checkbox" required />
@@ -1573,6 +1591,15 @@ function AssetImpairmentReviewActions(props: {
               throw new Error("Impairment execution binding mismatch");
             }
           }}
+          operation={(client, requestOptions) =>
+            client.subledgerControls.executeAssetImpairment(
+              httpRequest(
+                Api.groups.subledgerControls.endpoints.executeAssetImpairment,
+                { params: { ...bookScope(book), id: props.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <Box as="label" display="flex" alignItems="start" gap="md">
             <input type="checkbox" required />
@@ -1946,6 +1973,15 @@ function ScheduleDateAmendmentForm(props: {
       book={book}
       locale={locale}
       path={`${props.path}/future-dates`}
+      operation={(client, requestOptions) =>
+        client.subledgers.amendScheduleFutureDates(
+          httpRequest(
+            Api.groups.subledgers.endpoints.amendScheduleFutureDates,
+            { params: { ...bookScope(book), id: current.scheduleId } },
+            requestOptions,
+          ),
+        )
+      }
       schema={Subledgers.AmendScheduleFutureDates}
       output={Subledgers.ScheduleRevision}
       label={copy.amendmentDate}
@@ -2069,6 +2105,15 @@ function ScheduleEstimateAmendmentForm(props: {
       book={book}
       locale={locale}
       path={`${props.path}/estimates`}
+      operation={(client, requestOptions) =>
+        client.subledgers.amendScheduleEstimate(
+          httpRequest(
+            Api.groups.subledgers.endpoints.amendScheduleEstimate,
+            { params: { ...bookScope(book), id: current.scheduleId } },
+            requestOptions,
+          ),
+        )
+      }
       schema={Subledgers.AmendScheduleEstimate}
       output={Subledgers.ScheduleRevision}
       label={copy.amendmentEstimate}

@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import * as Schema from "effect/Schema";
 import { useQuery } from "@tanstack/react-query";
@@ -31,14 +31,34 @@ export function useInitialImport(
   const source = useSieSource(workspace);
 
   const start = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/imports`,
+    {
+      identity: `${bookPath(book)}/onboarding/imports`,
+      execute: (client, requestOptions) =>
+        client.onboarding.startOnboardingImport(
+          httpRequest(
+            Api.groups.onboarding.endpoints.startOnboardingImport,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     O.StartOnboardingImport,
     O.OnboardingImportStart,
     () => open("opening"),
   );
 
   const prepare = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/import-plans`,
+    {
+      identity: `${bookPath(book)}/onboarding/import-plans`,
+      execute: (client, requestOptions) =>
+        client.onboarding.prepareOnboardingImportPlan(
+          httpRequest(
+            Api.groups.onboarding.endpoints.prepareOnboardingImportPlan,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     O.PrepareOnboardingImportPlan,
     Sie.SiePlan,
     (plan) =>
@@ -161,7 +181,17 @@ export function ImportPauseAction({
   const { book, locale } = useBookWorkspace();
 
   const pause = useOnboardingCommand(
-    `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run?.financialRunId ?? "unselected")}/lease`,
+    {
+      identity: `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run?.financialRunId ?? "unselected")}/lease`,
+      execute: (client, requestOptions) =>
+        client.historicalMigration.reclaimSieFinancialRun(
+          httpRequest(
+            Api.groups.historicalMigration.endpoints.reclaimSieFinancialRun,
+            { params: { ...bookScope(book), id: run?.financialRunId ?? "unselected" } },
+            requestOptions,
+          ),
+        ),
+    },
     Schema.Struct({ action: Schema.Literals(["pause", "resume"]) }),
     Historical.Fence,
   );
@@ -272,19 +302,49 @@ export function ImportBatchesDialog({
   });
 
   const prepare = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/import-batches`,
+    {
+      identity: `${bookPath(book)}/onboarding/import-batches`,
+      execute: (client, requestOptions) =>
+        client.onboarding.prepareOnboardingImportBatch(
+          httpRequest(
+            Api.groups.onboarding.endpoints.prepareOnboardingImportBatch,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     O.PrepareOnboardingImportBatch,
     O.OnboardingImportBatch,
   );
 
   const approve = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/import-batch-approvals`,
+    {
+      identity: `${bookPath(book)}/onboarding/import-batch-approvals`,
+      execute: (client, requestOptions) =>
+        client.onboarding.approveOnboardingImportBatch(
+          httpRequest(
+            Api.groups.onboarding.endpoints.approveOnboardingImportBatch,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     O.ApproveOnboardingImportBatch,
     O.OnboardingImportBatchApproval,
   );
 
   const execute = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/import-batch-executions`,
+    {
+      identity: `${bookPath(book)}/onboarding/import-batch-executions`,
+      execute: (client, requestOptions) =>
+        client.onboarding.executeOnboardingImportBatch(
+          httpRequest(
+            Api.groups.onboarding.endpoints.executeOnboardingImportBatch,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     O.ExecuteOnboardingImportBatch,
     Historical.Chunk,
   );

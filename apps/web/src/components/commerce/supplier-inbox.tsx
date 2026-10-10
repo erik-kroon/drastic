@@ -152,6 +152,15 @@ function SupplierInboxEntry(props: {
           <CommandForm
             {...props.commerceProps}
             path={`${props.path}/${encodeURIComponent(props.id)}/extractions`}
+            operation={(client, requestOptions) =>
+              client.supplierInbox.recordSupplierExtraction(
+                httpRequest(
+                  Api.groups.supplierInbox.endpoints.recordSupplierExtraction,
+                  { params: { ...bookScope(props.commerceProps.book), id: props.id } },
+                  requestOptions,
+                ),
+              )
+            }
             schema={Inbox.RecordSupplierExtraction}
             output={Inbox.SupplierInboxView}
             label={sv ? "Spara manuellt tolkningsförsök" : "Save manual extraction attempt"}

@@ -1,5 +1,5 @@
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -283,6 +283,15 @@ export function SalesOrders({
                     setCreating(false);
                   }}
                   onNewCommand={() => creationKeys.current.clear()}
+                  operation={(client, requestOptions) =>
+                    client.salesOrders.createSalesDocument(
+                      httpRequest(
+                        Api.groups.salesOrders.endpoints.createSalesDocument,
+                        { params: { ...bookScope(book) } },
+                        requestOptions,
+                      ),
+                    )
+                  }
                 >
                   <InvoiceEditorLines
                     book={book}
@@ -499,6 +508,15 @@ function SalesOrderDetail(
           book={book}
           locale={locale}
           path={`${path}/${record.id}/transitions`}
+          operation={(client, requestOptions) =>
+            client.salesOrders.transitionSalesDocument(
+              httpRequest(
+                Api.groups.salesOrders.endpoints.transitionSalesDocument,
+                { params: { ...bookScope(book), id: record.id } },
+                requestOptions,
+              ),
+            )
+          }
           recoveryId={record.id}
           schema={Sales.TransitionSalesDocument}
           output={Sales.SalesDocument}
@@ -594,6 +612,15 @@ function OrderConversionForm(
           }),
         })}
         label={sv ? "Skapa fakturautkast" : "Create invoice draft"}
+        operation={(client, requestOptions) =>
+          client.salesOrders.convertSalesOrder(
+            httpRequest(
+              Api.groups.salesOrders.endpoints.convertSalesOrder,
+              { params: { ...bookScope(book), id: record.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <InputField
           name="draftKey"
@@ -678,6 +705,15 @@ function ReviseQuote(
       book={book}
       locale={locale}
       path={`${path}/${record.id}/revisions`}
+      operation={(client, requestOptions) =>
+        client.salesOrders.reviseSalesDocument(
+          httpRequest(
+            Api.groups.salesOrders.endpoints.reviseSalesDocument,
+            { params: { ...bookScope(book), id: record.id } },
+            requestOptions,
+          ),
+        )
+      }
       recoveryId={record.id}
       schema={Sales.ReviseSalesDocument}
       output={Sales.SalesDocument}

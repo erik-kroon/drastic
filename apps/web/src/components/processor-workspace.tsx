@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Processor from "@open-erp/contracts/processor-clearing";
@@ -315,6 +316,15 @@ function ProcessorPayout(props: {
             allowed={book.role === "operator"}
             canSubmit={canMatch}
             onSuccess={props.onRefresh}
+            operation={(client, requestOptions) =>
+              client.processorClearing.approveProcessorClearing(
+                httpRequest(
+                  Api.groups.processorClearing.endpoints.approveProcessorClearing,
+                  { params: { ...bookScope(book), id: view.review.id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
           <CommandForm
             book={book}
@@ -329,6 +339,15 @@ function ProcessorPayout(props: {
             allowed={book.role === "operator"}
             canSubmit={!view.returned}
             onSuccess={props.onRefresh}
+            operation={(client, requestOptions) =>
+              client.processorClearing.returnProcessorReview(
+                httpRequest(
+                  Api.groups.processorClearing.endpoints.returnProcessorReview,
+                  { params: { ...bookScope(book), id: view.review.id } },
+                  requestOptions,
+                ),
+              )
+            }
           />
           {approval && !view.returned ? (
             <CommandForm
@@ -342,6 +361,15 @@ function ProcessorPayout(props: {
               compact
               canSubmit={canMatch}
               onSuccess={props.onRefresh}
+              operation={(client, requestOptions) =>
+                client.processorClearing.executeProcessorClearing(
+                  httpRequest(
+                    Api.groups.processorClearing.endpoints.executeProcessorClearing,
+                    { params: { ...bookScope(book), id: view.review.id } },
+                    requestOptions,
+                  ),
+                )
+              }
             />
           ) : null}
         </AssetActionActions>
@@ -369,7 +397,14 @@ function ProcessorBankCandidates({ view }: { view: View }) {
         : "";
 
       const page = await readAccounting(
-        `${bookPath(book)}/banking/processors/reviews/${encodeURIComponent(view.review.id)}/bank-candidates${cursor}`,
+        (client) =>
+          client.processorClearing.listProcessorBankCandidates({
+            params: { ...bookScope(book), id: view.review.id },
+            query: httpQuery(
+              Api.groups.processorClearing.endpoints.listProcessorBankCandidates,
+              cursor,
+            ),
+          }),
         Processor.BankCandidatePage,
         { signal },
       );
@@ -431,6 +466,15 @@ function ProcessorBankCandidates({ view }: { view: View }) {
               `${workspacePath(book)}/accounts?view=processors&account=${encodeURIComponent(view.account.id)}&record=${encodeURIComponent(result.id)}`,
             );
           }}
+          operation={(client, requestOptions) =>
+            client.processorClearing.prepareProcessorClearing(
+              httpRequest(
+                Api.groups.processorClearing.endpoints.prepareProcessorClearing,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
     </Box>

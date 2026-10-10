@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Firms from "@open-erp/contracts/firms";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -54,6 +56,15 @@ export function AccessRequestDialog(props: {
       })}
       locale={locale}
       onClose={props.onClose}
+      operation={(client, requestOptions) =>
+        client.firms.saveFirmAccessRequest(
+          httpRequest(
+            Api.groups.firms.endpoints.saveFirmAccessRequest,
+            { params: { firmId: workspace.firm.id } },
+            requestOptions,
+          ),
+        )
+      }
     >
       {revoke ? (
         <PageCaption>

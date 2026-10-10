@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import * as Firms from "@open-erp/contracts/firms";
 import { Button } from "@open-erp/ui/components/button";
@@ -38,6 +40,15 @@ export function ClientDialog(props: {
         })}
         locale={locale}
         onClose={props.onClose}
+        operation={(client, requestOptions) =>
+          client.firms.removeFirmClient(
+            httpRequest(
+              Api.groups.firms.endpoints.removeFirmClient,
+              { params: { firmId: workspace.firm.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <PageCaption>
           {sv
@@ -68,6 +79,15 @@ export function ClientDialog(props: {
           expectedRevision: client?.revision ?? 0,
         };
       }}
+      operation={(client, requestOptions) =>
+        client.firms.saveFirmClient(
+          httpRequest(
+            Api.groups.firms.endpoints.saveFirmClient,
+            { params: { firmId: workspace.firm.id } },
+            requestOptions,
+          ),
+        )
+      }
     >
       {!client ? (
         <SelectField

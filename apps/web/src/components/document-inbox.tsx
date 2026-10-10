@@ -1,6 +1,6 @@
 import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpRequest } from "@/lib/contract-client";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -80,7 +80,14 @@ export function DocumentInbox(props: {
     queryKey: [...bookKey(book), "document-inbox", filters],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        archivePath(`${bookPath(book)}/source-archive`, filters),
+        (client) =>
+          client.sourceIntake.searchSourceArchive({
+            params: bookScope(book),
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.searchSourceArchive,
+              archiveQuery(filters),
+            ),
+          }),
         Sources.ArchiveSearch,
         { signal },
       );
@@ -98,7 +105,14 @@ export function DocumentInbox(props: {
   const archiveExport = useMutation({
     mutationFn: async (applied: typeof Sources.ArchiveFilters.Type) => {
       const result = await readAccounting(
-        archivePath(`${bookPath(book)}/source-archive/export`, applied),
+        (client) =>
+          client.sourceIntake.exportSourceArchive({
+            params: bookScope(book),
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.exportSourceArchive,
+              archiveQuery(applied),
+            ),
+          }),
         Sources.ArchiveExport,
       );
 
@@ -847,7 +861,11 @@ function DocumentDetail({ id }: { id: string }) {
     queryKey: [...bookKey(book), "document-library-metadata", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        archivePath(`${bookPath(book)}/source-archive`, { occurrenceId: id }),
+        (client) =>
+          client.sourceIntake.searchSourceArchive({
+            params: bookScope(book),
+            query: { occurrenceId: id },
+          }),
         Sources.ArchiveSearch,
         { signal },
       );
@@ -981,16 +999,14 @@ function DocumentDetail({ id }: { id: string }) {
   );
 }
 
-function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type) {
+function archiveQuery(filters: typeof Sources.ArchiveFilters.Type) {
   const query = new URLSearchParams();
 
   for (const [name, value] of Object.entries(filters)) {
     if (value !== undefined) query.set(name, value);
   }
 
-  const search = query.toString();
-
-  return search ? `${base}?${search}` : base;
+  return query;
 }
 
 function readArchiveForm(fields: FormData, occurrenceId: string | undefined) {

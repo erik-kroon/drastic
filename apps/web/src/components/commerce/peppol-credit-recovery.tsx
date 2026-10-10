@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -206,6 +206,15 @@ export function PeppolCreditRecovery(props: {
             origin: `Kreditbeslut för ${props.review.source.legalNumber}`,
           })}
           onSuccess={(evidence) => setDecision({ evidence, reason: evidence.title })}
+          operation={(client, requestOptions) =>
+            client.accounting.createEvidence(
+              httpRequest(
+                Api.groups.accounting.endpoints.createEvidence,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <InputField name="reason" label="Anledning" required />
         </CommandForm>
@@ -252,6 +261,15 @@ export function PeppolCreditRecovery(props: {
               },
             });
           }}
+          operation={(client, requestOptions) =>
+            client.customerCreditNotes.prepareCustomerCredit(
+              httpRequest(
+                Api.groups.customerCreditNotes.endpoints.prepareCustomerCredit,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            )
+          }
         />
       ) : null}
     </Box>

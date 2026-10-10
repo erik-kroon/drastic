@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import { Box } from "@open-erp/ui/components/box";
@@ -177,6 +177,15 @@ function SelectedCycle(
           book={book}
           locale={locale}
           path={`${props.path}/scheduling/catch-up`}
+          operation={(client, requestOptions) =>
+            client.recurringInvoices.catchUpRecurringDrafts(
+              httpRequest(
+                Api.groups.recurringInvoices.endpoints.catchUpRecurringDrafts,
+                { params: { ...bookScope(book), agreementId: schedule.agreementId } },
+                requestOptions,
+              ),
+            )
+          }
           schema={Recurring.RecurringCatchUpInput}
           output={Recurring.RecurringScheduling}
           allowed={book.role === "operator" && schedule.enabled}

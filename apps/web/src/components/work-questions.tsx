@@ -227,6 +227,15 @@ function AskQuestion(
           requestedFrom: fields.get("requestedFrom"),
         })}
         onSuccess={props.onChanged}
+        operation={(client, requestOptions) =>
+          client.workspace.askWorkQuestion(
+            httpRequest(
+              Api.groups.workspace.endpoints.askWorkQuestion,
+              { params: { ...bookScope(props.book) } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <SelectField
           name="kind"
@@ -380,6 +389,15 @@ function QuestionActions(props: RecordProps) {
             reason: fields.get("reason"),
           })}
           onSuccess={props.onChanged}
+          operation={(client, requestOptions) =>
+            client.workspace.closeWorkQuestion(
+              httpRequest(
+                Api.groups.workspace.endpoints.closeWorkQuestion,
+                { params: { ...bookScope(props.book), id: question.id } },
+                requestOptions,
+              ),
+            )
+          }
         >
           <TextareaField
             name="reason"
@@ -449,6 +467,15 @@ function AnswerQuestion(props: RecordProps) {
             : [],
         })}
         onSuccess={props.onChanged}
+        operation={(client, requestOptions) =>
+          client.workspace.answerWorkQuestion(
+            httpRequest(
+              Api.groups.workspace.endpoints.answerWorkQuestion,
+              { params: { ...bookScope(props.book), id: props.question.id } },
+              requestOptions,
+            ),
+          )
+        }
       >
         <TextareaField
           name="text"

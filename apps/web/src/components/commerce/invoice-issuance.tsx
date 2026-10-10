@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
@@ -727,7 +727,10 @@ function useLegalArtifactRead(
     queryKey: [...commerceKey(book), "ar-legal", "pdf-history", issue?.id ?? ""],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/ar-legal-issues/${encodeURIComponent(issue?.id ?? "")}/pdfs`,
+        (client) =>
+          client.legalInvoicePdfs.legalInvoicePdfHistory({
+            params: { ...bookScope(book), id: issue?.id ?? "" },
+          }),
         LegalInvoicePdf.LegalInvoicePdfHistory,
         { signal },
       );
@@ -1390,6 +1393,15 @@ function IssuePreparation(
                 acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
               })}
               onSuccess={(review) => props.onOpen(review.id)}
+              operation={(client, requestOptions) =>
+                client.invoiceIssuance.prepareInvoiceIssue(
+                  httpRequest(
+                    Api.groups.invoiceIssuance.endpoints.prepareInvoiceIssue,
+                    { params: { ...bookScope(props.book) } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <Box display="grid" gap="lg">
                 <SelectField
@@ -1591,6 +1603,15 @@ function IssueContents(
               digest: plan.digest,
               acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
             })}
+            operation={(client, requestOptions) =>
+              client.invoiceIssuance.approveInvoiceIssue(
+                httpRequest(
+                  Api.groups.invoiceIssuance.endpoints.approveInvoiceIssue,
+                  { params: { ...bookScope(book), id: plan.id } },
+                  requestOptions,
+                ),
+              )
+            }
           >
             <SyntheticAcknowledgment locale={locale} />
           </CommandForm>
@@ -1619,6 +1640,15 @@ function IssueContents(
                   approvalId: approval.id,
                   acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
                 })}
+                operation={(client, requestOptions) =>
+                  client.invoiceIssuance.executeInvoiceIssue(
+                    httpRequest(
+                      Api.groups.invoiceIssuance.endpoints.executeInvoiceIssue,
+                      { params: { ...bookScope(book), id: plan.id } },
+                      requestOptions,
+                    ),
+                  )
+                }
               >
                 <SyntheticAcknowledgment locale={locale} />
               </CommandForm>

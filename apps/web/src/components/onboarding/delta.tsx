@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { DeltaEffectsDialog } from "./delta-effects";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +36,17 @@ function DeltaChoice({
   const { book } = useBookWorkspace();
 
   const command = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/source-delta-decisions`,
+    {
+      identity: `${bookPath(book)}/onboarding/source-delta-decisions`,
+      execute: (client, requestOptions) =>
+        client.onboardingDeltas.decideOnboardingDelta(
+          httpRequest(
+            Api.groups.onboardingDeltas.endpoints.decideOnboardingDelta,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Delta.DecideOnboardingDelta,
     Delta.OnboardingDeltaDecision,
   );
@@ -136,7 +147,17 @@ function useDeltaReview(workspace: Workspace) {
   });
 
   const compare = useOnboardingCommand(
-    `${bookPath(book)}/onboarding/source-deltas`,
+    {
+      identity: `${bookPath(book)}/onboarding/source-deltas`,
+      execute: (client, requestOptions) =>
+        client.onboardingDeltas.compareOnboardingDelta(
+          httpRequest(
+            Api.groups.onboardingDeltas.endpoints.compareOnboardingDelta,
+            { params: { ...bookScope(book) } },
+            requestOptions,
+          ),
+        ),
+    },
     Delta.CompareOnboardingDelta,
     Delta.OnboardingDelta,
   );

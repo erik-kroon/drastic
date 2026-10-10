@@ -1,5 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Adoption from "@open-erp/contracts/historical-adoptions";
@@ -268,6 +268,15 @@ export function HistoricalAdoptionWorkspace({ planId }: { planId: string }) {
               onSuccess={(result) => {
                 void navigate({ to: base, search: { adoption: result.id } });
               }}
+              operation={(client, requestOptions) =>
+                client.historicalAdoptions.prepareHistoricalAdoption(
+                  httpRequest(
+                    Api.groups.historicalAdoptions.endpoints.prepareHistoricalAdoption,
+                    { params: { ...bookScope(book) } },
+                    requestOptions,
+                  ),
+                )
+              }
             />
             <Button
               variant="outline"
@@ -303,6 +312,15 @@ export function HistoricalAdoptionWorkspace({ planId }: { planId: string }) {
                 output={Adoption.Approval}
                 label="Godkänn"
                 input={() => ({ digest: saved.plan.digest })}
+                operation={(client, requestOptions) =>
+                  client.historicalAdoptions.approveHistoricalAdoption(
+                    httpRequest(
+                      Api.groups.historicalAdoptions.endpoints.approveHistoricalAdoption,
+                      { params: { ...bookScope(book), id: planId } },
+                      requestOptions,
+                    ),
+                  )
+                }
               />
               {saved.approvals[0] ? (
                 <CommandForm
@@ -314,6 +332,15 @@ export function HistoricalAdoptionWorkspace({ planId }: { planId: string }) {
                   output={Adoption.Adoption}
                   label="Ta över öppna poster"
                   input={() => ({ digest: saved.plan.digest, approvalId: saved.approvals[0]!.id })}
+                  operation={(client, requestOptions) =>
+                    client.historicalAdoptions.executeHistoricalAdoption(
+                      httpRequest(
+                        Api.groups.historicalAdoptions.endpoints.executeHistoricalAdoption,
+                        { params: { ...bookScope(book), id: planId } },
+                        requestOptions,
+                      ),
+                    )
+                  }
                 />
               ) : null}
             </>

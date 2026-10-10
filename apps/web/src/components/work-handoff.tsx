@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Workspace from "@open-erp/contracts/workspace";
@@ -100,6 +102,15 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
                 void client.invalidateQueries({ queryKey: bookKey(book) });
                 setEditing(null);
               }}
+              operation={(client, requestOptions) =>
+                client.workspace.assignWorkspaceWork(
+                  httpRequest(
+                    Api.groups.workspace.endpoints.assignWorkspaceWork,
+                    { params: { ...bookScope(book) } },
+                    requestOptions,
+                  ),
+                )
+              }
             >
               <HandoffFields
                 current={editing.assignment}

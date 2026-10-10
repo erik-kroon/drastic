@@ -290,6 +290,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
               </Button>
             )}
             <DeadlineFulfillmentLink
+              book={book}
               obligation={item}
               path={path}
               locale={locale}
