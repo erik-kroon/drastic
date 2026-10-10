@@ -14,6 +14,7 @@
     "./workspace": "./src/workspace.ts",
     "./recurring-invoices": "./src/recurring-invoices.ts",
     "./api": "./src/api.ts",
+    "./bureau-obligations": "./src/bureau-obligations.ts",
     "./system": "./src/system.ts",
     "./accounting": "./src/accounting.ts",
     "./capabilities": "./src/capabilities.ts",
