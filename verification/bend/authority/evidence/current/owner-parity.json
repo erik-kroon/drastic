@@ -776,7 +776,7 @@
     "verification/bend/current-owner-authority.mjs": "sha256:995d5195622eea72360df7ff39dc549ba8cb7099d2a18c58855ecc10e2971911"
   },
   "ownerTreeDigest": "sha256:ad4e1648401ccfa65fdb87cf4cfff223b91d09fbb2eb98809e3b6a9357f1a620",
-  "checker": "development-adaptation",
-  "artifactDigest": null,
-  "sourceTreeDigest": null
+  "checker": "official-js-artifact",
+  "artifactDigest": "sha256:9eaca593e57a1e7dd6bb48e55f0840355f75b8d42112823703b4c75e9de20f73",
+  "sourceTreeDigest": "sha256:8002f30e417aacc2ddd6b5e8b0073217be1bf5c52ef947f6f1d89b4ec830b7cc"
 }

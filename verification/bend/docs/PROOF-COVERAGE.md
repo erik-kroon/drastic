@@ -57,6 +57,6 @@ There is no concurrency proof for SQL, no proof of exactly-once financial effect
 
 ## Compiler trust
 
-The included development checker is a modified source adaptation. It is not an official release and cannot satisfy `verify:release`.
+The included development checker is a modified source adaptation. It is not an official release; official checking runs in the authority release lane.
 
 `BEND_SOURCE_ROOT` selects the unmodified pinned checker, verified by Git blob hash. The release gate additionally invokes the official Bend command and `--safe`. That still leaves the compiler, proof translation, execution backend, host codecs and operating environment in the trusted computing base.

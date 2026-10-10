@@ -19,7 +19,6 @@
     "check:proofs": "node --experimental-strip-types scripts/check-proofs.mjs",
     "verify:owner": "node --experimental-strip-types scripts/verify-owner.mjs",
     "verify:local": "node --experimental-strip-types scripts/verify-local.mjs",
-    "verify:release": "node --experimental-strip-types scripts/verify-release.mjs",
     "solve": "node --experimental-strip-types scripts/solve.mjs"
   }
 }

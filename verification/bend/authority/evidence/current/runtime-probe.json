@@ -2,8 +2,8 @@
   "schema": "openerp-bend-receipt/v1",
   "status": "passed",
   "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
-  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
-  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "artifactDigest": "sha256:9eaca593e57a1e7dd6bb48e55f0840355f75b8d42112823703b4c75e9de20f73",
+  "sourceTreeDigest": "sha256:8002f30e417aacc2ddd6b5e8b0073217be1bf5c52ef947f6f1d89b4ec830b7cc",
   "runtimeId": "node:v26.4.0:darwin:arm64",
   "operations": [
     "money.round.v1",
@@ -18,17 +18,17 @@
     {
       "suite": "arithmetic",
       "assertions": 11173,
-      "elapsedMs": 591
+      "elapsedMs": 410
     },
     {
       "suite": "authority-boundaries",
       "assertions": 1915,
-      "elapsedMs": 225
+      "elapsedMs": 181
     },
     {
       "suite": "authority-extension",
       "assertions": 378,
-      "elapsedMs": 222
+      "elapsedMs": 167
     }
   ],
   "kind": "runtime-probe",

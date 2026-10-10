@@ -6,12 +6,18 @@ the product workspaces and has no production caller.
 
 ## In CI
 
-The `Exact money model` job in `.github/workflows/ci.yml` runs on every pull
-request and push to `main`:
+The `Exact money model (official Bend)` job in `.github/workflows/ci.yml` runs
+on every pull request and push to `main`. It installs Lean 4.34.0 (checksum
+pinned), fetches the pinned Bend source and runs the authority release lane
+(`verify:release`):
 
-1. `authority` model laws and arithmetic (`verify:local`).
-2. Current-owner comparison (`authority` `verify:owner` with
-   [`current-owner-authority.mjs`](current-owner-authority.mjs)). The model must
+1. Builds the model twice with the official Bend compiler and requires
+   byte-identical artifacts.
+2. Checks the model with the independent Lean safe kernel.
+3. Runs the laws and arithmetic with both the development evaluator and the
+   compiled artifact.
+4. Compares the current owners with the compiled artifact through
+   [`current-owner-authority.mjs`](current-owner-authority.mjs). The model must
    agree exactly with the code the application runs:
 
    | Operation | Current owner |
@@ -20,7 +26,9 @@ request and push to `main`:
    | `fx.convert.v1` (nonnegative half up) | `convertMinor` in `packages/domain/src/exchange-rates.ts`, used by rate reviews and commerce FX recognition |
    | `schedule.equal.v1` (remainder last) | `allocateByWeights` in `packages/domain/src/prepayments.ts`, used by equal-month prepayments |
 
-3. This kit's historical VAT regressions (`test`).
+5. Exercises the real VAT workflow on PostgreSQL with the compiled artifact.
+
+The job then runs this kit's historical VAT regressions (`test`).
 
 The job uploads fresh evidence as the `bend-evidence` artifact. Committed
 evidence files are dated snapshots; the CI artifact is the current result.
@@ -71,21 +79,11 @@ directory, and removes that directory after loading/checking the Bend book.
 The historical VAT excerpt is likewise a pinned compressed source asset. See
 [source provenance](docs/SOURCES.md) and [NOTICE](NOTICE).
 
-To require the exact pinned upstream checker, set `BEND_SOURCE_ROOT`. A hash
-mismatch fails; it never falls back. Official model verification additionally
-requires the matching Bend executable:
-
-```sh
-BEND_SOURCE_ROOT=/absolute/path/to/bend \
-BEND_BIN=/absolute/path/to/bend-command \
-OPENERP_REPO="$PWD" \
-npm --prefix verification/bend run verify:release
-```
-
-Missing prerequisites fail and write `evidence/release-verification.json`.
-Official compilation, `--safe`, native/GPU execution, application transactions
-and statutory applicability remain separate claims. The local lane does not
-close those gates.
+Official verification lives in the [authority](authority/README.md) release
+lane, which CI runs (see [In CI](#in-ci)): the official Bend compiler from the
+pinned source, the independent Lean safe kernel, compiled-artifact comparisons
+and the real VAT host. Native/GPU execution and statutory applicability remain
+separate claims.
 
 ## Models
 

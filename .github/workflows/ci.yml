@@ -201,13 +201,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # Compares the real money owners (rounding, VAT projection, FX conversion and
-  # equal schedules) with the exact Bend model. Node only; no database. The
-  # development checker is not the official Bend compiler or safe kernel.
+  # Compares the real money owners (every rounding owner, VAT projection, FX
+  # conversion and equal schedules) with the exact Bend model. The release lane
+  # builds the model with the official Bend compiler from its pinned source,
+  # checks it with the independent Lean safe kernel, runs the comparison against
+  # the compiled artifact and exercises the real VAT host on PostgreSQL.
   bend:
-    name: Exact money model
+    name: Exact money model (official Bend)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 40
+    env:
+      PG_BINDIR: /usr/lib/postgresql/17/bin
+      BEND_SOURCE_ROOT: ${{ github.workspace }}/.cache/bend
+      LEAN_BIN: ${{ github.workspace }}/.cache/lean-4.34.0-linux/bin/lean
+      LEANC_BIN: ${{ github.workspace }}/.cache/lean-4.34.0-linux/bin/leanc
+      OPENERP_REPO: ${{ github.workspace }}
+      OPENERP_OWNER_ADAPTER: ${{ github.workspace }}/verification/bend/current-owner-authority.mjs
 
     steps:
       - uses: actions/checkout@v7
@@ -221,16 +230,31 @@ jobs:
         id: install
         timeout-minutes: 5
         run: bun install --frozen-lockfile
-      - name: Model laws and arithmetic
+      - name: Install PostgreSQL 17
         timeout-minutes: 5
-        run: npm --prefix verification/bend/authority run verify:local
-      - name: Compare current owners with the model
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-common zstd
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-17 postgresql-client-17
+      # The checksum pins the official v4.34.0 release asset as first downloaded.
+      - name: Install pinned Lean 4.34.0
         timeout-minutes: 5
-        env:
-          OPENERP_REPO: ${{ github.workspace }}
-          OPENERP_OWNER_ADAPTER: verification/bend/current-owner-authority.mjs
-        run: npm --prefix verification/bend/authority run verify:owner
+        run: |
+          set -euo pipefail
+          mkdir -p .cache
+          curl -sSLf -o .cache/lean.tar.zst \
+            https://github.com/leanprover/lean4/releases/download/v4.34.0/lean-4.34.0-linux.tar.zst
+          echo "caaa98356098c85dc0fcbbd28e1ec66f39eb6551829972b752ff20e1286b646b  .cache/lean.tar.zst" | sha256sum -c -
+          zstd -dc .cache/lean.tar.zst | tar -xf - -C .cache
+          rm .cache/lean.tar.zst
+      - name: Fetch and verify pinned Bend source
+        timeout-minutes: 5
+        run: node --experimental-strip-types verification/bend/authority/scripts/bootstrap-upstream.mjs "$BEND_SOURCE_ROOT"
+      - name: Official release lane
+        timeout-minutes: 25
+        run: npm --prefix verification/bend/authority run verify:release
       - name: Historical VAT regressions
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5

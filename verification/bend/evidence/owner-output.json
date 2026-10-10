@@ -3,11 +3,11 @@
   "comparisons": 1302,
   "checker": "development-adaptation",
   "sourceHashes": {
-    "jurisdictions/se/src/vat/actual.ts": "3f3dc6fcbc8c7d7fae59a7b3e802c701d6c8e789f16e71da66dca54b082ea8b6",
-    "packages/domain/src/purchasing.ts": "bbf04d5c7955e51f8fcc7d9ba8c7f14a94b1165d8763cfec05fe0bd2867b9726",
-    "packages/domain/src/values.ts": "5020591e4775df25473a0cfb73da0e9b7aa9d01f8fbc1d42dcffd8ce665fe87b",
-    "packages/domain/src/money.ts": "aabf2ae4c656ace129c822e81e194da592bd3b46f97a197f6565e8c845c36663",
-    "bun.lock": "8f4054e2651d96dcfb32552bb95b533b0c40964fe3085e74668328aa07f1470f"
+    "jurisdictions/se/src/vat/actual.ts": "99aa2268a7b49fc0145fb91ede5489256c150b0ef4a82d0ffa2d40bf0bd7aa38",
+    "packages/domain/src/purchasing.ts": "1972bcea61bd9b048586b4df783d121e8f4b9fc375f60d7a461ddcbdc9087aa9",
+    "packages/domain/src/values.ts": "416af871484d1378f6d89a43e79b3184120e87e08f2e61c133722f1e27d35b06",
+    "packages/domain/src/money.ts": "3367528cecfca47605c377a131e7a5255449ff5be445596149db415e9e42590b",
+    "bun.lock": "ab9b0d2029135d420bf8d2d339555eb89fa868645672d6d739d34272a273a0a0"
   },
   "fullEligibilityOrFilingVerified": false
 }

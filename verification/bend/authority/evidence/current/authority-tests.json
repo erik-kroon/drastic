@@ -1,42 +1,42 @@
 {
   "status": "passed",
   "suite": "authority-boundaries",
-  "checker": "development-adaptation",
+  "checker": "official-js-artifact",
   "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
-  "artifactDigest": null,
-  "sourceTreeDigest": null,
+  "artifactDigest": "sha256:9eaca593e57a1e7dd6bb48e55f0840355f75b8d42112823703b4c75e9de20f73",
+  "sourceTreeDigest": "sha256:8002f30e417aacc2ddd6b5e8b0073217be1bf5c52ef947f6f1d89b4ec830b7cc",
   "assertions": 1915,
   "groups": {
     "Operation kernels and boundary oracles": {
       "assertions": 798,
-      "ms": 229
+      "ms": 15
     },
     "Independent certificate checks reject plausible wrong results": {
       "assertions": 1061,
-      "ms": 5
+      "ms": 3
     },
     "Exact immutable envelopes and failure behavior": {
       "assertions": 24,
-      "ms": 13
+      "ms": 5
     },
     "Per-operation release qualification, not self-approval": {
       "assertions": 7,
-      "ms": 3
+      "ms": 2
     },
     "Upstream ABI adapter unit controls": {
       "assertions": 18,
-      "ms": 1
+      "ms": 0
     },
     "Refinement proofs reject binary arithmetic mutations": {
       "assertions": 4,
-      "ms": 141
+      "ms": 114
     },
     "Bounded worker cancellation": {
       "assertions": 3,
-      "ms": 171
+      "ms": 41
     }
   },
-  "elapsedMs": 565,
+  "elapsedMs": 181,
   "operations": [
     "money.round.v1",
     "vat.project.v1",
