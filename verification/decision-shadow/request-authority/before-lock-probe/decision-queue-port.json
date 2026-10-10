@@ -1,0 +1,35 @@
+{
+  "syntheticOnly": true,
+  "requestId": "decision_request_b1a891b3cb3e4b4490b81cf4829d1ac8",
+  "status": "failed",
+  "reason": "http_error",
+  "dispatchCount": 0,
+  "transportAttempts": 1,
+  "providerFailures": [
+    {
+      "stage": "book_lock_probe",
+      "lockCensus": [
+        {
+          "mode": "RowShareLock",
+          "granted": true,
+          "state": "idle in transaction"
+        }
+      ],
+      "code": "55P03"
+    }
+  ],
+  "independentReaderHolds": [
+    {
+      "milliseconds": 100,
+      "acquired": true,
+      "released": false
+    }
+  ],
+  "jobs": [
+    {
+      "id": "decision/book_b3d8d7c9bb98f9bc/decision_request_b1a891b3cb3e4b4490b81cf4829d1ac8",
+      "state": "completed"
+    }
+  ],
+  "runnerFailures": []
+}

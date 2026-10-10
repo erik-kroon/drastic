@@ -303,3 +303,9 @@ Clean committed1e3a712 against main6e2a0ae passed full changed checks, owners55/
 Failure-first commit `7991ca4` reproduced checkpoint `UnhandledFamily` in the real synthetic rehearsal. Fix `ea033f5` declares the `book_decision_policies.sequence` owner. The same rehearsal passed and retained counter 41; a new operator off policy received 42 and superseded shadow policy 23. The original restore quarantine remained intact. Proof is retained in `verification/decision-shadow/policy-sequence/`; the complete packet is under `test-results/aut11-policy-sequence-after/`.
 
 The working-tree changed check passed for the narrow fix. Final clean static gates for the integrated review fixes remain pending. Admission permissions, VAT discrepancy capture and the remaining review findings are still open. No live provider or production restore was exercised.
+
+### AUT-11 review follow-up, request authority
+
+Failure-first `cd31e39` and `0e0e9b4` reproduced agent admission/read and a requester losing the operator role before dispatch. Fix `127cf2c` requires operator authority at all three existing boundaries. All seven decision-job workflows passed at clean source `6190d6c`, including real queue delivery and the locked downgrade refusal. Proof is retained under `verification/decision-shadow/request-authority/`. The fixture lock-probe failure, controlled PostgreSQL 55P03 reproduction and persistent-lock negative control are recorded separately there. No production provider behavior changed for the test-only probe fix.
+
+The changed check against `ea033f5` passed API/test types. Final clean integrated gates remain pending. VAT discrepancy, mixed citations, terminal admission idempotency and timeout bounds are still under review. No MCP catalog, UI or live provider was exercised by this unit.

@@ -1,0 +1,20 @@
+{
+  "syntheticOnly": true,
+  "holderReleasedAfterResponse": true,
+  "status": 500,
+  "transportAttempts": 1,
+  "validatedFixtureCalls": 0,
+  "failures": [
+    {
+      "stage": "book_lock_probe",
+      "lockCensus": [
+        {
+          "mode": "RowShareLock",
+          "granted": true,
+          "state": "idle in transaction"
+        }
+      ],
+      "code": "55P03"
+    }
+  ]
+}
