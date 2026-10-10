@@ -1212,9 +1212,12 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
     { id: "account_expense", code: "6000", name: "Expense" },
     { id: "account_other", code: "6100", name: "Other expense" },
   ]);
+
   const book = { ...f.book, token: (await createSession(f.book)).token };
+
   const makeDraft = async (ordinal: number) => {
     const source = await purchaseEvidence(book, ordinal);
+
     return createDraft(book, {
       ...f.content,
       sourceEvidenceId: source.id,
@@ -1231,6 +1234,7 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
       ],
     });
   };
+
   const decide = async (
     draft: typeof Drafts.SupplierInvoiceDraftRevision.Type,
     account: string,
@@ -1267,6 +1271,7 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
       },
       Acceptance.SupplierAcceptanceReview,
     );
+
     const approval = await post(
       book,
       `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
@@ -1278,6 +1283,7 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
       },
       Acceptance.SupplierAcceptanceApproval,
     );
+
     const receipt = await post(
       book,
       `/commerce/supplier-acceptance-reviews/${review.id}/execute`,
@@ -1289,8 +1295,10 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
       },
       Acceptance.SupplierAcceptanceReceipt,
     );
+
     return { review, approval, receipt };
   };
+
   const seedA = await decide(await makeDraft(1), "account_expense");
   const target = await makeDraft(2);
   const path = `/commerce/supplier-account-suggestions/${f.supplier.id}?draftId=${target.id}&draftRevision=${target.revision}`;
@@ -1302,11 +1310,14 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
   expect(second.suggestionRecordId).not.toBe(first.suggestionRecordId);
   const citations = [first.suggestionRecordId, second.suggestionRecordId];
   const decision = await decide(target, "account_expense", citations);
+
   const provenance = (await provenanceRows(book)).find(
     (row) => row.decision_id === decision.approval.id,
   )!;
+
   const admin = await database();
   let records;
+
   try {
     records = (
       await admin.query(
@@ -1317,6 +1328,7 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
   } finally {
     await admin.end();
   }
+
   const exported = await post(
     book,
     "/automation/decision-examples",
@@ -1326,11 +1338,31 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
     },
     Examples.DecisionExampleExport,
   );
+
+  await writeFile(
+    join(environment().artifacts, "mixed-supplier-observations.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        seedA,
+        seedB,
+        target,
+        first,
+        second,
+        records,
+        decision,
+        provenance,
+        exported,
+      },
+      null,
+      2,
+    ),
+  );
   const reportDirectory = join(environment().artifacts, "mixed-report");
   await mkdir(reportDirectory, { recursive: true });
   await run(
+    "bun",
     [
-      "bun",
       "verification/firm-memory/report.ts",
       book.entityId,
       book.bookId,
@@ -1338,6 +1370,7 @@ test("mixed changed and incomparable supplier citations retain unknown exposure"
       reportDirectory,
     ],
     {
+      cwd: join(import.meta.dirname, "../../.."),
       env: {
         ...process.env,
         OPENERP_API_URL: environment().baseUrl,
