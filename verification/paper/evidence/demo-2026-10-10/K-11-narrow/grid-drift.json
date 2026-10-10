@@ -1,6 +1,6 @@
 {
-  "scope": "K-16",
-  "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-16-narrow",
+  "scope": "K-11",
+  "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-11-narrow",
   "adoptedComparisonEligible": false,
   "comparatorStatus": null,
   "difference": null,
@@ -14,8 +14,8 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 48937,
-      "difference": 0.33984027777777776
+      "changed": 44208,
+      "difference": 0.307
     },
     {
       "row": 0,
@@ -35,8 +35,8 @@
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 34907,
-      "difference": 0.24240972222222223
+      "changed": 38376,
+      "difference": 0.2665
     },
     {
       "row": 1,
@@ -56,8 +56,8 @@
       "row": 2,
       "column": 0,
       "pixels": 144000,
-      "changed": 38705,
-      "difference": 0.2687847222222222
+      "changed": 34774,
+      "difference": 0.24148611111111112
     },
     {
       "row": 2,

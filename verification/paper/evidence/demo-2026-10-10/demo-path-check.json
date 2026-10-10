@@ -1,7 +1,7 @@
 {
   "synthetic": true,
   "passed": true,
-  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_948d2b4a5ce94ad9a8bd9cdfdbd6ffb4%252F%2522%257D%257D&record=voucher_ffb73c0a9acd4035abede7545134ea75&returnSupplier=supplier_invoice_draft_9fe36a62785144a3b8875d74cee606de&returnSupplierReview=supplier_review_17493a02a7ba401d956a120d4bc4fe4f",
+  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_368403a5bd98408cb393ff9e5687110f%252F%2522%257D%257D&record=voucher_f51679db215d4753897a165fdf3853f9&returnSupplier=supplier_invoice_draft_c5dcd59c67ed4f7e90ea37282a5b0ff8&returnSupplierReview=supplier_review_5f685b9d57a746668253d63269bf8d73",
   "checks": [
     "original independently checked",
     "uncropped original",
@@ -32,7 +32,7 @@
   },
   "applicationClock": "2026-10-02T06:54:00.000Z",
   "continuation": {
-    "bankAllocationId": "bankplan_9fb77bba05af4ddd8ada9b90f7359419",
+    "bankAllocationId": "bankplan_b1da851a0d23420e9158d757c275a02f",
     "bankAmountMinor": "-125000",
     "retainedClients": 3,
     "retainedDeadlines": 0,

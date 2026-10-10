@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/worst-K-09/actual.png",
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output verification/paper/evidence/demo-2026-10-10/worst-K-09",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-09 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/worst-K-09",
+  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
   "sourceHashes": {
     "apps/web/src/components/firms/portfolio.tsx": "17f0d3857f96ce48b593dcc2ec47518e20aa8cd8468e91c18b066cb8271a26a7",
     "apps/web/src/components/firms/index.tsx": "72e8c3938196fa67946675e8b407001c4f5f3a2de2fed3d1bd8f4ea45d5c3b2a"
@@ -30,9 +30,10 @@
       "height": 900
     },
     "route": "/firms",
-    "resolvedRoute": "/firms?firm=firm_24bfe0c3b5b9498fa6c15e017e642db3&tab=clients",
-    "time": "2026-10-10T11:03:27.410Z",
+    "resolvedRoute": "/firms?firm=firm_0c0e072dbfff4d98876ebe45964c3bb3&tab=clients",
+    "time": "2026-10-10T13:31:42.393Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "worst",

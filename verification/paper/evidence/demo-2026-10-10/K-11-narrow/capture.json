@@ -1,6 +1,6 @@
 {
-  "actual": "verification/paper/evidence/demo-2026-10-10/K-11-dark/actual.png",
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-11 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-11-dark --theme dark",
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-11-narrow/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-11 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-11-narrow --width 390 --pane decision",
   "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
   "sourceHashes": {
     "apps/web/src/components/review-owner.tsx": "67e2f74e37b429509b54e24537dd646d601af8109ce1b49eaec458f1d35454fa",
@@ -34,17 +34,17 @@
     },
     "deviceScaleFactor": 1,
     "locale": "sv-SE",
-    "theme": "dark",
+    "theme": "light",
     "zoom": 1,
     "zoomMethod": "CSS layout zoom; not native browser zoom",
-    "pane": "route default",
+    "pane": "decision",
     "viewport": {
-      "width": 1440,
+      "width": 390,
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_419197c79e534f59858371eb3a5c7fbb/sha256:5038c4e319ca0117362c650fcb60a61bc28164f5fb484ed9d2f3e28439d7b2a4?sort=oldest",
-    "time": "2026-10-10T13:35:33.790Z",
+    "time": "2026-10-10T13:35:38.812Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

@@ -1,12 +1,14 @@
 {
   "scope": "K-09",
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/worst-K-09",
-  "adoptedComparisonEligible": true,
-  "comparatorStatus": 1,
-  "difference": 0.08850308641975309,
+  "adoptedComparisonEligible": false,
+  "comparatorStatus": null,
+  "difference": null,
   "parityQualified": false,
   "limitations": [
-    "Pixel comparison is not behavior/state or production qualification"
+    "Pixel comparison is not behavior/state or production qualification",
+    "Only demo fixtures qualify for board comparison",
+    "Non-default rendering, dimensions or unadopted policy: diagnostic only"
   ],
   "grid": [
     {

@@ -1,14 +1,16 @@
 {
   "scope": "K-08",
-  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
-  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "comparatorRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
   "referenceSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
-  "actualSha256": "1600e71b07edf038891ef8680e1102be455f86b5cc9e8c0bbc1ec913ffafb022",
-  "diffSha256": "d2178dacf34ca8e7ae42bbfbb3375209bc4ac79cc3f1fb695f4c964115cf9ca5",
+  "actualSha256": "10cf797a0278caec79f9a8034d2ca54a3592723481fb7273460556df538a2165",
+  "diffSha256": "14edec2be52c7453d35bc4e3f4b8068fad2e2e42a45725c046d0b17346d99692",
   "sourceHashes": {
-    "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598"
+    "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598",
+    "apps/web/src/lib/company-work.ts": "7ffbac678fa30f88436452bd0fe7a0d286f17eebb246ceb3c11813a079865b41",
+    "apps/web/src/lib/bank-workspace.ts": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776"
   },
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output verification/paper/evidence/demo-2026-10-10/K-08",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-08",
   "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-08 verification/paper/evidence/demo-2026-10-10/K-08/capture.json verification/paper/evidence/demo-2026-10-10/K-08",
   "conditions": {
     "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
@@ -34,7 +36,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/overview",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
-    "time": "2026-10-10T12:15:08.049Z",
+    "time": "2026-10-10T13:35:43.712Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
@@ -46,7 +48,7 @@
     }
   },
   "reviewer": "Automated capture; no human review or production qualification",
-  "difference": 0.07620447530864198,
+  "difference": 0.0785162037037037,
   "tolerance": 0.02,
   "channelTolerance": 16,
   "adoptedBy": "Erik Kroon",

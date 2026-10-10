@@ -64,6 +64,7 @@ const styles = stylex.create({
     display: "flex",
     fontFamily: kanon.fontUi,
     fontSize: kanon.textBody,
+    fontWeight: kanon.weightMedium,
     gap: kanon.space2,
     lineHeight: kanon.leadingBody,
     minHeight: kanon.sizeButton,
@@ -193,12 +194,20 @@ const styles = stylex.create({
     ":focus-visible": { outline: "none", boxShadow: kanon.shadowFocus },
   },
   queueItemSelected: { backgroundColor: kanon.colorSurface, boxShadow: kanon.shadowSelected },
-  queueText: { display: "flex", flexDirection: "column", gap: kanon.spaceHair, minWidth: 0 },
+  queueText: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    gap: kanon.spaceHair,
+    minWidth: 0,
+  },
   queueName: {
     color: kanon.colorText,
     fontSize: kanon.textBody,
     lineHeight: kanon.leadingBody,
-    overflowWrap: "anywhere",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   queueMeta: {
     fontSize: kanon.textCaption,
@@ -282,12 +291,7 @@ export function BarTab(props: {
       {...stylex.props(styles.tab, props.active && styles.tabActive)}
     >
       {props.label}
-      {props.count !== undefined && (
-        <>
-          {" "}
-          <CountPill count={props.count} />
-        </>
-      )}
+      {props.count !== undefined && ` ${props.count}`}
     </ButtonPrimitive>
   );
 }
@@ -507,7 +511,9 @@ export function QueueItem(props: QueueItemProps) {
     >
       <StatusIcon status={props.status} />
       <span {...stylex.props(styles.queueText)}>
-        <span {...stylex.props(styles.queueName)}>{props.name}</span>
+        <span title={props.name} {...stylex.props(styles.queueName)}>
+          {props.name}
+        </span>
         <span {...stylex.props(styles.queueMeta, statusTextStyle(props.status))}>{props.meta}</span>
       </span>
     </ButtonPrimitive>

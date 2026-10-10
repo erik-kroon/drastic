@@ -126,7 +126,6 @@ const styles = stylex.create({
     flexShrink: 0,
     fontSize: kanon.textBody,
     lineHeight: kanon.leadingBody,
-    paddingInlineStart: kanon.space4,
     width: kanon.sizeStateColumn,
     "@container (max-width: 40rem)": { display: "none" },
   },

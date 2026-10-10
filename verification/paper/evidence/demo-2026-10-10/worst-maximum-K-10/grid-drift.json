@@ -1,27 +1,29 @@
 {
   "scope": "K-10",
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/worst-maximum-K-10",
-  "adoptedComparisonEligible": true,
-  "comparatorStatus": 1,
-  "difference": 0.0881820987654321,
+  "adoptedComparisonEligible": false,
+  "comparatorStatus": null,
+  "difference": null,
   "parityQualified": false,
   "limitations": [
-    "Pixel comparison is not behavior/state or production qualification"
+    "Pixel comparison is not behavior/state or production qualification",
+    "Only demo fixtures qualify for board comparison",
+    "Non-default rendering, dimensions or unadopted policy: diagnostic only"
   ],
   "grid": [
     {
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 23524,
-      "difference": 0.16336111111111112
+      "changed": 23083,
+      "difference": 0.1602986111111111
     },
     {
       "row": 0,
       "column": 1,
       "pixels": 144000,
-      "changed": 30839,
-      "difference": 0.2141597222222222
+      "changed": 30416,
+      "difference": 0.21122222222222223
     },
     {
       "row": 0,
@@ -34,8 +36,8 @@
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 13037,
-      "difference": 0.09053472222222222
+      "changed": 12754,
+      "difference": 0.08856944444444445
     },
     {
       "row": 1,
@@ -55,8 +57,8 @@
       "row": 2,
       "column": 0,
       "pixels": 144000,
-      "changed": 950,
-      "difference": 0.006597222222222222
+      "changed": 952,
+      "difference": 0.006611111111111111
     },
     {
       "row": 2,

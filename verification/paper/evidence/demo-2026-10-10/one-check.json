@@ -3,12 +3,15 @@
   "mode": "one",
   "passed": true,
   "waitingItems": 1,
+  "homeWaitingItems": 2,
   "retainedBankRows": 1,
   "retainedClients": 1,
   "applicationClock": "2026-10-02T06:54:00.000Z",
   "checks": [
     "board application instant",
     "all waiting pages",
+    "home waiting total includes bank and overdue sales",
+    "sidebar uses stored attention total",
     "retained bank rows",
     "unchanged ledger"
   ]

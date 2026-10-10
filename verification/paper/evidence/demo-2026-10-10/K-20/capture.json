@@ -1,9 +1,11 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-20/actual.png",
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-20 --output verification/paper/evidence/demo-2026-10-10/K-20",
-  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-20 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-20",
+  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
   "sourceHashes": {
-    "apps/web/src/components/banking-workspace.tsx": "ac13fc0ae9f3a43348f8a58bcd87fc983d1d2abb78db08603b801c0a56239416"
+    "apps/web/src/components/banking-workspace.tsx": "ac13fc0ae9f3a43348f8a58bcd87fc983d1d2abb78db08603b801c0a56239416",
+    "apps/web/src/components/bank-account-workspace.tsx": "a9406b34d159259fe4b71250fbc9cd6b4b2f9780e0263ae807c96b5cd7049ba9",
+    "apps/web/src/lib/bank-workspace.ts": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776"
   },
   "reviewer": "Automated capture; no human review or production qualification",
   "conditions": {
@@ -30,7 +32,7 @@
     },
     "route": "/entities/$entityId/books/$bookId/accounts",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-09-01&to=2026-10-03",
-    "time": "2026-10-10T12:15:02.994Z",
+    "time": "2026-10-10T13:35:48.101Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {

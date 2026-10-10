@@ -62,6 +62,7 @@ export const kanon = stylex.defineConsts({
   space1: "0.25rem",
   space15: "6px",
   space25: "10px",
+  space35: "14px",
   space2: "0.5rem",
   space3: "0.75rem",
   space4: "1rem",

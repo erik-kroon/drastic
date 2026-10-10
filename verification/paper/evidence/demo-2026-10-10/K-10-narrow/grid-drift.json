@@ -14,8 +14,8 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 54832,
-      "difference": 0.38077777777777777
+      "changed": 54914,
+      "difference": 0.3813472222222222
     },
     {
       "row": 0,
@@ -35,8 +35,8 @@
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 40135,
-      "difference": 0.27871527777777777
+      "changed": 39840,
+      "difference": 0.27666666666666667
     },
     {
       "row": 1,
@@ -56,8 +56,8 @@
       "row": 2,
       "column": 0,
       "pixels": 144000,
-      "changed": 36594,
-      "difference": 0.254125
+      "changed": 37276,
+      "difference": 0.2588611111111111
     },
     {
       "row": 2,

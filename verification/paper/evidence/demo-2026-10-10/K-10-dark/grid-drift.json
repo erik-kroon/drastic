@@ -14,43 +14,43 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 142971,
-      "difference": 0.9928541666666667
+      "changed": 142913,
+      "difference": 0.9924513888888888
     },
     {
       "row": 0,
       "column": 1,
       "pixels": 144000,
-      "changed": 143866,
-      "difference": 0.9990694444444445
+      "changed": 143796,
+      "difference": 0.9985833333333334
     },
     {
       "row": 0,
       "column": 2,
       "pixels": 144000,
-      "changed": 143104,
-      "difference": 0.9937777777777778
+      "changed": 143139,
+      "difference": 0.9940208333333334
     },
     {
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 143830,
-      "difference": 0.9988194444444445
+      "changed": 143615,
+      "difference": 0.9973263888888889
     },
     {
       "row": 1,
       "column": 1,
       "pixels": 144000,
-      "changed": 143996,
-      "difference": 0.9999722222222223
+      "changed": 143804,
+      "difference": 0.9986388888888889
     },
     {
       "row": 1,
       "column": 2,
       "pixels": 144000,
-      "changed": 143539,
-      "difference": 0.9967986111111111
+      "changed": 143584,
+      "difference": 0.9971111111111111
     },
     {
       "row": 2,

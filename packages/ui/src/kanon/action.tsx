@@ -140,6 +140,19 @@ const inlineStyles = stylex.create({
     padding: 0,
     textDecoration: "none",
   },
+  filter: {
+    alignItems: "center",
+    borderColor: kanon.colorControl,
+    borderRadius: kanon.radiusPill,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    color: { default: kanon.colorSecondary, ":hover": kanon.colorText },
+    display: "inline-flex",
+    fontSize: kanon.textCaption,
+    height: kanon.space6,
+    paddingInline: kanon.space2,
+    ":focus-visible": { boxShadow: kanon.shadowFocus },
+  },
 });
 
 /** Blue text that opens or navigates, never changes data: "Öppna", "Välj annat underlag". */
@@ -147,6 +160,7 @@ export function InlineAction(props: {
   children: ReactNode;
   onClick?: () => void;
   render?: ComponentProps<typeof ButtonPrimitive>["render"];
+  presentation?: "filter";
 }) {
   return (
     <ButtonPrimitive
@@ -155,7 +169,7 @@ export function InlineAction(props: {
       render={props.render}
       nativeButton={props.render === undefined}
       role={props.render === undefined ? undefined : "link"}
-      {...stylex.props(inlineStyles.inline)}
+      {...stylex.props(inlineStyles.inline, props.presentation === "filter" && inlineStyles.filter)}
     >
       {props.children}
     </ButtonPrimitive>

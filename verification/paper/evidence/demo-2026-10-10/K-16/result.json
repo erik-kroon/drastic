@@ -1,10 +1,10 @@
 {
   "scope": "K-16",
-  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
-  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "sourceRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
+  "comparatorRevision": "2fca8fa28d571cd48487b957867eae574e5b1087",
   "referenceSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
-  "actualSha256": "16ad32712b847186076ed8d0aa8aafd0dcf815fdcbdacba83e037b5741b2198a",
-  "diffSha256": "5781c40f8eee9ac5dc67c5c98108cd05acc800d0cc2ea4d5dfa242dd06a1574b",
+  "actualSha256": "a13e80dcf0ef86ac5e429037c5f0d367102eea2320a90699604945be107e549b",
+  "diffSha256": "152ed671443781b3ee9ccd3e3b0da45198bb42fa15f73bf49f630037d82e0c80",
   "sourceHashes": {
     "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
     "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx": "ea04ba0aa0858c3387223acad24b1351120c9cbda96e0c00d90d58ea7f088cd3",
@@ -15,9 +15,9 @@
     "packages/ui/src/components/pdf-viewer.tsx": "980f83e5c247e282a9db88e0c1f09dc854c704e869e3313038aa72cea7e8c4e3",
     "packages/ui/src/kanon/overlays.tsx": "eedff6f5ca28ffbd5534bccd07da4710199d75d72b7232e616a48e62a034ca0e",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
-    "packages/ui/src/kanon/cards.tsx": "043370c0a7dce06985b485256909bdc98edd02bb134ce2b80af42f2172c23803"
+    "packages/ui/src/kanon/cards.tsx": "254d83db782c2eb7984e4467eb391f15096429f35b7661acb3826b810aadaa1b"
   },
-  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-16 --output verification/paper/evidence/demo-2026-10-10/K-16",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-16 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-16",
   "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-16 verification/paper/evidence/demo-2026-10-10/K-16/capture.json verification/paper/evidence/demo-2026-10-10/K-16",
   "conditions": {
     "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
@@ -42,8 +42,8 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/books",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_f1850f7d53e243c893e03c072037b0e4%252F%2522%257D%257D&record=voucher_2206bbdfd2164906b4505e32e644d58b&returnSupplier=supplier_invoice_draft_d453c12953074afda09dd7cc345b42bf&returnSupplierReview=supplier_review_92a9b002cdb44fc299e7fd131b2009e5",
-    "time": "2026-10-10T12:14:57.850Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_368403a5bd98408cb393ff9e5687110f%252F%2522%257D%257D&record=voucher_f51679db215d4753897a165fdf3853f9&returnSupplier=supplier_invoice_draft_c5dcd59c67ed4f7e90ea37282a5b0ff8&returnSupplierReview=supplier_review_5f685b9d57a746668253d63269bf8d73",
+    "time": "2026-10-10T13:36:25.984Z",
     "clockPinned": false,
     "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
@@ -55,7 +55,7 @@
     }
   },
   "reviewer": "Automated capture; no human review or production qualification",
-  "difference": 0.09338271604938271,
+  "difference": 0.09338811728395062,
   "tolerance": 0.02,
   "channelTolerance": 16,
   "adoptedBy": "Erik Kroon",

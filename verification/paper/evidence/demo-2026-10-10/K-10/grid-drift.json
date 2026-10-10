@@ -3,7 +3,7 @@
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-10",
   "adoptedComparisonEligible": true,
   "comparatorStatus": 1,
-  "difference": 0.03377237654320988,
+  "difference": 0.03288117283950617,
   "parityQualified": false,
   "limitations": [
     "Pixel comparison is not behavior/state or production qualification"
@@ -13,50 +13,50 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 10990,
-      "difference": 0.07631944444444444
+      "changed": 9954,
+      "difference": 0.069125
     },
     {
       "row": 0,
       "column": 1,
       "pixels": 144000,
-      "changed": 4718,
-      "difference": 0.03276388888888889
+      "changed": 4330,
+      "difference": 0.030069444444444444
     },
     {
       "row": 0,
       "column": 2,
       "pixels": 144000,
-      "changed": 10437,
-      "difference": 0.07247916666666666
+      "changed": 10462,
+      "difference": 0.07265277777777777
     },
     {
       "row": 1,
       "column": 0,
       "pixels": 144000,
-      "changed": 5621,
-      "difference": 0.03903472222222222
+      "changed": 5688,
+      "difference": 0.0395
     },
     {
       "row": 1,
       "column": 1,
       "pixels": 144000,
-      "changed": 2857,
-      "difference": 0.019840277777777776
+      "changed": 3104,
+      "difference": 0.021555555555555557
     },
     {
       "row": 1,
       "column": 2,
       "pixels": 144000,
-      "changed": 5624,
-      "difference": 0.03905555555555556
+      "changed": 5552,
+      "difference": 0.03855555555555556
     },
     {
       "row": 2,
       "column": 0,
       "pixels": 144000,
-      "changed": 950,
-      "difference": 0.006597222222222222
+      "changed": 952,
+      "difference": 0.006611111111111111
     },
     {
       "row": 2,

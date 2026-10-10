@@ -1,34 +1,36 @@
 {
   "scope": "K-10",
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/many-K-10",
-  "adoptedComparisonEligible": true,
-  "comparatorStatus": 1,
-  "difference": 0.060771604938271606,
+  "adoptedComparisonEligible": false,
+  "comparatorStatus": null,
+  "difference": null,
   "parityQualified": false,
   "limitations": [
-    "Pixel comparison is not behavior/state or production qualification"
+    "Pixel comparison is not behavior/state or production qualification",
+    "Only demo fixtures qualify for board comparison",
+    "Non-default rendering, dimensions or unadopted policy: diagnostic only"
   ],
   "grid": [
     {
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 12046,
-      "difference": 0.08365277777777778
+      "changed": 11497,
+      "difference": 0.07984027777777777
     },
     {
       "row": 0,
       "column": 1,
       "pixels": 144000,
-      "changed": 6160,
-      "difference": 0.042777777777777776
+      "changed": 6081,
+      "difference": 0.042229166666666665
     },
     {
       "row": 0,
       "column": 2,
       "pixels": 144000,
-      "changed": 12553,
-      "difference": 0.0871736111111111
+      "changed": 10595,
+      "difference": 0.07357638888888889
     },
     {
       "row": 1,
@@ -48,8 +50,8 @@
       "row": 1,
       "column": 2,
       "pixels": 144000,
-      "changed": 8714,
-      "difference": 0.06051388888888889
+      "changed": 6030,
+      "difference": 0.041875
     },
     {
       "row": 2,

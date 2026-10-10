@@ -15,7 +15,7 @@ const styles = stylex.create({
     flexDirection: "column",
     fontFamily: kanon.fontUi,
     margin: 0,
-    paddingInline: kanon.space4,
+    paddingInline: kanon.space35,
   },
   row: {
     alignItems: "center",

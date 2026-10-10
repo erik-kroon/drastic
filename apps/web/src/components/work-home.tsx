@@ -97,42 +97,15 @@ export function WorkHome() {
       ) : null}
       <ListDetailPage
         bar={
-          <AreaBar
-            title={sv ? "Att göra" : "To do"}
+          <WorkHomeBar
+            work={work}
+            page={page}
+            status={status}
+            filters={filters}
             headingFocusKey={
               !selected && activeQuery.isSuccess && !activeQuery.isFetching ? focusKey : undefined
             }
-            tabsLabel={sv ? "Arbetsstatus" : "Work status"}
-            tabs={homeStatusOptions(locale, page?.counts.open, work.sales.data?.counts.overdue).map(
-              (option) => (
-                <BarTab
-                  key={option.value}
-                  label={option.label}
-                  count={option.count}
-                  active={status === option.value}
-                  onClick={() => {
-                    void navigate({ search: { status: option.value }, resetScroll: false });
-                  }}
-                />
-              ),
-            )}
-            action={
-              <Box display="flex" gap="sm">
-                <WorkGroupEntry
-                  role={book.role}
-                  status={status}
-                  locale={locale}
-                  onOpen={() => setGroupReview(true)}
-                />
-                <Action
-                  kind="secondary"
-                  compact
-                  render={<Link to={workQueueHref(base, filters)} />}
-                >
-                  {sv ? "Granska alla" : "Review all"}
-                </Action>
-              </Box>
-            }
+            onGroupReview={() => setGroupReview(true)}
           />
         }
         panel={
@@ -168,10 +141,13 @@ export function WorkHome() {
                 ) : null}
               </Box>
             ) : null}
-            <HomeBankStatus work={work} status={status} kind={kind} />
+            <HomeRelatedStatus work={work} status={status} kind={kind} />
             <WorkListControls
               filterAction={
-                <InlineAction render={<Link to={workQueueHref(base, filters)} />}>
+                <InlineAction
+                  presentation="filter"
+                  render={<Link to={workQueueHref(base, filters)} />}
+                >
                   + Filter
                 </InlineAction>
               }
@@ -229,6 +205,75 @@ export function WorkHome() {
         }
       />
     </>
+  );
+}
+
+function WorkHomeBar(props: {
+  work: CompanyWork;
+  page: typeof Workspace.AttentionPage.Type | undefined;
+  status: "open" | "completed" | "watch";
+  filters: WorkReturn;
+  headingFocusKey: string | undefined;
+  onGroupReview: () => void;
+}) {
+  const { work, page, status, filters } = props;
+  const { book, locale, base } = work;
+  const sv = locale === "sv";
+  const navigate = useNavigate({ from: "/entities/$entityId/books/$bookId/" });
+
+  const checkedAt = page
+    ? new Intl.DateTimeFormat(sv ? "sv-SE" : "en-GB", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Stockholm",
+      })
+        .format(new Date(page.checkedAt))
+        .replace(".", "")
+    : undefined;
+
+  const openCount =
+    page && work.bank.isSuccess && work.sales.isSuccess
+      ? (
+          BigInt(page.counts.open) +
+          BigInt(
+            work.bank.data.accounts.reduce((total, account) => total + account.unmatchedCount, 0),
+          ) +
+          BigInt(work.sales.data.counts.overdue)
+        ).toString()
+      : undefined;
+
+  return (
+    <AreaBar
+      title={`${sv ? "Att göra" : "To do"}${checkedAt ? `, ${checkedAt}` : ""}`}
+      headingFocusKey={props.headingFocusKey}
+      tabsLabel={sv ? "Arbetsstatus" : "Work status"}
+      tabs={homeStatusOptions(locale, openCount, work.sales.data?.counts.overdue).map((option) => (
+        <BarTab
+          key={option.value}
+          label={option.label}
+          count={option.count}
+          active={status === option.value}
+          onClick={() => {
+            void navigate({ search: { status: option.value }, resetScroll: false });
+          }}
+        />
+      ))}
+      action={
+        <Box display="flex" gap="sm">
+          <WorkGroupEntry
+            role={book.role}
+            status={status}
+            locale={locale}
+            onOpen={props.onGroupReview}
+          />
+          <Action kind="secondary" compact render={<Link to={workQueueHref(base, filters)} />}>
+            {sv ? "Granska alla" : "Review all"}
+          </Action>
+        </Box>
+      }
+    />
   );
 }
 
@@ -433,7 +478,7 @@ function JournalPreview({
   );
 }
 
-function HomeBankStatus({
+function HomeRelatedStatus({
   work,
   status,
   kind,
@@ -444,21 +489,34 @@ function HomeBankStatus({
 }) {
   const copy = attentionCopy(work.locale);
 
-  if (status !== "open" || kind !== "all" || !work.bank.isError) return null;
+  if (status !== "open" || kind !== "all") return null;
+
+  const reads = [
+    { label: "Bank", query: work.bank },
+    { label: work.locale === "sv" ? "Kundfakturor" : "Customer invoices", query: work.sales },
+    ...work.bankEvents.map((event) => ({ label: `Bank, ${event.accountId}`, query: event.query })),
+  ].filter((read) => read.query.isError);
 
   return (
-    <Box padding="lg">
-      <AccountingStatus locale={work.locale} error={work.bank.error} />
-      <Action
-        kind="secondary"
-        blockedBy={work.bank.isFetching ? accountingCopy(work.locale).journal_working : undefined}
-        onClick={() => {
-          void work.bank.refetch();
-        }}
-      >
-        {copy.refresh}
-      </Action>
-    </Box>
+    <>
+      {reads.map((read) => (
+        <Box key={read.label} padding="lg">
+          <PageCaption>{read.label}</PageCaption>
+          <AccountingStatus locale={work.locale} error={read.query.error} />
+          <Action
+            kind="secondary"
+            blockedBy={
+              read.query.isFetching ? accountingCopy(work.locale).journal_working : undefined
+            }
+            onClick={() => {
+              void read.query.refetch();
+            }}
+          >
+            {copy.refresh}
+          </Action>
+        </Box>
+      ))}
+    </>
   );
 }
 
@@ -499,29 +557,43 @@ function homeRows(
       ? formatMinorAmount(item.amountMinor, item.currencyScale, locale)
       : "—";
 
+  const sales = work.sales.isSuccess ? work.sales.data : undefined;
+
+  const overdueRows = sales
+    ? sales.items
+        .filter((item) => item.overdue && (kind === "all" || kind === "invoice"))
+        .map((item) => {
+          const days = item.dueOn
+            ? Math.trunc((Date.parse(sales.asOf) - Date.parse(item.dueOn)) / 86400000)
+            : 0;
+
+          return {
+            key: `invoice:${item.id}`,
+            selectionKey: `invoice:${item.id}`,
+            group: sv ? "Kundfakturor" : "Customer invoices",
+            title: item.title,
+            state:
+              days > 0
+                ? `${sv ? "Förfallen" : "Overdue"} ${days} ${sv ? (days === 1 ? "dag" : "dagar") : days === 1 ? "day" : "days"}`
+                : sv
+                  ? "Förfallen"
+                  : "Overdue",
+            status: "overdue" as const,
+            amount:
+              item.outstandingMinor === null
+                ? "—"
+                : formatMinorAmount(item.outstandingMinor, item.currencyScale, locale),
+            caption: `${item.currency}${item.dueOn ? `, ${item.dueOn}` : ""}`,
+            action: sv ? "Visa faktura" : "View invoice",
+            href: `${base}/sales?status=overdue&sort=due&kind=invoice&record=${encodeURIComponent(item.id)}`,
+            documentId: null,
+          };
+        })
+    : [];
+
   const rows =
     status === "watch"
-      ? (work.sales.isSuccess
-          ? work.sales.data.items.filter(
-              (item) => item.overdue && (kind === "all" || kind === "invoice"),
-            )
-          : []
-        ).map((item) => ({
-          key: `invoice:${item.id}`,
-          selectionKey: `invoice:${item.id}`,
-          group: sv ? "Förfallna kundfakturor" : "Overdue customer invoices",
-          title: `${item.customer}, ${item.number ?? item.title}`,
-          state: sv ? "Förfallen" : "Overdue",
-          status: "overdue" as const,
-          amount:
-            item.outstandingMinor === null
-              ? "—"
-              : formatMinorAmount(item.outstandingMinor, item.currencyScale, locale),
-          caption: `${item.currency}${item.dueOn ? `, ${item.dueOn}` : ""}`,
-          action: sv ? "Visa faktura" : "View invoice",
-          href: `${base}/sales?status=overdue&sort=due&kind=invoice&record=${encodeURIComponent(item.id)}`,
-          documentId: null,
-        }))
+      ? overdueRows
       : items.map((item) => ({
           key: item.key,
           selectionKey: item.questionRoot?.key ?? item.key,
@@ -546,21 +618,28 @@ function homeRows(
 
   if (status === "open" && kind === "all" && work.bank.isSuccess) {
     for (const account of work.bank.data.accounts.filter((item) => item.unmatchedCount > 0)) {
+      const events = work.bankEvents.find((entry) => entry.accountId === account.id)?.query;
+      const event = events?.isSuccess && events.data.total === 1 ? events.data.rows[0] : undefined;
+
       rows.push({
         key: `bank:${account.id}`,
         selectionKey: `bank:${account.id}`,
-        group: sv ? "Bankhändelser" : "Bank events",
-        title: account.name,
+        group: "Bank",
+        title: event?.description ?? account.name,
         state: `${account.unmatchedCount} ${sv ? "att matcha" : "to match"}`,
         status: "needsYou",
-        amount: "—",
+        amount: event
+          ? formatMinorAmount(event.remainingMinor, work.bank.data.currencyScale, locale)
+          : "—",
         caption: `${work.from}–${work.to}`,
         action: sv ? "Matcha bankhändelser" : "Match bank events",
-        href: `${base}/accounts?account=${encodeURIComponent(account.id)}&from=${work.from}&to=${work.to}`,
+        href: `${base}/accounts?account=${encodeURIComponent(account.id)}&from=${work.from}&to=${work.to}${event?.statementId && event.rowOrdinal !== null ? `&statement=${encodeURIComponent(event.statementId)}&row=${event.rowOrdinal}` : ""}`,
         documentId: null,
       });
     }
   }
+
+  if (status === "open") rows.push(...overdueRows);
 
   return rows;
 }

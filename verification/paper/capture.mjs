@@ -174,6 +174,18 @@ async function main() {
     // Cold route imports may mount after network-idle. Never compare an empty root.
     await page.getByRole("heading").first().waitFor({ state: "visible" });
 
+    // The home heading mounts before its independent attention, sales and bank reads.
+    // Wait for their aggregate count and any selected-record read, not a loading frame.
+    if (entry.id === "K-10") {
+      await page
+        .getByRole("button", { name: /^Väntar på dig \d+$/, exact: true })
+        .waitFor({ state: "visible" });
+      await page
+        .getByText("Begäran pågår...", { exact: true })
+        .first()
+        .waitFor({ state: "hidden" });
+    }
+
     const reached = new URL(page.url());
 
     if (
@@ -190,7 +202,6 @@ async function main() {
     for (const name of board?.buttonClicks ?? [])
       await page.getByRole("button", { name, exact: true }).first().click();
 
-    if (board?.readyText) await page.getByText(board.readyText, { exact: true }).waitFor();
     await page.evaluate((factor) => {
       document.documentElement.style.zoom = String(factor);
     }, zoom);
@@ -205,6 +216,9 @@ async function main() {
         })
         .click();
     }
+
+    // On narrow review screens, the ready control belongs to the requested pane.
+    if (board?.readyText) await page.getByText(board.readyText, { exact: true }).waitFor();
 
     await page.waitForLoadState("networkidle", { timeout: 30000 });
 
@@ -301,6 +315,7 @@ async function main() {
   const sameDimensions = actual.width === expected.width && actual.height === expected.height;
 
   const eligible =
+    session.demoMode === "demo" &&
     sameDimensions &&
     viewport.width === entry.viewport.width &&
     viewport.height === entry.viewport.height &&
@@ -396,6 +411,7 @@ async function main() {
     parityQualified: false,
     limitations: [
       "Pixel comparison is not behavior/state or production qualification",
+      ...(session.demoMode !== "demo" ? ["Only demo fixtures qualify for board comparison"] : []),
       ...(!eligible
         ? ["Non-default rendering, dimensions or unadopted policy: diagnostic only"]
         : []),

@@ -131,6 +131,7 @@ export function WorkSupplierPreview({
           open: "Öppna",
           matched: "Beloppen stämmer med granskade uppgifter",
           check: "Kontrollera beloppen mot originalet",
+          dueToday: "Förfaller i dag.",
         }
       : {
           posted: "Posting",
@@ -142,6 +143,7 @@ export function WorkSupplierPreview({
           open: "Open",
           matched: "Amounts match reviewed facts",
           check: "Check amounts against the original",
+          dueToday: "Due today.",
         };
 
   const snapshot = view.plan.draftSnapshot;
@@ -164,7 +166,11 @@ export function WorkSupplierPreview({
             ? copy.unknown
             : formatMinorAmount(snapshot.totals.grossMinor, snapshot.content.currencyScale, locale)
         }
-        subtitle={snapshot.content.title}
+        subtitle={
+          snapshot.content.dueDate === setup.today
+            ? `${snapshot.content.title.replace(/\.$/u, "")}. ${copy.dueToday}`
+            : snapshot.content.title
+        }
         subtitleAs="h2"
       />
       {!view.dependenciesCurrent && !view.acceptance ? (

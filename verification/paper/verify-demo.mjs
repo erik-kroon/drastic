@@ -90,6 +90,27 @@ try {
   const page = await context.newPage();
   await page.goto(`${session.url}${session.boards["K-10"].route}`, { waitUntil: "networkidle" });
 
+  // Worst retains a zero observation; many deliberately imports 1001 nonzero bank events.
+  const homeCount = { demo: 5, worst: 7, empty: 0, one: 2, many: 2004 }[seed.mode];
+
+  await page
+    .getByRole("button", { name: `Väntar på dig ${homeCount}`, exact: true })
+    .waitFor({ timeout: 10000 });
+
+  if (expected.open !== "0") {
+    const todo = page.locator('nav[aria-label="Att göra"] a').first();
+    assert.match(
+      await todo.innerText(),
+      new RegExp(`${expected.open}$`),
+      "Sidebar uses total, not page size",
+    );
+  }
+
+  if (seed.mode === "demo") {
+    await page.getByRole("button", { name: /Utbetalning 28 sep.*8 750,00/ }).waitFor();
+    await page.getByRole("button", { name: /Kundfaktura F-2026-0038.*18 750,00/ }).waitFor();
+  }
+
   if (seed.portfolio) {
     const response = await context.request.get(
       `${session.url}/api/v1/firms/${seed.portfolio.firmId}/portfolio`,
@@ -165,12 +186,15 @@ try {
     mode: seed.mode,
     passed: true,
     waitingItems: keys.size,
+    homeWaitingItems: homeCount,
     retainedBankRows: bankRows,
     retainedClients: expected.clients,
     applicationClock: obligations.checkedAt,
     checks: [
       "board application instant",
       "all waiting pages",
+      "home waiting total includes bank and overdue sales",
+      "sidebar uses stored attention total",
       "retained bank rows",
       "unchanged ledger",
     ],

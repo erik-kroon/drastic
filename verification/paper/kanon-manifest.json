@@ -13,6 +13,9 @@
         "apps/web/src/components/company-work-sections.tsx",
         "apps/web/src/components/work-home.tsx",
         "apps/web/src/components/work-supplier-preview.tsx",
+        "apps/web/src/lib/company-work.ts",
+        "apps/web/src/lib/bank-workspace.ts",
+        "apps/web/src/lib/attention.ts",
         "apps/web/src/components/commerce/supplier-acceptance.tsx",
         "packages/ui/src/kanon/cards.tsx",
         "packages/ui/src/kanon/layouts.tsx",
@@ -42,7 +45,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "K-10 original file card uses the adopted JSX's 10 px block padding through the existing token; demo drift is 3.3772%, above unchanged 2%. The demo uses the upstream E2E application clock at 2 October 08:54 Stockholm, with database and browser timestamps still real. Retained original identity and account-side summary replace the placeholder; approval and financial owners are unchanged. Fresh demo, empty, one, worst and many public API/browser checks pass with unchanged ledgers. Worst retains Unicode, zero and all 38 amount digits; many exposes all 1003 waiting items through pagination. Light, dark and 390px renders were inspected; real mobile scrolling exposes an unobscured review action and the decision pane without writes. Dark/narrow images are diagnostics, not adopted parity. Open counts cover the attention owner, not every supplementary bank row. Vinter's unknown calculated gross, customer watch classification and unsupported board-only actions remain gaps. Loading/error and native browser zoom remain unqualified."
+      "notes": "K-10 composes stored attention, unmatched bank and overdue sales work, with an owner-total aggregate count. Single remaining bank events expose their stored description and remaining amount; larger accounts keep their summary and bank-owner destination. Overdue amounts and age use the sales owner's outstanding amount and asOf. Valid prepared supplier reviews show proposal status without changing approval or expiry checks. The header displays the attention owner's actual checkedAt, not a fabricated board clock. Database-derived read time and overdue age remain different from the Effect test clock. State columns, plain tab counts, filter outline and 14px card gutters follow stored JSX. Comparison remains above unchanged 2%; missing watch facts, Vinter's unknown calculated gross, Sara/agent activity and unsupported board-only actions are not fabricated. Current-source mode, interaction and visual checks are retained separately; dark/narrow are diagnostics, not adopted parity. Native zoom and complete state qualification remain pending."
     },
     {
       "id": "K-40",
@@ -113,6 +116,7 @@
       "files": [
         "apps/web/src/components/review-owner.tsx",
         "apps/web/src/components/review-screen.tsx",
+        "apps/web/src/lib/attention.ts",
         "apps/web/src/components/commerce/supplier-acceptance.tsx",
         "packages/ui/src/kanon/cards.tsx",
         "packages/ui/src/kanon/layouts.tsx",
@@ -153,7 +157,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Demo K-11 drift 7.7035% exceeds unchanged 2%. Real one-page Nordhamn original and shared three-account summary are readable; retained detailed lines remain available. Shared readonly PDF now fits narrow record panels at up to 100% document zoom; focused supplier and bank presentations remain unchanged and are recaptured separately. Continuous K-10 to K-11 to K-16 browser proof checks original totals, approval without posting, one balanced voucher and original bytes after reload. Prior single, worst, many, dark and CSS layout zoom diagnostics are historical, not current-source full state or native browser zoom qualification. Exact approval, synthetic acknowledgment and separate execution remain unchanged. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Prior changed-source/missing-original evidence remains historical."
+      "notes": "K-11 uses adopted 14px card gutters and compact queue name lines. Ellipsis changes only visible wrapping: full stored titles remain in DOM, accessible names and hover titles; schema-maximum amounts still wrap. Valid prepared supplier status is shared with K-10; expired, stale and completed projections keep their guards. Refreshed comparison remains above unchanged 2%. The real original, exact approval, synthetic acknowledgment, detailed facts and separate execution remain. Board combined approval/posting, return/reject and Sara/agent activity are not fabricated. Continuous browser proof and current diagnostic captures remain separate from parity; broader states and native browser zoom remain unqualified."
     },
     {
       "id": "K-70",
@@ -287,7 +291,11 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-08.png",
       "baselineSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-08.jsx.json",
-      "files": ["apps/web/src/components/company-overview.tsx"],
+      "files": [
+        "apps/web/src/components/company-overview.tsx",
+        "apps/web/src/lib/company-work.ts",
+        "apps/web/src/lib/bank-workspace.ts"
+      ],
       "route": "/entities/$entityId/books/$bookId/overview",
       "audience": "bureau",
       "status": "drifts",
@@ -309,7 +317,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Existing overview measured with partial retained demo facts: 7.6204% drift exceeds unchanged 2%. Application clock is pinned to 2 October 08:54 Stockholm; browser/database times remain real. Continuous browser proof independently checks zero bank balance at the board cutoff and the retained -125000 movement at the next day's cutoff, without changing its October 3 posting date. Customer receivable and supplier review are real stored observations. Illustrated locked September result, complete source coverage, cost breakdown and activity are absent, not invented. No overview UI or financial behavior change; broader adopted states and deadlines qualification remain pending."
+      "notes": "Overview is recaptured after extracting the unchanged bank query into its shared read owner. Partial retained demo facts remain above unchanged 2%. Effect application clock is pinned to 2 October 08:54 Stockholm; browser/database times remain real. Continuous browser proof checks zero bank balance at the board cutoff and the retained -125000 movement at the next day's cutoff. Customer receivable and supplier review are stored observations. Illustrated locked September result, complete source coverage, cost breakdown and activity are absent, not invented. No overview financial behavior change; broader adopted states and deadlines qualification remain pending."
     },
     {
       "id": "K-50",
@@ -542,7 +550,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Bureau K-16 posted/correction states keep the existing books route, scope checks, evidence, correction and return owners. Canonical 420px record drawer retains dialog focus/dismissal and undimmed register context; its heading and account-side totals use kanon. Full immutable line descriptions remain in Bokförda rader, with evidence and correction disclosures unchanged. Fresh demo comparison is 9.3383%, down from 40.6855% but above unchanged 2%. Real browser proof checks separate side totals, all seven original lines, original checksum after reload, account table gutters, PDF panel fit at 100%, deliberate horizontal scrolling at 125%, and Escape return without ledger writes. Dark and 390px captures are diagnostics, not adopted parity. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution or unsupported payment/activity/next-task facts. Native browser zoom and complete-state qualification remain pending."
+      "notes": "K-16 shared ledger card now uses the adopted 14px gutter. Existing books route, 420px record dialog, side totals, seven immutable lines, evidence, corrections and return owners remain unchanged. Refreshed comparison remains above unchanged 2%; the register background differs from the board's completed-work queue. Real continuous browser proof checks one balanced voucher and original checksum after reload. The board illustrates Tryckhuset 3150, not this path's Nordhamn 12500; no voucher substitution or unsupported payment/activity/next-task facts. Prior dark/narrow and original zoom evidence is historical; native zoom and complete-state qualification remain pending."
     },
     {
       "id": "K-20",
@@ -551,7 +559,11 @@
       "baseline": "verification/paper/baseline/kanon-2026-10-09/K-20.png",
       "baselineSha256": "4cd9998fc74bdb25a7d96441b347eb97f28725ee7275d1970b30ba1488314ed3",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-20.jsx.json",
-      "files": ["apps/web/src/components/banking-workspace.tsx"],
+      "files": [
+        "apps/web/src/components/banking-workspace.tsx",
+        "apps/web/src/components/bank-account-workspace.tsx",
+        "apps/web/src/lib/bank-workspace.ts"
+      ],
       "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
       "status": "drifts",
@@ -573,7 +585,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Existing bank route measured at 6.1079% drift, above unchanged 2%. Demo retains the 28 September -875000 row and a separate -125000 original-backed candidate. Continuous clock-enabled browser path selects that real bank row and executes one exact allocation through existing preparation, approval and execution owners; bank capacity and ledger readbacks distinguish each stage. Fresh many checks retain 1001 imported rows in five owner-supported evidence batches. Board's 27 matched rows, balance and complete coverage are not fabricated. No bank behavior or UI change; broader adopted states remain unqualified."
+      "notes": "Bank query options are extracted unchanged into a shared read owner for bank and K-10 clients; keys, scope checks and pagination remain unchanged. Refreshed comparison stays above unchanged 2%. Demo retains the September -875000 row and a separate -125000 original-backed candidate. Continuous browser proof distinguishes preparation, approval and one exact allocation without changing posted history. Zero bank observations remain retained and have no remaining work according to the existing bank owner. Board's 27 matched rows, balance and complete coverage are not fabricated; broader states remain unqualified."
     },
     {
       "id": "K-21",
@@ -585,6 +597,8 @@
       "files": [
         "apps/web/src/components/bank-transaction-match.tsx",
         "apps/web/src/components/bank-match-original.tsx",
+        "apps/web/src/components/bank-account-workspace.tsx",
+        "apps/web/src/lib/bank-workspace.ts",
         "apps/web/src/components/original-document.tsx",
         "packages/ui/src/components/pdf-viewer.tsx"
       ],
@@ -614,7 +628,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "Demo one-candidate review with retained original measured at 9.1395% drift, above unchanged 2%. Capture explicitly waits for PDF rendering, not only network idle. Shared readonly PDF fits narrow records; bank presentation and its explicit document magnification are unchanged and recaptured. Original is rendered; preparation is disabled until the existing comparison acknowledgment. Continuous real browser path separately checks preparation and approval without allocation, one exact -125000 execution leg, zero source remaining and retained receipt after reload, with unchanged posted history. Candidate uses the genuine retained synthetic Kontorsservice PDF, not a fabricated supplier identity or board's receipt. No complete coverage or pixel parity qualification is claimed. Prior original refusal evidence remains historical; broader states and native browser zoom are unqualified."
+      "notes": "K-21 is recaptured after the unchanged bank query is extracted into its shared read owner. One-candidate review remains above unchanged 2%; capture waits for the rendered original. Existing identity acknowledgment, preparation, approval and execution owners are untouched. Continuous real browser proof checks each allocation stage, zero source remaining and retained receipt after reload, with unchanged posted history. Candidate uses the retained synthetic Kontorsservice PDF, not the board's supplier or receipt. No complete coverage or pixel parity qualification is claimed; broader states and native zoom remain unqualified."
     },
     {
       "id": "K-30",
@@ -742,7 +756,7 @@
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
       "notes": "Named light and dark palette verification uses the real synthetic overview appearance menu, reload and bookkeeping route. Contract and browser evidence live in verification/paper/evidence/k01-palette/. No specimen comparison or full K-10/K-11 qualification is claimed; visual status remains unverified.",
-      "implementationNote": "Loaded palette verified separately. Added K-06 company/navigation type, mark radius and spacing values from stored JSX to the shared token owner; no specimen parity claim."
+      "implementationNote": "Shared token owner includes the adopted card's 14px inline gutter as space35. Existing palette, navigation type, mark radius and spacing remain; no foundation specimen parity claim."
     },
     {
       "id": "K-02",
@@ -769,7 +783,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": " Rendered Action/InlineAction router links expose link semantics; native actions retain button semantics. This fixes the real-route regression reproduced by the retained Granska original link locator, without changing navigation destinations. K-10 Review all uses the existing compact secondary Action. Native label-preserving form inhibition needs an explicit owner contract alongside the adopted blockedBy reason state; focused submit forms remain unchanged."
+      "notes": "InlineAction adds the adopted 24px dashed filter presentation using kanon tokens; ordinary links and native actions retain their semantics. K-10 filter destination and Review all behavior are unchanged. Native label-preserving form inhibition needs an explicit owner contract alongside blockedBy; focused submit forms remain unchanged. No foundation specimen parity claim."
     },
     {
       "id": "K-03",
@@ -796,7 +810,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "notes": "WorkGroup retains semantic headings; WorkRow retains native autofocus and pressed/current selection; count pills render stored strings without numeric conversion. K-10 filter/sort gutter has an owned WorkListControls composition using page 00 row/gutter tokens. Schema-maximum amounts wrap within the unchanged amount column instead of clipping at the panel boundary; rows grow only when needed. Existing selection and responsive state-column collapse remain unchanged. Foundation specimen and full native200% qualification remain pending."
+      "notes": "WorkRow state column retains its adopted 150px width without the extra 16px inline padding. Native selection, autofocus and responsive collapse remain. Group pills retain stored counts; schema-maximum amounts wrap in the unchanged amount column. Foundation specimen and native200% qualification remain pending."
     },
     {
       "id": "K-04",
@@ -883,7 +897,7 @@
       "candidateRoute": null,
       "comparison": null,
       "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
-      "implementationNote": "Shared shell implementation moved to kanon; existing authority, focused review, pathname scroll reset, mobile dialog and legacy page gutters retained. Review queue names and maximum amounts wrap within their columns. Review pane switch and inactive pane now use the same 60rem container condition as the stacked layout, including CSS layout zoom. Literal K-06 shell values have separate browser obligations. Explanatory board needs owner-adopted specimens before visual comparison.",
+      "implementationNote": "BarTab now uses the adopted plain inline count and medium weight. Queue titles use one-line ellipsis while full stored names remain accessible and in hover titles; maximum amounts still wrap. Sidebar counts use the attention owner's stored total instead of the first page's length, with no numeric conversion. Existing authority, route state, focus, mobile dialog and 60rem pane behavior remain. Explanatory board still needs owner-adopted specimens before comparison.",
       "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures wrap only when needed, including schema-maximum amounts, without truncating stored values. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required. DetailPanelHeader supports native figure h2 for the actual supplier owner while default figure p and subtitle options remain unchanged. DRA-216 main Bank accessible identity includes the current stored book name while its visible caption, root destination, preload and audience/currentness remain unchanged. The exact Bank source recovery link retains coverage destination; candidate native proof pending."
     },
     {

@@ -3,7 +3,7 @@
   "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-08",
   "adoptedComparisonEligible": true,
   "comparatorStatus": 1,
-  "difference": 0.07620447530864198,
+  "difference": 0.0785162037037037,
   "parityQualified": false,
   "limitations": [
     "Pixel comparison is not behavior/state or production qualification"
@@ -13,8 +13,8 @@
       "row": 0,
       "column": 0,
       "pixels": 144000,
-      "changed": 14717,
-      "difference": 0.10220138888888888
+      "changed": 14728,
+      "difference": 0.10227777777777777
     },
     {
       "row": 0,
@@ -48,8 +48,8 @@
       "row": 1,
       "column": 2,
       "pixels": 144000,
-      "changed": 15774,
-      "difference": 0.10954166666666666
+      "changed": 17492,
+      "difference": 0.12147222222222222
     },
     {
       "row": 2,
@@ -69,8 +69,8 @@
       "row": 2,
       "column": 2,
       "pixels": 144000,
-      "changed": 4207,
-      "difference": 0.029215277777777778
+      "changed": 5474,
+      "difference": 0.03801388888888889
     }
   ],
   "gridCanvas": {
