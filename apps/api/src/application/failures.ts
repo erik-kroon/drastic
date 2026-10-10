@@ -18,6 +18,7 @@ const messages = {
   IdempotencyConflict: "This request key was already used for a different command.",
   AlreadyPosted: "This event has already been posted.",
   ApprovalRequired: "A current operator approval is required.",
+  PresenceRequired: "Confirm this exact action with your enrolled security key.",
   UnsupportedProfile: "This accounting profile does not support this operation.",
   Unavailable: "The accounting service is unavailable. Try again later.",
   InternalError: "The accounting service could not complete this request.",
@@ -75,9 +76,9 @@ export function postingFailure(code: PostingValidationFailure["code"]) {
 
 const schemaIssues = SchemaIssue.makeFormatterStandardSchemaV1({
   leafHook: (issue) => {
-    if (issue._tag !== "InvalidType") return issue._tag;
+    if (!Predicate.isTagged(issue, "InvalidType")) return issue._tag;
 
-    return issue.ast._tag === "Literal"
+    return Predicate.isTagged(issue.ast, "Literal")
       ? `Expected literal ${String(issue.ast.literal)}`
       : `Expected ${issue.ast._tag}`;
   },

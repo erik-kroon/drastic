@@ -17,7 +17,7 @@ export const captureFilingAdoption = (
     "filing_adoptions",
     Filing.AdoptionRecord,
     "capture_filing_adoption",
-    false,
+    null,
     (transaction, principal) =>
       Effect.gen(function* () {
         const manifest = yield* read(
@@ -57,7 +57,7 @@ export const reviewFilingAdoption = (
     "filing_adoption_reviews",
     Filing.AdoptionReview,
     "review_filing_adoption",
-    true,
+    "review_filing_adoption",
     (transaction, principal) =>
       Effect.gen(function* () {
         const adoption = yield* read(

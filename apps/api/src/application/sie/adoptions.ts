@@ -9,6 +9,7 @@ import { readHistoricalObligation } from "../commerce/historical-obligations";
 import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { readPool, domainPool, checkedAdoption } from "./adoption-basis";
+import { authorize } from "../authority";
 
 export {
   rereviewHistoricalPool,
@@ -145,7 +146,7 @@ export const approveHistoricalAdoption = Effect.fn("historical.approveAdoption")
 
       if (request.previous) return request.previous;
 
-      if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+      yield* authorize(principal, "approve_historical_adoption");
       const plan = yield* readAdoptionPlan(tx, scope, id);
 
       if (plan.digest !== input.digest) return yield* failure("StaleDependency");

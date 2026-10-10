@@ -37,6 +37,7 @@ import {
   type MergeSuggestion,
 } from "./extraction-merge";
 import * as Shared from "./shared";
+import { authorize } from "../authority";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -1593,7 +1594,7 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
 
   const captured = yield* Shared.withBook(token, scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* authorize(principal, "run_supplier_extraction");
       yield* requireExtractionAccess(transaction);
       const book = yield* Shared.readBook(transaction, scope.bookId);
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
@@ -1722,7 +1723,7 @@ function publishExtraction(
 ) {
   return Shared.withBook(token, scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* authorize(principal, "publish_supplier_extraction");
       yield* requireExtractionAccess(transaction);
       const book = yield* Shared.readBook(transaction, scope.bookId);
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
@@ -1911,7 +1912,7 @@ export const stopFailedExtractionDelivery = Effect.fn("purchases.extraction.stop
 
     return yield* Shared.withBook(token, payload.scope, false, "update", (transaction, principal) =>
       Effect.gen(function* () {
-        if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+        yield* authorize(principal, "stop_supplier_extraction_delivery");
         yield* requireExtractionAccess(transaction);
 
         yield* ExtractionDb.completeExtractionRequest(

@@ -709,6 +709,78 @@ function acceptanceBlockers(
   });
 }
 
+// The sealed review as currently executable: its digest is unchanged, its supplier
+// questions are resolved and no acceptance blocker has opened since it was sealed.
+export const readCurrentReview = Effect.fn("purchases.acceptance.readCurrentReview")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  reviewId: string,
+  reviewDigest: string,
+) {
+  const row = yield* readReview(transaction, scope.bookId, reviewId);
+  const review = yield* Shared.decode(ReviewSchema, row.body);
+
+  yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
+
+  if (review.digest !== reviewDigest || (yield* acceptanceBlockers(transaction, scope, row)).length)
+    return yield* failure("StaleDependency");
+
+  return review;
+});
+
+// One exact-digest approval of a sealed review. A direct approval names the
+// approving operator; a mandate-backed approval names the mandate's grantor and
+// records the mandate in its authority basis.
+export const recordApproval = Effect.fn("purchases.acceptance.recordApproval")(function* (
+  transaction: Transaction,
+  command: {
+    readonly scope: Scope;
+    readonly reviewId: string;
+    readonly reviewDigest: string;
+    readonly approverId: string;
+    readonly authorityBasis: JsonObject;
+    readonly receipt: JsonObject;
+  },
+) {
+  const ordinal =
+    (yield* AcceptanceDb.readApprovalCount(transaction, command.scope.bookId, command.reviewId))[0]!
+      .total + 1;
+
+  if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+  const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
+
+  if (now === undefined) return yield* failure("InternalError");
+
+  const body = {
+    id: newId("supplier_approval"),
+    scope: command.scope,
+    reviewId: command.reviewId,
+    digest: command.reviewDigest,
+    version: 1,
+    actorId: command.approverId,
+    ordinal,
+    expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+    authorityBasis: command.authorityBasis,
+    createdAt: yield* isoNow(transaction),
+    receipt: command.receipt,
+  } satisfies JsonObject;
+
+  const approval = yield* Shared.decode(ApprovalSchema, body);
+
+  yield* AcceptanceDb.insertApproval(transaction, {
+    bookId: command.scope.bookId,
+    id: body.id,
+    reviewId: command.reviewId,
+    ordinal,
+    actorId: command.approverId,
+    digest: body.digest,
+    expiresAt: body.expiresAt,
+    body: yield* Shared.toJsonObject(body),
+  });
+
+  return approval;
+});
+
 export const approveSupplierAcceptanceInTransaction = Effect.fn(
   "purchases.acceptance.approveInTransaction",
 )(function* (
@@ -755,55 +827,24 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
 
     if (blockers.length > 0) return yield* failure("StaleDependency");
 
-    const ordinal =
-      (yield* AcceptanceDb.readApprovalCount(
-        transaction,
-        command.scope.bookId,
-        command.reviewId,
-      ))[0]!.total + 1;
-
-    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-    const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
-
-    if (now === undefined) return yield* failure("InternalError");
-
-    const body = Object.assign(
-      {},
-      {
-        id: newId("supplier_approval"),
-        scope: command.scope,
-        reviewId: command.reviewId,
-        digest: Shared.textField(review.body, "digest") ?? "",
-        version: 1,
-        actorId: principal.actorId,
-        ordinal,
-        expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-        ),
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "approve_supplier_acceptance",
-          principal.actorId,
-        ),
-      },
-    ) satisfies JsonObject;
-
-    const approval = yield* Shared.decode(ApprovalSchema, body);
-    yield* AcceptanceDb.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: Shared.textField(body, "id") ?? "",
+    const approval = yield* recordApproval(transaction, {
+      scope: command.scope,
       reviewId: command.reviewId,
-      ordinal,
-      actorId: principal.actorId,
-      digest: Shared.textField(body, "digest") ?? "",
-      expiresAt: Shared.textField(body, "expiresAt") ?? "",
-      body: yield* Shared.toJsonObject(body),
+      reviewDigest: Shared.textField(review.body, "digest") ?? "",
+      approverId: principal.actorId,
+      authorityBasis: yield* collectPostingPrincipalBasis(
+        transaction,
+        command.scope,
+        principal,
+        "approve_change",
+      ),
+      receipt: Shared.receipt(
+        command.idempotencyKey,
+        "approve_supplier_acceptance",
+        principal.actorId,
+      ),
     });
+
     yield* saveCommand(
       transaction,
       command.scope,
@@ -947,136 +988,13 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
       );
 
       if (request.previous) return request.previous;
-      yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
-      yield* readBook(transaction, scope.bookId);
-      const row = yield* readReview(transaction, scope.bookId, reviewId);
-      const review = yield* Shared.decode(ReviewSchema, row.body);
-      yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
 
-      if (
-        review.digest !== input.digest ||
-        (yield* acceptanceBlockers(transaction, scope, row)).length
-      )
-        return yield* failure("StaleDependency");
-
-      const approval = (yield* AcceptanceDb.readApprovalById(
-        transaction,
-        scope.bookId,
-        input.approvalId,
-        reviewId,
-      ))[0];
-
-      if (
-        !approval ||
-        approval.actorId !== principal.actorId ||
-        approval.digest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
-        (yield* AcceptanceDb.readAcceptanceByApproval(transaction, scope.bookId, approval.id))[0]
-          ?.present
-      )
-        return yield* failure("ApprovalRequired");
-
-      const identity = yield* requireRecognitionIdentity(transaction, scope, review);
-
-      const kernel = (yield* PostingDb.insertApproval(transaction, {
-        bookId: scope.bookId,
-        id: approval.id,
-        changeSetId: review.postingPlan.id,
-        digest: review.postingPlan.planDigest,
-        actorId: approval.actorId,
-        expiresAt: approval.expiresAt,
-        authorityBasis: yield* Shared.toJsonObject(approval.body.authorityBasis),
-      }))[0];
-
-      if (kernel === undefined) return yield* failure("InternalError");
-
-      const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("supplier_post"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
-        owner: { kind: "supplier_acceptance", id: reviewId },
+      const result = yield* executeAcceptanceInTransaction(transaction, principal, {
+        ...command,
+        operation,
+        approverId: principal.actorId,
       });
 
-      const draft = review.draftSnapshot;
-
-      const line = review.postingPlan.groups[0]?.actions[0]?.lines.find(
-        (line) =>
-          line.accountId === review.input.controlAccountId &&
-          line.creditMinor === draft.totals.grossMinor,
-      );
-
-      if (
-        !line ||
-        draft.totals.grossMinor === null ||
-        draft.content.documentDate === null ||
-        draft.content.dueDate === null ||
-        draft.content.supplierDocumentNumber === null
-      )
-        return yield* failure("InvalidJournal");
-
-      const invoice = yield* createInvoiceInTransaction(transaction, principal, {
-        scope,
-        idempotencyKey: newId("supplier_register"),
-        input: {
-          kind: "synthetic_invoice_v1",
-          direction: "supplier",
-          counterpartyId: draft.content.counterpartyId,
-          counterpartyRevision: draft.content.counterpartyRevision,
-          documentNumber: draft.content.supplierDocumentNumber,
-          issuedOn: draft.content.documentDate,
-          dueOn: draft.content.dueDate,
-          currency: draft.content.currency,
-          amountMinor: draft.totals.grossMinor,
-          controlAccountId: review.input.controlAccountId,
-          recognitionVoucherId: postingReceipt.voucherId,
-          recognitionLineId: line.lineId,
-          evidenceId: review.evidence.evidenceId,
-          description: `Supplier invoice: ${draft.content.title}`,
-        },
-      });
-
-      const owned = yield* writeOwnedRecognition(transaction, {
-        scope,
-        principal,
-        review,
-        approvalId: approval.id,
-        draft,
-        key: identity.key,
-        voucherId: postingReceipt.voucherId,
-        payableId: invoice.id,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      });
-
-      const body = {
-        id: newId("supplier_acceptance"),
-        scope,
-        reviewId,
-        reviewDigest: review.digest,
-        approvalId: approval.id,
-        profile: review.profile,
-        draftId: draft.id,
-        draftRevision: draft.revision,
-        draftDigest: draft.digest,
-        supplierDocumentNumber: draft.content.supplierDocumentNumber ?? "",
-        accepted: true,
-        recognized: true,
-        paid: false,
-        postingReceipt,
-        registerInvoiceId: invoice.id,
-        recognitionId: owned?.id ?? null,
-        taxFactIds: owned?.taxFactIds ?? [],
-        legalBlockers: review.legalBlockers,
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const result = yield* Shared.decode(Acceptance.SupplierAcceptanceReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* AcceptanceDb.insertAcceptance(transaction, scope.bookId, result);
       yield* saveCommand(
         transaction,
         scope,
@@ -1090,6 +1008,162 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
       return result;
     }),
   );
+});
+
+// Execute one sealed review under an existing approval. A direct approval is
+// executed by its own approver; a mandate-backed approval names the grantor and is
+// executed by the grantee. The posting kernel rechecks the approver's authority.
+export const executeAcceptanceInTransaction = Effect.fn(
+  "purchases.acceptance.executeInTransaction",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: {
+    readonly scope: Scope;
+    readonly reviewId: string;
+    readonly idempotencyKey: string;
+    readonly operation: string;
+    readonly input: typeof Acceptance.ExecuteSupplierAcceptance.Type;
+    readonly approverId: string;
+  },
+) {
+  return yield* Effect.gen(function* () {
+    const { scope, reviewId, input, idempotencyKey } = command;
+    const operation = command.operation;
+
+    yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
+    yield* readBook(transaction, scope.bookId);
+    const row = yield* readReview(transaction, scope.bookId, reviewId);
+    const review = yield* Shared.decode(ReviewSchema, row.body);
+    yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
+
+    if (
+      review.digest !== input.digest ||
+      (yield* acceptanceBlockers(transaction, scope, row)).length
+    )
+      return yield* failure("StaleDependency");
+
+    const approval = (yield* AcceptanceDb.readApprovalById(
+      transaction,
+      scope.bookId,
+      input.approvalId,
+      reviewId,
+    ))[0];
+
+    if (
+      !approval ||
+      approval.actorId !== command.approverId ||
+      approval.digest !== review.digest ||
+      Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
+      (yield* AcceptanceDb.readAcceptanceByApproval(transaction, scope.bookId, approval.id))[0]
+        ?.present
+    )
+      return yield* failure("ApprovalRequired");
+
+    const identity = yield* requireRecognitionIdentity(transaction, scope, review);
+
+    const kernel = (yield* PostingDb.insertApproval(transaction, {
+      bookId: scope.bookId,
+      id: approval.id,
+      changeSetId: review.postingPlan.id,
+      digest: review.postingPlan.planDigest,
+      actorId: approval.actorId,
+      expiresAt: approval.expiresAt,
+      authorityBasis: yield* Shared.toJsonObject(approval.body.authorityBasis),
+    }))[0];
+
+    if (kernel === undefined) return yield* failure("InternalError");
+
+    const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
+      scope,
+      changeSetId: review.postingPlan.id,
+      idempotencyKey: newId("supplier_post"),
+      input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
+      owner: { kind: "supplier_acceptance", id: reviewId },
+    });
+
+    const draft = review.draftSnapshot;
+
+    const line = review.postingPlan.groups[0]?.actions[0]?.lines.find(
+      (line) =>
+        line.accountId === review.input.controlAccountId &&
+        line.creditMinor === draft.totals.grossMinor,
+    );
+
+    if (
+      !line ||
+      draft.totals.grossMinor === null ||
+      draft.content.documentDate === null ||
+      draft.content.dueDate === null ||
+      draft.content.supplierDocumentNumber === null
+    )
+      return yield* failure("InvalidJournal");
+
+    const invoice = yield* createInvoiceInTransaction(transaction, principal, {
+      scope,
+      idempotencyKey: newId("supplier_register"),
+      input: {
+        kind: "synthetic_invoice_v1",
+        direction: "supplier",
+        counterpartyId: draft.content.counterpartyId,
+        counterpartyRevision: draft.content.counterpartyRevision,
+        documentNumber: draft.content.supplierDocumentNumber,
+        issuedOn: draft.content.documentDate,
+        dueOn: draft.content.dueDate,
+        currency: draft.content.currency,
+        amountMinor: draft.totals.grossMinor,
+        controlAccountId: review.input.controlAccountId,
+        recognitionVoucherId: postingReceipt.voucherId,
+        recognitionLineId: line.lineId,
+        evidenceId: review.evidence.evidenceId,
+        description: `Supplier invoice: ${draft.content.title}`,
+      },
+    });
+
+    const owned = yield* writeOwnedRecognition(transaction, {
+      scope,
+      principal,
+      review,
+      approvalId: approval.id,
+      draft,
+      key: identity.key,
+      voucherId: postingReceipt.voucherId,
+      payableId: invoice.id,
+      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+    });
+
+    const body = {
+      id: newId("supplier_acceptance"),
+      scope,
+      reviewId,
+      reviewDigest: review.digest,
+      approvalId: approval.id,
+      profile: review.profile,
+      draftId: draft.id,
+      draftRevision: draft.revision,
+      draftDigest: draft.digest,
+      supplierDocumentNumber: draft.content.supplierDocumentNumber ?? "",
+      accepted: true,
+      recognized: true,
+      paid: false,
+      postingReceipt,
+      registerInvoiceId: invoice.id,
+      recognitionId: owned?.id ?? null,
+      taxFactIds: owned?.taxFactIds ?? [],
+      legalBlockers: review.legalBlockers,
+      createdAt: yield* isoNow(transaction),
+      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+    };
+
+    const result = yield* Shared.decode(Acceptance.SupplierAcceptanceReceipt, {
+      ...body,
+      digest: yield* digest(body),
+    });
+
+    yield* AcceptanceDb.insertAcceptance(transaction, scope.bookId, result);
+
+    return result;
+  });
 });
 
 export const getSupplierAcceptanceReviewInTransaction = Effect.fn(

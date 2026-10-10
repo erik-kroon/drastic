@@ -11,6 +11,7 @@ import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { readPlan, requireStaged } from "./historical-shared";
 import { readOriginalPool, readPool, readRevision, sourceResiduals } from "./adoption-basis";
+import { authorize } from "../authority";
 
 const sourceIdentity = Effect.fn("historical.poolSourceIdentity")(function* (
   tx: Transaction,
@@ -58,7 +59,7 @@ export const rereviewHistoricalPool = Effect.fn("historical.rereviewPool")(funct
 
       if (request.previous) return request.previous;
 
-      if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+      yield* authorize(principal, "rereview_historical_pool");
       const pool = yield* readPool(tx, scope, id);
 
       if (pool.digest !== input.expectedPoolDigest) return yield* failure("StaleDependency");

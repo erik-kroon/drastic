@@ -5,7 +5,6 @@ import * as Schema from "effect/Schema";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Db from "../../db/payroll/employee-claims";
 import * as Ledger from "../../db/posting";
-import { admitHumanActor } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { toJsonObject, withBook, requireRetainedEvidence, type Scope } from "../commerce/support";
 import { failure } from "../failures";
@@ -25,6 +24,7 @@ import { checkIban, checkBic, checkXmlText } from "../purchases/payments";
 import { captureCash } from "./settlement-basis";
 import { addMatch } from "../banking/matches";
 import * as Basis from "./employee-claim-basis";
+import { authorize, authorizePresent } from "../authority";
 
 type Command<I> = { scope: Scope; idempotencyKey: string; input: I };
 
@@ -161,7 +161,11 @@ export const verifyEmployeePayee = Effect.fn("claims.verifyPayee")(function* (
     true,
     function* (tx, principal) {
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
-      yield* admitHumanActor(tx, token);
+      yield* authorizePresent(tx, principal, command.scope, "verify_employee_payee", {
+        idempotencyKey: command.idempotencyKey,
+        id: command.id,
+        input: yield* toJsonObject(command.input),
+      });
       const operation = "verify_employee_payee";
 
       const request = yield* replay(
@@ -346,7 +350,11 @@ export const approveClaimPaymentFile = Effect.fn("claims.approvePaymentFile")(fu
     true,
     function* (tx, principal) {
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
-      yield* admitHumanActor(tx, token);
+      yield* authorizePresent(tx, principal, command.scope, "approve_claim_payment_file", {
+        idempotencyKey: command.idempotencyKey,
+        id: command.id,
+        input: yield* toJsonObject(command.input),
+      });
       const operation = "approve_claim_payment_file";
 
       const request = yield* replay(
@@ -699,7 +707,7 @@ export const approveClaimSettlement = Effect.fn("claims.approveSettlement")(func
     true,
     function* (tx, principal) {
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
-      yield* admitHumanActor(tx, token);
+      yield* authorize(principal, "approve_claim_settlement");
       const operation = "approve_claim_settlement";
 
       const request = yield* replay(

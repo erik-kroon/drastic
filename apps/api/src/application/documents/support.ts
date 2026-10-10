@@ -18,6 +18,7 @@ import {
   type Scope,
 } from "../commerce/support";
 import type { Transaction } from "../../db/transaction";
+import { authorize, authorizePresent } from "../authority";
 
 export type Command<I> = {
   readonly scope: Scope;
@@ -25,10 +26,6 @@ export type Command<I> = {
   readonly input: I;
   readonly id?: string;
 };
-
-export function human(principal: Principal) {
-  return principal.kind === "betterAuthSession" ? Effect.void : failure("Forbidden");
-}
 
 export function synthetic(transaction: Transaction, scope: Scope) {
   return Effect.gen(function* () {
@@ -102,6 +99,12 @@ export function insert(
   );
 }
 
+type DocumentGesture =
+  | "review_filing_adoption"
+  | "review_document_governance"
+  | "prepare_document_signature"
+  | "authorize_filing";
+
 export function recordCommand<
   I,
   E,
@@ -112,7 +115,7 @@ export function recordCommand<
   table: Db.Table,
   schema: Schema.Decoder<A>,
   operation: string,
-  browser: boolean,
+  gesture: DocumentGesture | null,
   build: (transaction: Transaction, principal: Principal) => Effect.Effect<Schema.JsonObject, E>,
 ) {
   return withBook(
@@ -120,7 +123,13 @@ export function recordCommand<
     command.scope,
     true,
     function* (transaction, principal) {
-      if (browser) yield* human(principal);
+      if (gesture === "prepare_document_signature" || gesture === "authorize_filing") {
+        yield* authorizePresent(transaction, principal, command.scope, gesture, {
+          idempotencyKey: command.idempotencyKey,
+          id: command.id ?? null,
+          input: yield* toJsonObject(command.input),
+        });
+      } else if (gesture !== null) yield* authorize(principal, gesture);
       yield* synthetic(transaction, command.scope);
       yield* requireInsertAccess(transaction, [table, "command_receipts"]);
 
@@ -289,7 +298,7 @@ export const captureDocumentGovernance = (
     "document_governance",
     Documents.GovernanceRevision,
     "capture_document_governance",
-    false,
+    null,
     (transaction, principal) =>
       Effect.gen(function* () {
         const input = command.input;
@@ -341,7 +350,7 @@ export const reviewDocumentGovernance = (
     "document_governance_reviews",
     Documents.GovernanceReview,
     "review_document_governance",
-    true,
+    "review_document_governance",
     (transaction, principal) =>
       Effect.gen(function* () {
         const governance = yield* read(

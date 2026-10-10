@@ -9,9 +9,10 @@ import { newId } from "./posting";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/firms";
 import * as Requests from "../db/firm-access-requests";
-import { admitHumanActor, lockActor, readAdmission, requireHumanSession } from "../db/human-actor";
+import { admitHumanActor, lockActor, readAdmission } from "../db/human-actor";
 import { withTransaction, databaseFailure, type Transaction } from "../db/transaction";
 import { readTableAccess } from "../db/commerce/access";
+import { authorize } from "./authority";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -435,7 +436,7 @@ export const saveFirmClient = Effect.fn("firms.saveClient")(function* (
     bookScope,
     true,
     function* (transaction, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "save_firm_client");
       yield* requireAccess(transaction);
 
       const firm = yield* readFirmRole(transaction, command.firmId, principal.actorId, {
@@ -537,7 +538,7 @@ export const removeFirmClient = Effect.fn("firms.removeClient")(function* (
     bookScope,
     true,
     function* (transaction, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "remove_firm_client");
       yield* requireAccess(transaction);
       yield* readFirmRole(transaction, command.firmId, principal.actorId, {
         lock: "update",

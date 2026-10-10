@@ -129,6 +129,8 @@ import { ExpenseTaxHandlers } from "./transport/http/routes/expense-tax";
 import { OwnerRegisterHandlers } from "./transport/http/routes/owner-register";
 import { OwnerOperationHandlers } from "./transport/http/routes/owner-operations";
 import { FirmHandlers } from "./transport/http/routes/firms";
+import { PresenceHandlers } from "./transport/http/routes/presence";
+import { PostingMandateHandlers } from "./transport/http/routes/posting-mandates";
 import { WorkspaceHandlers } from "./transport/http/routes/workspace";
 
 const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
@@ -152,6 +154,8 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SystemHandlers,
     WorkspaceHandlers,
     FirmHandlers,
+    PresenceHandlers,
+    PostingMandateHandlers,
     CompanySetupHandlers,
     OnboardingHandlers,
     OnboardingMappingHandlers,

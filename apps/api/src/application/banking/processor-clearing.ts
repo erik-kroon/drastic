@@ -26,6 +26,7 @@ import { collectPostingPrincipalBasis } from "../posting-authority";
 import { compileProcessorReview, type Compilation } from "./processor-effects";
 import { readProcessorAccount } from "./processor-fetches";
 import { addMatch } from "./matches";
+import { authorize } from "../authority";
 
 export { fetchProcessorObservations } from "./processor-fetches";
 
@@ -310,7 +311,7 @@ export const approveProcessorClearing = Effect.fn("processor.approve")(function*
     command.scope,
     true,
     function* (tx, principal) {
-      if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+      yield* authorize(principal, "return_processor_review");
 
       if ((yield* Db.readReturn(tx, command.scope.bookId, command.reviewId)).length > 0)
         return yield* failure("StaleDependency");
@@ -660,7 +661,7 @@ export const returnProcessorReview = Effect.fn("processor.returnReview")(functio
     command.scope,
     true,
     function* (tx, principal) {
-      if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+      yield* authorize(principal, "approve_processor_clearing");
       const review = yield* readReview(tx, command.scope, command.reviewId);
 
       if (review.digest !== command.input.digest) return yield* failure("StaleDependency");

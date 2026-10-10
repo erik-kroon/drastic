@@ -118,7 +118,9 @@
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./document-signatures": "./src/document-signatures.ts",
     "./filing-lifecycle": "./src/filing-lifecycle.ts",
-    "./peppol-exchange": "./src/peppol-exchange.ts"
+    "./peppol-exchange": "./src/peppol-exchange.ts",
+    "./presence": "./src/presence.ts",
+    "./posting-mandates": "./src/posting-mandates.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

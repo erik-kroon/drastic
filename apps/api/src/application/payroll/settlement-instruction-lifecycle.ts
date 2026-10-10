@@ -14,6 +14,7 @@ import {
   requireSettlementAccess,
   seal,
 } from "./settlement-support";
+import { authorize } from "../authority";
 
 export const requireInstructionAuthority = Effect.fn("payroll.requireInstructionAuthority")(
   function* (
@@ -95,7 +96,7 @@ export const cancelAdjustmentInstruction = Effect.fn("payroll.cancelAdjustmentIn
 
         if (request.previous) return request.previous;
 
-        if (principal.kind !== "betterAuthSession") return yield* failure("ApprovalRequired");
+        yield* authorize(principal, "cancel_payroll_adjustment_instruction");
 
         const instruction = yield* readRetained(
           tx,

@@ -40,7 +40,7 @@ export const validateSignatureDocument = (
     "document_validations",
     Documents.DocumentValidation,
     "validate_signature_document",
-    false,
+    null,
     (transaction) =>
       Effect.gen(function* () {
         const basis = yield* artifactBasis(transaction, command.scope, command.input.artifactId);

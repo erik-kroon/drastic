@@ -10,7 +10,6 @@ import * as Ledger from "../../db/posting";
 import * as Invoices from "../../db/commerce/ar-legal";
 import * as Schedules from "../../db/subledger/schedules";
 import * as VatDb from "../../db/vat/returns";
-import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope, type Principal } from "../commerce/support";
 import { failure } from "../failures";
@@ -34,6 +33,7 @@ import {
   executeBankMatchReversalInTransaction,
 } from "../banking/match-reversals";
 import { capture, correction, checked } from "./disposal-basis";
+import { authorize } from "../authority";
 
 type PrepareCommand = {
   readonly scope: Scope;
@@ -319,7 +319,7 @@ export const approve = Effect.fn("subledger.approveProceedsDisposal")(function* 
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "approve_proceeds_disposal");
       const { scope, input, idempotencyKey, id } = command;
       const operation = "approve_asset_proceeds_disposal";
 

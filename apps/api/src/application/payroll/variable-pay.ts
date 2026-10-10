@@ -23,6 +23,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { checkedInput } from "./inputs";
 import { assessVariableBasis, duplicateSources } from "./variable-pay-assessment";
 import { readVariableSource, requireVariableSourceBinding } from "./variable-pay-source";
+import { authorize, permits } from "../authority";
 
 type Command<I> = { scope: Scope; idempotencyKey: string; input: I };
 
@@ -35,7 +36,7 @@ const access = Effect.fn("variablePay.access")(function* (
   if ((yield* Foundation.readPayrollAccess(tx, scope.bookId, principal.actorId)).length !== 1)
     return yield* failure("Forbidden");
 
-  if (write && principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+  if (write) yield* authorize(principal, "write_variable_pay_review");
   yield* requireTableAccess(tx, Db.variablePayTables, write);
 });
 
@@ -247,7 +248,8 @@ export const variableReviewView = Effect.fn("variablePay.view")(function* (
   const canApprove =
     actionable &&
     current.blockers.length === 0 &&
-    principal?.kind === "betterAuthSession" &&
+    principal !== undefined &&
+    permits(principal, "approve_variable_input") &&
     principal.actorId !== submitted.createdBy &&
     principal.actorId !== assessment.createdBy &&
     (responsibility === undefined ||
@@ -688,7 +690,7 @@ export const requireManagedVariableApproval = Effect.fn("variablePay.requireInde
     const input = yield* checkedInput(tx, scope, inputId, assessment.inputDigest);
 
     if (
-      principal.kind !== "betterAuthSession" ||
+      !permits(principal, "approve_variable_input") ||
       principal.actorId === input.createdBy ||
       principal.actorId === assessment.createdBy
     )
@@ -717,7 +719,8 @@ export const requireManagedVariableApprovalActor = Effect.fn(
     typeof authentication !== "object" ||
     authentication === null ||
     !("kind" in authentication) ||
-    authentication.kind !== "betterAuthSession"
+    (authentication.kind !== "betterAuthSession" && authentication.kind !== "apiCredential") ||
+    !permits({ kind: authentication.kind }, "approve_variable_input")
   )
     return yield* failure("Forbidden");
 

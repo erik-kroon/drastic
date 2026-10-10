@@ -4,7 +4,6 @@ import * as Effect from "effect/Effect";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as ArDb from "../../db/commerce/ar-legal";
 import * as DocumentDb from "../../db/commerce/documents";
-import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
@@ -20,6 +19,7 @@ import {
 
 import { sha256HexOf } from "../bytes";
 import { decodeBase64 } from "./documents";
+import { authorize } from "../authority";
 
 const DeliveryRequestSchema = Delivery.LegalDeliveryRequest;
 
@@ -305,7 +305,7 @@ export const approveLegalDelivery = Effect.fn("commerce.legalDelivery.approve")(
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "approve_legal_delivery");
 
       const { scope, id, input, idempotencyKey } = command,
         operation = "approve_ar_legal_delivery";
@@ -386,7 +386,7 @@ export const startLegalDeliveryAttempt = Effect.fn("commerce.legalDelivery.start
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "start_legal_delivery_attempt");
 
       const { scope, id, input, idempotencyKey } = command,
         operation = "start_ar_legal_delivery_attempt";
@@ -488,7 +488,7 @@ export const reconcileLegalDeliveryAttempt = Effect.fn("commerce.legalDelivery.r
       command.scope,
       true,
       function* (tx, principal) {
-        yield* requireHumanSession(principal);
+        yield* authorize(principal, "reconcile_legal_delivery_attempt");
 
         const { scope, id, input, idempotencyKey } = command,
           operation = "reconcile_ar_legal_delivery_attempt";

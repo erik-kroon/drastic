@@ -51,6 +51,17 @@ The supplier history artifact includes five measured HTTP latencies and PostgreS
 statement counts for full and tail duplicate pages, plus an observed book-lock
 wait. These are local workload observations, not production latency guarantees.
 
+## Authority basis, presence and mandates (ADR 0020)
+
+The failure contracts in [ADR 0020](../../../docs/adr/0020-authorization-basis-presence-and-mandates.md#failure-cases-written-before-implementation)
+precede `presence.e2e.test.ts` and `posting-mandates.e2e.test.ts`. Presence uses a
+software WebAuthn authenticator (`support/software-authenticator.ts`) that produces
+real ES256 registration and assertion bytes, so the server verifier runs unchanged.
+Policy and tickets are set through the real operator console script. Database access
+is limited to fixture setup, failure injection (challenge expiry, key revocation,
+grantor admission, a consumption insert fault) and observation. Each journey writes
+`presence-proof.json` or `posting-mandates.json` to the run artifacts.
+
 ## Run evidence
 
 ### Failure diagnostics regression contract

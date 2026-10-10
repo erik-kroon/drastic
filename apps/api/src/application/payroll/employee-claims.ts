@@ -7,7 +7,6 @@ import * as InputDb from "../../db/payroll/inputs";
 import * as Foundation from "../../db/payroll-foundation";
 import * as Ledger from "../../db/posting";
 import { readOnboardingResponsibility } from "../onboarding-policy";
-import { admitHumanActor } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import type { VerifiedPrincipal } from "../identity";
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
@@ -19,6 +18,7 @@ import {
   prepareInputReviewInTransaction,
 } from "./inputs";
 import * as Basis from "./employee-claim-basis";
+import { authorize, permits } from "../authority";
 
 type Command<I> = { scope: Scope; idempotencyKey: string; input: I };
 
@@ -371,7 +371,7 @@ export const approveEmployeeClaim = Effect.fn("claims.approve")(function* (
     true,
     function* (tx, principal) {
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
-      yield* admitHumanActor(tx, token);
+      yield* authorize(principal, "approve_employee_claim");
       const operation = "approve_employee_claim";
 
       const request = yield* replay(
@@ -545,7 +545,7 @@ export const requestClaimCompletion = Effect.fn("claims.completion")(function* (
     true,
     function* (tx, principal) {
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
-      yield* admitHumanActor(tx, token);
+      yield* authorize(principal, "request_claim_completion");
       const operation = "request_claim_completion";
 
       const request = yield* replay(
@@ -746,7 +746,7 @@ const readView = Effect.fn("claims.view")(function* (
   const pendingReviewCurrent = reviewBlockers.length === 0;
 
   const humanOperator =
-    principal.kind === "betterAuthSession" &&
+    permits(principal, "approve_employee_claim") &&
     (yield* Ledger.readOperatorMembership(tx, scope.bookId, principal.actorId)).length === 1;
 
   const responsibility = yield* readOnboardingResponsibility(tx, scope);

@@ -3,7 +3,6 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Db from "../../db/commerce/peppol-exchange";
 import * as PostingDb from "../../db/posting";
-import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { sourceDigest } from "../../adapters/storage/retained-objects";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
@@ -11,6 +10,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { failure } from "../failures";
 import { renderPeppol, readPeppolDocument } from "./peppol-document";
 import { accessPoint, capturePeppol, currentBinding } from "./peppol-context";
+import { authorize } from "../authority";
 
 type Command<A> = { readonly scope: Scope; readonly idempotencyKey: string; readonly input: A };
 
@@ -409,7 +409,7 @@ export const returnPeppolReview = Effect.fn("peppol.returnReview")(function* (
   command: Command<typeof Contracts.Approve.Type> & { readonly reviewId: string },
 ) {
   return yield* withBook(token, command.scope, true, function* (tx, principal) {
-    yield* requireHumanSession(principal);
+    yield* authorize(principal, "return_peppol_review");
     yield* PostingDb.lockBookForUpdate(tx, command.scope);
     const review = yield* readReview(tx, command.scope, command.reviewId);
 

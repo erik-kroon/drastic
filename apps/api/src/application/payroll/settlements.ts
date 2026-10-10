@@ -48,6 +48,7 @@ import {
   ReportingCorrection,
   type RetainedFields,
 } from "./settlement-support";
+import { authorizePresent } from "../authority";
 
 export { preparePeriod, getPeriod } from "./settlement-periods";
 
@@ -461,7 +462,17 @@ export const approveSettlement = Effect.fn("payroll.approveSettlement")(function
       yield* requireMileageSubmission(tx, command.scope, review, principal.actorId);
 
       if (!review.postingPlan && review.input.kind !== "reporting_only") {
-        if (principal.kind !== "betterAuthSession") return yield* failure("ApprovalRequired");
+        yield* authorizePresent(
+          tx,
+          principal,
+          command.scope,
+          "approve_payroll_settlement_instruction",
+          {
+            idempotencyKey: command.idempotencyKey,
+            id: command.reviewId,
+            input: yield* toJsonObject(command.input),
+          },
+        );
         yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
       }
 

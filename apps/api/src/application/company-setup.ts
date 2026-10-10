@@ -8,9 +8,10 @@ import { newId } from "./posting";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/company-setup";
 import * as LedgerSetupDb from "../db/company-ledger-setup";
-import { admitHumanActor, lockActor, requireHumanSession } from "../db/human-actor";
+import { admitHumanActor, lockActor } from "../db/human-actor";
 import { withTransaction, databaseFailure, type Transaction } from "../db/transaction";
 import { readTableAccess } from "../db/commerce/access";
+import { authorize } from "./authority";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -261,7 +262,7 @@ export const initializeNativeLedger = Effect.fn("companySetup.initializeNativeLe
     command.scope,
     true,
     function* (transaction, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "initialize_native_ledger");
       yield* requireAccess(transaction);
       const actorId = principal.actorId;
       yield* lockActor(transaction, actorId);

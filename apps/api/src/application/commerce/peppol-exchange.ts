@@ -4,13 +4,13 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Db from "../../db/commerce/peppol-exchange";
 import * as PostingDb from "../../db/posting";
-import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { failure } from "../failures";
 import { bindingSubject, partyDigest, readPeppolDocument } from "./peppol-document";
 import { accessPoint, readBinding, capturePeppol } from "./peppol-context";
+import { authorize } from "../authority";
 
 export { receivePeppolEnvelope, getPeppolInbound } from "./peppol-inbound";
 
@@ -295,7 +295,7 @@ export const approvePeppolExchange = Effect.fn("peppol.approve")(function* (
   command: ArtifactCommand<typeof Contracts.Approve.Type>,
 ) {
   return yield* withBook(token, command.scope, true, function* (tx, principal) {
-    yield* requireHumanSession(principal);
+    yield* authorize(principal, "approve_peppol_exchange");
 
     const request = yield* replay(
       tx,

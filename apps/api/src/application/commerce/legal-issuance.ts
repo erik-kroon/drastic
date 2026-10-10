@@ -7,7 +7,6 @@ import * as Db from "../../db/commerce/ar-legal";
 import * as Policies from "../../db/commerce/legal-policies";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import * as Ledger from "../../db/posting";
-import { requireHumanSession } from "../../db/human-actor";
 import { failure } from "../failures";
 import {
   digest,
@@ -23,6 +22,7 @@ import {
 import { decode, withBook, requireRetainedEvidence, toJsonObject, type Scope } from "./support";
 import { calculateLegalIssue, checkedLegalIssue, legalAccounts } from "./legal-issue-basis";
 import { consumeOccurrenceCoverage, occurrenceAtIssueAdmission } from "./recurring-coverage";
+import { authorize } from "../authority";
 
 export const activateArLegalAccountingProfile = Effect.fn("commerce.legalProfile.activate")(
   function* (
@@ -38,7 +38,7 @@ export const activateArLegalAccountingProfile = Effect.fn("commerce.legalProfile
       command.scope,
       true,
       function* (tx, principal) {
-        yield* requireHumanSession(principal);
+        yield* authorize(principal, "activate_ar_legal_profile");
 
         const { scope, input, idempotencyKey } = command,
           operation = "activate_ar_legal_accounting_profile";
@@ -204,7 +204,7 @@ export const approveArLegalIssue = Effect.fn("commerce.legalIssue.approve")(func
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "approve_ar_legal_issue");
 
       const { scope, id, input, idempotencyKey } = command,
         operation = "approve_ar_legal_issue";

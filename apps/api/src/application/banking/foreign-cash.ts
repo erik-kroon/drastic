@@ -25,6 +25,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { failure } from "../failures";
 import { addMatch } from "./matches";
 import { arrayField, booleanField, isJsonObject, objectField, textField } from "./shared";
+import { authorize } from "../authority";
 
 type Input = typeof Contracts.Prepare.Type;
 
@@ -942,7 +943,7 @@ export const approveForeignCash = Effect.fn("foreignCash.approve")(function* (
 
     if (command.input.digest !== review.digest) return yield* failure("StaleDependency");
 
-    if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+    yield* authorize(principal, "approve_foreign_cash");
 
     if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
     yield* requireCurrentReview(transaction, command.scope, review);

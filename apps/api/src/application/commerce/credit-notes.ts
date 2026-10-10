@@ -8,7 +8,6 @@ import * as ArDb from "../../db/commerce/ar-legal";
 import * as CreditDb from "../../db/commerce/credit-notes";
 import * as Policies from "../../db/commerce/legal-policies";
 import * as Ledger from "../../db/posting";
-import { requireHumanSession } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { digest } from "../json";
@@ -30,6 +29,7 @@ import {
   negativeTaxEffect,
   type LineIds,
 } from "./credit-note-basis";
+import { authorize } from "../authority";
 
 const ReviewSchema = Credits.CustomerCreditReview;
 
@@ -642,7 +642,7 @@ export const approveCustomerCredit = Effect.fn("commerce.customerCredit.approve"
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "approve_customer_credit");
 
       const { scope, id, input, idempotencyKey } = command,
         operation = "approve_customer_credit";

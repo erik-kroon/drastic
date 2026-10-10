@@ -15,7 +15,6 @@ import { requireInsertAccess, toJsonObject, withBook, type Scope } from "../comm
 import {
   artifactBasis,
   currentGovernance,
-  human,
   insert,
   list,
   participantCurrent,
@@ -30,6 +29,7 @@ import {
 import { reviewedAdoption } from "./adoption";
 import { manifestView } from "./signatures";
 import type { Transaction } from "../../db/transaction";
+import { authorize } from "../authority";
 
 export function filingView(transaction: Transaction, scope: Scope, id: string) {
   return Effect.gen(function* () {
@@ -93,7 +93,7 @@ export const prepareFilingIntent = (
     "filing_intents",
     Filing.FilingIntent,
     "prepare_filing_intent",
-    false,
+    null,
     (transaction) =>
       Effect.gen(function* () {
         const input = command.input;
@@ -228,7 +228,7 @@ export const authorizeFiling = (
     "filing_authorizations",
     Filing.FilingAuthorization,
     "authorize_filing",
-    true,
+    "authorize_filing",
     (transaction, principal) =>
       Effect.gen(function* () {
         const view = yield* filingView(transaction, command.scope, command.id);
@@ -358,9 +358,7 @@ function filingOperation(
       command.scope,
       !retention,
       function* (transaction, principal) {
-        if (retention) {
-          if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
-        } else yield* human(principal);
+        yield* authorize(principal, retention ? "retain_filing_observation" : "operate_filing");
         yield* synthetic(transaction, command.scope);
         yield* requireInsertAccess(transaction, [
           "filing_attempts",
@@ -487,9 +485,7 @@ function filingOperation(
       command.scope,
       !retention,
       function* (transaction, principal) {
-        if (retention) {
-          if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
-        } else yield* human(principal);
+        yield* authorize(principal, retention ? "retain_filing_observation" : "operate_filing");
 
         if (principal.actorId !== admitted.actorId) return yield* failure("Forbidden");
         yield* requireInsertAccess(transaction, ["filing_observations"]);

@@ -11,7 +11,6 @@ import * as DocumentDb from "../../db/commerce/documents";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import * as CollectionDb from "../../db/commerce/collections";
 import * as AllocationDb from "../../db/commerce/allocations";
-import { requireHumanSession } from "../../db/human-actor";
 import { admitPrincipal, recheckPrincipal } from "../../db/identity";
 import { databaseFailure, withTransaction, type Transaction } from "../../db/transaction";
 import { RequestEnvironment } from "../../runtime/environment";
@@ -24,6 +23,7 @@ import { newId, replay, saveCommand } from "../posting";
 import { admitRunnerActor } from "../preparation-jobs";
 import { resolveReviewedRecipient, readCustomerRecord } from "./customer-invoice-defaults";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
+import { authorize } from "../authority";
 
 const approvalLifetimeMs = 15 * 60 * 1000;
 
@@ -596,7 +596,7 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "approve_reminder");
       yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
       const message = yield* checkedMessage(tx, command);
       const previous = (yield* ReminderDb.readApproval(tx, command.scope.bookId, command.id))[0];
@@ -618,7 +618,7 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
       if (assessment.blockers.some((reason) => reason !== "approval_required"))
         return yield* failure("StaleDependency");
 
-      if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+      const approver = yield* authorize(principal, "approve_reminder");
       const current = yield* source(tx, command.scope, message.issueId, message.recipient);
 
       if (
@@ -644,7 +644,7 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
         bookId: command.scope.bookId,
         messageId: message.id,
         actorId: principal.actorId,
-        sessionId: principal.sessionId,
+        sessionId: approver.sessionId,
         body,
       });
       yield* ReminderDb.insertOutbox(tx, command.scope.bookId, message.id, approvedAt);
@@ -664,7 +664,7 @@ export const requestReminderDispatch = Effect.fn("commerce.reminders.requestDisp
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "request_reminder_dispatch");
       yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
       const message = yield* checkedMessage(tx, command);
       const outbox = (yield* ReminderDb.readOutbox(tx, command.scope.bookId, command.id))[0];
@@ -736,7 +736,7 @@ export const cancelReminder = Effect.fn("commerce.reminders.cancel")(function* (
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "cancel_reminder");
       yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
       const message = yield* checkedMessage(tx, command);
 
@@ -880,7 +880,7 @@ export const replaceReminder = Effect.fn("commerce.reminders.replace")(function*
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "replace_reminder");
       yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
       const message = yield* checkedMessage(tx, command);
 
@@ -1042,7 +1042,7 @@ export const reconcileReminder = Effect.fn("commerce.reminders.reconcile")(funct
     command.scope,
     true,
     function* (tx, principal) {
-      yield* requireHumanSession(principal);
+      yield* authorize(principal, "reconcile_reminder");
       yield* checkedMessage(tx, command);
 
       const resolution = (yield* ReminderDb.readResolution(
@@ -1145,7 +1145,7 @@ function admitDispatch(token: string, payload: Payload) {
         "update",
       );
 
-      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* authorize(principal, "dispatch_reminder");
       yield* requireTableAccess(tx, ReminderDb.reminderTables, true);
       const outbox = (yield* ReminderDb.readOutbox(tx, payload.scope.bookId, payload.messageId))[0];
 
@@ -1294,7 +1294,7 @@ function retainOutcome(
     payload.scope,
     false,
     function* (tx, principal) {
-      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* authorize(principal, "retain_reminder_outcome");
 
       const savedAttempt = (yield* ReminderDb.readAttempt(
         tx,
@@ -1418,7 +1418,7 @@ export const stopReminderDelivery = Effect.fn("commerce.reminders.stopDelivery")
     payload.scope,
     false,
     function* (tx, principal) {
-      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* authorize(principal, "stop_reminder_delivery");
       const outbox = (yield* ReminderDb.readOutbox(tx, payload.scope.bookId, payload.messageId))[0];
 
       if (

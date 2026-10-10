@@ -12,6 +12,7 @@ export const AccountingErrorStatus = {
   IdempotencyConflict: 409,
   AlreadyPosted: 409,
   ApprovalRequired: 403,
+  PresenceRequired: 403,
   UnsupportedProfile: 422,
   Unavailable: 503,
   InternalError: 500,

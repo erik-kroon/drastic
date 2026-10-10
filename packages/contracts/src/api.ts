@@ -105,6 +105,8 @@ import { BankSourceRevisionsApi } from "./bank-source-revisions";
 import { PrepaymentsApi } from "./prepayments";
 import { CashMethodApi } from "./cash-method";
 import { FirmApi } from "./firms";
+import { PresenceApi } from "./presence";
+import { PostingMandateApi } from "./posting-mandates";
 import { WorkspaceApi } from "./workspace";
 import { describeAuthentication } from "./api-authentication";
 import { OnboardingApi } from "./onboarding";
@@ -208,6 +210,8 @@ export class Api extends HttpApi.make("open-erp")
     SystemApi,
     WorkspaceApi,
     FirmApi,
+    PresenceApi,
+    PostingMandateApi,
     CompanySetupApi,
     OnboardingApi,
     OnboardingMappingsApi,

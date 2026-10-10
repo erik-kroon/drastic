@@ -13,7 +13,6 @@ import { requireInsertAccess, toJsonObject, withBook, type Scope } from "../comm
 import {
   artifactBasis,
   currentGovernance,
-  human,
   insert,
   list,
   participantCurrent,
@@ -26,6 +25,7 @@ import {
   type Command,
 } from "./support";
 import type { Transaction } from "../../db/transaction";
+import { authorize } from "../authority";
 
 export const prepareDocumentManifest = (
   token: string,
@@ -37,7 +37,7 @@ export const prepareDocumentManifest = (
     "document_manifests",
     Documents.DocumentManifest,
     "prepare_document_manifest",
-    false,
+    null,
     (transaction) =>
       Effect.gen(function* () {
         const input = command.input;
@@ -140,7 +140,7 @@ export const prepareDocumentSignature = (
     "document_signature_intents",
     Documents.DocumentSignatureIntent,
     "prepare_document_signature",
-    true,
+    "prepare_document_signature",
     (transaction, principal) =>
       Effect.gen(function* () {
         const manifest = yield* read(
@@ -384,9 +384,10 @@ function signatureOperation(
       command.scope,
       !retention,
       function* (transaction, principal) {
-        if (retention) {
-          if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
-        } else yield* human(principal);
+        yield* authorize(
+          principal,
+          retention ? "retain_signature_observation" : "operate_document_signature",
+        );
         yield* synthetic(transaction, command.scope);
         yield* requireInsertAccess(transaction, [
           "document_signature_attempts",
@@ -513,9 +514,10 @@ function signatureOperation(
       command.scope,
       !retention,
       function* (transaction, principal) {
-        if (retention) {
-          if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
-        } else yield* human(principal);
+        yield* authorize(
+          principal,
+          retention ? "retain_signature_observation" : "operate_document_signature",
+        );
 
         if (principal.actorId !== admitted.principal.actorId) return yield* failure("Forbidden");
         yield* requireInsertAccess(transaction, [

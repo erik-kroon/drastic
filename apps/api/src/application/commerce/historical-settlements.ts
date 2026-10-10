@@ -12,6 +12,7 @@ import { readPool, assertPoolBasis, checkedAdoption } from "../sie/adoption-basi
 import { admitLineOwner, admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { authorize } from "../authority";
 
 type Command = { scope: Scope; id: string; idempotencyKey: string };
 
@@ -184,7 +185,7 @@ export const approveHistoricalSettlement = Effect.fn("commerce.approveHistorical
 
         if (request.previous) return request.previous;
 
-        if (principal.kind !== "betterAuthSession") return yield* failure("Forbidden");
+        yield* authorize(principal, "approve_historical_settlement");
         const plan = yield* readSettlementPlan(tx, scope, id);
 
         if (plan.digest !== input.digest) return yield* failure("StaleDependency");

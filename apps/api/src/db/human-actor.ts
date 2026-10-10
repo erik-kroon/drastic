@@ -148,12 +148,3 @@ export function lockActor(transaction: Transaction, actorId: string) {
     "objects",
   );
 }
-
-// A book-scoped principal already resolved the presented token to a live browser
-// session when its kind is a session. An API credential is never a human firm
-// participant, even with a valid book grant.
-export function requireHumanSession(principal: {
-  readonly kind: "apiCredential" | "betterAuthSession";
-}) {
-  return principal.kind === "betterAuthSession" ? Effect.void : failure("Forbidden");
-}

@@ -23,6 +23,7 @@ The status describes a decision's authority, not implementation progress. “Est
 
 | [0017](0017-bureau-first-product-focus.md) | Accepted product direction, 2026-10-03 | Bureau-first accounting wedge, canonical human tasks, bounded bulk approval and qualified connected execution; native payroll and Cash sequenced later, automatic posting not adopted. |
 | [0019](0019-client-and-founder-audiences.md) | Proposed, 2026-10-09 | One ledger with a `bureau`, `client` and `founder` audience profile that selects shell composition only; client audience after the document journey, founder audience after an owner decision. |
+| [0020](0020-authorization-basis-presence-and-mandates.md) | Proposed, 2026-10-10 | One gesture table owns the authentication basis; per-book presence proof for payment, signature, filing and mandate grant; bounded standing supplier-acceptance mandates (PST-05) behind a per-book policy. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 
