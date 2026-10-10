@@ -945,3 +945,162 @@ test("approval consequences preserve repeated-account source correspondence with
     await admin.end();
   }
 });
+
+test("retained VAT discrepancies cannot qualify exact consequence classes", async () => {
+  const f = await context(true, true, false);
+  const admin = await database();
+  const observations = [];
+  let exactExport: typeof Examples.DecisionExampleExport.Type | undefined;
+
+  try {
+    for (const mode of ["exact", "discrepancy", "repeated_account"] as const) {
+      let draft: Awaited<ReturnType<typeof createDraft>>;
+      let supportId: string | undefined;
+
+      if (mode === "repeated_account") {
+        const source = await evidence(f.book);
+        draft = await createDraft(f.book, {
+          ...f.content,
+          sourceEvidenceId: source.id,
+          supplierDocumentNumber: key(),
+          sourceTotalMinor: "25001",
+          lines: [
+            {
+              ...f.content.lines[0]!,
+              id: "exact_source",
+              taxMinor: "2500",
+              sourceGrossMinor: "12500",
+            },
+            {
+              ...f.content.lines[0]!,
+              id: "discrepant_source",
+              taxMinor: "2501",
+              sourceGrossMinor: "12501",
+            },
+          ],
+        });
+      } else {
+        const tax = mode === "exact" ? "2500" : "2501";
+        const created = await draftFor(f, "2026-09-30", tax);
+        draft = created.draft;
+        supportId = (await support(f.book, created.source.id, "2026-09-30", tax)).id;
+      }
+
+      const input = preparation(draft, "25", supportId);
+
+      for (const selection of input.lineAssignments) {
+        if (mode !== "exact") {
+          selection.treatment.acceptancePolicy = "qualified_tolerance";
+          selection.treatment.toleranceMinor = "1";
+        }
+      }
+
+      const review = await post(
+        f.book,
+        "/commerce/supplier-acceptance-reviews",
+        input,
+        Acceptance.SupplierAcceptanceReview,
+      );
+
+      const approval = await post(
+        f.book,
+        `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
+        { version: 1, digest: review.digest, acknowledgeSyntheticOnly: true },
+        Acceptance.SupplierAcceptanceApproval,
+      );
+
+      const receipt = await post(
+        f.book,
+        `/commerce/supplier-acceptance-reviews/${review.id}/execute`,
+        {
+          version: 1,
+          digest: review.digest,
+          acknowledgeSyntheticOnly: true,
+          approvalId: approval.id,
+        },
+        Acceptance.SupplierAcceptanceReceipt,
+      );
+
+      const exported = await post(
+        f.book,
+        "/automation/decision-examples",
+        { purpose: "training", selectedDecisionIds: [approval.id] },
+        Examples.DecisionExampleExport,
+      );
+
+      const provenance = (
+        await admin.query(
+          "SELECT body FROM openerp.decision_provenance WHERE book_id=$1 AND decision_id=$2",
+          [f.book.bookId, approval.id],
+        )
+      ).rows[0].body;
+
+      const voucher = (
+        await admin.query("SELECT action FROM openerp.vouchers WHERE book_id=$1 AND id=$2", [
+          f.book.bookId,
+          receipt.postingReceipt.voucherId,
+        ])
+      ).rows[0].action;
+
+      const actualTax = voucher.lines
+        .filter((line: { accountId: string }) => line.accountId === "account_input_vat")
+        .reduce(
+          (total: bigint, line: { debitMinor: string }) => total + BigInt(line.debitMinor),
+          0n,
+        )
+        .toString();
+
+      if (mode === "exact") exactExport = exported;
+      observations.push({ mode, review, approval, receipt, provenance, exported, actualTax });
+    }
+
+    const sealedExact = await decoded(
+      await request(f.book, `/automation/decision-examples/${exactExport!.id}`),
+      Examples.DecisionExampleExport,
+    );
+
+    await writeFile(
+      join(environment().artifacts, "vat-discrepancy-consequences.json"),
+      JSON.stringify(
+        {
+          syntheticOnly: true,
+          categoryScope: "single_line_only; repeated_account uses existing uncategorised owner",
+          observations,
+          exactExport,
+          sealedExact,
+        },
+        null,
+        2,
+      ),
+    );
+    expect(sealedExact).toEqual(exactExport);
+    expect(observations.map((item) => item.actualTax)).toEqual(["2500", "2501", "5001"]);
+    expect(
+      observations.map((item) =>
+        item.review.recognition!.lines.map((line) => line.taxDiscrepancyOutcome),
+      ),
+    ).toEqual([["exact_match"], ["retained_discrepancy"], ["exact_match", "retained_discrepancy"]]);
+    const exact = observations[0]!.exported.examples[0]!.consequence!.treatments[0]!;
+    const discrepant = observations[1]!.exported.examples[0]!.consequence!.treatments[0]!;
+    expect(exact.capture.vat.resolvedRate).toEqual({ numerator: "25", denominator: "100" });
+    expect(exact.result.status).toBe("known");
+    expect(discrepant.capture.vat.category).toBe("synthetic_ordinary_full");
+    expect(discrepant.capture.vat.resolvedRate).toBeNull();
+    expect(discrepant.result).toMatchObject({
+      status: "unknown",
+      reasons: expect.arrayContaining(["resolved_rate_not_captured"]),
+    });
+    const repeated = observations[2]!.provenance.selected.consequenceCapture.sourceLines;
+    expect(repeated.map((line: { sourceLineId: string }) => line.sourceLineId)).toEqual([
+      "exact_source",
+      "discrepant_source",
+    ]);
+    expect(
+      repeated.map(
+        (line: { capture: { vat: { resolvedRate: unknown } } }) => line.capture.vat.resolvedRate,
+      ),
+    ).toEqual([{ numerator: "25", denominator: "100" }, null]);
+  } finally {
+    await admin.end();
+  }
+}, 30_000);

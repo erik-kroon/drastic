@@ -5,7 +5,7 @@
   "waitingItems": 5,
   "homeWaitingItems": 7,
   "retainedBankRows": 3,
-  "retainedClients": 101,
+  "retainedClients": 1284,
   "applicationClock": "2026-10-02T06:54:00.000Z",
   "checks": [
     "board application instant",
@@ -16,6 +16,9 @@
     "unchanged ledger",
     "38-digit amount without clipping",
     "Unicode",
-    "zero"
+    "zero",
+    "1284-client portfolio",
+    "first, next and last client pages",
+    "client search resets pagination"
   ]
 }

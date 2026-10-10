@@ -46,7 +46,6 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Redacted from "effect/Redacted";
 import * as References from "effect/References";
 import * as Schema from "effect/Schema";
 import { AccountingError } from "@open-erp/contracts/accounting";
@@ -81,8 +80,8 @@ import { BankInventorySignoffHandlers } from "./transport/http/routes/bank-inven
 import { TaxAccountHandlers } from "./transport/http/routes/tax-account";
 import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
 import { AccountingErrorStatus } from "@open-erp/contracts/api";
-import { databaseFailure } from "./db/transaction";
-import { Database, databaseLayer } from "./db/connection";
+import { databaseFailure, withRequestDatabase } from "./db/transaction";
+import { Database } from "./db/connection";
 import { failure, logFailure } from "./application/failures";
 
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
@@ -295,24 +294,6 @@ function boundaryResponse(error: unknown) {
   const safe = databaseFailure(error);
 
   return Response.json(safe, { status: AccountingErrorStatus[safe.code] });
-}
-
-function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<A, E, R>) {
-  const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
-
-  if (!connectionString) return Effect.fail(failure("ConfigurationError"));
-
-  return effect.pipe(
-    Effect.provide(
-      databaseLayer({
-        connectionString: Redacted.make(connectionString),
-        applicationName: "open-erp-api",
-        connectTimeoutMs: 5000,
-        statementTimeoutMs: 15000,
-      }),
-    ),
-    Effect.mapError(databaseFailure),
-  );
 }
 
 async function httpFailureResponse(response: Response, path: string) {

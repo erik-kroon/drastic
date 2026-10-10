@@ -21,10 +21,10 @@ assert.equal(session.demoMode, seed.mode);
 
 const expected = {
   demo: { open: "3", bank: 2, clients: 3 },
-  worst: { open: "5", bank: 3, clients: 101 },
+  worst: { open: "5", bank: 3, clients: 1284 },
   empty: { open: "0", bank: 0, clients: 0 },
   one: { open: "1", bank: 1, clients: 1 },
-  many: { open: "1003", bank: 1001, clients: 101 },
+  many: { open: "1003", bank: 1001, clients: 1284 },
 }[seed.mode];
 
 assert.ok(expected, "Known disposable demo mode");
@@ -114,6 +114,7 @@ try {
   if (seed.portfolio) {
     const response = await context.request.get(
       `${session.url}/api/v1/firms/${seed.portfolio.firmId}/portfolio`,
+      { timeout: 60000 },
     );
 
     assert.equal(response.ok(), true, "Read retained portfolio");
@@ -122,12 +123,39 @@ try {
     assert.equal(portfolio.workspace.clients.length, expected.clients);
     assert.equal(portfolio.clients.length, expected.clients);
 
-    if (seed.mode === "worst" || seed.mode === "many") {
-      assert.equal(seed.portfolio.limitRefusal.owner, "company_create");
-      assert.equal(seed.portfolio.limitRefusal.attemptedCreatedCompany, 101);
-      assert.equal(seed.portfolio.limitRefusal.status, 422);
-      assert.equal(seed.portfolio.limitRefusal.code, "InvalidJournal");
+    await page.goto(`${session.url}${session.boards["K-09"].route}`, {
+      waitUntil: "networkidle",
+      timeout: 75000,
+    });
+    const pages = page.getByRole("navigation", { name: "Klientsidor", exact: true });
+
+    await pages
+      .getByText(`1–${Math.min(15, expected.clients)} av ${expected.clients} klienter`, {
+        exact: true,
+      })
+      .waitFor();
+
+    if (expected.clients > 15) {
+      await pages.getByRole("button", { name: "Nästa", exact: true }).click();
+      await pages.getByText(`16–30 av ${expected.clients} klienter`, { exact: true }).waitFor();
+
+      const lastPage = new URL(page.url());
+      lastPage.searchParams.set("page", "85");
+      await page.goto(lastPage.href, { waitUntil: "networkidle", timeout: 75000 });
+      await pages.getByText("1276–1284 av 1284 klienter", { exact: true }).waitFor();
+      assert.equal(
+        await pages.getByRole("button", { name: "Nästa", exact: true }).isDisabled(),
+        true,
+      );
+
+      await page
+        .getByRole("searchbox", { name: "Sök klienter", exact: true })
+        .fill("Skogsbo Förvaltning 1284 AB");
+      await pages.getByText("1–1 av 1 klienter", { exact: true }).waitFor();
+      await page.getByRole("button", { name: /Skogsbo Förvaltning 1284 AB/ }).waitFor();
     }
+
+    await page.goto(`${session.url}${session.boards["K-10"].route}`, { waitUntil: "networkidle" });
   }
 
   if (seed.mode === "worst") {
@@ -222,6 +250,13 @@ try {
     result.checks.push("38-digit amount without clipping", "Unicode", "zero");
 
   if (seed.mode === "many") result.checks.push("browser pagination");
+
+  if (expected.clients > 15)
+    result.checks.push(
+      "1284-client portfolio",
+      "first, next and last client pages",
+      "client search resets pagination",
+    );
 
   await writeFile(join(artifacts, "demo-check.json"), `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify(result));
