@@ -54,6 +54,7 @@ import { HttpApiBuilder } from "effect/http-api";
 
 import { AccountingHandlers } from "./transport/http/routes/accounting";
 import { authHandler } from "./adapters/auth/better-auth";
+import { authConfiguration } from "./adapters/auth/configuration";
 import { BodyError, boundedRequest } from "./transport/http/body";
 import { McpRoutes } from "./transport/mcp";
 import { type Bindings, RequestEnvironment } from "./runtime/environment";
@@ -372,7 +373,26 @@ export function createApi(e2e: boolean) {
               if (testNow !== null && instant === null)
                 return Effect.succeed(boundaryResponse(failure("InvalidRequest")));
 
-              if (new URL(bounded.url).pathname.startsWith("/api/auth/"))
+              const pathname = new URL(bounded.url).pathname;
+
+              if (pathname === "/.well-known/oauth-protected-resource/api/mcp")
+                return authConfiguration(bindings).pipe(
+                  Effect.map(({ url }) =>
+                    Response.json({
+                      resource: `${url.origin}/api/mcp`,
+                      authorization_servers: [`${url.origin}/api/auth`],
+                      scopes_supported: ["mcp:read"],
+                      bearer_methods_supported: ["header"],
+                    }),
+                  ),
+                  Effect.orElseSucceed(() => new Response(null, { status: 503 })),
+                );
+
+              if (
+                pathname.startsWith("/api/auth/") ||
+                pathname === "/.well-known/oauth-authorization-server/api/auth" ||
+                pathname === "/.well-known/openid-configuration/api/auth"
+              )
                 return authHandler(bounded, bindings);
 
               const application = withRequestDatabase(

@@ -53,7 +53,7 @@ const bindings: Bindings = {
 
 const server = Bun.serve({
   hostname: "127.0.0.1",
-  port: 0,
+  port: Number(origin.port) || 0,
   maxRequestBodySize: 8 * 1024 * 1024,
   fetch(request, server) {
     const host = request.headers.get("host");
