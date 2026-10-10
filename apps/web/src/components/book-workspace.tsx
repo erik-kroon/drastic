@@ -215,9 +215,16 @@ function useWorkspaceLayout(pathname: string, base: string) {
     shouldThrow: false,
   });
 
+  const sales = useMatch({ from: "/entities/$entityId/books/$bookId/sales", shouldThrow: false });
+
   return {
     contentInset:
-      isHomePath(pathname, base) || digestReview ? ("none" as const) : ("page" as const),
+      isHomePath(pathname, base) ||
+      digestReview ||
+      sales?.search.view === "articles" ||
+      sales?.search.view === "orders"
+        ? ("none" as const)
+        : ("page" as const),
     focused: !digestReview && pathname.startsWith(`${base}/reviews/`),
   };
 }

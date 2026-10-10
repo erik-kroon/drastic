@@ -259,10 +259,8 @@
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/box",
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/button",
-    "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/data-table",
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/field",
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/form-dialog",
-    "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/components/commerce/catalog-articles.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/commerce/collections.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/commerce/collections.tsx:@open-erp/ui/components/box",
@@ -466,7 +464,6 @@
     "apps/web/src/components/commerce/reminder-review.tsx:@open-erp/ui/components/field",
     "apps/web/src/components/commerce/reminder-review.tsx:@open-erp/ui/components/link",
     "apps/web/src/components/commerce/reminder-review.tsx:@open-erp/ui/components/typography",
-    "apps/web/src/components/commerce/sales-navigation.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/box",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/button",
@@ -474,8 +471,6 @@
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/field",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/form-dialog",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/link",
-    "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/record-sheet",
-    "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/register-workspace",
     "apps/web/src/components/commerce/sales-orders.tsx:@open-erp/ui/components/typography",
     "apps/web/src/components/commerce/sales-workspace.tsx:@open-erp/ui/components/accounting-page",
     "apps/web/src/components/commerce/sales-workspace.tsx:@open-erp/ui/components/box",
@@ -1272,5 +1267,7 @@
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/typography"
   ],
-  "infrastructureModules": ["@open-erp/ui/components/workspace"]
+  "infrastructureModules": [
+    "@open-erp/ui/components/workspace"
+  ]
 }

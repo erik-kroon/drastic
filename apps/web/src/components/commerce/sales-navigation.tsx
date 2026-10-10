@@ -1,5 +1,6 @@
 import { defaultStringifySearch } from "@tanstack/react-router";
-import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
+import { BarTab } from "@open-erp/ui/kanon/layouts";
+import { NavigationLink } from "@open-erp/ui/kanon/form";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import type { SalesSearch } from "./sales-workspace";
 
@@ -17,27 +18,27 @@ export function SalesNavigation(props: {
 
   const destinations = [
     { view: undefined, label: sv ? "Fakturor" : "Invoices" },
-    { view: "recurring", label: sv ? "Återkommande" : "Recurring" },
-    { view: "orders", label: sv ? "Offerter och order" : "Quotes and orders" },
     { view: "parties", label: sv ? "Kunder" : "Customers" },
+    { view: "recurring", label: sv ? "Återkommande" : "Recurring" },
+    { view: "orders", label: sv ? "Offerter" : "Quotes" },
     { view: "articles", label: sv ? "Artiklar" : "Articles" },
     { view: "collections", label: sv ? "Krav" : "Collections" },
   ];
 
   return (
-    <RegisterNavigation
-      label={sv ? "Försäljning" : "Sales"}
-      options={destinations.map((destination) => ({
-        label: destination.label,
-        href: `${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: destination.view, work: work ?? search?.work, returnTo: returnTo ?? search?.returnTo })}`,
-        active: destination.view === view,
-        preload:
-          destination.view === undefined
-            ? props.preloadInvoices
-            : destination.view === "parties"
-              ? props.preloadCustomers
-              : undefined,
-      }))}
-    />
+    <>
+      {destinations.map((destination) => (
+        <BarTab
+          key={destination.label}
+          label={destination.label}
+          active={destination.view === view}
+          render={
+            <NavigationLink
+              href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: destination.view, work: work ?? search?.work, returnTo: returnTo ?? search?.returnTo })}`}
+            />
+          }
+        />
+      ))}
+    </>
   );
 }

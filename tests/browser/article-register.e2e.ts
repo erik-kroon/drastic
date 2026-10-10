@@ -155,15 +155,17 @@ test("article edit and archive retain immutable defaults, honest unknowns and al
   ).toBeVisible();
   await expect(row.getByRole("cell", "st", { exact: true })).toBeVisible();
   await expect(row.getByRole("cell", "123,45", { exact: true })).toBeVisible();
-  const missing = row.getByRole("cell", "—", { exact: true });
+  const missingTax = row.getByRole("cell", "Okänd", { exact: true });
+  const missingAccount = row.getByRole("cell", "Saknas", { exact: true });
 
-  await expect(missing).toHaveCount(2);
+  await expect(missingTax).toBeVisible();
+  await expect(missingAccount).toBeVisible();
 
   const lanes = [
     { name: "Enhet", cell: row.getByRole("cell", "st", { exact: true }), width: 90 },
-    { name: "Moms", cell: missing.nth(0), width: 80 },
+    { name: "Moms", cell: missingTax, width: 80 },
     { name: "Pris", cell: row.getByRole("cell", "123,45", { exact: true }), width: 120 },
-    { name: "Intäktskonto", cell: missing.nth(1), width: 130 },
+    { name: "Intäktskonto", cell: missingAccount, width: 110 },
   ];
 
   const geometry = [];
@@ -184,6 +186,7 @@ test("article edit and archive retain immutable defaults, honest unknowns and al
   const dialog = screen.getByRole("dialog", "Uppdatera artikel", { exact: true });
 
   await opener.press("Enter");
+  await screen.getByRole("button", "Redigera artikel", { exact: true }).press("Enter");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("textbox", "Kod", { exact: true })).toHaveValue(
     "SYNTHETIC-ARTICLE-REVIEW",
@@ -212,6 +215,7 @@ test("article edit and archive retain immutable defaults, honest unknowns and al
   expect(await revision(articleA.code, 1)).toEqual(articleA);
   await browser.reload();
   await opener.press("Enter");
+  await screen.getByRole("button", "Redigera artikel", { exact: true }).press("Enter");
   await expect(dialog.getByRole("textbox", "Beskrivning", { exact: true })).toHaveValue(
     "Synthetic article for review",
   );
@@ -247,10 +251,12 @@ test("article edit and archive retain immutable defaults, honest unknowns and al
 
   await expect(updatedOpener).toBeVisible();
   await expect(row.getByRole("cell", "234,56", { exact: true })).toBeVisible();
-  await expect(missing).toHaveCount(2);
+  await expect(missingTax).toBeVisible();
+  await expect(missingAccount).toBeVisible();
   const afterEdit = await app.screenshot("article-register-updated-values-desktop");
 
   await updatedOpener.press("Enter");
+  await screen.getByRole("button", "Redigera artikel", { exact: true }).press("Enter");
   await expect(dialog.getByRole("textbox", "Enhetspris (SEK)", { exact: true })).toHaveValue(
     "234.56",
   );
@@ -281,12 +287,14 @@ test("article edit and archive retain immutable defaults, honest unknowns and al
   await browser.reload();
   await expect(updatedOpener).toContainText("Arkiverad");
   await expect(row.getByRole("cell", "234,56", { exact: true })).toBeVisible();
-  await expect(missing).toHaveCount(2);
+  await expect(missingTax).toBeVisible();
+  await expect(missingAccount).toBeVisible();
   await browser.setViewport({ width: 400, height: 900 });
   expect(await browser.evaluate("() => document.documentElement.scrollWidth <= innerWidth")).toBe(
     true,
   );
   await updatedOpener.press("Enter");
+  await screen.getByRole("button", "Redigera artikel", { exact: true }).press("Enter");
   await expect(dialog.getByRole("textbox", "Enhetspris (SEK)", { exact: true })).toHaveValue(
     "234.56",
   );
