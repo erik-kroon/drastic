@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Reports from "@open-erp/contracts/reports";
@@ -8,7 +10,7 @@ import { Link } from "@open-erp/ui/components/link";
 import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { RecordFact, RecordSummary } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -22,14 +24,20 @@ export function GeneralLedger(props: {
 }) {
   const { book, report, accountId, locale } = props;
   const copy = locale === "sv" ? swedish : english;
-  const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/general-ledger`;
 
   const ledger = useInfiniteQuery({
     queryKey: [...bookKey(book), "general-ledger", report.id, accountId],
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${base}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.reports.reportGeneralLedger({
+            params: { ...bookScope(book), id: report.id, lineId: accountId },
+            query: httpQuery(
+              Api.groups.reports.endpoints.reportGeneralLedger,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Reports.GeneralLedgerPage,
         { signal },
       );

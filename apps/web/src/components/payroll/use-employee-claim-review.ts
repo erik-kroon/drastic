@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Claims from "@open-erp/contracts/employee-claims";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -36,7 +37,10 @@ export function useEmployeeClaimReview(props: { claimId: string }) {
     refetchInterval: 2_000,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${root}/${encodeURIComponent(props.claimId)}`,
+        (client) =>
+          client.employeeClaims.getEmployeeClaim({
+            params: { ...bookScope(book), claimId: props.claimId },
+          }),
         Claims.EmployeeClaimView,
         { signal },
       );

@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -37,7 +38,14 @@ export function CapacityReports({
       const path = `${bookPath(book)}/bank-capacity-reconciliations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.settlements.reconcileBankCapacity(
+            httpRequest(
+              Api.groups.settlements.endpoints.reconcileBankCapacity,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Settlement.BankCapacityReconciliation,
         keys.current.options(path, JSON.stringify(input)),
       );

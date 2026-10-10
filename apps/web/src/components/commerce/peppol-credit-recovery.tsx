@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -36,7 +38,10 @@ export function PeppolCreditRecovery(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/ar-legal-issues/${encodeURIComponent(props.review.source.reference.id)}`,
+        (client) =>
+          client.arLegalIssue.getArLegalIssue({
+            params: { ...bookScope(book), id: props.review.source.reference.id },
+          }),
         Ar.ArLegalIssueReceipt,
         { signal },
       );
@@ -65,7 +70,14 @@ export function PeppolCreditRecovery(props: {
       });
 
       const result = await readAccounting(
-        `${base}/ar-legal-issues/${encodeURIComponent(props.review.source.reference.id)}/credit-capacity?${query.toString()}`,
+        (client) =>
+          client.customerCreditNotes.getCustomerCreditCapacity({
+            params: { ...bookScope(book), id: props.review.source.reference.id },
+            query: httpQuery(
+              Api.groups.customerCreditNotes.endpoints.getCustomerCreditCapacity,
+              `${query.toString()}`,
+            ),
+          }),
         Credits.CustomerCreditCapacity,
         { signal },
       );
@@ -89,7 +101,10 @@ export function PeppolCreditRecovery(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/customer-credit-reviews/${encodeURIComponent(props.creditId ?? "")}`,
+        (client) =>
+          client.customerCreditNotes.getCustomerCreditReview({
+            params: { ...bookScope(book), id: props.creditId ?? "" },
+          }),
         Credits.CustomerCreditView,
         { signal },
       );

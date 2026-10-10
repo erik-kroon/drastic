@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -10,7 +11,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
 
@@ -31,7 +32,14 @@ export function CorrectionDiscovery({
     queryKey: [...bookKey(book), "correction-bundles", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/correction-bundles${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.corrections.listCorrectionBundles({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.corrections.endpoints.listCorrectionBundles,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Corrections.CorrectionBundlePage,
         { signal },
       ),

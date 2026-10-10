@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -19,7 +20,7 @@ import { Disclosure, PageTabs } from "@open-erp/ui/components/workflow";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { reviewCopy } from "./copy";
 import { ReviewProviderRows } from "./provider-rows";
@@ -305,7 +306,14 @@ function ReviewRows({
     retry: false,
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/accountant-review-packs/${encodeURIComponent(pack.id)}/rows/${section}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.accountantReview.reviewPackRows({
+            params: { ...bookScope(book), id: pack.id, section: section },
+            query: httpQuery(
+              Api.groups.accountantReview.endpoints.reviewPackRows,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Review.ReviewPage,
         { signal },
       );

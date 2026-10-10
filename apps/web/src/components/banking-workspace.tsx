@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
@@ -41,7 +43,14 @@ export function BankingWorkspace({
     initialPageParam: "",
     queryFn: ({ signal, pageParam }) =>
       readAccounting(
-        `${bookPath(book)}/source-occurrences${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.sourceIntake.listSourceOccurrences({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.listSourceOccurrences,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Sources.SourceInventory,
         { signal },
       ),
@@ -54,7 +63,14 @@ export function BankingWorkspace({
       const path = `${bookPath(book)}/bank-reconciliations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reconciliation.reconcileBank(
+            httpRequest(
+              Api.groups.reconciliation.endpoints.reconcileBank,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Bank.BankReconciliation,
         keys.current.options(path, JSON.stringify(input)),
       );

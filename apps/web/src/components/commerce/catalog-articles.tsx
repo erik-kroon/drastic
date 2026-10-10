@@ -1,5 +1,5 @@
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,7 +128,14 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
       const body = JSON.stringify(input);
 
       return readAccounting(
-        `${commercePath(book)}/articles`,
+        (client, requestOptions) =>
+          client.catalog.catalogSaveArticle(
+            httpRequest(
+              Api.groups.catalog.endpoints.catalogSaveArticle,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Catalog.Article,
         mutationOptions(`${commercePath(book)}/articles`, body, keys),
       );

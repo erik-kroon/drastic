@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 
@@ -5,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import { useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
+import { bookKey, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 
 export async function readOnboardingWorkspace(path: string, signal: AbortSignal) {
   const first = await readAccounting(path, Onboarding.OnboardingWorkspace, { signal });
@@ -98,7 +100,14 @@ export function useOnboardingFacts(asOf: string) {
 
       do {
         const page: typeof Profiles.CompanyFactPage.Type = await readAccounting(
-          `${bookPath(book)}/company-facts${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+          (client) =>
+            client.companyProfile.listCompanyFacts({
+              params: { ...bookScope(book) },
+              query: httpQuery(
+                Api.groups.companyProfile.endpoints.listCompanyFacts,
+                `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+              ),
+            }),
           Profiles.CompanyFactPage,
           { signal },
         );

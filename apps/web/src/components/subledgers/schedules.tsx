@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -73,7 +74,14 @@ function ScheduleWorkspace(props: Props) {
     queryKey: [...bookKey(book), "schedules", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/schedules${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.subledgers.listSchedules({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.subledgers.endpoints.listSchedules,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Subledgers.SchedulePage,
         { signal },
       ),
@@ -257,7 +265,14 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       const path = `${bookPath(book)}/schedules/${id}/prepare`;
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.subledgers.prepareScheduleOccurrence(
+            httpRequest(
+              Api.groups.subledgers.endpoints.prepareScheduleOccurrence,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Subledgers.SchedulePreparation,
         keys.current.options(path, JSON.stringify(input)),
       );
@@ -575,12 +590,18 @@ function OperatorAssetImpairmentPanel(props: {
   const copy = subledgerCopy(locale);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const basisEnabled = schedule.postingBasis?.mode === "linked_basis";
-  const basisPath = `${bookPath(book)}/subledger-controls/bases/${encodeURIComponent(schedule.current.scheduleId)}`;
 
   const basis = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "basis", schedule.current.scheduleId],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(basisPath, Controls.SubledgerBasis, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.subledgerControls.getSubledgerBasis({
+            params: { ...bookScope(book), id: schedule.current.scheduleId },
+          }),
+        Controls.SubledgerBasis,
+        { signal },
+      );
 
       if (
         result.scope.bookId !== book.id ||
@@ -1185,12 +1206,19 @@ function AssetImpairmentReviewDetail(props: {
 }) {
   const { book, locale, id, schedule } = props;
   const copy = subledgerCopy(locale);
-  const path = `${bookPath(book)}/subledger-controls/impairments/${encodeURIComponent(id)}`;
 
   const review = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "impairment-review", id],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Controls.AssetImpairmentReviewView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.subledgerControls.getAssetImpairmentReview({
+            params: { ...bookScope(book), id: id },
+          }),
+        Controls.AssetImpairmentReviewView,
+        { signal },
+      );
+
       const retained = result.impairment;
 
       if (

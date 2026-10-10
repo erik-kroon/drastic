@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -291,7 +292,14 @@ function BankMatchForm({
       const path = `${bookPath(book)}/bank-matches`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reconciliation.matchBankObservation(
+            httpRequest(
+              Api.groups.reconciliation.endpoints.matchBankObservation,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Bank.BankMatchReceipt,
         keys.current.options(path, JSON.stringify(payload)),
       );

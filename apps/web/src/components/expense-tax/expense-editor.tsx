@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -39,7 +40,14 @@ export function ExpenseEditor(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(props.book)}/source-occurrences${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.sourceIntake.listSourceOccurrences({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.listSourceOccurrences,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Sources.SourceInventory,
         { signal },
       );

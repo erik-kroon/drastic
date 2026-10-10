@@ -1,10 +1,12 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Variable from "@open-erp/contracts/variable-pay-review";
 import { Button } from "@open-erp/ui/components/button";
 import { RegisterGroup, RegisterRow } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { variableMonth } from "./variable-pay-presentation";
 
@@ -27,7 +29,14 @@ export function VariablePayDirectory() {
     gcTime: 0,
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/payroll/variable-pay${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.variablePayReview.listVariablePayAssessments({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.variablePayReview.endpoints.listVariablePayAssessments,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Variable.VariablePayReviewPage,
         { signal },
       );

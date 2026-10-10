@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { Navigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -224,7 +225,18 @@ function ReplacementDraft(props: {
       const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
-      return readAccounting(path, Corrections.CorrectionImpact, options);
+      return readAccounting(
+        (client, requestOptions) =>
+          client.corrections.prepareCorrectionImpact(
+            httpRequest(
+              Api.groups.corrections.endpoints.prepareCorrectionImpact,
+              { params: { ...bookScope(book), id: original.id } },
+              requestOptions,
+            ),
+          ),
+        Corrections.CorrectionImpact,
+        options,
+      );
     },
   });
 
@@ -235,7 +247,18 @@ function ReplacementDraft(props: {
       const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
-      return readAccounting(path, Corrections.CorrectionBundle, options);
+      return readAccounting(
+        (client, requestOptions) =>
+          client.corrections.prepareCorrectionBundle(
+            httpRequest(
+              Api.groups.corrections.endpoints.prepareCorrectionBundle,
+              { params: { ...bookScope(book), id: original.id } },
+              requestOptions,
+            ),
+          ),
+        Corrections.CorrectionBundle,
+        options,
+      );
     },
     onSuccess: (bundle) => props.onPrepared(bundle.id, bundle.bundleDigest),
   });

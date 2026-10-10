@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -132,7 +134,14 @@ function CommercialTemplateActions(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const result = await readAccounting(
-        `${path}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.invoiceTemplates.listInvoiceTemplates({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.invoiceTemplates.endpoints.listInvoiceTemplates,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Templates.InvoiceTemplatePage,
         { signal },
       );

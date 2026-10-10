@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { BankReviewContext } from "@/components/bank-review-context";
 import { useState } from "react";
@@ -704,7 +706,14 @@ function AccountReport(props: {
       const input = { accountId: props.account.id, startsOn: props.from, endsOn: props.to };
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reconciliation.reconcileBank(
+            httpRequest(
+              Api.groups.reconciliation.endpoints.reconcileBank,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reconciliation.BankReconciliation,
         keys.current.options(path, JSON.stringify(input)),
       );

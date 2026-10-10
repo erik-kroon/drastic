@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +39,12 @@ export function AllocationReview({
     refetchOnMount: "always",
     retry: false,
     queryFn: async ({ signal }) => {
-      const view = await readAccounting(base, Settlement.BankAllocationView, { signal });
+      const view = await readAccounting(
+        (client) =>
+          client.settlements.getBankAllocation({ params: { ...bookScope(book), id: id } }),
+        Settlement.BankAllocationView,
+        { signal },
+      );
 
       if (
         view.plan.id !== id ||
@@ -53,7 +60,14 @@ export function AllocationReview({
   const approval = useMutation({
     mutationFn: (input: typeof Settlement.ApproveBankAllocation.Type) =>
       readAccounting(
-        `${base}/approve`,
+        (client, requestOptions) =>
+          client.settlements.approveBankAllocation(
+            httpRequest(
+              Api.groups.settlements.endpoints.approveBankAllocation,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Settlement.BankAllocationApproval,
         approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
@@ -69,7 +83,14 @@ export function AllocationReview({
   const execution = useMutation({
     mutationFn: (input: typeof Settlement.ExecuteBankAllocation.Type) =>
       readAccounting(
-        `${base}/execute`,
+        (client, requestOptions) =>
+          client.settlements.executeBankAllocation(
+            httpRequest(
+              Api.groups.settlements.endpoints.executeBankAllocation,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Settlement.BankAllocationExecution,
         executionKeys.current.options(`${base}/execute`, JSON.stringify(input)),
       ),

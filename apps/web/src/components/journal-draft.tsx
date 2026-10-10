@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useRef, useState } from "react";
@@ -34,7 +36,14 @@ export function JournalDraft({
       const path = `${bookPath(book)}/evidence`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.createEvidence(
+            httpRequest(
+              Api.groups.accounting.endpoints.createEvidence,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Accounting.Evidence,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -158,7 +167,14 @@ function JournalForm(props: {
       const path = `${bookPath(book)}/change-sets`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.prepareJournal(
+            httpRequest(
+              Api.groups.accounting.endpoints.prepareJournal,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Accounting.ChangeSet,
         keys.current.options(path, JSON.stringify(payload)),
       );

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -96,7 +98,14 @@ function PrepareSnapshot({
       const path = `${bookPath(book)}/report-snapshots`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reports.prepareReport(
+            httpRequest(
+              Api.groups.reports.endpoints.prepareReport,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reports.ReportSnapshot,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -200,7 +209,14 @@ function SavedComparison({
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) =>
       readAccounting(
-        `${bookPath(book)}/report-snapshots/${encodeURIComponent(reportId)}/compare/${encodeURIComponent(selected)}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.reports.compareReports({
+            params: { ...bookScope(book), id: reportId, otherId: selected },
+            query: httpQuery(
+              Api.groups.reports.endpoints.compareReports,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Reports.ReportComparisonPage,
         { signal },
       ),

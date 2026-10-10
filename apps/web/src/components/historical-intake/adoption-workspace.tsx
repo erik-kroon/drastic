@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Adoption from "@open-erp/contracts/historical-adoptions";
@@ -33,7 +34,14 @@ export function HistoricalAdoptionDirectory() {
     retry: false,
     queryFn: async ({ pageParam, signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/historical-adoption-plans${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.historicalAdoptions.listHistoricalAdoptionPlans({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.historicalAdoptions.endpoints.listHistoricalAdoptionPlans,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Adoption.AdoptionPage,
         { signal },
       );

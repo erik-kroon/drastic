@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +42,15 @@ export function BankUnmatchReview({
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(base, Reversal.BankMatchReversalView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.bankMatchReversals.getBankMatchReversal({
+            params: { ...bookScope(book), id: id },
+          }),
+        Reversal.BankMatchReversalView,
+        { signal },
+      );
+
       assertUnmatchView(result, book, id, expected);
 
       return result;
@@ -51,7 +61,14 @@ export function BankUnmatchReview({
   const approval = useMutation({
     mutationFn: (input: typeof Reversal.ApproveBankMatchReversal.Type) =>
       readAccounting(
-        `${base}/approve`,
+        (client, requestOptions) =>
+          client.bankMatchReversals.approveBankMatchReversal(
+            httpRequest(
+              Api.groups.bankMatchReversals.endpoints.approveBankMatchReversal,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Reversal.BankMatchReversalApproval,
         approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
@@ -67,7 +84,14 @@ export function BankUnmatchReview({
   const execution = useMutation({
     mutationFn: (input: typeof Reversal.ExecuteBankMatchReversal.Type) =>
       readAccounting(
-        `${base}/execute`,
+        (client, requestOptions) =>
+          client.bankMatchReversals.executeBankMatchReversal(
+            httpRequest(
+              Api.groups.bankMatchReversals.endpoints.executeBankMatchReversal,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Reversal.BankMatchReversalExecution,
         executionKeys.current.options(`${base}/execute`, JSON.stringify(input)),
       ),
@@ -81,7 +105,14 @@ export function BankUnmatchReview({
       const path = `${bookPath(book)}/bank-match-reversal-approvals/${encodeURIComponent(approvalId)}/revoke`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.bankMatchReversals.revokeBankMatchReversalApproval(
+            httpRequest(
+              Api.groups.bankMatchReversals.endpoints.revokeBankMatchReversalApproval,
+              { params: { ...bookScope(book), id: approvalId } },
+              requestOptions,
+            ),
+          ),
         Reversal.BankMatchReversalRevocation,
         revocationKeys.current.options(path, JSON.stringify({ reason: explanation })),
       );

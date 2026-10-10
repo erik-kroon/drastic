@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -13,7 +15,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { useSavedPostingRequests } from "@/components/posting-recovery/saved-requests";
 import { sendSavedPostingCommand } from "@/components/posting-recovery/request";
 import { readAccounting } from "@/lib/accounting-api";
-import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, type CommerceProps } from "./shared";
 
 type Party = typeof Commerce.CounterpartyRevision.Type;
 
@@ -85,13 +87,30 @@ export function ContactEditor(
             evidenceId,
           });
 
-      const path = `${commercePath(book)}/counterparties${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`;
-
-      const result = await readAccounting(path, Commerce.CounterpartyRevision, {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: { "Idempotency-Key": key },
-      });
+      const result = await readAccounting(
+        (client, requestOptions) =>
+          baseline
+            ? client.commerce.commerceReviseCounterparty(
+                httpRequest(
+                  Api.groups.commerce.endpoints.commerceReviseCounterparty,
+                  { params: { ...bookScope(book), id: baseline.id } },
+                  requestOptions,
+                ),
+              )
+            : client.commerce.commerceCreateCounterparty(
+                httpRequest(
+                  Api.groups.commerce.endpoints.commerceCreateCounterparty,
+                  { params: bookScope(book) },
+                  requestOptions,
+                ),
+              ),
+        Commerce.CounterpartyRevision,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+          headers: { "Idempotency-Key": key },
+        },
+      );
 
       checkScope(book, result.scope);
 

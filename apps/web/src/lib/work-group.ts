@@ -1,10 +1,11 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import { readAccounting } from "./accounting-api";
 import { assertSupplierReviewIdentity } from "@/components/commerce/supplier-acceptance";
-import { commercePath, checkScope } from "@/components/commerce/shared";
+import { checkScope } from "@/components/commerce/shared";
 
 export const workGroupSelectionLimit = Acceptance.workGroupSelectionLimit;
 
@@ -97,12 +98,17 @@ export async function postGroupEntry(
   if (!supplierGroupEligible(view, entry.approvalKey))
     throw new Error("Proposal requires individual review");
 
-  const path = `${commercePath(book)}/supplier-acceptance-reviews/${encodeURIComponent(entry.reviewId)}`;
-
   const input = { version: 1, digest: entry.digest, acknowledgeSyntheticOnly: true };
 
   const approval = await readAccounting(
-    `${path}/approvals`,
+    (client, requestOptions) =>
+      client.supplierAcceptance.approveSupplierAcceptance(
+        httpRequest(
+          Api.groups.supplierAcceptance.endpoints.approveSupplierAcceptance,
+          { params: { ...bookScope(book), id: entry.reviewId } },
+          requestOptions,
+        ),
+      ),
     Acceptance.SupplierAcceptanceApproval,
     {
       method: "POST",
@@ -116,11 +122,22 @@ export async function postGroupEntry(
   if (approval.reviewId !== entry.reviewId || approval.digest !== entry.digest)
     throw new Error("Group approval identity mismatch");
 
-  const receipt = await readAccounting(`${path}/execute`, Acceptance.SupplierAcceptanceReceipt, {
-    method: "POST",
-    body: JSON.stringify({ ...input, approvalId: approval.id }),
-    headers: { "Idempotency-Key": entry.executionKey },
-  });
+  const receipt = await readAccounting(
+    (client, requestOptions) =>
+      client.supplierAcceptance.executeSupplierAcceptance(
+        httpRequest(
+          Api.groups.supplierAcceptance.endpoints.executeSupplierAcceptance,
+          { params: { ...bookScope(book), id: entry.reviewId } },
+          requestOptions,
+        ),
+      ),
+    Acceptance.SupplierAcceptanceReceipt,
+    {
+      method: "POST",
+      body: JSON.stringify({ ...input, approvalId: approval.id }),
+      headers: { "Idempotency-Key": entry.executionKey },
+    },
+  );
 
   checkScope(book, receipt.scope);
 

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { ClosingComparison } from "./closing-comparison";
 
@@ -180,7 +182,14 @@ function FinancialLease({
   const lease = useMutation({
     mutationFn: (action: "pause" | "resume") =>
       readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.historicalMigration.reclaimSieFinancialRun(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.reclaimSieFinancialRun,
+              { params: { ...bookScope(book), id: run.id } },
+              requestOptions,
+            ),
+          ),
         Historical.Fence,
         keys.current.options(path, JSON.stringify({ action })),
       ),

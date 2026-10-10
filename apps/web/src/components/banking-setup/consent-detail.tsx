@@ -1,5 +1,5 @@
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 
 import { useForm } from "@tanstack/react-form";
@@ -19,13 +19,18 @@ import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/
 export function ConsentDetail({ id }: { id: string }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const path = `${bookPath(book)}/bank-connector-consents/${encodeURIComponent(id)}`;
 
   const consent = useQuery({
     queryKey: [...bookKey(book), "connector-consent", id],
     retry: false,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Connector.ConnectorConsentState, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.bankConnector.getConnectorConsent({ params: { ...bookScope(book), id: id } }),
+        Connector.ConnectorConsentState,
+        { signal },
+      );
+
       checkScope(book, result.scope);
 
       if (result.id !== id) throw new Error("Connector consent identity mismatch");
@@ -40,7 +45,14 @@ export function ConsentDetail({ id }: { id: string }) {
     retry: false,
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${path}/batches${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.bankConnector.listConnectorBatches({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(
+              Api.groups.bankConnector.endpoints.listConnectorBatches,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Connector.ConnectorBatchInventory,
         { signal },
       );
@@ -284,7 +296,14 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
   const save = useMutation({
     mutationFn: async (input: typeof Connector.RevokeConnectorConsent.Type) => {
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.bankConnector.revokeConnectorConsent(
+            httpRequest(
+              Api.groups.bankConnector.endpoints.revokeConnectorConsent,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Connector.ConnectorRevocation,
         keys.current.options(path, JSON.stringify(input)),
       );

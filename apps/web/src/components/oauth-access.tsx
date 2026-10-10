@@ -130,7 +130,8 @@ function useOAuthAccess(props: { screen: "select" | "consent" | "login" }) {
     queryKey: ["oauth", "firms"],
     enabled: hydrated && props.screen === "select",
     retry: false,
-    queryFn: ({ signal }) => readAccounting("/api/v1/firms", Firms.FirmList, { signal }),
+    queryFn: ({ signal }) =>
+      readAccounting((client) => client.firms.listFirms({}), Firms.FirmList, { signal }),
   });
 
   const workspace = useQuery({
@@ -138,7 +139,11 @@ function useOAuthAccess(props: { screen: "select" | "consent" | "login" }) {
     enabled: hydrated && firmId !== "",
     retry: false,
     queryFn: ({ signal }) =>
-      readAccounting(`/api/v1/firms/${encodeURIComponent(firmId)}`, Firms.Workspace, { signal }),
+      readAccounting(
+        (client) => client.firms.getFirm({ params: { firmId: firmId } }),
+        Firms.Workspace,
+        { signal },
+      ),
   });
 
   const action = useMutation({

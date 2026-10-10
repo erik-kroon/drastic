@@ -39,7 +39,8 @@ export function AccountingAccess({
     enabled: hydrated && client.getQueryData(booksKey) !== null,
     retry: false,
     staleTime: 0,
-    queryFn: ({ signal }) => readAccounting("/api/v1/books", Books, { signal }),
+    queryFn: ({ signal }) =>
+      readAccounting((client) => client.accounting.listBooks({}), Books, { signal }),
   });
 
   const accessDenied =

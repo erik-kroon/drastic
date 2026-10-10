@@ -1,10 +1,12 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import { Button } from "@open-erp/ui/components/button";
 import { RegisterGroup, RegisterRow } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { mileageStatuses } from "./mileage-status";
@@ -20,7 +22,14 @@ export function MileageCorrectionDirectory() {
     gcTime: 0,
     queryFn: ({ pageParam, signal }) =>
       readAccounting(
-        `${bookPath(book)}/payroll/mileage-corrections${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.mileageCorrections.listMileageCorrections({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.mileageCorrections.endpoints.listMileageCorrections,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Mileage.MileageCorrectionPage,
         { signal },
       ),

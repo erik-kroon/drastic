@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import * as Connector from "@open-erp/contracts/bank-connector";
@@ -11,7 +13,7 @@ import { PageContent } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { WorkReturnAction } from "@/components/work-return-action";
 import { ConsentForm } from "./consent-form";
 import { ConsentDetail } from "./consent-detail";
@@ -30,7 +32,14 @@ export function BankingSetup({ consent, returnTo }: { consent?: string; returnTo
     retry: false,
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/bank-connector-consents${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.bankConnector.listConnectorConsents({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.bankConnector.endpoints.listConnectorConsents,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Connector.ConnectorInventory,
         { signal },
       );
@@ -51,7 +60,14 @@ export function BankingSetup({ consent, returnTo }: { consent?: string; returnTo
     retry: false,
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/bank-connector-feeds${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.bankConnector.listConnectorFeeds({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.bankConnector.endpoints.listConnectorFeeds,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Connector.ConnectorFeedInventory,
         { signal },
       );

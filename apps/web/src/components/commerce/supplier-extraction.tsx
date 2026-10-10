@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -624,7 +625,14 @@ export function SupplierExtraction(
     retry: false,
     refetchInterval: (query) => (query.state.data?.requests[0]?.state === "ready" ? 2000 : false),
     queryFn: async ({ signal }) =>
-      readAccounting(base, Extraction.SupplierExtractionState, { signal }),
+      readAccounting(
+        (client) =>
+          client.supplierExtraction.getSupplierExtractionState({
+            params: { ...bookScope(book), id: occurrenceId },
+          }),
+        Extraction.SupplierExtractionState,
+        { signal },
+      ),
   });
 
   const current = state.data?.requests[0] ?? null;

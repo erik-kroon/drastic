@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useId, useState } from "react";
@@ -94,7 +96,14 @@ export function TaxSourceForm(
       const path = `${bookPath(book)}/expense-tax/sources`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.expenseTax.recordExpenseTaxSource(
+            httpRequest(
+              Api.groups.expenseTax.endpoints.recordExpenseTaxSource,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Tax.TaxSourceRevision,
         keys.current.options(path, JSON.stringify(input)),
       );
@@ -266,7 +275,18 @@ export function TaxReviewForm(
     mutationFn: (input: typeof Tax.ReviewTaxSource.Type) => {
       const path = `${bookPath(book)}/expense-tax/sources/${source.current.sourceId}/reviews`;
 
-      return readAccounting(path, Tax.TaxReview, keys.current.options(path, JSON.stringify(input)));
+      return readAccounting(
+        (client, requestOptions) =>
+          client.expenseTax.reviewExpenseTaxSource(
+            httpRequest(
+              Api.groups.expenseTax.endpoints.reviewExpenseTaxSource,
+              { params: { ...bookScope(book), id: source.current.sourceId } },
+              requestOptions,
+            ),
+          ),
+        Tax.TaxReview,
+        keys.current.options(path, JSON.stringify(input)),
+      );
     },
     onSuccess: () => props.onSaved(),
   });
@@ -414,7 +434,14 @@ export function TaxEvidenceForm({ book, locale }: Common) {
       const path = `${bookPath(book)}/evidence`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.createEvidence(
+            httpRequest(
+              Api.groups.accounting.endpoints.createEvidence,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Accounting.Evidence,
         keys.current.options(path, JSON.stringify(input)),
       );

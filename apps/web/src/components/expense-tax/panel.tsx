@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Plus, ArrowLeft } from "lucide-react";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
@@ -540,7 +541,14 @@ function ExpenseTaxSnapshots({
     queryKey: [...bookKey(book), "expense-tax", "snapshots", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/expense-tax/snapshots${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.expenseTax.listExpenseTaxSnapshots({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.expenseTax.endpoints.listExpenseTaxSnapshots,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Tax.TaxSnapshotPage,
         { signal },
       ),
@@ -552,7 +560,14 @@ function ExpenseTaxSnapshots({
       const path = `${bookPath(book)}/expense-tax/snapshots`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.expenseTax.prepareExpenseTaxSnapshot(
+            httpRequest(
+              Api.groups.expenseTax.endpoints.prepareExpenseTaxSnapshot,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Tax.TaxSnapshot,
         keys.current.options(path, JSON.stringify(input)),
       );

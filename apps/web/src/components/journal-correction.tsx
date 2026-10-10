@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -31,7 +33,14 @@ export function JournalCorrection(props: {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(voucherId)}/correction-proposals`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.prepareCorrection(
+            httpRequest(
+              Api.groups.accounting.endpoints.prepareCorrection,
+              { params: { ...bookScope(book), id: voucherId } },
+              requestOptions,
+            ),
+          ),
         Accounting.ChangeSet,
         keys.current.options(path, JSON.stringify(payload)),
       );

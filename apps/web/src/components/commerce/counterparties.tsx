@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { CustomerInvoiceDefaults } from "./customer-invoice-defaults";
 import { CustomerPreview } from "./customer-preview";
@@ -47,15 +47,7 @@ import { downloadIntake } from "@/components/source-intake/download";
 import { ContactEditor } from "./contact-editor";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { readAccounting } from "@/lib/accounting-api";
-import {
-  Details,
-  Evidence,
-  Facts,
-  checkScope,
-  commerceKey,
-  commercePath,
-  type CommerceProps,
-} from "./shared";
+import { Details, Evidence, Facts, checkScope, commerceKey, type CommerceProps } from "./shared";
 
 export function counterpartyRegisterOptions(book: CommerceProps["book"], search = "", role = "") {
   return infiniteQueryOptions({
@@ -485,17 +477,28 @@ function Annotations({
 
       if (!evidenceId.current) throw new Error(sv ? "Underlag saknas." : "Evidence is missing.");
 
-      return readAccounting(`${commercePath(book)}/directory/annotations`, Crm.Annotation, {
-        method: "POST",
-        headers: { "Idempotency-Key": key.current },
-        body: JSON.stringify(
-          Schema.decodeSync(Crm.AddAnnotation)({
-            ...input,
-            partyId,
-            evidenceId: evidenceId.current,
-          }),
-        ),
-      });
+      return readAccounting(
+        (client, requestOptions) =>
+          client.crmMaster.crmAddAnnotation(
+            httpRequest(
+              Api.groups.crmMaster.endpoints.crmAddAnnotation,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
+        Crm.Annotation,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": key.current },
+          body: JSON.stringify(
+            Schema.decodeSync(Crm.AddAnnotation)({
+              ...input,
+              partyId,
+              evidenceId: evidenceId.current,
+            }),
+          ),
+        },
+      );
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: [...commerceKey(book), "crm-directory"] });

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import type { CommandKeys } from "@/lib/command-keys";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -105,7 +106,12 @@ export function DimensionSettings({
   const list = useQuery(
     queryOptions({
       queryKey: key,
-      queryFn: ({ signal }) => readAccounting(path, Dimensions.DimensionList, { signal }),
+      queryFn: ({ signal }) =>
+        readAccounting(
+          (client) => client.dimensions.listDimensions({ params: { ...bookScope(book) } }),
+          Dimensions.DimensionList,
+          { signal },
+        ),
     }),
   );
 

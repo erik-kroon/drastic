@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useForm } from "@tanstack/react-form";
@@ -35,7 +37,18 @@ export function PrepareSourceVoucher({
 
   const prepare = useMutation({
     mutationFn: (input: typeof Historical.PrepareSourceVoucher.Type) =>
-      readAccounting(path, Accounting.ChangeSet, keys.current.options(path, JSON.stringify(input))),
+      readAccounting(
+        (client, requestOptions) =>
+          client.historicalMigration.prepareSieFinancialVoucher(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.prepareSieFinancialVoucher,
+              { params: { ...bookScope(book), id: run.id } },
+              requestOptions,
+            ),
+          ),
+        Accounting.ChangeSet,
+        keys.current.options(path, JSON.stringify(input)),
+      ),
     onSuccess: async () => {
       keys.current.clear();
       await onPrepared();
@@ -179,7 +192,14 @@ export function ReviewSourceVoucher({
   const approval = useMutation({
     mutationFn: () =>
       readAccounting(
-        approvalPath,
+        (client, requestOptions) =>
+          client.accounting.approveChange(
+            httpRequest(
+              Api.groups.accounting.endpoints.approveChange,
+              { params: { ...bookScope(book), id: proposal.id } },
+              requestOptions,
+            ),
+          ),
         Accounting.Approval,
         keys.current.options(
           approvalPath,
@@ -198,7 +218,14 @@ export function ReviewSourceVoucher({
       items: { changeSetId: string; planDigest: string; approvalId: string }[];
     }) =>
       readAccounting(
-        postPath,
+        (client, requestOptions) =>
+          client.historicalMigration.advanceSieFinancialRun(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.advanceSieFinancialRun,
+              { params: { ...bookScope(book), id: run.id } },
+              requestOptions,
+            ),
+          ),
         Historical.Chunk,
         keys.current.options(postPath, JSON.stringify(input)),
       ),

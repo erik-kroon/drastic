@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -136,7 +137,18 @@ export function VatDraftForm({
     mutationFn: (input: typeof Vat.PrepareVatDraft.Type) => {
       const path = `${bookPath(book)}/vat-returns/drafts`;
 
-      return readAccounting(path, Vat.VatDraft, keys.current.options(path, JSON.stringify(input)));
+      return readAccounting(
+        (client, requestOptions) =>
+          client.vatReturns.prepareVatDraft(
+            httpRequest(
+              Api.groups.vatReturns.endpoints.prepareVatDraft,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
+        Vat.VatDraft,
+        keys.current.options(path, JSON.stringify(input)),
+      );
     },
     onSuccess: (draft, input) => {
       keys.current.delete(`${bookPath(book)}/vat-returns/drafts:${JSON.stringify(input)}`);

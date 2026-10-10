@@ -109,7 +109,12 @@ export function SalesOrders({
   const list = useQuery({
     queryKey: [...commerceKey(book), "sales-documents"],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Sales.SalesDocumentList, { signal });
+      const result = await readAccounting(
+        (client) => client.salesOrders.listSalesDocuments({ params: { ...bookScope(book) } }),
+        Sales.SalesDocumentList,
+        { signal },
+      );
+
       checkScope(book, result.scope);
 
       return result;
@@ -123,7 +128,8 @@ export function SalesOrders({
     queryKey: [...commerceKey(book), "sales-document", selectedId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${path}/${encodeURIComponent(selectedId)}`,
+        (client) =>
+          client.salesOrders.getSalesDocument({ params: { ...bookScope(book), id: selectedId } }),
         Sales.SalesDocumentView,
         {
           signal,

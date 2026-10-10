@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -32,7 +34,12 @@ function Panel({ book, locale }: Props) {
   const saved = useQuery({
     queryKey: [...bookKey(book), "bank-source-coverage", "list"],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(base, Coverage.BankSourceCoverageList, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.bankSourceCoverage.listBankSourceCoverage({ params: { ...bookScope(book) } }),
+        Coverage.BankSourceCoverageList,
+        { signal },
+      );
 
       if (result.scope.entityId !== book.entityId || result.scope.bookId !== book.id)
         throw new Error(copy.artifactError);
@@ -45,7 +52,14 @@ function Panel({ book, locale }: Props) {
   const capture = useMutation({
     mutationFn: async (input: typeof Coverage.CreateBankSourceCoverage.Type) => {
       const report = await readAccounting(
-        base,
+        (client, requestOptions) =>
+          client.bankSourceCoverage.createBankSourceCoverage(
+            httpRequest(
+              Api.groups.bankSourceCoverage.endpoints.createBankSourceCoverage,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Coverage.BankSourceCoverageReport,
         keys.current.options(base, JSON.stringify(input)),
       );

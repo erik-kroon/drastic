@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import {
   ReportCatalog,
@@ -204,7 +205,14 @@ export function TrialBalanceWorkspace(props: {
     initialPageParam: "",
     queryFn: ({ signal, pageParam }) =>
       readAccounting(
-        `${bookPath(book)}/report-snapshots${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.reports.listReports({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.reports.endpoints.listReports,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Reports.ReportSnapshotPage,
         { signal },
       ),
@@ -217,7 +225,14 @@ export function TrialBalanceWorkspace(props: {
       const path = `${bookPath(book)}/report-snapshots`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reports.prepareReport(
+            httpRequest(
+              Api.groups.reports.endpoints.prepareReport,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reports.ReportSnapshot,
         keys.current.options(path, JSON.stringify(input)),
       );
@@ -407,7 +422,14 @@ export function ReportFamilyWorkspace(props: {
   const prepare = useMutation({
     mutationFn: (input: typeof Reports.PrepareReportFamily.Type) =>
       readAccounting(
-        `${bookPath(book)}/report-family-snapshots`,
+        (client, requestOptions) =>
+          client.reports.prepareReportFamily(
+            httpRequest(
+              Api.groups.reports.endpoints.prepareReportFamily,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reports.ReportFamilySnapshot,
         keys.current.options(`${bookPath(book)}/report-family-snapshots`, JSON.stringify(input)),
       ),

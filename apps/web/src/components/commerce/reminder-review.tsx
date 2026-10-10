@@ -82,7 +82,8 @@ export function ReminderReview({
     refetchInterval: reminderId ? 2000 : false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/${encodeURIComponent(reminderId)}`,
+        (client) =>
+          client.collections.readReminder({ params: { ...bookScope(book), id: reminderId } }),
         Collections.ReminderView,
         { signal },
       );

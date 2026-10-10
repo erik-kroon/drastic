@@ -1,5 +1,5 @@
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { originalCoverage, sourceScope } from "./source-inventory";
 import * as Mapping from "@open-erp/contracts/onboarding-mappings";
@@ -437,7 +437,14 @@ function UploadSource({
       const sourcePath = `${bookPath(book)}/source-occurrences`;
 
       const source = await readAccounting(
-        sourcePath,
+        (client, requestOptions) =>
+          client.sourceIntake.retainSource(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.retainSource,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Intake.SourceOccurrence,
         keys.current.options(sourcePath, JSON.stringify(input)),
       );
@@ -445,7 +452,14 @@ function UploadSource({
       const linkPath = `${bookPath(book)}/onboarding/sources`;
 
       return readAccounting(
-        linkPath,
+        (client, requestOptions) =>
+          client.onboarding.attachOnboardingSource(
+            httpRequest(
+              Api.groups.onboarding.endpoints.attachOnboardingSource,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Onboarding.OnboardingSource,
         keys.current.options(linkPath, JSON.stringify({ occurrenceId: source.id, category })),
       );

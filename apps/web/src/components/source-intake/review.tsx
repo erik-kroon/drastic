@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -45,7 +47,12 @@ export function PreviewReview(
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(base, Intake.SourcePreviewView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.sourceIntake.getSourcePreview({ params: { ...bookScope(book), id: id } }),
+        Intake.SourcePreviewView,
+        { signal },
+      );
 
       if (
         result.preview.id !== id ||
@@ -62,7 +69,14 @@ export function PreviewReview(
   const approval = useMutation({
     mutationFn: (input: typeof Intake.ApproveSourcePreview.Type) =>
       readAccounting(
-        `${base}/approve`,
+        (client, requestOptions) =>
+          client.sourceIntake.approveSourcePreview(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.approveSourcePreview,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Intake.SourceApproval,
         approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
@@ -78,7 +92,14 @@ export function PreviewReview(
   const admission = useMutation({
     mutationFn: (input: typeof Intake.AdmitSourcePreview.Type) =>
       readAccounting(
-        `${base}/admit`,
+        (client, requestOptions) =>
+          client.sourceIntake.admitSourcePreview(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.admitSourcePreview,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Intake.SourceAdmission,
         admissionKeys.current.options(`${base}/admit`, JSON.stringify(input)),
       ),

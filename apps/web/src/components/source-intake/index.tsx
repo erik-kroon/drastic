@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,7 +38,14 @@ function IntakeWorkspace(props: IntakeProps) {
     retry: false,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/source-occurrences${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+        (client) =>
+          client.sourceIntake.listSourceOccurrences({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.listSourceOccurrences,
+              `${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+            ),
+          }),
         Intake.SourceInventory,
         { signal },
       ),
@@ -177,7 +186,14 @@ function RetainForm({
       const path = `${bookPath(book)}/source-occurrences`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.sourceIntake.retainSource(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.retainSource,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Intake.SourceOccurrence,
         keys.current.options(path, JSON.stringify(input)),
       );

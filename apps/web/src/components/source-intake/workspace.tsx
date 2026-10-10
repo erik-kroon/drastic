@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -240,7 +241,14 @@ function MappingForm(
       const path = `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}/previews`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.sourceIntake.previewSourceCsv(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.previewSourceCsv,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Intake.SourcePreview,
         keys.current.options(path, JSON.stringify(input)),
       );

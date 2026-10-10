@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -38,7 +40,14 @@ export function CollectionsWorkspace({
     queryKey: [...commerceKey(book), "collection-worklist", worklistPage],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/worklist?page=${worklistPage}`,
+        (client) =>
+          client.collections.collectionWorklist({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.collections.endpoints.collectionWorklist,
+              `page=${worklistPage}`,
+            ),
+          }),
         Collections.CollectionWorklist,
         { signal },
       );
@@ -56,7 +65,14 @@ export function CollectionsWorkspace({
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${base}/customers/${encodeURIComponent(customerId)}/history${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.collections.collectionHistoryPage({
+            params: { ...bookScope(book), id: customerId },
+            query: httpQuery(
+              Api.groups.collections.endpoints.collectionHistoryPage,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Collections.CollectionHistoryPage,
         { signal },
       );

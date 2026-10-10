@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import * as Catalog from "@open-erp/contracts/catalog";
@@ -18,7 +20,7 @@ import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspace-api";
-import { commerceKey, commercePath, type CommerceProps } from "./shared";
+import { commerceKey, type CommerceProps } from "./shared";
 
 type DraftLine = typeof Drafts.DraftLine.Type;
 
@@ -174,10 +176,19 @@ export function InvoiceEditorLines(props: {
     enabled: !!props.book,
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
-      if (!props.book) throw new Error("Catalog article query requires a book");
+      const catalogBook = props.book;
+
+      if (!catalogBook) throw new Error("Catalog article query requires a book");
 
       return readAccounting(
-        `${commercePath(props.book)}/articles${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.catalog.catalogArticles({
+            params: { ...bookScope(catalogBook) },
+            query: httpQuery(
+              Api.groups.catalog.endpoints.catalogArticles,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Catalog.ArticlePage,
         { signal },
       );

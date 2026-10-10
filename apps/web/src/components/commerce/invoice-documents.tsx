@@ -146,12 +146,17 @@ export function InvoiceDocumentInspector(props: IssuedDocumentProps & { id: stri
   const { book, locale, id, issue } = props;
   const copy = invoiceDocumentCopy(locale);
   const client = useQueryClient();
-  const path = `${commercePath(book)}/invoice-documents/${encodeURIComponent(id)}`;
 
   const view = useQuery({
     queryKey: [...commerceKey(book), "invoice-document", id, issue.id, issue.digest],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Documents.InvoiceDocumentView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.invoiceDocuments.getInvoiceDocument({ params: { ...bookScope(book), id: id } }),
+        Documents.InvoiceDocumentView,
+        { signal },
+      );
+
       checkScope(book, result.capture.scope);
 
       if (
@@ -173,7 +178,12 @@ export function InvoiceDocumentInspector(props: IssuedDocumentProps & { id: stri
 
   const resume = useMutation({
     mutationFn: () =>
-      readAccounting(`${path}/render`, Documents.InvoiceDocumentView, { method: "POST" }),
+      readAccounting(
+        (client) =>
+          client.invoiceDocuments.resumeInvoiceDocument({ params: { ...bookScope(book), id: id } }),
+        Documents.InvoiceDocumentView,
+        { method: "POST" },
+      ),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: commerceKey(book) });
     },

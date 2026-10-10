@@ -1,4 +1,4 @@
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -309,7 +309,14 @@ function useCommercialPreview(
       const inputDigest = `sha256:${Array.from(new Uint8Array(hashed), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/calculate`,
+        (client, requestOptions) =>
+          client.invoiceDrafts.calculateCommercialDraft(
+            httpRequest(
+              Api.groups.invoiceDrafts.endpoints.calculateCommercialDraft,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Drafts.CommercialDraftCalculation,
         {
           method: "POST",

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -35,7 +37,14 @@ export function BankMatchReversals({
     queryKey: [...bookKey(book), "bank-match-reversals", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${base}${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.bankMatchReversals.listBankMatchReversals({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.bankMatchReversals.endpoints.listBankMatchReversals,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Reversal.BankMatchReversalList,
         { signal },
       ),
@@ -45,7 +54,14 @@ export function BankMatchReversals({
   const prepare = useMutation({
     mutationFn: (input: typeof Reversal.PrepareBankMatchReversal.Type) =>
       readAccounting(
-        base,
+        (client, requestOptions) =>
+          client.bankMatchReversals.prepareBankMatchReversal(
+            httpRequest(
+              Api.groups.bankMatchReversals.endpoints.prepareBankMatchReversal,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reversal.BankMatchReversalPlan,
         keys.current.options(base, JSON.stringify(input)),
       ),

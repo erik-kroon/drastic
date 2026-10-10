@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -260,7 +261,14 @@ function SimulateRule(props: {
       const path = `${bookPath(book)}/recurring-rule-simulations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.simulateRecurringRule(
+            httpRequest(
+              Api.groups.automation.endpoints.simulateRecurringRule,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Automation.RuleSimulation,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -480,7 +488,14 @@ function ActivateRule({
       const path = `${bookPath(book)}/recurring-rule-activations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.activateRecurringRule(
+            httpRequest(
+              Api.groups.automation.endpoints.activateRecurringRule,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Automation.RuleActivation,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -591,7 +606,14 @@ function DeactivateRule({
       const path = `${bookPath(book)}/recurring-rule-deactivations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.deactivateRecurringRule(
+            httpRequest(
+              Api.groups.automation.endpoints.deactivateRecurringRule,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Automation.RuleDeactivation,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -701,7 +723,14 @@ function CreateRun(props: {
       const path = `${bookPath(book)}/preparation-runs`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.createPreparationRun(
+            httpRequest(
+              Api.groups.automation.endpoints.createPreparationRun,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Automation.PreparationRun,
         keys.current.options(path, JSON.stringify(payload)),
       );

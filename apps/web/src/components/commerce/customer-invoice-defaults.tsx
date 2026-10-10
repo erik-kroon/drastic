@@ -1,5 +1,5 @@
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +72,14 @@ export function InvoiceDefaultsSelection(props: CommerceProps & { session: Draft
       });
 
       const copy = await readAccounting(
-        `${commercePath(book)}/directory/${encodeURIComponent(partyId)}/invoice-defaults/apply`,
+        (client, requestOptions) =>
+          client.crmMaster.crmApplyCustomerInvoiceDefaults(
+            httpRequest(
+              Api.groups.crmMaster.endpoints.crmApplyCustomerInvoiceDefaults,
+              { params: { ...bookScope(book), partyId: partyId } },
+              requestOptions,
+            ),
+          ),
         Crm.CopiedCustomerInvoiceDefaults,
         { method: "POST", body: JSON.stringify(input) },
       );
@@ -197,7 +204,14 @@ export function CustomerInvoiceDefaults(
       const path = `${commercePath(book)}/directory/${encodeURIComponent(party.id)}/recipient`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.crmMaster.crmSaveCustomerRecipient(
+            httpRequest(
+              Api.groups.crmMaster.endpoints.crmSaveCustomerRecipient,
+              { params: { ...bookScope(book), partyId: party.id } },
+              requestOptions,
+            ),
+          ),
         Crm.ReviewedCustomerRecipient,
         mutationOptions(path, JSON.stringify(input), keys),
       );
@@ -215,7 +229,14 @@ export function CustomerInvoiceDefaults(
       const path = `${commercePath(book)}/directory/${encodeURIComponent(party.id)}/invoice-defaults`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.crmMaster.crmSaveCustomerInvoiceDefaults(
+            httpRequest(
+              Api.groups.crmMaster.endpoints.crmSaveCustomerInvoiceDefaults,
+              { params: { ...bookScope(book), partyId: party.id } },
+              requestOptions,
+            ),
+          ),
         Crm.CustomerInvoiceDefaults,
         mutationOptions(path, JSON.stringify(input), keys),
       );

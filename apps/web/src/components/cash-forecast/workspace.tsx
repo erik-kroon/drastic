@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery, skipToken } from "@tanstack/react-query";
 import * as Cash from "@open-erp/contracts/cash-forecast";
@@ -7,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CashBasisWorkspace } from "./basis-workspace";
 import { CashForecastResult } from "./result";
@@ -28,7 +29,14 @@ function Workspace({ recordId, onOpen }: { recordId?: string; onOpen: (id: strin
     initialPageParam: "",
     queryFn: ({ signal, pageParam }) =>
       readAccounting(
-        `${bookPath(book)}/cash-forecasts${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.cashForecast.listCashForecasts({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.cashForecast.endpoints.listCashForecasts,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Cash.CashForecastPage,
         { signal },
       ),

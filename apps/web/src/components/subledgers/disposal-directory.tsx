@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Disposals from "@open-erp/contracts/asset-disposals";
@@ -7,7 +9,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { checkScope } from "@/components/commerce/shared";
 import type { Locale } from "@/paraglide/runtime";
@@ -28,7 +30,14 @@ export function AssetDisposalDirectory(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${bookPath(book)}/asset-disposals/for-schedule/${encodeURIComponent(id)}${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.assetDisposals.listAssetProceedsDisposals({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(
+              Api.groups.assetDisposals.endpoints.listAssetProceedsDisposals,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Disposals.ReviewPage,
         { signal },
       );

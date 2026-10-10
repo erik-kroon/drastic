@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Runs from "@open-erp/contracts/payroll-runs";
@@ -9,7 +11,7 @@ import {
   RegisterWorkspace,
 } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { PayrollRunReview } from "./run-review";
@@ -29,7 +31,14 @@ export function PayrollWorkspace({ recordId }: { recordId?: string }) {
     retry: false,
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/payroll/runs${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.payrollRun.listPayrollRuns({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.payrollRun.endpoints.listPayrollRuns,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Runs.PayrollRunPage,
         { signal },
       );

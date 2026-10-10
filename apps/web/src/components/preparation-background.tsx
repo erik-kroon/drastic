@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -22,7 +23,14 @@ export function PreparationBackground(props: {
   const job = useQuery({
     queryKey,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Schema.NullOr(PreparationJob), { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.automation.getPreparationJob({
+            params: { ...bookScope(props.book), id: props.runId },
+          }),
+        Schema.NullOr(PreparationJob),
+        { signal },
+      );
 
       if (
         result &&

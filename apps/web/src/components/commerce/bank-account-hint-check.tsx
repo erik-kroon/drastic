@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Identifiers from "@open-erp/contracts/payment-identifiers";
@@ -9,7 +11,7 @@ import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
-import { checkScope, commercePath, type CommerceProps } from "./shared";
+import { checkScope, type CommerceProps } from "./shared";
 
 export function BankAccountHintCheck(props: CommerceProps) {
   const sv = props.locale === "sv";
@@ -19,7 +21,14 @@ export function BankAccountHintCheck(props: CommerceProps) {
   const check = useMutation({
     mutationFn: async (input: typeof Identifiers.BankAccountHintInput.Type) => {
       const response = await readAccounting(
-        `${commercePath(props.book)}/payment-identifiers/bank-account`,
+        (client, requestOptions) =>
+          client.paymentIdentifiers.checkBankAccountHint(
+            httpRequest(
+              Api.groups.paymentIdentifiers.endpoints.checkBankAccountHint,
+              { params: { ...bookScope(props.book) } },
+              requestOptions,
+            ),
+          ),
         Identifiers.BankAccountHintView,
         { method: "POST", body: JSON.stringify(input) },
       );

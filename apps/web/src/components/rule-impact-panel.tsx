@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -7,7 +9,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 const decisionKinds = ["unaffected_with_reason", "reprepare", "amend", "human_review"] as const;
@@ -19,27 +21,44 @@ function decisionKindsFor(suggested: string): ReadonlyArray<string> {
 export function RuleImpactPanel(props: { book: typeof Accounting.Book.Type; locale: Locale }) {
   const { book, locale } = props;
   const sv = locale === "sv";
-  const path = `${bookPath(book)}/rule-impact`;
+
   const [snapshotId, setSnapshotId] = useState("");
 
   const notices = useQuery({
     queryKey: [...bookKey(book), "rule-impact", "notices"],
-    queryFn: ({ signal }) => readAccounting(path, Impact.RuleChangeNoticeList, { signal }),
+    queryFn: ({ signal }) =>
+      readAccounting(
+        (client) => client.ruleImpact.listRuleChangeNotices({ params: { ...bookScope(book) } }),
+        Impact.RuleChangeNoticeList,
+        { signal },
+      ),
   });
 
   const snapshots = useQuery({
     queryKey: [...bookKey(book), "rule-impact", "snapshots"],
     queryFn: ({ signal }) =>
-      readAccounting(`${path}/impact`, Impact.ImpactSnapshotList, { signal }),
+      readAccounting(
+        (client) => client.ruleImpact.listRuleImpact({ params: { ...bookScope(book) } }),
+        Impact.ImpactSnapshotList,
+        { signal },
+      ),
     enabled: snapshotId === "",
   });
 
   const snapshot = useQuery({
     queryKey: [...bookKey(book), "rule-impact", "snapshot", snapshotId],
     queryFn: ({ signal }) =>
-      readAccounting(`${path}/impact/${encodeURIComponent(snapshotId)}`, Impact.ImpactSnapshot, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.ruleImpact.getRuleImpactSnapshot({
+            params: { ...bookScope(book), snapshotId: snapshotId },
+            query: httpQuery(Api.groups.ruleImpact.endpoints.getRuleImpactSnapshot, ``),
+          }),
+        Impact.ImpactSnapshot,
+        {
+          signal,
+        },
+      ),
     enabled: snapshotId !== "",
   });
 

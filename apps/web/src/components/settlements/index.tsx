@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import * as Option from "effect/Option";
 import { useState } from "react";
@@ -96,7 +98,14 @@ function AllocationForm(props: {
       const path = `${bookPath(book)}/bank-allocation-plans`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.settlements.prepareBankAllocation(
+            httpRequest(
+              Api.groups.settlements.endpoints.prepareBankAllocation,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Settlement.BankAllocationPlan,
         keys.current.options(path, JSON.stringify(input)),
       );

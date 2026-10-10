@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -238,7 +240,14 @@ export function ConversionForm(
       const path = `${bookPath(book)}/exchange-rates/reviews`;
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.exchangeRates.captureConversionReview(
+            httpRequest(
+              Api.groups.exchangeRates.endpoints.captureConversionReview,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Rates.ConversionReview,
         keys.current.options(path, JSON.stringify(input)),
       );

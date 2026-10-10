@@ -1,6 +1,6 @@
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope, httpQuery } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
@@ -106,7 +106,14 @@ function CaptureCases({
       const path = `${bookPath(book)}/case-snapshots`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.cases.prepareCaseSnapshot(
+            httpRequest(
+              Api.groups.cases.endpoints.prepareCaseSnapshot,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Cases.CaseSnapshot,
         keys.current.options(path, JSON.stringify(payload)),
       );

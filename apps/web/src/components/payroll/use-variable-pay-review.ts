@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Variable from "@open-erp/contracts/variable-pay-review";
 import * as Inputs from "@open-erp/contracts/payroll-inputs";
@@ -19,7 +21,7 @@ export function useVariablePayReview(assessmentId: string) {
   const { book } = useBookWorkspace();
   const client = useQueryClient();
   const root = `${bookPath(book)}/payroll/variable-pay`;
-  const path = `${root}/assessments/${encodeURIComponent(assessmentId)}`;
+
   const queryKey = [...bookKey(book), "payroll", "variable-pay", assessmentId];
 
   function requireScope(view: typeof Variable.VariablePayReviewView.Type) {
@@ -46,7 +48,14 @@ export function useVariablePayReview(assessmentId: string) {
     gcTime: 0,
     refetchInterval: 2_000,
     queryFn: async ({ signal }) => {
-      const view = await readAccounting(path, Variable.VariablePayReviewView, { signal });
+      const view = await readAccounting(
+        (client) =>
+          client.variablePayReview.getVariablePayAssessment({
+            params: { ...bookScope(book), assessmentId: assessmentId },
+          }),
+        Variable.VariablePayReviewView,
+        { signal },
+      );
 
       return requireScope(view);
     },
@@ -58,8 +67,17 @@ export function useVariablePayReview(assessmentId: string) {
       recovery.retain(request);
 
       if (request.input.kind === "approve") {
+        const inputId = request.input.inputId;
+
         const prepared = await readAccounting(
-          `${bookPath(book)}/payroll/inputs/${encodeURIComponent(request.input.inputId)}/reviews`,
+          (client, requestOptions) =>
+            client.payrollInput.reviewPayrollInput(
+              httpRequest(
+                Api.groups.payrollInput.endpoints.reviewPayrollInput,
+                { params: { ...bookScope(book), inputId } },
+                requestOptions,
+              ),
+            ),
           Inputs.PayrollInputReview,
           {
             method: "POST",
@@ -77,7 +95,14 @@ export function useVariablePayReview(assessmentId: string) {
           throw new Error("Variable-pay financial review scope mismatch");
 
         const approval = await readAccounting(
-          `${bookPath(book)}/payroll/input-reviews/${encodeURIComponent(prepared.id)}/approvals`,
+          (client, requestOptions) =>
+            client.payrollInput.approvePayrollInput(
+              httpRequest(
+                Api.groups.payrollInput.endpoints.approvePayrollInput,
+                { params: { ...bookScope(book), reviewId: prepared.id } },
+                requestOptions,
+              ),
+            ),
           Inputs.PayrollInputApproval,
           {
             method: "POST",
@@ -92,11 +117,22 @@ export function useVariablePayReview(assessmentId: string) {
         return { kind: "approve" as const, approval };
       }
 
-      const view = await readAccounting(`${path}/dispositions`, Variable.VariablePayReviewView, {
-        method: "POST",
-        headers: { "Idempotency-Key": request.key },
-        body: JSON.stringify(request.input.input),
-      });
+      const view = await readAccounting(
+        (client, requestOptions) =>
+          client.variablePayReview.disposeVariablePay(
+            httpRequest(
+              Api.groups.variablePayReview.endpoints.disposeVariablePay,
+              { params: { ...bookScope(book), assessmentId: assessmentId } },
+              requestOptions,
+            ),
+          ),
+        Variable.VariablePayReviewView,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": request.key },
+          body: JSON.stringify(request.input.input),
+        },
+      );
 
       return { kind: "dispose" as const, view: requireScope(view) };
     },

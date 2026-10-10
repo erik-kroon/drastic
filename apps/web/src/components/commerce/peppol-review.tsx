@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Peppol from "@open-erp/contracts/peppol-exchange";
@@ -29,7 +31,7 @@ export function PeppolReviewWorkspace(props: {
 }) {
   const { book, locale } = useBookWorkspace();
   const [after, setAfter] = useState<string | null>(null);
-  const base = `${bookPath(book)}/commerce/peppol`;
+
   const workspace = `${workspacePath(book)}/sales?view=peppol&record=${encodeURIComponent(props.issueId ?? "")}`;
 
   const review = useQuery({
@@ -38,7 +40,10 @@ export function PeppolReviewWorkspace(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${base}/reviews/${encodeURIComponent(props.reviewId ?? "")}`,
+        (client) =>
+          client.peppolExchange.getPeppolReview({
+            params: { ...bookScope(book), id: props.reviewId ?? "" },
+          }),
         Peppol.ReviewView,
         { signal },
       );
@@ -69,9 +74,20 @@ export function PeppolReviewWorkspace(props: {
 
       if (after) query.set("after", after);
 
-      const page = await readAccounting(`${base}/reviews?${query.toString()}`, Peppol.ReviewPage, {
-        signal,
-      });
+      const page = await readAccounting(
+        (client) =>
+          client.peppolExchange.listPeppolReviews({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.peppolExchange.endpoints.listPeppolReviews,
+              `${query.toString()}`,
+            ),
+          }),
+        Peppol.ReviewPage,
+        {
+          signal,
+        },
+      );
 
       if (
         page.items.some(
