@@ -1,0 +1,217 @@
+{
+  "algorithmVersion": "firm_memory_v1",
+  "counts": {
+    "eligibleTargets": 3,
+    "suggestedTargets": 2,
+    "knownComparableTargets": 0,
+    "correctConsequences": 0,
+    "unknownConsequences": 3
+  },
+  "metrics": {
+    "coverage": {
+      "numerator": 2,
+      "denominator": 3,
+      "value": 0.6666666666666666
+    },
+    "consequenceAccuracy": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    }
+  },
+  "targets": [
+    {
+      "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+      "cutoff": "1",
+      "suggestedSourceDecisionIds": [
+        "supplier_approval_85150403ea1a47a29743bf45b8289557"
+      ],
+      "comparison": "unknown",
+      "exclusions": [
+        {
+          "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+          "reason": "related_holdout"
+        },
+        {
+          "id": "supplier_approval_49e71d54154b412cabedb879026c2e54",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+          "reason": "later_receipt"
+        }
+      ]
+    },
+    {
+      "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+      "cutoff": "1",
+      "suggestedSourceDecisionIds": [
+        "supplier_approval_85150403ea1a47a29743bf45b8289557"
+      ],
+      "comparison": "unknown",
+      "exclusions": [
+        {
+          "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_49e71d54154b412cabedb879026c2e54",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+          "reason": "related_holdout"
+        }
+      ]
+    },
+    {
+      "id": "supplier_approval_85150403ea1a47a29743bf45b8289557",
+      "cutoff": "0",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_49e71d54154b412cabedb879026c2e54",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_85150403ea1a47a29743bf45b8289557",
+          "reason": "related_holdout"
+        }
+      ]
+    }
+  ],
+  "excludedTargets": [
+    {
+      "id": "supplier_approval_49e71d54154b412cabedb879026c2e54",
+      "reason": "influenced_label"
+    }
+  ],
+  "aggregateInterpretation": "descriptive_nonrepresentative",
+  "populations": {
+    "independent": {
+      "exampleCount": 1,
+      "representative": "not_established",
+      "selection": "independent_labels",
+      "baseline": {
+        "algorithmVersion": "firm_memory_v1",
+        "counts": {
+          "eligibleTargets": 1,
+          "suggestedTargets": 0,
+          "knownComparableTargets": 0,
+          "correctConsequences": 0,
+          "unknownConsequences": 1
+        },
+        "metrics": {
+          "coverage": {
+            "numerator": 0,
+            "denominator": 1,
+            "value": 0
+          },
+          "consequenceAccuracy": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          }
+        },
+        "targets": [
+          {
+            "id": "supplier_approval_85150403ea1a47a29743bf45b8289557",
+            "cutoff": "0",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_85150403ea1a47a29743bf45b8289557",
+                "reason": "related_holdout"
+              }
+            ]
+          }
+        ],
+        "excludedTargets": []
+      }
+    },
+    "corrected": {
+      "exampleCount": 2,
+      "representative": false,
+      "selection": "observed_disagreements",
+      "baseline": {
+        "algorithmVersion": "firm_memory_v1",
+        "counts": {
+          "eligibleTargets": 2,
+          "suggestedTargets": 0,
+          "knownComparableTargets": 0,
+          "correctConsequences": 0,
+          "unknownConsequences": 2
+        },
+        "metrics": {
+          "coverage": {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0
+          },
+          "consequenceAccuracy": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          }
+        },
+        "targets": [
+          {
+            "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+            "cutoff": "1",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+                "reason": "related_holdout"
+              },
+              {
+                "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+                "reason": "later_receipt"
+              }
+            ]
+          },
+          {
+            "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+            "cutoff": "1",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_431967b9b33c4be29607559b1e06f6fa",
+                "reason": "later_receipt"
+              },
+              {
+                "id": "supplier_approval_7a50ed49e36d4337bec867a5e66abb9c",
+                "reason": "related_holdout"
+              }
+            ]
+          }
+        ],
+        "excludedTargets": []
+      }
+    }
+  },
+  "sealedExport": {
+    "id": "decision_export_aeabfcc1b76a4f61860c7cdb54a5ca16",
+    "digest": "sha256:9ee4d4674a874c52ab7820a3bcc6c8331da171d65b38c7b5900697c6fcc11c7d",
+    "lineageCutoff": "4"
+  },
+  "inputCounts": {
+    "examples": 4,
+    "capturedPrecedents": 4,
+    "missingPrecedents": 0,
+    "excluded": 0
+  },
+  "inputExclusions": []
+}

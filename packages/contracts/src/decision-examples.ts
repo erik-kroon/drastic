@@ -67,6 +67,12 @@ export const DecisionExampleExport = Schema.Struct({
     Schema.Struct({ owner: Schema.String, id: DecisionKey, reason: Schema.String }),
   ),
   manifest: Schema.Struct({
+    classificationCounts: Schema.optional(
+      Schema.Struct({
+        inventory: Schema.Record(Schema.String, Schema.Int),
+        exported: Schema.Record(Schema.String, Schema.Int),
+      }),
+    ),
     denominators: Schema.Struct({
       inventory: Schema.Int,
       selected: Schema.Int,

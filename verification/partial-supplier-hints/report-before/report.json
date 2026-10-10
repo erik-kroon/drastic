@@ -1,0 +1,49 @@
+{
+  "algorithmVersion": "firm_memory_v1",
+  "counts": {
+    "eligibleTargets": 1,
+    "suggestedTargets": 0,
+    "knownComparableTargets": 0,
+    "correctConsequences": 0,
+    "unknownConsequences": 1
+  },
+  "metrics": {
+    "coverage": {
+      "numerator": 0,
+      "denominator": 1,
+      "value": 0
+    },
+    "consequenceAccuracy": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    }
+  },
+  "targets": [
+    {
+      "id": "supplier_approval_c8b934ad6fde49d983d0f435181f50f7",
+      "cutoff": "0",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_c8b934ad6fde49d983d0f435181f50f7",
+          "reason": "related_holdout"
+        }
+      ]
+    }
+  ],
+  "excludedTargets": [],
+  "sealedExport": {
+    "id": "decision_export_cb7fdd41207d4d519cf5affa7a0fb232",
+    "digest": "sha256:616a57665c5386c3321c4a5b13ba56f245a2a4d219b419809053cb6218514a7c",
+    "lineageCutoff": "1"
+  },
+  "inputCounts": {
+    "examples": 4,
+    "capturedPrecedents": 1,
+    "missingPrecedents": 3,
+    "excluded": 0
+  },
+  "inputExclusions": []
+}

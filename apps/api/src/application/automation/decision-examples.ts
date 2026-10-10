@@ -26,6 +26,18 @@ const versions = {
   eligibility: "independent_corrected_v1",
 };
 
+function classificationCounts(rows: ReadonlyArray<{ readonly classification: string | null }>) {
+  const counts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const classification = row.classification ?? "not_captured";
+
+    counts[classification] = (counts[classification] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 function redact(text: string) {
   return text.replace(/\b(?:\d{2})?\d{6}[-+ ]?\d{4}\b/g, "[REDACTED_PERSONAL_ID]");
 }
@@ -746,6 +758,10 @@ export const sealDecisionExamples = Effect.fn("decisionExamples.seal")(function*
         examples,
         exclusions,
         manifest: {
+          classificationCounts: {
+            inventory: classificationCounts(inventory),
+            exported: classificationCounts(examples.map((example) => example.provenance)),
+          },
           denominators: {
             inventory: inventory.length,
             selected: selected.length,

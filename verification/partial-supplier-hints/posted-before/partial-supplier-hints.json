@@ -1,0 +1,3180 @@
+{
+  "observed": [
+    {
+      "ordinal": 1,
+      "shown": {
+        "algorithmVersion": "firm_memory_v1",
+        "historyDigest": "sha256:cf72bedeab6985a967308af528a882c0299c68f76b7e75ffbc7b3cf9061d16fd",
+        "precedents": [],
+        "eligibleCount": 0,
+        "exclusions": [],
+        "suggestionRecordId": "suggestion_806c6e00473849cda9027aa2da6a4904",
+        "draftId": "supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+        "draftRevision": "1",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+        "items": []
+      },
+      "approval": {
+        "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "reviewId": "supplier_review_1865b919bc7b433aa70c03ed2007156e",
+        "digest": "sha256:d8867dd68948fc2724f7dd46d52462288bbd5e285b7bc047fb47b47bab2a3127",
+        "version": 1,
+        "actorId": "operator_244d8644b9372058",
+        "ordinal": 1,
+        "expiresAt": "2026-10-10T18:45:50.783Z",
+        "createdAt": "2026-10-10T17:45:50.783Z",
+        "receipt": {
+          "key": "e41ea41f-71d8-48fc-8c53-91fb31840ce0",
+          "operation": "approve_supplier_acceptance",
+          "actorId": "operator_244d8644b9372058"
+        }
+      },
+      "provenance": {
+        "bookId": "book_244d8644b9372058",
+        "decision_kind": "supplier_approval",
+        "decision_id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+        "classification": "independent",
+        "body": {
+          "subject": {
+            "kind": "supplier_draft",
+            "draftId": "supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+            "revision": "1"
+          },
+          "selected": {
+            "input": {
+              "reason": "Synthetic observed partial correction",
+              "series": "A",
+              "draftId": "supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+              "profile": "swedish-purchase-v1",
+              "taxPoint": {
+                "basis": "document_date",
+                "taxPointOn": "2026-09-22"
+              },
+              "expectedDigest": "sha256:93a1ac1189892e0e4463dd374bdbefc33da93fc9748c8bf50c67ff6a6f949ba9",
+              "lineAssignments": [
+                {
+                  "lineId": "source_0",
+                  "treatment": {
+                    "rate": {
+                      "numerator": "25",
+                      "denominator": "100"
+                    },
+                    "basis": "full_deduction",
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "toleranceMinor": "0",
+                    "acceptancePolicy": "exact_match",
+                    "deductionRounding": "half_up",
+                    "invoiceTaxRounding": "half_up"
+                  },
+                  "expenseAccountId": "account_expense"
+                }
+              ],
+              "controlAccountId": "account_payable",
+              "expectedRevision": "1",
+              "accountingPeriodId": "period_2026",
+              "acknowledgeSyntheticOnly": true
+            },
+            "reviewId": "supplier_review_1865b919bc7b433aa70c03ed2007156e",
+            "draftDigest": "sha256:93a1ac1189892e0e4463dd374bdbefc33da93fc9748c8bf50c67ff6a6f949ba9",
+            "postingPlan": {
+              "id": "change_a93aed449dfe46c2a3775b570582b6e6",
+              "scope": {
+                "bookId": "book_244d8644b9372058",
+                "entityId": "entity_244d8644b9372058"
+              },
+              "groups": [
+                {
+                  "id": "group_0f41acb8c0da47be87e53340e1af7aa1",
+                  "actions": [
+                    {
+                      "kind": "post_voucher",
+                      "lines": [
+                        {
+                          "lineId": "line_b71b9b8963654d9983c5c6c38b8e9093",
+                          "accountId": "account_expense",
+                          "debitMinor": "10000",
+                          "creditMinor": "0",
+                          "description": "Supplier purchase source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_a72f23e5aa5a436eb46b9f1c5f21858c",
+                          "accountId": "account_input_vat",
+                          "debitMinor": "2500",
+                          "creditMinor": "0",
+                          "description": "Input VAT source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_8951ad78c0114e94a3992c0802119ebd",
+                          "accountId": "account_payable",
+                          "debitMinor": "0",
+                          "creditMinor": "12500",
+                          "description": "Supplier payable supplier_payable",
+                          "originalDimensions": []
+                        }
+                      ],
+                      "series": "A",
+                      "eventId": "event_3c2505e595f64588a976f02ae2acd30d",
+                      "currency": "SEK",
+                      "rationale": "Synthetic observed partial correction",
+                      "description": "Supplier review journey",
+                      "postingDate": "2026-09-22",
+                      "evidenceRefs": [
+                        {
+                          "sha256": "0fdad72f470a8159012dcbeb7109c9fa0cea4b5214c8f5af0ee8a399793bf6c3",
+                          "locator": "swedish_supplier_supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+                          "evidenceId": "evidence_8ed37ba4563d4fa8910fa56afb6a463a"
+                        }
+                      ],
+                      "fiscalYearId": "fy_2026",
+                      "occurrenceKey": "manual_journal",
+                      "taxAssessment": "not_applicable",
+                      "postingPurpose": "adjustment",
+                      "correctsVoucherId": null,
+                      "accountingPeriodId": "period_2026"
+                    }
+                  ],
+                  "dependsOnGroupIds": []
+                }
+              ],
+              "version": 1,
+              "createdAt": "2026-10-10T17:45:50.729Z",
+              "planDigest": "sha256:76bac14adf2b166a96222d7cfbde5623537a31b342e85ba1d33180ac1baa0877",
+              "dependencies": [
+                {
+                  "kind": "profile",
+                  "reason": "Book currency and supported profile",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "writer_epoch",
+                  "reason": "Single authoritative writer",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "period",
+                  "reason": "Posting dates and lock state",
+                  "version": "1",
+                  "resourceId": "period_2026"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_expense"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_input_vat"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_payable"
+                }
+              ],
+              "schemaVersion": "1",
+              "canonicalization": "openerp-c14n-v1"
+            },
+            "reviewDigest": "sha256:d8867dd68948fc2724f7dd46d52462288bbd5e285b7bc047fb47b47bab2a3127",
+            "originalLines": [
+              {
+                "lineId": "source_0",
+                "netMinor": "10000",
+                "treatment": {
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "basis": "full_deduction",
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "toleranceMinor": "0",
+                  "acceptancePolicy": "exact_match",
+                  "deductionRounding": "half_up",
+                  "invoiceTaxRounding": "half_up"
+                },
+                "sourceTaxMinor": "2500",
+                "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                "expenseAccountId": "account_expense",
+                "sourceGrossMinor": "12500"
+              }
+            ],
+            "bookCommitSequence": "0",
+            "consequenceCapture": {
+              "status": "captured",
+              "version": "approval_consequence_capture_v1",
+              "sourceLines": [
+                {
+                  "capture": {
+                    "vat": {
+                      "category": null,
+                      "deduction": {
+                        "numerator": "1",
+                        "denominator": "1"
+                      },
+                      "resolvedRate": {
+                        "numerator": "25",
+                        "denominator": "100"
+                      },
+                      "profileIdentity": null
+                    },
+                    "period": {
+                      "id": "period_2026",
+                      "endsOn": "2026-12-31",
+                      "startsOn": "2026-01-01"
+                    },
+                    "mapping": {
+                      "accounts": [
+                        {
+                          "accountId": "account_expense",
+                          "placement": "income_statement",
+                          "statementLeaf": "synthetic_k2_external_cost",
+                          "classification": "expense"
+                        }
+                      ],
+                      "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                      "applicableAtCutoff": "0"
+                    },
+                    "accountId": "account_expense",
+                    "postingOn": "2026-09-22",
+                    "dimensions": {
+                      "assignments": [],
+                      "requirements": []
+                    },
+                    "originalCommitCutoff": "0"
+                  },
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            }
+          },
+          "comparisons": [],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": false,
+          "presentedSuggestionIds": []
+        }
+      }
+    },
+    {
+      "ordinal": 2,
+      "shown": {
+        "algorithmVersion": "firm_memory_v1",
+        "historyDigest": "sha256:f4d5962fde06716aa7fcbe7b92a933749af42478874cbcc286cf245c641647b2",
+        "precedents": [
+          {
+            "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+            "bookId": "book_244d8644b9372058",
+            "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+            "documentKind": "supplier_invoice",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "description": "Synthetic service",
+            "amountMinor": "12500",
+            "originalCommitCutoff": "0",
+            "receiptSequence": "1",
+            "labelSequence": "1",
+            "relatedIds": [
+              "draft:supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+              "evidence:evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+              "invoice:invoice_4eb89d608e324b3ca92617ff2d64412d",
+              "voucher:voucher_f2770c8cd1124d7e8788841e43bf460e"
+            ],
+            "sourceDecisionIds": [
+              "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+            ],
+            "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d",
+            "chosenTreatment": {
+              "journal": {
+                "postingDate": "2026-09-22",
+                "accountingPeriodId": "period_2026",
+                "lines": [
+                  {
+                    "accountId": "account_expense",
+                    "debitMinor": "10000",
+                    "creditMinor": "0"
+                  },
+                  {
+                    "accountId": "account_input_vat",
+                    "debitMinor": "2500",
+                    "creditMinor": "0"
+                  },
+                  {
+                    "accountId": "account_payable",
+                    "debitMinor": "0",
+                    "creditMinor": "12500"
+                  }
+                ]
+              },
+              "reviewedTreatments": [
+                {
+                  "lineId": "source_0",
+                  "expenseAccountId": "account_expense",
+                  "netMinor": "10000",
+                  "sourceTaxMinor": "2500",
+                  "sourceGrossMinor": "12500",
+                  "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                  "treatment": {
+                    "basis": "full_deduction",
+                    "rate": {
+                      "numerator": "25",
+                      "denominator": "100"
+                    },
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "invoiceTaxRounding": "half_up",
+                    "deductionRounding": "half_up",
+                    "acceptancePolicy": "exact_match",
+                    "toleranceMinor": "0"
+                  }
+                }
+              ],
+              "vatCategory": "not_captured",
+              "sourcePostingBindings": [
+                {
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            },
+            "provenance": {
+              "classification": "independent",
+              "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+            },
+            "consequences": [
+              {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            ],
+            "lineage": [],
+            "accountHints": [
+              {
+                "expenseAccountId": "account_expense",
+                "vatRatePercent": 25,
+                "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+              }
+            ],
+            "digest": "sha256:3a9a646c21ba7cc1944424b0204e6b7f43f2ef2b8798e6259539e55e29aed73a"
+          }
+        ],
+        "eligibleCount": 1,
+        "exclusions": [],
+        "suggestionRecordId": "suggestion_2d08fd22e6a9406a80a98d18e864a1b8",
+        "draftId": "supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+        "draftRevision": "1",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+        "items": [
+          {
+            "expenseAccountId": "account_expense",
+            "vatRatePercent": 25,
+            "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+          }
+        ]
+      },
+      "approval": {
+        "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "reviewId": "supplier_review_9ab3e0ecd4964c359b1b879a71468772",
+        "digest": "sha256:9891e4dd0fc9b04ef9d1922f47404186dc2f7ddf8881e36f49d898af0cfa165a",
+        "version": 1,
+        "actorId": "operator_244d8644b9372058",
+        "ordinal": 1,
+        "expiresAt": "2026-10-10T18:45:51.128Z",
+        "createdAt": "2026-10-10T17:45:51.128Z",
+        "receipt": {
+          "key": "3b60a2b5-6461-4dc4-a25f-df997225125b",
+          "operation": "approve_supplier_acceptance",
+          "actorId": "operator_244d8644b9372058"
+        }
+      },
+      "provenance": {
+        "bookId": "book_244d8644b9372058",
+        "decision_kind": "supplier_approval",
+        "decision_id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+        "classification": "unknown_exposure",
+        "body": {
+          "subject": {
+            "kind": "supplier_draft",
+            "draftId": "supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+            "revision": "1"
+          },
+          "selected": {
+            "input": {
+              "reason": "Synthetic observed partial correction",
+              "series": "A",
+              "draftId": "supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+              "profile": "swedish-purchase-v1",
+              "taxPoint": {
+                "basis": "document_date",
+                "taxPointOn": "2026-09-22"
+              },
+              "expectedDigest": "sha256:61d8305f9e49e39d3a99d48dfb16c9e111f3467b10720332ae08d29d42fda122",
+              "lineAssignments": [
+                {
+                  "lineId": "source_0",
+                  "treatment": {
+                    "rate": {
+                      "numerator": "1",
+                      "denominator": "4"
+                    },
+                    "basis": "full_deduction",
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "toleranceMinor": "0",
+                    "acceptancePolicy": "exact_match",
+                    "deductionRounding": "half_up",
+                    "invoiceTaxRounding": "half_up"
+                  },
+                  "expenseAccountId": "account_expense"
+                }
+              ],
+              "controlAccountId": "account_payable",
+              "expectedRevision": "1",
+              "accountingPeriodId": "period_2026",
+              "acknowledgeSyntheticOnly": true
+            },
+            "reviewId": "supplier_review_9ab3e0ecd4964c359b1b879a71468772",
+            "draftDigest": "sha256:61d8305f9e49e39d3a99d48dfb16c9e111f3467b10720332ae08d29d42fda122",
+            "postingPlan": {
+              "id": "change_643e8ae4566a471b8a1d6a37428ba539",
+              "scope": {
+                "bookId": "book_244d8644b9372058",
+                "entityId": "entity_244d8644b9372058"
+              },
+              "groups": [
+                {
+                  "id": "group_85580a4224994ec6a4c8875d3e003247",
+                  "actions": [
+                    {
+                      "kind": "post_voucher",
+                      "lines": [
+                        {
+                          "lineId": "line_e8eca33b3b344605b479ea0f2b7f3def",
+                          "accountId": "account_expense",
+                          "debitMinor": "10000",
+                          "creditMinor": "0",
+                          "description": "Supplier purchase source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_563fb3bb2a334bcb81943bfd52c7cdd4",
+                          "accountId": "account_input_vat",
+                          "debitMinor": "2500",
+                          "creditMinor": "0",
+                          "description": "Input VAT source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_652d81bab69a47aabe37ee305b5aff04",
+                          "accountId": "account_payable",
+                          "debitMinor": "0",
+                          "creditMinor": "12500",
+                          "description": "Supplier payable supplier_payable",
+                          "originalDimensions": []
+                        }
+                      ],
+                      "series": "A",
+                      "eventId": "event_9a5462daf7ee4ec3a1c06fbf9efce8b5",
+                      "currency": "SEK",
+                      "rationale": "Synthetic observed partial correction",
+                      "description": "Supplier review journey",
+                      "postingDate": "2026-09-22",
+                      "evidenceRefs": [
+                        {
+                          "sha256": "70c832ac9f04fe3fd29ef363c0e3b89bc2c7c1bbeb649037ddbb738ad546e17a",
+                          "locator": "swedish_supplier_supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+                          "evidenceId": "evidence_29750b0930794131a35e6ba3e8a55f49"
+                        }
+                      ],
+                      "fiscalYearId": "fy_2026",
+                      "occurrenceKey": "manual_journal",
+                      "taxAssessment": "not_applicable",
+                      "postingPurpose": "adjustment",
+                      "correctsVoucherId": null,
+                      "accountingPeriodId": "period_2026"
+                    }
+                  ],
+                  "dependsOnGroupIds": []
+                }
+              ],
+              "version": 1,
+              "createdAt": "2026-10-10T17:45:51.091Z",
+              "planDigest": "sha256:0b26d3f2f7ec755490bfb72c96cf084f7d3c866d7fdcdd1ed7a33dd438d746fe",
+              "dependencies": [
+                {
+                  "kind": "profile",
+                  "reason": "Book currency and supported profile",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "writer_epoch",
+                  "reason": "Single authoritative writer",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "period",
+                  "reason": "Posting dates and lock state",
+                  "version": "1",
+                  "resourceId": "period_2026"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_expense"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_input_vat"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_payable"
+                }
+              ],
+              "schemaVersion": "1",
+              "canonicalization": "openerp-c14n-v1"
+            },
+            "reviewDigest": "sha256:9891e4dd0fc9b04ef9d1922f47404186dc2f7ddf8881e36f49d898af0cfa165a",
+            "originalLines": [
+              {
+                "lineId": "source_0",
+                "netMinor": "10000",
+                "treatment": {
+                  "rate": {
+                    "numerator": "1",
+                    "denominator": "4"
+                  },
+                  "basis": "full_deduction",
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "toleranceMinor": "0",
+                  "acceptancePolicy": "exact_match",
+                  "deductionRounding": "half_up",
+                  "invoiceTaxRounding": "half_up"
+                },
+                "sourceTaxMinor": "2500",
+                "taxComponentId": "purchase_recognition_fdfd9ff42bc963faa2dee0d4_source_0",
+                "expenseAccountId": "account_expense",
+                "sourceGrossMinor": "12500"
+              }
+            ],
+            "bookCommitSequence": "1",
+            "consequenceCapture": {
+              "status": "captured",
+              "version": "approval_consequence_capture_v1",
+              "sourceLines": [
+                {
+                  "capture": {
+                    "vat": {
+                      "category": null,
+                      "deduction": {
+                        "numerator": "1",
+                        "denominator": "1"
+                      },
+                      "resolvedRate": {
+                        "numerator": "1",
+                        "denominator": "4"
+                      },
+                      "profileIdentity": null
+                    },
+                    "period": {
+                      "id": "period_2026",
+                      "endsOn": "2026-12-31",
+                      "startsOn": "2026-01-01"
+                    },
+                    "mapping": {
+                      "accounts": [
+                        {
+                          "accountId": "account_expense",
+                          "placement": "income_statement",
+                          "statementLeaf": "synthetic_k2_external_cost",
+                          "classification": "expense"
+                        }
+                      ],
+                      "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                      "applicableAtCutoff": "1"
+                    },
+                    "accountId": "account_expense",
+                    "postingOn": "2026-09-22",
+                    "dimensions": {
+                      "assignments": [],
+                      "requirements": []
+                    },
+                    "originalCommitCutoff": "1"
+                  },
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_e8eca33b3b344605b479ea0f2b7f3def"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            }
+          },
+          "comparisons": [
+            {
+              "coverage": "partial",
+              "comparison": "not_comparable",
+              "dimensions": {
+                "account": "unchanged",
+                "vatRate": "unchanged"
+              }
+            }
+          ],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": false,
+          "presentedSuggestionIds": [
+            "suggestion_2d08fd22e6a9406a80a98d18e864a1b8"
+          ]
+        }
+      }
+    },
+    {
+      "ordinal": 3,
+      "shown": {
+        "algorithmVersion": "firm_memory_v1",
+        "historyDigest": "sha256:78ef4960748742c52b0c84ab423ba71f3b2dd9fafaa839879005a4b0b40bd708",
+        "precedents": [],
+        "eligibleCount": 0,
+        "exclusions": [
+          {
+            "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+            "reason": "different_description"
+          },
+          {
+            "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+            "reason": "missing_committed_precedent"
+          }
+        ],
+        "suggestionRecordId": "suggestion_79069776b7f648248e763d8229ad3b8d",
+        "draftId": "supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+        "draftRevision": "1",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+        "items": []
+      },
+      "approval": {
+        "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "reviewId": "supplier_review_10b990c29c2f4fe7a684e355b9c44c41",
+        "digest": "sha256:a1092fbf0e0f107cea0fcbded2c08ca2f410039dc873abcba94d265e0731077d",
+        "version": 1,
+        "actorId": "operator_244d8644b9372058",
+        "ordinal": 1,
+        "expiresAt": "2026-10-10T18:45:51.289Z",
+        "createdAt": "2026-10-10T17:45:51.289Z",
+        "receipt": {
+          "key": "aa862d1f-c338-4078-b595-4b41ac76e45b",
+          "operation": "approve_supplier_acceptance",
+          "actorId": "operator_244d8644b9372058"
+        }
+      },
+      "provenance": {
+        "bookId": "book_244d8644b9372058",
+        "decision_kind": "supplier_approval",
+        "decision_id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+        "classification": "independent",
+        "body": {
+          "subject": {
+            "kind": "supplier_draft",
+            "draftId": "supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+            "revision": "1"
+          },
+          "selected": {
+            "input": {
+              "reason": "Synthetic observed partial correction",
+              "series": "A",
+              "draftId": "supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+              "profile": "swedish-purchase-v1",
+              "taxPoint": {
+                "basis": "document_date",
+                "taxPointOn": "2026-09-22"
+              },
+              "expectedDigest": "sha256:d34b3501940c77be49e384e6014c88324ee706adfcde63efd0cf41b58aed30e2",
+              "lineAssignments": [
+                {
+                  "lineId": "source_0",
+                  "treatment": {
+                    "rate": {
+                      "numerator": "25",
+                      "denominator": "100"
+                    },
+                    "basis": "full_deduction",
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "toleranceMinor": "0",
+                    "acceptancePolicy": "exact_match",
+                    "deductionRounding": "half_up",
+                    "invoiceTaxRounding": "half_up"
+                  },
+                  "expenseAccountId": "account_expense"
+                },
+                {
+                  "lineId": "source_1",
+                  "treatment": {
+                    "rate": {
+                      "numerator": "25",
+                      "denominator": "100"
+                    },
+                    "basis": "full_deduction",
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "toleranceMinor": "0",
+                    "acceptancePolicy": "exact_match",
+                    "deductionRounding": "half_up",
+                    "invoiceTaxRounding": "half_up"
+                  },
+                  "expenseAccountId": "account_other"
+                }
+              ],
+              "controlAccountId": "account_payable",
+              "expectedRevision": "1",
+              "accountingPeriodId": "period_2026",
+              "acknowledgeSyntheticOnly": true
+            },
+            "reviewId": "supplier_review_10b990c29c2f4fe7a684e355b9c44c41",
+            "draftDigest": "sha256:d34b3501940c77be49e384e6014c88324ee706adfcde63efd0cf41b58aed30e2",
+            "postingPlan": {
+              "id": "change_5104f28d51354172b159e370abb41af2",
+              "scope": {
+                "bookId": "book_244d8644b9372058",
+                "entityId": "entity_244d8644b9372058"
+              },
+              "groups": [
+                {
+                  "id": "group_f8710fe136d74e728c9adb162a411713",
+                  "actions": [
+                    {
+                      "kind": "post_voucher",
+                      "lines": [
+                        {
+                          "lineId": "line_3387d91306564e9bbba0a8576bf513e8",
+                          "accountId": "account_expense",
+                          "debitMinor": "10000",
+                          "creditMinor": "0",
+                          "description": "Supplier purchase source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_63c639722939487ebbb6c931cbe40c8d",
+                          "accountId": "account_input_vat",
+                          "debitMinor": "2500",
+                          "creditMinor": "0",
+                          "description": "Input VAT source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_cd7085178b9b445c975a2ab1a4db0aa0",
+                          "accountId": "account_other",
+                          "debitMinor": "10000",
+                          "creditMinor": "0",
+                          "description": "Supplier purchase source_1",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_b2306f2de47d47c4a0f1bad47c080509",
+                          "accountId": "account_input_vat",
+                          "debitMinor": "2500",
+                          "creditMinor": "0",
+                          "description": "Input VAT source_1",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_3cc64dde4904496e800335c93e11cdf8",
+                          "accountId": "account_payable",
+                          "debitMinor": "0",
+                          "creditMinor": "25000",
+                          "description": "Supplier payable supplier_payable",
+                          "originalDimensions": []
+                        }
+                      ],
+                      "series": "A",
+                      "eventId": "event_c6f6fadf71d7484f8e206e0c9744aed0",
+                      "currency": "SEK",
+                      "rationale": "Synthetic observed partial correction",
+                      "description": "Supplier review journey",
+                      "postingDate": "2026-09-22",
+                      "evidenceRefs": [
+                        {
+                          "sha256": "6f1a967c5ab2c794ebc38bbd380ca0ff38dabb5e4692ea40838897f99203af63",
+                          "locator": "swedish_supplier_supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+                          "evidenceId": "evidence_6be3c6a7d462466da8fcfc49ed995e11"
+                        }
+                      ],
+                      "fiscalYearId": "fy_2026",
+                      "occurrenceKey": "manual_journal",
+                      "taxAssessment": "not_applicable",
+                      "postingPurpose": "adjustment",
+                      "correctsVoucherId": null,
+                      "accountingPeriodId": "period_2026"
+                    }
+                  ],
+                  "dependsOnGroupIds": []
+                }
+              ],
+              "version": 1,
+              "createdAt": "2026-10-10T17:45:51.240Z",
+              "planDigest": "sha256:c283f74364a602527b374f2df477c9d9a962aa3ce6f2f97e1cd58a04ebe93493",
+              "dependencies": [
+                {
+                  "kind": "profile",
+                  "reason": "Book currency and supported profile",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "writer_epoch",
+                  "reason": "Single authoritative writer",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "period",
+                  "reason": "Posting dates and lock state",
+                  "version": "1",
+                  "resourceId": "period_2026"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_expense"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_input_vat"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_other"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_payable"
+                }
+              ],
+              "schemaVersion": "1",
+              "canonicalization": "openerp-c14n-v1"
+            },
+            "reviewDigest": "sha256:a1092fbf0e0f107cea0fcbded2c08ca2f410039dc873abcba94d265e0731077d",
+            "originalLines": [
+              {
+                "lineId": "source_0",
+                "netMinor": "10000",
+                "treatment": {
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "basis": "full_deduction",
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "toleranceMinor": "0",
+                  "acceptancePolicy": "exact_match",
+                  "deductionRounding": "half_up",
+                  "invoiceTaxRounding": "half_up"
+                },
+                "sourceTaxMinor": "2500",
+                "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_0",
+                "expenseAccountId": "account_expense",
+                "sourceGrossMinor": "12500"
+              },
+              {
+                "lineId": "source_1",
+                "netMinor": "10000",
+                "treatment": {
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "basis": "full_deduction",
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "toleranceMinor": "0",
+                  "acceptancePolicy": "exact_match",
+                  "deductionRounding": "half_up",
+                  "invoiceTaxRounding": "half_up"
+                },
+                "sourceTaxMinor": "2500",
+                "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_1",
+                "expenseAccountId": "account_other",
+                "sourceGrossMinor": "12500"
+              }
+            ],
+            "bookCommitSequence": "1",
+            "consequenceCapture": {
+              "status": "captured",
+              "version": "approval_consequence_capture_v1",
+              "sourceLines": [
+                {
+                  "capture": {
+                    "vat": {
+                      "category": null,
+                      "deduction": {
+                        "numerator": "1",
+                        "denominator": "1"
+                      },
+                      "resolvedRate": {
+                        "numerator": "25",
+                        "denominator": "100"
+                      },
+                      "profileIdentity": null
+                    },
+                    "period": {
+                      "id": "period_2026",
+                      "endsOn": "2026-12-31",
+                      "startsOn": "2026-01-01"
+                    },
+                    "mapping": {
+                      "accounts": [
+                        {
+                          "accountId": "account_expense",
+                          "placement": "income_statement",
+                          "statementLeaf": "synthetic_k2_external_cost",
+                          "classification": "expense"
+                        }
+                      ],
+                      "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                      "applicableAtCutoff": "1"
+                    },
+                    "accountId": "account_expense",
+                    "postingOn": "2026-09-22",
+                    "dimensions": {
+                      "assignments": [],
+                      "requirements": []
+                    },
+                    "originalCommitCutoff": "1"
+                  },
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_3387d91306564e9bbba0a8576bf513e8"
+                },
+                {
+                  "capture": {
+                    "vat": {
+                      "category": null,
+                      "deduction": {
+                        "numerator": "1",
+                        "denominator": "1"
+                      },
+                      "resolvedRate": {
+                        "numerator": "25",
+                        "denominator": "100"
+                      },
+                      "profileIdentity": null
+                    },
+                    "period": {
+                      "id": "period_2026",
+                      "endsOn": "2026-12-31",
+                      "startsOn": "2026-01-01"
+                    },
+                    "mapping": {
+                      "accounts": [
+                        {
+                          "accountId": "account_other",
+                          "placement": "income_statement",
+                          "statementLeaf": "synthetic_k2_external_cost",
+                          "classification": "expense"
+                        }
+                      ],
+                      "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                      "applicableAtCutoff": "1"
+                    },
+                    "accountId": "account_other",
+                    "postingOn": "2026-09-22",
+                    "dimensions": {
+                      "assignments": [],
+                      "requirements": []
+                    },
+                    "originalCommitCutoff": "1"
+                  },
+                  "sourceLineId": "source_1",
+                  "postingLineId": "line_cd7085178b9b445c975a2ab1a4db0aa0"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            }
+          },
+          "comparisons": [],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": false,
+          "presentedSuggestionIds": []
+        }
+      }
+    },
+    {
+      "ordinal": 4,
+      "shown": {
+        "algorithmVersion": "firm_memory_v1",
+        "historyDigest": "sha256:b59240b671b6a1deddad10a0b7e9bcdfaccb45d84572a819da1aa921eb96d41b",
+        "precedents": [
+          {
+            "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+            "bookId": "book_244d8644b9372058",
+            "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+            "documentKind": "supplier_invoice",
+            "currency": "SEK",
+            "currencyScale": 2,
+            "description": "Synthetic service",
+            "amountMinor": "12500",
+            "originalCommitCutoff": "0",
+            "receiptSequence": "1",
+            "labelSequence": "1",
+            "relatedIds": [
+              "draft:supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+              "evidence:evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+              "invoice:invoice_4eb89d608e324b3ca92617ff2d64412d",
+              "voucher:voucher_f2770c8cd1124d7e8788841e43bf460e"
+            ],
+            "sourceDecisionIds": [
+              "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+            ],
+            "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d",
+            "chosenTreatment": {
+              "journal": {
+                "postingDate": "2026-09-22",
+                "accountingPeriodId": "period_2026",
+                "lines": [
+                  {
+                    "accountId": "account_expense",
+                    "debitMinor": "10000",
+                    "creditMinor": "0"
+                  },
+                  {
+                    "accountId": "account_input_vat",
+                    "debitMinor": "2500",
+                    "creditMinor": "0"
+                  },
+                  {
+                    "accountId": "account_payable",
+                    "debitMinor": "0",
+                    "creditMinor": "12500"
+                  }
+                ]
+              },
+              "reviewedTreatments": [
+                {
+                  "lineId": "source_0",
+                  "expenseAccountId": "account_expense",
+                  "netMinor": "10000",
+                  "sourceTaxMinor": "2500",
+                  "sourceGrossMinor": "12500",
+                  "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                  "treatment": {
+                    "basis": "full_deduction",
+                    "rate": {
+                      "numerator": "25",
+                      "denominator": "100"
+                    },
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "invoiceTaxRounding": "half_up",
+                    "deductionRounding": "half_up",
+                    "acceptancePolicy": "exact_match",
+                    "toleranceMinor": "0"
+                  }
+                }
+              ],
+              "vatCategory": "not_captured",
+              "sourcePostingBindings": [
+                {
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            },
+            "provenance": {
+              "classification": "independent",
+              "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+            },
+            "consequences": [
+              {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            ],
+            "lineage": [],
+            "accountHints": [
+              {
+                "expenseAccountId": "account_expense",
+                "vatRatePercent": 25,
+                "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+              }
+            ],
+            "digest": "sha256:3a9a646c21ba7cc1944424b0204e6b7f43f2ef2b8798e6259539e55e29aed73a"
+          }
+        ],
+        "eligibleCount": 1,
+        "exclusions": [
+          {
+            "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+            "reason": "missing_committed_precedent"
+          },
+          {
+            "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+            "reason": "missing_committed_precedent"
+          }
+        ],
+        "suggestionRecordId": "suggestion_e3d5323ff1324338bc898f62d624afc8",
+        "draftId": "supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+        "draftRevision": "1",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+        "items": [
+          {
+            "expenseAccountId": "account_expense",
+            "vatRatePercent": 25,
+            "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+          }
+        ]
+      },
+      "approval": {
+        "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+        "scope": {
+          "entityId": "entity_244d8644b9372058",
+          "bookId": "book_244d8644b9372058"
+        },
+        "reviewId": "supplier_review_40bfc5b1217a4b59b8adcdc02d5cc88e",
+        "digest": "sha256:6656300e109b97f1c5189c705b9f296f8402d856ac38ad41c88b81f933d0c249",
+        "version": 1,
+        "actorId": "operator_244d8644b9372058",
+        "ordinal": 1,
+        "expiresAt": "2026-10-10T18:45:51.431Z",
+        "createdAt": "2026-10-10T17:45:51.431Z",
+        "receipt": {
+          "key": "a7c98242-cf8d-48e6-87b0-e19907d9e1ac",
+          "operation": "approve_supplier_acceptance",
+          "actorId": "operator_244d8644b9372058"
+        }
+      },
+      "provenance": {
+        "bookId": "book_244d8644b9372058",
+        "decision_kind": "supplier_approval",
+        "decision_id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+        "classification": "unknown_exposure",
+        "body": {
+          "subject": {
+            "kind": "supplier_draft",
+            "draftId": "supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+            "revision": "1"
+          },
+          "selected": {
+            "input": {
+              "reason": "Synthetic observed partial correction",
+              "series": "A",
+              "draftId": "supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+              "profile": "swedish-purchase-v1",
+              "taxPoint": {
+                "basis": "document_date",
+                "taxPointOn": "2026-09-22"
+              },
+              "expectedDigest": "sha256:33f6135325e634476254c6cccc2cda05ab320b7de871d78a6a88d77f5100b1a6",
+              "lineAssignments": [
+                {
+                  "lineId": "source_0",
+                  "treatment": {
+                    "rate": {
+                      "numerator": "12",
+                      "denominator": "100"
+                    },
+                    "basis": "full_deduction",
+                    "deduction": {
+                      "numerator": "1",
+                      "denominator": "1"
+                    },
+                    "toleranceMinor": "0",
+                    "acceptancePolicy": "exact_match",
+                    "deductionRounding": "half_up",
+                    "invoiceTaxRounding": "half_up"
+                  },
+                  "expenseAccountId": "account_expense"
+                }
+              ],
+              "controlAccountId": "account_payable",
+              "expectedRevision": "1",
+              "accountingPeriodId": "period_2026",
+              "acknowledgeSyntheticOnly": true
+            },
+            "reviewId": "supplier_review_40bfc5b1217a4b59b8adcdc02d5cc88e",
+            "draftDigest": "sha256:33f6135325e634476254c6cccc2cda05ab320b7de871d78a6a88d77f5100b1a6",
+            "postingPlan": {
+              "id": "change_2610ca8b1c514f54a2dec54edb13a3f9",
+              "scope": {
+                "bookId": "book_244d8644b9372058",
+                "entityId": "entity_244d8644b9372058"
+              },
+              "groups": [
+                {
+                  "id": "group_faed1c3e528b49e99c1412eaaa7ba8f0",
+                  "actions": [
+                    {
+                      "kind": "post_voucher",
+                      "lines": [
+                        {
+                          "lineId": "line_79df39d50c474e199a79490fe9332ef7",
+                          "accountId": "account_expense",
+                          "debitMinor": "10000",
+                          "creditMinor": "0",
+                          "description": "Supplier purchase source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_351c077963404a88acfca3263abf0341",
+                          "accountId": "account_input_vat",
+                          "debitMinor": "1200",
+                          "creditMinor": "0",
+                          "description": "Input VAT source_0",
+                          "originalDimensions": []
+                        },
+                        {
+                          "lineId": "line_4ea09f47c2c04f31af68f355ca204cec",
+                          "accountId": "account_payable",
+                          "debitMinor": "0",
+                          "creditMinor": "11200",
+                          "description": "Supplier payable supplier_payable",
+                          "originalDimensions": []
+                        }
+                      ],
+                      "series": "A",
+                      "eventId": "event_594cf3f4d7294938a2ea7f68e726f009",
+                      "currency": "SEK",
+                      "rationale": "Synthetic observed partial correction",
+                      "description": "Supplier review journey",
+                      "postingDate": "2026-09-22",
+                      "evidenceRefs": [
+                        {
+                          "sha256": "7ba2245ed64a363c5fe8d50fa0176506102287b3f1c49c4c7aab658f65603cf8",
+                          "locator": "swedish_supplier_supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+                          "evidenceId": "evidence_e75b11d5b11c4956bbbd84b6a3f8afa3"
+                        }
+                      ],
+                      "fiscalYearId": "fy_2026",
+                      "occurrenceKey": "manual_journal",
+                      "taxAssessment": "not_applicable",
+                      "postingPurpose": "adjustment",
+                      "correctsVoucherId": null,
+                      "accountingPeriodId": "period_2026"
+                    }
+                  ],
+                  "dependsOnGroupIds": []
+                }
+              ],
+              "version": 1,
+              "createdAt": "2026-10-10T17:45:51.393Z",
+              "planDigest": "sha256:be929df511997f312261ba3417881c326020236e2723b2fc6b6a399a48d64158",
+              "dependencies": [
+                {
+                  "kind": "profile",
+                  "reason": "Book currency and supported profile",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "writer_epoch",
+                  "reason": "Single authoritative writer",
+                  "version": "1",
+                  "resourceId": "book_244d8644b9372058"
+                },
+                {
+                  "kind": "period",
+                  "reason": "Posting dates and lock state",
+                  "version": "1",
+                  "resourceId": "period_2026"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_expense"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_input_vat"
+                },
+                {
+                  "kind": "account",
+                  "reason": "Exact account configuration",
+                  "version": "1",
+                  "resourceId": "account_payable"
+                }
+              ],
+              "schemaVersion": "1",
+              "canonicalization": "openerp-c14n-v1"
+            },
+            "reviewDigest": "sha256:6656300e109b97f1c5189c705b9f296f8402d856ac38ad41c88b81f933d0c249",
+            "originalLines": [
+              {
+                "lineId": "source_0",
+                "netMinor": "10000",
+                "treatment": {
+                  "rate": {
+                    "numerator": "12",
+                    "denominator": "100"
+                  },
+                  "basis": "full_deduction",
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "toleranceMinor": "0",
+                  "acceptancePolicy": "exact_match",
+                  "deductionRounding": "half_up",
+                  "invoiceTaxRounding": "half_up"
+                },
+                "sourceTaxMinor": "1200",
+                "taxComponentId": "purchase_recognition_32ab8044416b2394ec77de4a_source_0",
+                "expenseAccountId": "account_expense",
+                "sourceGrossMinor": "11200"
+              }
+            ],
+            "bookCommitSequence": "1",
+            "consequenceCapture": {
+              "status": "captured",
+              "version": "approval_consequence_capture_v1",
+              "sourceLines": [
+                {
+                  "capture": {
+                    "vat": {
+                      "category": null,
+                      "deduction": {
+                        "numerator": "1",
+                        "denominator": "1"
+                      },
+                      "resolvedRate": {
+                        "numerator": "12",
+                        "denominator": "100"
+                      },
+                      "profileIdentity": null
+                    },
+                    "period": {
+                      "id": "period_2026",
+                      "endsOn": "2026-12-31",
+                      "startsOn": "2026-01-01"
+                    },
+                    "mapping": {
+                      "accounts": [
+                        {
+                          "accountId": "account_expense",
+                          "placement": "income_statement",
+                          "statementLeaf": "synthetic_k2_external_cost",
+                          "classification": "expense"
+                        }
+                      ],
+                      "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                      "applicableAtCutoff": "1"
+                    },
+                    "accountId": "account_expense",
+                    "postingOn": "2026-09-22",
+                    "dimensions": {
+                      "assignments": [],
+                      "requirements": []
+                    },
+                    "originalCommitCutoff": "1"
+                  },
+                  "sourceLineId": "source_0",
+                  "postingLineId": "line_79df39d50c474e199a79490fe9332ef7"
+                }
+              ],
+              "mappingRelease": {
+                "id": "synthetic_se_k2_income_expense_v1",
+                "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                "qualification": "synthetic_only"
+              }
+            }
+          },
+          "comparisons": [
+            {
+              "coverage": "partial",
+              "comparison": "not_comparable",
+              "dimensions": {
+                "account": "unchanged",
+                "vatRate": "changed"
+              }
+            }
+          ],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": false,
+          "presentedSuggestionIds": [
+            "suggestion_e3d5323ff1324338bc898f62d624afc8"
+          ]
+        }
+      }
+    }
+  ],
+  "exported": {
+    "id": "decision_export_04a3c5b7405549bc8029ca02470d1d3d",
+    "scope": {
+      "entityId": "entity_244d8644b9372058",
+      "bookId": "book_244d8644b9372058"
+    },
+    "purpose": "training",
+    "lineageCutoff": "4",
+    "versions": {
+      "schema": "decision_examples_v3",
+      "memory": "firm_memory_v1",
+      "consequence": "treatment_consequence_v1",
+      "state": "retained_snapshot_projection_v1",
+      "options": "served_options_projection_v1",
+      "lineage": "posted_voucher_lineage_v1",
+      "redaction": "swedish_personal_id_v1",
+      "eligibility": "independent_corrected_v1"
+    },
+    "examples": [
+      {
+        "decision": {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+        },
+        "subject": {
+          "kind": "supplier_draft",
+          "draftId": "supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+          "revision": "1"
+        },
+        "originalCommitCutoff": "0",
+        "stateBuilderVersion": "retained_snapshot_projection_v1",
+        "optionBuilderVersion": "served_options_projection_v1",
+        "state": {
+          "reviewId": "supplier_review_1865b919bc7b433aa70c03ed2007156e",
+          "reviewDigest": "sha256:d8867dd68948fc2724f7dd46d52462288bbd5e285b7bc047fb47b47bab2a3127",
+          "draftId": "supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+          "draftRevision": "1",
+          "draftDigest": "sha256:93a1ac1189892e0e4463dd374bdbefc33da93fc9748c8bf50c67ff6a6f949ba9",
+          "documentDate": "2026-09-22",
+          "supplyDate": "2026-09-22",
+          "currency": "SEK",
+          "sourceTotalMinor": "12500",
+          "lines": [
+            {
+              "id": "source_0",
+              "description": "Synthetic service",
+              "quantity": "1",
+              "unitPriceMinor": "10000",
+              "baseMinor": "10000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "2500",
+              "sourceGrossMinor": "12500"
+            }
+          ]
+        },
+        "options": {
+          "capture": "no_recorded_exposure",
+          "fullUniverseCaptured": false,
+          "records": []
+        },
+        "chosenTreatment": {
+          "journal": {
+            "postingDate": "2026-09-22",
+            "accountingPeriodId": "period_2026",
+            "lines": [
+              {
+                "accountId": "account_expense",
+                "debitMinor": "10000",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_input_vat",
+                "debitMinor": "2500",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_payable",
+                "debitMinor": "0",
+                "creditMinor": "12500"
+              }
+            ]
+          },
+          "reviewedTreatments": [
+            {
+              "lineId": "source_0",
+              "expenseAccountId": "account_expense",
+              "netMinor": "10000",
+              "sourceTaxMinor": "2500",
+              "sourceGrossMinor": "12500",
+              "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+              "treatment": {
+                "basis": "full_deduction",
+                "rate": {
+                  "numerator": "25",
+                  "denominator": "100"
+                },
+                "deduction": {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                "invoiceTaxRounding": "half_up",
+                "deductionRounding": "half_up",
+                "acceptancePolicy": "exact_match",
+                "toleranceMinor": "0"
+              }
+            }
+          ],
+          "vatCategory": "not_captured",
+          "sourcePostingBindings": [
+            {
+              "sourceLineId": "source_0",
+              "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+            }
+          ],
+          "mappingRelease": {
+            "id": "synthetic_se_k2_income_expense_v1",
+            "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+            "qualification": "synthetic_only"
+          }
+        },
+        "precedent": {
+          "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+          "bookId": "book_244d8644b9372058",
+          "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+          "documentKind": "supplier_invoice",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "description": "Synthetic service",
+          "amountMinor": "12500",
+          "originalCommitCutoff": "0",
+          "receiptSequence": "1",
+          "labelSequence": "1",
+          "relatedIds": [
+            "draft:supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+            "evidence:evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+            "invoice:invoice_4eb89d608e324b3ca92617ff2d64412d",
+            "voucher:voucher_f2770c8cd1124d7e8788841e43bf460e"
+          ],
+          "sourceDecisionIds": [
+            "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+          ],
+          "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d",
+          "chosenTreatment": {
+            "journal": {
+              "postingDate": "2026-09-22",
+              "accountingPeriodId": "period_2026",
+              "lines": [
+                {
+                  "accountId": "account_expense",
+                  "debitMinor": "10000",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_input_vat",
+                  "debitMinor": "2500",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_payable",
+                  "debitMinor": "0",
+                  "creditMinor": "12500"
+                }
+              ]
+            },
+            "reviewedTreatments": [
+              {
+                "lineId": "source_0",
+                "expenseAccountId": "account_expense",
+                "netMinor": "10000",
+                "sourceTaxMinor": "2500",
+                "sourceGrossMinor": "12500",
+                "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                "treatment": {
+                  "basis": "full_deduction",
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "invoiceTaxRounding": "half_up",
+                  "deductionRounding": "half_up",
+                  "acceptancePolicy": "exact_match",
+                  "toleranceMinor": "0"
+                }
+              }
+            ],
+            "vatCategory": "not_captured",
+            "sourcePostingBindings": [
+              {
+                "sourceLineId": "source_0",
+                "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+              }
+            ],
+            "mappingRelease": {
+              "id": "synthetic_se_k2_income_expense_v1",
+              "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+              "qualification": "synthetic_only"
+            }
+          },
+          "provenance": {
+            "classification": "independent",
+            "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+          },
+          "consequences": [
+            {
+              "status": "unknown",
+              "reasons": [
+                "vat_category_not_captured",
+                "vat_profile_not_captured"
+              ]
+            }
+          ],
+          "lineage": [],
+          "accountHints": [
+            {
+              "expenseAccountId": "account_expense",
+              "vatRatePercent": 25,
+              "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+            }
+          ],
+          "digest": "sha256:3a9a646c21ba7cc1944424b0204e6b7f43f2ef2b8798e6259539e55e29aed73a"
+        },
+        "consequence": {
+          "builderVersion": "treatment_consequence_v1",
+          "captureStatus": "retained_treatments",
+          "treatments": [
+            {
+              "capture": {
+                "accountId": "account_expense",
+                "originalCommitCutoff": "0",
+                "postingOn": "2026-09-22",
+                "mapping": {
+                  "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                  "applicableAtCutoff": "0",
+                  "accounts": [
+                    {
+                      "accountId": "account_expense",
+                      "classification": "expense",
+                      "placement": "income_statement",
+                      "statementLeaf": "synthetic_k2_external_cost"
+                    }
+                  ]
+                },
+                "vat": {
+                  "category": null,
+                  "profileIdentity": null,
+                  "resolvedRate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                },
+                "period": {
+                  "id": "period_2026",
+                  "startsOn": "2026-01-01",
+                  "endsOn": "2026-12-31"
+                },
+                "dimensions": {
+                  "requirements": [],
+                  "assignments": []
+                }
+              },
+              "result": {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            }
+          ]
+        },
+        "provenance": {
+          "classification": "independent",
+          "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+        },
+        "lineage": [],
+        "evidence": [
+          {
+            "id": "evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+            "sourceDigest": "0fdad72f470a8159012dcbeb7109c9fa0cea4b5214c8f5af0ee8a399793bf6c3",
+            "redactedDigest": "sha256:f14aba124adef38ce9bad3fcd682dd65163e9c47a316edc5605ebc5f3faf1e0c",
+            "transcript": "Unique synthetic invoice 1"
+          }
+        ],
+        "missingFacts": [
+          "historical_chart_universe_not_captured",
+          "vat_category_not_captured"
+        ],
+        "digest": "sha256:04f07d5b0f983dbf58ded3956219e16e366ee2019a219d972329a44f8dd1f529"
+      },
+      {
+        "decision": {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae"
+        },
+        "subject": {
+          "kind": "supplier_draft",
+          "draftId": "supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+          "revision": "1"
+        },
+        "originalCommitCutoff": "1",
+        "stateBuilderVersion": "retained_snapshot_projection_v1",
+        "optionBuilderVersion": "served_options_projection_v1",
+        "state": {
+          "reviewId": "supplier_review_10b990c29c2f4fe7a684e355b9c44c41",
+          "reviewDigest": "sha256:a1092fbf0e0f107cea0fcbded2c08ca2f410039dc873abcba94d265e0731077d",
+          "draftId": "supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+          "draftRevision": "1",
+          "draftDigest": "sha256:d34b3501940c77be49e384e6014c88324ee706adfcde63efd0cf41b58aed30e2",
+          "documentDate": "2026-09-22",
+          "supplyDate": "2026-09-22",
+          "currency": "SEK",
+          "sourceTotalMinor": "25000",
+          "lines": [
+            {
+              "id": "source_0",
+              "description": "Synthetic service",
+              "quantity": "1",
+              "unitPriceMinor": "10000",
+              "baseMinor": "10000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "2500",
+              "sourceGrossMinor": "12500"
+            },
+            {
+              "id": "source_1",
+              "description": "Synthetic service",
+              "quantity": "1",
+              "unitPriceMinor": "10000",
+              "baseMinor": "10000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "2500",
+              "sourceGrossMinor": "12500"
+            }
+          ]
+        },
+        "options": {
+          "capture": "no_recorded_exposure",
+          "fullUniverseCaptured": false,
+          "records": []
+        },
+        "chosenTreatment": {
+          "journal": {
+            "postingDate": "2026-09-22",
+            "accountingPeriodId": "period_2026",
+            "lines": [
+              {
+                "accountId": "account_expense",
+                "debitMinor": "10000",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_input_vat",
+                "debitMinor": "2500",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_other",
+                "debitMinor": "10000",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_input_vat",
+                "debitMinor": "2500",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_payable",
+                "debitMinor": "0",
+                "creditMinor": "25000"
+              }
+            ]
+          },
+          "reviewedTreatments": [
+            {
+              "lineId": "source_0",
+              "expenseAccountId": "account_expense",
+              "netMinor": "10000",
+              "sourceTaxMinor": "2500",
+              "sourceGrossMinor": "12500",
+              "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_0",
+              "treatment": {
+                "basis": "full_deduction",
+                "rate": {
+                  "numerator": "25",
+                  "denominator": "100"
+                },
+                "deduction": {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                "invoiceTaxRounding": "half_up",
+                "deductionRounding": "half_up",
+                "acceptancePolicy": "exact_match",
+                "toleranceMinor": "0"
+              }
+            },
+            {
+              "lineId": "source_1",
+              "expenseAccountId": "account_other",
+              "netMinor": "10000",
+              "sourceTaxMinor": "2500",
+              "sourceGrossMinor": "12500",
+              "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_1",
+              "treatment": {
+                "basis": "full_deduction",
+                "rate": {
+                  "numerator": "25",
+                  "denominator": "100"
+                },
+                "deduction": {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                "invoiceTaxRounding": "half_up",
+                "deductionRounding": "half_up",
+                "acceptancePolicy": "exact_match",
+                "toleranceMinor": "0"
+              }
+            }
+          ],
+          "vatCategory": "not_captured",
+          "sourcePostingBindings": [
+            {
+              "sourceLineId": "source_0",
+              "postingLineId": "line_3387d91306564e9bbba0a8576bf513e8"
+            },
+            {
+              "sourceLineId": "source_1",
+              "postingLineId": "line_cd7085178b9b445c975a2ab1a4db0aa0"
+            }
+          ],
+          "mappingRelease": {
+            "id": "synthetic_se_k2_income_expense_v1",
+            "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+            "qualification": "synthetic_only"
+          }
+        },
+        "precedent": {
+          "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+          "bookId": "book_244d8644b9372058",
+          "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+          "documentKind": "supplier_invoice",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "description": "Synthetic service | Synthetic service",
+          "amountMinor": "25000",
+          "originalCommitCutoff": "1",
+          "receiptSequence": "3",
+          "labelSequence": "3",
+          "relatedIds": [
+            "draft:supplier_invoice_draft_76f7efefe6864c0d8712ccf81af44267",
+            "evidence:evidence_6be3c6a7d462466da8fcfc49ed995e11",
+            "invoice:invoice_ec10bec972cc4fdfaee3864d857ab2be",
+            "voucher:voucher_cedfc82fd4f74d3688722679fe5c9319"
+          ],
+          "sourceDecisionIds": [
+            "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae"
+          ],
+          "sourceInvoiceId": "invoice_ec10bec972cc4fdfaee3864d857ab2be",
+          "chosenTreatment": {
+            "journal": {
+              "postingDate": "2026-09-22",
+              "accountingPeriodId": "period_2026",
+              "lines": [
+                {
+                  "accountId": "account_expense",
+                  "debitMinor": "10000",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_input_vat",
+                  "debitMinor": "2500",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_other",
+                  "debitMinor": "10000",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_input_vat",
+                  "debitMinor": "2500",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_payable",
+                  "debitMinor": "0",
+                  "creditMinor": "25000"
+                }
+              ]
+            },
+            "reviewedTreatments": [
+              {
+                "lineId": "source_0",
+                "expenseAccountId": "account_expense",
+                "netMinor": "10000",
+                "sourceTaxMinor": "2500",
+                "sourceGrossMinor": "12500",
+                "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_0",
+                "treatment": {
+                  "basis": "full_deduction",
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "invoiceTaxRounding": "half_up",
+                  "deductionRounding": "half_up",
+                  "acceptancePolicy": "exact_match",
+                  "toleranceMinor": "0"
+                }
+              },
+              {
+                "lineId": "source_1",
+                "expenseAccountId": "account_other",
+                "netMinor": "10000",
+                "sourceTaxMinor": "2500",
+                "sourceGrossMinor": "12500",
+                "taxComponentId": "purchase_recognition_2d7b30ddd25a61430a0cb572_source_1",
+                "treatment": {
+                  "basis": "full_deduction",
+                  "rate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "invoiceTaxRounding": "half_up",
+                  "deductionRounding": "half_up",
+                  "acceptancePolicy": "exact_match",
+                  "toleranceMinor": "0"
+                }
+              }
+            ],
+            "vatCategory": "not_captured",
+            "sourcePostingBindings": [
+              {
+                "sourceLineId": "source_0",
+                "postingLineId": "line_3387d91306564e9bbba0a8576bf513e8"
+              },
+              {
+                "sourceLineId": "source_1",
+                "postingLineId": "line_cd7085178b9b445c975a2ab1a4db0aa0"
+              }
+            ],
+            "mappingRelease": {
+              "id": "synthetic_se_k2_income_expense_v1",
+              "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+              "qualification": "synthetic_only"
+            }
+          },
+          "provenance": {
+            "classification": "independent",
+            "digest": "sha256:fc7a655369ca0c91a2957e0a7ed2dedb2732f6a0f06029ecedc88d5c8cfd1017"
+          },
+          "consequences": [
+            {
+              "status": "unknown",
+              "reasons": [
+                "vat_category_not_captured",
+                "vat_profile_not_captured"
+              ]
+            },
+            {
+              "status": "unknown",
+              "reasons": [
+                "vat_category_not_captured",
+                "vat_profile_not_captured"
+              ]
+            }
+          ],
+          "lineage": [],
+          "accountHints": [
+            {
+              "expenseAccountId": "account_expense",
+              "vatRatePercent": 25,
+              "sourceInvoiceId": "invoice_ec10bec972cc4fdfaee3864d857ab2be"
+            },
+            {
+              "expenseAccountId": "account_other",
+              "vatRatePercent": 25,
+              "sourceInvoiceId": "invoice_ec10bec972cc4fdfaee3864d857ab2be"
+            }
+          ],
+          "digest": "sha256:2f687e845af270396085f57f9642c8a5748a60f1444ab59939d24385913193b3"
+        },
+        "consequence": {
+          "builderVersion": "treatment_consequence_v1",
+          "captureStatus": "retained_treatments",
+          "treatments": [
+            {
+              "capture": {
+                "accountId": "account_expense",
+                "originalCommitCutoff": "1",
+                "postingOn": "2026-09-22",
+                "mapping": {
+                  "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                  "applicableAtCutoff": "1",
+                  "accounts": [
+                    {
+                      "accountId": "account_expense",
+                      "classification": "expense",
+                      "placement": "income_statement",
+                      "statementLeaf": "synthetic_k2_external_cost"
+                    }
+                  ]
+                },
+                "vat": {
+                  "category": null,
+                  "profileIdentity": null,
+                  "resolvedRate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                },
+                "period": {
+                  "id": "period_2026",
+                  "startsOn": "2026-01-01",
+                  "endsOn": "2026-12-31"
+                },
+                "dimensions": {
+                  "requirements": [],
+                  "assignments": []
+                }
+              },
+              "result": {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            },
+            {
+              "capture": {
+                "accountId": "account_other",
+                "originalCommitCutoff": "1",
+                "postingOn": "2026-09-22",
+                "mapping": {
+                  "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                  "applicableAtCutoff": "1",
+                  "accounts": [
+                    {
+                      "accountId": "account_other",
+                      "classification": "expense",
+                      "placement": "income_statement",
+                      "statementLeaf": "synthetic_k2_external_cost"
+                    }
+                  ]
+                },
+                "vat": {
+                  "category": null,
+                  "profileIdentity": null,
+                  "resolvedRate": {
+                    "numerator": "25",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                },
+                "period": {
+                  "id": "period_2026",
+                  "startsOn": "2026-01-01",
+                  "endsOn": "2026-12-31"
+                },
+                "dimensions": {
+                  "requirements": [],
+                  "assignments": []
+                }
+              },
+              "result": {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            }
+          ]
+        },
+        "provenance": {
+          "classification": "independent",
+          "digest": "sha256:fc7a655369ca0c91a2957e0a7ed2dedb2732f6a0f06029ecedc88d5c8cfd1017"
+        },
+        "lineage": [],
+        "evidence": [
+          {
+            "id": "evidence_6be3c6a7d462466da8fcfc49ed995e11",
+            "sourceDigest": "6f1a967c5ab2c794ebc38bbd380ca0ff38dabb5e4692ea40838897f99203af63",
+            "redactedDigest": "sha256:7e34109539300c9bb84a964d591482d82a4cb73b1d92322f79d663fdbd0db646",
+            "transcript": "Unique synthetic invoice 3"
+          }
+        ],
+        "missingFacts": [
+          "historical_chart_universe_not_captured",
+          "vat_category_not_captured"
+        ],
+        "digest": "sha256:95b095feb24bb16b4b29720b0267d9b74454fe906c91ba8c5ff2298b03a2b303"
+      },
+      {
+        "decision": {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_81facc4dd71249919f736b29782fa63f"
+        },
+        "subject": {
+          "kind": "supplier_draft",
+          "draftId": "supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+          "revision": "1"
+        },
+        "originalCommitCutoff": "1",
+        "stateBuilderVersion": "retained_snapshot_projection_v1",
+        "optionBuilderVersion": "served_options_projection_v1",
+        "state": {
+          "reviewId": "supplier_review_40bfc5b1217a4b59b8adcdc02d5cc88e",
+          "reviewDigest": "sha256:6656300e109b97f1c5189c705b9f296f8402d856ac38ad41c88b81f933d0c249",
+          "draftId": "supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+          "draftRevision": "1",
+          "draftDigest": "sha256:33f6135325e634476254c6cccc2cda05ab320b7de871d78a6a88d77f5100b1a6",
+          "documentDate": "2026-09-22",
+          "supplyDate": "2026-09-22",
+          "currency": "SEK",
+          "sourceTotalMinor": "11200",
+          "lines": [
+            {
+              "id": "source_0",
+              "description": "Synthetic service",
+              "quantity": "1",
+              "unitPriceMinor": "10000",
+              "baseMinor": "10000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "1200",
+              "sourceGrossMinor": "11200"
+            }
+          ]
+        },
+        "options": {
+          "capture": "served_options_only",
+          "fullUniverseCaptured": false,
+          "records": [
+            {
+              "id": "suggestion_e3d5323ff1324338bc898f62d624afc8",
+              "sourceDigest": "sha256:8f732e8d5b6b70872d99cd59f12ee86aca919ee138a250fd61b7de7cd1037352",
+              "optionSetDigest": "sha256:d5df647aa77c8f15f6cb59792f8bf537f2992a01b4770f242002c5e6596683e9",
+              "ranked": {
+                "source": "firm_memory_v1",
+                "version": "firm_memory_v1",
+                "historyDigest": "sha256:b59240b671b6a1deddad10a0b7e9bcdfaccb45d84572a819da1aa921eb96d41b",
+                "legacyItems": [
+                  {
+                    "expenseAccountId": "account_expense",
+                    "vatRatePercent": 25,
+                    "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+                  }
+                ],
+                "options": [
+                  {
+                    "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+                    "bookId": "book_244d8644b9372058",
+                    "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+                    "documentKind": "supplier_invoice",
+                    "currency": "SEK",
+                    "currencyScale": 2,
+                    "description": "Synthetic service",
+                    "amountMinor": "12500",
+                    "originalCommitCutoff": "0",
+                    "receiptSequence": "1",
+                    "labelSequence": "1",
+                    "relatedIds": [
+                      "draft:supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+                      "evidence:evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+                      "invoice:invoice_4eb89d608e324b3ca92617ff2d64412d",
+                      "voucher:voucher_f2770c8cd1124d7e8788841e43bf460e"
+                    ],
+                    "sourceDecisionIds": [
+                      "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+                    ],
+                    "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d",
+                    "chosenTreatment": {
+                      "journal": {
+                        "lines": [
+                          {
+                            "accountId": "account_expense",
+                            "debitMinor": "10000",
+                            "creditMinor": "0"
+                          },
+                          {
+                            "accountId": "account_input_vat",
+                            "debitMinor": "2500",
+                            "creditMinor": "0"
+                          },
+                          {
+                            "accountId": "account_payable",
+                            "debitMinor": "0",
+                            "creditMinor": "12500"
+                          }
+                        ],
+                        "postingDate": "2026-09-22",
+                        "accountingPeriodId": "period_2026"
+                      },
+                      "vatCategory": "not_captured",
+                      "mappingRelease": {
+                        "id": "synthetic_se_k2_income_expense_v1",
+                        "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                        "qualification": "synthetic_only"
+                      },
+                      "reviewedTreatments": [
+                        {
+                          "lineId": "source_0",
+                          "netMinor": "10000",
+                          "treatment": {
+                            "rate": {
+                              "numerator": "25",
+                              "denominator": "100"
+                            },
+                            "basis": "full_deduction",
+                            "deduction": {
+                              "numerator": "1",
+                              "denominator": "1"
+                            },
+                            "toleranceMinor": "0",
+                            "acceptancePolicy": "exact_match",
+                            "deductionRounding": "half_up",
+                            "invoiceTaxRounding": "half_up"
+                          },
+                          "sourceTaxMinor": "2500",
+                          "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                          "expenseAccountId": "account_expense",
+                          "sourceGrossMinor": "12500"
+                        }
+                      ],
+                      "sourcePostingBindings": [
+                        {
+                          "sourceLineId": "source_0",
+                          "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+                        }
+                      ]
+                    },
+                    "provenance": {
+                      "classification": "independent",
+                      "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+                    },
+                    "consequences": [
+                      {
+                        "status": "unknown",
+                        "reasons": [
+                          "vat_category_not_captured",
+                          "vat_profile_not_captured"
+                        ]
+                      }
+                    ],
+                    "lineage": [],
+                    "accountHints": [
+                      {
+                        "expenseAccountId": "account_expense",
+                        "vatRatePercent": 25,
+                        "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+                      }
+                    ],
+                    "digest": "sha256:3a9a646c21ba7cc1944424b0204e6b7f43f2ef2b8798e6259539e55e29aed73a"
+                  }
+                ]
+              },
+              "redactedDigest": "sha256:d5df647aa77c8f15f6cb59792f8bf537f2992a01b4770f242002c5e6596683e9"
+            }
+          ]
+        },
+        "chosenTreatment": {
+          "journal": {
+            "postingDate": "2026-09-22",
+            "accountingPeriodId": "period_2026",
+            "lines": [
+              {
+                "accountId": "account_expense",
+                "debitMinor": "10000",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_input_vat",
+                "debitMinor": "1200",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_payable",
+                "debitMinor": "0",
+                "creditMinor": "11200"
+              }
+            ]
+          },
+          "reviewedTreatments": [
+            {
+              "lineId": "source_0",
+              "expenseAccountId": "account_expense",
+              "netMinor": "10000",
+              "sourceTaxMinor": "1200",
+              "sourceGrossMinor": "11200",
+              "taxComponentId": "purchase_recognition_32ab8044416b2394ec77de4a_source_0",
+              "treatment": {
+                "basis": "full_deduction",
+                "rate": {
+                  "numerator": "12",
+                  "denominator": "100"
+                },
+                "deduction": {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                "invoiceTaxRounding": "half_up",
+                "deductionRounding": "half_up",
+                "acceptancePolicy": "exact_match",
+                "toleranceMinor": "0"
+              }
+            }
+          ],
+          "vatCategory": "not_captured",
+          "sourcePostingBindings": [
+            {
+              "sourceLineId": "source_0",
+              "postingLineId": "line_79df39d50c474e199a79490fe9332ef7"
+            }
+          ],
+          "mappingRelease": {
+            "id": "synthetic_se_k2_income_expense_v1",
+            "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+            "qualification": "synthetic_only"
+          }
+        },
+        "precedent": {
+          "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+          "bookId": "book_244d8644b9372058",
+          "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+          "documentKind": "supplier_invoice",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "description": "Synthetic service",
+          "amountMinor": "11200",
+          "originalCommitCutoff": "1",
+          "receiptSequence": "4",
+          "labelSequence": "4",
+          "relatedIds": [
+            "draft:supplier_invoice_draft_c5507a0dc9594be28571fd2a3fd33ca8",
+            "evidence:evidence_e75b11d5b11c4956bbbd84b6a3f8afa3",
+            "invoice:invoice_806185ec279d4d1382c75e2cf7ee9ec2",
+            "voucher:voucher_a0175a77ff914f58b2f64d707c608dee"
+          ],
+          "sourceDecisionIds": [
+            "supplier_approval_81facc4dd71249919f736b29782fa63f"
+          ],
+          "sourceInvoiceId": "invoice_806185ec279d4d1382c75e2cf7ee9ec2",
+          "chosenTreatment": {
+            "journal": {
+              "postingDate": "2026-09-22",
+              "accountingPeriodId": "period_2026",
+              "lines": [
+                {
+                  "accountId": "account_expense",
+                  "debitMinor": "10000",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_input_vat",
+                  "debitMinor": "1200",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_payable",
+                  "debitMinor": "0",
+                  "creditMinor": "11200"
+                }
+              ]
+            },
+            "reviewedTreatments": [
+              {
+                "lineId": "source_0",
+                "expenseAccountId": "account_expense",
+                "netMinor": "10000",
+                "sourceTaxMinor": "1200",
+                "sourceGrossMinor": "11200",
+                "taxComponentId": "purchase_recognition_32ab8044416b2394ec77de4a_source_0",
+                "treatment": {
+                  "basis": "full_deduction",
+                  "rate": {
+                    "numerator": "12",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "invoiceTaxRounding": "half_up",
+                  "deductionRounding": "half_up",
+                  "acceptancePolicy": "exact_match",
+                  "toleranceMinor": "0"
+                }
+              }
+            ],
+            "vatCategory": "not_captured",
+            "sourcePostingBindings": [
+              {
+                "sourceLineId": "source_0",
+                "postingLineId": "line_79df39d50c474e199a79490fe9332ef7"
+              }
+            ],
+            "mappingRelease": {
+              "id": "synthetic_se_k2_income_expense_v1",
+              "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+              "qualification": "synthetic_only"
+            }
+          },
+          "provenance": {
+            "classification": "unknown_exposure",
+            "digest": "sha256:abd64d4d289def6713aa295afa18e6ef5c33072c7dbf8889c3100472073d94af"
+          },
+          "consequences": [
+            {
+              "status": "unknown",
+              "reasons": [
+                "vat_category_not_captured",
+                "vat_profile_not_captured"
+              ]
+            }
+          ],
+          "lineage": [],
+          "accountHints": [
+            {
+              "expenseAccountId": "account_expense",
+              "vatRatePercent": 12,
+              "sourceInvoiceId": "invoice_806185ec279d4d1382c75e2cf7ee9ec2"
+            }
+          ],
+          "digest": "sha256:41e0dcde88edf77420be1370c7e6106cf64aeee455b86538dc4ec861ac69dacd"
+        },
+        "consequence": {
+          "builderVersion": "treatment_consequence_v1",
+          "captureStatus": "retained_treatments",
+          "treatments": [
+            {
+              "capture": {
+                "accountId": "account_expense",
+                "originalCommitCutoff": "1",
+                "postingOn": "2026-09-22",
+                "mapping": {
+                  "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                  "applicableAtCutoff": "1",
+                  "accounts": [
+                    {
+                      "accountId": "account_expense",
+                      "classification": "expense",
+                      "placement": "income_statement",
+                      "statementLeaf": "synthetic_k2_external_cost"
+                    }
+                  ]
+                },
+                "vat": {
+                  "category": null,
+                  "profileIdentity": null,
+                  "resolvedRate": {
+                    "numerator": "12",
+                    "denominator": "100"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                },
+                "period": {
+                  "id": "period_2026",
+                  "startsOn": "2026-01-01",
+                  "endsOn": "2026-12-31"
+                },
+                "dimensions": {
+                  "requirements": [],
+                  "assignments": []
+                }
+              },
+              "result": {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            }
+          ]
+        },
+        "provenance": {
+          "classification": "unknown_exposure",
+          "digest": "sha256:abd64d4d289def6713aa295afa18e6ef5c33072c7dbf8889c3100472073d94af"
+        },
+        "lineage": [],
+        "evidence": [
+          {
+            "id": "evidence_e75b11d5b11c4956bbbd84b6a3f8afa3",
+            "sourceDigest": "7ba2245ed64a363c5fe8d50fa0176506102287b3f1c49c4c7aab658f65603cf8",
+            "redactedDigest": "sha256:0df14fa4e7dd3aa446e2b618932438dfe949b3901ef891628d90cb83171c3fcb",
+            "transcript": "Unique synthetic invoice 4"
+          }
+        ],
+        "missingFacts": [
+          "historical_chart_universe_not_captured",
+          "vat_category_not_captured"
+        ],
+        "digest": "sha256:0b5ddafad158a9d1d1bb0890a477188f63181322bce65acb1f1f13e9458b03d0"
+      },
+      {
+        "decision": {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0"
+        },
+        "subject": {
+          "kind": "supplier_draft",
+          "draftId": "supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+          "revision": "1"
+        },
+        "originalCommitCutoff": "1",
+        "stateBuilderVersion": "retained_snapshot_projection_v1",
+        "optionBuilderVersion": "served_options_projection_v1",
+        "state": {
+          "reviewId": "supplier_review_9ab3e0ecd4964c359b1b879a71468772",
+          "reviewDigest": "sha256:9891e4dd0fc9b04ef9d1922f47404186dc2f7ddf8881e36f49d898af0cfa165a",
+          "draftId": "supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+          "draftRevision": "1",
+          "draftDigest": "sha256:61d8305f9e49e39d3a99d48dfb16c9e111f3467b10720332ae08d29d42fda122",
+          "documentDate": "2026-09-22",
+          "supplyDate": "2026-09-22",
+          "currency": "SEK",
+          "sourceTotalMinor": "12500",
+          "lines": [
+            {
+              "id": "source_0",
+              "description": "Synthetic service",
+              "quantity": "1",
+              "unitPriceMinor": "10000",
+              "baseMinor": "10000",
+              "discountMinor": "0",
+              "chargeMinor": "0",
+              "taxMinor": "2500",
+              "sourceGrossMinor": "12500"
+            }
+          ]
+        },
+        "options": {
+          "capture": "served_options_only",
+          "fullUniverseCaptured": false,
+          "records": [
+            {
+              "id": "suggestion_2d08fd22e6a9406a80a98d18e864a1b8",
+              "sourceDigest": "sha256:c90d9e656aca6c7c450e42a58af1553af9902bbf43d44d2e032c031cabbe2d7c",
+              "optionSetDigest": "sha256:16381e065dba2f25ccb94a8670a0cc6d8d6c692aa23409f46d0c08c3b447c58e",
+              "ranked": {
+                "source": "firm_memory_v1",
+                "version": "firm_memory_v1",
+                "historyDigest": "sha256:f4d5962fde06716aa7fcbe7b92a933749af42478874cbcc286cf245c641647b2",
+                "legacyItems": [
+                  {
+                    "expenseAccountId": "account_expense",
+                    "vatRatePercent": 25,
+                    "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+                  }
+                ],
+                "options": [
+                  {
+                    "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+                    "bookId": "book_244d8644b9372058",
+                    "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+                    "documentKind": "supplier_invoice",
+                    "currency": "SEK",
+                    "currencyScale": 2,
+                    "description": "Synthetic service",
+                    "amountMinor": "12500",
+                    "originalCommitCutoff": "0",
+                    "receiptSequence": "1",
+                    "labelSequence": "1",
+                    "relatedIds": [
+                      "draft:supplier_invoice_draft_3765e6bb3c084024bcd4ae220cf98e47",
+                      "evidence:evidence_8ed37ba4563d4fa8910fa56afb6a463a",
+                      "invoice:invoice_4eb89d608e324b3ca92617ff2d64412d",
+                      "voucher:voucher_f2770c8cd1124d7e8788841e43bf460e"
+                    ],
+                    "sourceDecisionIds": [
+                      "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368"
+                    ],
+                    "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d",
+                    "chosenTreatment": {
+                      "journal": {
+                        "lines": [
+                          {
+                            "accountId": "account_expense",
+                            "debitMinor": "10000",
+                            "creditMinor": "0"
+                          },
+                          {
+                            "accountId": "account_input_vat",
+                            "debitMinor": "2500",
+                            "creditMinor": "0"
+                          },
+                          {
+                            "accountId": "account_payable",
+                            "debitMinor": "0",
+                            "creditMinor": "12500"
+                          }
+                        ],
+                        "postingDate": "2026-09-22",
+                        "accountingPeriodId": "period_2026"
+                      },
+                      "vatCategory": "not_captured",
+                      "mappingRelease": {
+                        "id": "synthetic_se_k2_income_expense_v1",
+                        "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                        "qualification": "synthetic_only"
+                      },
+                      "reviewedTreatments": [
+                        {
+                          "lineId": "source_0",
+                          "netMinor": "10000",
+                          "treatment": {
+                            "rate": {
+                              "numerator": "25",
+                              "denominator": "100"
+                            },
+                            "basis": "full_deduction",
+                            "deduction": {
+                              "numerator": "1",
+                              "denominator": "1"
+                            },
+                            "toleranceMinor": "0",
+                            "acceptancePolicy": "exact_match",
+                            "deductionRounding": "half_up",
+                            "invoiceTaxRounding": "half_up"
+                          },
+                          "sourceTaxMinor": "2500",
+                          "taxComponentId": "purchase_recognition_12f5725c6356b2f2631babd9_source_0",
+                          "expenseAccountId": "account_expense",
+                          "sourceGrossMinor": "12500"
+                        }
+                      ],
+                      "sourcePostingBindings": [
+                        {
+                          "sourceLineId": "source_0",
+                          "postingLineId": "line_b71b9b8963654d9983c5c6c38b8e9093"
+                        }
+                      ]
+                    },
+                    "provenance": {
+                      "classification": "independent",
+                      "digest": "sha256:4ae06fd60c0bfc381e0344df2926a92f65c49ed187191bf2701f35f4e0353dbd"
+                    },
+                    "consequences": [
+                      {
+                        "status": "unknown",
+                        "reasons": [
+                          "vat_category_not_captured",
+                          "vat_profile_not_captured"
+                        ]
+                      }
+                    ],
+                    "lineage": [],
+                    "accountHints": [
+                      {
+                        "expenseAccountId": "account_expense",
+                        "vatRatePercent": 25,
+                        "sourceInvoiceId": "invoice_4eb89d608e324b3ca92617ff2d64412d"
+                      }
+                    ],
+                    "digest": "sha256:3a9a646c21ba7cc1944424b0204e6b7f43f2ef2b8798e6259539e55e29aed73a"
+                  }
+                ]
+              },
+              "redactedDigest": "sha256:16381e065dba2f25ccb94a8670a0cc6d8d6c692aa23409f46d0c08c3b447c58e"
+            }
+          ]
+        },
+        "chosenTreatment": {
+          "journal": {
+            "postingDate": "2026-09-22",
+            "accountingPeriodId": "period_2026",
+            "lines": [
+              {
+                "accountId": "account_expense",
+                "debitMinor": "10000",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_input_vat",
+                "debitMinor": "2500",
+                "creditMinor": "0"
+              },
+              {
+                "accountId": "account_payable",
+                "debitMinor": "0",
+                "creditMinor": "12500"
+              }
+            ]
+          },
+          "reviewedTreatments": [
+            {
+              "lineId": "source_0",
+              "expenseAccountId": "account_expense",
+              "netMinor": "10000",
+              "sourceTaxMinor": "2500",
+              "sourceGrossMinor": "12500",
+              "taxComponentId": "purchase_recognition_fdfd9ff42bc963faa2dee0d4_source_0",
+              "treatment": {
+                "basis": "full_deduction",
+                "rate": {
+                  "numerator": "1",
+                  "denominator": "4"
+                },
+                "deduction": {
+                  "numerator": "1",
+                  "denominator": "1"
+                },
+                "invoiceTaxRounding": "half_up",
+                "deductionRounding": "half_up",
+                "acceptancePolicy": "exact_match",
+                "toleranceMinor": "0"
+              }
+            }
+          ],
+          "vatCategory": "not_captured",
+          "sourcePostingBindings": [
+            {
+              "sourceLineId": "source_0",
+              "postingLineId": "line_e8eca33b3b344605b479ea0f2b7f3def"
+            }
+          ],
+          "mappingRelease": {
+            "id": "synthetic_se_k2_income_expense_v1",
+            "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+            "qualification": "synthetic_only"
+          }
+        },
+        "precedent": {
+          "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+          "bookId": "book_244d8644b9372058",
+          "counterpartyId": "counterparty_ebc9e87b68484cbb835915356c784f36",
+          "documentKind": "supplier_invoice",
+          "currency": "SEK",
+          "currencyScale": 2,
+          "description": "Synthetic service",
+          "amountMinor": "12500",
+          "originalCommitCutoff": "1",
+          "receiptSequence": "2",
+          "labelSequence": "2",
+          "relatedIds": [
+            "draft:supplier_invoice_draft_9d5cfae4c87145c4a3dd0f63425aa3f8",
+            "evidence:evidence_29750b0930794131a35e6ba3e8a55f49",
+            "invoice:invoice_84b9d87ebd56436f8d87f08cf9404d49",
+            "voucher:voucher_3e4f183b1cd342ea8b5582f6c40bf855"
+          ],
+          "sourceDecisionIds": [
+            "supplier_approval_b71af40ffcd5411a8305647d1b827bb0"
+          ],
+          "sourceInvoiceId": "invoice_84b9d87ebd56436f8d87f08cf9404d49",
+          "chosenTreatment": {
+            "journal": {
+              "postingDate": "2026-09-22",
+              "accountingPeriodId": "period_2026",
+              "lines": [
+                {
+                  "accountId": "account_expense",
+                  "debitMinor": "10000",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_input_vat",
+                  "debitMinor": "2500",
+                  "creditMinor": "0"
+                },
+                {
+                  "accountId": "account_payable",
+                  "debitMinor": "0",
+                  "creditMinor": "12500"
+                }
+              ]
+            },
+            "reviewedTreatments": [
+              {
+                "lineId": "source_0",
+                "expenseAccountId": "account_expense",
+                "netMinor": "10000",
+                "sourceTaxMinor": "2500",
+                "sourceGrossMinor": "12500",
+                "taxComponentId": "purchase_recognition_fdfd9ff42bc963faa2dee0d4_source_0",
+                "treatment": {
+                  "basis": "full_deduction",
+                  "rate": {
+                    "numerator": "1",
+                    "denominator": "4"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  },
+                  "invoiceTaxRounding": "half_up",
+                  "deductionRounding": "half_up",
+                  "acceptancePolicy": "exact_match",
+                  "toleranceMinor": "0"
+                }
+              }
+            ],
+            "vatCategory": "not_captured",
+            "sourcePostingBindings": [
+              {
+                "sourceLineId": "source_0",
+                "postingLineId": "line_e8eca33b3b344605b479ea0f2b7f3def"
+              }
+            ],
+            "mappingRelease": {
+              "id": "synthetic_se_k2_income_expense_v1",
+              "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+              "qualification": "synthetic_only"
+            }
+          },
+          "provenance": {
+            "classification": "unknown_exposure",
+            "digest": "sha256:b1a994db03547398be10e5217eb0e3e69f85f964a29d07477ac4f0d3a6b448a3"
+          },
+          "consequences": [
+            {
+              "status": "unknown",
+              "reasons": [
+                "vat_category_not_captured",
+                "vat_profile_not_captured"
+              ]
+            }
+          ],
+          "lineage": [],
+          "accountHints": [
+            {
+              "expenseAccountId": "account_expense",
+              "vatRatePercent": 25,
+              "sourceInvoiceId": "invoice_84b9d87ebd56436f8d87f08cf9404d49"
+            }
+          ],
+          "digest": "sha256:4e1dc490047321b65f17c6547e058b8f3c4d603b9dd6944503e2badf9c3a56d7"
+        },
+        "consequence": {
+          "builderVersion": "treatment_consequence_v1",
+          "captureStatus": "retained_treatments",
+          "treatments": [
+            {
+              "capture": {
+                "accountId": "account_expense",
+                "originalCommitCutoff": "1",
+                "postingOn": "2026-09-22",
+                "mapping": {
+                  "checksum": "sha256:08a41bed7cebac7ad246fe19d113cb7119383b4777894d3bfdf8ecce3d208a1b",
+                  "applicableAtCutoff": "1",
+                  "accounts": [
+                    {
+                      "accountId": "account_expense",
+                      "classification": "expense",
+                      "placement": "income_statement",
+                      "statementLeaf": "synthetic_k2_external_cost"
+                    }
+                  ]
+                },
+                "vat": {
+                  "category": null,
+                  "profileIdentity": null,
+                  "resolvedRate": {
+                    "numerator": "1",
+                    "denominator": "4"
+                  },
+                  "deduction": {
+                    "numerator": "1",
+                    "denominator": "1"
+                  }
+                },
+                "period": {
+                  "id": "period_2026",
+                  "startsOn": "2026-01-01",
+                  "endsOn": "2026-12-31"
+                },
+                "dimensions": {
+                  "requirements": [],
+                  "assignments": []
+                }
+              },
+              "result": {
+                "status": "unknown",
+                "reasons": [
+                  "vat_category_not_captured",
+                  "vat_profile_not_captured"
+                ]
+              }
+            }
+          ]
+        },
+        "provenance": {
+          "classification": "unknown_exposure",
+          "digest": "sha256:b1a994db03547398be10e5217eb0e3e69f85f964a29d07477ac4f0d3a6b448a3"
+        },
+        "lineage": [],
+        "evidence": [
+          {
+            "id": "evidence_29750b0930794131a35e6ba3e8a55f49",
+            "sourceDigest": "70c832ac9f04fe3fd29ef363c0e3b89bc2c7c1bbeb649037ddbb738ad546e17a",
+            "redactedDigest": "sha256:61c3e645b90464c02ec6827bfc844bf3edd7d97b900f3684430c2ccb89e5f372",
+            "transcript": "Unique synthetic invoice 2"
+          }
+        ],
+        "missingFacts": [
+          "historical_chart_universe_not_captured",
+          "vat_category_not_captured"
+        ],
+        "digest": "sha256:f85313724cc740a1a4361791d1f7392cb83721b96282ff00c6e440a7a1e9708a"
+      }
+    ],
+    "exclusions": [],
+    "manifest": {
+      "denominators": {
+        "inventory": 4,
+        "selected": 4,
+        "exported": 4,
+        "excluded": 0
+      },
+      "inventory": [
+        {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+          "digest": "sha256:1baf92a5c4b77231ba3c1c4531262e2beb47e50640488e14398dd5cd1c418c9e"
+        },
+        {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+          "digest": "sha256:7e8e806fe0aa48d38f34a37ac2bea665e1a9d5c82d955423ff4a8b3f11a44481"
+        },
+        {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+          "digest": "sha256:590277628758aca596b9c41c75a738f0827aea04dbbb11f27d54dea5a1f49c01"
+        },
+        {
+          "owner": "supplier_approval",
+          "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+          "digest": "sha256:22f241844f70c4e7a9f9270065d10adb9c0e8c7bbf924a4dfb836e8d22d5bf20"
+        }
+      ],
+      "lineageInventory": [
+        {
+          "kind": "voucher",
+          "id": "voucher_f2770c8cd1124d7e8788841e43bf460e",
+          "digest": "sha256:5b683d08823a0a3deab14f43c26e0480f49157eeb272a2ee7e9f3219958ec716"
+        },
+        {
+          "kind": "voucher",
+          "id": "voucher_3e4f183b1cd342ea8b5582f6c40bf855",
+          "digest": "sha256:d63033bf98fb2bf1beef49902c5a270fa7598f07f7a7441dacef23ff6daea4ef"
+        },
+        {
+          "kind": "voucher",
+          "id": "voucher_cedfc82fd4f74d3688722679fe5c9319",
+          "digest": "sha256:f8bbbded452c47154afb5829f1336a1f90b00de22167cfc361301d6dfb8d6ea6"
+        },
+        {
+          "kind": "voucher",
+          "id": "voucher_a0175a77ff914f58b2f64d707c608dee",
+          "digest": "sha256:c0c244e53307322cab0ebdd53872247b1b562f211452f373cbf8700a18b2f516"
+        }
+      ],
+      "exclusionCounts": {}
+    },
+    "digest": "sha256:2fa87126b1b5274b518ec314cdce59825e0b98f3c1821a8d2564162b5559c55b"
+  },
+  "report": {
+    "algorithmVersion": "firm_memory_v1",
+    "counts": {
+      "eligibleTargets": 2,
+      "suggestedTargets": 0,
+      "knownComparableTargets": 0,
+      "correctConsequences": 0,
+      "unknownConsequences": 2
+    },
+    "metrics": {
+      "coverage": {
+        "numerator": 0,
+        "denominator": 2,
+        "value": 0
+      },
+      "consequenceAccuracy": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      }
+    },
+    "targets": [
+      {
+        "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+        "cutoff": "0",
+        "suggestedSourceDecisionIds": [],
+        "comparison": "no_suggestion",
+        "exclusions": [
+          {
+            "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+            "reason": "related_holdout"
+          },
+          {
+            "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+            "reason": "later_receipt"
+          },
+          {
+            "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+            "reason": "later_receipt"
+          },
+          {
+            "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+            "reason": "later_receipt"
+          }
+        ]
+      },
+      {
+        "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+        "cutoff": "1",
+        "suggestedSourceDecisionIds": [],
+        "comparison": "no_suggestion",
+        "exclusions": [
+          {
+            "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+            "reason": "different_description"
+          },
+          {
+            "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+            "reason": "related_holdout"
+          },
+          {
+            "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+            "reason": "later_receipt"
+          },
+          {
+            "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+            "reason": "later_receipt"
+          }
+        ]
+      }
+    ],
+    "excludedTargets": [
+      {
+        "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+        "reason": "influenced_label"
+      },
+      {
+        "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+        "reason": "influenced_label"
+      }
+    ],
+    "sealedExport": {
+      "id": "decision_export_04a3c5b7405549bc8029ca02470d1d3d",
+      "digest": "sha256:2fa87126b1b5274b518ec314cdce59825e0b98f3c1821a8d2564162b5559c55b",
+      "lineageCutoff": "4"
+    },
+    "inputCounts": {
+      "examples": 4,
+      "capturedPrecedents": 4,
+      "missingPrecedents": 0,
+      "excluded": 0
+    },
+    "inputExclusions": []
+  }
+}
