@@ -910,21 +910,23 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
       if (!suggested || !lines)
         return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
 
+      const dimensions = {
+        account: lines.every((line) => line.expenseAccountId === suggested.expenseAccountId)
+          ? "unchanged"
+          : "changed",
+        vatRate: lines.every(
+          (line) =>
+            BigInt(line.treatment.rate.numerator) * 100n ===
+            BigInt(suggested.vatRatePercent) * BigInt(line.treatment.rate.denominator),
+        )
+          ? "unchanged"
+          : "changed",
+      };
+
       return {
         coverage: "partial",
-        comparison: "not_comparable",
-        dimensions: {
-          account: lines.every((line) => line.expenseAccountId === suggested.expenseAccountId)
-            ? "unchanged"
-            : "changed",
-          vatRate: lines.every(
-            (line) =>
-              BigInt(line.treatment.rate.numerator) * 100n ===
-              BigInt(suggested.vatRatePercent) * BigInt(line.treatment.rate.denominator),
-          )
-            ? "unchanged"
-            : "changed",
-        },
+        comparison: Object.values(dimensions).includes("changed") ? "changed" : "not_comparable",
+        dimensions,
       };
     });
 

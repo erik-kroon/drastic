@@ -32,8 +32,23 @@ const history = exported.examples.flatMap((example) =>
   example.precedent ? [example.precedent] : [],
 );
 
+function population(classification: "independent" | "corrected") {
+  return {
+    exampleCount: exported.examples.filter(
+      (example) => example.provenance.classification === classification,
+    ).length,
+    representative: classification === "independent" ? "not_established" : false,
+    selection: classification === "corrected" ? "observed_disagreements" : "independent_labels",
+    baseline: Memory.baseline(
+      history.filter((record) => record.provenance.classification === classification),
+    ),
+  };
+}
+
 const report = {
   ...Memory.baseline(history),
+  aggregateInterpretation: "descriptive_nonrepresentative",
+  populations: { independent: population("independent"), corrected: population("corrected") },
   sealedExport: { id: exported.id, digest: exported.digest, lineageCutoff: exported.lineageCutoff },
   inputCounts: {
     examples: exported.examples.length,

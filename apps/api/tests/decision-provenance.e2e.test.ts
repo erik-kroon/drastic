@@ -1,5 +1,5 @@
 import { assertEvaluationRefused } from "./support/decision-examples";
-import { writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -24,6 +24,7 @@ import {
   persisted,
   post,
   request,
+  run,
 } from "./support/fixtures";
 
 import { provenanceRows } from "./support/decision-provenance";
@@ -1019,3 +1020,407 @@ test("bank exposure equivalent options across revisions remain cited but changed
     }
   }
 }, 60_000);
+
+test("partial supplier hints distinguish observed corrections and report independent populations separately", async () => {
+  const f = await supplierFixture([
+    { id: "account_payable", code: "2440", name: "Supplier payable" },
+    { id: "account_input_vat", code: "2641", name: "Input VAT" },
+    { id: "account_expense", code: "6000", name: "Expense" },
+    { id: "account_other", code: "6100", name: "Other expense" },
+  ]);
+
+  const book = { ...f.book, token: (await createSession(f.book)).token };
+
+  const observed: Array<{
+    ordinal: number;
+    shown: typeof Drafts.SupplierAccountSuggestions.Type;
+    approval: typeof Acceptance.SupplierAcceptanceApproval.Type;
+    provenance: Awaited<ReturnType<typeof provenanceRows>>[number];
+  }> = [];
+
+  const make = async (
+    ordinal: number,
+    accounts: string[],
+    numerator: string,
+    denominator: string,
+    tax: string,
+  ) => {
+    const source = await purchaseEvidence(book, ordinal);
+    const gross = String(10000 + Number(tax));
+
+    const draft = await createDraft(book, {
+      ...f.content,
+      sourceEvidenceId: source.id,
+      supplierDocumentNumber: `PARTIAL-${ordinal}`,
+      sourceTotalMinor: String(Number(gross) * accounts.length),
+      lines: accounts.map((_, index) => ({
+        ...f.content.lines[0]!,
+        id: `source_${index}`,
+        taxEvidenceId: source.id,
+        taxMinor: tax,
+        sourceGrossMinor: gross,
+      })),
+    });
+
+    const shown = await decoded(
+      await request(
+        book,
+        `/commerce/supplier-account-suggestions/${f.supplier.id}?draftId=${draft.id}&draftRevision=${draft.revision}`,
+      ),
+      Drafts.SupplierAccountSuggestions,
+    );
+
+    if (ordinal > 1)
+      expect(shown.items[0]).toMatchObject({
+        expenseAccountId: "account_expense",
+        vatRatePercent: 25,
+      });
+
+    const review = await post(
+      book,
+      "/commerce/supplier-acceptance-reviews",
+      {
+        profile: "swedish-purchase-v1",
+        draftId: draft.id,
+        expectedRevision: draft.revision,
+        expectedDigest: draft.digest,
+        controlAccountId: "account_payable",
+        accountingPeriodId: "period_2026",
+        series: "A",
+        reason: "Synthetic observed partial correction",
+        acknowledgeSyntheticOnly: true,
+        taxPoint: { taxPointOn: "2026-09-22", basis: "document_date" },
+        lineAssignments: draft.content.lines.map((line, index) => ({
+          lineId: line.id,
+          expenseAccountId: accounts[index]!,
+          treatment: {
+            basis: "full_deduction",
+            rate: { numerator, denominator },
+            deduction: { numerator: "1", denominator: "1" },
+            invoiceTaxRounding: "half_up",
+            deductionRounding: "half_up",
+            acceptancePolicy: "exact_match",
+            toleranceMinor: "0",
+          },
+        })),
+      },
+      Acceptance.SupplierAcceptanceReview,
+    );
+
+    const approval = await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: [shown.suggestionRecordId],
+      },
+      Acceptance.SupplierAcceptanceApproval,
+    );
+
+    const provenance = (await provenanceRows(book)).find((row) => row.decision_id === approval.id)!;
+    observed.push({ ordinal, shown, approval, provenance });
+
+    return { review, approval, provenance };
+  };
+
+  const seed = await make(1, ["account_expense", "account_expense"], "25", "100", "2500");
+  expect(seed.provenance.classification).toBe("independent");
+  await post(
+    book,
+    `/commerce/supplier-acceptance-reviews/${seed.review.id}/execute`,
+    {
+      version: 1,
+      digest: seed.review.digest,
+      acknowledgeSyntheticOnly: true,
+      approvalId: seed.approval.id,
+    },
+    Acceptance.SupplierAcceptanceReceipt,
+  );
+  const equal = await make(2, ["account_expense", "account_expense"], "1", "4", "2500");
+  const account = await make(3, ["account_expense", "account_other"], "25", "100", "2500");
+  const rate = await make(4, ["account_expense", "account_expense"], "12", "100", "1200");
+
+  for (const decision of [equal, account, rate])
+    await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${decision.review.id}/execute`,
+      {
+        version: 1,
+        digest: decision.review.digest,
+        acknowledgeSyntheticOnly: true,
+        approvalId: decision.approval.id,
+      },
+      Acceptance.SupplierAcceptanceReceipt,
+    );
+
+  const exported = await post(
+    book,
+    "/automation/decision-examples",
+    { purpose: "training", selectedDecisionIds: [] },
+    Examples.DecisionExampleExport,
+  );
+
+  const reportDirectory = join(environment().artifacts, "partial-report");
+
+  await mkdir(reportDirectory, { recursive: true });
+  await run(
+    "bun",
+    [
+      "verification/firm-memory/report.ts",
+      book.entityId,
+      book.bookId,
+      exported.id,
+      reportDirectory,
+    ],
+    {
+      cwd: join(import.meta.dirname, "../../.."),
+      env: {
+        ...process.env,
+        OPENERP_API_URL: environment().baseUrl,
+        OPENERP_OPERATOR_TOKEN: book.token,
+      },
+    },
+  );
+  const report = JSON.parse(await readFile(join(reportDirectory, "report.json"), "utf8"));
+
+  await writeFile(
+    join(environment().artifacts, "partial-supplier-hints.json"),
+    JSON.stringify({ observed, exported, report }, null, 2),
+  );
+  expect(report).toHaveProperty("populations.independent.exampleCount", 1);
+  expect(report).toHaveProperty("populations.corrected.exampleCount", 2);
+  expect(report).toHaveProperty("populations.corrected.representative", false);
+  expect(report.metrics.consequenceAccuracy).toEqual({ numerator: 0, denominator: 0, value: null });
+  expect(equal.provenance.classification).toBe("unknown_exposure");
+  expect(account.provenance.classification).toBe("corrected");
+  expect(rate.provenance.classification).toBe("corrected");
+  expect(rate.provenance.body).toMatchObject({
+    comparisons: [{ dimensions: { account: "unchanged", vatRate: "changed" } }],
+  });
+  expect(exported.manifest).toHaveProperty("classificationCounts", {
+    inventory: { independent: 1, corrected: 2, unknown_exposure: 1 },
+    exported: { independent: 1, corrected: 2, unknown_exposure: 1 },
+  });
+});
+
+test("mixed changed and incomparable supplier citations retain unknown exposure", async () => {
+  const f = await supplierFixture([
+    { id: "account_payable", code: "2440", name: "Supplier payable" },
+    { id: "account_input_vat", code: "2641", name: "Input VAT" },
+    { id: "account_expense", code: "6000", name: "Expense" },
+    { id: "account_other", code: "6100", name: "Other expense" },
+  ]);
+
+  const book = { ...f.book, token: (await createSession(f.book)).token };
+
+  const makeDraft = async (ordinal: number) => {
+    const source = await purchaseEvidence(book, ordinal);
+
+    return createDraft(book, {
+      ...f.content,
+      sourceEvidenceId: source.id,
+      supplierDocumentNumber: `MIXED-${ordinal}`,
+      sourceTotalMinor: "12500",
+      lines: [
+        {
+          ...f.content.lines[0]!,
+          description: "Synthetic service",
+          taxEvidenceId: source.id,
+          taxMinor: "2500",
+          sourceGrossMinor: "12500",
+        },
+      ],
+    });
+  };
+
+  const decide = async (
+    draft: typeof Drafts.SupplierInvoiceDraftRevision.Type,
+    account: string,
+    citations: string[] = [],
+  ) => {
+    const review = await post(
+      book,
+      "/commerce/supplier-acceptance-reviews",
+      {
+        profile: "swedish-purchase-v1",
+        draftId: draft.id,
+        expectedRevision: draft.revision,
+        expectedDigest: draft.digest,
+        controlAccountId: "account_payable",
+        accountingPeriodId: "period_2026",
+        series: "A",
+        reason: "Synthetic mixed retained citations",
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: citations,
+        taxPoint: { taxPointOn: "2026-09-22", basis: "document_date" },
+        lineAssignments: draft.content.lines.map((line) => ({
+          lineId: line.id,
+          expenseAccountId: account,
+          treatment: {
+            basis: "full_deduction",
+            rate: { numerator: "25", denominator: "100" },
+            deduction: { numerator: "1", denominator: "1" },
+            invoiceTaxRounding: "half_up",
+            deductionRounding: "half_up",
+            acceptancePolicy: "exact_match",
+            toleranceMinor: "0",
+          },
+        })),
+      },
+      Acceptance.SupplierAcceptanceReview,
+    );
+
+    const approval = await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/approvals`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        presentedSuggestionIds: citations,
+      },
+      Acceptance.SupplierAcceptanceApproval,
+    );
+
+    const receipt = await post(
+      book,
+      `/commerce/supplier-acceptance-reviews/${review.id}/execute`,
+      {
+        version: 1,
+        digest: review.digest,
+        acknowledgeSyntheticOnly: true,
+        approvalId: approval.id,
+      },
+      Acceptance.SupplierAcceptanceReceipt,
+    );
+
+    return { review, approval, receipt };
+  };
+
+  const seedA = await decide(await makeDraft(1), "account_expense");
+  const target = await makeDraft(2);
+  const path = `/commerce/supplier-account-suggestions/${f.supplier.id}?draftId=${target.id}&draftRevision=${target.revision}`;
+  const first = await decoded(await request(book, path), Drafts.SupplierAccountSuggestions);
+  expect(first.items[0]).toMatchObject({ expenseAccountId: "account_expense", vatRatePercent: 25 });
+  const seedB = await decide(await makeDraft(3), "account_other");
+  const second = await decoded(await request(book, path), Drafts.SupplierAccountSuggestions);
+  expect(second.items[0]).toMatchObject({ expenseAccountId: "account_other", vatRatePercent: 25 });
+  expect(second.suggestionRecordId).not.toBe(first.suggestionRecordId);
+  const citations = [first.suggestionRecordId, second.suggestionRecordId];
+  const decision = await decide(target, "account_expense", citations);
+
+  const provenance = (await provenanceRows(book)).find(
+    (row) => row.decision_id === decision.approval.id,
+  )!;
+
+  const admin = await database();
+  let records;
+
+  try {
+    records = (
+      await admin.query(
+        "SELECT id,subject_digest,body FROM openerp.suggestion_records WHERE book_id=$1 AND id=ANY($2::text[]) ORDER BY id",
+        [book.bookId, citations],
+      )
+    ).rows;
+  } finally {
+    await admin.end();
+  }
+
+  const exported = await post(
+    book,
+    "/automation/decision-examples",
+    {
+      purpose: "training",
+      selectedDecisionIds: [decision.approval.id],
+    },
+    Examples.DecisionExampleExport,
+  );
+
+  await writeFile(
+    join(environment().artifacts, "mixed-supplier-observations.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        seedA,
+        seedB,
+        target,
+        first,
+        second,
+        records,
+        decision,
+        provenance,
+        exported,
+      },
+      null,
+      2,
+    ),
+  );
+  const reportDirectory = join(environment().artifacts, "mixed-report");
+  await mkdir(reportDirectory, { recursive: true });
+  await run(
+    "bun",
+    [
+      "verification/firm-memory/report.ts",
+      book.entityId,
+      book.bookId,
+      exported.id,
+      reportDirectory,
+    ],
+    {
+      cwd: join(import.meta.dirname, "../../.."),
+      env: {
+        ...process.env,
+        OPENERP_API_URL: environment().baseUrl,
+        OPENERP_OPERATOR_TOKEN: book.token,
+      },
+    },
+  );
+  const report = JSON.parse(await readFile(join(reportDirectory, "report.json"), "utf8"));
+  await writeFile(
+    join(environment().artifacts, "mixed-supplier-citations.json"),
+    JSON.stringify(
+      {
+        syntheticOnly: true,
+        seedA,
+        seedB,
+        target,
+        first,
+        second,
+        records,
+        decision,
+        provenance,
+        exported,
+        report,
+      },
+      null,
+      2,
+    ),
+  );
+  expect(records).toHaveLength(2);
+  expect(records.every((record) => record.body.ranked.options.length > 0)).toBe(true);
+  expect(new Set(records.map((record) => record.subject_digest)).size).toBe(1);
+  expect(new Set(records.map((record) => record.body.optionSetDigest)).size).toBe(2);
+  expect(provenance.body).toMatchObject({
+    presentedSuggestionIds: citations,
+    uncitedExposure: false,
+    comparisons: [
+      {
+        coverage: "partial",
+        comparison: "not_comparable",
+        dimensions: { account: "unchanged", vatRate: "unchanged" },
+      },
+      {
+        coverage: "partial",
+        comparison: "changed",
+        dimensions: { account: "changed", vatRate: "unchanged" },
+      },
+    ],
+  });
+  expect(provenance.classification).toBe("unknown_exposure");
+  expect(exported.examples[0]!.provenance.classification).toBe("unknown_exposure");
+  expect(report.populations.independent.exampleCount).toBe(0);
+  expect(report.populations.corrected.exampleCount).toBe(0);
+});

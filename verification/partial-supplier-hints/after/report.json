@@ -1,0 +1,219 @@
+{
+  "algorithmVersion": "firm_memory_v1",
+  "counts": {
+    "eligibleTargets": 3,
+    "suggestedTargets": 1,
+    "knownComparableTargets": 0,
+    "correctConsequences": 0,
+    "unknownConsequences": 3
+  },
+  "metrics": {
+    "coverage": {
+      "numerator": 1,
+      "denominator": 3,
+      "value": 0.3333333333333333
+    },
+    "consequenceAccuracy": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    }
+  },
+  "targets": [
+    {
+      "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+      "cutoff": "1",
+      "suggestedSourceDecisionIds": [
+        "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a"
+      ],
+      "comparison": "unknown",
+      "exclusions": [
+        {
+          "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+          "reason": "related_holdout"
+        },
+        {
+          "id": "supplier_approval_69a531bb0e5d4ca8b52c1152b26968a4",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+          "reason": "later_receipt"
+        }
+      ]
+    },
+    {
+      "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+      "cutoff": "0",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+          "reason": "related_holdout"
+        },
+        {
+          "id": "supplier_approval_69a531bb0e5d4ca8b52c1152b26968a4",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+          "reason": "later_receipt"
+        }
+      ]
+    },
+    {
+      "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+      "cutoff": "1",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+          "reason": "different_description"
+        },
+        {
+          "id": "supplier_approval_69a531bb0e5d4ca8b52c1152b26968a4",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+          "reason": "related_holdout"
+        }
+      ]
+    }
+  ],
+  "excludedTargets": [
+    {
+      "id": "supplier_approval_69a531bb0e5d4ca8b52c1152b26968a4",
+      "reason": "influenced_label"
+    }
+  ],
+  "aggregateInterpretation": "descriptive_nonrepresentative",
+  "populations": {
+    "independent": {
+      "exampleCount": 2,
+      "representative": "not_established",
+      "selection": "independent_labels",
+      "baseline": {
+        "algorithmVersion": "firm_memory_v1",
+        "counts": {
+          "eligibleTargets": 2,
+          "suggestedTargets": 0,
+          "knownComparableTargets": 0,
+          "correctConsequences": 0,
+          "unknownConsequences": 2
+        },
+        "metrics": {
+          "coverage": {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0
+          },
+          "consequenceAccuracy": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          }
+        },
+        "targets": [
+          {
+            "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+            "cutoff": "0",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+                "reason": "related_holdout"
+              },
+              {
+                "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+                "reason": "later_receipt"
+              }
+            ]
+          },
+          {
+            "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+            "cutoff": "1",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_2fd91acbff1a42e9a05c5ad1481e718a",
+                "reason": "different_description"
+              },
+              {
+                "id": "supplier_approval_98142a4b75b64cb1a231977828b24266",
+                "reason": "related_holdout"
+              }
+            ]
+          }
+        ],
+        "excludedTargets": []
+      }
+    },
+    "corrected": {
+      "exampleCount": 1,
+      "representative": false,
+      "selection": "observed_disagreements",
+      "baseline": {
+        "algorithmVersion": "firm_memory_v1",
+        "counts": {
+          "eligibleTargets": 1,
+          "suggestedTargets": 0,
+          "knownComparableTargets": 0,
+          "correctConsequences": 0,
+          "unknownConsequences": 1
+        },
+        "metrics": {
+          "coverage": {
+            "numerator": 0,
+            "denominator": 1,
+            "value": 0
+          },
+          "consequenceAccuracy": {
+            "numerator": 0,
+            "denominator": 0,
+            "value": null
+          }
+        },
+        "targets": [
+          {
+            "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+            "cutoff": "1",
+            "suggestedSourceDecisionIds": [],
+            "comparison": "no_suggestion",
+            "exclusions": [
+              {
+                "id": "supplier_approval_1db7e9e738bd431b97c4db3098ba142d",
+                "reason": "related_holdout"
+              }
+            ]
+          }
+        ],
+        "excludedTargets": []
+      }
+    }
+  },
+  "sealedExport": {
+    "id": "decision_export_388bca9b84764c12af916fca64fb8752",
+    "digest": "sha256:0ac6eed3e1beb7fa89d2d7066f99e02ae62a3432656a5666b196b94d39ce174c",
+    "lineageCutoff": "4"
+  },
+  "inputCounts": {
+    "examples": 4,
+    "capturedPrecedents": 4,
+    "missingPrecedents": 0,
+    "excluded": 0
+  },
+  "inputExclusions": []
+}

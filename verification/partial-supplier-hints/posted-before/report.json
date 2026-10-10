@@ -1,0 +1,94 @@
+{
+  "algorithmVersion": "firm_memory_v1",
+  "counts": {
+    "eligibleTargets": 2,
+    "suggestedTargets": 0,
+    "knownComparableTargets": 0,
+    "correctConsequences": 0,
+    "unknownConsequences": 2
+  },
+  "metrics": {
+    "coverage": {
+      "numerator": 0,
+      "denominator": 2,
+      "value": 0
+    },
+    "consequenceAccuracy": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    }
+  },
+  "targets": [
+    {
+      "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+      "cutoff": "0",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+          "reason": "related_holdout"
+        },
+        {
+          "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+          "reason": "later_receipt"
+        }
+      ]
+    },
+    {
+      "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+      "cutoff": "1",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_379e9911e5ec4a6e8b73eafe42deb368",
+          "reason": "different_description"
+        },
+        {
+          "id": "supplier_approval_47f5cfe2c7034ede9d1bf9536e4688ae",
+          "reason": "related_holdout"
+        },
+        {
+          "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+          "reason": "later_receipt"
+        }
+      ]
+    }
+  ],
+  "excludedTargets": [
+    {
+      "id": "supplier_approval_81facc4dd71249919f736b29782fa63f",
+      "reason": "influenced_label"
+    },
+    {
+      "id": "supplier_approval_b71af40ffcd5411a8305647d1b827bb0",
+      "reason": "influenced_label"
+    }
+  ],
+  "sealedExport": {
+    "id": "decision_export_04a3c5b7405549bc8029ca02470d1d3d",
+    "digest": "sha256:2fa87126b1b5274b518ec314cdce59825e0b98f3c1821a8d2564162b5559c55b",
+    "lineageCutoff": "4"
+  },
+  "inputCounts": {
+    "examples": 4,
+    "capturedPrecedents": 4,
+    "missingPrecedents": 0,
+    "excluded": 0
+  },
+  "inputExclusions": []
+}

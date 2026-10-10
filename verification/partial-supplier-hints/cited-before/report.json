@@ -1,0 +1,74 @@
+{
+  "algorithmVersion": "firm_memory_v1",
+  "counts": {
+    "eligibleTargets": 1,
+    "suggestedTargets": 0,
+    "knownComparableTargets": 0,
+    "correctConsequences": 0,
+    "unknownConsequences": 1
+  },
+  "metrics": {
+    "coverage": {
+      "numerator": 0,
+      "denominator": 1,
+      "value": 0
+    },
+    "consequenceAccuracy": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    }
+  },
+  "targets": [
+    {
+      "id": "supplier_approval_d4c162bfeaf94fc191bff2a295748bf8",
+      "cutoff": "0",
+      "suggestedSourceDecisionIds": [],
+      "comparison": "no_suggestion",
+      "exclusions": [
+        {
+          "id": "supplier_approval_168ef4e6c18a40b4ab0df426014a60f4",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_7f436ebdb4de4680aca79f3c56a06f25",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_8ee709a4498c44408bd48b15a66ebd7b",
+          "reason": "later_receipt"
+        },
+        {
+          "id": "supplier_approval_d4c162bfeaf94fc191bff2a295748bf8",
+          "reason": "related_holdout"
+        }
+      ]
+    }
+  ],
+  "excludedTargets": [
+    {
+      "id": "supplier_approval_168ef4e6c18a40b4ab0df426014a60f4",
+      "reason": "influenced_label"
+    },
+    {
+      "id": "supplier_approval_7f436ebdb4de4680aca79f3c56a06f25",
+      "reason": "influenced_label"
+    },
+    {
+      "id": "supplier_approval_8ee709a4498c44408bd48b15a66ebd7b",
+      "reason": "influenced_label"
+    }
+  ],
+  "sealedExport": {
+    "id": "decision_export_74fc2af5a97b4ee3af503e1a2160c8aa",
+    "digest": "sha256:a627c6614acd2e053bdf38e582f95f23f6a371345ae822c892928fdeb86d17a4",
+    "lineageCutoff": "4"
+  },
+  "inputCounts": {
+    "examples": 4,
+    "capturedPrecedents": 4,
+    "missingPrecedents": 0,
+    "excluded": 0
+  },
+  "inputExclusions": []
+}
