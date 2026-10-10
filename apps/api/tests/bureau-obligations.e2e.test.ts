@@ -1,13 +1,17 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { createTestHarness } from "wrangler";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bureau from "@open-erp/contracts/bureau-obligations";
 import * as Commerce from "@open-erp/contracts/commerce";
 import {
+  apiDirectory,
   decoded,
   environment,
   evidence,
+  failure,
+  database,
   execute,
   fixture,
   journal,
@@ -16,7 +20,49 @@ import {
   request,
 } from "./support/fixtures";
 
-// Unknown-date source ownership is undecided: canonical invoices require dueOn.
+// Failure contract: a production Worker refuses clock injection; malformed instants fail;
+// a pinned E2E request reports retained revision age, not worker or database wall time.
+test("production Worker refuses client-supplied time with a real PostgreSQL binding", async () => {
+  const book = await fixture();
+
+  const worker = createTestHarness({
+    root: apiDirectory,
+    workers: [
+      {
+        configPath: "wrangler.jsonc",
+        secrets: { DATABASE_URL: environment().runtimeUrl, OPENERP_E2E_CLOCK: "enabled" },
+      },
+    ],
+  });
+
+  try {
+    const listening = await worker.listen();
+
+    const response = await fetch(`${listening.url.origin}${book.path}/bureau-obligations`, {
+      headers: {
+        authorization: `Bearer ${book.token}`,
+        "x-openerp-test-now": "2026-10-02T06:54:00.000Z",
+      },
+    });
+
+    await failure(response, 403, "Forbidden");
+    await writeFile(
+      join(environment().artifacts, "production-clock-refusal.json"),
+      JSON.stringify(
+        {
+          mode: "production-entrypoint",
+          status: response.status,
+          requestId: response.headers.get("x-request-id"),
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await worker.close();
+  }
+});
+
 test("bureau obligations read canonical stored residual once with two retained sources and partial coverage", async () => {
   const book = await fixture([{ id: "account_revenue", code: "4000", name: "Synthetic cost" }]);
   const source = await evidence(book);
@@ -114,8 +160,30 @@ test("bureau obligations read canonical stored residual once with two retained s
     Commerce.Invoice,
   );
 
+  const admin = await database();
+
+  try {
+    // Independent fixture setup only: simulate a retained revision from before the pinned instant.
+    await admin.query(`ALTER TABLE openerp.commerce_invoice_revisions DISABLE TRIGGER USER`);
+
+    try {
+      await admin.query(
+        `UPDATE openerp.commerce_invoice_revisions SET body = jsonb_set(body, '{createdAt}', to_jsonb($1::text)) WHERE book_id = $2 AND invoice_id = $3 AND revision = 2`,
+        ["2026-09-30T06:54:00.000Z", book.bookId, invoice.id],
+      );
+    } finally {
+      await admin.query(`ALTER TABLE openerp.commerce_invoice_revisions ENABLE TRIGGER USER`);
+    }
+  } finally {
+    await admin.end();
+  }
+
+  const pinned = "2026-10-02T06:54:00.000Z"; // 08:54 Europe/Stockholm
+
   const response = await decoded(
-    await request(book, "/bureau-obligations"),
+    await request(book, "/bureau-obligations", {
+      headers: { "x-openerp-test-now": pinned },
+    }),
     Bureau.BureauObligations,
   );
 
@@ -123,11 +191,19 @@ test("bureau obligations read canonical stored residual once with two retained s
   expect(response.coverage).toBe("partial");
   expect(item?.outstandingMinor).toBe("12345");
   expect(item?.dueOn).toBe("2026-02-28");
-  expect(item?.freshness).toBe("current");
+  expect(response.checkedAt).toBe(pinned);
+  expect(item?.freshness).toBe("stale");
   expect(item?.sources.map((source) => source.evidenceId).sort()).toEqual(
     [source.id, revisionSource.id].sort(),
   );
   expect(response.items.filter((entry) => entry.obligationId === invoice.id)).toHaveLength(1);
   const artifact = join(environment().artifacts, "bureau-obligations.json");
-  await writeFile(artifact, JSON.stringify({ scope: book.bookId, current: response }, null, 2));
+  await failure(
+    await request(book, "/bureau-obligations", {
+      headers: { "x-openerp-test-now": "not-an-instant" },
+    }),
+    400,
+    "InvalidRequest",
+  );
+  await writeFile(artifact, JSON.stringify({ scope: book.bookId, pinned: response }, null, 2));
 });
