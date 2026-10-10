@@ -1,0 +1,483 @@
+{
+  "nativeBaseline": {
+    "dpr": 1,
+    "width": 1440
+  },
+  "homeAccess": {
+    "dpr": 2,
+    "width": 720,
+    "scrollWidth": 712,
+    "reducedMotion": true,
+    "href": "/entities/entity_synthetic/books/book_synthetic",
+    "focusShadow": "rgba(36, 72, 165, 0.12) 0px 0px 0px 3px"
+  },
+  "homeScreenshot": "screenshots/001-native-loop-home-keyboard.png",
+  "postedScreenshot": "screenshots/010-native-loop-posted-voucher.png",
+  "nativeFactor": 2,
+  "prepareKey": "afada68a-bf27-448e-9aab-f6230459713e",
+  "saved": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:39:43.850Z",
+    "request": {
+      "key": "afada68a-bf27-448e-9aab-f6230459713e",
+      "actorId": "actor_operator",
+      "operation": "prepare_journal",
+      "requestDigest": "sha256:8f045964d1f98d6034e12c606fcfae616e33820cf8127d25d9257892aa645e9f",
+      "commandKey": "posting_command_ec15bc19ee6744fdb7a3e21c959244b3",
+      "savedAt": "2026-10-10T20:39:43.846Z",
+      "state": "unknown",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "prepare_journal",
+      "input": {
+        "kind": "manual_journal",
+        "evidenceId": "evidence_322d0a5edc2a4336befc2f6a25f9fac5",
+        "eventKey": "recovery_d62dba67-f6ec-4c65-bcaa-ffea9ce055e8",
+        "accountingPeriodId": "period_synthetic_2026",
+        "postingDate": "2026-10-10",
+        "series": "A",
+        "description": "Syntetisk återupptagen kontering",
+        "rationale": "Verify interrupted response recovery without duplicate posting",
+        "taxAssessment": "not_applicable",
+        "lines": [
+          {
+            "accountId": "account_bank",
+            "debitMinor": "12500",
+            "creditMinor": "0",
+            "description": "Bank debit"
+          },
+          {
+            "accountId": "account_clearing",
+            "debitMinor": "0",
+            "creditMinor": "12500",
+            "description": "Clearing credit"
+          }
+        ]
+      }
+    },
+    "sameActor": true,
+    "outcome": null
+  },
+  "inspected": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:39:51.018Z",
+    "request": {
+      "key": "afada68a-bf27-448e-9aab-f6230459713e",
+      "actorId": "actor_operator",
+      "operation": "prepare_journal",
+      "requestDigest": "sha256:8f045964d1f98d6034e12c606fcfae616e33820cf8127d25d9257892aa645e9f",
+      "commandKey": "posting_command_ec15bc19ee6744fdb7a3e21c959244b3",
+      "savedAt": "2026-10-10 22:39:43.846+02",
+      "state": "unknown",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "prepare_journal",
+      "input": {
+        "kind": "manual_journal",
+        "evidenceId": "evidence_322d0a5edc2a4336befc2f6a25f9fac5",
+        "eventKey": "recovery_d62dba67-f6ec-4c65-bcaa-ffea9ce055e8",
+        "accountingPeriodId": "period_synthetic_2026",
+        "postingDate": "2026-10-10",
+        "series": "A",
+        "description": "Syntetisk återupptagen kontering",
+        "rationale": "Verify interrupted response recovery without duplicate posting",
+        "taxAssessment": "not_applicable",
+        "lines": [
+          {
+            "accountId": "account_bank",
+            "debitMinor": "12500",
+            "creditMinor": "0",
+            "description": "Bank debit"
+          },
+          {
+            "accountId": "account_clearing",
+            "debitMinor": "0",
+            "creditMinor": "12500",
+            "description": "Clearing credit"
+          }
+        ]
+      }
+    },
+    "sameActor": true,
+    "outcome": null
+  },
+  "inspectedMetadata": {
+    "messages": 1,
+    "metadata": [
+      "Ursprunglig idempotensnyckel: afada68a-bf27-448e-9aab-f6230459713e",
+      "Kontrollerat: 2026-10-10T20:39:51.018Z"
+    ],
+    "visible": true
+  },
+  "unknownConditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 2,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T20:39:53.679Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 720,
+      "height": 450
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/work?kind=journal&status=all"
+  },
+  "unknownScreenshot": "screenshots/003-posting-selected-saved-unknown-outcome.png",
+  "reviewConditions": {
+    "actionHeading": "Syntetisk återupptagen kontering",
+    "figure": "125,00 SEK",
+    "figureSize": "32px",
+    "figureWhiteSpace": "normal",
+    "originalSurfaces": 1,
+    "decisionSurfaces": 1,
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 2,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T20:40:02.859Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 720,
+      "height": 450
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_a34fcee1bd0f4a24be21285224afd667/sha256%3A6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551?kind=journal&status=all"
+  },
+  "standaloneScreenshot": "screenshots/004-standalone-canonical-ready.png",
+  "narrowStandaloneScreenshot": "screenshots/005-standalone-canonical-narrow.png",
+  "prepared": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:39:59.817Z",
+    "request": {
+      "key": "afada68a-bf27-448e-9aab-f6230459713e",
+      "actorId": "actor_operator",
+      "operation": "prepare_journal",
+      "requestDigest": "sha256:8f045964d1f98d6034e12c606fcfae616e33820cf8127d25d9257892aa645e9f",
+      "commandKey": "posting_command_ec15bc19ee6744fdb7a3e21c959244b3",
+      "savedAt": "2026-10-10 22:39:43.846+02",
+      "state": "committed",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "prepare_journal",
+      "input": {
+        "kind": "manual_journal",
+        "evidenceId": "evidence_322d0a5edc2a4336befc2f6a25f9fac5",
+        "eventKey": "recovery_d62dba67-f6ec-4c65-bcaa-ffea9ce055e8",
+        "accountingPeriodId": "period_synthetic_2026",
+        "postingDate": "2026-10-10",
+        "series": "A",
+        "description": "Syntetisk återupptagen kontering",
+        "rationale": "Verify interrupted response recovery without duplicate posting",
+        "taxAssessment": "not_applicable",
+        "lines": [
+          {
+            "accountId": "account_bank",
+            "debitMinor": "12500",
+            "creditMinor": "0",
+            "description": "Bank debit"
+          },
+          {
+            "accountId": "account_clearing",
+            "debitMinor": "0",
+            "creditMinor": "12500",
+            "description": "Clearing credit"
+          }
+        ]
+      }
+    },
+    "sameActor": true,
+    "outcome": {
+      "state": "committed",
+      "result": {
+        "schemaVersion": "1",
+        "canonicalization": "openerp-c14n-v1",
+        "id": "change_a34fcee1bd0f4a24be21285224afd667",
+        "version": 1,
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "createdAt": "2026-10-10T20:39:59.786Z",
+        "dependencies": [
+          {
+            "kind": "profile",
+            "resourceId": "book_synthetic",
+            "version": "1",
+            "reason": "Book currency and supported profile"
+          },
+          {
+            "kind": "writer_epoch",
+            "resourceId": "book_synthetic",
+            "version": "1",
+            "reason": "Single authoritative writer"
+          },
+          {
+            "kind": "period",
+            "resourceId": "period_synthetic_2026",
+            "version": "1",
+            "reason": "Posting dates and lock state"
+          },
+          {
+            "kind": "account",
+            "resourceId": "account_bank",
+            "version": "1",
+            "reason": "Exact account configuration"
+          },
+          {
+            "kind": "account",
+            "resourceId": "account_clearing",
+            "version": "1",
+            "reason": "Exact account configuration"
+          }
+        ],
+        "groups": [
+          {
+            "id": "group_117bd5d03d77400e9fc076f02547984c",
+            "dependsOnGroupIds": [],
+            "actions": [
+              {
+                "kind": "post_voucher",
+                "correctsVoucherId": null,
+                "eventId": "event_1b749ece3ec141b4961296bf057cde96",
+                "postingPurpose": "adjustment",
+                "occurrenceKey": "manual_journal",
+                "fiscalYearId": "year_synthetic_2026",
+                "accountingPeriodId": "period_synthetic_2026",
+                "postingDate": "2026-10-10",
+                "series": "A",
+                "currency": "SEK",
+                "description": "Syntetisk återupptagen kontering",
+                "rationale": "Verify interrupted response recovery without duplicate posting",
+                "taxAssessment": "not_applicable",
+                "lines": [
+                  {
+                    "accountId": "account_bank",
+                    "debitMinor": "12500",
+                    "creditMinor": "0",
+                    "description": "Bank debit",
+                    "lineId": "line_f009ed4de19b42c0aedb3c50bb65f1c8",
+                    "originalDimensions": []
+                  },
+                  {
+                    "accountId": "account_clearing",
+                    "debitMinor": "0",
+                    "creditMinor": "12500",
+                    "description": "Clearing credit",
+                    "lineId": "line_84ccdb75a3cf4fa292d0c42a738f71a9",
+                    "originalDimensions": []
+                  }
+                ],
+                "evidenceRefs": [
+                  {
+                    "evidenceId": "evidence_322d0a5edc2a4336befc2f6a25f9fac5",
+                    "sha256": "1e5ba0d9914eef21bd6d1d70604df26ef3e0ad60fa60ad4c5d03cd0adb303575",
+                    "locator": "recovery_d62dba67-f6ec-4c65-bcaa-ffea9ce055e8"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551"
+      },
+      "refusal": null,
+      "recordedAt": "2026-10-10T20:39:59.795000Z"
+    }
+  },
+  "committed": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:40:05.857Z",
+    "request": {
+      "key": "22f679a8-40ca-4031-b532-4cffa0c4b0d0",
+      "actorId": "actor_operator",
+      "operation": "execute_change",
+      "requestDigest": "sha256:c7d6c9fcea17168e880f97c562066782aa2e3ef26713e849d3d82d9ca55825f0",
+      "commandKey": "posting_command_69dfdd620f9047ce9e61826709844f16",
+      "savedAt": "2026-10-10 22:40:05.412+02",
+      "state": "committed",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "execute_change",
+      "id": "change_a34fcee1bd0f4a24be21285224afd667",
+      "input": {
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "version": 1,
+        "approvalId": "approval_4dcccac50c924c2d80ce30db8c073869"
+      }
+    },
+    "sameActor": true,
+    "outcome": {
+      "state": "committed",
+      "result": {
+        "id": "receipt_d7250e6dc96d4bacb13e67df998714d8",
+        "changeSetId": "change_a34fcee1bd0f4a24be21285224afd667",
+        "voucherId": "voucher_f41fccdf9ec8414f9eb17d383f7762b7",
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "sequence": "9",
+        "voucherNumber": "9",
+        "committedAt": "2026-10-10 22:40:05.746839+02"
+      },
+      "refusal": null,
+      "recordedAt": "2026-10-10T20:40:05.842000Z"
+    }
+  },
+  "recovered": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:40:33.109Z",
+    "request": {
+      "key": "22f679a8-40ca-4031-b532-4cffa0c4b0d0",
+      "actorId": "actor_operator",
+      "operation": "execute_change",
+      "requestDigest": "sha256:c7d6c9fcea17168e880f97c562066782aa2e3ef26713e849d3d82d9ca55825f0",
+      "commandKey": "posting_command_69dfdd620f9047ce9e61826709844f16",
+      "savedAt": "2026-10-10 22:40:05.412+02",
+      "state": "committed",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "execute_change",
+      "id": "change_a34fcee1bd0f4a24be21285224afd667",
+      "input": {
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "version": 1,
+        "approvalId": "approval_4dcccac50c924c2d80ce30db8c073869"
+      }
+    },
+    "sameActor": true,
+    "outcome": {
+      "state": "committed",
+      "result": {
+        "id": "receipt_d7250e6dc96d4bacb13e67df998714d8",
+        "changeSetId": "change_a34fcee1bd0f4a24be21285224afd667",
+        "voucherId": "voucher_f41fccdf9ec8414f9eb17d383f7762b7",
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "sequence": "9",
+        "voucherNumber": "9",
+        "committedAt": "2026-10-10 22:40:05.746839+02"
+      },
+      "refusal": null,
+      "recordedAt": "2026-10-10T20:40:05.842000Z"
+    }
+  },
+  "replayed": {
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "checkedAt": "2026-10-10T20:40:33.262Z",
+    "request": {
+      "key": "22f679a8-40ca-4031-b532-4cffa0c4b0d0",
+      "actorId": "actor_operator",
+      "operation": "execute_change",
+      "requestDigest": "sha256:c7d6c9fcea17168e880f97c562066782aa2e3ef26713e849d3d82d9ca55825f0",
+      "commandKey": "posting_command_69dfdd620f9047ce9e61826709844f16",
+      "savedAt": "2026-10-10 22:40:05.412+02",
+      "state": "committed",
+      "retryableRefusal": false
+    },
+    "command": {
+      "operation": "execute_change",
+      "id": "change_a34fcee1bd0f4a24be21285224afd667",
+      "input": {
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "version": 1,
+        "approvalId": "approval_4dcccac50c924c2d80ce30db8c073869"
+      }
+    },
+    "sameActor": true,
+    "outcome": {
+      "state": "committed",
+      "result": {
+        "id": "receipt_d7250e6dc96d4bacb13e67df998714d8",
+        "changeSetId": "change_a34fcee1bd0f4a24be21285224afd667",
+        "voucherId": "voucher_f41fccdf9ec8414f9eb17d383f7762b7",
+        "planDigest": "sha256:6b9bc9b47acfaff3ff059d6427d57cb52d4c65e5f03634d70e8e6bca66613551",
+        "sequence": "9",
+        "voucherNumber": "9",
+        "committedAt": "2026-10-10 22:40:05.746839+02"
+      },
+      "refusal": null,
+      "recordedAt": "2026-10-10T20:40:05.842000Z"
+    }
+  },
+  "before": {
+    "sequence": "8",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "1000000",
+        "balanceMinor": "-1000000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "1000000",
+        "creditMinor": "0",
+        "balanceMinor": "1000000"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "9",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "12500",
+        "creditMinor": "1000000",
+        "balanceMinor": "-987500"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "1000000",
+        "creditMinor": "12500",
+        "balanceMinor": "987500"
+      }
+    ]
+  }
+}

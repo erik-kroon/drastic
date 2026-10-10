@@ -14,6 +14,44 @@ test("saved posting survives a lost execution response and reload with one durab
   agent,
 }) => {
   const workspace = await signInSyntheticOperator(browser, app.baseUrl);
+
+  await browser.goto("about:blank");
+
+  const nativeBaseline = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+  }));
+
+  await app.open(workspace);
+  await expect(screen.getByRole("heading", "Att göra", { exact: true })).toBeVisible({
+    timeout: 90000,
+  });
+  await screen.getByRole("link", "Att göra", { exact: true }).focus();
+  await browser.keyboard.press("Shift+Tab");
+  await browser.keyboard.press("Tab");
+
+  const homeAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    href: document.activeElement?.getAttribute("href") ?? null,
+    focusShadow: document.activeElement ? getComputedStyle(document.activeElement).boxShadow : null,
+  }));
+
+  expect(homeAccess.href).toBe(new URL(workspace).pathname);
+  expect(homeAccess.focusShadow).not.toBe("none");
+  expect(homeAccess.scrollWidth).toBeLessThanOrEqual(homeAccess.width);
+
+  if (process.env.OPENERP_NATIVE_ZOOM === "1") {
+    expect(Math.abs(homeAccess.dpr / nativeBaseline.dpr - 2)).toBeLessThan(0.02);
+    expect(Math.abs(nativeBaseline.width / homeAccess.width - 2)).toBeLessThan(0.04);
+  }
+
+  if (process.env.OPENERP_REDUCED_MOTION === "1") expect(homeAccess.reducedMotion).toBe(true);
+
+  const homeScreenshot = await app.screenshot("native-loop-home-keyboard");
+
   const origin = new URL(workspace).origin;
   const base = workspace.replace(origin, `${origin}/api/v1`);
 
@@ -262,7 +300,7 @@ test("saved posting survives a lost execution response and reload with one durab
     actionHeading: "Syntetisk återupptagen kontering",
     figure: "125,00 SEK",
     figureSize: "32px",
-    figureWhiteSpace: "nowrap",
+    figureWhiteSpace: "normal",
     originalSurfaces: 1,
     decisionSurfaces: 1,
   });
@@ -277,7 +315,10 @@ test("saved posting survives a lost execution response and reload with one durab
 
   const standaloneScreenshot = await app.screenshot("standalone-canonical-ready");
 
-  await browser.setViewport({ width: 375, height: 812 });
+  const nativeFactor =
+    process.env.OPENERP_NATIVE_ZOOM === "1" ? homeAccess.dpr / nativeBaseline.dpr : 1;
+
+  await browser.setViewport({ width: 375 * nativeFactor, height: 812 * nativeFactor });
   await expect(screen.getByRole("region", "Underlag", { exact: true })).toBeVisible();
   await expect(
     screen.getByRole("region", "Beslut: Syntetisk återupptagen kontering", { exact: true }),
@@ -289,10 +330,17 @@ test("saved posting survives a lost execution response and reload with one durab
   const narrowStandaloneScreenshot = await app.screenshot("standalone-canonical-narrow");
 
   await browser.setViewport({ width: 1440, height: 900 });
-  await screen
-    .getByRole("checkbox", "Jag har granskat detta exakta förslag och dess underlag.")
-    .check();
-  await screen.getByRole("button", "Godkänn förslag").click();
+
+  const approvalAcknowledgment = screen.getByRole(
+    "checkbox",
+    "Jag har granskat detta exakta förslag och dess underlag.",
+  );
+
+  await approvalAcknowledgment.focus();
+  await browser.keyboard.press("Space");
+  await expect(approvalAcknowledgment).toBeChecked();
+  await screen.getByRole("button", "Godkänn förslag").focus();
+  await browser.keyboard.press("Enter");
   await expect(screen.getByRole("button", "Bokför posten")).toBeVisible();
 
   let committed: typeof Recovery.SavedPostingRequest.Type | undefined;
@@ -311,10 +359,11 @@ test("saved posting survives a lost execution response and reload with one durab
     committed = Schema.decodeUnknownSync(Recovery.SavedPostingRequest)(await response.json());
     await route.abort();
   });
-  await screen
-    .getByRole("checkbox", "Jag har granskat detta exakta förslag och dess underlag.")
-    .check();
-  await screen.getByRole("button", "Bokför posten").click();
+  await approvalAcknowledgment.focus();
+  await browser.keyboard.press("Space");
+  await expect(approvalAcknowledgment).toBeChecked();
+  await screen.getByRole("button", "Bokför posten").focus();
+  await browser.keyboard.press("Enter");
   await expect.poll(() => committed?.outcome?.state).toBe("committed");
   await browser.unroute(runPattern);
 
@@ -407,10 +456,48 @@ test("saved posting survives a lost execution response and reload with one durab
     screen.getByRole("textbox", "Unik referens för posten", { exact: true }),
   ).toHaveValue(retainedEventKey);
   await app.screenshot("posting-resumed-draft-preserved-after-read-interruption");
+
+  const voucher = Schema.decodeUnknownSync(Accounting.Voucher)(
+    await call(`/vouchers/${receipt.voucherId}`),
+  );
+
+  await app.open(
+    `${workspace}/books?${new URLSearchParams({ view: "vouchers", q: voucher.action.description })}`,
+  );
+  await expect(
+    screen.getByRole("heading", voucher.action.description, { exact: true }),
+  ).toBeVisible();
+  await screen.getByRole("button", "Granska sparat underlag", { exact: true }).focus();
+  await screen.getByRole("button", "Granska sparat underlag", { exact: true }).press("Enter");
+  await screen.getByRole("button", "Sparade uppgifter", { exact: true }).focus();
+  await screen.getByRole("button", "Sparade uppgifter", { exact: true }).press("Enter");
+  await expect(
+    screen.getByText("Synthetic 125.00 SEK transfer. No company data or provider action.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(screen.getByRole("button", "Rätta verifikatet", { exact: true })).toBeEnabled();
+
+  const postedScreenshot = await app.screenshot("native-loop-posted-voucher");
+
+  await browser.reload();
+  await expect(
+    screen.getByRole("heading", voucher.action.description, { exact: true }),
+  ).toBeVisible();
+  expect(
+    Schema.decodeUnknownSync(Accounting.Voucher)(await call(`/vouchers/${receipt.voucherId}`)),
+  ).toEqual(voucher);
+  expect(Schema.decodeUnknownSync(Accounting.LedgerSnapshot)(await call("/ledger"))).toEqual(after);
+
   await writeFile(
     join(process.env.OPENERP_E2E_OUTPUT!, "posting-recovery-journey.json"),
     JSON.stringify(
       {
+        nativeBaseline,
+        homeAccess,
+        homeScreenshot,
+        postedScreenshot,
+        nativeFactor,
         prepareKey,
         saved,
         inspected,
