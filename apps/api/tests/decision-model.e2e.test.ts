@@ -638,3 +638,83 @@ test("decision state limits pin hosted selectors and refuse absent or invalid ma
     ),
   ).toThrow();
 });
+
+test("configured decision deadlines retain a fifteen-second lease margin", async () => {
+  const book = await fixture();
+  const local = await loopbackFixture();
+  let bindingCalls = 0;
+
+  const binding: WorkersAi = {
+    async run() {
+      bindingCalls++;
+
+      return authoredResponse("clef-flash");
+    },
+  };
+
+  const observations = [];
+
+  try {
+    for (const mode of ["local-systemone-fixture", "workers-ai-clef"] as const) {
+      for (const timeoutMs of [45001, 60000]) {
+        let refused = false;
+
+        try {
+          configuredDecisionModel(
+            {
+              OPENERP_DECISION_MODEL: mode,
+              OPENERP_DECISION_MODEL_RELEASE: release,
+              OPENERP_DECISION_MODEL_ENDPOINT: `${local.origin}/invalid_deadline`,
+              OPENERP_DECISION_MODEL_TIMEOUT_MS: String(timeoutMs),
+            },
+            binding,
+          );
+        } catch {
+          refused = true;
+        }
+
+        observations.push({ mode, timeoutMs, refused });
+      }
+    }
+
+    const rejectedTransportCalls = local.counts.invalid_deadline ?? 0;
+    const rejectedBindingCalls = bindingCalls;
+
+    const model = required(
+      configuredDecisionModel({
+        OPENERP_DECISION_MODEL: "local-systemone-fixture",
+        OPENERP_DECISION_MODEL_RELEASE: release,
+        OPENERP_DECISION_MODEL_ENDPOINT: `${local.origin}/valid_margin`,
+        OPENERP_DECISION_MODEL_TIMEOUT_MS: "45000",
+      }),
+    );
+
+    const accepted = await withAiEgress(book, (egress) => model.decide(request, egress));
+    await writeFile(
+      join(environment().artifacts, "decision-timeout-margin.json"),
+      JSON.stringify(
+        {
+          syntheticOnly: true,
+          deadlineMaximumMs: 45000,
+          currentLeaseMs: 60000,
+          blockedDatabaseGuarantee: false,
+          observations,
+          rejectedTransportCalls,
+          rejectedBindingCalls,
+          acceptedStatus: accepted.status,
+          acceptedTransportCalls: local.counts.valid_margin ?? 0,
+        },
+        null,
+        2,
+      ),
+    );
+    expect(observations).toHaveLength(4);
+    expect(observations.every((item) => item.refused)).toBe(true);
+    expect(rejectedTransportCalls).toBe(0);
+    expect(rejectedBindingCalls).toBe(0);
+    expect(accepted.status).toBe("validated");
+    expect(local.counts.valid_margin).toBe(1);
+  } finally {
+    await local.close();
+  }
+});
