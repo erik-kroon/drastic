@@ -1,3 +1,4 @@
+import { CoverageApi } from "./verification-coverage";
 import { DecisionJobsApi } from "./decision-jobs";
 import { DecisionQuestionsApi } from "./decisions";
 import { DecisionExamplesApi } from "./decision-examples";
@@ -223,6 +224,7 @@ export class Api extends HttpApi.make("open-erp")
     CompanyProfileApi,
     EvaluationsApi,
     DecisionExamplesApi,
+    CoverageApi,
     DecisionJobsApi,
     DecisionQuestionsApi,
 

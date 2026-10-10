@@ -1,3 +1,4 @@
+import { CoverageHandlers } from "./transport/http/routes/verification-coverage";
 import { DecisionJobHandlers } from "./transport/http/routes/decision-jobs";
 import { DecisionQuestionHandlers } from "./transport/http/routes/decision-questions";
 import { DecisionExampleHandlers } from "./transport/http/routes/decision-examples";
@@ -251,6 +252,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PayrollInputHandlers,
     EmployeeClaimHandlers,
     DecisionExampleHandlers,
+    CoverageHandlers,
     DecisionJobHandlers,
     DecisionQuestionHandlers,
     MileageCorrectionHandlers,

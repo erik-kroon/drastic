@@ -1,0 +1,2062 @@
+[
+  {
+    "mode": "missing",
+    "report": {
+      "id": "bank_coverage_46de0980ca2a4f9b89c95bca4debb311",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_b14aab2e7e24af09",
+        "bookId": "book_b14aab2e7e24af09"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_fd0e8350999a45e5ad85b0d1e1143550",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_fd0e8350999a45e5ad85b0d1e1143550",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_b14aab2e7e24af09",
+        "declaredAt": "2026-10-10T19:19:08.082Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:06af524694fed71d7e0230c4e6d369aac7e41f9e3752b6dd14dceeef046c3580",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": null,
+          "sourceRevision": null,
+          "statements": [],
+          "gaps": [
+            {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            }
+          ],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": null,
+          "closingMinor": null,
+          "diagnostics": [
+            "source_mapping_missing",
+            "statements_missing",
+            "opening_checkpoint_unavailable",
+            "closing_checkpoint_unavailable"
+          ],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.101Z",
+      "receipt": {
+        "key": "c98459a5-cede-4d2f-81ee-ccdb4c215a2b",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_b14aab2e7e24af09"
+      },
+      "digest": "sha256:2d647676707815ed6a69357886d81671af54c86d13755cbf9e8665d22c5a9952"
+    },
+    "result": null
+  },
+  {
+    "mode": "missing",
+    "report": {
+      "id": "bank_coverage_46de0980ca2a4f9b89c95bca4debb311",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_b14aab2e7e24af09",
+        "bookId": "book_b14aab2e7e24af09"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_fd0e8350999a45e5ad85b0d1e1143550",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_bbee08c4ca794c598ca683bc77600a73",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_fd0e8350999a45e5ad85b0d1e1143550",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_b14aab2e7e24af09",
+        "declaredAt": "2026-10-10T19:19:08.082Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:06af524694fed71d7e0230c4e6d369aac7e41f9e3752b6dd14dceeef046c3580",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": null,
+          "sourceRevision": null,
+          "statements": [],
+          "gaps": [
+            {
+              "startsOn": "2026-09-01",
+              "endsOn": "2026-09-30"
+            }
+          ],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": null,
+          "closingMinor": null,
+          "diagnostics": [
+            "source_mapping_missing",
+            "statements_missing",
+            "opening_checkpoint_unavailable",
+            "closing_checkpoint_unavailable"
+          ],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.101Z",
+      "receipt": {
+        "key": "c98459a5-cede-4d2f-81ee-ccdb4c215a2b",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_b14aab2e7e24af09"
+      },
+      "digest": "sha256:2d647676707815ed6a69357886d81671af54c86d13755cbf9e8665d22c5a9952"
+    },
+    "result": {
+      "scope": {
+        "entityId": "entity_b14aab2e7e24af09",
+        "bookId": "book_b14aab2e7e24af09"
+      },
+      "period": {
+        "id": "period_september",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "version": "1"
+      },
+      "capture": {
+        "id": "close_capture_e7b57808a6ed4204b3a189cf455723ef",
+        "digest": "sha256:e56ad6633f8c747e22f0304c43b4180d1c008bbe1723e1e3bde13dc338a6be16",
+        "createdAt": "2026-10-10T19:19:08.128Z"
+      },
+      "gated": [
+        {
+          "checkId": "bank_reconciliation",
+          "status": "fail",
+          "reasons": [
+            "bank_source_coverage_incomplete"
+          ],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "retainedSourceCoverage": "sha256:06af524694fed71d7e0230c4e6d369aac7e41f9e3752b6dd14dceeef046c3580"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "bank_reconciliation",
+            "status": "fail",
+            "reasons": [
+              "bank_source_coverage_incomplete"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "retainedSourceCoverage": "sha256:06af524694fed71d7e0230c4e6d369aac7e41f9e3752b6dd14dceeef046c3580"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [
+              {
+                "owner": "bank_source_coverage",
+                "id": "bank_coverage_46de0980ca2a4f9b89c95bca4debb311",
+                "digest": "sha256:2d647676707815ed6a69357886d81671af54c86d13755cbf9e8665d22c5a9952"
+              }
+            ],
+            "facts": {
+              "coverageScope": "whole_declared_bank_inventory",
+              "companyCompleteness": "not_established",
+              "sourceCoverageHasReviewGaps": true,
+              "sourceCoverageDependenciesCurrent": true,
+              "declaredAccountCount": 1,
+              "sourceCoverageDiagnostics": [
+                "source_mapping_missing",
+                "statements_missing",
+                "opening_checkpoint_unavailable",
+                "closing_checkpoint_unavailable"
+              ],
+              "sourceGapCount": 1,
+              "sourceOverlapCount": 0
+            }
+          },
+          "evidenceRefs": [
+            {
+              "owner": "bank_source_coverage",
+              "id": "bank_coverage_46de0980ca2a4f9b89c95bca4debb311",
+              "digest": "sha256:2d647676707815ed6a69357886d81671af54c86d13755cbf9e8665d22c5a9952"
+            }
+          ]
+        },
+        {
+          "checkId": "vouchers_supported",
+          "status": "not_established",
+          "reasons": [
+            "voucher_support_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vouchers_supported",
+            "status": "not_established",
+            "reasons": [
+              "voucher_support_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "facts_complete",
+          "status": "not_established",
+          "reasons": [
+            "complete_fact_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "facts_complete",
+            "status": "not_established",
+            "reasons": [
+              "complete_fact_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "reviews_and_questions",
+          "status": "pass",
+          "reasons": [],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "reviews_and_questions",
+            "status": "pass",
+            "reasons": [],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+                "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {
+              "scope": "period_attention_and_book_wide_latest_questions",
+              "attentionTotal": "0",
+              "openReviews": "0",
+              "questionTotal": "0",
+              "incompleteQuestionHeads": "0",
+              "unresolvedQuestions": "0"
+            }
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "vat_control",
+          "status": "not_run",
+          "reasons": [
+            "actual_vat_control_not_captured"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vat_control",
+            "status": "not_run",
+            "reasons": [
+              "actual_vat_control_not_captured"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "reported": [
+        {
+          "checkId": "tax_account_control",
+          "status": "not_established",
+          "reasons": [
+            "tax_account_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "tax_account_control",
+            "status": "not_established",
+            "reasons": [
+              "tax_account_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "subledger_control",
+          "status": "not_established",
+          "reasons": [
+            "subledger_control_not_reconciled"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "subledger_control",
+            "status": "not_established",
+            "reasons": [
+              "subledger_control_not_reconciled"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "supplier_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_supplier_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "supplier_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_supplier_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "customer_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_customer_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "customer_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_customer_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "closing_provider_control",
+          "status": "not_established",
+          "reasons": [
+            "closing_provider_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "closing_provider_control",
+            "status": "not_established",
+            "reasons": [
+              "closing_provider_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "verdict": "inconclusive"
+    }
+  },
+  {
+    "mode": "continuity",
+    "report": {
+      "id": "bank_coverage_3dc07a7780bc42fe81051027650cc632",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_f4513c1fbcf32372",
+        "bookId": "book_f4513c1fbcf32372"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_3076065375eb4998a300c7b2ea8f806c",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_3076065375eb4998a300c7b2ea8f806c",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_f4513c1fbcf32372",
+        "declaredAt": "2026-10-10T19:19:08.345Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:36f9f5944f1d6c459cf71ff20a6c68d36e2cfdaf3878bc634f778572ff81be73",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": "synthetic_gap_source",
+          "sourceRevision": "1",
+          "statements": [
+            {
+              "statement": {
+                "kind": "synthetic_bank_statement_v1",
+                "statementIdentifier": "304bb24f-f1db-45ec-9c7a-04992e371cdd",
+                "sourceBankAccountId": "synthetic_gap_source",
+                "accountId": "account_bank",
+                "currency": "SEK",
+                "startsOn": "2026-09-01",
+                "endsOn": "2026-09-15",
+                "openingMinor": "0",
+                "closingMinor": "0",
+                "completeness": {
+                  "declaredComplete": true,
+                  "basis": "Synthetic zero source with deliberately missing coverage"
+                },
+                "rows": [],
+                "id": "statement_fca3b06ed19e460ab2ef640ef07c1361",
+                "evidenceId": "evidence_74d8f8a86eda44a8bf2ce39f9a3d39e8",
+                "evidenceSha256": "69f775b8f04d7c33939312b1f24f3c6fe411134497568c3e25d67db7dfa2a1c4"
+              },
+              "movementMinor": "0",
+              "movementDifferenceMinor": "0",
+              "observedRowCount": 0,
+              "cutsRequestedBoundary": false,
+              "diagnostics": []
+            }
+          ],
+          "gaps": [
+            {
+              "startsOn": "2026-09-16",
+              "endsOn": "2026-09-30"
+            }
+          ],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": "0",
+          "closingMinor": null,
+          "diagnostics": [
+            "closing_checkpoint_unavailable"
+          ],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.364Z",
+      "receipt": {
+        "key": "e7e01bcc-e200-4c2c-beed-b3ddb6fb65ff",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_f4513c1fbcf32372"
+      },
+      "digest": "sha256:c3a6b1cb179bc18759294c65f93155dd9ce48cc42bb205323eb313551280061b"
+    },
+    "result": null
+  },
+  {
+    "mode": "continuity",
+    "report": {
+      "id": "bank_coverage_3dc07a7780bc42fe81051027650cc632",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_f4513c1fbcf32372",
+        "bookId": "book_f4513c1fbcf32372"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_3076065375eb4998a300c7b2ea8f806c",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_4736b7427a5b45ce90ae4ea663000818",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_3076065375eb4998a300c7b2ea8f806c",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_f4513c1fbcf32372",
+        "declaredAt": "2026-10-10T19:19:08.345Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:36f9f5944f1d6c459cf71ff20a6c68d36e2cfdaf3878bc634f778572ff81be73",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": "synthetic_gap_source",
+          "sourceRevision": "1",
+          "statements": [
+            {
+              "statement": {
+                "kind": "synthetic_bank_statement_v1",
+                "statementIdentifier": "304bb24f-f1db-45ec-9c7a-04992e371cdd",
+                "sourceBankAccountId": "synthetic_gap_source",
+                "accountId": "account_bank",
+                "currency": "SEK",
+                "startsOn": "2026-09-01",
+                "endsOn": "2026-09-15",
+                "openingMinor": "0",
+                "closingMinor": "0",
+                "completeness": {
+                  "declaredComplete": true,
+                  "basis": "Synthetic zero source with deliberately missing coverage"
+                },
+                "rows": [],
+                "id": "statement_fca3b06ed19e460ab2ef640ef07c1361",
+                "evidenceId": "evidence_74d8f8a86eda44a8bf2ce39f9a3d39e8",
+                "evidenceSha256": "69f775b8f04d7c33939312b1f24f3c6fe411134497568c3e25d67db7dfa2a1c4"
+              },
+              "movementMinor": "0",
+              "movementDifferenceMinor": "0",
+              "observedRowCount": 0,
+              "cutsRequestedBoundary": false,
+              "diagnostics": []
+            }
+          ],
+          "gaps": [
+            {
+              "startsOn": "2026-09-16",
+              "endsOn": "2026-09-30"
+            }
+          ],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": "0",
+          "closingMinor": null,
+          "diagnostics": [
+            "closing_checkpoint_unavailable"
+          ],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.364Z",
+      "receipt": {
+        "key": "e7e01bcc-e200-4c2c-beed-b3ddb6fb65ff",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_f4513c1fbcf32372"
+      },
+      "digest": "sha256:c3a6b1cb179bc18759294c65f93155dd9ce48cc42bb205323eb313551280061b"
+    },
+    "result": {
+      "scope": {
+        "entityId": "entity_f4513c1fbcf32372",
+        "bookId": "book_f4513c1fbcf32372"
+      },
+      "period": {
+        "id": "period_september",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "version": "1"
+      },
+      "capture": {
+        "id": "close_capture_59ee8a7520e04605964e1280b931c23c",
+        "digest": "sha256:dee200816dc16a0b0394edd8240d533b2b01c5f5280a539a5f391a537beb56d4",
+        "createdAt": "2026-10-10T19:19:08.391Z"
+      },
+      "gated": [
+        {
+          "checkId": "bank_reconciliation",
+          "status": "fail",
+          "reasons": [
+            "bank_source_coverage_incomplete"
+          ],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "retainedSourceCoverage": "sha256:36f9f5944f1d6c459cf71ff20a6c68d36e2cfdaf3878bc634f778572ff81be73"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "bank_reconciliation",
+            "status": "fail",
+            "reasons": [
+              "bank_source_coverage_incomplete"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "retainedSourceCoverage": "sha256:36f9f5944f1d6c459cf71ff20a6c68d36e2cfdaf3878bc634f778572ff81be73"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [
+              {
+                "owner": "bank_source_coverage",
+                "id": "bank_coverage_3dc07a7780bc42fe81051027650cc632",
+                "digest": "sha256:c3a6b1cb179bc18759294c65f93155dd9ce48cc42bb205323eb313551280061b"
+              }
+            ],
+            "facts": {
+              "coverageScope": "whole_declared_bank_inventory",
+              "companyCompleteness": "not_established",
+              "sourceCoverageHasReviewGaps": true,
+              "sourceCoverageDependenciesCurrent": true,
+              "declaredAccountCount": 1,
+              "sourceCoverageDiagnostics": [
+                "closing_checkpoint_unavailable"
+              ],
+              "sourceGapCount": 1,
+              "sourceOverlapCount": 0
+            }
+          },
+          "evidenceRefs": [
+            {
+              "owner": "bank_source_coverage",
+              "id": "bank_coverage_3dc07a7780bc42fe81051027650cc632",
+              "digest": "sha256:c3a6b1cb179bc18759294c65f93155dd9ce48cc42bb205323eb313551280061b"
+            }
+          ]
+        },
+        {
+          "checkId": "vouchers_supported",
+          "status": "not_established",
+          "reasons": [
+            "voucher_support_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vouchers_supported",
+            "status": "not_established",
+            "reasons": [
+              "voucher_support_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "facts_complete",
+          "status": "not_established",
+          "reasons": [
+            "complete_fact_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "facts_complete",
+            "status": "not_established",
+            "reasons": [
+              "complete_fact_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "reviews_and_questions",
+          "status": "pass",
+          "reasons": [],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "reviews_and_questions",
+            "status": "pass",
+            "reasons": [],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+                "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {
+              "scope": "period_attention_and_book_wide_latest_questions",
+              "attentionTotal": "0",
+              "openReviews": "0",
+              "questionTotal": "0",
+              "incompleteQuestionHeads": "0",
+              "unresolvedQuestions": "0"
+            }
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "vat_control",
+          "status": "not_run",
+          "reasons": [
+            "actual_vat_control_not_captured"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vat_control",
+            "status": "not_run",
+            "reasons": [
+              "actual_vat_control_not_captured"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "reported": [
+        {
+          "checkId": "tax_account_control",
+          "status": "not_established",
+          "reasons": [
+            "tax_account_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "tax_account_control",
+            "status": "not_established",
+            "reasons": [
+              "tax_account_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "subledger_control",
+          "status": "not_established",
+          "reasons": [
+            "subledger_control_not_reconciled"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "subledger_control",
+            "status": "not_established",
+            "reasons": [
+              "subledger_control_not_reconciled"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "supplier_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_supplier_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "supplier_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_supplier_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "customer_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_customer_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "customer_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_customer_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "closing_provider_control",
+          "status": "not_established",
+          "reasons": [
+            "closing_provider_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "closing_provider_control",
+            "status": "not_established",
+            "reasons": [
+              "closing_provider_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "verdict": "inconclusive"
+    }
+  },
+  {
+    "mode": "incomplete",
+    "report": {
+      "id": "bank_coverage_80481bd59221407b85a123c847de0e2c",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_e76f6e2ebc76387a",
+        "bookId": "book_e76f6e2ebc76387a"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_68c052d5f58e4ff2b41026c53728f0b1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_68c052d5f58e4ff2b41026c53728f0b1",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_e76f6e2ebc76387a",
+        "declaredAt": "2026-10-10T19:19:08.691Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:c4dc13aa471da3cca11e010b83a1fbded167037121570141339965e80cf1deaa",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": "synthetic_gap_source",
+          "sourceRevision": "1",
+          "statements": [
+            {
+              "statement": {
+                "kind": "synthetic_bank_statement_v1",
+                "statementIdentifier": "08fc7f63-b72b-4ddb-80d3-e36de3d5e37a",
+                "sourceBankAccountId": "synthetic_gap_source",
+                "accountId": "account_bank",
+                "currency": "SEK",
+                "startsOn": "2026-09-01",
+                "endsOn": "2026-09-30",
+                "openingMinor": "0",
+                "closingMinor": "0",
+                "completeness": {
+                  "declaredComplete": false,
+                  "basis": "Synthetic zero source with deliberately missing coverage"
+                },
+                "rows": [],
+                "id": "statement_2e849c9f159a400dbe193fd44e596bc4",
+                "evidenceId": "evidence_0c3dac7cd4dc4740a8d18537e1914c59",
+                "evidenceSha256": "af0d073daa7fb0c8677ecd7a45efc839ae1fa20291cdf81432f59a61545388aa"
+              },
+              "movementMinor": "0",
+              "movementDifferenceMinor": "0",
+              "observedRowCount": 0,
+              "cutsRequestedBoundary": false,
+              "diagnostics": [
+                "statement_declared_incomplete"
+              ]
+            }
+          ],
+          "gaps": [],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": "0",
+          "closingMinor": "0",
+          "diagnostics": [],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.720Z",
+      "receipt": {
+        "key": "a388364b-e975-429e-aacc-12218ad49d0c",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_e76f6e2ebc76387a"
+      },
+      "digest": "sha256:57d2905c66a83c61960f60007ce37f2990415266e9b83bf277475c633ab2f92c"
+    },
+    "result": null
+  },
+  {
+    "mode": "incomplete",
+    "report": {
+      "id": "bank_coverage_80481bd59221407b85a123c847de0e2c",
+      "kind": "synthetic_bank_source_coverage_v1",
+      "scope": {
+        "entityId": "entity_e76f6e2ebc76387a",
+        "bookId": "book_e76f6e2ebc76387a"
+      },
+      "input": {
+        "inventoryId": "closing_inventory_68c052d5f58e4ff2b41026c53728f0b1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30"
+      },
+      "inventory": {
+        "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+        "bankAccountIds": [
+          "account_bank"
+        ],
+        "families": [
+          {
+            "family": "assets_deferrals",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "bank_sources",
+            "status": "required",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "disclosures",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "external_schedules",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "foreign_currency",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "invoices",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "other_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "owner_balances",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "payroll",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          },
+          {
+            "family": "tax",
+            "status": "not_applicable",
+            "reviewedOn": "2026-09-28",
+            "evidenceId": "evidence_99c914ffff424668b614720bc68d9c60",
+            "rationale": "Explicit synthetic inventory with missing coverage",
+            "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+          }
+        ],
+        "revision": "1",
+        "id": "closing_inventory_68c052d5f58e4ff2b41026c53728f0b1",
+        "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b",
+        "actorId": "operator_e76f6e2ebc76387a",
+        "declaredAt": "2026-10-10T19:19:08.691Z",
+        "coverage": "synthetic_family_inventory_v1"
+      },
+      "period": {
+        "id": "period_september",
+        "version": "1",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "locked": false
+      },
+      "currency": "SEK",
+      "currencyScale": 2,
+      "sequence": "0",
+      "dependencyDigest": "sha256:c4dc13aa471da3cca11e010b83a1fbded167037121570141339965e80cf1deaa",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Bank",
+          "active": true,
+          "accountVersion": "1",
+          "declared": true,
+          "sourceBankAccountId": "synthetic_gap_source",
+          "sourceRevision": "1",
+          "statements": [
+            {
+              "statement": {
+                "kind": "synthetic_bank_statement_v1",
+                "statementIdentifier": "08fc7f63-b72b-4ddb-80d3-e36de3d5e37a",
+                "sourceBankAccountId": "synthetic_gap_source",
+                "accountId": "account_bank",
+                "currency": "SEK",
+                "startsOn": "2026-09-01",
+                "endsOn": "2026-09-30",
+                "openingMinor": "0",
+                "closingMinor": "0",
+                "completeness": {
+                  "declaredComplete": false,
+                  "basis": "Synthetic zero source with deliberately missing coverage"
+                },
+                "rows": [],
+                "id": "statement_2e849c9f159a400dbe193fd44e596bc4",
+                "evidenceId": "evidence_0c3dac7cd4dc4740a8d18537e1914c59",
+                "evidenceSha256": "af0d073daa7fb0c8677ecd7a45efc839ae1fa20291cdf81432f59a61545388aa"
+              },
+              "movementMinor": "0",
+              "movementDifferenceMinor": "0",
+              "observedRowCount": 0,
+              "cutsRequestedBoundary": false,
+              "diagnostics": [
+                "statement_declared_incomplete"
+              ]
+            }
+          ],
+          "gaps": [],
+          "overlaps": [],
+          "adjacentBalances": [],
+          "openingMinor": "0",
+          "closingMinor": "0",
+          "diagnostics": [],
+          "hasReviewGaps": true
+        }
+      ],
+      "diagnostics": [],
+      "hasReviewGaps": true,
+      "coverage": "not_established",
+      "financialCloseReady": false,
+      "knowledgeBasis": "current_known_facts_at_capture",
+      "createdAt": "2026-10-10T19:19:08.720Z",
+      "receipt": {
+        "key": "a388364b-e975-429e-aacc-12218ad49d0c",
+        "operation": "create_bank_source_coverage",
+        "actorId": "operator_e76f6e2ebc76387a"
+      },
+      "digest": "sha256:57d2905c66a83c61960f60007ce37f2990415266e9b83bf277475c633ab2f92c"
+    },
+    "result": {
+      "scope": {
+        "entityId": "entity_e76f6e2ebc76387a",
+        "bookId": "book_e76f6e2ebc76387a"
+      },
+      "period": {
+        "id": "period_september",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "version": "1"
+      },
+      "capture": {
+        "id": "close_capture_2a7cbdd609df48ae8430383bbd6c139d",
+        "digest": "sha256:15734887d326cd7815e972686c6878e1a020ec5454dfdda5e1a01916d62f3b9a",
+        "createdAt": "2026-10-10T19:19:08.751Z"
+      },
+      "gated": [
+        {
+          "checkId": "bank_reconciliation",
+          "status": "fail",
+          "reasons": [
+            "bank_source_coverage_incomplete"
+          ],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "retainedSourceCoverage": "sha256:c4dc13aa471da3cca11e010b83a1fbded167037121570141339965e80cf1deaa"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "bank_reconciliation",
+            "status": "fail",
+            "reasons": [
+              "bank_source_coverage_incomplete"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "retainedSourceCoverage": "sha256:c4dc13aa471da3cca11e010b83a1fbded167037121570141339965e80cf1deaa"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [
+              {
+                "owner": "bank_source_coverage",
+                "id": "bank_coverage_80481bd59221407b85a123c847de0e2c",
+                "digest": "sha256:57d2905c66a83c61960f60007ce37f2990415266e9b83bf277475c633ab2f92c"
+              }
+            ],
+            "facts": {
+              "coverageScope": "whole_declared_bank_inventory",
+              "companyCompleteness": "not_established",
+              "sourceCoverageHasReviewGaps": true,
+              "sourceCoverageDependenciesCurrent": true,
+              "declaredAccountCount": 1,
+              "sourceCoverageDiagnostics": [
+                "statement_declared_incomplete"
+              ],
+              "sourceGapCount": 0,
+              "sourceOverlapCount": 0
+            }
+          },
+          "evidenceRefs": [
+            {
+              "owner": "bank_source_coverage",
+              "id": "bank_coverage_80481bd59221407b85a123c847de0e2c",
+              "digest": "sha256:57d2905c66a83c61960f60007ce37f2990415266e9b83bf277475c633ab2f92c"
+            }
+          ]
+        },
+        {
+          "checkId": "vouchers_supported",
+          "status": "not_established",
+          "reasons": [
+            "voucher_support_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vouchers_supported",
+            "status": "not_established",
+            "reasons": [
+              "voucher_support_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "facts_complete",
+          "status": "not_established",
+          "reasons": [
+            "complete_fact_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "facts_complete",
+            "status": "not_established",
+            "reasons": [
+              "complete_fact_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "reviews_and_questions",
+          "status": "pass",
+          "reasons": [],
+          "freshness": {
+            "status": "fresh",
+            "reasons": [],
+            "dependencyDigests": {
+              "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+            },
+            "observedBookSequence": "0"
+          },
+          "retained": {
+            "checkId": "reviews_and_questions",
+            "status": "pass",
+            "reasons": [],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {
+                "attention": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+                "questions": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+              }
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {
+              "scope": "period_attention_and_book_wide_latest_questions",
+              "attentionTotal": "0",
+              "openReviews": "0",
+              "questionTotal": "0",
+              "incompleteQuestionHeads": "0",
+              "unresolvedQuestions": "0"
+            }
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "vat_control",
+          "status": "not_run",
+          "reasons": [
+            "actual_vat_control_not_captured"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "vat_control",
+            "status": "not_run",
+            "reasons": [
+              "actual_vat_control_not_captured"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "reported": [
+        {
+          "checkId": "tax_account_control",
+          "status": "not_established",
+          "reasons": [
+            "tax_account_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "tax_account_control",
+            "status": "not_established",
+            "reasons": [
+              "tax_account_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "subledger_control",
+          "status": "not_established",
+          "reasons": [
+            "subledger_control_not_reconciled"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "subledger_control",
+            "status": "not_established",
+            "reasons": [
+              "subledger_control_not_reconciled"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "supplier_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_supplier_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "supplier_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_supplier_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "customer_statement_control",
+          "status": "not_established",
+          "reasons": [
+            "independent_customer_statement_owner_not_released"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "customer_statement_control",
+            "status": "not_established",
+            "reasons": [
+              "independent_customer_statement_owner_not_released"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        },
+        {
+          "checkId": "closing_provider_control",
+          "status": "not_established",
+          "reasons": [
+            "closing_provider_coverage_not_established"
+          ],
+          "freshness": {
+            "status": "unavailable",
+            "reasons": [],
+            "dependencyDigests": {}
+          },
+          "retained": {
+            "checkId": "closing_provider_control",
+            "status": "not_established",
+            "reasons": [
+              "closing_provider_coverage_not_established"
+            ],
+            "observedCutoff": {
+              "ledgerSequence": "0",
+              "dependencyDigests": {}
+            },
+            "builderVersion": "month_close_predicate_v1",
+            "evidenceRefs": [],
+            "facts": {}
+          },
+          "evidenceRefs": []
+        }
+      ],
+      "verdict": "inconclusive"
+    }
+  }
+]

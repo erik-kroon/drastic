@@ -1,0 +1,170 @@
+{
+  "initial": {
+    "scope": {
+      "entityId": "entity_e1937f10751940a4",
+      "bookId": "book_e1937f10751940a4"
+    },
+    "period": {
+      "id": "period_september",
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "version": "1"
+    },
+    "capture": null,
+    "gated": [
+      {
+        "checkId": "bank_reconciliation",
+        "status": "not_run",
+        "reasons": [
+          "bank_check_not_captured"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "vouchers_supported",
+        "status": "not_established",
+        "reasons": [
+          "voucher_support_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "facts_complete",
+        "status": "not_established",
+        "reasons": [
+          "complete_fact_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "reviews_and_questions",
+        "status": "not_run",
+        "reasons": [
+          "operational_inventory_not_captured"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "vat_control",
+        "status": "not_run",
+        "reasons": [
+          "actual_vat_control_not_captured"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      }
+    ],
+    "reported": [
+      {
+        "checkId": "tax_account_control",
+        "status": "not_established",
+        "reasons": [
+          "tax_account_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "subledger_control",
+        "status": "not_established",
+        "reasons": [
+          "subledger_control_not_reconciled"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "supplier_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_supplier_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "customer_statement_control",
+        "status": "not_established",
+        "reasons": [
+          "independent_customer_statement_owner_not_released"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      },
+      {
+        "checkId": "closing_provider_control",
+        "status": "not_established",
+        "reasons": [
+          "closing_provider_coverage_not_established"
+        ],
+        "freshness": {
+          "status": "unavailable",
+          "reasons": [
+            "not_captured"
+          ]
+        },
+        "retained": null,
+        "evidenceRefs": []
+      }
+    ],
+    "verdict": "inconclusive"
+  }
+}

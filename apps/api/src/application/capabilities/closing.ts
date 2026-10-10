@@ -1,3 +1,4 @@
+import { getClosePredicate } from "../automation/verification-coverage";
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { listObligations } from "../closing/deadlines";
@@ -14,6 +15,10 @@ import {
 } from "../closing/proposals";
 
 export const closingCapabilities = {
+  periods_close_predicate: effectCapability(
+    Capabilities.periods_close_predicate,
+    getClosePredicate,
+  ),
   deadlines_list: effectCapability(Capabilities.deadlines_list, listObligations),
   deadlines_fulfillment_list: effectCapability(
     Capabilities.deadlines_fulfillment_list,

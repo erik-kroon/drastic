@@ -381,6 +381,7 @@ try {
     },
   );
   await source.query("SELECT setval('openerp.book_decision_policies_sequence_seq', 41, true)");
+  await source.query("SELECT setval('openerp.close_predicate_captures_ordinal_seq', 37, true)");
 
   const originalBytes = new TextEncoder().encode("Retained synthetic object actual bytes");
   const originalSha256 = hash(originalBytes);
@@ -628,6 +629,21 @@ try {
       },
     ],
   );
+  assert.deepEqual(
+    checkpoint.inventory.applicationSequences.filter(
+      (sequence: { table: string }) => sequence.table === "close_predicate_captures",
+    ),
+    [
+      {
+        schema: "openerp",
+        name: "close_predicate_captures_ordinal_seq",
+        table: "close_predicate_captures",
+        column: "ordinal",
+        lastValue: "37",
+        isCalled: true,
+      },
+    ],
+  );
   const checkpointDigest = hash(await readFile(checkpointPath));
   assert.equal(checkpoint.sourceDigest, sourceDigest);
   assert.deepEqual(checkpoint.acceptanceLedger.waitingHandoffs, []);
@@ -800,6 +816,7 @@ try {
   const policyProbe = new Client({ connectionString: policyProbeUrl });
   await policyProbe.connect();
   let restoredPolicySequence;
+  let restoredCloseSequence;
 
   try {
     const sequenceBefore = (
@@ -852,6 +869,38 @@ try {
       mutationScope: "fresh_local_restored_state_clone",
     };
     await save("decision-policy-restore-observation.json", restoredPolicySequence);
+
+    const closeSequenceBefore = (
+      await policyProbe.query<{ lastValue: string; isCalled: boolean }>(
+        'SELECT last_value::text AS "lastValue", is_called AS "isCalled" FROM openerp.close_predicate_captures_ordinal_seq',
+      )
+    ).rows[0];
+
+    assert.deepEqual(closeSequenceBefore, { lastValue: "37", isCalled: true });
+
+    const closeSequenceNext = (
+      await policyProbe.query<{ nextValue: string }>(
+        "SELECT nextval('openerp.close_predicate_captures_ordinal_seq')::text AS \"nextValue\"",
+      )
+    ).rows[0];
+
+    assert.deepEqual(closeSequenceNext, { nextValue: "38" });
+
+    const closeQuarantineAfter = (
+      await admin.query<{ connectionsAllowed: boolean; connectionLimit: number }>(
+        'SELECT datallowconn AS "connectionsAllowed", datconnlimit AS "connectionLimit" FROM pg_database WHERE datname=$1',
+        ["openerp_restore_rehearsal_e2e"],
+      )
+    ).rows[0];
+
+    assert.deepEqual(closeQuarantineAfter, quarantine);
+    restoredCloseSequence = {
+      sequenceBefore: closeSequenceBefore,
+      sequenceNext: closeSequenceNext,
+      quarantineAfter: closeQuarantineAfter,
+      mutationScope: "fresh_local_restored_state_clone",
+    };
+    await save("close-sequence-restore-observation.json", restoredCloseSequence);
   } finally {
     await policyProbe.end();
   }
@@ -1066,6 +1115,7 @@ try {
         checkpoint,
         restored,
         restoredPolicySequence,
+        restoredCloseSequence,
       },
       null,
       2,
@@ -1090,6 +1140,10 @@ try {
     {
       name: "decision-policy-restore-observation.json",
       source: join(scratch, "decision-policy-restore-observation.json"),
+    },
+    {
+      name: "close-sequence-restore-observation.json",
+      source: join(scratch, "close-sequence-restore-observation.json"),
     },
   ];
 

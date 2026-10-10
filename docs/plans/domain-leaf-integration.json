@@ -2,6 +2,14 @@
   "$comment": "Verified application ownership declarations for all packages/domain leaves, enforced by bun run check:owners (scripts/check-owners.ts). Every leaf requires a real value-importing application consumer. Deferrals, test-only consumers and empty or ancestor paths are refused. Public API and connected rehearsal proofs are retained separately in docs/plans/evidence/domain-owner-completion. Do not delete a leaf or weaken the guard to silence missing ownership.",
   "leaves": [
     {
+      "leaf": "verification-coverage",
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/automation/verification-coverage.ts",
+        "packages/contracts/src/verification-coverage.ts"
+      ]
+    },
+    {
       "leaf": "firm-memory",
       "status": "wired",
       "consumers": [

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sourceCommit": "d58579ecf1c1fd2bd3930accdeabb467b537323c",
+  "syntheticOnly": true,
+  "status": "failed",
+  "passedTests": 20,
+  "failedTests": 9,
+  "totalTests": 29,
+  "failedTestNames": [
+    "decision shadow lifecycle covers policy, fencing, disclosure recovery and real queue delivery",
+    "decision runner auth and authored binding preserve ordinary accounting and product reads",
+    "decision queue resumes through the current egress port",
+    "decision request admission and diagnostic read require operator authority",
+    "decision adapter configuration and real HTTP wire retain bounded typed outcomes without retry",
+    "bank exposure derives unchanged, corrected and cross-session unknown with atomic recovery",
+    "bank request driver refreshes equal options once and refuses changed options or repeated staleness",
+    "partial supplier hints distinguish observed corrections and report independent populations separately",
+    "mixed changed and incomparable supplier citations retain unknown exposure"
+  ],
+  "sourceIntegrity": {
+    "status": "stable",
+    "changedPaths": [],
+    "sourceInventorySha256": "d26746deb3f36a92c3cc3d49bfc8454be4889fb542c84a4b03a9697c60d7247f",
+    "finalSourceInventorySha256": "d26746deb3f36a92c3cc3d49bfc8454be4889fb542c84a4b03a9697c60d7247f",
+    "checkedAt": "2026-10-10T20:33:43.022Z"
+  },
+  "artifactDirectory": "/tmp/drastic-firm-memory-v2-clean/test-results/automation-final-review-batch",
+  "failureCause": "not_established",
+  "newTestsOrChecksAfterStop": false
+}

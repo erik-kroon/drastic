@@ -1,0 +1,41 @@
+# AUT-06 independent architecture judgment
+
+Choose B as the base, with mandatory grafts below. B has the correct Phase 1 verdict and separates absent records from retained history. Its fixed producer union lets later phases add their actual owners without re-capturing every sibling check. A is a credible alternative after correction, but its simpler aggregate does not excuse its present policy violation.
+
+Review provenance is `samefamily`, `independentagent`, `not crossmodel`. The configured judge pool is Sol only. I read A, B, the five-axis rubric and `phase-01-close-predicate.md` end to end. This is a design judgment. No source edits, runtime verification or production qualification were performed.
+
+| Axis, 0–3 | A | B | Deciding evidence |
+| --- | ---: | ---: | --- |
+| Accounting honesty | 1 | 3 | A gives a fresh failing gate priority over an unsupported sibling. Phase 1 explicitly makes any unsupported, absent or stale gated result inconclusive. B implements that precedence and models missing records honestly. |
+| Owner reuse and scope | 3 | 2 | Both preserve real bank/VAT freshness and complete inventories. A resolves exact stored calendar-month admission. B leaves ordinary partial/nonmonthly period policy insufficiently settled. |
+| Atomicity and replay | 2 | 2 | Both retain outcome/receipt atomically. B correctly identifies `TransactionRetry` and narrowly scoped command-key collisions, but its optional READ COMMITTED capture cannot ensure one snapshot across workspace/question writers outside the financial barrier. A's generic Unavailable alternative loses the existing retry contract. |
+| Interface depth and maintainability | 2 | 3 | B has two operations and a fixed typed producer union with absent-record states. A requires an invented inventory identity/digest and gives never-captured checks a retained CheckRecord-shaped slot. These need correction before its aggregate is usable. |
+| Verification reach | 3 | 3 | Both specify failure-first real HTTP/MCP workflows, immutable-history checks, repeated-read row counts and repeatable synthetic artifacts. B states deterministic concurrency synchronization more explicitly. Neither has executed the proposed checks. |
+| Total | 11 | 13 | B wins as submitted. |
+
+A and B are genuinely distinct architectures. A retains one complete book/period aggregate per command. B retains independent check attestations and composes their latest records at one read snapshot. Do not create a hybrid that exposes both capture models or relies on mutable current pointers.
+
+Mandatory grafts and corrections before implementation:
+
+1. Graft A's exact stored calendar-month scope into B. Resolve the registered period by book/period identity and validate day 1 through that month's final day. Freeze its actual bounds and fiscal-year relationship. Reject unsupported annual/partial capture with a named diagnostic; unsupported reads must not claim month completion. Never infer months from an annual row. This is the supported Phase 1 scope, not a claim to annual-close policy.
+2. Graft A's exhaustive typed gated set into B's result union. Keep `P2_vouchers_supported` and `P8_facts_complete` unavailable gates explicit. Any unsupported, unavailable, not-run or stale gate yields `inconclusive`, even with a fresh failing sibling. Only when all gates are established and fresh may fail yield `not_done`, or all passes yield `done`.
+3. Use REPEATABLE READ for capture and read, established before the first admission SELECT. Preserve normal authority/profile/owner guards and book barriers. Existing FOR SHARE admission prevents PostgreSQL READ ONLY transaction mode; a no-DML operation with the normal guards is the appropriate read contract. Prove unchanged real row counts on repeated HTTP/MCP reads.
+4. Retry the entire transaction with a fresh snapshot after serialization failure. Preserve the existing `TransactionRetry` error when bounded retry exhausts. A narrowly identified command-receipt unique-key race requires rollback, a fresh transaction and ordinary replay before deciding identical retry versus changed-input conflict. Never treat every unique violation as this race or reuse an aborted transaction. Replay retains the original captured observations before any source re-evaluation.
+5. Accept existing owner identities and resolve scope, digests, inventory and dependencies server-side. Do not require invented inventory/digest proof inputs. The whole bank inventory plan exists only after complete coverage. Include an optional existing bank source-coverage report selector alongside an optional complete inventory-plan selector so incomplete statements, continuity and mapping can retain actual owner diagnostics. A plan's absence alone can honestly mean not-run, but cannot satisfy those missing-reason vectors. Pass still requires the complete declared inventory and its owner sign-offs.
+6. Preserve both bank freshness rules. Exact reconciliation uses account/cutoff-local sequence. Coverage and inventory sign-off include global committedSequence. A later-period posting may leave exact reconciliation fresh while making the combined bank result stale. Preserve VAT's existing global ledger and additional currentness reasons. A nonfinancial preparation may stay fresh only when its actual declared dependencies remain unchanged.
+7. Adopt A's explicit canonical period-attention plus conservative book-wide latest-question scope. Declare that scope in retained facts and dependencies. Include undated/open documents and answered-but-unclosed questions. A partial page or incomplete owner inventory cannot pass. Retain not-established until the complete scope is proven.
+
+Rejections:
+
+- Reject A's fresh-fail-first precedence, invented mandatory inventory proof and generic Unavailable mapping for serialization.
+- Reject B's READ COMMITTED capture shortcut until every observed owner shares a sufficient writer barrier. Current workspace/question evidence does not establish that condition.
+- Reject caller-selected gates/statuses, copied bank/VAT arithmetic, stale-to-older-pass fallback and automatic capture/materialization on reads.
+- Reject annual/monthly equivalence and any promotion of Phase 2/8, tax, provider, AP/AR or subledger coverage from empty totals.
+
+Before handoff, require real authored HTTP/MCP evidence for source mutations, both bank sequence rules, complete and incomplete coverage, open documents/questions, exact replay/conflicts, concurrent receipt races, rollback and immutable UPDATE/DELETE refusal. Preserve setup/run instructions, receipts, denominator identities, retained byte digests and before/after row counts. Run the required repository checks and both MCP suites. Unavailable pinned-model eval remains an explicit verification blocker.
+
+Principles applied after reading their leaf skills. Model the Domain favors B's explicit absent-record union and the grafted exhaustive gate set. Make Operations Idempotent requires whole-transaction retry and original-record replay. Laziness Protocol removes invented client proof inputs and avoids adding dual capture models or per-check physical tables.
+
+If the parent selects corrected A for the current delivery slice, record that disagreement. Its aggregate can satisfy the same invariants once all mandatory corrections above are incorporated. The decision must not be reported as judge agreement.
+
+Corrected A assessment requested by the parent. I approve its aggregate shape for this delivery slice, subject to the mandatory corrections. One all-check capture can provide stronger single-command historical coherence without per-check latest-selection semantics. It is not structurally unsafe. The price is re-capturing sibling checks when one owner changes, which is acceptable until a real independent producer consumer requires otherwise. Preserve the original scores and B recommendation as the as-submitted verdict. Corrected A must additionally model no-capture/absent records without fabricated retained evidence, retain incomplete coverage-owner diagnostics and freeze complete attention/question inventory in the same repeatable-read snapshot. Its authoritative gates, exact month scope, owner freshness rules and atomic original-key replay must remain the same as the requirements above.

@@ -1,0 +1,6 @@
+{
+  "model": "gpt-6-luna",
+  "provider": "pinned-codex-proxy",
+  "exitCode": 0,
+  "interrupted": false
+}

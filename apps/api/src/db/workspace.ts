@@ -769,3 +769,20 @@ export function readAttentionAnchor(
     "objects",
   );
 }
+
+export function readCloseAttentionInventory(
+  transaction: Transaction,
+  bookId: string,
+  starts: string,
+  ends: string,
+) {
+  return transaction.execute<{
+    digest: string;
+    total: string;
+    open: string;
+    refs: import("effect/Schema").Json[];
+  }>(
+    sql`with ${attentionCte(bookId)}, scoped as materialized (select key,kind,id,revision,date,state,reason from observed where date between ${starts} and ${ends} or (kind='document' and date is null)) select openerp.digest(coalesce(jsonb_agg(jsonb_build_object('key',key,'kind',kind,'id',id,'revision',revision,'date',date,'state',state,'reason',reason) order by key collate "C"),'[]'::jsonb)) as digest,count(*)::text as total,count(*) filter(where state='open')::text as open,coalesce(jsonb_agg(jsonb_build_object('owner','attention_'||kind,'id',id,'digest',openerp.digest(jsonb_build_object('key',key,'kind',kind,'id',id,'revision',revision,'date',date,'state',state,'reason',reason))) order by key collate "C") filter(where state='open'),'[]'::jsonb) as refs from scoped`,
+    "objects",
+  );
+}

@@ -8,6 +8,7 @@ export const applicationSequenceOwners = [
   { table: "ai_egress_admissions", column: "sequence" },
   { table: "ai_identity_tokens", column: "ordinal" },
   { table: "book_decision_policies", column: "sequence" },
+  { table: "close_predicate_captures", column: "ordinal" },
   { table: "document_governance", column: "ordinal" },
   { table: "document_governance_reviews", column: "ordinal" },
   { table: "document_manifests", column: "ordinal" },
