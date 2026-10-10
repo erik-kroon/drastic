@@ -13,6 +13,7 @@ import { createTestHarness } from "wrangler";
 import type { TestProject } from "vitest/node";
 import { startProcessorFixture } from "./processor-fixture";
 import type { E2EEnvironment } from "./environment";
+import { ensureValidator, validatorPython } from "../../../../verification/peppol/validator.mjs";
 
 const run = promisify(execFile);
 
@@ -140,7 +141,7 @@ export default async function setup(project: TestProject) {
   const documentFixture = await startDocumentFixture();
 
   const peppolFixture = await startPeppolFixture({
-    python: process.env.PEPPOL_VALIDATOR_PYTHON ?? join(root, ".cache/peppol-validator/bin/python"),
+    python: await peppolValidator(),
     validatorPath: join(root, "verification/peppol/validate.py"),
     releaseSha256,
   });
@@ -349,5 +350,18 @@ export default async function setup(project: TestProject) {
   } catch (error) {
     await cleanup();
     throw error;
+  }
+}
+
+// A fresh worktree installs the shared pinned validator once instead of
+// failing every Peppol workflow. Offline setup leaves one warning, and the
+// Peppol checks then refuse as ValidationUnavailable.
+async function peppolValidator() {
+  try {
+    return await ensureValidator();
+  } catch (error) {
+    console.warn(`Peppol validator unavailable: ${String(error)}`);
+
+    return validatorPython();
   }
 }

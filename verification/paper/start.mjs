@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { nativeApi } from "../testerarmy/native-api.mjs";
+import { ensureValidator } from "../peppol/validator.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 
@@ -506,7 +507,7 @@ try {
     peppolFixture = await (
       await import(bundledFixture)
     ).startPeppolFixture({
-      python: join(root, ".cache/peppol-validator/bin/python"),
+      python: await ensureValidator(),
       validatorPath: join(root, "verification/peppol/validate.py"),
       releaseSha256: "b4a2bb071345361feaacc429cd70a1d82aa3a43c8746ba611ab8bf22f73c87be",
     });

@@ -138,8 +138,8 @@ jobs:
         timeout-minutes: 5
         run: |
           sudo apt-get install -y --no-install-recommends python3-venv libxml2-utils
-          node verification/peppol/setup.mjs
-          .cache/peppol-validator/bin/python verification/peppol/check.e2e.py
+          python="$(node verification/peppol/setup.mjs | tail -n 1)"
+          "$python" verification/peppol/check.e2e.py
 
       - name: Build applications
         timeout-minutes: 5
