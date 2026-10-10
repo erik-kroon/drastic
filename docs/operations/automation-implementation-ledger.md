@@ -136,3 +136,11 @@ Local commit `cb41384` adds single-line supplier-accrual VAT category opt-in wit
 Final stable synthetic HTTP workflows passed 2/2, with 17 refusal/freshness cases and zero reviews retained by failed preparations. Deterministic MCP passed 3/3; pinned Luna evaluation passed 1/1 across six iterations. Full changed checks, owners (53/53) and diff checks passed. Evidence and repeatable commands are in `verification/vat-purchase-categories/README.md`. No production tax qualification, live-provider call, browser qualification, push, merge or deployment is claimed.
 
 The owner asked when Clef would be added. Prioritize AUT-09 question catalog, then AUT-10 Clef/shared adapter. AUT-11 depends on AUT-05 memory, so complete that prerequisite before shadow jobs and AUT-12 evaluation. Other memory/anomaly/rule work remains queued. AUT-13 live qualification retains its data-use gate. The independent decision vectors are committed before implementation.
+
+## AUT-09 checkpoint
+
+Local commit `922bc73` adds the admitted book catalog, strict SystemOne schemas and full-distribution validation. Server-authored criteria/builders/options are digested; statistics confer no authority. Explicit cardinality skips never truncate. The near-uniform confidence regression was reproduced before its bounded-statistic fix; original probabilities remain intact.
+
+Final workflows passed 2/2 with nine independent gold vectors, fourteen response refusals, four invalid requests, five invalid scores, limit boundaries and digest checks. Evidence is `test-results/dra227-final`, source hash `dd40dc3c5fd0f30d1f6f80eae68bf7fed3115230d2420afca75ae9430ee82670`; repeat commands and protocol limits are in `verification/decision-questions/README.md`. Changed/full checks and owners (54/54) passed. No provider, queue, stored result, UI, MCP or production qualification was added.
+
+AUT-10 is now in progress: shared HTTP validation and a genuine injected Workers AI port. Its independent failure cases predate implementation. Disabled mode remains the default. Reported hosted selectors and immutable weight revisions remain separate facts; source wiring does not qualify a live provider or deploy it.
