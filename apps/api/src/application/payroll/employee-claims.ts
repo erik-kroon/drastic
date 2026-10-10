@@ -11,7 +11,9 @@ import type { Transaction } from "../../db/transaction";
 import type { VerifiedPrincipal } from "../identity";
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { approveChangeInTransaction, newId, replay, saveCommand } from "../posting";
+import { approveChangeInTransaction } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import {
   checkedReview,
   executeInputInTransaction,

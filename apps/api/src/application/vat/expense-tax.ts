@@ -15,7 +15,8 @@ import {
 } from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { digestBody, digestValue } from "./basis";
 
 type SourceRevision = typeof ExpenseTax.TaxSourceRevision.Type;

@@ -9,7 +9,8 @@ import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 
 import * as RateDb from "../db/exchange-rates";
 import type { Transaction } from "../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   exactKeys,

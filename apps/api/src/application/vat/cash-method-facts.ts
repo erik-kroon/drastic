@@ -8,7 +8,8 @@ import * as Db from "../../db/vat/returns";
 import * as CreditsDb from "../../db/commerce/cash-credits";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { isoNow, newId } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { liveInvoice } from "../commerce/register";
 import {
   decode,

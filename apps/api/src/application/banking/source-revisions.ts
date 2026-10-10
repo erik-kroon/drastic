@@ -1,3 +1,4 @@
+import * as Match from "effect/Match";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Source from "@open-erp/contracts/bank-source-revisions";
 import {
@@ -16,7 +17,9 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import * as BankDb from "../../db/banking/shared";
 import * as RevisionDb from "../../db/banking/source-revisions";
 import * as Shared from "./shared";
@@ -344,14 +347,12 @@ function raiseCaseIfNeeded(row: {
   readonly matchedBefore: boolean;
 }) {
   return Effect.gen(function* () {
-    const caseKind =
-      row.applied.kind === "material_impact"
-        ? "material_source_change"
-        : row.applied.kind === "removal_investigation"
-          ? "removed_booked_observation"
-          : row.applied.kind === "overlap_case"
-            ? "unresolved_lookalike"
-            : null;
+    const caseKind = Match.value(row.applied.kind).pipe(
+      Match.when("material_impact", () => "material_source_change" as const),
+      Match.when("removal_investigation", () => "removed_booked_observation" as const),
+      Match.when("overlap_case", () => "unresolved_lookalike" as const),
+      Match.orElse(() => null),
+    );
 
     if (caseKind === null) return null;
 

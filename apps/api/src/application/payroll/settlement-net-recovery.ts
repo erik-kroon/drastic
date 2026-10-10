@@ -4,7 +4,7 @@ import * as Db from "../../db/payroll/settlements";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { claimBalance, readRetained } from "./settlement-support";
 import { verifyRecoveryLedger } from "./settlement-ledger";
 

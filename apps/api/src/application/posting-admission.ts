@@ -19,7 +19,7 @@ import * as Schedules from "../db/subledger/schedules";
 import * as Acceptance from "../db/purchases/acceptance";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
-import { isoNow } from "./posting";
+import { isoNow } from "./command-receipts";
 import { admitInvoiceRecognitionChild } from "./commerce/recognition-replacements";
 import { admitScheduleCorrectionChild } from "./subledger/occurrence-corrections";
 import { readPostingBasis } from "./subledger/schedules";

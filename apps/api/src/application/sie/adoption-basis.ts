@@ -13,7 +13,9 @@ import * as PartitionsDb from "../../db/sie-partitions";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readBasis, readPlan } from "./historical-shared";
 import { readPartition } from "./partitions";
 

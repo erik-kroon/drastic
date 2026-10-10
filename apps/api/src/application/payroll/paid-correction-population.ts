@@ -5,7 +5,7 @@ import * as Db from "../../db/payroll/mileage-corrections";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import {
   ClaimRecord,
   InstructionRecord,

@@ -8,7 +8,9 @@ import * as WorkspaceDb from "../db/workspace";
 import { readCandidateSource } from "../db/banking/candidates";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "./failures";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   requireInsertAccess,

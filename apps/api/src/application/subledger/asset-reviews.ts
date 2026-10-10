@@ -8,16 +8,10 @@ import * as Schedules from "../../db/subledger/schedules";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope, type Principal } from "../commerce/support";
 import { failure } from "../failures";
-import {
-  createEvidenceInTransaction,
-  prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "../posting";
+import { createEvidenceInTransaction, prepareJournalInTransaction, validatePlan } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { impairmentBasis, disposalBasis } from "./asset-basis";
 
 export type Identified = { readonly scope: Scope; readonly id: string };

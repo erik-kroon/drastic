@@ -19,7 +19,9 @@ import {
   type Principal,
 } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { checkedInput } from "./inputs";
 import { assessVariableBasis, duplicateSources } from "./variable-pay-assessment";
 import { readVariableSource, requireVariableSourceBinding } from "./variable-pay-source";

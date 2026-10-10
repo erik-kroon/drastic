@@ -10,7 +10,7 @@ import { databaseFailure } from "../db/transaction";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
 import { withAdmittedPrincipal } from "./identity";
-import { replay, saveCommand } from "./posting";
+import { replay, saveCommand } from "./command-receipts";
 import { startSourceRunInTransaction, advanceSourceRunInTransaction } from "./sie/import";
 import { selectBasisInTransaction } from "./sie/historical-basis";
 import { startFinancialRunInTransaction } from "./sie/historical-financial";

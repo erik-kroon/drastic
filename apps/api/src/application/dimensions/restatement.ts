@@ -15,7 +15,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 
 // NEXT-43. The application owner of reviewed dimension restatement.
 //

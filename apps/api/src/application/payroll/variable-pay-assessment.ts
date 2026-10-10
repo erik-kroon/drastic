@@ -10,7 +10,7 @@ import * as Foundation from "../../db/payroll-foundation";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { readVariableSource, requireVariableSourceBinding } from "./variable-pay-source";
 
 type Blocker = typeof V.VariablePayBlocker.Type;

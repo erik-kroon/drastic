@@ -27,7 +27,8 @@ import {
 } from "./commerce/support";
 import { canonicalText, digest } from "./json";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import { base64, sha256HexOf } from "./bytes";
 import { parseSie } from "./sie-import-parser";
 

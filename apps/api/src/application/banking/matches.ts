@@ -6,7 +6,7 @@ import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { replay, saveCommand } from "../posting";
+import { replay, saveCommand } from "../command-receipts";
 import type { Transaction } from "../../db/transaction";
 import * as BankDb from "../../db/banking/shared";
 import * as StatementDb from "../../db/banking/statements";

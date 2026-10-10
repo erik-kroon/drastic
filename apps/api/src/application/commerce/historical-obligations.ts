@@ -6,7 +6,7 @@ import * as AdoptionDb from "../../db/historical-adoptions";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope } from "./support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { checkedAdoption } from "../sie/adoption-basis";
 
 export const readHistoricalObligation = Effect.fn("commerce.readHistoricalObligation")(function* (

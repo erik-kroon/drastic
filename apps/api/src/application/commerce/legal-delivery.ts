@@ -6,7 +6,9 @@ import * as ArDb from "../../db/commerce/ar-legal";
 import * as DocumentDb from "../../db/commerce/documents";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import {
   toJsonObject,
   decode,

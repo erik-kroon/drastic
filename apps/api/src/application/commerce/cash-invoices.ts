@@ -17,7 +17,8 @@ import { compilePurchasePlan } from "../purchases/recognition";
 import { evidenceHasPostedHistory } from "../purchases/shared";
 import { admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { liveInvoice } from "./register";
 import {
   commandReceipt,

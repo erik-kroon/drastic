@@ -7,7 +7,8 @@ import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
 import { lockBookForUpdate } from "../../db/posting";
 import { readInstant } from "../../db/commerce/access";
-import { digest, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { replay, saveCommand } from "../command-receipts";
 import { failure } from "../failures";
 import {
   decode,

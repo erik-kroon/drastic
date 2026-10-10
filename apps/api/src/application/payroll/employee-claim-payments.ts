@@ -12,12 +12,11 @@ import {
   approveChangeInTransaction,
   executeChangeInTransaction,
   prepareJournalInTransaction,
-  newId,
-  replay,
-  saveCommand,
-  digest,
-  sha256Hex,
 } from "../posting";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
+import { digest } from "../json";
+import { sha256Hex } from "../hashing";
 import { requireOnboardingResponsibility } from "../onboarding-policy";
 import { transferDocument } from "../purchases/payment-document";
 import { checkIban, checkBic, checkXmlText } from "../purchases/payments";

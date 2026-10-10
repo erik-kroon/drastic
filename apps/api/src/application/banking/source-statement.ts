@@ -9,7 +9,9 @@ import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import * as StatementDb from "../../db/banking/statements";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { addMatch } from "./matches";
 import * as Shared from "./shared";
 
