@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import * as Recovery from "@open-erp/contracts/paid-payroll-recovery";
 import { environment, post, request, decoded } from "./support/fixtures";
 import { paidRecoveryFixture } from "./support/paid-payroll-recovery";
+import { reviewPaidRecoveryWithLuna } from "./support/paid-recovery-model-review";
 import { withWorkspaceBrowser } from "./support/workspace-browser";
 
 // Missing authority, stale assessment, unqualified evidence, uncertain writes,
@@ -50,6 +51,7 @@ test("paid recovery browser retains blocked assessment, split, saved evidence an
       await page.getByText("Begäran pågår...", { exact: true }).waitFor({ state: "hidden" });
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ path: join(environment().artifacts, `${artifact}-blocked.png`) });
+      await reviewPaidRecoveryWithLuna(page, workspace, id);
       await page.getByRole("button", { name: "Spara uppdelning", exact: true }).press("Enter");
       await expect
         .poll(

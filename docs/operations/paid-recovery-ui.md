@@ -17,3 +17,15 @@ installments, executed zero-net settlement, refusal and populated backup/restore
 The real browser journey separately qualifies discoverability, saved comparison,
 unqualified evidence, reload and cancellation. Visual comparison remains pending
 until measured actual/diff evidence passes the adopted threshold.
+
+## Repeatable operator and model proof
+
+The old R43 composition and its scripted labels are superseded by adopted P-01. Real Vitest browser journeys now exercise the complete independent qualification, claim review/approval/execution, two payroll installments, zero-net noncash settlement, reload and cancellation paths. No original paid event is rewritten.
+
+```sh
+OPENERP_PAYROLL_MODEL_REVIEW=1 bun run test:e2e apps/api/tests/paid-payroll-recovery.browser.e2e.test.ts apps/api/tests/paid-payroll-recovery-completion.browser.e2e.test.ts
+```
+
+The first case additionally runs a bounded Luna readability and refusal review against the same disposable application and the real password-authenticated operator. Its private session file is removed and the pinned Codex proxy is stopped in `finally`; no application boundary is mocked. The model review is gated explicitly so routine CI remains deterministic. Missing authentication, a foreign origin or an unavailable model refuses the model proof; none of those conditions qualifies the screen. Vitest verifies financial transitions, while Luna reviews the blocked screen rather than approving financial commands.
+
+A separate existing reminder recovery regression requires historical commit `3a3b2093`, absent from public Drastic history. Its attempted run refused before recovery. The same requirement is present on main. This is retained as an existing portability limitation, not a new payroll recovery failure or a passing reminder regression.
