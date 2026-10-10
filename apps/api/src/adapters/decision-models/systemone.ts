@@ -60,6 +60,7 @@ export interface DecisionModel {
     request: D.SystemOneRequest,
     egress: AiEgress,
     signal?: AbortSignal,
+    beforeDispatch?: () => Promise<void>,
   ): Promise<DecisionOutcome>;
 }
 
@@ -126,7 +127,7 @@ export function systemOneModel(
 
   return {
     identity,
-    async decide(request, egress, callerSignal) {
+    async decide(request, egress, callerSignal, beforeDispatch) {
       const admitted = D.parseRequest({
         ...request,
         state: Schema.is(AiState)(request.state) ? JSON.stringify(request.state) : request.state,
@@ -184,6 +185,12 @@ export function systemOneModel(
               controller.signal.reason === "deadline" ? "timeout" : "aborted",
             );
 
+          await beforeDispatch?.();
+
+          if (controller.signal.aborted)
+            throw new DecisionAdapterError(
+              controller.signal.reason === "deadline" ? "timeout" : "aborted",
+            );
           const raw = await dispatch(transport, outgoing.request, controller.signal);
           captured.registry.assertOutput(Schema.decodeUnknownSync(Schema.Json)(raw));
 

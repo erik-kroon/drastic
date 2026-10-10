@@ -285,6 +285,30 @@ Owner item15 adds separately pinned exact token-set recall after removing numeri
 Failure-first public recall and corpus denominator reproductions are retained in `verification/firm-memory-v2/`. Six selected workflows passed, five unselected. The synthetic public corpus has two eligible targets for each version: v1 suggests zero and v2 one; consequential accuracy remains unavailable. The legacy replay uses an explicitly authored valid append-only fixture, not a historical runtime claim. Changed checks passed; clean full/owners/design and MCP qualification follow. No live model, statutory or browser qualification.
 
 Clean committed source d246ebf against main6e2a0ae passed frozen install, full changed checks, owners55/55 and design contract (two measured matching screens; no visual comparison), with tracked status clean. MCP admission1 passed and two upstream protocol cases skipped; pinned Luna eval1 passed, evidence run e456009b-5c77-45f3-9477-01f25959f56a. These skips remain unverified. Retained evidence is synthetic only.
+
+## Resumed AUT-11 checkpoint
+
+Parked4958339 rebased onto the review stack; unpublished shadow migration is0113 after main0109–0111 and registry0112. Runtime policy is operator-written off/shadow and synthetic_fixture_only. Every model input uses permitted financial facts with a separate structured release; raw document/client/line text, private IDs and whole precedents stay internal. Public quota machinery is removed.
+
+Failure-first commit b823d62 and retained before artifacts reproduce the current port/queue failure, false local dispatch marker, option-digest mismatch, lost reported usage and incorrect uncertainty states. Ten focused workflows passed, one unselected. Actual loopback queue delivery validates once; local size/expired guard dispatch zero times. Dispatch admission, guarded intent and actual transport are distinguished; timeout after intent is uncertain without redispatch. Exact ordinary reads/receipts/queues and paired financial projections retain noninterference evidence. `verification/decision-shadow-resumed/` documents the hashes, later test-only whitespace and synthetic fixture limitations. Changed checks passed; clean qualification follows.
+
+No MCP catalog/schema/transport changed or exposes the new HTTP jobs/catalog, so MCP/Luna are not rerun for this unit. Parent v2 MCP admission1/Luna1 passed, with2 upstream protocol cases skipped; those are historical evidence and remain unverified for protocols. No live provider, model accuracy, statutory or browser qualification.
+
+Clean604669a full against6e2a0ae failed four type-aware lint findings, while all TypeScript projects passed: the request JSON spread, two async Node handlers and a bare sort. Explicit request projection, owned handler promises and comparator resolve them without suppression. Five final affected HTTP workflows passed, with source inventory68336fae5f8481261d0bda06681c4995d2b30e0d89263a521697e323a9b3d30b. Earlier ten-flow qualification and handler-only five are retained separately; final clean checks follow the narrow fix.
+
+Clean committed1e3a712 against main6e2a0ae passed full changed checks, owners55/55 and design contract (two measured matching screens; no visual comparison), tracked status clean before and after. Frozen install passed on the isolated check tree. No MCP catalog/schema/transport change; MCP/Luna not rerun for this unit. Parent protocol skips remain unverified. No live, statutory, model-accuracy or browser qualification.
+
+### AUT-11 review follow-up, policy sequence restore
+
+Failure-first commit `7991ca4` reproduced checkpoint `UnhandledFamily` in the real synthetic rehearsal. Fix `ea033f5` declares the `book_decision_policies.sequence` owner. The same rehearsal passed and retained counter 41; a new operator off policy received 42 and superseded shadow policy 23. The original restore quarantine remained intact. Proof is retained in `verification/decision-shadow/policy-sequence/`; the complete packet is under `test-results/aut11-policy-sequence-after/`.
+
+The working-tree changed check passed for the narrow fix. Final clean static gates for the integrated review fixes remain pending. Admission permissions, VAT discrepancy capture and the remaining review findings are still open. No live provider or production restore was exercised.
+
+### AUT-11 review follow-up, request authority
+
+Failure-first `cd31e39` and `0e0e9b4` reproduced agent admission/read and a requester losing the operator role before dispatch. Fix `127cf2c` requires operator authority at all three existing boundaries. All seven decision-job workflows passed at clean source `6190d6c`, including real queue delivery and the locked downgrade refusal. Proof is retained under `verification/decision-shadow/request-authority/`. The fixture lock-probe failure, controlled PostgreSQL 55P03 reproduction and persistent-lock negative control are recorded separately there. No production provider behavior changed for the test-only probe fix.
+
+The changed check against `ea033f5` passed API/test types. Final clean integrated gates remain pending. VAT discrepancy, mixed citations, terminal admission idempotency and timeout bounds are still under review. No MCP catalog, UI or live provider was exercised by this unit.
 ## PR #28 mixed-citation review checkpoint
 
 A genuine HTTP reproduction at `849b385` failed on `corrected` versus `unknown_exposure` after proving two same-subject, differing-option-set citations: one partial unchanged/not-comparable and one partial changed. The classifier fix `73be9ad` gives not-comparable evidence priority. A single changed partial hint still counts as corrected, separately from independent labels. All eight decision-provenance E2E workflows passed from clean committed source, with stable inventories and retained before/after observations in `verification/decision-provenance/mixed-citations/`. No posting behavior, screen composition, baseline or historical record changed.

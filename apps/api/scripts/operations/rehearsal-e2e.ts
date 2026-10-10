@@ -363,6 +363,24 @@ try {
   );
   await source.query("SELECT setval('openerp.ai_identity_tokens_ordinal_seq', 7, true)");
   await source.query("SELECT setval('openerp.ai_egress_admissions_sequence_seq', 11, true)");
+  await source.query("SELECT setval('openerp.book_decision_policies_sequence_seq', 23, false)");
+  await run(
+    [
+      "bun",
+      "apps/api/scripts/decision-policy.ts",
+      "ops-book",
+      "document_kind",
+      "shadow",
+      "synthetic_rehearsal_release",
+      "24576",
+    ],
+    {
+      ...process.env,
+      DATABASE_URL: undefined,
+      OPENERP_DECISION_POLICY_DATABASE_URL: sourceUrl,
+    },
+  );
+  await source.query("SELECT setval('openerp.book_decision_policies_sequence_seq', 41, true)");
 
   const originalBytes = new TextEncoder().encode("Retained synthetic object actual bytes");
   const originalSha256 = hash(originalBytes);
@@ -595,6 +613,21 @@ try {
       },
     ],
   );
+  assert.deepEqual(
+    checkpoint.inventory.applicationSequences.filter(
+      (sequence: { table: string }) => sequence.table === "book_decision_policies",
+    ),
+    [
+      {
+        schema: "openerp",
+        name: "book_decision_policies_sequence_seq",
+        table: "book_decision_policies",
+        column: "sequence",
+        lastValue: "41",
+        isCalled: true,
+      },
+    ],
+  );
   const checkpointDigest = hash(await readFile(checkpointPath));
   assert.equal(checkpoint.sourceDigest, sourceDigest);
   assert.deepEqual(checkpoint.acceptanceLedger.waitingHandoffs, []);
@@ -759,6 +792,69 @@ try {
     ...quarantine,
     observedAt: new Date().toISOString(),
   });
+
+  await admin.query(
+    "CREATE DATABASE openerp_restore_policy_probe TEMPLATE openerp_restore_rehearsal_e2e",
+  );
+  const policyProbeUrl = `postgres://postgres:${password}@127.0.0.1:${port}/openerp_restore_policy_probe`;
+  const policyProbe = new Client({ connectionString: policyProbeUrl });
+  await policyProbe.connect();
+  let restoredPolicySequence;
+
+  try {
+    const sequenceBefore = (
+      await policyProbe.query<{ lastValue: string; isCalled: boolean }>(
+        'SELECT last_value::text AS "lastValue", is_called AS "isCalled" FROM openerp.book_decision_policies_sequence_seq',
+      )
+    ).rows[0];
+
+    assert.deepEqual(sequenceBefore, { lastValue: "41", isCalled: true });
+    await run(
+      [
+        "bun",
+        "apps/api/scripts/decision-policy.ts",
+        "ops-book",
+        "document_kind",
+        "off",
+        "synthetic_rehearsal_release",
+        "24576",
+      ],
+      {
+        ...process.env,
+        DATABASE_URL: undefined,
+        OPENERP_DECISION_POLICY_DATABASE_URL: policyProbeUrl,
+      },
+    );
+
+    const policyRows = (
+      await policyProbe.query<{ sequence: string; mode: string }>(
+        "SELECT sequence::text, body->>'mode' AS mode FROM openerp.book_decision_policies WHERE book_id='ops-book' AND question_id='document_kind' ORDER BY sequence DESC",
+      )
+    ).rows;
+
+    assert.deepEqual(policyRows, [
+      { sequence: "42", mode: "off" },
+      { sequence: "23", mode: "shadow" },
+    ]);
+
+    const quarantineAfter = (
+      await admin.query<{ connectionsAllowed: boolean; connectionLimit: number }>(
+        'SELECT datallowconn AS "connectionsAllowed", datconnlimit AS "connectionLimit" FROM pg_database WHERE datname=$1',
+        ["openerp_restore_rehearsal_e2e"],
+      )
+    ).rows[0];
+
+    assert.deepEqual(quarantineAfter, quarantine);
+    restoredPolicySequence = {
+      sequenceBefore,
+      policyRows,
+      quarantineAfter,
+      mutationScope: "fresh_local_restored_state_clone",
+    };
+    await save("decision-policy-restore-observation.json", restoredPolicySequence);
+  } finally {
+    await policyProbe.end();
+  }
 
   const staleCheckpoint = await expectRefusal(
     [
@@ -969,6 +1065,7 @@ try {
         checkpointDigest,
         checkpoint,
         restored,
+        restoredPolicySequence,
       },
       null,
       2,
@@ -990,6 +1087,10 @@ try {
     },
     { name: "quarantine-observation.json", source: join(scratch, "quarantine-observation.json") },
     { name: "source-integrity.json", source: join(scratch, "source-integrity.json") },
+    {
+      name: "decision-policy-restore-observation.json",
+      source: join(scratch, "decision-policy-restore-observation.json"),
+    },
   ];
 
   completedRecords = await Promise.all(

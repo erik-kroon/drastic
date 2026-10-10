@@ -1,0 +1,1 @@
+{"syntheticOnly":true,"requestId":"decision_request_c9eab6d8267946679e9c4c04fda71855","status":"failed","reason":"egress_refused","dispatchCount":0,"jobs":[{"id":"decision/book_dcb1e4a235718a05/decision_request_c9eab6d8267946679e9c4c04fda71855","state":"completed"}],"runnerFailures":[]}

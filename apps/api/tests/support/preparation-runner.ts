@@ -50,7 +50,11 @@ export async function pendingManifest(existing?: BookFixture) {
   return { book, manifest, workIdentity };
 }
 
-export function startRunner(token: string, restoredDatabaseUrl?: string) {
+export function startRunner(
+  token: string,
+  restoredDatabaseUrl?: string,
+  decisionConfig: Readonly<Record<string, string>> = {},
+) {
   if (restoredDatabaseUrl) {
     const restored = new URL(restoredDatabaseUrl);
 
@@ -67,7 +71,9 @@ export function startRunner(token: string, restoredDatabaseUrl?: string) {
       DATABASE_URL: restoredDatabaseUrl ?? environment().runtimeUrl,
       OPENERP_PREPARATION_TOKEN: token,
       OPENERP_DOCUMENT_READER: "disabled",
+      OPENERP_DECISION_MODEL: "disabled",
       OPENERP_REMINDER_DELIVERY: "disabled",
+      ...decisionConfig,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

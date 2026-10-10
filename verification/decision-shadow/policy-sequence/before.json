@@ -1,0 +1,8 @@
+{
+  "commit": "7991ca4",
+  "surface": "real synthetic operations checkpoint and restore rehearsal",
+  "exitCode": 1,
+  "stage": "rehearsal-checkpoint",
+  "diagnostic": "UnhandledFamily: An application sequence has no reviewed identity table/column owner.",
+  "rawDiagnostics": "private, not published"
+}

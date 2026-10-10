@@ -112,6 +112,8 @@ const gestures = {
   dispatch_reminder: machine("provider_callback"),
   retain_reminder_outcome: machine("provider_callback"),
   stop_reminder_delivery: machine("provider_callback"),
+  run_decision_request: machine("provider_callback"),
+  publish_decision_result: machine("provider_callback"),
   run_supplier_extraction: machine("provider_callback"),
   publish_supplier_extraction: machine("provider_callback"),
   stop_supplier_extraction_delivery: machine("provider_callback"),

@@ -14,6 +14,7 @@
       "status": "wired",
       "consumers": [
         "apps/api/src/application/automation/decision-questions.ts",
+        "apps/api/src/application/automation/decision-jobs.ts",
         "packages/contracts/src/decisions.ts"
       ]
     },

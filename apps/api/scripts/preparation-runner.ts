@@ -1,3 +1,8 @@
+import {
+  DecisionQueue,
+  dispatchPendingDecisions,
+  handleDecision,
+} from "../src/runtime/decision-queue";
 import { inspectQueuedDocument } from "./document-inspection/inspection";
 import {
   RecurringDraftQueue,
@@ -83,6 +88,8 @@ const bindings: Bindings = {
     OPENERP_REMINDER_SECRET: process.env.OPENERP_REMINDER_SECRET,
   }),
   DECISION_MODEL: configuredDecisionModel(process.env),
+  OPENERP_DECISION_MODEL: process.env.OPENERP_DECISION_MODEL,
+  OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: process.env.OPENERP_DECISION_RUNNER_CREDENTIAL_HASH,
   DOCUMENT_READER: reader,
   EVIDENCE_STORE: evidenceStore,
 };
@@ -122,6 +129,7 @@ const services = Layer.mergeAll(
 ).pipe(Layer.provide(postgres));
 
 const worker = Layer.mergeAll(
+  DecisionQueue.toLayer(handleDecision, { concurrency: 1 }),
   ReminderQueue.toLayer(handleReminder, { concurrency: 2 }),
   PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }),
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
@@ -205,9 +213,20 @@ const dispatchReminders = Effect.forever(
   ),
 );
 
+const dispatchDecisions = Effect.forever(
+  dispatchPendingDecisions().pipe(
+    Effect.catch(() => Effect.logWarning("Decision dispatch failed; request remains durable.")),
+    Effect.catchDefect(() =>
+      Effect.logWarning("Decision dispatch defect; request remains durable."),
+    ),
+    Effect.andThen(Effect.sleep("1 second")),
+  ),
+);
+
 const main = Effect.all(
   [
     dispatch,
+    dispatchDecisions,
     dispatchExtractions,
     dispatchPeriodWork,
     dispatchCredits,
@@ -216,7 +235,7 @@ const main = Effect.all(
     runRecurringDraftDispatch(),
   ],
   {
-    concurrency: 7,
+    concurrency: 8,
   },
 ).pipe(Effect.provide(worker), Effect.scoped);
 
