@@ -1,3 +1,4 @@
+import { DecisionJobsApi } from "./decision-jobs";
 import { DecisionQuestionsApi } from "./decisions";
 import { DecisionExamplesApi } from "./decision-examples";
 import { EmployeeClaimsApi } from "./employee-claims";
@@ -222,6 +223,7 @@ export class Api extends HttpApi.make("open-erp")
     CompanyProfileApi,
     EvaluationsApi,
     DecisionExamplesApi,
+    DecisionJobsApi,
     DecisionQuestionsApi,
 
     AccountingApi,

@@ -51,6 +51,8 @@ const bindings: Bindings = {
   DOCUMENT_INSPECTOR: inspectQueuedDocument,
   DATABASE_URL: databaseUrl,
   DECISION_MODEL: configuredDecisionModel(process.env),
+  OPENERP_DECISION_MODEL: process.env.OPENERP_DECISION_MODEL,
+  OPENERP_DECISION_RUNNER_CREDENTIAL_HASH: process.env.OPENERP_DECISION_RUNNER_CREDENTIAL_HASH,
   DOCUMENT_READER: documentReader,
   PEPPOL_EXCHANGE: configuredPeppolAccessPoint({
     OPENERP_PEPPOL_EXCHANGE: process.env.OPENERP_PEPPOL_EXCHANGE,

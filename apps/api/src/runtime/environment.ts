@@ -16,6 +16,8 @@ import type { DecisionModelConfiguration } from "./decision-model";
 
 export interface Bindings extends DecisionModelConfiguration {
   readonly DECISION_MODEL?: DecisionModel;
+  readonly DECISION_FIXTURE_MODEL?: DecisionModel;
+  readonly OPENERP_DECISION_RUNNER_CREDENTIAL_HASH?: string;
   readonly AI?: WorkersAi;
   readonly PEPPOL_EXCHANGE?: PeppolAccessPoint;
   readonly OPENERP_PEPPOL_EXCHANGE?: string;
