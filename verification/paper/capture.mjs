@@ -149,6 +149,7 @@ async function main() {
       locale: "sv-SE",
       colorScheme: values.theme,
       storageState: retainedSession ? stateFile : undefined,
+      extraHTTPHeaders: session.testNow ? { "x-openerp-test-now": session.testNow } : undefined,
     });
 
     if (!retainedSession) {
@@ -276,6 +277,7 @@ async function main() {
         resolvedRoute: new URL(page.url()).pathname + new URL(page.url()).search,
         time: new Date().toISOString(),
         clockPinned: false,
+        applicationClock: session.testNow ?? null,
         fixture: {
           synthetic: true,
           mode: session.demoMode ?? null,

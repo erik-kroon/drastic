@@ -1,7 +1,7 @@
 {
   "scope": "K-21",
-  "sourceRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
-  "comparatorRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "referenceSha256": "8b42550a3e81b89dec5059736c77314927876f74b32b5d98e914b0760d2c77d8",
   "actualSha256": "37340462018d07c8c3476567d4575e365ddc38567f8b6d93fc575b5743add173",
   "diffSha256": "afe378b254570a47fa4b58fa7843654c88d11c6f1da2787138ffd215ec776977",
@@ -46,9 +46,10 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/accounts",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_ec48901d7fc845e48e89f4da6beadba8&row=1",
-    "time": "2026-10-10T11:56:13.659Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-03&to=2026-10-03&statement=statement_e83aa0ca2cf14f8cb3a8eb65410ef2d0&row=1",
+    "time": "2026-10-10T12:11:53.941Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

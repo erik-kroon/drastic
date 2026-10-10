@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "passed": true,
+  "applicationClock": "2026-10-02T06:54:00.000Z",
+  "checks": [
+    "real wheel scroll exposes review action",
+    "action center is not covered by fixed navigation",
+    "no horizontal overflow",
+    "review action and decision pane expose exact approval without writes"
+  ],
+  "geometry": {
+    "top": 708,
+    "bottom": 744,
+    "height": 36,
+    "width": 334,
+    "visibleAndUnobscured": true,
+    "pageWidth": 390,
+    "viewportWidth": 390,
+    "scrollY": 140
+  }
+}

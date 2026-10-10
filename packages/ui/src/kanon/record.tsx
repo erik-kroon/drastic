@@ -14,7 +14,7 @@ const styles = stylex.create({
     display: "flex",
     fontFamily: kanon.fontUi,
     gap: kanon.space3,
-    paddingBlock: kanon.space2,
+    paddingBlock: kanon.space25,
     paddingInline: kanon.space3,
   },
   sheet: {

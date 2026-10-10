@@ -32,6 +32,7 @@ try {
     viewport: { width: 1440, height: 900 },
     locale: "sv-SE",
     storageState: retainedSession ? stateFile : undefined,
+    extraHTTPHeaders: session.testNow ? { "x-openerp-test-now": session.testNow } : undefined,
   });
 
   if (!retainedSession) {
@@ -318,7 +319,25 @@ try {
       waitUntil: "networkidle",
     });
     await page.getByRole("heading", { name: "Översikt", exact: true }).waitFor();
-    await page.getByText("−1 250,00 SEK", { exact: true }).first().waitFor();
+
+    const boardBank = await read(
+      "/bank-workspace?startsOn=2026-01-01&endsOn=2026-10-02&view=all&page=1&q=",
+    );
+
+    assert.equal(
+      boardBank.accounts.find((account) => account.id === "account_bank").ledgerBalanceMinor,
+      "0",
+    );
+
+    const laterBank = await read(
+      "/bank-workspace?startsOn=2026-01-01&endsOn=2026-10-03&view=all&page=1&q=",
+    );
+
+    assert.equal(
+      laterBank.accounts.find((account) => account.id === "account_bank").ledgerBalanceMinor,
+      "-125000",
+    );
+    await page.getByText("0,00 SEK", { exact: true }).first().waitFor();
     await page.getByText("Registrerade fakturor med kvarstående belopp", { exact: true }).waitFor();
     await page.screenshot({ path: join(artifacts, "demo-path/overview.png") });
     const deadlines = await read("/deadlines");
@@ -383,12 +402,14 @@ try {
             "bank preparation and approval without allocation",
             "one exact negative125000 allocation leg",
             "bank execution retained after reload with zero remaining",
-            "overview shows retained bank balance and registered invoice coverage",
+            "overview at board instant excludes later posted movement and preserves registered invoice coverage",
+            "later bank cutoff includes the retained negative125000 movement",
             "bureau portfolio retains three permitted clients",
             "saved unknown remains unattempted",
             "continuation never changes posted history",
           ],
           geometry,
+          applicationClock: session.testNow,
           continuation: {
             bankAllocationId: bankPlan.id,
             bankAmountMinor: "-125000",
@@ -399,6 +420,7 @@ try {
             parityQualified: false,
             limitations: [
               "Overview is a ledger balance and registered-invoice view, not the board's result/coverage read model.",
+              "Effect application clock is pinned; database and browser timestamps remain real. The bank movement is posted on October 3, after the board's October 2 cutoff.",
               "No illustrated deadlines, agent activity or complete source coverage are fabricated.",
               "Unknown is a saved unattempted preparation, not proof of uncertain execution.",
             ],

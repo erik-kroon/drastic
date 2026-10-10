@@ -76,6 +76,8 @@ const demoSeed = demoHook === undefined ? undefined : await import("./seed-demo.
 if (demoSeed && !demoSeed.demoModes.includes(demoHook))
   throw new Error("PAPER_DEMO must be demo, worst, empty, one or many");
 
+const testNow = demoSeed ? "2026-10-02T06:54:00.000Z" : undefined;
+
 const foreignCashHook = process.env.PAPER_FOREIGN_CASH;
 
 if (foreignCashHook !== undefined && foreignCashHook !== "0" && foreignCashHook !== "1")
@@ -564,8 +566,8 @@ try {
       root: api,
       workers: [
         {
-          configPath: "wrangler.jsonc",
-          env: "e2e",
+          configPath: demoSeed ? "tests/support/e2e.wrangler.jsonc" : "wrangler.jsonc",
+          env: demoSeed ? undefined : "e2e",
           secrets: workerSecrets,
         },
       ],
@@ -596,6 +598,7 @@ try {
         webUrl: url,
         email,
         password: loginPassword,
+        testNow,
       })
     : undefined;
 
@@ -837,6 +840,7 @@ try {
       workspace: `${url}/entities/${fixture.entity.id}/books/${fixture.book.id}`,
       boards: demo?.boards,
       demoMode: demoHook,
+      testNow,
     }),
     { mode: 0o600 },
   );

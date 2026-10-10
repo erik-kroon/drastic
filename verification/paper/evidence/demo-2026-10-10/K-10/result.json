@@ -1,10 +1,10 @@
 {
   "scope": "K-10",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
-  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "referenceSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
-  "actualSha256": "7cc5ea49ee06c7ae257f6aa9a751de45854de1296ca7d8c859bac91b4eceed14",
-  "diffSha256": "c72ec4ea9ad7d52defdc4ceb6fcec7af2f972f412bb5c1b87ec34b1ba11482da",
+  "actualSha256": "ea0ee5b58a9d59b07d6a7c27f0558838de33db93451daa5899f83f1852d3da60",
+  "diffSha256": "f2c34439db3f26d33caaaa7fba56e1339e8aac74ddeb2fd67553d3252eb010ae",
   "sourceHashes": {
     "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
     "apps/web/src/components/work-home.tsx": "a950cfaade887b07aac7a2e792e14ecd533244698f8f087cfda433c3b789e0c1",
@@ -14,6 +14,7 @@
     "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
     "packages/ui/src/kanon/work-list.tsx": "a322d5bd969950767eb48d2be210c9dedee99f4151299f129fbe2cc5d721d38f",
     "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "packages/ui/src/kanon/record.tsx": "c213eb88dd91c17db8eed9315535dcb40891f35a34dae7607236db4929a1b66d",
     "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e"
   },
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output verification/paper/evidence/demo-2026-10-10/K-10",
@@ -42,8 +43,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
-    "time": "2026-10-10T11:06:21.698Z",
+    "time": "2026-10-10T12:11:31.261Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",
@@ -53,7 +55,7 @@
     }
   },
   "reviewer": "Automated capture; no human review or production qualification",
-  "difference": 0.03728395061728395,
+  "difference": 0.03377237654320988,
   "tolerance": 0.02,
   "channelTolerance": 16,
   "adoptedBy": "Erik Kroon",

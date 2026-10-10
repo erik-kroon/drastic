@@ -5,7 +5,9 @@
   "waitingItems": 1,
   "retainedBankRows": 1,
   "retainedClients": 1,
+  "applicationClock": "2026-10-02T06:54:00.000Z",
   "checks": [
+    "board application instant",
     "all waiting pages",
     "retained bank rows",
     "unchanged ledger"

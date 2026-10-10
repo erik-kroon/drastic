@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-20/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-20 --output verification/paper/evidence/demo-2026-10-10/K-20",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "sourceHashes": {
     "apps/web/src/components/banking-workspace.tsx": "ac13fc0ae9f3a43348f8a58bcd87fc983d1d2abb78db08603b801c0a56239416"
   },
@@ -30,8 +30,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/accounts",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-09-01&to=2026-10-03",
-    "time": "2026-10-10T11:06:34.618Z",
+    "time": "2026-10-10T12:15:02.994Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

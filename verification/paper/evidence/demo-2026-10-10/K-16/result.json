@@ -1,7 +1,7 @@
 {
   "scope": "K-16",
-  "sourceRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
-  "comparatorRevision": "9fd3d2678b223eebfc84c86a2315a6e97e8e9dad",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
+  "comparatorRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "referenceSha256": "e56e65143a26b9c1972d504772d7d69d6bfb9e471dda40e7eb4e05c709d5ad48",
   "actualSha256": "16ad32712b847186076ed8d0aa8aafd0dcf815fdcbdacba83e037b5741b2198a",
   "diffSha256": "5781c40f8eee9ac5dc67c5c98108cd05acc800d0cc2ea4d5dfa242dd06a1574b",
@@ -42,9 +42,10 @@
       "height": 900
     },
     "route": "/entities/$entityId/books/$bookId/books",
-    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_89a72c1e73cb4e61a2ad1309061502a5%252F%2522%257D%257D&record=voucher_54061a932f2948ea98180f4989323c08&returnSupplier=supplier_invoice_draft_6a451f78b8004d08a161c842fc8daabd&returnSupplierReview=supplier_review_c4ffade254fe4d49830707ef8a3ac592",
-    "time": "2026-10-10T11:56:56.727Z",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_f1850f7d53e243c893e03c072037b0e4%252F%2522%257D%257D&record=voucher_2206bbdfd2164906b4505e32e644d58b&returnSupplier=supplier_invoice_draft_d453c12953074afda09dd7cc345b42bf&returnSupplierReview=supplier_review_92a9b002cdb44fc299e7fd131b2009e5",
+    "time": "2026-10-10T12:14:57.850Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",

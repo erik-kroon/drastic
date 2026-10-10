@@ -3,6 +3,7 @@
   "synthetic": true,
   "clockPinned": false,
   "boardMoment": "2026-10-02T08:54:00+02:00",
+  "applicationClock": "2026-10-02T06:54:00.000Z",
   "limits": {
     "minorDigits": 38,
     "filename": 200,
@@ -16,7 +17,7 @@
     "firmClients": 200
   },
   "limitations": [
-    "No server/database test clock: ingestion, proposal, approval and receipt times remain real.",
+    "Effect application reads use the board instant; browser, database, ingestion, proposal, approval and receipt timestamps remain real.",
     "The bureau actor is Elin Sund; Sara Lind and illustrated agent activity are not fabricated.",
     "Board-only combined approval/posting, return and reject operations remain unsupported.",
     "Customer invoice is a synthetic register record backed by a posted receivable, not legal issuance.",
@@ -25,7 +26,7 @@
     "One operator can create at most 100 companies; stress portfolios retain those plus the provisioned synthetic book."
   ],
   "portfolio": {
-    "firmId": "firm_f21dbd4bfa2f46af8212ff964c23a69d",
+    "firmId": "firm_a5f557957ef64f8c805d25ec60c0c204",
     "retainedClients": 3
   },
   "bankRowCount": 2

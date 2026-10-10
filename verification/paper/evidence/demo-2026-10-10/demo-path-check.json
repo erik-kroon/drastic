@@ -1,7 +1,7 @@
 {
   "synthetic": true,
   "passed": true,
-  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_89a72c1e73cb4e61a2ad1309061502a5%252F%2522%257D%257D&record=voucher_54061a932f2948ea98180f4989323c08&returnSupplier=supplier_invoice_draft_6a451f78b8004d08a161c842fc8daabd&returnSupplierReview=supplier_review_c4ffade254fe4d49830707ef8a3ac592",
+  "route": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_948d2b4a5ce94ad9a8bd9cdfdbd6ffb4%252F%2522%257D%257D&record=voucher_ffb73c0a9acd4035abede7545134ea75&returnSupplier=supplier_invoice_draft_9fe36a62785144a3b8875d74cee606de&returnSupplierReview=supplier_review_17493a02a7ba401d956a120d4bc4fe4f",
   "checks": [
     "original independently checked",
     "uncropped original",
@@ -18,7 +18,8 @@
     "bank preparation and approval without allocation",
     "one exact negative125000 allocation leg",
     "bank execution retained after reload with zero remaining",
-    "overview shows retained bank balance and registered invoice coverage",
+    "overview at board instant excludes later posted movement and preserves registered invoice coverage",
+    "later bank cutoff includes the retained negative125000 movement",
     "bureau portfolio retains three permitted clients",
     "saved unknown remains unattempted",
     "continuation never changes posted history"
@@ -29,8 +30,9 @@
     "width": 532.078125,
     "available": 532
   },
+  "applicationClock": "2026-10-02T06:54:00.000Z",
   "continuation": {
-    "bankAllocationId": "bankplan_0f70c669ff524ed8ae364711654f7397",
+    "bankAllocationId": "bankplan_9fb77bba05af4ddd8ada9b90f7359419",
     "bankAmountMinor": "-125000",
     "retainedClients": 3,
     "retainedDeadlines": 0,
@@ -39,6 +41,7 @@
     "parityQualified": false,
     "limitations": [
       "Overview is a ledger balance and registered-invoice view, not the board's result/coverage read model.",
+      "Effect application clock is pinned; database and browser timestamps remain real. The bank movement is posted on October 3, after the board's October 2 cutoff.",
       "No illustrated deadlines, agent activity or complete source coverage are fabricated.",
       "Unknown is a saved unattempted preparation, not proof of uncertain execution."
     ]

@@ -1,7 +1,7 @@
 {
   "actual": "verification/paper/evidence/demo-2026-10-10/K-08/actual.png",
   "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output verification/paper/evidence/demo-2026-10-10/K-08",
-  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceRevision": "ee7b2b89028d390bf8e1c1cc3af32211e884b7d7",
   "sourceHashes": {
     "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598"
   },
@@ -30,8 +30,9 @@
     },
     "route": "/entities/$entityId/books/$bookId/overview",
     "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
-    "time": "2026-10-10T11:06:49.506Z",
+    "time": "2026-10-10T12:15:08.049Z",
     "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
     "fixture": {
       "synthetic": true,
       "mode": "demo",
