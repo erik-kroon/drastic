@@ -67,6 +67,16 @@ function consequenceAttachment(inputs: Consequence.CapturedTreatment[]) {
   };
 }
 
+function capturedVatCategory(review: typeof Acceptance.SupplierAcceptanceReview.Type) {
+  return review.originalLines?.[0]?.treatment.categoryResolution?.categoryId ?? "not_captured";
+}
+
+function appendMissingVatCategory(missingFacts: string[], inputs: Consequence.CapturedTreatment[]) {
+  if (inputs.length === 0 || inputs.some((capture) => capture.vat.category === null)) {
+    missingFacts.push("vat_category_not_captured");
+  }
+}
+
 function consequenceCaptures(
   action: typeof Accounting.VoucherPostingAction.Type,
   originalCommitCutoff: string,
@@ -79,11 +89,15 @@ function consequenceCaptures(
           accountId: line.expenseAccountId,
           deduction: line.treatment.deduction,
           resolvedRate: line.treatment.rate,
+          category: line.treatment.categoryResolution?.categoryId ?? null,
+          profileIdentity: line.treatment.categoryResolution?.ruleReleaseChecksum ?? null,
         }))
       : action.lines.map((line) => ({
           accountId: line.accountId,
           deduction: null,
           resolvedRate: null,
+          category: null,
+          profileIdentity: null,
         }));
 
   return accounts.map((account) => {
@@ -96,8 +110,10 @@ function consequenceCaptures(
       postingOn: action.postingDate,
       mapping: null,
       vat: {
-        category: null,
-        profileIdentity: witness?.family === "vat" ? witness.ruleReleaseChecksum : null,
+        category: account.category,
+        profileIdentity:
+          account.profileIdentity ??
+          (witness?.family === "vat" ? witness.ruleReleaseChecksum : null),
         resolvedRate: account.resolvedRate,
         deduction: account.deduction,
       },
@@ -226,11 +242,7 @@ const project = Effect.fn("decisionExamples.project")(function* (
   const evidence: Schema.JsonObject[] = [];
   const lineage: Schema.JsonObject[] = [];
 
-  const missingFacts = [
-    "historical_chart_universe_not_captured",
-    "vat_category_not_captured",
-    "statement_mapping_not_captured",
-  ];
+  const missingFacts = ["historical_chart_universe_not_captured", "statement_mapping_not_captured"];
 
   if (row.body.uncitedExposure === true) missingFacts.push("uncited_option_records_not_bound");
 
@@ -275,7 +287,7 @@ const project = Effect.fn("decisionExamples.project")(function* (
     chosenTreatment = yield* toJsonObject({
       journal: journal(action),
       reviewedTreatments: review.originalLines ?? [],
-      vatCategory: "not_captured",
+      vatCategory: capturedVatCategory(review),
     });
     consequenceInputs = consequenceCaptures(
       action,
@@ -377,6 +389,8 @@ const project = Effect.fn("decisionExamples.project")(function* (
       value: fieldValue(textField(selected, "fieldKey"), selected.selectedValue),
     });
   }
+
+  appendMissingVatCategory(missingFacts, consequenceInputs);
 
   const classification = yield* Schema.decodeUnknownEffect(Provenance.DecisionClassification)(
     row.classification,

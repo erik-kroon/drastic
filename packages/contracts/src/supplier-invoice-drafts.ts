@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import * as Drafts from "./invoice-drafts";
 import { accountingErrors } from "./accounting-errors";
+import { PurchaseCategoryResolution } from "./vat-purchase-categories";
 
 export const SupplierDraftContent = Schema.Struct({
   title: Drafts.DraftContent.fields.title,
@@ -124,6 +125,7 @@ export const SupplierAccountSuggestions = Schema.Struct({
       expenseAccountId: Accounting.Identifier,
       vatRatePercent: Schema.Literals([0, 6, 12, 25]),
       sourceInvoiceId: Accounting.Identifier,
+      categoryResolution: Schema.optional(PurchaseCategoryResolution),
     }),
   ).check(Schema.isMaxLength(5)),
 });

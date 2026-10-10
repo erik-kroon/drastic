@@ -704,15 +704,24 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
           command.counterpartyId,
         );
 
-        const items = rows.map((row) => ({
-          expenseAccountId: row.expenseAccountId,
-          vatRatePercent: row.vatRatePercent,
-          sourceInvoiceId: row.sourceInvoiceId,
-        }));
+        const items = rows.map((row) => {
+          const item: Pick<
+            DraftDb.SuggestionRow,
+            "expenseAccountId" | "vatRatePercent" | "sourceInvoiceId"
+          > & { categoryResolution?: Schema.JsonObject } = {
+            expenseAccountId: row.expenseAccountId,
+            vatRatePercent: row.vatRatePercent,
+            sourceInvoiceId: row.sourceInvoiceId,
+          };
+
+          if (row.categoryResolution !== null) item.categoryResolution = row.categoryResolution;
+
+          return item;
+        });
 
         const ranked = yield* Shared.decode(Provenance.SuggestionOptions, {
           source: "firm_memory_v0",
-          version: "supplier_account_history_v1",
+          version: "supplier_account_history_v2",
           options: items,
         });
 
@@ -730,11 +739,7 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
           draftRevision: command.draftRevision,
           scope: command.scope,
           counterpartyId: command.counterpartyId,
-          items: rows.map((row) => ({
-            expenseAccountId: row.expenseAccountId,
-            vatRatePercent: row.vatRatePercent,
-            sourceInvoiceId: row.sourceInvoiceId,
-          })),
+          items,
         });
       }),
     );

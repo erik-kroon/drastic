@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { FundingLegalForm, OwnerClassification } from "@open-erp/domain/owner-funding";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
@@ -21,7 +21,7 @@ export const OwnerPurchaseLine = Schema.Struct({
   expenseAccountId: Accounting.Identifier,
   netMinor: Accounting.MinorUnits,
   sourceTaxMinor: Accounting.MinorUnits,
-  treatment: Recognition.ReviewedTreatment,
+  treatment: Recognition.ExactReviewedTreatment,
 });
 
 // The reviewed source document facts an owner-paid purchase needs. Net and
@@ -284,39 +284,41 @@ export const OwnerPurchaseRecognitionView = Schema.Struct({
 
 const path = "/v1/entities/:entityId/books/:bookId/owner-operations";
 
-export const OwnerOperationsApi = HttpApiGroup.make("ownerOperations").add(
-  HttpApiEndpoint.post("ownersPrepareOperation", `${path}/reviews`, {
-    params: Accounting.Scope,
-    error: accountingErrors,
-    success: OwnerOperationReview,
-    headers: Accounting.IdempotencyHeaders,
-    payload: PrepareOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-  }),
-  HttpApiEndpoint.get("ownersGetOperation", `${path}/reviews/:id`, {
-    params: Accounting.ChangePath,
-    error: accountingErrors,
-    success: OwnerOperationView,
-  }),
-  HttpApiEndpoint.post("ownersApproveOperation", `${path}/reviews/:id/approvals`, {
-    params: Accounting.ChangePath,
-    error: accountingErrors,
-    success: OwnerOperationApproval,
-    headers: Accounting.IdempotencyHeaders,
-    payload: ApproveOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-  }),
-  HttpApiEndpoint.post("ownersExecuteOperation", `${path}/reviews/:id/execute`, {
-    params: Accounting.ChangePath,
-    error: accountingErrors,
-    success: OwnerOperationReceipt,
-    headers: Accounting.IdempotencyHeaders,
-    payload: ExecuteOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-  }),
-  HttpApiEndpoint.get("ownersGetPaidPurchase", `${path}/purchase-recognitions/:id`, {
-    params: Accounting.ChangePath,
-    error: accountingErrors,
-    success: OwnerPurchaseRecognitionView,
-  }),
-);
+export const OwnerOperationsApi = HttpApiGroup.make("ownerOperations")
+  .add(
+    HttpApiEndpoint.post("ownersPrepareOperation", `${path}/reviews`, {
+      params: Accounting.Scope,
+      error: accountingErrors,
+      success: OwnerOperationReview,
+      headers: Accounting.IdempotencyHeaders,
+      payload: PrepareOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    }),
+    HttpApiEndpoint.get("ownersGetOperation", `${path}/reviews/:id`, {
+      params: Accounting.ChangePath,
+      error: accountingErrors,
+      success: OwnerOperationView,
+    }),
+    HttpApiEndpoint.post("ownersApproveOperation", `${path}/reviews/:id/approvals`, {
+      params: Accounting.ChangePath,
+      error: accountingErrors,
+      success: OwnerOperationApproval,
+      headers: Accounting.IdempotencyHeaders,
+      payload: ApproveOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    }),
+    HttpApiEndpoint.post("ownersExecuteOperation", `${path}/reviews/:id/execute`, {
+      params: Accounting.ChangePath,
+      error: accountingErrors,
+      success: OwnerOperationReceipt,
+      headers: Accounting.IdempotencyHeaders,
+      payload: ExecuteOwnerOperation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    }),
+    HttpApiEndpoint.get("ownersGetPaidPurchase", `${path}/purchase-recognitions/:id`, {
+      params: Accounting.ChangePath,
+      error: accountingErrors,
+      success: OwnerPurchaseRecognitionView,
+    }),
+  )
+  .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" });
 
 // The approval is an operator-only HTTP command: it is deliberately absent from
 // this catalogue so no MCP or agent credential can mint an approval.

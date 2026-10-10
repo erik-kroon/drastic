@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
+import { PurchaseCategoryResolution } from "./vat-purchase-categories";
 
 export const PresentedSuggestionIds = Schema.optional(
   Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(32)),
@@ -31,12 +32,13 @@ export const DecisionSubject = Schema.Union([
 export const SuggestionOptions = Schema.Union([
   Schema.Struct({
     source: Schema.Literal("firm_memory_v0"),
-    version: Schema.Literal("supplier_account_history_v1"),
+    version: Schema.Literals(["supplier_account_history_v1", "supplier_account_history_v2"]),
     options: Schema.Array(
       Schema.Struct({
         expenseAccountId: Accounting.Identifier,
         vatRatePercent: Schema.Literals([0, 6, 12, 25]),
         sourceInvoiceId: Accounting.Identifier,
+        categoryResolution: Schema.optional(PurchaseCategoryResolution),
       }),
     ).check(Schema.isMaxLength(5)),
   }),

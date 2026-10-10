@@ -8,6 +8,7 @@ import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as PostingDb from "../../db/posting";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import { requireCapturedPurchaseCategories } from "./vat-categories";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Effect from "effect/Effect";
 import { readDraftAdoption, readCashOriginalAdoption } from "../../db/commerce/cash-invoices";
@@ -261,6 +262,7 @@ function purchaseRecognition(
     );
 
     const compiled = yield* Recognition.compilePurchasePlan(transaction, scope, {
+      allowPurchaseCategory: true,
       recognitionId,
       book,
       content,
@@ -841,6 +843,11 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
     }
 
     const proposal = yield* Shared.decode(ReviewSchema, review.body);
+    yield* requireCapturedPurchaseCategories(
+      transaction,
+      command.scope.bookId,
+      (proposal.originalLines ?? []).map((line) => line.treatment),
+    );
     yield* requireResolvedSupplierQuestions(transaction, command.scope, proposal.input.draftId);
 
     const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
@@ -1125,6 +1132,11 @@ export const executeAcceptanceInTransaction = Effect.fn(
     yield* readBook(transaction, scope.bookId);
     const row = yield* readReview(transaction, scope.bookId, reviewId);
     const review = yield* Shared.decode(ReviewSchema, row.body);
+    yield* requireCapturedPurchaseCategories(
+      transaction,
+      scope.bookId,
+      (review.originalLines ?? []).map((line) => line.treatment),
+    );
     yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
 
     if (

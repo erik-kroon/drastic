@@ -215,6 +215,21 @@ export function insertFactComponent(
   );
 }
 
+export function readIndependentFactRevision(
+  transaction: Transaction,
+  bookId: string,
+  revisionId: string,
+) {
+  return transaction.execute<FactRevisionRow>(
+    sql`
+    select id, revision, body from openerp.vat_fact_revisions
+    where book_id = ${bookId} and id = ${revisionId}
+    for share
+  `,
+    "objects",
+  );
+}
+
 export function readCurrentFactRevision(
   transaction: Transaction,
   bookId: string,
