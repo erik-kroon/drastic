@@ -883,3 +883,139 @@ test("bank request driver refreshes equal options once and refuses changed optio
     }
   }
 }, 60_000);
+
+test("bank exposure equivalent options across revisions remain cited but changed options stay unknown", async () => {
+  const observations = [];
+
+  for (const mode of ["changed", "unchanged"] as const) {
+    const setup = await bankFixture(2);
+    const discovery = { statementId: setup.statementId, rowOrdinal: 2 };
+
+    const old = await post(
+      setup.book,
+      "/bank-match-candidates",
+      discovery,
+      Candidates.BankMatchCandidates,
+    );
+
+    if (mode === "changed") {
+      const first = await post(
+        setup.book,
+        "/bank-match-candidates",
+        { ...discovery, rowOrdinal: 1 },
+        Candidates.BankMatchCandidates,
+      );
+
+      const consumed = first.candidates[0]!;
+
+      await post(
+        setup.book,
+        "/bank-matches",
+        {
+          statementId: setup.statementId,
+          rowOrdinal: 1,
+          voucherId: consumed.voucherId,
+          lineId: consumed.lineId,
+          presentedSuggestionIds: [first.suggestionRecordId],
+        },
+        Bank.BankMatchReceipt,
+      );
+    } else await advanceBankSource(setup.book);
+
+    const fresh = await post(
+      setup.book,
+      "/bank-match-candidates",
+      discovery,
+      Candidates.BankMatchCandidates,
+    );
+
+    const selected = fresh.candidates.find((candidate) => candidate.eligible)!;
+
+    const input = {
+      ...discovery,
+      voucherId: selected.voucherId,
+      lineId: selected.lineId,
+    };
+
+    await failure(
+      await request(setup.book, "/bank-matches", {
+        method: "POST",
+        body: JSON.stringify({ ...input, presentedSuggestionIds: [old.suggestionRecordId] }),
+      }),
+      409,
+      "StaleDependency",
+    );
+
+    if (mode === "unchanged") {
+      const otherSubject = await post(
+        setup.book,
+        "/bank-match-candidates",
+        { ...discovery, rowOrdinal: 1 },
+        Candidates.BankMatchCandidates,
+      );
+
+      expect(otherSubject.optionSetDigest).toBe(fresh.optionSetDigest);
+      await failure(
+        await request(setup.book, "/bank-matches", {
+          method: "POST",
+          body: JSON.stringify({
+            ...input,
+            presentedSuggestionIds: [otherSubject.suggestionRecordId],
+          }),
+        }),
+        403,
+        "Forbidden",
+      );
+    }
+
+    const receipt = await post(
+      setup.book,
+      "/bank-matches",
+      { ...input, presentedSuggestionIds: [fresh.suggestionRecordId] },
+      Bank.BankMatchReceipt,
+    );
+
+    const admin = await database();
+    let captures;
+
+    try {
+      captures = (
+        await admin.query(
+          `SELECT id, actor_id, session_id, subject_identity, subject_digest,
+            body->>'optionSetDigest' AS option_set_digest
+          FROM openerp.suggestion_records WHERE book_id=$1 AND id IN ($2,$3) ORDER BY id`,
+          [setup.book.bookId, old.suggestionRecordId, fresh.suggestionRecordId],
+        )
+      ).rows;
+    } finally {
+      await admin.end();
+    }
+
+    const oldCapture = captures.find((capture) => capture.id === old.suggestionRecordId)!;
+    const freshCapture = captures.find((capture) => capture.id === fresh.suggestionRecordId)!;
+    const provenance = await provenanceRows(setup.book);
+
+    const decision = provenance.find(
+      (row) => row.decision_id === `${setup.statementId}:2` && row.decision_kind === "bank_match",
+    )!;
+
+    observations.push({ mode, receipt, captures, provenance });
+    await writeFile(
+      join(environment().artifacts, "exposure-equivalence.json"),
+      JSON.stringify(observations, null, 2),
+    );
+
+    expect(oldCapture.subject_identity).toBe(freshCapture.subject_identity);
+    expect(oldCapture.subject_digest).not.toBe(freshCapture.subject_digest);
+    expect(oldCapture.actor_id).toBe(freshCapture.actor_id);
+    expect(oldCapture.session_id).toBe(freshCapture.session_id);
+
+    if (mode === "unchanged") {
+      expect(oldCapture.option_set_digest).toBe(freshCapture.option_set_digest);
+      expect(decision.classification).toBe("accepted_unchanged");
+    } else {
+      expect(oldCapture.option_set_digest).not.toBe(freshCapture.option_set_digest);
+      expect(decision.classification).toBe("unknown_exposure");
+    }
+  }
+}, 60_000);

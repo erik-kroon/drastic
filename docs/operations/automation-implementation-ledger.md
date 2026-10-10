@@ -217,3 +217,9 @@ The retained failure in `test-results/pr20-bank-freshness-before` returned Forbi
 Two focused real HTTP workflows passed in `test-results/pr20-bank-freshness-resumed`; all three retry outcomes are retained. Changed-file checks passed before source integration. [Evidence](../../verification/bank-citation-freshness/README.md) records the before, intermediate invalid fixture and final run. Browser storage, screen rendering and visual parity remain unverified. Clean committed full/owners/design and MCP checks are pending. Exposure equivalence remains the next unit.
 
 Clean committed HEAD `af7efe1` against main `4380287` passed full changed checks, owners (55/55), design contract, deterministic MCP (3/3) and pinned Luna MCP evaluation (1/1). Tracked status remained clean. MCP artifacts are `test-results/pr20-bank-mcp` and `test-results/mcpjam/844d91a8-a2a5-49c5-b46b-ad525b660fdd`. The design check measured zero matching screens and is not visual evidence. The source is ready for the next review unit, exposure equivalence.
+
+## PR #20 exposure-equivalence checkpoint
+
+Owner review item 7 compares earlier suggestion exposure using the stable subject identity and option-set digest for the same actor and book. Direct citation authorization still rejects foreign identity and stale revisions. A changed option set still yields unknown exposure. No historical decision is rewritten.
+
+The reproducing HTTP E2E failed before the SQL change; three selected workflows passed afterward, including unequal options and existing authorization/freshness boundaries. Evidence is retained in `verification/exposure-equivalence/`. Changed-file checks passed. Clean-commit qualification is recorded separately; this does not establish model or representative accounting accuracy. The remaining state-limit failure specification now uses the owner's 24,576-token hosted Clef-flash window and the complete request.

@@ -53,8 +53,8 @@ These cases precede the PR 19 follow-up implementation. Use isolated synthetic b
 
 ## Model state limits
 
-- Pinned hosted Clef uses 64,000 input tokens and hosted Clef-flash uses 24,000; self-hosted limits are explicit configuration.
-- UTF-8 bytes of state plus questions exceeding the pinned limit return local `state_limit` with zero provider calls. Multibyte Swedish text exercises byte accounting.
+- Pinned hosted Clef uses 64,000 input tokens and hosted Clef-flash uses 24,576; self-hosted limits are explicit configuration.
+- Conservative UTF-8 bytes of the complete request exceeding the pinned limit return local `state_limit` with zero provider calls. Multibyte Swedish text exercises byte accounting.
 - A response reporting `usage.input_tokens` at or above the limit is refused, even if its distribution otherwise validates.
 - Missing or invalid required self-hosted limits cannot enable a provider. A limit is part of retained release/configuration evidence.
 
