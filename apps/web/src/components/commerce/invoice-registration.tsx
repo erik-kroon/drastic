@@ -33,7 +33,14 @@ export function InvoiceRegistration(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${commercePath(props.book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.commerce.commerceListCounterparties({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceListCounterparties,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Commerce.CounterpartyPage,
         { signal },
       );

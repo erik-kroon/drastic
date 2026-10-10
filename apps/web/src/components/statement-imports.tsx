@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -20,7 +22,7 @@ import { SourceWorkspace } from "./source-intake/workspace";
 import { AccountingStatus } from "./accounting-status";
 import { checkScope } from "./commerce/shared";
 import { useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 
 export function statementImportsOptions(book: typeof Accounting.Book.Type) {
   return infiniteQueryOptions({
@@ -28,7 +30,14 @@ export function statementImportsOptions(book: typeof Accounting.Book.Type) {
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/source-occurrences${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.sourceIntake.listSourceOccurrences({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.listSourceOccurrences,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Sources.SourceInventory,
         { signal },
       );

@@ -25,12 +25,15 @@ export function bookKey(book: typeof Accounting.Book.Type) {
 }
 
 export async function readAccounting<S extends Schema.Top & { readonly DecodingServices: never }>(
-  path: string | ((client: AccountingClient) => Effect.Effect<S["Type"], unknown>),
+  path:
+    | string
+    | ((client: AccountingClient, options: RequestInit) => Effect.Effect<S["Type"], unknown>),
   schema: S,
   options?: RequestInit,
   timeoutMs = 20_000,
 ): Promise<S["Type"]> {
-  if (typeof path === "function") return runAccountingClient(path, options, timeoutMs);
+  if (typeof path === "function")
+    return runAccountingClient((client) => path(client, options ?? {}), options, timeoutMs);
 
   const headers = new Headers(options?.headers);
   headers.set("Content-Type", "application/json");

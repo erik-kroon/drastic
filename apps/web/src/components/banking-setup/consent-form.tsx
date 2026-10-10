@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useForm } from "@tanstack/react-form";
@@ -27,7 +29,14 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
   const save = useMutation({
     mutationFn: async (input: typeof Connector.SaveConnectorConsent.Type) => {
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.bankConnector.saveConnectorConsent(
+            httpRequest(
+              Api.groups.bankConnector.endpoints.saveConnectorConsent,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Connector.ConnectorConsent,
         keys.current.options(path, JSON.stringify(input)),
       );

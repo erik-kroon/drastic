@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -209,7 +211,14 @@ export function SupplierInbox(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) =>
       readAccounting(
-        `${path}${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.supplierInbox.listSupplierInboxes({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.supplierInbox.endpoints.listSupplierInboxes,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Inbox.SupplierInboxPage,
         { signal },
       ),
@@ -226,7 +235,8 @@ export function SupplierInbox(
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${path}/${encodeURIComponent(id)}`,
+        (client) =>
+          client.supplierInbox.getSupplierInbox({ params: { ...bookScope(book), id: id } }),
         Inbox.SupplierInboxView,
         { signal },
       );
@@ -248,7 +258,14 @@ export function SupplierInbox(
       });
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.supplierInbox.registerSupplierInbox(
+            httpRequest(
+              Api.groups.supplierInbox.endpoints.registerSupplierInbox,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Inbox.SupplierInboxView,
         keys.current.options(path, JSON.stringify(input)),
       );

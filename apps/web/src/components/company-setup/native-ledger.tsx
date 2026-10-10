@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -44,7 +45,14 @@ export function NativeLedgerSetup() {
   const save = useMutation({
     mutationFn: (input: typeof Setup.InitializeNativeLedger.Type) =>
       readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.companySetup.initializeNativeLedger(
+            httpRequest(
+              Api.groups.companySetup.endpoints.initializeNativeLedger,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Setup.NativeLedgerSetup,
         keys.current.options(path, JSON.stringify(input)),
       ),

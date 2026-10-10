@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -36,12 +38,15 @@ function Panel({ book, setup, locale }: Props) {
   const [id, setId] = useState("");
   const [creating, setCreating] = useState<"basis" | "snapshot" | null>(null);
   const [invalid, setInvalid] = useState(false);
-  const base = `${bookPath(book)}/subledger-controls`;
 
   const bases = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "bases"],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(`${base}/bases`, Controls.SubledgerBasisList, { signal });
+      const result = await readAccounting(
+        (client) => client.subledgerControls.listSubledgerBases({ params: { ...bookScope(book) } }),
+        Controls.SubledgerBasisList,
+        { signal },
+      );
 
       if (
         result.scope.bookId !== book.id ||
@@ -60,9 +65,14 @@ function Panel({ book, setup, locale }: Props) {
   const snapshots = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "snapshots"],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(`${base}/snapshots`, Controls.SubledgerControlList, {
-        signal,
-      });
+      const result = await readAccounting(
+        (client) =>
+          client.subledgerControls.listSubledgerControls({ params: { ...bookScope(book) } }),
+        Controls.SubledgerControlList,
+        {
+          signal,
+        },
+      );
 
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Control inventory scope mismatch");
@@ -219,7 +229,14 @@ function CaptureControl({
       const path = `${bookPath(book)}/subledger-controls/snapshots`;
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.subledgerControls.createSubledgerControl(
+            httpRequest(
+              Api.groups.subledgerControls.endpoints.createSubledgerControl,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Controls.SubledgerControl,
         keys.current.options(path, JSON.stringify(input)),
       );

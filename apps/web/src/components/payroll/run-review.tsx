@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +31,14 @@ export function PayrollRunReview(props: {
     queryKey,
     retry: false,
     queryFn: async ({ signal }) => {
-      const saved = await readAccounting(root, Runs.PayrollRunView, { signal });
+      const saved = await readAccounting(
+        (client) =>
+          client.payrollRun.getPayrollRun({
+            params: { ...bookScope(props.book), runId: props.runId },
+          }),
+        Runs.PayrollRunView,
+        { signal },
+      );
 
       if (
         saved.run.id !== props.runId ||
@@ -50,7 +59,14 @@ export function PayrollRunReview(props: {
       const path = `${root}/approvals`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.payrollRun.approvePayrollRun(
+            httpRequest(
+              Api.groups.payrollRun.endpoints.approvePayrollRun,
+              { params: { ...bookScope(props.book), runId: props.runId } },
+              requestOptions,
+            ),
+          ),
         Runs.PayrollRunApproval,
         mutationOptions(path, JSON.stringify({ runDigest: run.digest }), keys),
       );
@@ -77,7 +93,14 @@ export function PayrollRunReview(props: {
       const path = `${root}/executions`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.payrollRun.executePayrollRun(
+            httpRequest(
+              Api.groups.payrollRun.endpoints.executePayrollRun,
+              { params: { ...bookScope(props.book), runId: props.runId } },
+              requestOptions,
+            ),
+          ),
         Runs.PayrollRunExecution,
         mutationOptions(
           path,

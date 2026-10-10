@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useId, useState } from "react";
@@ -71,7 +73,14 @@ export function BankImport({
       const evidencePath = `${bookPath(book)}/evidence`;
 
       const evidence = await readAccounting(
-        evidencePath,
+        (client, requestOptions) =>
+          client.accounting.createEvidence(
+            httpRequest(
+              Api.groups.accounting.endpoints.createEvidence,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Accounting.Evidence,
         keys.current.options(evidencePath, JSON.stringify(draft.evidence)),
       );
@@ -85,7 +94,14 @@ export function BankImport({
       });
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reconciliation.importBankStatement(
+            httpRequest(
+              Api.groups.reconciliation.endpoints.importBankStatement,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Bank.StatementImportReceipt,
         keys.current.options(path, JSON.stringify(payload)),
       );

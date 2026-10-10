@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import * as Schema from "effect/Schema";
@@ -97,7 +99,12 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
   const list = useQuery(
     queryOptions({
       queryKey: key,
-      queryFn: ({ signal }) => readAccounting(path, Deadlines.DeadlineList, { signal }),
+      queryFn: ({ signal }) =>
+        readAccounting(
+          (client) => client.deadlines.listDeadlines({ params: { ...bookScope(book) } }),
+          Deadlines.DeadlineList,
+          { signal },
+        ),
     }),
   );
 
@@ -110,7 +117,18 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
         input,
       });
 
-      return readAccounting(target, Deadlines.Deadline, mutationKeys.current.options(target, body));
+      return readAccounting(
+        (client, requestOptions) =>
+          client.deadlines.saveDeadline(
+            httpRequest(
+              Api.groups.deadlines.endpoints.saveDeadline,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
+        Deadlines.Deadline,
+        mutationKeys.current.options(target, body),
+      );
     },
     onSuccess: async () => {
       setError(null);
@@ -125,7 +143,18 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
 
       const body = JSON.stringify({ action: "dismiss_reminder" });
 
-      return readAccounting(target, Deadlines.Deadline, mutationKeys.current.options(target, body));
+      return readAccounting(
+        (client, requestOptions) =>
+          client.deadlines.deadlineActivity(
+            httpRequest(
+              Api.groups.deadlines.endpoints.deadlineActivity,
+              { params: { ...bookScope(book), id: item.id } },
+              requestOptions,
+            ),
+          ),
+        Deadlines.Deadline,
+        mutationKeys.current.options(target, body),
+      );
     },
     onSuccess: async () => {
       setError(null);
@@ -138,9 +167,14 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
     mutationFn: async () => {
       const next = crypto.randomUUID();
 
-      const data = await readAccounting(`${path}/feeds/${next}`, Deadlines.DeadlineFeed, {
-        method: "POST",
-      });
+      const data = await readAccounting(
+        (client) =>
+          client.deadlines.createDeadlineFeed({ params: { ...bookScope(book), id: next } }),
+        Deadlines.DeadlineFeed,
+        {
+          method: "POST",
+        },
+      );
 
       return { id: next, secret: data.secret };
     },
@@ -157,7 +191,14 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
       const target = `${path}/feeds/${encodeURIComponent(feedId)}/revoke`;
 
       return readAccounting(
-        target,
+        (client, requestOptions) =>
+          client.deadlines.revokeDeadlineFeed(
+            httpRequest(
+              Api.groups.deadlines.endpoints.revokeDeadlineFeed,
+              { params: { ...bookScope(book), id: feedId } },
+              requestOptions,
+            ),
+          ),
         Deadlines.RevokedDeadlineFeed,
         mutationKeys.current.options(target, "{}"),
       );

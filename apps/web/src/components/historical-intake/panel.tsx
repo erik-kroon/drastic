@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 
 import { HistoricalAdoptionDirectory } from "./adoption-workspace";
 import { useForm } from "@tanstack/react-form";
@@ -121,9 +122,14 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
     queryKey: [...bookKey(book), "sie-preview-inventory", source],
     retry: false,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(`${sourcePath}/sie-previews`, Sie.SiePreviewInventory, {
-        signal,
-      });
+      const result = await readAccounting(
+        (client) =>
+          client.sieImport.listSieSourcePreviews({ params: { ...bookScope(book), id: source } }),
+        Sie.SiePreviewInventory,
+        {
+          signal,
+        },
+      );
 
       checkScope(book, result.scope);
 
@@ -138,7 +144,10 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${sourcePath}/metadata`,
+        (client) =>
+          client.sourceIntake.getSourceOccurrenceMetadata({
+            params: { ...bookScope(book), id: source },
+          }),
         Sources.SourceOccurrenceMetadata,
         { signal },
       );
@@ -154,7 +163,14 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
   const capture = useMutation({
     mutationFn: (encoding: typeof Encoding.Type) =>
       readAccounting(
-        `${sourcePath}/sie-previews`,
+        (client, requestOptions) =>
+          client.sieImport.captureSieSource(
+            httpRequest(
+              Api.groups.sieImport.endpoints.captureSieSource,
+              { params: { ...bookScope(book), id: source } },
+              requestOptions,
+            ),
+          ),
         Sie.SiePreview,
         keys.current.options(`${sourcePath}/sie-previews`, JSON.stringify({ encoding })),
       ),

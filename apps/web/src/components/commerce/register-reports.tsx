@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useRef, useState, type ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reports from "@open-erp/contracts/register-reports";
@@ -47,7 +48,14 @@ export function RegisterReports(
         (firstCursor.current.version === inventoryVersion ? firstCursor.current.value : "");
 
       const result = await readAccounting(
-        `${commercePath(book)}/register-snapshots${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`,
+        (client) =>
+          client.registerReports.listRegisterReports({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.registerReports.endpoints.listRegisterReports,
+              `${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`,
+            ),
+          }),
         Reports.RegisterReportPage,
         { signal },
       );

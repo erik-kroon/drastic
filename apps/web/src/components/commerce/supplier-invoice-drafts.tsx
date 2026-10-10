@@ -39,14 +39,7 @@ import {
   supplierAcceptanceSelection,
   useSupplierAcceptanceHistory,
 } from "./supplier-acceptance";
-import {
-  Details,
-  Facts,
-  checkScope,
-  commerceKey,
-  commercePath,
-  type CommerceProps,
-} from "./shared";
+import { Details, Facts, checkScope, commerceKey, type CommerceProps } from "./shared";
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
 
@@ -300,7 +293,14 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
     queryKey: [...commerceKey(props.book), "supplier-invoice-draft", props.id, revision],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-invoice-drafts/${encodeURIComponent(props.id)}${revision ? `?revision=${encodeURIComponent(revision)}` : ""}`,
+        (client) =>
+          client.supplierInvoiceDrafts.getSupplierInvoiceDraft({
+            params: { ...bookScope(props.book), id: props.id },
+            query: httpQuery(
+              Api.groups.supplierInvoiceDrafts.endpoints.getSupplierInvoiceDraft,
+              `${revision ? `?revision=${encodeURIComponent(revision)}` : ""}`,
+            ),
+          }),
         Suppliers.SupplierInvoiceDraftView,
         { signal },
       );

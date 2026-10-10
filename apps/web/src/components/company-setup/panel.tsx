@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Match from "effect/Match";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -124,7 +125,18 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
 
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.SaveCompanySetup.Type) =>
-      readAccounting(path, Setup.CompanySetup, keys.current.options(path, JSON.stringify(input))),
+      readAccounting(
+        (client, requestOptions) =>
+          client.companySetup.saveCompanySetup(
+            httpRequest(
+              Api.groups.companySetup.endpoints.saveCompanySetup,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
+        Setup.CompanySetup,
+        keys.current.options(path, JSON.stringify(input)),
+      ),
     onSuccess: async (result) => {
       cache.setQueryData([...bookKey(book), "company-setup"], result);
       await cache.invalidateQueries({ queryKey: booksKey });
@@ -134,7 +146,11 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
   const steps = [copy.identity, copy.accounting, copy.history, copy.banking, copy.review];
 
   const reload = useMutation({
-    mutationFn: () => readAccounting(path, Setup.CompanySetup),
+    mutationFn: () =>
+      readAccounting(
+        (client) => client.companySetup.getCompanySetup({ params: { ...bookScope(book) } }),
+        Setup.CompanySetup,
+      ),
     onSuccess: (current) => {
       cache.setQueryData([...bookKey(book), "company-setup"], current);
       form.reset(current.details);

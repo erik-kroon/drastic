@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { HistoricalBases } from "./basis";
 import { AdmitOpenItems } from "./admission";
 
@@ -26,7 +27,11 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
     queryKey,
     retry: false,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Sie.SieRun, { signal });
+      const result = await readAccounting(
+        (client) => client.sieImport.getSieSourceRun({ params: { ...bookScope(book), id: id } }),
+        Sie.SieRun,
+        { signal },
+      );
 
       if (result.id !== id || result.planId !== plan.id || result.planDigest !== plan.digest)
         throw new Error("SIE run identity mismatch");
@@ -58,7 +63,14 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
   const advance = useMutation({
     mutationFn: (input: { fence: string; planDigest: string; firstOrdinal: number }) =>
       readAccounting(
-        `${path}/chunks`,
+        (client, requestOptions) =>
+          client.sieImport.advanceSieSourceRun(
+            httpRequest(
+              Api.groups.sieImport.endpoints.advanceSieSourceRun,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Sie.SieChunk,
         keys.current.options(`${path}/chunks`, JSON.stringify(input)),
       ),
@@ -68,7 +80,14 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
   const lease = useMutation({
     mutationFn: (action: "pause" | "resume") =>
       readAccounting(
-        `${path}/lease`,
+        (client, requestOptions) =>
+          client.sieImport.reclaimSieSourceRun(
+            httpRequest(
+              Api.groups.sieImport.endpoints.reclaimSieSourceRun,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Sie.SieFence,
         keys.current.options(`${path}/lease`, JSON.stringify({ action })),
       ),

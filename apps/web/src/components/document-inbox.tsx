@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -731,7 +732,14 @@ export function DocumentUpload({
       const path = `${bookPath(book)}/source-occurrences`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.sourceIntake.retainSource(
+            httpRequest(
+              Api.groups.sourceIntake.endpoints.retainSource,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Sources.SourceOccurrence,
         keys.current.options(path, JSON.stringify(input)),
       );

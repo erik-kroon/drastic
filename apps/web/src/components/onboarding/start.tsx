@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,7 +46,14 @@ export function OnboardingStart({
   const mutation = useMutation({
     mutationFn: (input: typeof Onboarding.StartOnboarding.Type) =>
       readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.onboarding.startOnboarding(
+            httpRequest(
+              Api.groups.onboarding.endpoints.startOnboarding,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Onboarding.OnboardingCase,
         keys.current.options(path, JSON.stringify(input)),
       ),

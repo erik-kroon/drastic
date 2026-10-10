@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { personName, type Lifecycle } from "./lifecycle";
 import * as Predicate from "effect/Predicate";
 import * as Match from "effect/Match";
@@ -411,7 +412,14 @@ function FactEditor({
       const path = `${bookPath(book)}/evidence`;
 
       const evidence = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.createEvidence(
+            httpRequest(
+              Api.groups.accounting.endpoints.createEvidence,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Accounting.Evidence,
         keys.current.options(
           path,
@@ -432,7 +440,14 @@ function FactEditor({
       const factPath = `${bookPath(book)}/company-facts`;
 
       return readAccounting(
-        factPath,
+        (client, requestOptions) =>
+          client.companyProfile.recordCompanyFact(
+            httpRequest(
+              Api.groups.companyProfile.endpoints.recordCompanyFact,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Profiles.FactRevision,
         keys.current.options(factPath, JSON.stringify(command)),
       );

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useRef, useState } from "react";
@@ -36,7 +38,18 @@ export function SiePanel({
 
   const prepare = useMutation({
     mutationFn: (input: typeof Sie.PrepareSie.Type) =>
-      readAccounting(path, Sie.SieView, keys.current.options(path, JSON.stringify(input))),
+      readAccounting(
+        (client, requestOptions) =>
+          client.sie.prepareSie(
+            httpRequest(
+              Api.groups.sie.endpoints.prepareSie,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
+        Sie.SieView,
+        keys.current.options(path, JSON.stringify(input)),
+      ),
     onSuccess: async (view) => {
       if (
         view.capture.scope.bookId !== book.id ||
@@ -70,7 +83,14 @@ export function SiePanel({
         "";
 
       const result = await readAccounting(
-        `${path}${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`,
+        (client) =>
+          client.sie.listSie({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.sie.endpoints.listSie,
+              `${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`,
+            ),
+          }),
         Sie.SieList,
         { signal },
       );
@@ -242,13 +262,16 @@ function SieInspector({
 }) {
   const copy = sieCopy(locale);
   const queryClient = useQueryClient();
-  const path = `${bookPath(book)}/sie-transfers/${encodeURIComponent(id)}`;
 
   const view = useQuery({
     queryKey: [...bookKey(book), "sie", id],
     retry: false,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Sie.SieView, { signal });
+      const result = await readAccounting(
+        (client) => client.sie.getSie({ params: { ...bookScope(book), id: id } }),
+        Sie.SieView,
+        { signal },
+      );
 
       if (
         result.capture.id !== id ||
@@ -262,7 +285,12 @@ function SieInspector({
   });
 
   const resume = useMutation({
-    mutationFn: () => readAccounting(`${path}/render`, Sie.SieView, { method: "POST" }),
+    mutationFn: () =>
+      readAccounting(
+        (client) => client.sie.resumeSie({ params: { ...bookScope(book), id: id } }),
+        Sie.SieView,
+        { method: "POST" },
+      ),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: [...bookKey(book), "sie", id] }),

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
 import * as Schema from "effect/Schema";
@@ -41,7 +42,10 @@ export function useMileageCorrection(proposalId: string) {
     refetchInterval: 2_000,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${root}/${encodeURIComponent(proposalId)}`,
+        (client) =>
+          client.mileageCorrections.getMileageCorrection({
+            params: { ...bookScope(book), proposalId: proposalId },
+          }),
         Mileage.MileageCorrectionView,
         { signal },
       );

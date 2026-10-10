@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,7 +50,14 @@ export function CaptureCashForecast({
         const path = `${bookPath(book)}/evidence`;
 
         const evidence = await readAccounting(
-          path,
+          (client, requestOptions) =>
+            client.accounting.createEvidence(
+              httpRequest(
+                Api.groups.accounting.endpoints.createEvidence,
+                { params: { ...bookScope(book) } },
+                requestOptions,
+              ),
+            ),
           Accounting.Evidence,
           keys.current.options(
             path,
@@ -84,7 +93,14 @@ export function CaptureCashForecast({
       const path = `${bookPath(book)}/cash-forecasts`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.cashForecast.captureCashForecast(
+            httpRequest(
+              Api.groups.cashForecast.endpoints.captureCashForecast,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Cash.CashForecastSnapshot,
         keys.current.options(path, JSON.stringify(input)),
       );

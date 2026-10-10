@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -183,7 +184,14 @@ function RunCommands({
       const path = `${bookPath(book)}/preparation-runs/${encodeURIComponent(run.id)}/advance`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.advancePreparationRun(
+            httpRequest(
+              Api.groups.automation.endpoints.advancePreparationRun,
+              { params: { ...bookScope(book), id: run.id } },
+              requestOptions,
+            ),
+          ),
         Automation.PreparationRun,
         keys.current.options(path, JSON.stringify(payload)),
       );

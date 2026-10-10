@@ -1,10 +1,12 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Claims from "@open-erp/contracts/employee-claims";
 import { Button } from "@open-erp/ui/components/button";
 import { RegisterGroup, RegisterRow } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 
@@ -19,7 +21,14 @@ export function EmployeeClaimDirectory() {
     gcTime: 0,
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/payroll/claims${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.employeeClaims.listEmployeeClaims({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.employeeClaims.endpoints.listEmployeeClaims,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Claims.EmployeeClaimDirectory,
         { signal },
       );

@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useForm } from "@tanstack/react-form";
@@ -25,7 +27,10 @@ export function CreateCompany({ locale, onClose }: { locale: Locale; onClose: ()
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.CreateCompany.Type) =>
       readAccounting(
-        "/api/v1/companies",
+        (client, requestOptions) =>
+          client.companySetup.createCompany(
+            httpRequest(Api.groups.companySetup.endpoints.createCompany, {}, requestOptions),
+          ),
         Setup.CompanySetup,
         keys.current.options("/api/v1/companies", JSON.stringify(input)),
       ),

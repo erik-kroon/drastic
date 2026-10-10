@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Workspace from "@open-erp/contracts/workspace";
@@ -129,7 +131,14 @@ function WorkQuestionsPanel(props: QuestionProps) {
     queryKey: [...bookKey(book), "work-questions", target],
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/workspace/questions/read`,
+        (client, requestOptions) =>
+          client.workspace.readWorkQuestions(
+            httpRequest(
+              Api.groups.workspace.endpoints.readWorkQuestions,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Workspace.WorkQuestionsView,
         { method: "POST", body: JSON.stringify(target), signal },
       );

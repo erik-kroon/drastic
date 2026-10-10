@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +9,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
 
@@ -28,7 +29,14 @@ export function PostingRecoveryPanel({
     queryKey: [...bookKey(book), "posting-recovery", "list", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/posting-recovery${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.postingRecovery.listPostingRecovery({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.postingRecovery.endpoints.listPostingRecovery,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Recovery.RecoveryList,
         { signal },
       ),

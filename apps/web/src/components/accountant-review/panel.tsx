@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -121,7 +122,14 @@ function PreparePack({
       const reportPath = `${bookPath(book)}/report-snapshots`;
 
       const report = await readAccounting(
-        reportPath,
+        (client, requestOptions) =>
+          client.reports.prepareReport(
+            httpRequest(
+              Api.groups.reports.endpoints.prepareReport,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reports.ReportSnapshot,
         keys.current.options(
           reportPath,
@@ -151,7 +159,14 @@ function PreparePack({
       };
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accountantReview.prepareReviewPack(
+            httpRequest(
+              Api.groups.accountantReview.endpoints.prepareReviewPack,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Review.ReviewPackView,
         keys.current.options(path, JSON.stringify(input)),
       );
@@ -316,7 +331,14 @@ function RetainedPacks({
     retry: false,
     queryFn: ({ pageParam, signal }) =>
       readAccounting(
-        `${bookPath(book)}/accountant-review-packs${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.accountantReview.listReviewPacks({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.accountantReview.endpoints.listReviewPacks,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Review.ReviewPackList,
         { signal },
       ),

@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
@@ -44,7 +45,14 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
     queryKey: [...commerceKey(book), "unallocation-history", after],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${commercePath(book)}/allocation-reversal-plans${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.commerceAllocationReversals.listCommerceAllocationReversals({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.commerceAllocationReversals.endpoints.listCommerceAllocationReversals,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Reversal.CommerceAllocationReversalList,
         { signal },
       ),

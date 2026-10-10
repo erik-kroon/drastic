@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import * as Collections from "@open-erp/contracts/collections";
@@ -26,7 +27,6 @@ import { checkScope, CommandForm, commerceKey, commercePath } from "./shared";
 
 export function ReminderRetainedWorkspace({ id }: { id: string }) {
   const { book, locale } = useBookWorkspace();
-  const base = `${commercePath(book)}/collections/reminders`;
 
   const retained = useQuery({
     queryKey: [...commerceKey(book), "reminder", id],
@@ -34,7 +34,7 @@ export function ReminderRetainedWorkspace({ id }: { id: string }) {
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${base}/${encodeURIComponent(id)}`,
+        (client) => client.collections.readReminder({ params: { ...bookScope(book), id: id } }),
         Collections.ReminderView,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Peppol from "@open-erp/contracts/peppol-exchange";
 import * as Pdf from "@open-erp/contracts/legal-invoice-pdf";
@@ -23,7 +24,10 @@ export function PeppolEmailRecovery({ review }: { review: typeof Peppol.Review.T
     retry: false,
     queryFn: async ({ signal }) => {
       const history = await readAccounting(
-        `${base}/legal-invoice-issues/${encodeURIComponent(review.source.reference.id)}/pdfs`,
+        (client) =>
+          client.legalInvoicePdfs.legalInvoicePdfHistory({
+            params: { ...bookScope(book), id: review.source.reference.id },
+          }),
         Pdf.LegalInvoicePdfHistory,
         { signal },
       );
@@ -36,7 +40,10 @@ export function PeppolEmailRecovery({ review }: { review: typeof Peppol.Review.T
       if (!item) return null;
 
       const view = await readAccounting(
-        `${base}/legal-invoice-pdfs/${encodeURIComponent(item.id)}`,
+        (client) =>
+          client.legalInvoicePdfs.getLegalInvoicePdf({
+            params: { ...bookScope(book), id: item.id },
+          }),
         Pdf.LegalInvoicePdfView,
         { signal },
       );
@@ -103,7 +110,10 @@ function EmailHandoff(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${base}/legal-invoice-pdfs/${encodeURIComponent(props.capture.id)}/deliveries`,
+        (client) =>
+          client.legalDeliveries.legalDeliveryHistory({
+            params: { ...bookScope(book), id: props.capture.id },
+          }),
         Delivery.LegalDeliveryHistory,
         { signal },
       );

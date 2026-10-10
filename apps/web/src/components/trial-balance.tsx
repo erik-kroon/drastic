@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
@@ -16,7 +18,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { GeneralLedger } from "@/components/general-ledger";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -39,12 +41,14 @@ export function TrialBalance(props: {
     props.onSelectAccount?.(value ?? "");
   };
 
-  const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(id)}`;
-
   const report = useQuery({
     queryKey: [...bookKey(book), "report-snapshot", id],
     queryFn: async ({ signal }) => {
-      const snapshot = await readAccounting(base, Reports.ReportSnapshot, { signal });
+      const snapshot = await readAccounting(
+        (client) => client.reports.getReport({ params: { ...bookScope(book), id: id } }),
+        Reports.ReportSnapshot,
+        { signal },
+      );
 
       if (
         snapshot.id !== id ||
@@ -68,7 +72,14 @@ export function TrialBalance(props: {
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${base}/lines${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.reports.reportLines({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(
+              Api.groups.reports.endpoints.reportLines,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Reports.ReportLines,
         { signal },
       );
@@ -318,14 +329,19 @@ export function AccountExplanation({
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
 
-  const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/explanation`;
-
   const explanation = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-explanation", report.id, accountId],
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${base}${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.reports.reportExplanation({
+            params: { ...bookScope(book), id: report.id, lineId: accountId },
+            query: httpQuery(
+              Api.groups.reports.endpoints.reportExplanation,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Reports.ReportExplanation,
         { signal },
       );

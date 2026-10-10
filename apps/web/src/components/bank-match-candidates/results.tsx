@@ -1,4 +1,5 @@
-import { bookScope } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -12,7 +13,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { bankCandidateCopy } from "./copy";
 
@@ -126,7 +127,14 @@ export function BankCandidateResults({
       const input = previousDigest ? { ...source, previousDigest } : source;
 
       const result = await readAccounting(
-        `${bookPath(book)}/bank-match-candidates`,
+        (client, requestOptions) =>
+          client.bankMatchCandidates.discoverBankMatchCandidates(
+            httpRequest(
+              Api.groups.bankMatchCandidates.endpoints.discoverBankMatchCandidates,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Candidates.BankMatchCandidates,
         {
           method: "POST",

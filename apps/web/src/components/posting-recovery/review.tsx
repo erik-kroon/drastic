@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState, type ComponentProps } from "react";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +12,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { ReviewEntry } from "./review-entry";
 import { Disclosure, WorkflowSurface } from "@open-erp/ui/components/workflow";
-import { bookKey, bookPath, booksKey, readAccounting } from "@/lib/accounting-api";
+import { bookKey, booksKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
 import { sendSavedPostingCommand } from "./request";
@@ -38,7 +40,14 @@ export function PostingRecoveryReview(props: {
     queryKey: [...bookKey(book), "posting-recovery", "detail", id, after],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/posting-recovery/${encodeURIComponent(id)}${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.postingRecovery.getPostingRecovery({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(
+              Api.groups.postingRecovery.endpoints.getPostingRecovery,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Recovery.PostingRecovery,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Runs from "@open-erp/contracts/payroll-runs";
@@ -9,7 +10,7 @@ import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { downloadIntake } from "@/components/source-intake/download";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -65,13 +66,19 @@ function PrivatePayslip(props: {
   expected: typeof Runs.PayrollPayslipDocument.Type;
 }) {
   const sv = props.locale === "sv";
-  const path = `${bookPath(props.book)}/payroll/payslips/${encodeURIComponent(props.expected.id)}`;
 
   const saved = useQuery({
     queryKey: [...bookKey(props.book), "payroll", "payslips", props.expected.id],
     retry: false,
     queryFn: async ({ signal }) => {
-      const view = await readAccounting(path, Runs.PayrollPayslipView, { signal });
+      const view = await readAccounting(
+        (client) =>
+          client.payrollRun.getPayrollPayslip({
+            params: { ...bookScope(props.book), documentId: props.expected.id },
+          }),
+        Runs.PayrollPayslipView,
+        { signal },
+      );
 
       if (
         view.document.id !== props.expected.id ||
@@ -88,7 +95,14 @@ function PrivatePayslip(props: {
 
   const download = useMutation({
     mutationFn: async () => {
-      const result = await readAccounting(`${path}/artifact`, Runs.PayrollPayslipArtifactBytes);
+      const result = await readAccounting(
+        (client) =>
+          client.payrollRun.getPayrollPayslipArtifact({
+            params: { ...bookScope(props.book), documentId: props.expected.id },
+          }),
+        Runs.PayrollPayslipArtifactBytes,
+      );
+
       const artifact = result.artifact;
 
       if (

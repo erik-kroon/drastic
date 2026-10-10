@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -107,7 +108,18 @@ function PlanReview({
     mutationFn: () => {
       const path = `${base}/validate`;
 
-      return readAccounting(path, Accounting.ValidationReport, keys.current.options(path, "{}"));
+      return readAccounting(
+        (client, requestOptions) =>
+          client.accounting.validateChange(
+            httpRequest(
+              Api.groups.accounting.endpoints.validateChange,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          ),
+        Accounting.ValidationReport,
+        keys.current.options(path, "{}"),
+      );
     },
     onError: (error) => {
       if (requiresNewProposal(error)) setStale(true);
@@ -124,7 +136,14 @@ function PlanReview({
       });
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.approveChange(
+            httpRequest(
+              Api.groups.accounting.endpoints.approveChange,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          ),
         Accounting.Approval,
         keys.current.options(path, JSON.stringify(payload)),
       );
@@ -145,7 +164,14 @@ function PlanReview({
       });
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.accounting.executeChange(
+            httpRequest(
+              Api.groups.accounting.endpoints.executeChange,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          ),
         Accounting.ExecutionReceipt,
         keys.current.options(path, JSON.stringify(payload)),
       );

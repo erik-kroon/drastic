@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -135,9 +137,14 @@ export function PeriodClosing(props: {
     queryKey: [...bookKey(book), "closing-readiness", periodId],
     retry: false,
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(`${path}/closing-readiness`, Closing.ClosingReadiness, {
-        signal,
-      });
+      const result = await readAccounting(
+        (client) =>
+          client.closing.closingReadiness({ params: { ...bookScope(book), periodId: periodId } }),
+        Closing.ClosingReadiness,
+        {
+          signal,
+        },
+      );
 
       if (
         result.scope.bookId !== book.id ||
@@ -155,7 +162,14 @@ export function PeriodClosing(props: {
       const endpoint = `${path}/closing-source-inventories`;
 
       return readAccounting(
-        endpoint,
+        (client, requestOptions) =>
+          client.closing.declareClosingInventory(
+            httpRequest(
+              Api.groups.closing.endpoints.declareClosingInventory,
+              { params: { ...bookScope(book), periodId: periodId } },
+              requestOptions,
+            ),
+          ),
         Closing.ClosingInventory,
         keys.current.options(endpoint, JSON.stringify(input)),
       );
@@ -168,7 +182,14 @@ export function PeriodClosing(props: {
       const endpoint = `${path}/closing-proposals`;
 
       return readAccounting(
-        endpoint,
+        (client, requestOptions) =>
+          client.closing.prepareClosing(
+            httpRequest(
+              Api.groups.closing.endpoints.prepareClosing,
+              { params: { ...bookScope(book), periodId: periodId } },
+              requestOptions,
+            ),
+          ),
         Closing.ClosingProposal,
         keys.current.options(endpoint, JSON.stringify(input)),
       );

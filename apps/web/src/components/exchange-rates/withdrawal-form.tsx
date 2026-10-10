@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -32,7 +34,14 @@ export function WithdrawalForm(props: {
       const path = `${bookPath(book)}/exchange-rates/${rate.observationId}/withdrawals`;
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.exchangeRates.withdrawExchangeRate(
+            httpRequest(
+              Api.groups.exchangeRates.endpoints.withdrawExchangeRate,
+              { params: { ...bookScope(book), id: rate.observationId } },
+              requestOptions,
+            ),
+          ),
         Rates.ExchangeRateWithdrawal,
         keys.current.options(path, JSON.stringify(input)),
       );

@@ -51,15 +51,7 @@ import {
 } from "./invoice-editor-lines";
 import { ContactEditor } from "./contact-editor";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
-import {
-  Details,
-  Evidence,
-  Facts,
-  checkScope,
-  commerceKey,
-  commercePath,
-  type CommerceProps,
-} from "./shared";
+import { Details, Evidence, Facts, checkScope, commerceKey, type CommerceProps } from "./shared";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
 
@@ -669,7 +661,14 @@ function DraftDetail(
     queryKey: [...commerceKey(props.book), "invoice-draft", props.id, revision],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(props.id)}${revision ? `?revision=${encodeURIComponent(revision)}` : ""}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(props.book), id: props.id },
+            query: httpQuery(
+              Api.groups.invoiceDrafts.endpoints.getInvoiceDraft,
+              `${revision ? `?revision=${encodeURIComponent(revision)}` : ""}`,
+            ),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );
@@ -1070,7 +1069,14 @@ function DraftCustomerPicker(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${commercePath(props.book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.commerce.commerceListCounterparties({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceListCounterparties,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Commerce.CounterpartyPage,
         { signal },
       );

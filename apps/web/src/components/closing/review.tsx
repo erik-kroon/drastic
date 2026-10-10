@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Match from "effect/Match";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -190,7 +191,11 @@ export function ClosingReview({
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(path, Closing.ClosingProposalView, { signal });
+      const result = await readAccounting(
+        (client) => client.closing.getClosingProposal({ params: { ...bookScope(book), id: id } }),
+        Closing.ClosingProposalView,
+        { signal },
+      );
 
       if (
         result.proposal.id !== id ||
@@ -208,7 +213,14 @@ export function ClosingReview({
       const endpoint = `${path}/approvals`;
 
       return readAccounting(
-        endpoint,
+        (client, requestOptions) =>
+          client.closing.approveClosing(
+            httpRequest(
+              Api.groups.closing.endpoints.approveClosing,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Closing.ClosingApproval,
         keys.current.options(endpoint, JSON.stringify({ digest })),
       );
@@ -220,7 +232,14 @@ export function ClosingReview({
       const endpoint = `${path}/executions`;
 
       return readAccounting(
-        endpoint,
+        (client, requestOptions) =>
+          client.closing.executeClosing(
+            httpRequest(
+              Api.groups.closing.endpoints.executeClosing,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Closing.ClosingReceipt,
         keys.current.options(endpoint, JSON.stringify(input)),
       );
@@ -474,7 +493,14 @@ export function ClosingHistoryPanel({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(periodId)}/closing-history${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.closing.closingHistory({
+            params: { ...bookScope(book), periodId: periodId },
+            query: httpQuery(
+              Api.groups.closing.endpoints.closingHistory,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Closing.ClosingHistory,
         { signal },
       );

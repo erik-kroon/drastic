@@ -29,7 +29,7 @@ import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useOwnerReturn, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
-import { checkScope, commerceKey, commercePath } from "./shared";
+import { checkScope, commerceKey } from "./shared";
 
 type PurchaseRow = {
   key: string;
@@ -60,7 +60,14 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${commercePath(book)}/invoices${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.commerce.commerceListInvoices({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceListInvoices,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Commerce.InvoicePage,
         { signal },
       );

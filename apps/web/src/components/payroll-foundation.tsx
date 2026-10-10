@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import * as Schema from "effect/Schema";
@@ -80,7 +82,14 @@ export function PayrollFoundation({
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${root}/employees${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.payrollFoundation.listPayrollEmployees({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.payrollFoundation.endpoints.listPayrollEmployees,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Payroll.PayrollEmployeePage,
         { signal },
       );
@@ -110,7 +119,10 @@ export function PayrollFoundation({
       retry: false,
       queryFn: async ({ signal }) => {
         const page = await readAccounting(
-          `${root}/employees/${encodeURIComponent(selected)}/revisions`,
+          (client) =>
+            client.payrollFoundation.listPayrollRevisions({
+              params: { ...bookScope(book), id: selected },
+            }),
           Payroll.PayrollHistory,
           { signal },
         );
@@ -133,7 +145,14 @@ export function PayrollFoundation({
       const path = `${root}/revisions`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.payrollFoundation.capturePayrollRevision(
+            httpRequest(
+              Api.groups.payrollFoundation.endpoints.capturePayrollRevision,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Payroll.PayrollRevision,
         mutationOptions(path, JSON.stringify(payload), keys),
       );
@@ -153,10 +172,21 @@ export function PayrollFoundation({
 
   const access = useMutation({
     mutationFn: () =>
-      readAccounting(`${root}/access`, Payroll.PayrollAccessResult, {
-        method: "POST",
-        body: JSON.stringify({ actorId: actor, allowed }),
-      }),
+      readAccounting(
+        (client, requestOptions) =>
+          client.payrollFoundation.setPayrollAccess(
+            httpRequest(
+              Api.groups.payrollFoundation.endpoints.setPayrollAccess,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
+        Payroll.PayrollAccessResult,
+        {
+          method: "POST",
+          body: JSON.stringify({ actorId: actor, allowed }),
+        },
+      ),
     onSuccess: () => {
       client.removeQueries({ queryKey: payrollKey });
       setSelected("");

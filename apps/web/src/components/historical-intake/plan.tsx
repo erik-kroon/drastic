@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -70,7 +71,18 @@ export function SiePlanReview({
 
   const seal = useMutation({
     mutationFn: (input: typeof Sie.SealSiePlan.Type) =>
-      readAccounting(path, Sie.SiePlan, keys.current.options(path, JSON.stringify(input))),
+      readAccounting(
+        (client, requestOptions) =>
+          client.sieImport.sealSieSourcePlan(
+            httpRequest(
+              Api.groups.sieImport.endpoints.sealSieSourcePlan,
+              { params: { ...bookScope(book), id: preview.id } },
+              requestOptions,
+            ),
+          ),
+        Sie.SiePlan,
+        keys.current.options(path, JSON.stringify(input)),
+      ),
     onSuccess: (result) => {
       checkScope(book, result.scope);
 
@@ -391,7 +403,14 @@ export function SavedSiePlan({
   const start = useMutation({
     mutationFn: (digest: string) =>
       readAccounting(
-        startPath,
+        (client, requestOptions) =>
+          client.sieImport.startSieSourceRun(
+            httpRequest(
+              Api.groups.sieImport.endpoints.startSieSourceRun,
+              { params: { ...bookScope(book), id: plan } },
+              requestOptions,
+            ),
+          ),
         Sie.SieRunStart,
         keys.current.options(startPath, JSON.stringify({ digest })),
       ),

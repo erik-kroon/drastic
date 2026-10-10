@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -74,7 +75,12 @@ export function CorrectionReview(props: {
   const view = useQuery({
     queryKey: [...bookKey(book), "correction-bundle", id],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(base, Corrections.CorrectionBundleView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.corrections.getCorrectionBundle({ params: { ...bookScope(book), id: id } }),
+        Corrections.CorrectionBundleView,
+        { signal },
+      );
 
       if (
         result.bundle.id !== id ||
@@ -139,7 +145,18 @@ export function CorrectionReview(props: {
 
         const options = keys.current.options(path, body);
         setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
-        approval = await readAccounting(path, Corrections.CorrectionBundleApproval, options);
+        approval = await readAccounting(
+          (client, requestOptions) =>
+            client.corrections.approveCorrectionBundle(
+              httpRequest(
+                Api.groups.corrections.endpoints.approveCorrectionBundle,
+                { params: { ...bookScope(book), id: id } },
+                requestOptions,
+              ),
+            ),
+          Corrections.CorrectionBundleApproval,
+          options,
+        );
 
         if (approval.bundleId !== bundle.id || approval.bundleDigest !== bundle.bundleDigest)
           throw new Error("Correction approval witness mismatch");
@@ -157,7 +174,18 @@ export function CorrectionReview(props: {
       const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
-      const receipt = await readAccounting(path, Corrections.CorrectionBundleReceipt, options);
+      const receipt = await readAccounting(
+        (client, requestOptions) =>
+          client.corrections.executeCorrectionBundle(
+            httpRequest(
+              Api.groups.corrections.endpoints.executeCorrectionBundle,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
+        Corrections.CorrectionBundleReceipt,
+        options,
+      );
 
       if (
         receipt.bundleId !== bundle.id ||
@@ -182,7 +210,14 @@ export function CorrectionReview(props: {
       const body = JSON.stringify(intent);
 
       const snapshot = await readAccounting(
-        impactPath,
+        (client, requestOptions) =>
+          client.corrections.prepareCorrectionImpact(
+            httpRequest(
+              Api.groups.corrections.endpoints.prepareCorrectionImpact,
+              { params: { ...bookScope(book), id: originalId ?? "" } },
+              requestOptions,
+            ),
+          ),
         Corrections.CorrectionImpact,
         keys.current.options(impactPath, body),
       );
@@ -190,7 +225,14 @@ export function CorrectionReview(props: {
       const bundlePath = `${path}/correction-bundles`;
 
       return readAccounting(
-        bundlePath,
+        (client, requestOptions) =>
+          client.corrections.prepareCorrectionBundle(
+            httpRequest(
+              Api.groups.corrections.endpoints.prepareCorrectionBundle,
+              { params: { ...bookScope(book), id: originalId ?? "" } },
+              requestOptions,
+            ),
+          ),
         Corrections.CorrectionBundle,
         keys.current.options(
           bundlePath,

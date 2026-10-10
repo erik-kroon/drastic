@@ -1,6 +1,7 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpQuery, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -27,7 +28,14 @@ export function BasisForm({ book, locale }: Props) {
     initialPageParam: "",
     queryFn: ({ pageParam, signal }) =>
       readAccounting(
-        `${bookPath(book)}/schedules${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.subledgers.listSchedules({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.subledgers.endpoints.listSchedules,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Schedules.SchedulePage,
         { signal },
       ),
@@ -200,7 +208,14 @@ function RecordBasis({
       const path = `${bookPath(book)}/subledger-controls/bases`;
 
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.subledgerControls.recordSubledgerBasis(
+            httpRequest(
+              Api.groups.subledgerControls.endpoints.recordSubledgerBasis,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Controls.SubledgerBasis,
         keys.current.options(path, JSON.stringify(input)),
       );

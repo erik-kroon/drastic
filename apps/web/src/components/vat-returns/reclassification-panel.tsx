@@ -1,7 +1,8 @@
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -255,7 +256,14 @@ function PreparationForm(
   const save = useMutation({
     mutationFn: (input: typeof Vat.PrepareVatControlReclassification.Type) =>
       readAccounting(
-        path,
+        (client, options) =>
+          client.vatReturns.prepareVatControlReclassification(
+            httpRequest(
+              Api.groups.vatReturns.endpoints.prepareVatControlReclassification,
+              { params: bookScope(book) },
+              options,
+            ),
+          ),
         Vat.VatControlReclassificationReview,
         keys.current.options(path, JSON.stringify(input)),
       ),
@@ -503,7 +511,14 @@ function ReviewDetail({
   const view = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "reclassification", id],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(base, Vat.VatControlReclassificationView, { signal });
+      const result = await readAccounting(
+        (client) =>
+          client.vatReturns.getVatControlReclassification({
+            params: { ...bookScope(book), id: id },
+          }),
+        Vat.VatControlReclassificationView,
+        { signal },
+      );
 
       if (
         result.review.id !== id ||
@@ -525,7 +540,14 @@ function ReviewDetail({
       const path = `${base}/approval`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.vatReturns.approveVatControlReclassification(
+            httpRequest(
+              Api.groups.vatReturns.endpoints.approveVatControlReclassification,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Vat.VatControlReclassificationApproval,
         approvalKeys.current.options(path, JSON.stringify(input)),
       );
@@ -541,7 +563,14 @@ function ReviewDetail({
       const path = `${base}/execution`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.vatReturns.executeVatControlReclassification(
+            httpRequest(
+              Api.groups.vatReturns.endpoints.executeVatControlReclassification,
+              { params: { ...bookScope(book), id: id } },
+              requestOptions,
+            ),
+          ),
         Vat.VatControlReclassificationEffect,
         executionKeys.current.options(path, JSON.stringify(input)),
       );

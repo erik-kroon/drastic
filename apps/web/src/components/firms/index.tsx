@@ -294,7 +294,8 @@ function CreateFirmDialog(props: {
 function useFirmReads(props: { firmId?: string; tab: "clients" | "team" }) {
   const firms = useQuery({
     queryKey: ["accounting", "firms"],
-    queryFn: ({ signal }) => readAccounting("/api/v1/firms", Firms.FirmList, { signal }),
+    queryFn: ({ signal }) =>
+      readAccounting((client) => client.firms.listFirms({}), Firms.FirmList, { signal }),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
@@ -309,7 +310,15 @@ function useFirmReads(props: { firmId?: string; tab: "clients" | "team" }) {
     queryKey: ["accounting", "firms", current],
     enabled: Boolean(current) && listed && firms.isSuccess && props.tab === "team",
     queryFn: ({ signal }) =>
-      readAccounting(`/api/v1/firms/${current}`, Firms.Workspace, { signal }),
+      readAccounting(
+        (client) => {
+          if (!current) throw new Error("Firm query requires a firm.");
+
+          return client.firms.getFirm({ params: { firmId: current } });
+        },
+        Firms.Workspace,
+        { signal },
+      ),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
@@ -321,7 +330,16 @@ function useFirmReads(props: { firmId?: string; tab: "clients" | "team" }) {
     queryKey: ["accounting", "firms", current, "portfolio"],
     enabled: Boolean(current) && listed && firms.isSuccess && props.tab === "clients",
     queryFn: ({ signal }) =>
-      readAccounting(`/api/v1/firms/${current}/portfolio`, Firms.Portfolio, { signal }, 60_000),
+      readAccounting(
+        (client) => {
+          if (!current) throw new Error("Firm portfolio query requires a firm.");
+
+          return client.firms.getFirmPortfolio({ params: { firmId: current } });
+        },
+        Firms.Portfolio,
+        { signal },
+        60_000,
+      ),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",

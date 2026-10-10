@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import { Box } from "@open-erp/ui/components/box";
@@ -26,7 +28,14 @@ export function RecurringDraftRecovery({
   const agreement = useQuery({
     queryKey: [...commerceKey(book), "recurring-agreement", agreementId],
     queryFn: async ({ signal }) => {
-      const value = await readAccounting(path, Recurring.RecurringAgreementView, { signal });
+      const value = await readAccounting(
+        (client) =>
+          client.recurringInvoices.getRecurringAgreement({
+            params: { ...bookScope(book), agreementId: agreementId ?? "" },
+          }),
+        Recurring.RecurringAgreementView,
+        { signal },
+      );
 
       checkScope(book, value.agreement.scope);
 
@@ -47,7 +56,14 @@ export function RecurringDraftRecovery({
       if (jobId) search.set("job", jobId);
 
       const value = await readAccounting(
-        `${path}/scheduling?${search}`,
+        (client) =>
+          client.recurringInvoices.getRecurringDraftScheduling({
+            params: { ...bookScope(book), agreementId: agreementId ?? "" },
+            query: httpQuery(
+              Api.groups.recurringInvoices.endpoints.getRecurringDraftScheduling,
+              `${search}`,
+            ),
+          }),
         Recurring.RecurringScheduling,
         { signal },
       );

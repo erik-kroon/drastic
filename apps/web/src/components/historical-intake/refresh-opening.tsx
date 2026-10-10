@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 
 import { useForm } from "@tanstack/react-form";
@@ -27,7 +29,14 @@ export function RefreshOpening({
   const save = useMutation({
     mutationFn: async (input: typeof Historical.RefreshOpening.Type) => {
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.historicalMigration.refreshHistoricalOpening(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.refreshHistoricalOpening,
+              { params: { ...bookScope(book), id: basis.fiscalYearId } },
+              requestOptions,
+            ),
+          ),
         Historical.OpeningPreparation,
         keys.current.options(path, JSON.stringify(input)),
       );

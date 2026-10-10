@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useId, useState } from "react";
@@ -37,7 +39,14 @@ export function RecurringRuleForm({
       const path = `${bookPath(book)}/recurring-rules`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.automation.proposeRecurringRule(
+            httpRequest(
+              Api.groups.automation.endpoints.proposeRecurringRule,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Automation.RecurringRule,
         keys.current.options(path, JSON.stringify(payload)),
       );

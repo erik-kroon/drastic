@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import * as Match from "effect/Match";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Badge } from "@open-erp/ui/components/badge";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
@@ -81,7 +82,14 @@ export function Invoices(
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoices${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.commerce.commerceListInvoices({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceListInvoices,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Commerce.InvoicePage,
         { signal },
       );
@@ -466,7 +474,14 @@ function InvoiceHistory(props: CommerceProps & { id: string }) {
     queryKey: [...commerceKey(book), "invoice-history", id, after],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoices/${encodeURIComponent(id)}/revisions${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        (client) =>
+          client.commerce.commerceInvoiceHistory({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceInvoiceHistory,
+              `${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+            ),
+          }),
         Commerce.InvoiceHistory,
         { signal },
       );

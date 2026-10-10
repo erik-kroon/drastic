@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -10,7 +12,7 @@ import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
-import { checkScope, commercePath, type CommerceProps } from "./shared";
+import { checkScope, type CommerceProps } from "./shared";
 
 export function PaymentIdentifierCheck(props: CommerceProps) {
   const sv = props.locale === "sv";
@@ -23,7 +25,14 @@ export function PaymentIdentifierCheck(props: CommerceProps) {
   const check = useMutation({
     mutationFn: async (input: typeof Identifiers.PaymentIdentifierInput.Type) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/payment-identifiers`,
+        (client, requestOptions) =>
+          client.paymentIdentifiers.checkPaymentIdentifier(
+            httpRequest(
+              Api.groups.paymentIdentifiers.endpoints.checkPaymentIdentifier,
+              { params: { ...bookScope(props.book) } },
+              requestOptions,
+            ),
+          ),
         Identifiers.PaymentIdentifierView,
         { method: "POST", body: JSON.stringify(input) },
       );

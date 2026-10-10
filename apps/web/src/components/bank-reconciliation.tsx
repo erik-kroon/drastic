@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
@@ -135,7 +137,14 @@ function ReconciliationForm({
       const path = `${bookPath(book)}/bank-reconciliations`;
 
       return readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.reconciliation.reconcileBank(
+            httpRequest(
+              Api.groups.reconciliation.endpoints.reconcileBank,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Bank.BankReconciliation,
         keys.current.options(path, JSON.stringify(payload)),
       );

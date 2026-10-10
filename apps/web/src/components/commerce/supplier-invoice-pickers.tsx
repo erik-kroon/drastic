@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpQuery } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -14,9 +16,9 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { DocumentUpload } from "@/components/document-inbox";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { ContactEditor } from "./contact-editor";
-import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, type CommerceProps } from "./shared";
 
 export function SupplierPicker(
   props: CommerceProps & {
@@ -34,7 +36,14 @@ export function SupplierPicker(
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${commercePath(props.book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.commerce.commerceListCounterparties({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.commerce.endpoints.commerceListCounterparties,
+              `${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Commerce.CounterpartyPage,
         { signal },
       );
@@ -180,7 +189,14 @@ export function SupplierDocumentPicker(props: CommerceProps & { onSelect: (id: s
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await readAccounting(
-        `${bookPath(props.book)}/source-occurrences${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.sourceIntake.listSourceOccurrences({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.sourceIntake.endpoints.listSourceOccurrences,
+              `${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Sources.SourceInventory,
         { signal },
       );

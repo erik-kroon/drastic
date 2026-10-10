@@ -1,3 +1,5 @@
+import { Api } from "@open-erp/contracts/api";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { useCommandKeys } from "@/lib/command-keys";
 import { PaymentHistoryEntry, type EntryKind } from "./payment-entry";
 
@@ -45,7 +47,14 @@ export function AdmitOpenItems({
   const save = useMutation({
     mutationFn: async (input: typeof Historical.AdmitItems.Type) => {
       const result = await readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.historicalMigration.admitHistoricalItems(
+            httpRequest(
+              Api.groups.historicalMigration.endpoints.admitHistoricalItems,
+              { params: { ...bookScope(book), id: plan.id } },
+              requestOptions,
+            ),
+          ),
         Historical.ItemAdmission,
         keys.current.options(path, JSON.stringify(input)),
       );

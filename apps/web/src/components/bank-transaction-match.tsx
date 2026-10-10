@@ -1,5 +1,6 @@
+import { Api } from "@open-erp/contracts/api";
 import { useCommandKeys } from "@/lib/command-keys";
-import { bookScope } from "@/lib/contract-client";
+import { bookScope, httpRequest } from "@/lib/contract-client";
 import { submitBankWithCitationRefresh } from "@/lib/bank-citation-request";
 import { useRef, useState, type ReactNode } from "react";
 import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
@@ -109,7 +110,14 @@ function DiscoverMatch(props: Props & { statementId: string }) {
     refetchOnWindowFocus: "always",
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${bookPath(book)}/bank-match-candidates`,
+        (client, requestOptions) =>
+          client.bankMatchCandidates.discoverBankMatchCandidates(
+            httpRequest(
+              Api.groups.bankMatchCandidates.endpoints.discoverBankMatchCandidates,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Candidates.BankMatchCandidates,
         { method: "POST", body: JSON.stringify({ statementId, rowOrdinal }), signal },
       );
@@ -1175,7 +1183,13 @@ function MatchingReview(props: Props & { id: string }) {
   const review = useQuery({
     queryKey: [...bookKey(book), "bank-allocation", id],
     queryFn: async ({ signal }) => {
-      const value = await readAccounting(base, Settlement.BankAllocationView, { signal });
+      const value = await readAccounting(
+        (client) =>
+          client.settlements.getBankAllocation({ params: { ...bookScope(book), id: id } }),
+        Settlement.BankAllocationView,
+        { signal },
+      );
+
       checkScope(book, value.plan.scope);
 
       if (value.plan.id !== id) throw new Error("Bank matching review identity mismatch");
@@ -1369,7 +1383,14 @@ function PreparedMatch(
       if (!leg) throw new Error("Prepared match has no allocation leg");
 
       const value = await readAccounting(
-        `${bookPath(book)}/bank-match-candidates`,
+        (client, requestOptions) =>
+          client.bankMatchCandidates.discoverBankMatchCandidates(
+            httpRequest(
+              Api.groups.bankMatchCandidates.endpoints.discoverBankMatchCandidates,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Candidates.BankMatchCandidates,
         {
           method: "POST",
@@ -1586,7 +1607,14 @@ function UndoMatch(props: Props & { allocationId: string }) {
   const prepare = useMutation({
     mutationFn: (explanation: string) =>
       readAccounting(
-        path,
+        (client, requestOptions) =>
+          client.bankMatchReversals.prepareBankMatchReversal(
+            httpRequest(
+              Api.groups.bankMatchReversals.endpoints.prepareBankMatchReversal,
+              { params: { ...bookScope(book) } },
+              requestOptions,
+            ),
+          ),
         Reversal.BankMatchReversalPlan,
         keys.current.options(
           path,
