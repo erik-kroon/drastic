@@ -60,17 +60,6 @@ AUT-01 (`e685811`) and AUT-02 (`15a1b5c`) are implemented locally and in review 
 - Shared mutable state. Each suggestion and decision retains book/subject/actor/session identity. Provenance writes use the decision's existing transaction.
 - Smallest safe decomposition. Implement AUT-01 as one coherent change because contracts, suggestion serving and decision recording must agree. Run required checks sequentially and one focused E2E journey.
 
-## Task steps
-
-1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero).
-2. Pick the wake mechanism from CODEX.md.
-3. Each iteration makes the smallest change the evidence justifies, verifies it against the predicate, commits if it advanced, discards changes that didn't help.
-4. Address discoveries within the authorized task.
-5. Checkpoint every iteration.
-6. Stop when the predicate is met.
-
-The active goal owns continuation. No future heartbeat is configured.
-
 ## AUT-01 design
 
 Model the Domain led to explicit subject and selection variants. Supplier treatment,
@@ -160,3 +149,11 @@ Local commit `d5c199d` replaces the latest-five query with retained same-book pr
 Four focused workflows passed across retained runs: memory vectors, the Swedish hint/provenance regression, the shared public reversal/export workflow and the corrected public serving/CLI workflow. The synthetic baseline has two eligible targets, one suggestion and zero known comparable consequences: coverage 1/2 and accuracy unavailable. Changed/full checks and owners (55/55) passed. `verification/firm-memory/README.md` records commands, artifacts, CLI fixes and the distinction between retained behavior-run hash and final type hardening. No browser parity, live-provider performance, training or production qualification is claimed.
 
 AUT-11 is now in progress: immutable requests/results, fenced background dispatch, read-only runtime policies and bounded synthetic budgets. Independent failure cases are already committed. Add a bounded machine-runner processing surface so the Cloudflare entry can genuinely inject its AI binding into the shared processor; configuring or invoking a live deployment remains gated. AUT-12 evaluation and remaining anomaly/verification work follow.
+
+## PR 19 owner review, 2026-10-10
+
+AUT-11 is parked in unpushed local checkpoint `4958339` on `automation/aut11-parked-2026-10-10`. One focused workflow passed and one failed at queued delivery; full and owners checks were not run. It remains incomplete and will resume after the owner review fixes.
+
+Accepted ADR 0021 and the handoff are committed in `36711e2`. Main through `295d0b4` is merged in `6a73127`; migrations 0106 and 0107 follow main's 0105. Main's design entries and immutable references are retained. K-10, K-11 and K-21 are unverified because their retained source hashes predate request transport changes; no composition, baseline or new visual evidence is adopted. Erik Kroon adopted the AUT-01 request transport scope on 2026-10-10.
+
+A clean worktree at `6a73127` ran the seven affected automation suites: 15 of 16 tests passed. The stale consequence test expected export v2 despite current v3 exports; `477f381` corrects that assertion. Its two-test suite passed in a clean worktree at that commit. Artifacts are `test-results/pr19-main-merge` and `test-results/pr19-main-merge-consequence` in `/tmp/drastic-pr19-review-6a73127`. Final clean-worktree checks against the PR base remain outstanding.

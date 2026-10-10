@@ -1103,8 +1103,11 @@
       "parts": [],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "AUT-01 authorizes citation transport for existing rendered suggestions. No new screen composition or visual baseline is adopted by this contract.",
-      "implementationNote": "Request and cache bindings only. Existing visual adoption remains with each screen owner; no browser or visual parity claim."
+      "adoptionNote": "Adopted 2026-10-10 by Erik Kroon for request transport only. No visual composition or baseline is adopted. Existing screen references are retained; browser and visual parity remain unverified.",
+      "implementationNote": "Request and cache bindings only. Existing visual adoption remains with each screen owner; no browser or visual parity claim.",
+      "adoptedBy": "Erik Kroon",
+      "adoptedOn": "2026-10-10",
+      "adoptionScope": "request transport only"
     }
   ]
 }
