@@ -35,3 +35,5 @@ The first clean full check at `a07b4c5` failed type-aware `no-misused-spread` on
 ```sh
 OPENERP_E2E_ARTIFACTS=test-results/approval-consequences-json-projection bun run test:e2e apps/api/tests/vat-purchase-categories.e2e.test.ts apps/api/tests/treatment-consequence.e2e.test.ts -t 'approval consequences|public decision export'
 ```
+
+Clean committed source `2e8aa3d` against pinned main `ff21273` passed full changed checks, owners (55/55) and design contract, with tracked status clean. Three deterministic MCP workflows and the pinned Luna eval test passed. Evidence summaries and source inventories are retained in `verification/approval-consequences/mcp/` and `mcp-eval/`. Zero measured screens is not visual parity. The initial projection lint failure is retained as a failed check; the explicit-field fix passed without suppression. No live provider, statutory mapping or nonempty-dimension qualification is claimed.
