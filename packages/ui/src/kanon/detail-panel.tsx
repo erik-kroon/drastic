@@ -15,9 +15,18 @@ const styles = stylex.create({
     flexShrink: 0,
     gap: kanon.space5,
     minHeight: 0,
+    minWidth: 0,
     overflowY: "auto",
     padding: kanon.space7,
     width: kanon.sizePanel,
+    "@container (max-width: 60rem)": {
+      width: "100%",
+      borderInlineStartWidth: 0,
+      borderBlockStartWidth: 1,
+      borderBlockStartStyle: "solid",
+      borderBlockStartColor: kanon.colorRule,
+      overflowY: "visible",
+    },
   },
   header: { display: "flex", flexDirection: "column", gap: kanon.space1 },
   kicker: {
@@ -39,12 +48,14 @@ const styles = stylex.create({
     letterSpacing: kanon.trackingFigure,
     lineHeight: kanon.leadingFigure,
     margin: 0,
+    whiteSpace: "nowrap",
   },
   subtitle: {
     color: kanon.colorSecondary,
     fontFamily: kanon.fontUi,
     fontSize: kanon.textBody,
     lineHeight: kanon.leadingSection,
+    fontWeight: kanon.weightRegular,
     margin: 0,
   },
   section: { display: "flex", flexDirection: "column", gap: kanon.space2 },
@@ -94,33 +105,72 @@ type DetailPanelProps = {
   label: string;
 };
 
-export function DetailPanel(props: DetailPanelProps) {
-  const { kicker, secondary, note } = props;
+export function DetailPanelSurface({
+  label,
+  children,
+  as: Surface = "aside",
+}: {
+  label: string;
+  children: ReactNode;
+  as?: "aside" | "section";
+}) {
+  return (
+    <Surface aria-label={label} {...stylex.props(styles.panel)}>
+      {children}
+    </Surface>
+  );
+}
+
+export function DetailPanelHeader(
+  props: Pick<DetailPanelProps, "kicker" | "figure" | "subtitle"> & {
+    subtitleAs?: "p" | "h2";
+    figureAs?: "p" | "h2";
+  },
+) {
+  const { kicker, figure, subtitle } = props;
+  const Subtitle = props.subtitleAs ?? "p";
+  const Figure = props.figureAs ?? "p";
 
   return (
-    <aside aria-label={props.label} {...stylex.props(styles.panel)}>
-      <header {...stylex.props(styles.header)}>
-        {typeof kicker === "string" ? (
-          <span {...stylex.props(styles.kicker)}>{kicker}</span>
-        ) : (
-          <span
-            {...stylex.props(styles.kicker, styles.kickerStatus, statusTextStyle(kicker.status))}
-          >
-            <StatusIcon status={kicker.status} />
-            {kicker.text}
-          </span>
-        )}
-        <p {...stylex.props(styles.figure)}>{props.figure}</p>
-        <p {...stylex.props(styles.subtitle)}>{props.subtitle}</p>
-      </header>
-      {props.children}
+    <header {...stylex.props(styles.header)}>
+      {typeof kicker === "string" ? (
+        <span {...stylex.props(styles.kicker)}>{kicker}</span>
+      ) : (
+        <span {...stylex.props(styles.kicker, styles.kickerStatus, statusTextStyle(kicker.status))}>
+          <StatusIcon status={kicker.status} />
+          {kicker.text}
+        </span>
+      )}
+      <Figure {...stylex.props(styles.figure)}>{figure}</Figure>
+      <Subtitle {...stylex.props(styles.subtitle)}>{subtitle}</Subtitle>
+    </header>
+  );
+}
+
+export function DetailPanelActions({
+  primary,
+  secondary,
+  note,
+}: Pick<DetailPanelProps, "primary" | "secondary" | "note">) {
+  return (
+    <>
       <div {...stylex.props(styles.spacer)} />
       <div {...stylex.props(styles.actions)}>
         {note !== undefined && <p {...stylex.props(styles.note)}>{note}</p>}
-        {props.primary}
+        {primary}
         {secondary !== undefined && <div {...stylex.props(styles.secondaryRow)}>{secondary}</div>}
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function DetailPanel(props: DetailPanelProps) {
+  return (
+    <DetailPanelSurface label={props.label}>
+      <DetailPanelHeader kicker={props.kicker} figure={props.figure} subtitle={props.subtitle} />
+      {props.children}
+      <DetailPanelActions primary={props.primary} secondary={props.secondary} note={props.note} />
+    </DetailPanelSurface>
   );
 }
 

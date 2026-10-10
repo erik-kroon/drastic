@@ -7,6 +7,7 @@ import * as Settlement from "../../packages/contracts/src/settlements";
 import * as Candidates from "../../packages/contracts/src/bank-match-candidates";
 import * as Schema from "effect/Schema";
 import { bankReviewFixture } from "./bank-review-fixture";
+import { twoPageOriginal } from "./original-fixture";
 
 async function settleReviewTransitions(browser: Browser) {
   const corner = await browser.evaluate<{ x: number; y: number }>(`() => {
@@ -95,6 +96,29 @@ test("bank review compares the retained original and prepares without allocating
 
   await settleReviewTransitions(browser);
 
+  const readyConditions = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    return {
+      browser: navigator.userAgent,
+      deviceScaleFactor: window.devicePixelRatio,
+      fonts: {
+        family: getComputedStyle(document.body).fontFamily,
+        faces: Array.from(document.fonts).map((face) => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })),
+      },
+      locale: navigator.language,
+      theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      time: new Date().toISOString(),
+      clockPinned: false,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      resolvedRoute: `${window.location.pathname}${window.location.search}`,
+    };
+  });
+
   const ready = await app.screenshot("bank-review-ready-to-prepare");
 
   const response = browser.waitForResponse("**/bank-allocation-plans");
@@ -146,6 +170,7 @@ test("bank review compares the retained original and prepares without allocating
         view,
         refreshed,
         ledger: fixture.ledger,
+        readyConditions,
         screenshots: [ambiguity, initial, ready, prepared],
       },
       null,
@@ -336,7 +361,16 @@ test("bank review retains original zoom and visible keyboard review without fina
   screen,
   agent,
 }) => {
-  const fixture = await bankReviewFixture(browser, app.baseUrl);
+  const fixture = await bankReviewFixture(browser, app.baseUrl, false, {
+    bytes: twoPageOriginal(
+      [
+        "EXEMPELDATA Exempel Kontorsservice AB Leverantorsunderlag DEMO-2026-0037",
+        "EXEMPELDATA page two DEMO-2026-0037 SEK 1250.00",
+      ],
+      [595, 842],
+    ),
+    expectedHash: "sha256:dfa7eb88a6909af5c3e163abcc0240ca2b4518bbcb829ce3270752a7f5ef9e03",
+  });
 
   const output = process.env.OPENERP_E2E_OUTPUT;
 
@@ -387,13 +421,20 @@ test("bank review retains original zoom and visible keyboard review without fina
     scrollWidth: number;
     overflowX: string;
   }>(`() => {
-    const element = document.querySelector('canvas[role="img"]').parentElement;
+    const element = document.querySelector('canvas[role="img"]').parentElement.parentElement;
     return { width: element.clientWidth, scrollWidth: element.scrollWidth, overflowX: getComputedStyle(element).overflowX };
   }`);
 
   expect(viewport.scrollWidth).toBeGreaterThan(viewport.width);
 
   expect(viewport.overflowX).toBe("auto");
+
+  await review.getByRole("combobox", "Sida", { exact: true }).focus();
+  await review.getByRole("combobox", "Sida", { exact: true }).press("Enter");
+  await screen.getByRole("option", "2 av 2", { exact: true }).press("Enter");
+  await expect(
+    review.getByRole("img", "bank-review-original.pdf, sida 2", { exact: true }),
+  ).toBeVisible();
 
   const reason = review.getByRole("textbox", "Varför hör transaktionerna ihop?", { exact: true });
 
@@ -426,20 +467,16 @@ test("bank review retains original zoom and visible keyboard review without fina
 
   await expect(zoom).toHaveText("125 % ⌄");
 
-  await expect(review.getByRole("combobox", "Sida", { exact: true })).toHaveText("1 av 1 ⌄");
+  await expect(review.getByRole("combobox", "Sida", { exact: true })).toHaveText("2 av 2 ⌄");
 
   await review.getByRole("button", "Sidtext", { exact: true }).focus();
 
   await browser.keyboard.press("Enter");
 
-  await expect(
-    review.getByText(
-      /EXEMPELDATA.*Exempel Kontorsservice AB.*Leverantörsunderlag.*DEMO-2026-0037/s,
-    ),
-  ).toBeVisible();
+  await expect(review.getByText("EXEMPELDATA page two DEMO-2026-0037 SEK 1250.00")).toBeVisible();
 
   await agent.assert(
-    "Zoom displays 125 percent and Sidtext is open for the original supplier document. The reason textbox retains the entered reason, and the enabled Förbered matchning button remains visible.",
+    "Zoom displays 125 percent, page two of two remains selected, and Sidtext shows the synthetic original page two. The reason textbox retains the entered reason, and the enabled Förbered matchning button remains visible.",
   );
 
   await expect(review.getByRole("button", "Granska planen", { exact: true })).toHaveCount(0);
@@ -461,7 +498,7 @@ test("bank review retains original zoom and visible keyboard review without fina
       {
         syntheticOnly: true,
         originalHash: fixture.expectedHash,
-        page: 1,
+        page: 2,
         zoom: 125,
         viewport,
         focus,
@@ -470,7 +507,7 @@ test("bank review retains original zoom and visible keyboard review without fina
         ledger: fixture.ledger,
         screenshot,
         remaining:
-          "Multi-page bank originals, native browser zoom, reduced motion, full accessibility and parity remain open.",
+          "Native browser 200% zoom, reduced motion, full accessibility, cold-start performance and complete-state parity remain open.",
       },
       null,
       2,

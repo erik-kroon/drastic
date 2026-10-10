@@ -1,0 +1,54 @@
+{
+  "scope": "K-15",
+  "sourceRevision": "58eebdcbf4c349a44822dcf4b37cc7fcf8ddf7dc",
+  "comparatorRevision": "58eebdcbf4c349a44822dcf4b37cc7fcf8ddf7dc",
+  "referenceSha256": "74b29783065706e20e9f2b4a4fc901f5beae32671ef181f3e40220e158322eec",
+  "actualSha256": "ee8ec4344422479672ccd5dc271d49aeaec83761c94871a489588cd60b416c52",
+  "diffSha256": "3a901bb16010a6c94abe152560afa3d93fdcf70e7f555ef8cc8918ac5263259b",
+  "sourceHashes": {
+    "apps/web/src/components/posting-recovery/work-recovery.tsx": "506a7509d05439fc3b0438b87dfc64d76be7c8e4797e9c6821acf40217c61a8d",
+    "apps/web/src/components/posting-recovery/saved-requests.tsx": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
+    "apps/web/src/components/posting-recovery/copy.ts": "809aa7f243aabf495e94bc5df77ff46e14b43550ce7217764cb84a33f1f63352",
+    "packages/ui/src/kanon/feedback.tsx": "a549c33aaacfbfe69bd1e500612953d242393bcb5b5f0e8431685aeb3ed09d7f",
+    "tests/browser/posting-recovery.e2e.ts": "f8552e90a52baa83c360cac257d74f2cf2f779f1929b9f11fc2b8ee8640f9a5c"
+  },
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/posting-recovery.e2e.ts",
+  "comparisonCommand": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node /Users/admin/drastic-parity-foundations/verification/paper/compare.mjs K-15 verification/paper/evidence/k15-saved-unknown-banner/capture.json verification/paper/evidence/k15-saved-unknown-banner",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-09T22:56:24.395Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/work?kind=journal&status=all",
+    "route": "/entities/$entityId/books/$bookId/work",
+    "fixture": {
+      "recipe": "tests/browser/posting-recovery.e2e.ts selected native null prepare request",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; full frame with synthetic fixture and unpinned clock limits",
+  "difference": 0.15594367283950616,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/k15-saved-unknown-banner/actual.png",
+  "diff": "verification/paper/evidence/k15-saved-unknown-banner/diff.png",
+  "passed": false
+}

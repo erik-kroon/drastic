@@ -1,0 +1,205 @@
+{
+  "scope": "synthetic original and completed supplier stage selection, reload and keyboard return",
+  "task": {
+    "kind": "document",
+    "recordId": "source_baf52202a8d74a76976fa0dfc29db623",
+    "rowOrdinal": null,
+    "key": "entity_synthetic/book_synthetic/document/source_baf52202a8d74a76976fa0dfc29db623/"
+  },
+  "ownerReturn": "owner:%7B%22owner%22%3A%22home%22%2C%22search%22%3A%7B%22after%22%3A%22document_source_e3db8c6638c34f4bbcd9e035d156e876%22%2C%22status%22%3A%22open%22%2C%22task%22%3A%22entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_baf52202a8d74a76976fa0dfc29db623%2F%22%7D%7D",
+  "before": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "afterCompletion": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "10000",
+        "creditMinor": "0",
+        "balanceMinor": "10000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "10000",
+        "balanceMinor": "-10000"
+      }
+    ]
+  },
+  "selectedHeader": {
+    "figure": "Okänt",
+    "title": "home-original-selected.pdf",
+    "figureSize": "32px",
+    "figureWhiteSpace": "nowrap"
+  },
+  "headerAction": {
+    "tag": "A",
+    "text": "Granska alla",
+    "height": "28px",
+    "borderWidth": "1px"
+  },
+  "readRetries": [
+    {
+      "path": "http://127.0.0.1:60782/api/v1/entities/entity_synthetic/books/book_synthetic/attention?status=open&sort=oldest&kind=all&after=document_source_e3db8c6638c34f4bbcd9e035d156e876",
+      "requests": 3,
+      "workingReason": "Begäran pågår…"
+    },
+    {
+      "path": "http://127.0.0.1:60782/api/v1/entities/entity_synthetic/books/book_synthetic/bank-workspace?*",
+      "requests": 2,
+      "workingReason": "Begäran pågår…"
+    }
+  ],
+  "reviewAllKeyboardNavigation": true,
+  "handoffHeader": {
+    "figure": "100,00",
+    "title": "Synthetic selected home draft",
+    "figureSize": "32px",
+    "figureWhiteSpace": "nowrap"
+  },
+  "selectedConditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T06:51:33.062Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic?status=open&after=document_source_e3db8c6638c34f4bbcd9e035d156e876&task=entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_baf52202a8d74a76976fa0dfc29db623%2F"
+  },
+  "narrow": {
+    "width": 375,
+    "overflow": false,
+    "rowFits": true,
+    "panelFits": true,
+    "panelBelowRow": true
+  },
+  "completedStage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_baf52202a8d74a76976fa0dfc29db623",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_baf52202a8d74a76976fa0dfc29db623/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": null,
+    "key": "supplier_supplier_invoice_draft_795652ceab9a4c37a92e1d2aa286f291",
+    "assignment": null,
+    "kind": "supplier",
+    "id": "supplier_invoice_draft_795652ceab9a4c37a92e1d2aa286f291",
+    "revision": "sha256:0dbcc1b286c3210a77c864f2e26bb41e5c3a82e9a9434f658123da8ed22ffff0",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-10T06:51:37.105Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "completed",
+    "reason": "supplier_accepted"
+  },
+  "postedStage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_baf52202a8d74a76976fa0dfc29db623",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_baf52202a8d74a76976fa0dfc29db623/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": {
+      "draftId": "supplier_invoice_draft_795652ceab9a4c37a92e1d2aa286f291",
+      "reviewId": "supplier_review_54952905368a4d9fb09cb78b354666ed",
+      "digest": "sha256:5fe215227d65f61bdd0e81ec5f4cf344111621579cdd95a5b05745d6324f46c1",
+      "approvalObservation": {
+        "state": "consumed",
+        "observedAt": "2026-10-10 08:51:38.844769+02",
+        "callerMatches": true,
+        "proposalMatches": true,
+        "actorName": "Elin Sund"
+      },
+      "approvalExpiresAt": "2026-10-10T07:51:38.650Z",
+      "dependenciesCurrent": false
+    },
+    "key": "journal_change_14e4c5484a8c437a960d72b63184a177",
+    "assignment": null,
+    "kind": "journal",
+    "id": "change_14e4c5484a8c437a960d72b63184a177",
+    "revision": "sha256:0b69f1b1caeea9bc05b0831ab9f39c6b11d29517ef856d3b05f9e3f2d96816b2",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-10T06:51:38.613509Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "completed",
+    "reason": "journal_posted"
+  }
+}

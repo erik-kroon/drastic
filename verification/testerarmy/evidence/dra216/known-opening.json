@@ -1,0 +1,769 @@
+{
+  "synthetic": true,
+  "sourceId": "evidence_b754f2ae57e94a46bc555bcc5bac2d94",
+  "originalId": "evidence_0f5841b7ecda4bbe8e825e5c650641d9",
+  "originalSha256": "d6067a2565f6a62ecefbb7533471de3eb0342575ef781d7ef0b9028143a3c2c2",
+  "imported": {
+    "statement": {
+      "kind": "synthetic_bank_statement_v1",
+      "statementIdentifier": "6dd203e2-b242-436a-8563-55a3c5e6a31e",
+      "sourceBankAccountId": "dra216_known_opening",
+      "accountId": "account_bank",
+      "currency": "SEK",
+      "startsOn": "2026-01-01",
+      "endsOn": "2026-10-10",
+      "openingMinor": "0",
+      "closingMinor": "100000",
+      "completeness": {
+        "declaredComplete": true,
+        "basis": "Independent synthetic closing; no provider attestation"
+      },
+      "rows": [
+        {
+          "rowOrdinal": 1,
+          "providerId": null,
+          "date": "2026-10-10",
+          "description": "Synthetic opening funding",
+          "amountMinor": "100000"
+        }
+      ],
+      "id": "statement_96d3a74aa2c846239f08ce4aba0c8273",
+      "evidenceId": "evidence_0f5841b7ecda4bbe8e825e5c650641d9",
+      "evidenceSha256": "d6067a2565f6a62ecefbb7533471de3eb0342575ef781d7ef0b9028143a3c2c2"
+    },
+    "matches": [
+      {
+        "statementId": "statement_96d3a74aa2c846239f08ce4aba0c8273",
+        "rowOrdinal": 1,
+        "voucherId": "voucher_f493753be69d40709fe81c76563bc07b",
+        "lineId": "line_ce5a4defdbc9430aa8fc12e7020ef69f",
+        "origin": "imported",
+        "actorId": "actor_operator"
+      }
+    ],
+    "checkpoint": {
+      "sequence": "1",
+      "sourceRevision": "2"
+    },
+    "receipt": {
+      "key": "13227d2f-5321-43c6-a20e-2d49ffdd0280",
+      "operation": "import_bank_statement",
+      "actorId": "actor_operator"
+    }
+  },
+  "reconciliationId": "bankcapacity_d8fb4e720c4f495abfc34e4f7f29d515",
+  "coverageId": "bank_coverage_8871dae3eaf7460c8df657735f2d3c31",
+  "basisId": "cash_basis_946d0003066445c69ab70b2d0c2c8a17",
+  "basisDigest": "sha256:af8f1d3fa3fdb1e3f41dfa5ce84e799a6f6e4c07cb78270fe2f52a64757ba7e1",
+  "forecast": {
+    "id": "cash_forecast_7732be646dca4057bdc626e4c1bf4bf9",
+    "scope": {
+      "entityId": "entity_synthetic",
+      "bookId": "book_synthetic"
+    },
+    "actorId": "actor_operator",
+    "createdAt": "2026-10-10T07:28:52.046Z",
+    "calculatorVersion": "known_items_exact_v1",
+    "basisId": "cash_basis_946d0003066445c69ab70b2d0c2c8a17",
+    "basisDigest": "sha256:af8f1d3fa3fdb1e3f41dfa5ce84e799a6f6e4c07cb78270fe2f52a64757ba7e1",
+    "input": {
+      "basisId": "cash_basis_946d0003066445c69ab70b2d0c2c8a17",
+      "basisDigest": "sha256:af8f1d3fa3fdb1e3f41dfa5ce84e799a6f6e4c07cb78270fe2f52a64757ba7e1",
+      "horizonDays": 30,
+      "bufferMinor": "90000",
+      "expectedDates": []
+    },
+    "asOf": "2026-10-10",
+    "recordedCutoff": "2026-10-10T07:28:52.002Z",
+    "horizonDays": 30,
+    "endsOn": "2026-11-08",
+    "label": "known_items",
+    "companyCoverage": "incomplete",
+    "quality": {
+      "opening": "qualified",
+      "sourceCoverage": "incomplete",
+      "datedContributions": "qualified",
+      "dependenciesAtCapture": "current"
+    },
+    "result": {
+      "status": "available",
+      "openingMinor": "100000",
+      "closingMinor": "100000",
+      "baseline": {
+        "minimum": {
+          "amountMinor": "100000",
+          "on": "2026-10-10"
+        },
+        "headroomMinor": "10000"
+      },
+      "conservative": {
+        "minimum": {
+          "amountMinor": "100000",
+          "on": "2026-10-10"
+        },
+        "headroomMinor": "10000"
+      },
+      "days": [
+        {
+          "on": "2026-10-10",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-11",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-12",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-13",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-14",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-15",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-16",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-17",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-18",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-19",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-20",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-21",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-22",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-23",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-24",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-25",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-26",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-27",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-28",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-29",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-30",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-10-31",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-01",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-02",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-03",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-04",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-05",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-06",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-07",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        },
+        {
+          "on": "2026-11-08",
+          "inflowMinor": "0",
+          "outflowMinor": "0",
+          "closingMinor": "100000",
+          "conservativeLowMinor": "100000"
+        }
+      ]
+    },
+    "contributions": [],
+    "foreignObligations": [],
+    "digest": "sha256:02de9a22eb9fbc3ad67b71f63f39261e5e1bb5c7dbe45fc7a070b03865756021"
+  },
+  "expectedDays": [
+    {
+      "on": "2026-10-10",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-11",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-12",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-13",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-14",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-15",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-16",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-17",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-18",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-19",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-20",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-21",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-22",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-23",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-24",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-25",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-26",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-27",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-28",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-29",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-30",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-10-31",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-01",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-02",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-03",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-04",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-05",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-06",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-07",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    },
+    {
+      "on": "2026-11-08",
+      "inflowMinor": "0",
+      "outflowMinor": "0",
+      "closingMinor": "100000",
+      "conservativeLowMinor": "100000"
+    }
+  ],
+  "tables": [
+    {
+      "name": "Saldo framåt",
+      "rows": [
+        [
+          "10 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "11 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "12 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "13 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "14 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "15 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "16 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "17 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "18 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "19 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "20 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "21 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "22 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "23 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "24 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "25 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "26 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "27 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "28 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "29 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "30 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "31 okt.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "1 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "2 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "3 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "4 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "5 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "6 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "7 nov.",
+          "1 000,00",
+          "1 000,00"
+        ],
+        [
+          "8 nov.",
+          "1 000,00",
+          "1 000,00"
+        ]
+      ]
+    },
+    {
+      "name": "Från öppning till slut",
+      "rows": [
+        [
+          "Öppning",
+          "1 000,00"
+        ],
+        [
+          "In",
+          "0,00"
+        ],
+        [
+          "Ut",
+          "0,00"
+        ],
+        [
+          "Slut",
+          "1 000,00"
+        ]
+      ]
+    }
+  ],
+  "receipt": {
+    "id": "receipt_ad00c6180ef446a9b95e350e581542e0",
+    "changeSetId": "change_5d21a273433a4969894ae58cc89789f9",
+    "voucherId": "voucher_f493753be69d40709fe81c76563bc07b",
+    "planDigest": "sha256:d9851c05609ad41faef6ce477f7519efcccecac7a7325947b6958a88b6139e8c",
+    "sequence": "1",
+    "voucherNumber": "1",
+    "committedAt": "2026-10-10 09:28:51.837673+02"
+  },
+  "before": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "100000",
+        "creditMinor": "0",
+        "balanceMinor": "100000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "100000",
+        "balanceMinor": "-100000"
+      }
+    ]
+  },
+  "artifactSha256": "50ab28f55030c5e5c88d96772495259ee2f70062c503c3ab5610ae70b7c2c82a",
+  "downloadAndReloadPreserveOriginal": true,
+  "chartScreenshot": "screenshots/001-cash-known-opening-charts.png",
+  "tableScreenshot": "screenshots/002-cash-known-opening-exact-tables.png",
+  "qualification": "Known opening with zero scheduled inflow/outflow; incomplete company coverage; inconsistent snapshot guard inspected, not fabricated"
+}

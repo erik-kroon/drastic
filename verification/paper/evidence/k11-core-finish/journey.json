@@ -1,0 +1,521 @@
+{
+  "synthetic": true,
+  "supplierRun": "b45310ab-272b-4ada-b41f-7d6a4f674353",
+  "originalPosted": {
+    "occurrence": {
+      "id": "source_996663a3d24940ba84893cc2cd9bcb02",
+      "sha256": "sha256:5e5ea11a48580f127ba11088504d8769dc59e49fe5af8f8a95d0404cb29f6c05"
+    },
+    "expectedOriginalSha256": "sha256:5e5ea11a48580f127ba11088504d8769dc59e49fe5af8f8a95d0404cb29f6c05",
+    "draftId": "supplier_invoice_draft_5856d2b28ba24b418de9de6c1d192de6",
+    "selectedReviewId": "supplier_review_c1e8e4cfab4242339b55a5dd19aa0108",
+    "replacementRevision": null,
+    "savedSnapshot": {
+      "id": "supplier_invoice_draft_5856d2b28ba24b418de9de6c1d192de6",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "ap_0fd77b9acbd01fab361bdb17150c9bf31e8e1fe441719b194adb2c4f31a8",
+      "revision": "1",
+      "status": "draft",
+      "acceptanceSupported": false,
+      "recognitionSupported": false,
+      "recognitionAssessment": "not_assessed",
+      "calculationBasis": "explicit_line_amounts_v1",
+      "content": {
+        "title": "Vinter & Co AB faktura 882.pdf",
+        "counterpartyId": "counterparty_0f121cd3b4fe49148bebe22d202a1ad5",
+        "counterpartyRevision": "1",
+        "supplier": {
+          "legalName": "Synthetic identity",
+          "registrationId": "SYNTHETIC",
+          "taxId": null,
+          "address": "Synthetic address",
+          "countryCode": "SE",
+          "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d"
+        },
+        "buyer": {
+          "legalName": "Synthetic identity",
+          "registrationId": "SYNTHETIC",
+          "taxId": null,
+          "address": "Synthetic address",
+          "countryCode": "SE",
+          "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d"
+        },
+        "sourceEvidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+        "supplierDocumentNumber": "882",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "documentDate": "2026-10-03",
+        "supplyDate": "2026-10-03",
+        "dueDate": "2026-10-14",
+        "paymentTerms": "Synthetic terms",
+        "sourceTotalMinor": "1250000",
+        "lines": [
+          {
+            "id": "line_frozen_source",
+            "description": "Synthetic gross cost",
+            "quantity": "1",
+            "unitPriceMinor": "1250000",
+            "baseMinor": "1250000",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic no tax treatment",
+            "taxEvidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+            "sourceGrossMinor": "1250000"
+          }
+        ]
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "frozen_c3b75d7f-bbde-4dfb-b268-fcf8bc8c38ef",
+        "role": "supplier",
+        "displayName": "Vinter & Co AB",
+        "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+        "reason": "Local synthetic qualification",
+        "id": "counterparty_0f121cd3b4fe49148bebe22d202a1ad5",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+          "sha256": "b4a4d8ab49624d09fa53479a8bb7a5fc8550a3309b6566d4c26d2b2b8cb6edb7"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-10T07:06:22.181418Z",
+        "receipt": {
+          "key": "c62849a5-cda1-4dc5-81f0-f94df7fdae33",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "supplierEvidence": {
+        "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+        "sha256": "b4a4d8ab49624d09fa53479a8bb7a5fc8550a3309b6566d4c26d2b2b8cb6edb7"
+      },
+      "buyerEvidence": {
+        "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+        "sha256": "b4a4d8ab49624d09fa53479a8bb7a5fc8550a3309b6566d4c26d2b2b8cb6edb7"
+      },
+      "sourceEvidence": {
+        "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+        "sha256": "b4a4d8ab49624d09fa53479a8bb7a5fc8550a3309b6566d4c26d2b2b8cb6edb7"
+      },
+      "totals": {
+        "baseMinor": "1250000",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "1250000",
+        "taxMinor": "0",
+        "grossMinor": "1250000",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "line_frozen_source",
+          "calculatedBaseMinor": "1250000",
+          "netMinor": "1250000",
+          "grossMinor": "1250000",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_3020ce1428d8440797744bff70b7944d",
+            "sha256": "b4a4d8ab49624d09fa53479a8bb7a5fc8550a3309b6566d4c26d2b2b8cb6edb7"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "acceptance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "recognition_not_implemented",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial supplier commercial draft",
+      "createdAt": "2026-10-10T07:06:22.247Z",
+      "receipt": {
+        "key": "supplier_draft_ea3788e2d76047b7b0a2dcf6798b3da0",
+        "operation": "create_supplier_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:bd9225cb3e877ed3e792b28e92ae87456c36088be9fc9b061a6bd29e0e0825de"
+    },
+    "acceptance": {
+      "id": "supplier_acceptance_e175ecd32e194378bf57059b6b621796",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "reviewId": "supplier_review_c1e8e4cfab4242339b55a5dd19aa0108",
+      "reviewDigest": "sha256:cdcf3eff66477a45ee5b797b96ffd9c799e7c18a06867c58d01c5b34519bc141",
+      "approvalId": "supplier_approval_3abf8da70b504a05beb5a2083007d50f",
+      "profile": "synthetic-manual-supplier-v1",
+      "draftId": "supplier_invoice_draft_5856d2b28ba24b418de9de6c1d192de6",
+      "draftRevision": "1",
+      "draftDigest": "sha256:bd9225cb3e877ed3e792b28e92ae87456c36088be9fc9b061a6bd29e0e0825de",
+      "supplierDocumentNumber": "882",
+      "accepted": true,
+      "recognized": true,
+      "paid": false,
+      "postingReceipt": {
+        "id": "receipt_f36ad698c8f1481e8f1214a6639919c4",
+        "changeSetId": "change_3f5158712c904d24a5e5980588f26abb",
+        "voucherId": "voucher_970504d1500f4cabb29e4f041bdc79ce",
+        "planDigest": "sha256:a7281492200155cf45c5c250df17db4abc7db6806765556aab53ad9176efdcaa",
+        "sequence": "1",
+        "voucherNumber": "1",
+        "committedAt": "2026-10-10 09:06:29.58934+02"
+      },
+      "registerInvoiceId": "invoice_7e115ad25cab42929f0cff50f8f0a2d8",
+      "recognitionId": null,
+      "taxFactIds": [],
+      "legalBlockers": [
+        "legal_identity_not_verified",
+        "tax_profile_not_activated",
+        "payment_not_initiated"
+      ],
+      "createdAt": "2026-10-10T07:06:29.660Z",
+      "receipt": {
+        "key": "23feaea2-fc8e-471a-a2b5-cd918e423c99",
+        "operation": "execute_supplier_acceptance",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:41ecb07c1ce9e1194aa6a3219b5ef874abc3ec137b3c46ab959e8ebaf4d256ce"
+    },
+    "before": {
+      "sequence": "0",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "0",
+          "creditMinor": "0",
+          "balanceMinor": "0"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "0",
+          "balanceMinor": "0"
+        }
+      ]
+    },
+    "after": {
+      "sequence": "1",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "1250000",
+          "creditMinor": "0",
+          "balanceMinor": "1250000"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "1250000",
+          "balanceMinor": "-1250000"
+        }
+      ]
+    },
+    "supersededReviewExcluded": null
+  },
+  "originalStale": {
+    "occurrence": {
+      "id": "source_1b0c5e63d69b4a14b524f4d426b4277c",
+      "sha256": "sha256:7f544d68809707d96de642cf403873f85dedeca2be9b58616aec8a486d12976e"
+    },
+    "expectedOriginalSha256": "sha256:7f544d68809707d96de642cf403873f85dedeca2be9b58616aec8a486d12976e",
+    "draftId": "supplier_invoice_draft_1d616d9c4b3d42a28bc7124be5e90ad0",
+    "selectedReviewId": "supplier_review_f56b322c52724dca87de78bea3473ccf",
+    "replacementRevision": "2",
+    "savedSnapshot": {
+      "id": "supplier_invoice_draft_1d616d9c4b3d42a28bc7124be5e90ad0",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "ap_01d7f56f9c86030f6848db8da1b718fc6f37cbc17ddd7cb0615bfc2a53be",
+      "revision": "1",
+      "status": "draft",
+      "acceptanceSupported": false,
+      "recognitionSupported": false,
+      "recognitionAssessment": "not_assessed",
+      "calculationBasis": "explicit_line_amounts_v1",
+      "content": {
+        "title": "Vinter & Co AB faktura 883-b1c63592-0c57-47f3-bb3c-f65cdb0b6e6a.pdf",
+        "counterpartyId": "counterparty_693a81bef2824275b06a78e19ef4d013",
+        "counterpartyRevision": "1",
+        "supplier": {
+          "legalName": "Synthetic identity",
+          "registrationId": "SYNTHETIC",
+          "taxId": null,
+          "address": "Synthetic address",
+          "countryCode": "SE",
+          "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742"
+        },
+        "buyer": {
+          "legalName": "Synthetic identity",
+          "registrationId": "SYNTHETIC",
+          "taxId": null,
+          "address": "Synthetic address",
+          "countryCode": "SE",
+          "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742"
+        },
+        "sourceEvidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+        "supplierDocumentNumber": "883",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "documentDate": "2026-10-03",
+        "supplyDate": "2026-10-03",
+        "dueDate": "2026-10-14",
+        "paymentTerms": "Synthetic terms",
+        "sourceTotalMinor": "1250000",
+        "lines": [
+          {
+            "id": "line_frozen_source",
+            "description": "Synthetic gross cost",
+            "quantity": "1",
+            "unitPriceMinor": "1250000",
+            "baseMinor": "1250000",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic no tax treatment",
+            "taxEvidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+            "sourceGrossMinor": "1250000"
+          }
+        ]
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "frozen_b0035d2b-4c4c-48b7-8ed8-b509a465514f",
+        "role": "supplier",
+        "displayName": "Vinter & Co AB",
+        "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+        "reason": "Local synthetic qualification",
+        "id": "counterparty_693a81bef2824275b06a78e19ef4d013",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+          "sha256": "e3719d5e8115551bb55068a0464a0b51d7f478a2a0551186aa09d17c8d04c163"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-10T07:06:31.001946Z",
+        "receipt": {
+          "key": "d88afa69-3f78-4d40-b990-870b7d9320e0",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "supplierEvidence": {
+        "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+        "sha256": "e3719d5e8115551bb55068a0464a0b51d7f478a2a0551186aa09d17c8d04c163"
+      },
+      "buyerEvidence": {
+        "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+        "sha256": "e3719d5e8115551bb55068a0464a0b51d7f478a2a0551186aa09d17c8d04c163"
+      },
+      "sourceEvidence": {
+        "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+        "sha256": "e3719d5e8115551bb55068a0464a0b51d7f478a2a0551186aa09d17c8d04c163"
+      },
+      "totals": {
+        "baseMinor": "1250000",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "1250000",
+        "taxMinor": "0",
+        "grossMinor": "1250000",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "line_frozen_source",
+          "calculatedBaseMinor": "1250000",
+          "netMinor": "1250000",
+          "grossMinor": "1250000",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_10f91427257c4b889c20bc8143d97742",
+            "sha256": "e3719d5e8115551bb55068a0464a0b51d7f478a2a0551186aa09d17c8d04c163"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "acceptance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "recognition_not_implemented",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial supplier commercial draft",
+      "createdAt": "2026-10-10T07:06:31.048Z",
+      "receipt": {
+        "key": "supplier_draft_81226154359a49d5b2e0eef5253bf02d",
+        "operation": "create_supplier_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:6029a0543b3d18fb438e65f366bc5ab3342e445b1eb71563961011f093358e87"
+    },
+    "acceptance": null,
+    "before": {
+      "sequence": "1",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "1250000",
+          "creditMinor": "0",
+          "balanceMinor": "1250000"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "1250000",
+          "balanceMinor": "-1250000"
+        }
+      ]
+    },
+    "after": {
+      "sequence": "1",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "1250000",
+          "creditMinor": "0",
+          "balanceMinor": "1250000"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "1250000",
+          "balanceMinor": "-1250000"
+        }
+      ]
+    },
+    "supersededReviewExcluded": true
+  },
+  "standaloneRun": "3c46557f-1646-4000-8742-1ebb70713f79",
+  "standalone": {
+    "reviewConditions": {
+      "actionHeading": "Syntetisk återupptagen kontering",
+      "figure": "125,00 SEK",
+      "figureSize": "32px",
+      "figureWhiteSpace": "nowrap",
+      "originalSurfaces": 1,
+      "decisionSurfaces": 1,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+      "deviceScaleFactor": 1,
+      "fonts": {
+        "family": "Inter, system-ui, sans-serif",
+        "faces": [
+          {
+            "family": "Inter",
+            "weight": "100 900",
+            "status": "loaded"
+          }
+        ]
+      },
+      "locale": "sv-SE",
+      "theme": "light",
+      "time": "2026-10-10T07:04:32.657Z",
+      "clockPinned": false,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/reviews/change_d8646d66b2434507b955655aa9b905e5/sha256%3A0adc609cdd2d5942f430309a9f343a0472ecaf424e45b54c5990e32b032f92ae?kind=journal&status=all"
+    },
+    "before": {
+      "sequence": "0",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "0",
+          "creditMinor": "0",
+          "balanceMinor": "0"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "0",
+          "balanceMinor": "0"
+        }
+      ]
+    },
+    "after": {
+      "sequence": "1",
+      "accounts": [
+        {
+          "accountId": "account_bank",
+          "code": "1930",
+          "name": "Synthetic bank account",
+          "debitMinor": "12500",
+          "creditMinor": "0",
+          "balanceMinor": "12500"
+        },
+        {
+          "accountId": "account_clearing",
+          "code": "2999",
+          "name": "Synthetic clearing account",
+          "debitMinor": "0",
+          "creditMinor": "12500",
+          "balanceMinor": "-12500"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "multiAction": "source preservation only; public producers seal oneaction",
+    "sourceStable": true,
+    "scratchRemoved": true,
+    "readRetries": "home282166f9/supplierb56a2602 pass; prior commitfd4fc05 retains full receipts"
+  }
+}

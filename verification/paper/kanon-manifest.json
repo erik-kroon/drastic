@@ -11,11 +11,15 @@
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-10.jsx.json",
       "files": [
         "apps/web/src/components/company-work-sections.tsx",
-        "apps/web/src/components/work-home.tsx"
+        "apps/web/src/components/work-home.tsx",
+        "packages/ui/src/kanon/layouts.tsx",
+        "packages/ui/src/kanon/work-list.tsx",
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "packages/ui/src/kanon/action.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -25,21 +29,28 @@
         "loading",
         "error"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k10-core-finish/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
       "jsxSha256": "5b4f3b8588d1fb6945198e89dd1a886529c2d3213085fa75f983b1b4171af329",
-      "parts": [],
+      "parts": [
+        "layouts",
+        "work-list",
+        "detail-panel",
+        "status",
+        "action"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Core retry native GET failure, keyboard inhibition and ledger preservation pass with stable source and cleaned runtime. Supplier Questions uses native h3 and normal receipt/actions use canonical footer; expiry, renewal, wrong digest, mobile acknowledgment and lost-response one receipt pass. Full-frame drift 3.9974% exceeds2%; differing fixture and unpinned clock. Complete states, dark theme and native200% remain unverified; no production qualification."
     },
     {
       "id": "K-40",
@@ -76,7 +87,8 @@
       "baselineSha256": "06b020d166c45f59b0f39ba49f14dad2ee8adff07a232a805bb595dd345cab78",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-09.jsx.json",
       "files": [
-        "apps/web/src/components/firms/portfolio.tsx"
+        "apps/web/src/components/firms/portfolio.tsx",
+        "apps/web/src/components/firms/index.tsx"
       ],
       "route": "/firms",
       "audience": "bureau",
@@ -104,7 +116,8 @@
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "implementationNote": "FirmsWorkspace uses the same kanon shell implementation as book workspaces; portfolio content and firm authority remain at their existing owners. Product-route comparison pending."
     },
     {
       "id": "K-11",
@@ -114,11 +127,21 @@
       "baselineSha256": "977619d3ff433c86b67a03e9b8fcb48ab2dc015f37529158db1769f5eb197bf7",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-11.jsx.json",
       "files": [
-        "apps/web/src/components/review-owner.tsx"
+        "apps/web/src/components/review-owner.tsx",
+        "apps/web/src/components/review-screen.tsx",
+        "packages/ui/src/kanon/layouts.tsx",
+        "apps/web/src/routes/entities.$entityId.books.$bookId.reviews.$planId.$revision.tsx",
+        "apps/web/src/components/commerce/supplier-focused-review.tsx",
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "apps/web/src/components/posting-recovery/saved-requests.tsx",
+        "apps/web/src/components/posting-recovery/copy.ts",
+        "packages/ui/src/kanon/feedback.tsx",
+        "packages/ui/src/kanon/action.tsx",
+        "apps/web/src/components/posting-recovery/review-entry.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -128,21 +151,28 @@
         "approving",
         "approved"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k11-core-finish/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
       "jsxSha256": "31b432022b3bd367b14cb7ed6fa886f39e6f2769cc67ce05d12360a585b53a04",
-      "parts": [],
+      "parts": [
+        "layouts",
+        "status",
+        "action",
+        "@open-erp/ui/kanon/feedback",
+        "detail-panel"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Supplier uploaded two-page PDF and readable invoice882 carry exact stored1250000 gross; native posted/stale-source cases pass. Standalone original/decision surfaces, native heading/stored debit total, narrow width and one exact receipt after lost response/reload pass. Existing group/action iteration and final-footer predicate unchanged; public producers currently seal oneaction, so multi-action native proof unavailable. Full-frame27.1391% drift exceeds2%; sample combined approval/post and return/reject actions lack current owner contracts. Dark/native200 and complete-state parity remain unverified. Superseded captures are retained in git history; latest board capture/diff/result and necessary behavior receipts remain. DRA-194 native object loss and equal-length corruption return MissingEvidence with no preview/approval/ledger change; exact-byte restoration and keyboard retry pass. Newer-draft refusal and owner returns pass. Public P1-P13 behavior reconciliation: docs/plans/document-review-recovery.md."
     },
     {
       "id": "K-70",
@@ -493,11 +523,14 @@
       "baselineSha256": "74b29783065706e20e9f2b4a4fc901f5beae32671ef181f3e40220e158322eec",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-15.jsx.json",
       "files": [
-        "apps/web/src/components/posting-recovery/work-recovery.tsx"
+        "apps/web/src/components/posting-recovery/work-recovery.tsx",
+        "apps/web/src/components/posting-recovery/saved-requests.tsx",
+        "apps/web/src/components/posting-recovery/copy.ts",
+        "packages/ui/src/kanon/feedback.tsx"
       ],
       "route": "/entities/$entityId/books/$bookId/work",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -505,21 +538,24 @@
         "resolved as posted",
         "resolved as not posted"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k15-saved-unknown-banner/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
         "height": 900
       },
       "jsxSha256": "d562947bedfdd22acf72107066d8727f32d480dc9ca25d218e236e8049052d2f",
-      "parts": [],
+      "parts": [
+        "@open-erp/ui/kanon/feedback"
+      ],
       "candidateRoute": "/entities/$entityId/books/$bookId/work",
       "comparison": {
         "channelTolerance": 16,
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Shared SavedPostingOutcome uses canonical unknown Banner only for an actual decoded null terminal outcome. Existing unattempted/in-flight wording, exact key/time siblings, terminal diagnosis/native details and all recovery controls remain. Real selected Work saved request proof validates exact native metadata, no inspection writes, disabled-until-reviewed replay, lost response/reload and one receipt. Stable source and runtime cleanup retained. Full-frame drift15.5944% exceeds2%; board content differs, clock unpinned and full Work composition remains legacy. English/refused/long-key/dark/native200% and complete-state parity unverified; no production qualification."
     },
     {
       "id": "K-16",
@@ -533,14 +569,14 @@
       ],
       "route": "/entities/$entityId/books/$bookId/books",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
         "posted voucher selected",
         "correction available"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k16-posted-original/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -554,7 +590,8 @@
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "DRA-194 native posted voucher retains uploaded original after reload and one exact receipt; full-frame8.1167% drift exceeds2%. Existing correction owner remains untouched. This is a selected books-route voucher, not qualification of unsupported activity/payment/next-task composition. Dark/native200 and complete-state parity remain unverified."
     },
     {
       "id": "K-20",
@@ -605,7 +642,7 @@
       ],
       "route": "/entities/$entityId/books/$bookId/accounts",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "drifts",
       "adoption": "approved",
       "behaviorSource": "docs/domain.md",
       "requiredStates": [
@@ -614,7 +651,7 @@
         "original unavailable",
         "prepared awaiting approval"
       ],
-      "evidence": null,
+      "evidence": "verification/paper/evidence/k21-original-acceptance/result.json",
       "owner": "Erik Kroon",
       "viewport": {
         "width": 1440,
@@ -628,7 +665,8 @@
         "maxDiffRatio": 0.02,
         "adoptedBy": "Erik Kroon"
       },
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "DRA-97 native original comparison/preparation, checksum refusal after retry, competing allocation acknowledgment reset and two-page keyboard continuity at125% document magnification pass. Prepared plan has no approval/execution and source capacity/ledger stay unchanged. Full-frame9.4387% drift exceeds2%; actual fixture has several candidates and incomplete identity/coverage. Native200 browser zoom, reduced motion, broader states and cold-start performance remain unverified. DRA-194 document proof reused; no financial/permission/provider policy changes."
     },
     {
       "id": "K-30",
@@ -746,7 +784,8 @@
       "baselineSha256": "b7a30521ca6f77bb956bcd8e3808ecbd3a31819cbcf2c3e4d059ed4dfbcb84b0",
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-01.jsx.json",
       "files": [
-        "packages/ui/src/theme/kanon.stylex.ts"
+        "packages/ui/src/theme/kanon.stylex.ts",
+        "packages/ui/src/styles/globals.css"
       ],
       "route": "/kanon/list",
       "audience": "bureau",
@@ -769,7 +808,9 @@
       ],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "Named light and dark palette verification uses the real synthetic overview appearance menu, reload and bookkeeping route. Contract and browser evidence live in verification/paper/evidence/k01-palette/. No specimen comparison or full K-10/K-11 qualification is claimed; visual status remains unverified.",
+      "implementationNote": "Loaded palette verified separately. Added K-06 company/navigation type, mark radius and spacing values from stored JSX to the shared token owner; no specimen parity claim."
     },
     {
       "id": "K-02",
@@ -804,7 +845,8 @@
       ],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": " Rendered Action/InlineAction router links expose link semantics; native actions retain button semantics. This fixes the real-route regression reproduced by the retained Granska original link locator, without changing navigation destinations. K-10 Review all uses the existing compact secondary Action. Native label-preserving form inhibition needs an explicit owner contract alongside the adopted blockedBy reason state; focused submit forms remain unchanged."
     },
     {
       "id": "K-03",
@@ -839,7 +881,8 @@
       ],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "notes": "WorkGroup retains semantic headings; WorkRow retains native autofocus and pressed/current selection; count pills render stored strings without numeric conversion. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate."
     },
     {
       "id": "K-04",
@@ -922,7 +965,11 @@
       "jsx": "verification/paper/baseline/kanon-2026-10-09/K-06.jsx.json",
       "files": [
         "packages/ui/src/kanon/layouts.tsx",
-        "packages/ui/src/kanon/detail-panel.tsx"
+        "packages/ui/src/kanon/detail-panel.tsx",
+        "packages/ui/src/kanon/workspace.tsx",
+        "packages/ui/src/components/workspace.tsx",
+        "apps/web/src/components/book-workspace.tsx",
+        "apps/web/src/components/book-navigation.tsx"
       ],
       "route": "/kanon/list",
       "audience": "bureau",
@@ -944,11 +991,14 @@
       "jsxSha256": "ce6cda5b0d9ed786d9b0ac118d05174fb7d95d3a828b5109275f2446e8209eca",
       "parts": [
         "layouts",
-        "detail-panel"
+        "detail-panel",
+        "workspace"
       ],
       "candidateRoute": null,
       "comparison": null,
-      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy."
+      "adoptionNote": "Adopted 2026-10-09 by Erik Kroon (instructed in session, prepared by Claude). Board composition and listed states are the target; board example data is not adopted product policy.",
+      "implementationNote": "Shared shell implementation moved to kanon; existing authority, focused review, pathname scroll reset, mobile dialog and legacy page gutters retained. Literal K-06 shell values have separate browser obligations. Explanatory board needs owner-adopted specimens before visual comparison.",
+      "notes": "AreaBar retains native heading focus once per requested key; BarTab supports native status controls and stored count display, retaining existing link rendering. Shared DetailPanelSurface owns the actual panel aside; DetailPanel and K10 retained preview bodies use the same geometry. Exact K10 home alone consumes the canonical full-height zero-inset content mode; focused review and all other page gutters remain. Exact K10 home alone consumes zero-inset content; current scope/setup authority and focused-review routing remain. Inherited 60rem stacked layout/header wrapping and 40rem state-column collapse are preserved in canonical owners; a 375x812 real-route geometry regression was reproduced before the fix. Full native200% zoom remains separate. Canonical header/actions are actual shared implementations reused by DetailPanel and the home preview; record-title h2 semantics are supported without changing other subtitle semantics. Figures never wrap. Home original section retains the compact original owner and normal footer destinations; expiry still replaces normal slots. This new candidate needs fresh qualification. Canonical review frame/header/queue adoption preserves the complete saved financial owner in one permanent scrolling content region. Only the matched digest route restores the existing shell/zero-inset; scope/setup/audience gates remain. Native h1/book identity/queue links and shared reason-aware glyph projection require fresh route qualification. Canonical shared ReviewPanes and direct named surfaces keep both mobile panes mounted. Saved read, frozen source and command owners remain unchanged; fresh route proof required. DetailPanelHeader supports native figure h2 for the actual supplier owner while default figure p and subtitle options remain unchanged. DRA-216 main Bank accessible identity includes the current stored book name while its visible caption, root destination, preload and audience/currentness remain unchanged. The exact Bank source recovery link retains coverage destination; candidate native proof pending."
     },
     {
       "id": "K-07",

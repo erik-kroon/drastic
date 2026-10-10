@@ -40,6 +40,7 @@ const styles = stylex.create({
     fontSize: kanon.textCaption,
     fontWeight: kanon.weightSemibold,
     lineHeight: kanon.leadingBody,
+    margin: 0,
   },
   pill: {
     backgroundColor: kanon.colorRule,
@@ -58,6 +59,8 @@ const styles = stylex.create({
     borderBottomColor: kanon.colorRule,
     borderBottomStyle: "solid",
     borderBottomWidth: 1,
+    borderBlockStartWidth: 0,
+    borderInlineEndWidth: 0,
     borderInlineStartColor: "transparent",
     borderInlineStartStyle: "solid",
     borderInlineStartWidth: kanon.sizeSelectedEdge,
@@ -71,6 +74,7 @@ const styles = stylex.create({
     textAlign: "start",
     textDecoration: "none",
     width: "100%",
+    ":focus-visible": { outline: "none", boxShadow: kanon.shadowFocus },
   },
   rowTall: { minHeight: kanon.sizeRowTall },
   selected: {
@@ -107,6 +111,7 @@ const styles = stylex.create({
     lineHeight: kanon.leadingBody,
     paddingInlineStart: kanon.space4,
     width: kanon.sizeStateColumn,
+    "@container (max-width: 40rem)": { display: "none" },
   },
   amount: {
     color: kanon.colorText,
@@ -116,6 +121,7 @@ const styles = stylex.create({
     lineHeight: kanon.leadingBody,
     textAlign: "end",
     width: kanon.sizeAmountColumn,
+    whiteSpace: "nowrap",
   },
 });
 
@@ -127,7 +133,7 @@ export function WorkList({ children, carded = false }: { children: ReactNode; ca
   return <ul {...stylex.props(styles.list, carded && styles.carded)}>{children}</ul>;
 }
 
-export function CountPill({ count }: { count: number }) {
+export function CountPill({ count }: { count: number | string }) {
   return <span {...stylex.props(styles.pill)}>{count}</span>;
 }
 
@@ -146,7 +152,7 @@ export function WorkGroup({
   return (
     <li {...stylex.props(styles.group)}>
       <div {...stylex.props(styles.groupHeader, !first && styles.laterGroupHeader)}>
-        <span {...stylex.props(styles.groupTitle)}>{title}</span>
+        <h2 {...stylex.props(styles.groupTitle)}>{title}</h2>
         <CountPill count={count} />
       </div>
       <ul {...stylex.props(styles.list)}>{children}</ul>
@@ -166,6 +172,7 @@ type WorkRowProps = {
   /** Preformatted with formatMinorAmount. */
   amount?: string;
   selected?: boolean;
+  autoFocus?: boolean;
   onSelect: () => void;
 };
 
@@ -177,6 +184,8 @@ export function WorkRow(props: WorkRowProps) {
       <button
         type="button"
         aria-current={selected === true ? "true" : undefined}
+        aria-pressed={selected === true}
+        autoFocus={props.autoFocus}
         onClick={props.onSelect}
         {...stylex.props(
           styles.row,

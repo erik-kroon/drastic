@@ -1,0 +1,77 @@
+{
+  "syntheticOnly": true,
+  "integrationBase": "fd5b4b233492ff4e4b66e57f499e8128df4a2710",
+  "mergedHeads": [
+    "fb51deeffe45d4caf0907aa226f521c11ff09307",
+    "0b28eb4e5847160fbf5ca609abd8239548a39ef4"
+  ],
+  "runs": [
+    {
+      "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/cash-forecast.e2e.ts",
+      "runId": "1189ef82-86ab-4552-b58f-8c4cf617297e",
+      "status": "passed",
+      "exitCode": 0,
+      "summary": {
+        "discovered": 49,
+        "selected": 2,
+        "executed": 2,
+        "passed": 2,
+        "failed": 0,
+        "interrupted": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "sourceIntegrity": "stable",
+      "sourceBefore": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "sourceAfter": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "applicationDigest": "9e80697bec9271d6d168442dcb83f5a2e1f932e04700fd882b614d831b012b35",
+      "fixtureSha256": "833b34a93c13ab5cc4b831073ed68577c1522c9347594db30fe5d699666a7141",
+      "scratchRemoved": true
+    },
+    {
+      "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/supplier-frozen-original.e2e.ts",
+      "runId": "2ce12265-7f6f-42f4-a00e-e12f61e94856",
+      "status": "passed",
+      "exitCode": 0,
+      "summary": {
+        "discovered": 49,
+        "selected": 2,
+        "executed": 2,
+        "passed": 2,
+        "failed": 0,
+        "interrupted": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "sourceIntegrity": "stable",
+      "sourceBefore": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "sourceAfter": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "applicationDigest": "9e80697bec9271d6d168442dcb83f5a2e1f932e04700fd882b614d831b012b35",
+      "fixtureSha256": "d8bb9119b487c2d88e6aa6fce9cc48a1e9d0aec9d7cfa13756f63933133f7f2e",
+      "scratchRemoved": true
+    },
+    {
+      "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/bank-evidence-review.e2e.ts",
+      "runId": "9c509825-f6fd-482f-aa36-e3218493a56d",
+      "status": "passed",
+      "exitCode": 0,
+      "summary": {
+        "discovered": 49,
+        "selected": 4,
+        "executed": 4,
+        "passed": 4,
+        "failed": 0,
+        "interrupted": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "sourceIntegrity": "stable",
+      "sourceBefore": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "sourceAfter": "5b61828d1cf5b299c379470c092c23d8101fc08ba9eb51a59c13b53d21f5b759",
+      "applicationDigest": "9e80697bec9271d6d168442dcb83f5a2e1f932e04700fd882b614d831b012b35",
+      "fixtureSha256": "ffd4a73b4dde10dc3ffffe713edb8cb60333e257fdaa06adfedede9dda4973ad",
+      "scratchRemoved": true
+    }
+  ],
+  "limits": "Selected native browser regression only; retained board measurements remain drifts. No production, provider, native200 or reduced-motion qualification is inferred."
+}

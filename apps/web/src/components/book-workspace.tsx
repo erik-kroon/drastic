@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useMatch } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { BookOpen, CheckSquare, Building2 } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
@@ -13,7 +13,7 @@ import {
   WorkspaceNavLink,
   WorkspaceAccount,
   WorkspaceMobileNavigation,
-} from "@open-erp/ui/components/workspace";
+} from "@open-erp/ui/kanon/workspace";
 import { BookSearch } from "@/components/book-search";
 import { NavIcon } from "@open-erp/ui/components/nav-icon";
 import { BookNavigation } from "@/components/book-navigation";
@@ -30,13 +30,12 @@ import { SetupWorkspace } from "@open-erp/ui/components/setup-workspace";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
+function isHomePath(pathname: string, base: string) {
+  return pathname === base || pathname === `${base}/`;
+}
+
 function isTodoPath(pathname: string, base: string) {
-  return (
-    pathname === base ||
-    pathname === `${base}/` ||
-    pathname.endsWith("/work") ||
-    pathname.includes("/reviews/")
-  );
+  return isHomePath(pathname, base) || pathname.endsWith("/work") || pathname.includes("/reviews/");
 }
 
 function BookSwitcher({
@@ -147,6 +146,7 @@ function AccountMenu(props: {
   onAudienceChange: (audience: Audience) => void;
 }) {
   const { book, locale, audience } = props;
+
   const base = workspacePath(book);
   const labels = frontendCopy(locale);
   const copy = accountingCopy(locale);
@@ -209,6 +209,19 @@ function mobileItems({
   return items;
 }
 
+function useWorkspaceLayout(pathname: string, base: string) {
+  const digestReview = useMatch({
+    from: "/entities/$entityId/books/$bookId/reviews/$planId/$revision",
+    shouldThrow: false,
+  });
+
+  return {
+    contentInset:
+      isHomePath(pathname, base) || digestReview ? ("none" as const) : ("page" as const),
+    focused: !digestReview && pathname.startsWith(`${base}/reviews/`),
+  };
+}
+
 export function BookWorkspace({
   book,
   books,
@@ -223,6 +236,9 @@ export function BookWorkspace({
   const copy = accountingCopy(locale);
   const pathname = useLocation({ select: (location) => location.pathname });
   const search = useLocation({ select: (location) => location.searchStr });
+
+  const layout = useWorkspaceLayout(pathname, workspacePath(book));
+
   const base = workspacePath(book);
   const [scopeBlocked, setScopeBlocked] = useState(true);
   const [audience, setAudience] = useAudience(book);
@@ -347,7 +363,8 @@ export function BookWorkspace({
   return (
     <Workspace
       pageKey={pathname}
-      focused={pathname.startsWith(`${base}/reviews/`)}
+      contentInset={layout.contentInset}
+      focused={layout.focused}
       brand={
         <>
           <WorkspaceCompany name={book.name} href="/companies" />

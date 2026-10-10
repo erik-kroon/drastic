@@ -1,0 +1,345 @@
+{
+  "scope": "synthetic original and completed supplier stage selection, reload and keyboard return",
+  "task": {
+    "kind": "document",
+    "recordId": "source_9d6575be54fa42d3bb16b75a31dd534c",
+    "rowOrdinal": null,
+    "key": "entity_synthetic/book_synthetic/document/source_9d6575be54fa42d3bb16b75a31dd534c/"
+  },
+  "ownerReturn": "owner:%7B%22owner%22%3A%22home%22%2C%22search%22%3A%7B%22after%22%3A%22document_source_38636233e08b4847878d0b2935ae8c18%22%2C%22status%22%3A%22open%22%2C%22task%22%3A%22entity_synthetic%2Fbook_synthetic%2Fdocument%2Fsource_9d6575be54fa42d3bb16b75a31dd534c%2F%22%7D%7D",
+  "before": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "after": {
+    "sequence": "0",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "0",
+        "balanceMinor": "0"
+      }
+    ]
+  },
+  "handoff": {
+    "inbox": {
+      "occurrence": {
+        "occurrence": {
+          "id": "source_9d6575be54fa42d3bb16b75a31dd534c",
+          "scope": {
+            "entityId": "entity_synthetic",
+            "bookId": "book_synthetic"
+          },
+          "sourceSystem": "synthetic-home-return",
+          "sourceAccountId": "synthetic_originals",
+          "occurrenceKey": "bdd57c93-7edc-42bf-9580-9a6ea3d369aa",
+          "sourceRevision": "1",
+          "filename": "home-original-selected.pdf",
+          "sha256": "sha256:d63ecdf6b1f3e52c87b42aa44f6a82bd99a7637b5ffda02fa768723719942cc4",
+          "byteLength": 885,
+          "mediaType": "application/pdf",
+          "retainedBy": "actor_operator",
+          "retainedAt": "2026-10-09T21:47:06.845Z",
+          "receipt": {
+            "key": "b2c68e1f-3552-466e-9125-5b04061a789d",
+            "operation": "retain_source_object",
+            "actorId": "actor_operator"
+          }
+        },
+        "latestPreviewId": null,
+        "admission": null
+      },
+      "channel": "upload",
+      "messageIdentity": null,
+      "draftId": "supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+      "reviewReason": "Synthetic public API handoff, not approval or posting",
+      "reviewAttemptId": null,
+      "attempts": []
+    },
+    "draft": {
+      "id": "supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+      "scope": {
+        "entityId": "entity_synthetic",
+        "bookId": "book_synthetic"
+      },
+      "draftKey": "ap_94321549d85235554a3b40dcd3794c55ff961a42881406194b4782667d97",
+      "revision": "1",
+      "status": "draft",
+      "acceptanceSupported": false,
+      "recognitionSupported": false,
+      "recognitionAssessment": "not_assessed",
+      "calculationBasis": "explicit_line_amounts_v1",
+      "content": {
+        "title": "Synthetic selected home draft",
+        "counterpartyId": "counterparty_0a822e010d34434898f489a465140cc1",
+        "counterpartyRevision": "1",
+        "supplier": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5"
+        },
+        "buyer": {
+          "legalName": "Synthetic home identity",
+          "registrationId": "5560000000",
+          "taxId": null,
+          "address": "Synthetic street 1",
+          "countryCode": "SE",
+          "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5"
+        },
+        "sourceEvidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+        "supplierDocumentNumber": "HOME-001",
+        "currency": "SEK",
+        "currencyScale": 2,
+        "documentDate": "2026-10-03",
+        "supplyDate": "2026-10-03",
+        "dueDate": "2026-10-14",
+        "paymentTerms": "Synthetic terms",
+        "sourceTotalMinor": "10000",
+        "lines": [
+          {
+            "id": "synthetic_service",
+            "description": "Synthetic service",
+            "quantity": "1",
+            "unitPriceMinor": "10000",
+            "baseMinor": "10000",
+            "discountMinor": "0",
+            "chargeMinor": "0",
+            "taxMinor": "0",
+            "taxDescription": "Synthetic zero tax",
+            "taxEvidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+            "sourceGrossMinor": "10000"
+          }
+        ]
+      },
+      "counterparty": {
+        "kind": "synthetic_counterparty_v1",
+        "externalKey": "home_a42c170b-7145-4445-bfb2-f4e775310a47",
+        "role": "supplier",
+        "displayName": "Synthetic home supplier",
+        "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+        "reason": "Synthetic handoff fixture",
+        "id": "counterparty_0a822e010d34434898f489a465140cc1",
+        "scope": {
+          "entityId": "entity_synthetic",
+          "bookId": "book_synthetic"
+        },
+        "revision": "1",
+        "evidence": {
+          "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+          "sha256": "7b7529fc1724e69c6d65ac5997cdf167ba0aedd1b5d25a5c8e4ce2dcff3cc634"
+        },
+        "legalIdentityVerified": false,
+        "createdAt": "2026-10-09T21:47:10.460456Z",
+        "receipt": {
+          "key": "a9e47c32-a000-47bf-bfa7-ff431f6492a9",
+          "operation": "commerce_create_counterparty",
+          "actorId": "actor_operator"
+        }
+      },
+      "supplierEvidence": {
+        "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+        "sha256": "7b7529fc1724e69c6d65ac5997cdf167ba0aedd1b5d25a5c8e4ce2dcff3cc634"
+      },
+      "buyerEvidence": {
+        "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+        "sha256": "7b7529fc1724e69c6d65ac5997cdf167ba0aedd1b5d25a5c8e4ce2dcff3cc634"
+      },
+      "sourceEvidence": {
+        "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+        "sha256": "7b7529fc1724e69c6d65ac5997cdf167ba0aedd1b5d25a5c8e4ce2dcff3cc634"
+      },
+      "totals": {
+        "baseMinor": "10000",
+        "discountMinor": "0",
+        "chargeMinor": "0",
+        "netMinor": "10000",
+        "taxMinor": "0",
+        "grossMinor": "10000",
+        "sourceTotalMatches": true
+      },
+      "calculatedLines": [
+        {
+          "id": "synthetic_service",
+          "calculatedBaseMinor": "10000",
+          "netMinor": "10000",
+          "grossMinor": "10000",
+          "sourceGrossMatches": true,
+          "taxEvidence": {
+            "evidenceId": "evidence_863225118c994188bc5f709c904e2eb5",
+            "sha256": "7b7529fc1724e69c6d65ac5997cdf167ba0aedd1b5d25a5c8e4ce2dcff3cc634"
+          }
+        }
+      ],
+      "blockers": [
+        {
+          "code": "acceptance_not_implemented",
+          "lineId": null
+        },
+        {
+          "code": "legal_identity_not_verified",
+          "lineId": null
+        },
+        {
+          "code": "tax_profile_not_activated",
+          "lineId": null
+        },
+        {
+          "code": "recognition_not_implemented",
+          "lineId": null
+        }
+      ],
+      "reason": "Initial supplier commercial draft",
+      "createdAt": "2026-10-09T21:47:10.490Z",
+      "receipt": {
+        "key": "supplier_draft_d6b1d0f7e0804e9fb46b5136e6c07855",
+        "operation": "create_supplier_invoice_draft",
+        "actorId": "actor_operator"
+      },
+      "digest": "sha256:a4edbb7c7893d996f9664a20e397946e707f3dd3f1ec512886316264d34d2c3e"
+    }
+  },
+  "stage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_9d6575be54fa42d3bb16b75a31dd534c",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_9d6575be54fa42d3bb16b75a31dd534c/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": null,
+    "key": "supplier_supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+    "assignment": null,
+    "kind": "supplier",
+    "id": "supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+    "revision": "sha256:a4edbb7c7893d996f9664a20e397946e707f3dd3f1ec512886316264d34d2c3e",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-09T21:47:10.490Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "open",
+    "reason": "supplier_draft"
+  },
+  "completedStage": {
+    "questionRoot": {
+      "kind": "document",
+      "recordId": "source_9d6575be54fa42d3bb16b75a31dd534c",
+      "rowOrdinal": null,
+      "key": "entity_synthetic/book_synthetic/document/source_9d6575be54fa42d3bb16b75a31dd534c/"
+    },
+    "questionSummary": {
+      "unresolved": 0,
+      "open": 0,
+      "answered": 0,
+      "waitingOn": []
+    },
+    "recurringAgreementId": null,
+    "supplierReview": null,
+    "key": "supplier_supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+    "assignment": null,
+    "kind": "supplier",
+    "id": "supplier_invoice_draft_ed0d2e7239d8482ca9c44d3ced25d358",
+    "revision": "sha256:a4edbb7c7893d996f9664a20e397946e707f3dd3f1ec512886316264d34d2c3e",
+    "title": "Synthetic selected home draft",
+    "date": "2026-10-03",
+    "updatedAt": "2026-10-09T21:47:10.490Z",
+    "amountMinor": "10000",
+    "currency": "SEK",
+    "currencyScale": 2,
+    "state": "completed",
+    "reason": "supplier_accepted"
+  },
+  "afterCompletion": {
+    "sequence": "1",
+    "accounts": [
+      {
+        "accountId": "account_bank",
+        "code": "1930",
+        "name": "Synthetic bank account",
+        "debitMinor": "10000",
+        "creditMinor": "0",
+        "balanceMinor": "10000"
+      },
+      {
+        "accountId": "account_clearing",
+        "code": "2999",
+        "name": "Synthetic clearing account",
+        "debitMinor": "0",
+        "creditMinor": "10000",
+        "balanceMinor": "-10000"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-001-home-selected-original-after-reload.png",
+      "sha256": "fbce2fa37a2a76949d90f7de7281fb4ab6f953bce41c9718933721cbfbb22fb0"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-003-home-returned-selected-original-focused.png",
+      "sha256": "ad1641b8714c47c7ac7c1f8a3c4288166eb77fc28309ac135eea58f790e1b628"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-004-home-same-root-new-supplier-stage.png",
+      "sha256": "52b416c62db10c8be81e67bbe9124d098ce7472189c65bffc95958439938978b"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-005-home-missing-root-heading-focused.png",
+      "sha256": "e5fb792fe69d07afb1585a51d3f95250d816924c924d36f4da954133ec8ea2b0"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-006-home-exact-completed-supplier-stage-focused.png",
+      "sha256": "b80dc0cb4adcf89feca2772a96f00cbcd18ca410db8b08506a4422115f825bb4"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-007-home-returned-exact-posted-stage-focused.png",
+      "sha256": "4b6d68139e062314b34d50c111c5dba4956fbed2ac5a4cf910938c727493689c"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-008-home-unavailable-completed-stage-heading-focused.png",
+      "sha256": "5df425edc576fa11ea700e1547dbe609bed7772ac0e5f3a06c1ea3ae5d1d30af"
+    },
+    {
+      "path": "verification/paper/evidence/k06-shell/screenshots/home-009-home-other-root-stage-refused.png",
+      "sha256": "5df425edc576fa11ea700e1547dbe609bed7772ac0e5f3a06c1ea3ae5d1d30af"
+    }
+  ]
+}

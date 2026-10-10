@@ -1,0 +1,42 @@
+{
+  "id": "supplier_acceptance_8f46d60e99634336ae5ad991ca5dbbb8",
+  "scope": {
+    "entityId": "entity_synthetic",
+    "bookId": "book_synthetic"
+  },
+  "reviewId": "supplier_review_54952905368a4d9fb09cb78b354666ed",
+  "reviewDigest": "sha256:5fe215227d65f61bdd0e81ec5f4cf344111621579cdd95a5b05745d6324f46c1",
+  "approvalId": "supplier_approval_990a3b8d34d44da9bf7c967f05c9f149",
+  "profile": "synthetic-manual-supplier-v1",
+  "draftId": "supplier_invoice_draft_795652ceab9a4c37a92e1d2aa286f291",
+  "draftRevision": "1",
+  "draftDigest": "sha256:0dbcc1b286c3210a77c864f2e26bb41e5c3a82e9a9434f658123da8ed22ffff0",
+  "supplierDocumentNumber": "HOME-001",
+  "accepted": true,
+  "recognized": true,
+  "paid": false,
+  "postingReceipt": {
+    "id": "receipt_ccada795ff3d46caac83ae4ae27aa82c",
+    "changeSetId": "change_14e4c5484a8c437a960d72b63184a177",
+    "voucherId": "voucher_ffeb50caeb54498cb60ca16cdb6c9265",
+    "planDigest": "sha256:0b69f1b1caeea9bc05b0831ab9f39c6b11d29517ef856d3b05f9e3f2d96816b2",
+    "sequence": "1",
+    "voucherNumber": "1",
+    "committedAt": "2026-10-10 08:51:38.73998+02"
+  },
+  "registerInvoiceId": "invoice_40dcd4b059f5477e99cf11eea402f33b",
+  "recognitionId": null,
+  "taxFactIds": [],
+  "legalBlockers": [
+    "legal_identity_not_verified",
+    "tax_profile_not_activated",
+    "payment_not_initiated"
+  ],
+  "createdAt": "2026-10-10T06:51:38.806Z",
+  "receipt": {
+    "key": "3db9f09e-2b43-4b17-a3e7-55f6ac94c0bd",
+    "operation": "execute_supplier_acceptance",
+    "actorId": "actor_operator"
+  },
+  "digest": "sha256:f32226e2bcc95a20d029a8327d0e75287c488b7016a2f63d9f75d2379cb628a6"
+}

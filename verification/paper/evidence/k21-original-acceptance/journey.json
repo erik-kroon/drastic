@@ -1,0 +1,69 @@
+{
+  "synthetic": true,
+  "run": "79c7f04b-288c-4c0d-b6f5-653867cfcf12",
+  "sourceIntegrity": {
+    "status": "stable",
+    "before": "cd6a0d3fbf5a63c7d61ef7588506df0ce8654d1293beec936d13aabd644ce15e",
+    "after": "cd6a0d3fbf5a63c7d61ef7588506df0ce8654d1293beec936d13aabd644ce15e"
+  },
+  "scratchRemoved": true,
+  "preparation": {
+    "id": "bankplan_6c88cfecb0d943419c40a2f79745228c",
+    "digest": "sha256:00833b7a5dacb158163e3814275091ff6a62a3dc44a7fb5a9b82863eb8301665",
+    "approvalAbsent": true,
+    "executionAbsent": true,
+    "remainingMinor": "-125000",
+    "originalHash": "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36",
+    "ledgerUnchanged": true
+  },
+  "checksumRefusal": {
+    "expectedHash": "sha256:691883ddc2b2864ee53a2da354405090e878f7eeafbf92a5f101a6d764d9ec36",
+    "actualHash": "sha256:26a9278406d6c4b5713b28f06c4485c36384c61adba73d60f6b6638aec1e28ec",
+    "noPreviewOrSubstituteOrDownload": true,
+    "preparationDisabledAfterRetry": true,
+    "ledgerUnchanged": true
+  },
+  "multipageKeyboard": {
+    "originalHash": "sha256:dfa7eb88a6909af5c3e163abcc0240ca2b4518bbcb829ce3270752a7f5ef9e03",
+    "page": 2,
+    "documentZoom": 125,
+    "viewport": {
+      "width": 593,
+      "scrollWidth": 744,
+      "overflowX": "auto"
+    },
+    "focus": {
+      "inside": true,
+      "shadow": "rgb(96, 165, 250) 0px 0px 0px 2px"
+    },
+    "active": "F\u00f6rbered matchning",
+    "remainingMinor": "-125000",
+    "ledgerUnchanged": true
+  },
+  "qualification": "Native local synthetic data; document magnification is not native browser zoom; no financial or optical/provider policy change",
+  "competingAllocation": {
+    "planId": "bankplan_a80db8c5c5984eadb656f419c66c6812",
+    "digest": "sha256:52cdae51b6b03c530daa3858c7211c1d08c4dfee2c01f66ea2a37f9fc819046f",
+    "legs": [
+      {
+        "statementId": "statement_5c83b37f155349f8b850112da31c0c45",
+        "rowOrdinal": 2,
+        "voucherId": "voucher_c6c935110d214ef7b293b813e360a64e",
+        "lineId": "line_44a4d6c4b8d2452aa870dad23cba3cb0",
+        "amountMinor": "-50000",
+        "planId": "bankplan_a80db8c5c5984eadb656f419c66c6812",
+        "ordinal": 1
+      }
+    ],
+    "receipt": {
+      "key": "c1e23b76-7a5d-4509-b2e2-9032b178f29a",
+      "operation": "execute_bank_allocation",
+      "actorId": "actor_operator"
+    },
+    "remainingCandidateMinor": "-75000",
+    "acknowledgmentCleared": true,
+    "draftReasonRetained": true,
+    "ledgerUnchanged": true,
+    "lifecycleSignal": "A visibilitychange signal triggered a real public-owner refetch; no financial response was mocked"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "actual": "verification/paper/evidence/k16-posted-original/actual.png",
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/supplier-frozen-original.e2e.ts",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf2",
+          "weight": "normal",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T07:36:51.766Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&q=Vinter+%26+Co+AB+faktura+882.pdf",
+    "route": "/entities/$entityId/books/$bookId/books",
+    "fixture": {
+      "recipe": "tests/browser/supplier-frozen-original.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; native uploaded original, missing/corrupt recovery and posted voucher. Full frame, no baseline changes.",
+  "sourceRevision": "d07ad63",
+  "sourceHashes": {
+    "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
+    "tests/browser/supplier-frozen-original.e2e.ts": "d8bb9119b487c2d88e6aa6fce9cc48a1e9d0aec9d7cfa13756f63933133f7f2e"
+  },
+  "workingTreeCandidate": true
+}

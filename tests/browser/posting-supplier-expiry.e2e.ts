@@ -191,7 +191,244 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
 
   const focusedUrl = await browser.url();
 
+  const retryReads = [
+    {
+      path: `${base}/review-targets/${encodeURIComponent(renewed.plan.postingPlan.id)}`,
+      label: "Försök igen",
+    },
+    { path: `${base}${reviewPath}`, label: "Uppdatera granskning" },
+  ];
+
+  const reviewReadRetries: Array<{ path: string; requests: number; workingReason: string }> = [];
+
+  for (const read of retryReads) {
+    await screen.getByRole("link", "Inköp /", { exact: true }).focus();
+    await screen.getByRole("link", "Inköp /", { exact: true }).press("Enter");
+    await expect(openFocused).toBeVisible();
+
+    const pendingRead = Promise.withResolvers<void>();
+    let requests = 0;
+    let failReads = true;
+
+    await browser.route(read.path, async (route) => {
+      requests += 1;
+
+      if (failReads) {
+        await route.abort();
+
+        return;
+      }
+
+      await pendingRead.promise;
+      await route.continue();
+    });
+
+    try {
+      if (read.label === "Försök igen") {
+        const staleAfter = Date.now() + 31_000;
+
+        await expect.poll(() => Date.now(), { timeout: 40_000 }).toBeGreaterThanOrEqual(staleAfter);
+      }
+
+      await openFocused.focus();
+      await openFocused.press("Enter");
+
+      const retry = screen.getByRole("button", read.label, { exact: true });
+
+      await expect(retry).toBeVisible();
+      await expect(screen.getByRole("region", "Beslut", { exact: true })).toHaveCount(0);
+      await retry.focus();
+
+      const requestsBeforeRetry = requests;
+
+      failReads = false;
+
+      const retryPress = retry.press("Enter");
+
+      try {
+        await expect.poll(() => requests).toBe(requestsBeforeRetry + 1);
+
+        const retryState = await browser.evaluate(() =>
+          Array.from(document.querySelectorAll("main button"))
+            .filter((button) =>
+              ["Försök igen", "Uppdatera granskning", "Begäran pågår…"].includes(
+                button.textContent ?? "",
+              ),
+            )
+            .map((button) => ({
+              text: button.textContent,
+              blocked: button.getAttribute("aria-disabled"),
+            })),
+        );
+
+        expect(retryState).toEqual([{ text: "Begäran pågår…", blocked: "true" }]);
+
+        const working = screen.getByRole("button", "Begäran pågår…", { exact: true });
+
+        await working.focus();
+        await working.press("Enter");
+        expect(requests).toBe(requestsBeforeRetry + 1);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      } finally {
+        pendingRead.resolve();
+
+        await retryPress;
+      }
+
+      await expect(retry).toHaveCount(0);
+      await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+      reviewReadRetries.push({ path: read.path, requests, workingReason: "Begäran pågår…" });
+    } finally {
+      pendingRead.resolve();
+      await browser.unroute(read.path);
+    }
+  }
+
+  expect(
+    await browser.evaluate(() =>
+      Array.from(document.querySelectorAll("main section[aria-label='Beslut'] h3"))
+        .filter((heading) => heading.textContent === "FRÅGOR")
+        .map((heading) => heading.tagName),
+    ),
+  ).toEqual(["H3"]);
+
   await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+  await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+
+  await expect(
+    screen.getByRole("link", "Bank, Fjällby Konsult AB", { exact: true }),
+  ).toHaveAttribute("href", `${new URL(workspace).pathname}/accounts`);
+
+  const frame = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    const header = document.querySelector("main header");
+
+    const selected = document.querySelector(
+      "main nav[aria-label='Granska och godkänn'] a[aria-current='page']",
+    );
+
+    return {
+      nativeHeading: header?.querySelector("h1")?.tagName ?? null,
+      routeHeadingCount: document.querySelectorAll("main h1").length,
+      bookIdentity: header?.textContent?.includes("Fjällby Konsult AB") ?? false,
+      nativeQueueLink: selected?.tagName ?? null,
+      selectedTitle: selected?.textContent?.startsWith("Vinter & Co AB, faktura 882") ?? false,
+      conditions: {
+        browser: navigator.userAgent,
+        deviceScaleFactor: window.devicePixelRatio,
+        fonts: {
+          family: getComputedStyle(document.body).fontFamily,
+          faces: Array.from(document.fonts).map((face) => ({
+            family: face.family,
+            weight: face.weight,
+            status: face.status,
+          })),
+        },
+        locale: navigator.language,
+        theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+        time: new Date().toISOString(),
+        clockPinned: false,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        resolvedRoute: `${window.location.pathname}${window.location.search}`,
+      },
+    };
+  });
+
+  expect(frame).toMatchObject({
+    nativeHeading: "H1",
+    routeHeadingCount: 1,
+    bookIdentity: true,
+    nativeQueueLink: "A",
+    selectedTitle: true,
+  });
+
+  expect(renewed.plan.draftSnapshot.totals.grossMinor).toBe(fixture.expectedGrossMinor);
+  expect(renewed.plan.draftSnapshot.content.currencyScale).toBe(2);
+
+  const supplierHeader = await browser.evaluate(() => {
+    const header = document.querySelector("main section[aria-label='Beslut'] header");
+    const figure = header?.querySelector("h2");
+    const subtitle = header?.querySelector("p");
+    const style = figure ? getComputedStyle(figure) : null;
+
+    return {
+      headerCount: document.querySelectorAll("main section[aria-label='Beslut'] header").length,
+      nativeFigure: figure?.tagName ?? null,
+      figure: figure?.textContent ?? null,
+      subtitle: subtitle?.textContent ?? null,
+      size: style?.fontSize ?? null,
+      lineHeight: style?.lineHeight ?? null,
+      whiteSpace: style?.whiteSpace ?? null,
+    };
+  });
+
+  expect(supplierHeader).toEqual({
+    headerCount: 1,
+    nativeFigure: "H2",
+    figure: "2\u00a0490,00 att betala",
+    subtitle: "Vinter & Co AB, faktura 882",
+    size: "32px",
+    lineHeight: "38px",
+    whiteSpace: "nowrap",
+  });
+
+  const focusedScreenshot = await app.screenshot("supplier-canonical-frame-ready");
+
+  await browser.setViewport({ width: 375, height: 812 });
+  await expect(screen.getByRole("button", "Original", { exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).not.toBeVisible();
+  await screen.getByRole("button", "Beslut", { exact: true }).focus();
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(screen.getByRole("button", "Beslut", { exact: true })).toBeFocused();
+  await expect(screen.getByRole("button", "Beslut", { exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
+
+  const narrowPanes = await browser.evaluate(() => {
+    const original = document.querySelectorAll("main section[aria-label='Original']");
+    const decisions = document.querySelectorAll("main section[aria-label='Beslut']");
+    const decision = decisions[0]?.getBoundingClientRect();
+
+    return {
+      originalCount: original.length,
+      decisionCount: decisions.length,
+      overflow: document.documentElement.scrollWidth > window.innerWidth,
+      decisionFits: Boolean(
+        decision &&
+        decision.width > 0 &&
+        decision.left >= 0 &&
+        decision.right <= window.innerWidth + 1,
+      ),
+    };
+  });
+
+  expect(narrowPanes).toEqual({
+    originalCount: 1,
+    decisionCount: 1,
+    overflow: false,
+    decisionFits: true,
+  });
+
+  const narrowScreenshot = await app.screenshot("supplier-review-decision-narrow");
+
+  await writeFile(
+    join(output, "supplier-header-observation.json"),
+    JSON.stringify(
+      { frame, supplierHeader, narrowPanes, focusedScreenshot, narrowScreenshot },
+      null,
+      2,
+    ),
+  );
+
+  await browser.setViewport({ width: 1440, height: 900 });
   await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
   await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
 
@@ -226,6 +463,26 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   expect(mountedAvailable.approval?.id).toBe(timerFixture.id);
   expect(mountedAvailable.approvalObservation.state).toBe("available");
   expect(mountedAvailable.approvalUsable).toBe(true);
+
+  const mountedRuntime = await browser.evaluate(() => ({
+    visibility: document.visibilityState,
+    focused: document.hasFocus(),
+    browserTime: new Date().toISOString(),
+  }));
+
+  await writeFile(
+    join(output, "supplier-mounted-expiry-observation.json"),
+    JSON.stringify(
+      {
+        timerFixture,
+        observedAt: mountedAvailable.approvalObservation.observedAt,
+        state: mountedAvailable.approvalObservation.state,
+        mountedRuntime,
+      },
+      null,
+      2,
+    ),
+  );
   await expect(screen.getByRole("region", "Godkännandet")).toBeVisible({ timeout: 25000 });
   await expect(screen.getByRole("button", "Bokför", { exact: true })).toBeDisabled();
   await expect(screen.getByRole("button", "Bokför och registrera", { exact: true })).toHaveCount(0);
@@ -270,6 +527,16 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   await expect(execute).toBeVisible();
   await acknowledgment.focus();
   await acknowledgment.press("Space");
+  await expect(acknowledgment).toBeChecked();
+
+  await browser.setViewport({ width: 375, height: 812 });
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(acknowledgment).toBeChecked();
+  await screen.getByRole("button", "Original", { exact: true }).press("Enter");
+  await expect(screen.getByRole("region", "Beslut", { exact: true })).not.toBeVisible();
+  await screen.getByRole("button", "Beslut", { exact: true }).press("Enter");
+  await expect(acknowledgment).toBeChecked();
+  await browser.setViewport({ width: 1440, height: 900 });
   await expect(acknowledgment).toBeChecked();
 
   const renewedApprovalId = renewed.approval.id;
@@ -428,10 +695,17 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
           payableDeltaMinor: "-249000",
           paid: false,
         },
+        frame,
+        supplierHeader,
+        reviewReadRetries,
+        narrowPanes,
+        paneAcknowledgmentRetained: true,
         focusedRoute: focusedUrl,
         wrongDigestRefused: true,
         expiryWithoutRefresh: true,
         screenshots: {
+          focusedScreenshot,
+          narrowScreenshot,
           expiredScreenshot,
           wrongDigestScreenshot,
           mountedExpiryScreenshot,

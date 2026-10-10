@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import * as Schema from "effect/Schema";
 import * as Accounting from "../../packages/contracts/src/accounting";
 import * as Commerce from "../../packages/contracts/src/commerce";
 import * as Source from "../../packages/contracts/src/source-intake";
 import * as Inbox from "../../packages/contracts/src/supplier-inbox";
 import * as Drafts from "../../packages/contracts/src/supplier-invoice-drafts";
+import * as Workspace from "../../packages/contracts/src/workspace";
 import * as Acceptance from "../../packages/contracts/src/supplier-acceptance";
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
@@ -55,19 +56,21 @@ for (const changed of [false, true]) {
     };
 
     const filename = changed
-      ? `frozen-original-${randomUUID()}.pdf`
-      : "frozen-original-537acf6c-9e82-42da-96d0-db0dee72e71b.pdf";
+      ? `Vinter & Co AB faktura 883-${randomUUID()}.pdf`
+      : "Vinter & Co AB faktura 882.pdf";
 
-    const bytes = twoPageOriginal();
+    const bytes = twoPageOriginal([
+      `Vinter & Co AB, invoice ${changed ? "883" : "882"}`,
+      "Total SEK 12500.00",
+    ]);
+
     const expectedHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
     const file = join(output, filename);
 
     await writeFile(file, bytes);
     await app.open(`${workspace}/purchases?view=supplier-drafts`);
     await expect(screen.getByRole("button", "Ladda upp original")).toBeVisible({ timeout: 90000 });
-    await agent.act(
-      "Open Ladda upp original. Stop when Dokument and Spara original are visible; do not choose a file.",
-    );
+    await screen.getByRole("button", "Ladda upp original", { exact: true }).click();
     await expect(screen.getByLabel("Dokument", { exact: true })).toBeVisible();
     await screen.getByLabel("Dokument", { exact: true }).setInputFiles(file);
 
@@ -97,7 +100,7 @@ for (const changed of [false, true]) {
       kind: "synthetic_counterparty_v1",
       externalKey: `frozen_${randomUUID()}`,
       role: "supplier",
-      displayName: "Frozen original supplier",
+      displayName: "Vinter & Co AB",
       evidenceId: entry.id,
       reason: "Local synthetic qualification",
     });
@@ -118,27 +121,27 @@ for (const changed of [false, true]) {
       supplier: identity,
       buyer: identity,
       sourceEvidenceId: entry.id,
-      supplierDocumentNumber: `FROZEN-${changed ? "CHANGED" : "POSTED"}`,
+      supplierDocumentNumber: changed ? "883" : "882",
       currency: "SEK",
       currencyScale: 2,
       documentDate: "2026-10-03",
       supplyDate: "2026-10-03",
       dueDate: "2026-10-14",
       paymentTerms: "Synthetic terms",
-      sourceTotalMinor: "125000",
+      sourceTotalMinor: "1250000",
       lines: [
         {
           id: "line_frozen_source",
           description: "Synthetic gross cost",
           quantity: "1",
-          unitPriceMinor: "125000",
-          baseMinor: "125000",
+          unitPriceMinor: "1250000",
+          baseMinor: "1250000",
           discountMinor: "0",
           chargeMinor: "0",
           taxMinor: "0",
           taxDescription: "Synthetic no tax treatment",
           taxEvidenceId: entry.id,
-          sourceGrossMinor: "125000",
+          sourceGrossMinor: "1250000",
         },
       ],
     } satisfies typeof Drafts.SupplierDraftContent.Type;
@@ -259,25 +262,41 @@ for (const changed of [false, true]) {
     const workUrl = `${workspace}/work?${new URLSearchParams(workQuery).toString()}`;
 
     await app.open(workUrl);
-    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
-    await screen.getByRole("link", filename, { exact: true }).focus();
-    await screen.getByRole("link", filename, { exact: true }).press("Enter");
-    await expect(screen.getByRole("heading", "Granska: 1 kvar", { exact: true })).toBeVisible();
-    await browser.reload();
-    await expect(screen.getByRole("link", "Att göra /", { exact: true })).toBeVisible();
-    await screen.getByRole("link", "Att göra /", { exact: true }).focus();
-    await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
-    await expect
-      .poll(async () => {
-        const returned = new URL(await browser.url());
 
-        return {
-          path: returned.pathname,
-          search: Object.fromEntries(returned.searchParams),
-        };
-      })
-      .toEqual({ path: new URL(workUrl).pathname, search: workQuery });
-    await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    const workQueue = await call(
+      `/attention?${new URLSearchParams(workQuery).toString()}`,
+      Workspace.AttentionPage,
+    );
+
+    if (changed) {
+      expect(workQueue.items.some((item) => item.id === plan.postingPlan.id)).toBe(false);
+      expect(workQueue.counts.open).toBe("0");
+      await expect(screen.getByRole("link", filename, { exact: true })).toHaveCount(0);
+      await expect(
+        screen.getByRole("heading", "Inget i den här vyn", { exact: true }),
+      ).toBeVisible();
+    } else {
+      await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+      await screen.getByRole("link", filename, { exact: true }).focus();
+      await screen.getByRole("link", filename, { exact: true }).press("Enter");
+      await expect(screen.getByRole("heading", "Granska: 1 kvar", { exact: true })).toBeVisible();
+      await browser.reload();
+      await expect(screen.getByRole("link", "Att göra /", { exact: true })).toBeVisible();
+      await screen.getByRole("link", "Att göra /", { exact: true }).focus();
+      await screen.getByRole("link", "Att göra /", { exact: true }).press("Enter");
+      await expect
+        .poll(async () => {
+          const returned = new URL(await browser.url());
+
+          return {
+            path: returned.pathname,
+            search: Object.fromEntries(returned.searchParams),
+          };
+        })
+        .toEqual({ path: new URL(workUrl).pathname, search: workQuery });
+      await expect(screen.getByRole("link", filename, { exact: true })).toBeVisible();
+    }
+
     expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
 
     await app.open(purchasesUrl);
@@ -285,13 +304,135 @@ for (const changed of [false, true]) {
     await screen.getByRole("link", "Granska", { exact: true }).focus();
     await screen.getByRole("link", "Granska", { exact: true }).press("Enter");
     await expect(screen.getByRole("heading", /^Granska: [0-9]+ kvar$/)).toBeVisible();
+    expect(plan.draftSnapshot.totals.grossMinor).toBe("1250000");
+    await expect(
+      screen.getByRole("heading", "12\u00a0500,00 att betala", { exact: true }),
+    ).toBeVisible();
+    expect(
+      await browser.evaluate(() =>
+        Array.from(document.querySelectorAll("main section[aria-label='Beslut'] h2"))
+          .filter((heading) => heading.textContent === "12\u00a0500,00 att betala")
+          .map((heading) => heading.tagName),
+      ),
+    ).toEqual(["H2"]);
+    await expect(screen.getByRole("region", "Beslut", { exact: true })).toContainText(
+      `Vinter & Co AB, faktura ${content.supplierDocumentNumber}`,
+    );
+    const originalRecovery: Array<{ fault: string; code: string; screenshot: string }> = [];
+
+    if (!changed) {
+      const session = process.env.OPENERP_E2E_SESSION;
+
+      if (!session || !basename(dirname(session)).startsWith("openerp-paper-"))
+        throw new Error("Original recovery requires the disposable native launcher");
+
+      const object = join(
+        dirname(session),
+        "objects",
+        "v1",
+        occurrence.scope.bookId,
+        expectedHash.slice(7),
+      );
+
+      const backup = `${object}.dra194-backup`;
+
+      expect(await readFile(object)).toEqual(bytes);
+
+      for (const fault of ["missing", "corrupt"]) {
+        await rename(object, backup);
+
+        try {
+          if (fault === "corrupt")
+            await writeFile(object, Buffer.alloc(bytes.length, 120), { flag: "wx" });
+
+          const missing = await fetch(`${base}/source-occurrences/${occurrence.id}`, {
+            headers: { cookie, origin },
+            signal: AbortSignal.timeout(20000),
+          });
+
+          expect(missing.status).toBe(422);
+
+          const refusal = Schema.decodeSync(Schema.fromJsonString(Accounting.AccountingError))(
+            await missing.text(),
+          );
+
+          expect(refusal.code).toBe("MissingEvidence");
+          await browser.reload();
+          await expect(
+            screen.getByRole("button", "Försök läsa originalet igen", { exact: true }),
+          ).toBeVisible();
+          await expect(screen.getByRole("img", `${filename}, sida 1`)).toHaveCount(0);
+
+          const failed = await call(reviewPath, Acceptance.SupplierAcceptanceView);
+
+          expect(failed.plan).toEqual(plan);
+          expect(failed.approval).toBeNull();
+          expect(failed.acceptance).toBeNull();
+          expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+
+          const failureScreenshot = await app.screenshot(`original-${fault}-read`);
+
+          originalRecovery.push({ fault, code: refusal.code, screenshot: failureScreenshot });
+        } finally {
+          await rm(object, { force: true });
+          await rename(backup, object);
+        }
+
+        await screen.getByRole("button", "Försök läsa originalet igen", { exact: true }).focus();
+        await screen
+          .getByRole("button", "Försök läsa originalet igen", { exact: true })
+          .press("Enter");
+        await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({
+          timeout: 30000,
+        });
+
+        const restored = await call(
+          `/source-occurrences/${occurrence.id}`,
+          Source.SourceOccurrenceView,
+        );
+
+        expect(restored.occurrence.sha256).toBe(expectedHash);
+        expect(Buffer.from(restored.contentBase64, "base64")).toEqual(bytes);
+        expect(await readFile(object)).toEqual(bytes);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      }
+    }
+
     await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+
+    const originalConditions = await browser.evaluate(async () => {
+      await document.fonts.ready;
+
+      return {
+        browser: navigator.userAgent,
+        deviceScaleFactor: window.devicePixelRatio,
+        fonts: {
+          family: getComputedStyle(document.body).fontFamily,
+          faces: Array.from(document.fonts).map((face) => ({
+            family: face.family,
+            weight: face.weight,
+            status: face.status,
+          })),
+        },
+        locale: navigator.language,
+        theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+        time: new Date().toISOString(),
+        clockPinned: false,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        resolvedRoute: `${window.location.pathname}${window.location.search}`,
+      };
+    });
+
+    const originalScreenshot = await app.screenshot(
+      changed ? "invoice-original-stale" : "invoice-original-ready",
+    );
+
     await expect(screen.getByRole("combobox", "Sida", { exact: true })).toHaveCount(1);
     await screen.getByRole("combobox", "Sida", { exact: true }).click();
     await screen.getByRole("option", "2 av 2", { exact: true }).click();
     await expect(screen.getByRole("img", `${filename}, sida 2`)).toBeVisible();
     await screen.getByText("Sidtext", { exact: true }).click();
-    await expect(screen.getByText("Independent original page two", { exact: true })).toBeVisible();
+    await expect(screen.getByText("Total SEK 12500.00", { exact: true })).toBeVisible();
     await agent.assert(
       "The selected review has one original document pane showing page two beside the proposed accounting decision. Return only the configured JSON judgment. Do not infer any posting.",
       { timeout: 30000 },
@@ -361,6 +502,56 @@ for (const changed of [false, true]) {
       expect(BigInt(after.sequence) - BigInt(before.sequence)).toBe(1n);
     }
 
+    let postedCapture: { screenshot: string; conditions: typeof originalConditions } | null = null;
+
+    if (view.acceptance) {
+      const voucher = await call(
+        `/vouchers/${view.acceptance.postingReceipt.voucherId}`,
+        Accounting.Voucher,
+      );
+
+      expect(
+        voucher.action.evidenceRefs.some((reference) => reference.evidenceId === entry.id),
+      ).toBe(true);
+      expect(voucher.action.lines.map((line) => [line.debitMinor, line.creditMinor])).toEqual([
+        ["1250000", "0"],
+        ["0", "1250000"],
+      ]);
+      await app.open(
+        `${workspace}/books?${new URLSearchParams({ view: "vouchers", q: voucher.action.description })}`,
+      );
+      await expect(
+        screen.getByRole("heading", voucher.action.description, { exact: true }),
+      ).toBeVisible();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).focus();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).press("Enter");
+      await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+
+      const conditions = {
+        ...originalConditions,
+        ...(await browser.evaluate(async () => {
+          await document.fonts.ready;
+
+          return {
+            time: new Date().toISOString(),
+            resolvedRoute: `${window.location.pathname}${window.location.search}`,
+          };
+        })),
+      };
+
+      const postedScreenshot = await app.screenshot("posted-voucher-original");
+
+      postedCapture = { screenshot: postedScreenshot, conditions };
+      await browser.reload();
+      await expect(
+        screen.getByRole("heading", voucher.action.description, { exact: true }),
+      ).toBeVisible();
+      await screen.getByRole("button", "Granska sparat underlag", { exact: true }).click();
+      await expect(screen.getByRole("img", `${filename}, sida 1`)).toBeVisible({ timeout: 30000 });
+      expect(await call(`/vouchers/${voucher.id}`, Accounting.Voucher)).toEqual(voucher);
+      expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(after);
+    }
+
     await writeFile(
       join(
         output,
@@ -379,8 +570,15 @@ for (const changed of [false, true]) {
           before,
           after,
           screenshot,
+          originalRecovery,
+          postedCapture,
+          originalConditions,
+          originalScreenshot,
           nativeL2Screenshot,
           returnContext: { purchasesQuery, workQuery },
+          supersededReviewExcluded: changed
+            ? !workQueue.items.some((item) => item.id === plan.postingPlan.id)
+            : null,
         },
         null,
         2,

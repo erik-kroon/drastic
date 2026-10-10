@@ -124,7 +124,227 @@ test("home retains the selected original and scoped keyboard return after reload
   await expect(row).toHaveAttribute("aria-pressed", "true");
   await expect(row).toBeFocused();
 
+  const selectedHomeUrl = await browser.url();
+
+  const reviewAll = screen.getByRole("link", "Granska alla", { exact: true });
+
+  const reviewAllSearch = new URLSearchParams({
+    status: "open",
+    kind: "all",
+    sort: "oldest",
+    after: continuation,
+  });
+
+  await expect(reviewAll).toHaveAttribute(
+    "href",
+    `${new URL(workspace).pathname}/work?${reviewAllSearch}`,
+  );
+
+  const headerAction = await browser.evaluate(() => {
+    const link = document.querySelector("main header a");
+    const style = link ? getComputedStyle(link) : null;
+
+    return {
+      tag: link?.tagName ?? null,
+      text: link?.textContent ?? null,
+      height: style?.height ?? null,
+      borderWidth: style?.borderTopWidth ?? null,
+    };
+  });
+
+  expect(headerAction).toEqual({
+    tag: "A",
+    text: "Granska alla",
+    height: "28px",
+    borderWidth: "1px",
+  });
+  await reviewAll.focus();
+  await expect(reviewAll).toBeFocused();
+  await reviewAll.press("Enter");
+  await expect
+    .poll(async () => {
+      const current = new URL(await browser.url());
+
+      return { path: current.pathname, search: Object.fromEntries(current.searchParams) };
+    })
+    .toEqual({
+      path: `${new URL(workspace).pathname}/work`,
+      search: { status: "open", kind: "all", sort: "oldest", after: continuation },
+    });
+  expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+  await app.open(selectedHomeUrl);
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(row).toBeFocused();
+
+  const retryReads = [
+    `${base}/attention?${new URLSearchParams({ status: "open", sort: "oldest", kind: "all", after: continuation })}`,
+    `${base}/bank-workspace?*`,
+  ];
+
+  const readRetries: Array<{ path: string; requests: number; workingReason: string }> = [];
+
+  for (const path of retryReads) {
+    const pendingRead = Promise.withResolvers<void>();
+    let requests = 0;
+    let failReads = true;
+
+    await browser.route(path, async (route) => {
+      requests += 1;
+
+      if (failReads) {
+        await route.abort();
+
+        return;
+      }
+
+      await pendingRead.promise;
+      await route.continue();
+    });
+
+    try {
+      const staleAfter = Date.now() + 31_000;
+
+      await expect.poll(() => Date.now(), { timeout: 40_000 }).toBeGreaterThanOrEqual(staleAfter);
+      await reviewAll.focus();
+      await reviewAll.press("Enter");
+      await expect(screen.getByRole("searchbox", "Sök arbete", { exact: true })).toBeVisible();
+      await browser.evaluate(() => {
+        history.back();
+
+        return null;
+      });
+      await expect.poll(async () => await browser.url()).toBe(selectedHomeUrl);
+
+      const retry = screen.getByRole("button", "Uppdatera", { exact: true });
+
+      await expect(retry).toBeVisible();
+
+      if (path === retryReads[0]) await expect(row).toHaveCount(0);
+      await retry.focus();
+
+      const requestsBeforeRetry = requests;
+
+      failReads = false;
+
+      const retryPress = retry.press("Enter");
+
+      try {
+        await expect.poll(() => requests).toBe(requestsBeforeRetry + 1);
+
+        const retryState = await browser.evaluate(() =>
+          Array.from(document.querySelectorAll("main button"))
+            .filter((button) => ["Uppdatera", "Begäran pågår…"].includes(button.textContent ?? ""))
+            .map((button) => ({
+              text: button.textContent,
+              blocked: button.getAttribute("aria-disabled"),
+            })),
+        );
+
+        expect(retryState).toEqual([{ text: "Begäran pågår…", blocked: "true" }]);
+
+        const working = screen.getByRole("button", "Begäran pågår…", { exact: true });
+
+        await expect(working).toHaveAttribute("aria-disabled", "true");
+        await working.focus();
+        await working.press("Enter");
+        expect(requests).toBe(requestsBeforeRetry + 1);
+        expect(await call("/ledger", Accounting.LedgerSnapshot)).toEqual(before);
+      } finally {
+        pendingRead.resolve();
+
+        await retryPress;
+      }
+
+      await expect(retry).toHaveCount(0);
+      await expect(row).toHaveAttribute("aria-pressed", "true");
+      readRetries.push({ path, requests, workingReason: "Begäran pågår…" });
+    } finally {
+      pendingRead.resolve();
+      await browser.unroute(path);
+    }
+  }
+
+  const previewHeader = () =>
+    browser.evaluate(() => {
+      const header = document.querySelector("main aside[aria-label='Nästa steg'] header");
+      const figure = header?.querySelector("p");
+      const title = header?.querySelector("h2");
+
+      return {
+        figure: figure?.textContent ?? null,
+        title: title?.textContent ?? null,
+        figureSize: figure ? getComputedStyle(figure).fontSize : null,
+        figureWhiteSpace: figure ? getComputedStyle(figure).whiteSpace : null,
+      };
+    });
+
+  await expect.poll(previewHeader).toEqual({
+    figure: "Okänt",
+    title: "home-original-selected.pdf",
+    figureSize: "32px",
+    figureWhiteSpace: "nowrap",
+  });
+
+  const selectedHeader = await previewHeader();
+
+  const selectedConditions = await browser.evaluate(async () => {
+    await document.fonts.ready;
+
+    return {
+      browser: navigator.userAgent,
+      deviceScaleFactor: window.devicePixelRatio,
+      fonts: {
+        family: getComputedStyle(document.body).fontFamily,
+        faces: Array.from(document.fonts).map((face) => ({
+          family: face.family,
+          weight: face.weight,
+          status: face.status,
+        })),
+      },
+      locale: navigator.language,
+      theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      time: new Date().toISOString(),
+      clockPinned: false,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      resolvedRoute: `${window.location.pathname}${window.location.search}`,
+    };
+  });
+
   const selectedScreenshot = await app.screenshot("home-selected-original-after-reload");
+
+  await browser.setViewport({ width: 375, height: 812 });
+
+  const narrowGeometry = () =>
+    browser.evaluate(() => {
+      const row = document.querySelector("main ul button[aria-pressed='true']");
+      const panel = document.querySelector("main aside[aria-label='Nästa steg']");
+
+      if (!row || !panel) throw new Error("The selected work row and preview must be present");
+
+      const rowBox = row.getBoundingClientRect();
+      const panelBox = panel.getBoundingClientRect();
+      const width = window.innerWidth;
+
+      return {
+        width,
+        overflow: document.documentElement.scrollWidth > width,
+        rowFits: rowBox.width > 0 && rowBox.left >= 0 && rowBox.right <= width + 1,
+        panelFits: panelBox.width > 0 && panelBox.left >= 0 && panelBox.right <= width + 1,
+        panelBelowRow: panelBox.top >= rowBox.bottom - 1,
+      };
+    });
+
+  await expect.poll(narrowGeometry).toEqual({
+    width: 375,
+    overflow: false,
+    rowFits: true,
+    panelFits: true,
+    panelBelowRow: true,
+  });
+  const narrow = await narrowGeometry();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  const narrowScreenshot = await app.screenshot("home-selected-original-narrow");
+  await browser.setViewport({ width: 1440, height: 900 });
 
   await screen.getByRole("link", "Granska original", { exact: true }).click();
   await expect(screen.getByRole("img", `${original.filename}, sida 1`)).toBeVisible();
@@ -245,6 +465,15 @@ test("home retains the selected original and scoped keyboard return after reload
   await browser.reload();
   await expect(draftRow).toHaveAttribute("aria-pressed", "true");
   await expect(draftRow).toBeFocused();
+
+  await expect.poll(previewHeader).toEqual({
+    figure: "100,00",
+    title: "Synthetic selected home draft",
+    figureSize: "32px",
+    figureWhiteSpace: "nowrap",
+  });
+
+  const handoffHeader = await previewHeader();
 
   const handoffScreenshot = await app.screenshot("home-same-root-new-supplier-stage");
   const missingTask = `document:${randomUUID()}`;
@@ -413,7 +642,15 @@ test("home retains the selected original and scoped keyboard return after reload
         ownerReturn,
         before,
         after,
+        selectedHeader,
+        headerAction,
+        readRetries,
+        reviewAllKeyboardNavigation: true,
+        handoffHeader,
+        selectedConditions,
         selectedScreenshot,
+        narrow,
+        narrowScreenshot,
         returnedScreenshot,
         handoff,
         stage,

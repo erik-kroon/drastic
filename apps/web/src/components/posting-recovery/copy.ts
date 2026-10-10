@@ -10,6 +10,7 @@ const english = {
   savedCommand: "Exact saved command",
   commandDigest: "Saved request digest",
   commandKey: "Kernel command key",
+  savedUnknownTitle: "Unknown outcome",
   savedUnknown:
     "No terminal outcome observed. This request may be unattempted or still in flight. Keep its identity.",
   savedCommitted: "This command committed. Preparation and approval do not mean posting.",
@@ -105,6 +106,7 @@ const swedish: typeof english = {
   savedCommand: "Exakt sparat kommando",
   commandDigest: "Sparad begärans hash",
   commandKey: "Kärnkommandots nyckel",
+  savedUnknownTitle: "Okänt utfall",
   savedUnknown:
     "Inget slutligt utfall har observerats. Begäran kan vara oprövad eller fortfarande på väg. Behåll dess identitet.",
   savedCommitted: "Kommandot genomfördes. Förberedelse och godkännande innebär inte bokföring.",

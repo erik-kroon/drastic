@@ -1,0 +1,54 @@
+{
+  "actual": "verification/paper/evidence/k21-original-acceptance/actual.png",
+  "command": "OPENERP_E2E_WEB_MODE=built bun run test:browser tests/browser/bank-evidence-review.e2e.ts",
+  "conditions": {
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "weight": "100 900",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf2",
+          "weight": "bold",
+          "status": "loaded"
+        },
+        {
+          "family": "g_d0_sf4",
+          "weight": "normal",
+          "status": "loaded"
+        }
+      ]
+    },
+    "locale": "sv-SE",
+    "theme": "light",
+    "time": "2026-10-10T07:46:56.083Z",
+    "clockPinned": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/accounts?account=account_bank&from=2026-10-01&to=2026-10-31&statement=statement_5c83b37f155349f8b850112da31c0c45&row=1",
+    "route": "/entities/$entityId/books/$bookId/accounts",
+    "fixture": {
+      "recipe": "tests/browser/bank-evidence-review.e2e.ts",
+      "synthetic": true,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Codex; native multi-candidate selected bank review, full frame and unchanged baseline",
+  "sourceRevision": "c9bf5e8",
+  "sourceHashes": {
+    "apps/web/src/components/bank-transaction-match.tsx": "6f7af8cc901012ea392a4c888e03fb5451e78a46bd1733ccbd09f04a94f07fda",
+    "apps/web/src/components/bank-match-original.tsx": "ff9bd8716c2d64fda7fde28a16922a1b4fcf354c6ddeba8b914b8c750465a465",
+    "packages/ui/src/components/pdf-viewer.tsx": "ba3dee7ac8c71d501e6f75212117d1173e4cef8765b947cdd5a4e724f3a9de45",
+    "tests/browser/bank-evidence-review.e2e.ts": "ffd4a73b4dde10dc3ffffe713edb8cb60333e257fdaa06adfedede9dda4973ad",
+    "tests/browser/bank-review-fixture.ts": "8e6e1a919cc296419653ddba547bb5b98b749ae0df70b10bbdfba7646ca79a4e",
+    "tests/browser/original-fixture.ts": "3b1f8b751c9356039c28bbbd5950e8cee092bb129d8bced5974060a6f9927d51"
+  },
+  "workingTreeCandidate": true
+}

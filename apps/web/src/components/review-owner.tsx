@@ -2,8 +2,9 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cases from "@open-erp/contracts/cases";
+import { ReviewContent } from "@open-erp/ui/kanon/layouts";
 import { Box } from "@open-erp/ui/components/box";
-import { Button } from "@open-erp/ui/components/button";
+import { Action } from "@open-erp/ui/kanon/action";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
@@ -73,14 +74,16 @@ export function ReviewOwner(props: {
 
   if (target?.kind === "standalone")
     return (
-      <PostingRecoveryReview
-        book={book}
-        accounts={setup.accounts}
-        locale={locale}
-        id={planId}
-        expectedDigest={props.expectedDigest ?? target.planDigest}
-        returnSearch={props.returnSearch}
-      />
+      <ReviewContent>
+        <PostingRecoveryReview
+          book={book}
+          accounts={setup.accounts}
+          locale={locale}
+          id={planId}
+          expectedDigest={props.expectedDigest ?? target.planDigest}
+          returnSearch={props.returnSearch}
+        />
+      </ReviewContent>
     );
 
   if (target?.kind === "correction") {
@@ -100,22 +103,24 @@ export function ReviewOwner(props: {
   }
 
   return (
-    <Box display="grid" gap="md" padding="md">
-      <AccountingStatus locale={locale} pending={resolution.isPending} error={resolution.error} />
-      {target?.kind === "ambiguous" ? <Text role="alert">{copy.case_owner_conflict}</Text> : null}
-      {resolution.isError || target?.kind === "ambiguous" ? (
-        <Box>
-          <Button
-            variant="outline"
-            disabled={resolution.isFetching}
-            onClick={() => {
-              void resolution.refetch();
-            }}
-          >
-            {copy.journal_retry}
-          </Button>
-        </Box>
-      ) : null}
-    </Box>
+    <ReviewContent>
+      <Box display="grid" gap="md" padding="md">
+        <AccountingStatus locale={locale} pending={resolution.isPending} error={resolution.error} />
+        {target?.kind === "ambiguous" ? <Text role="alert">{copy.case_owner_conflict}</Text> : null}
+        {resolution.isError || target?.kind === "ambiguous" ? (
+          <Box>
+            <Action
+              kind="secondary"
+              blockedBy={resolution.isFetching ? copy.journal_working : undefined}
+              onClick={() => {
+                void resolution.refetch();
+              }}
+            >
+              {copy.journal_retry}
+            </Action>
+          </Box>
+        ) : null}
+      </Box>
+    </ReviewContent>
   );
 }

@@ -1,5 +1,6 @@
 import { defaultStringifySearch } from "@tanstack/react-router";
 import { queryOptions } from "@tanstack/react-query";
+import type { Status } from "@open-erp/ui/kanon/status";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
@@ -123,6 +124,23 @@ export function expiredSupplierApproval(item: typeof Workspace.AttentionItem.Typ
     review.dependenciesCurrent
     ? review.approvalExpiresAt
     : null;
+}
+
+export function attentionStatus(item: typeof Workspace.AttentionItem.Type): Status {
+  if (item.state === "completed") return "done";
+
+  if (expiredSupplierApproval(item) !== null) return "needsYou";
+
+  if (item.reason === "document_reading_failed") return "unknown";
+
+  if (
+    item.reason === "invoice_draft" ||
+    item.reason === "supplier_draft" ||
+    item.reason === "document_review"
+  )
+    return "proposal";
+
+  return "needsYou";
 }
 
 export function attentionState(item: typeof Workspace.AttentionItem.Type, locale: Locale) {

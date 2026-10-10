@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "baseRevision": "d07ad63",
+  "workingTreeCandidate": true,
+  "model": "codex.chat/gpt-6-luna",
+  "runs": [
+    {
+      "run": "9fedeb5d-7a95-4570-beca-7dd0f696a6bb",
+      "scope": "cash known and unknown opening",
+      "status": "passed",
+      "sourceIntegrity": "stable",
+      "sourceDigest": "852eeb2e1947d4be1e0e9ed0524c9cae47e360f0ed08b0417b078249cbcbbca1",
+      "sourceReceiptSha256": "78f4a89ff4486c3b682d55f1a15c09ac552a68a69232a72536fcc3030c0c8de7",
+      "scratchRemoved": true
+    },
+    {
+      "run": "06ec6a6a-f53c-4fb2-b5dc-f81977e2e959",
+      "scope": "audience navigation",
+      "status": "passed",
+      "sourceIntegrity": "stable",
+      "sourceDigest": "489972c1feb4da24c458b5e01f02346c76248378e1106f93bdb00c75164c5faa",
+      "sourceReceiptSha256": "7080804442a1f4146f19845ebc763bd5726cdc2b3bad43797325f140fde9161e",
+      "scratchRemoved": true
+    },
+    {
+      "run": "563a320d-49d8-431b-90e0-838796c9ae17",
+      "scope": "supplier expiry and one receipt",
+      "status": "passed",
+      "sourceIntegrity": "stable",
+      "sourceDigest": "489972c1feb4da24c458b5e01f02346c76248378e1106f93bdb00c75164c5faa",
+      "sourceReceiptSha256": "7080804442a1f4146f19845ebc763bd5726cdc2b3bad43797325f140fde9161e",
+      "scratchRemoved": true
+    }
+  ],
+  "sourceHashes": {
+    "apps/web/src/components/book-navigation.tsx": "sha256:75f61cfc31473a8856428f640c57aa11814ec79e7a12475caf857b5069a51cce",
+    "packages/ui/src/kanon/workspace.tsx": "sha256:ff0de6448a2de5cb661402ce07e3653fa648f70fda864eece5ec8e9397120060",
+    "tests/browser/cash-forecast.e2e.ts": "sha256:833b34a93c13ab5cc4b831073ed68577c1522c9347594db30fe5d699666a7141",
+    "tests/browser/audience-profile.e2e.ts": "sha256:5177999f6663bf55d1408e8fecc2a44a5dc247efc97a6e4530a47818d1691aab",
+    "tests/browser/posting-supplier-expiry.e2e.ts": "sha256:a893bfdb69d7ebc2f40de0f373eae9d9852ad72ea13f2bfc624e31c317b7ab4f",
+    "verification/paper/kanon-manifest.json": "sha256:e4c7af10f16365cddb7239286d47492f37d9c02a2490b2b7df26fa5d29e9251c"
+  },
+  "qualification": "Real local API and PostgreSQL with retained originals; no production or visual parity claim"
+}
