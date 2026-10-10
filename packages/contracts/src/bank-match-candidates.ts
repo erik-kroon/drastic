@@ -83,6 +83,7 @@ export const BankMatchCandidate = Schema.Struct({
 
 export const BankMatchCandidates = Schema.Struct({
   suggestionRecordId: Accounting.Identifier,
+  optionSetDigest: Accounting.Digest,
   version: Schema.Literal("bank_match_candidates_v1"),
   scope: Accounting.Scope,
   currency: Schema.String,

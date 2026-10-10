@@ -10,7 +10,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Intake from "@open-erp/contracts/source-intake";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
-import { supplierFixture } from "./support/supplier-review";
+import * as Provenance from "@open-erp/contracts/decision-provenance";
+import { acceptDraft, createDraft, supplierFixture } from "./support/supplier-review";
 import {
   apiDirectory,
   createSession,
@@ -33,7 +34,9 @@ const HostResult = Schema.Struct({
 });
 
 type HostOptions = {
-  mode: "retain" | "run" | "claim" | "stop";
+  mode: "retain" | "run" | "claim" | "stop" | "capture";
+  suggestionId?: string;
+  captureKind?: "extraction" | "extraction_value" | "bank" | "supplier" | "native";
   scope: typeof Accounting.Scope.Type;
   requestId: string;
   store: string;
@@ -50,22 +53,54 @@ async function host(book: BookFixture, options: HostOptions) {
     env: {
       ...process.env,
       DATABASE_URL: environment().runtimeUrl,
-      OPENERP_PREPARATION_TOKEN: book.agentToken,
+      OPENERP_PREPARATION_TOKEN: options.captureKind === "native" ? book.token : book.agentToken,
     },
     timeout: 25000,
   });
 
+  if (result.stderr)
+    await writeFile(join(environment().artifacts, "extraction-host-diagnostic.txt"), result.stderr);
+
   return Schema.decodeSync(Schema.fromJsonString(HostResult))(result.stdout.trim());
 }
 
-async function extractionFixture() {
+async function extractionFixture(expanded = false) {
   const fixture = await supplierFixture();
   const { book } = fixture;
   await createSession({ ...book, actorId: book.agentId });
   const store = join(environment().scratch, `objects-${key()}`);
   await mkdir(store);
   const scope = { entityId: book.entityId, bookId: book.bookId };
-  const text = "title: Extracted title\nsupplierDocumentNumber: REVIEW-001\n";
+
+  const text = expanded
+    ? [
+        "title: Supplier review journey",
+        "supplierDocumentNumber: REVIEW-001",
+        "documentDate: 2026-09-22",
+        "supplyDate: 2026-09-22",
+        "dueDate: 2026-10-22",
+        "paymentTerms: 30 days",
+        "sourceTotalMinor: 0.50",
+        "lines:",
+        ...Array.from({ length: 50 }, (_, index) => `row_${index};x;1;0.01;0.01;0;0;0;z`),
+      ].join("\n")
+    : "title: Extracted title\nsupplierDocumentNumber: REVIEW-001\n";
+
+  const content = expanded
+    ? {
+        ...fixture.content,
+        sourceTotalMinor: "50",
+        lines: Array.from({ length: 50 }, (_, index) => ({
+          ...fixture.content.lines[0]!,
+          id: `row_${index}`,
+          description: "x",
+          taxDescription: "z",
+          unitPriceMinor: "1",
+          baseMinor: "1",
+          sourceGrossMinor: "1",
+        })),
+      }
+    : fixture.content;
 
   const sourceInput = {
     sourceSystem: "review-e2e",
@@ -117,7 +152,7 @@ async function extractionFixture() {
     {
       draft: {
         draftKey: `extraction_${key()}`,
-        content: { ...fixture.content, sourceEvidenceId: original.id },
+        content: { ...content, sourceEvidenceId: original.id },
       },
       reviewReason: "Retain operator-entered base",
       reviewAttemptId: null,
@@ -471,4 +506,400 @@ test("service-intent extraction outlives requester session but cancellation and 
       2,
     ),
   );
+});
+
+test("bounded native extraction prepares cites commits and exports more than four hundred fields", async () => {
+  const context = await extractionFixture(true);
+  expect(await host(context.book, context.options)).toMatchObject({ ok: true, value: "completed" });
+  const admin = await database();
+
+  try {
+    const attemptId = (
+      await admin.query(
+        "SELECT id FROM openerp.supplier_extraction_attempts WHERE book_id=$1 AND body->>'requestId'=$2 ORDER BY ordinal DESC LIMIT 1",
+        [context.book.bookId, context.options.requestId],
+      )
+    ).rows[0].id;
+
+    const preparationResponse = await request(
+      context.book,
+      `${context.path}/${context.options.requestId}/prepare`,
+      { method: "POST", body: JSON.stringify({ attemptId }) },
+    );
+
+    const preparationBody = await preparationResponse.clone().text();
+    await writeFile(
+      join(environment().artifacts, "extraction-envelope-preparation.json"),
+      JSON.stringify(
+        {
+          status: preparationResponse.status,
+          body: JSON.parse(preparationBody),
+          expectedFields: 457,
+        },
+        null,
+        2,
+      ),
+    );
+
+    const prepared = await decoded(
+      preparationResponse,
+      Extraction.SupplierExtractionReviewPreparation,
+    );
+
+    expect(prepared.fields).toHaveLength(457);
+
+    const previewCapture = (
+      await admin.query("SELECT body FROM openerp.suggestion_records WHERE book_id=$1 AND id=$2", [
+        context.book.bookId,
+        prepared.suggestionRecordId,
+      ])
+    ).rows[0].body;
+
+    expect(
+      Schema.decodeUnknownSync(Provenance.SuggestionRecord)(previewCapture).ranked.options,
+    ).toHaveLength(7);
+
+    const nativeCapture = await host(context.book, {
+      ...context.options,
+      mode: "capture",
+      captureKind: "native",
+      suggestionId: prepared.suggestionRecordId,
+    });
+
+    expect(nativeCapture.ok).toBe(true);
+    const nativeSuggestionId = Schema.decodeUnknownSync(Schema.String)(nativeCapture.value);
+
+    const suggestion = (
+      await admin.query("SELECT body FROM openerp.suggestion_records WHERE book_id=$1 AND id=$2", [
+        context.book.bookId,
+        nativeSuggestionId,
+      ])
+    ).rows[0].body;
+
+    expect(
+      Schema.decodeUnknownSync(Provenance.SuggestionRecord)(suggestion).ranked.options,
+    ).toHaveLength(407);
+
+    const committed = await post(
+      context.book,
+      `${context.path}/${context.options.requestId}/review`,
+      {
+        presentedSuggestionIds: [nativeSuggestionId],
+        requestId: context.options.requestId,
+        attemptId,
+        expectedDraftRevision: context.reviewed.draft.revision,
+        expectedDraftDigest: context.reviewed.draft.digest,
+        baseContent: null,
+        reason: "Retain exact reviewed envelope fields",
+        lines: [],
+        fields: prepared.fields.map((field) => ({
+          lineOrdinal: field.lineOrdinal,
+          fieldKey: field.fieldKey,
+          decisionKind: "retained_reviewed",
+          selectedValue: field.current,
+        })),
+      },
+      Extraction.SupplierExtractionReview,
+    );
+
+    expect(committed.fieldDecisions).toHaveLength(457);
+
+    const exported = await post(
+      context.book,
+      "/automation/decision-examples",
+      { purpose: "training", selectedDecisionIds: [] },
+      Examples.DecisionExampleExport,
+    );
+
+    await writeFile(
+      join(environment().artifacts, "extraction-envelope-completed.json"),
+      JSON.stringify(
+        {
+          suggestionRecordId: nativeSuggestionId,
+          previewOptions: 7,
+          nativeOptions: 407,
+          committedFields: committed.fieldDecisions.length,
+          committed,
+          exported,
+        },
+        null,
+        2,
+      ),
+    );
+
+    expect(exported.manifest.denominators).toEqual({
+      inventory: 457,
+      selected: 457,
+      exported: 0,
+      excluded: 457,
+    });
+    expect(exported.exclusions).toHaveLength(457);
+    expect(exported.exclusions.every((item) => item.reason === "source_text_not_captured")).toBe(
+      true,
+    );
+  } finally {
+    await admin.end();
+  }
+}, 60_000);
+
+test("suggestion variants reject invalid captures before insert and export counts malformed historical capture", async () => {
+  const context = await extractionFixture();
+  const admin = await database();
+  const invalidCaptures = [];
+
+  try {
+    for (const captureKind of ["extraction", "extraction_value", "bank", "supplier"] as const) {
+      const before = (
+        await admin.query(
+          "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+          [context.book.bookId],
+        )
+      ).rows[0].count;
+
+      const outcome = await host(context.book, {
+        ...context.options,
+        mode: "capture",
+        captureKind,
+      });
+
+      const after = (
+        await admin.query(
+          "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+          [context.book.bookId],
+        )
+      ).rows[0].count;
+
+      invalidCaptures.push({ captureKind, outcome, before, after });
+    }
+
+    const f = await supplierFixture();
+    const receipt = await acceptDraft(f.book, await createDraft(f.book, f.content));
+
+    const original = (await provenanceRows(f.book)).find(
+      (row) => row.decision_id === receipt.approvalId,
+    )!;
+
+    const badId = `suggestion_${key().replaceAll("-", "")}`;
+    const badDecisionId = `legacy_malformed_${key().replaceAll("-", "")}`;
+    const body = Schema.decodeUnknownSync(Schema.JsonObject)(original.body);
+
+    const capture = {
+      id: badId,
+      actorId: f.book.actorId,
+      sessionId: null,
+      subject: body.subject,
+      optionSetDigest: `sha256:${"0".repeat(64)}`,
+      ranked: {
+        source: "extraction",
+        version: "extraction_merge_v1",
+        options: [{ lineOrdinal: 0, fieldKey: "title", value: "x".repeat(1001) }],
+      },
+    };
+
+    await admin.query(
+      "INSERT INTO openerp.suggestion_records(book_id,id,actor_id,session_id,subject_identity,subject_digest,body) VALUES($1,$2,$3,null,$4,$5,$6)",
+      [
+        f.book.bookId,
+        badId,
+        f.book.actorId,
+        `supplier:${receipt.draftId}`,
+        `sha256:${"0".repeat(64)}`,
+        capture,
+      ],
+    );
+    await admin.query(
+      "INSERT INTO openerp.decision_provenance(book_id,decision_kind,decision_id,actor_id,classification,body) VALUES($1,'supplier_approval',$2,$3,'independent',$4)",
+      [f.book.bookId, badDecisionId, f.book.actorId, { ...body, presentedSuggestionIds: [badId] }],
+    );
+
+    const response = await request(f.book, "/automation/decision-examples", {
+      method: "POST",
+      body: JSON.stringify({ purpose: "training", selectedDecisionIds: [] }),
+    });
+
+    const responseBody = await response.clone().text();
+    await writeFile(
+      join(environment().artifacts, "extraction-invalid-capture.json"),
+      JSON.stringify(
+        {
+          invalidCaptures,
+          status: response.status,
+          body: JSON.parse(responseBody),
+          originalDecisionId: receipt.approvalId,
+          badDecisionId,
+        },
+        null,
+        2,
+      ),
+    );
+    const exported = await decoded(response, Examples.DecisionExampleExport);
+    expect(exported.examples.map((example) => example.decision.id)).toContain(receipt.approvalId);
+    expect(exported.exclusions).toContainEqual({
+      owner: "supplier_approval",
+      id: badDecisionId,
+      reason: "undecodable_capture",
+    });
+    expect(exported.manifest.denominators).toEqual({
+      inventory: 2,
+      selected: 2,
+      exported: 1,
+      excluded: 1,
+    });
+
+    for (const observed of invalidCaptures) {
+      expect(observed.outcome.ok, observed.captureKind).toBe(false);
+      expect(observed.after, observed.captureKind).toBe(observed.before);
+    }
+  } finally {
+    await admin.end();
+  }
+}, 60_000);
+
+test("extraction state GET completes while its inbox row is locked", async () => {
+  const { book, source, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const admin = await database();
+  let observed: { status: number | null; error: string | null } = { status: null, error: null };
+
+  try {
+    await admin.query("BEGIN");
+    await admin.query(
+      "SELECT occurrence_id FROM openerp.supplier_inbox WHERE book_id=$1 AND occurrence_id=$2 FOR UPDATE",
+      [book.bookId, source.id],
+    );
+
+    try {
+      const response = await request(book, path, { signal: AbortSignal.timeout(2500) });
+
+      observed = { status: response.status, error: null };
+      await writeFile(
+        join(environment().artifacts, "extraction-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      const state = await decoded(response, Extraction.SupplierExtractionState);
+
+      expect(state.attempt?.result).toBe("succeeded");
+      expect(state.requests[0]?.id).toBe(options.requestId);
+      expect(state.suggestionRecordId).not.toBeNull();
+    } catch (error) {
+      observed = { ...observed, error: error instanceof Error ? error.name : "unknown" };
+      await writeFile(
+        join(environment().artifacts, "extraction-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      throw error;
+    }
+  } finally {
+    await admin.query("ROLLBACK");
+    await admin.end();
+  }
+});
+
+test("extraction state retains diagnostics when its review basis is unavailable", async () => {
+  const { book, source, path, options, reviewed } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const before = await decoded(await request(book, path), Extraction.SupplierExtractionState);
+  const admin = await database();
+
+  try {
+    const countBefore = await admin.query(
+      "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+      [book.bookId],
+    );
+
+    await admin.query(
+      "UPDATE openerp.supplier_inbox SET draft_id=null WHERE book_id=$1 AND occurrence_id=$2",
+      [book.bookId, source.id],
+    );
+
+    const response = await request(book, path);
+    const body = await response.clone().json();
+
+    await writeFile(
+      join(environment().artifacts, "extraction-unavailable-basis.json"),
+      JSON.stringify({
+        bookId: book.bookId,
+        occurrenceId: source.id,
+        originalDraftId: reviewed.draft.id,
+        injectedDraftId: null,
+        status: response.status,
+        body,
+        before,
+      }),
+    );
+
+    const after = await decoded(response, Extraction.SupplierExtractionState);
+
+    expect(after.suggestionRecordId).toBeNull();
+    expect(after.requests).toEqual(before.requests);
+    expect(after.attempt).toEqual(before.attempt);
+    expect(after.fieldDecisions).toEqual(before.fieldDecisions);
+
+    const countAfter = await admin.query(
+      "SELECT count(*)::int AS count FROM openerp.suggestion_records WHERE book_id=$1",
+      [book.bookId],
+    );
+
+    expect(countAfter.rows).toEqual(countBefore.rows);
+    await failure(
+      await request(book, `${path}/${options.requestId}/prepare`, {
+        method: "POST",
+        body: JSON.stringify({ attemptId: before.attempt!.attemptId }),
+      }),
+      409,
+      "StaleDependency",
+    );
+  } finally {
+    await admin.query(
+      "UPDATE openerp.supplier_inbox SET draft_id=$3 WHERE book_id=$1 AND occurrence_id=$2",
+      [book.bookId, source.id, reviewed.draft.id],
+    );
+    await admin.end();
+  }
+});
+
+test("extraction state GET completes while its lifecycle row is locked", async () => {
+  const { book, source, path, options } = await extractionFixture();
+
+  expect(await host(book, options)).toMatchObject({ ok: true, value: "completed" });
+
+  const admin = await database();
+  let observed: { status: number | null; error: string | null } = { status: null, error: null };
+
+  try {
+    await admin.query("BEGIN");
+    await admin.query(
+      "SELECT request_id FROM openerp.supplier_extraction_request_states WHERE book_id=$1 AND request_id=$2 FOR UPDATE",
+      [book.bookId, options.requestId],
+    );
+
+    try {
+      const response = await request(book, path, { signal: AbortSignal.timeout(2500) });
+
+      observed = { status: response.status, error: null };
+      await writeFile(
+        join(environment().artifacts, "extraction-lifecycle-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      const state = await decoded(response, Extraction.SupplierExtractionState);
+
+      expect(state.attempt?.result).toBe("succeeded");
+      expect(state.requests[0]?.id).toBe(options.requestId);
+      expect(state.suggestionRecordId).not.toBeNull();
+    } catch (error) {
+      observed = { ...observed, error: error instanceof Error ? error.name : "unknown" };
+      await writeFile(
+        join(environment().artifacts, "extraction-lifecycle-locked-read.json"),
+        JSON.stringify({ bookId: book.bookId, occurrenceId: source.id, lockHeld: true, observed }),
+      );
+      throw error;
+    }
+  } finally {
+    await admin.query("ROLLBACK");
+    await admin.end();
+  }
 });

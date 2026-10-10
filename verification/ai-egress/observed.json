@@ -1,0 +1,155 @@
+{
+  "syntheticOnly": true,
+  "liveProviderQualification": "unverified",
+  "runs": [
+    {
+      "command": "OPENERP_E2E_ARTIFACTS=test-results/aut28-final bun run test:e2e apps/api/tests/ai-egress.e2e.test.ts apps/api/tests/decision-model.e2e.test.ts apps/api/tests/document-reader.e2e.test.ts --testTimeout 90000",
+      "passed": 22,
+      "failed": 0,
+      "sourceInventorySha256": "5c6549e4cde1618048012fd62dff8f28e650ab404427ce486a437ab984ba865a",
+      "checkedAt": "2026-10-10T15:16:48.967Z"
+    },
+    {
+      "command": "OPENERP_E2E_ARTIFACTS=test-results/aut28-regression bun run test:e2e apps/api/tests/ai-egress.e2e.test.ts apps/api/tests/decision-model.e2e.test.ts --testTimeout 90000",
+      "passed": 5,
+      "failed": 0,
+      "sourceInventorySha256": "d9cc25085da4e3ba7e6764f31828b4e472c3ae896d24339d146661466a786d13",
+      "checkedAt": "2026-10-10T15:20:29.973Z"
+    }
+  ],
+  "checks": {
+    "check-changed-full.log": {
+      "result": "passed",
+      "sha256": "a9136ac009037ebcadaa6868f4737dbf17818ad5caf5d5937e39e0cfb1b446a9"
+    },
+    "check-owners.log": {
+      "result": "passed",
+      "sha256": "245ba3da706bbb04e64e5fbf34108709120cb0897b23cc4c898814cfe490cc1d"
+    },
+    "check-browser.log": {
+      "result": "passed",
+      "sha256": "661c9aef908813bb46b560255bf4ca10dcb8b3ae0a266c4e4c625753d39cc47c"
+    }
+  },
+  "sourceFiles": {
+    "apps/api/migrations/0108-ai-egress.sql": "ac686789e66836523e90b53cdd7c43855e5b5fa468d68018887e71c6b1da4542",
+    "apps/api/src/adapters/ai-egress.ts": "c7d0c44e535661997832e00ad430984dd67818ed2f2ff216bddb1287df2d2ed8",
+    "apps/api/src/application/ai-egress.ts": "aea77589a33eb2074998c2c6f24e3a39fb87a3aaa1a5c9ed68c72540e48e4f29",
+    "apps/api/src/db/ai-egress.ts": "b42fc2cc4f7c2de83f5eb9157da3789d1cfc5fed0403a0d6a65d5f1bc6eeac01",
+    "apps/api/src/adapters/decision-models/systemone.ts": "9d67d63c455d50453fe9e61ca3302b60b22a21aa3c11de3c22235afe175a16c3",
+    "apps/api/src/adapters/document-reading/azure.ts": "a1cf5ec395087731bf3ef097b8fcc3dd8247f974d91bec30ff2708048156a5b4",
+    "apps/api/tests/ai-egress.e2e.test.ts": "2d604f05e4b4a85290fc0cef2f2e4cd7af9fc0728ffee3192a421acf036db9ca"
+  },
+  "providerVisibleExamples": {
+    "knownIdentities": {
+      "model": "synthetic-egress-model-v1",
+      "state": "[CLIENT_54]. [PERSON_55] and [PERSON_55] invoice. [SUPPLIER_56]. Synthetic Telecom AB. [PERSONAL_ID_bf6cd39dd77429109c30c7f8]. 556677-8899. Amount 9007199254740993 account 1930 VAT 25 date 2026-10-10.",
+      "questions": {
+        "kind": {
+          "type": "choice",
+          "instructions": "[PERSON_55] reviews [CLIENT_54]",
+          "criteria": {
+            "invoice": "Invoice",
+            "unknown": "Unknown"
+          }
+        }
+      }
+    },
+    "typedFinancialState": {
+      "model": "synthetic-egress-model-v1",
+      "state": "[{\"kind\":\"text\",\"value\":\"[PERSON_55]\"},{\"kind\":\"amount\",\"value\":\"199001011234\"},{\"kind\":\"account\",\"value\":\"1930\"},{\"kind\":\"date\",\"value\":\"2026-10-10\"},{\"kind\":\"vat\",\"value\":\"1/4\"}]",
+      "questions": {
+        "kind": {
+          "type": "choice",
+          "instructions": "[PERSON_55] reviews [CLIENT_54]",
+          "criteria": {
+            "invoice": "Invoice",
+            "unknown": "Unknown"
+          }
+        }
+      }
+    },
+    "nestedTextState": {
+      "model": "synthetic-egress-model-v1",
+      "state": {
+        "invoice": {
+          "kind": "amount",
+          "value": "[PERSONAL_ID_bf6cd39dd77429109c30c7f8]"
+        }
+      },
+      "questions": {
+        "kind": {
+          "type": "choice",
+          "instructions": "[PERSON_55] reviews [CLIENT_54]",
+          "criteria": {
+            "invoice": "Invoice",
+            "unknown": "Unknown"
+          }
+        }
+      }
+    }
+  },
+  "disclosureCategories": [
+    [
+      "free_text",
+      "client_identity_tokens",
+      "person_identity_tokens",
+      "private_counterparty_identity_tokens"
+    ],
+    [
+      "free_text",
+      "client_identity_tokens",
+      "person_identity_tokens",
+      "private_counterparty_identity_tokens"
+    ],
+    [
+      "free_text",
+      "financial_facts",
+      "client_identity_tokens",
+      "person_identity_tokens"
+    ],
+    [
+      "free_text",
+      "client_identity_tokens",
+      "person_identity_tokens"
+    ],
+    [
+      "free_text",
+      "client_identity_tokens",
+      "person_identity_tokens",
+      "private_counterparty_identity_tokens"
+    ],
+    [
+      "free_text",
+      "client_identity_tokens",
+      "person_identity_tokens",
+      "private_counterparty_identity_tokens"
+    ],
+    [
+      "free_text",
+      "client_identity_tokens"
+    ]
+  ],
+  "rawDocumentOperations": [
+    {
+      "operation": "document_submit",
+      "disclosure": "raw_document",
+      "categories": [
+        "raw_document"
+      ]
+    },
+    {
+      "operation": "document_poll",
+      "disclosure": "operation_reference",
+      "categories": [
+        "operation_reference"
+      ]
+    }
+  ],
+  "limitations": [
+    "No active transcript available to independently establish preimplementation chronology.",
+    "No dedicated operating-system process-restart journey.",
+    "Historical payroll and counterparty classification revisions have source review but no direct fixture assertion.",
+    "Raw originals remain identifiable; policy approval settings are attestations."
+  ]
+}

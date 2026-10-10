@@ -1,3 +1,4 @@
+import { bankRowSubjects } from "./subjects";
 import {
   citedSuggestions,
   inheritedSuggestionIds,
@@ -290,19 +291,7 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
 
       if (sourceRevision === undefined) return yield* failure("InternalError");
 
-      const subjects = [
-        ...new Map(
-          command.input.legs.map((leg) => [
-            `${leg.statementId}:${leg.rowOrdinal}`,
-            {
-              kind: "bank_row" as const,
-              statementId: leg.statementId,
-              rowOrdinal: leg.rowOrdinal,
-              revision: sourceRevision,
-            },
-          ]),
-        ).values(),
-      ];
+      const subjects = bankRowSubjects(command.input.legs, sourceRevision);
 
       yield* citedSuggestions(
         transaction,
@@ -463,19 +452,10 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
       });
       const retained = yield* Shared.decode(PlanSchema, plan.body);
 
-      const subjects = [
-        ...new Map(
-          retained.input.legs.map((leg) => [
-            `${leg.statementId}:${leg.rowOrdinal}`,
-            {
-              kind: "bank_row" as const,
-              statementId: leg.statementId,
-              rowOrdinal: leg.rowOrdinal,
-              revision: retained.snapshot.versions.sourceRevision,
-            },
-          ]),
-        ).values(),
-      ];
+      const subjects = bankRowSubjects(
+        retained.input.legs,
+        retained.snapshot.versions.sourceRevision,
+      );
 
       const inheritedIds = yield* inheritedSuggestionIds(
         transaction,

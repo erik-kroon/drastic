@@ -1,0 +1,148 @@
+{
+  "sourceIntegrity": {
+    "status": "stable",
+    "changedPaths": [],
+    "sourceInventorySha256": "6c488062b2cba042dc9718f6a87a02dfa24b69b0e461b1074dc91bc0f15e6b17",
+    "finalSourceInventorySha256": "6c488062b2cba042dc9718f6a87a02dfa24b69b0e461b1074dc91bc0f15e6b17",
+    "checkedAt": "2026-10-10T15:58:01.845Z"
+  },
+  "artifactDirectory": "test-results/pr20-exposure-after",
+  "cases": [
+    {
+      "mode": "changed",
+      "captures": [
+        {
+          "id": "suggestion_b98e17e302e4458db4986af6efc86aa1",
+          "actor_id": "operator_bc6a74af3166815c",
+          "session_id": null,
+          "subject_identity": "bank:statement_e2fbad7f503d47ed9481c45a47a18bc4:2",
+          "subject_digest": "sha256:aed1990bc74ee621f28f67564445d77be06d45a2975517250d13e1cd2a6009d5",
+          "option_set_digest": "sha256:30fcacc88483b2606a42b191e6542e79ce2ecca0e2e6bd57d334c134c6471cd9"
+        },
+        {
+          "id": "suggestion_c181c694f81647198c8e6d04dac0fe5d",
+          "actor_id": "operator_bc6a74af3166815c",
+          "session_id": null,
+          "subject_identity": "bank:statement_e2fbad7f503d47ed9481c45a47a18bc4:2",
+          "subject_digest": "sha256:456ed0489c123e4995d2ee7b681c53011e2949a14dbfbd55b9b72f61ab87a665",
+          "option_set_digest": "sha256:8a95f5048d7a307741d14dd5d706b5d60ab9877854440cfe123333c52fd78156"
+        }
+      ],
+      "decision": {
+        "bookId": "book_bc6a74af3166815c",
+        "decision_kind": "bank_match",
+        "decision_id": "statement_e2fbad7f503d47ed9481c45a47a18bc4:2",
+        "classification": "unknown_exposure",
+        "body": {
+          "subject": {
+            "kind": "bank_row",
+            "revision": "2",
+            "rowOrdinal": 2,
+            "statementId": "statement_e2fbad7f503d47ed9481c45a47a18bc4"
+          },
+          "selected": {
+            "lineId": "line_d9edaeb17c6f488ebd391bf75f6ceb2f",
+            "origin": "explicit",
+            "actorId": "operator_bc6a74af3166815c",
+            "bankBasis": {
+              "accountId": "account_bank",
+              "evidenceId": "evidence_dc6e49b63d454b8a965d9629d3bca1e8",
+              "observedOn": "2026-09-22",
+              "amountMinor": "100",
+              "description": "Synthetic ranking exposure",
+              "evidenceDigest": "32d906bb33793487e94e2b254fc758f12de134baa760cc6fc056c3607f89c6e8",
+              "sourceRevision": "2"
+            },
+            "voucherId": "voucher_cffb7bc2656e40bc9059dbc3c7178e5e",
+            "rowOrdinal": 2,
+            "statementId": "statement_e2fbad7f503d47ed9481c45a47a18bc4",
+            "bookCommitSequence": "2"
+          },
+          "comparisons": [
+            {
+              "coverage": "complete",
+              "comparison": "unchanged",
+              "dimensions": {
+                "lineId": "line_d9edaeb17c6f488ebd391bf75f6ceb2f",
+                "voucherId": "voucher_cffb7bc2656e40bc9059dbc3c7178e5e"
+              }
+            }
+          ],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": true,
+          "presentedSuggestionIds": [
+            "suggestion_c181c694f81647198c8e6d04dac0fe5d"
+          ]
+        }
+      }
+    },
+    {
+      "mode": "unchanged",
+      "captures": [
+        {
+          "id": "suggestion_16f97e3717194423b8dedf0ba872010b",
+          "actor_id": "operator_b8bc9d79e95992a3",
+          "session_id": null,
+          "subject_identity": "bank:statement_b503ae18a7324f87b3e9bffda8668f4d:2",
+          "subject_digest": "sha256:93a71c87fc61e47cb6cd6a4e5b815849fa87b288b2d15f7389e081a7552b31f9",
+          "option_set_digest": "sha256:900d9747ac7cff93b34692cb16aef1a08af48efd12a4b21c3a84cf121420b0b4"
+        },
+        {
+          "id": "suggestion_ff266d36aa4644e7b246e5c13a671233",
+          "actor_id": "operator_b8bc9d79e95992a3",
+          "session_id": null,
+          "subject_identity": "bank:statement_b503ae18a7324f87b3e9bffda8668f4d:2",
+          "subject_digest": "sha256:134421b97e3463ed7bd434687d8dc02feb43f564ef6ebb6a4217b615d2589157",
+          "option_set_digest": "sha256:900d9747ac7cff93b34692cb16aef1a08af48efd12a4b21c3a84cf121420b0b4"
+        }
+      ],
+      "decision": {
+        "bookId": "book_b8bc9d79e95992a3",
+        "decision_kind": "bank_match",
+        "decision_id": "statement_b503ae18a7324f87b3e9bffda8668f4d:2",
+        "classification": "accepted_unchanged",
+        "body": {
+          "subject": {
+            "kind": "bank_row",
+            "revision": "2",
+            "rowOrdinal": 2,
+            "statementId": "statement_b503ae18a7324f87b3e9bffda8668f4d"
+          },
+          "selected": {
+            "lineId": "line_4c1283cbc93a4bcea86d9031abf5fe47",
+            "origin": "explicit",
+            "actorId": "operator_b8bc9d79e95992a3",
+            "bankBasis": {
+              "accountId": "account_bank",
+              "evidenceId": "evidence_a2a246138bd440ee9b42030d4be452b3",
+              "observedOn": "2026-09-22",
+              "amountMinor": "100",
+              "description": "Synthetic ranking exposure",
+              "evidenceDigest": "2423424bfbaff73296f1f8ff3859be92df1ebb83f88c3049505fd4250962c462",
+              "sourceRevision": "2"
+            },
+            "voucherId": "voucher_8619db71270a40029461ac341e642cc1",
+            "rowOrdinal": 2,
+            "statementId": "statement_b503ae18a7324f87b3e9bffda8668f4d",
+            "bookCommitSequence": "2"
+          },
+          "comparisons": [
+            {
+              "coverage": "complete",
+              "comparison": "unchanged",
+              "dimensions": {
+                "lineId": "line_4c1283cbc93a4bcea86d9031abf5fe47",
+                "voucherId": "voucher_8619db71270a40029461ac341e642cc1"
+              }
+            }
+          ],
+          "captureVersion": "decision_provenance_v1",
+          "uncitedExposure": false,
+          "presentedSuggestionIds": [
+            "suggestion_ff266d36aa4644e7b246e5c13a671233"
+          ]
+        }
+      }
+    }
+  ]
+}

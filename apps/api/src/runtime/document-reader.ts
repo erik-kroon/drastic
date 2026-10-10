@@ -1,4 +1,5 @@
 import { azureInvoiceReader, type DocumentReader } from "../adapters/document-reading/azure";
+import { configuredAiProvider } from "./ai-egress";
 
 type Configuration = Readonly<Record<string, string | undefined>>;
 
@@ -21,7 +22,17 @@ export function configuredDocumentReader(config: Configuration): DocumentReader 
     if (url.protocol !== "http:" || url.hostname !== "127.0.0.1")
       throw new Error("The document fixture must use HTTP on IPv4 loopback.");
 
-    return azureInvoiceReader(endpoint, "synthetic-local-key");
+    return azureInvoiceReader(
+      endpoint,
+      "synthetic-local-key",
+      configuredAiProvider(
+        config,
+        "azure-document-intelligence",
+        "prebuilt-invoice:2024-11-30",
+        true,
+        url.origin,
+      ),
+    );
   }
 
   const key = config.OPENERP_DOCUMENT_READER_KEY;
@@ -29,5 +40,15 @@ export function configuredDocumentReader(config: Configuration): DocumentReader 
   if (url.protocol !== "https:" || !key?.trim())
     throw new Error("Live document reading requires HTTPS and a configured credential.");
 
-  return azureInvoiceReader(endpoint, key);
+  return azureInvoiceReader(
+    endpoint,
+    key,
+    configuredAiProvider(
+      config,
+      "azure-document-intelligence",
+      "prebuilt-invoice:2024-11-30",
+      false,
+      url.origin,
+    ),
+  );
 }

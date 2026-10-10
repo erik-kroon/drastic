@@ -1,3 +1,4 @@
+import { bankRowSubjects } from "./subjects";
 import { recordSuggestion } from "../decision-provenance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
@@ -513,27 +514,26 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
         coverConflicts,
       } satisfies JsonObject);
 
+      const ranked = {
+        source: "bank_ranking_v2" as const,
+        version: "retained_then_reference_amount_date_v2" as const,
+        options: typedCandidates
+          .filter((candidate) => candidate.eligible)
+          .map((candidate) => ({
+            voucherId: candidate.voucherId,
+            lineId: candidate.lineId,
+            amountMinor: candidate.remainingMinor,
+          })),
+      };
+
+      const optionSetDigest = yield* digest(ranked);
+
       const suggestionRecordId = yield* recordSuggestion(
         transaction,
         command.scope.bookId,
         principal,
-        {
-          kind: "bank_row",
-          statementId: source.statementId,
-          rowOrdinal: source.rowOrdinal,
-          revision: source.sourceRevision,
-        },
-        {
-          source: "bank_ranking_v2",
-          version: "retained_then_reference_amount_date_v2",
-          options: typedCandidates
-            .filter((candidate) => candidate.eligible)
-            .map((candidate) => ({
-              voucherId: candidate.voucherId,
-              lineId: candidate.lineId,
-              amountMinor: candidate.remainingMinor,
-            })),
-        },
+        bankRowSubjects([source], source.sourceRevision)[0]!,
+        ranked,
       );
 
       const bodyDigest = yield* digest(body);
@@ -545,6 +545,7 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
           Object.assign({}, body, {
             digest: bodyDigest,
             suggestionRecordId,
+            optionSetDigest,
             previousDigestMatches:
               previousDigest === undefined ? null : previousDigest === bodyDigest,
           }),
