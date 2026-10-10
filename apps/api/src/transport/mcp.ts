@@ -8,6 +8,7 @@ import * as McpSchema from "effect/ai/McpSchema";
 import * as Tool from "effect/ai/Tool";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { authenticate, sameOrigin } from "./http/auth";
+import { authConfiguration } from "../adapters/auth/configuration";
 import { capabilities } from "../application/capabilities";
 import { capabilityAgentPolicy } from "../application/capabilities/agent-policy";
 import { failure } from "../application/failures";
@@ -215,8 +216,17 @@ const handleMcp = Effect.gen(function* () {
 }).pipe(Effect.catch((error) => rpcAuthenticationError(error)));
 
 function rpcAuthenticationError(error: AccountingError) {
-  return Effect.succeed(
-    HttpServerResponse.jsonUnsafe(
+  return Effect.gen(function* () {
+    const { bindings } = yield* RequestEnvironment;
+
+    const origin = yield* authConfiguration(bindings).pipe(
+      Effect.map(({ url }) => url.origin),
+      Effect.orElseSucceed(() => null),
+    );
+
+    const discovery = origin ? `${origin}/.well-known/oauth-protected-resource/api/mcp` : null;
+
+    return HttpServerResponse.jsonUnsafe(
       {
         jsonrpc: "2.0",
         id: null,
@@ -230,11 +240,15 @@ function rpcAuthenticationError(error: AccountingError) {
         status: AccountingErrorStatus[error.code],
         headers:
           error.code === "Unauthorized"
-            ? { "www-authenticate": 'Bearer realm="Drastic"' }
+            ? {
+                "www-authenticate": discovery
+                  ? `Bearer realm="Drastic", resource_metadata="${discovery}"`
+                  : 'Bearer realm="Drastic"',
+              }
             : undefined,
       },
-    ),
-  );
+    );
+  });
 }
 
 // Stateless transport: no in-memory sessions, server notifications or SSE streams.

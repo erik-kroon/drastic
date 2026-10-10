@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.5",
+    "@better-auth/oauth-provider": "1.7.5",
     "@effect/sql-pg": "4.0.0",
     "@open-erp/contracts": "workspace:*",
     "@open-erp/domain": "workspace:*",
