@@ -128,3 +128,11 @@ Four selected synthetic workflows passed, including 21 independent vectors (thre
 ## AUT-04 boundary
 
 Investigate the Swedish VAT owner before implementing explicit purchase categories. Existing approved rational rates remain authoritative. An opt-in category must resolve against the retained effective immutable profile and agree with the exact treatment. Missing category rules or entitlement evidence refuse that opt-in path. Synthetic release boundaries prove the mechanism, not legal qualification. Old posted history is not inferred or rewritten.
+
+## AUT-04 checkpoint and Clef priority
+
+Local commit `cb41384` adds single-line supplier-accrual VAT category opt-in with exact treatment matching and independently reviewed immutable source support. Supersession/withdrawal refuse current work, while posted replay remains unchanged. Stored categories reach exports and hints; old records stay category-unknown. Strict HTTP requests reject forged witnesses.
+
+Final stable synthetic HTTP workflows passed 2/2, with 17 refusal/freshness cases and zero reviews retained by failed preparations. Deterministic MCP passed 3/3; pinned Luna evaluation passed 1/1 across six iterations. Full changed checks, owners (53/53) and diff checks passed. Evidence and repeatable commands are in `verification/vat-purchase-categories/README.md`. No production tax qualification, live-provider call, browser qualification, push, merge or deployment is claimed.
+
+The owner asked when Clef would be added. Prioritize AUT-09 question catalog, then AUT-10 Clef/shared adapter. AUT-11 depends on AUT-05 memory, so complete that prerequisite before shadow jobs and AUT-12 evaluation. Other memory/anomaly/rule work remains queued. AUT-13 live qualification retains its data-use gate. The independent decision vectors are committed before implementation.
