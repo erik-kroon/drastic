@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import * as Bank from "@open-erp/contracts/bank-workspace";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { useBookWorkspace, workspacePath } from "./book-context";
-import { bookKey, bookPath, readAccounting } from "./accounting-api";
+import { readAccounting } from "./accounting-api";
+import { bankWorkspaceOptions } from "./bank-workspace";
 import { attentionQueryOptions } from "./attention";
 import { useBusinessDate } from "./use-business-date";
 import { checkScope, commercePath, commerceKey } from "@/components/commerce/shared";
@@ -27,20 +27,19 @@ export function useCompanyWork() {
     q: "",
   });
 
-  const bank = useQuery({
-    queryKey: [...bookKey(book), "bank-workspace", bankQuery.toString()],
-    queryFn: async ({ signal }) => {
-      const value = await readAccounting(
-        `${bookPath(book)}/bank-workspace?${bankQuery}`,
-        Bank.BankWorkspace,
-        { signal },
-      );
+  const bank = useQuery(bankWorkspaceOptions(book, bankQuery));
 
-      checkScope(book, value.scope);
+  const singleBankAccounts = bank.isSuccess
+    ? bank.data.accounts.filter((account) => account.unmatchedCount === 1)
+    : [];
 
-      return value;
-    },
-    retry: false,
+  const bankEvents = useQueries({
+    queries: singleBankAccounts.map((account) => {
+      const query = new URLSearchParams(bankQuery);
+      query.set("accountId", account.id);
+
+      return bankWorkspaceOptions(book, query);
+    }),
   });
 
   const salesQuery = new URLSearchParams({ status: "open", sort: "due", page: "1", q: "" });
@@ -80,6 +79,11 @@ export function useCompanyWork() {
     from,
     to,
     bank,
+    bankEvents: singleBankAccounts.flatMap((account, index) => {
+      const query = bankEvents[index];
+
+      return query ? [{ accountId: account.id, query }] : [];
+    }),
     sales,
     journals,
     expenses,

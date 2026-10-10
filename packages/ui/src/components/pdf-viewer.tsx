@@ -8,6 +8,7 @@ import { SelectControl } from "@open-erp/ui/components/select";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+import { kanon } from "@open-erp/ui/theme/kanon.stylex";
 import { SourceHighlight, type SourceRegion } from "./source-highlight";
 
 export type PdfView = { page: number; zoom: number };
@@ -40,6 +41,8 @@ const styles = stylex.create({
   },
   page: { display: "block", backgroundColor: tokens.card, marginInline: "auto" },
   pageFrame: { position: "relative", marginInline: "auto", width: "fit-content" },
+  fitFrame: { maxWidth: "100%" },
+  fitPage: { maxWidth: "100%", height: "auto" },
   hidden: { display: "none" },
   dimensions: (width: number, height: number) => ({ width, height }),
   text: {
@@ -58,10 +61,19 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeight16Px,
     columnGap: tokens.space4,
   },
-  focusedPageControl: { width: 64, minWidth: 64 },
-  focusedZoomControl: { width: 72, minWidth: 72 },
+  focusedPageControl: { width: "auto", minWidth: 64 },
+  focusedZoomControl: { width: "auto", minWidth: 72 },
   focusedTextAction: { marginInlineStart: "auto", color: tokens.primary },
   focusedViewport: { padding: 0, borderRadius: 0 },
+  supplierViewport: {
+    maxHeight: "none",
+    borderRadius: kanon.radiusControl,
+    outlineWidth: 1,
+    outlineStyle: "solid",
+    outlineColor: kanon.colorControl,
+    outlineOffset: -1,
+    boxShadow: kanon.shadowDocument,
+  },
   bankViewport: {
     boxSizing: "border-box",
     justifySelf: "center",
@@ -256,7 +268,7 @@ export function PdfViewer(props: {
           <SelectControl
             aria-label={sv ? "Sida" : "Page"}
             size="compact"
-            indicator={props.presentation === "bank" ? "⌄" : undefined}
+            indicator={focused ? "⌄" : undefined}
             styleX={[
               focused ? styles.focusedPageControl : styles.control,
               props.presentation === "bank" && styles.bankControl,
@@ -288,7 +300,7 @@ export function PdfViewer(props: {
           <SelectControl
             aria-label="Zoom"
             size="compact"
-            indicator={props.presentation === "bank" ? "⌄" : undefined}
+            indicator={focused ? "⌄" : undefined}
             styleX={[
               focused ? styles.focusedZoomControl : styles.control,
               props.presentation === "bank" && styles.bankControl,
@@ -324,11 +336,12 @@ export function PdfViewer(props: {
         {...stylex.props(
           styles.viewport,
           focused && styles.focusedViewport,
+          props.presentation === "focused" && styles.supplierViewport,
           props.presentation === "bank" && styles.bankViewport,
           props.presentation === "bank" && view.zoom > 100 && styles.bankZoomedViewport,
         )}
       >
-        <div {...stylex.props(styles.pageFrame)}>
+        <div {...stylex.props(styles.pageFrame, !focused && view.zoom <= 100 && styles.fitFrame)}>
           <canvas
             ref={canvas}
             role="img"
@@ -338,6 +351,7 @@ export function PdfViewer(props: {
               styles.page,
               !ready && styles.hidden,
               pageState.status === "ready" && styles.dimensions(pageState.width, pageState.height),
+              !focused && view.zoom <= 100 && styles.fitPage,
             )}
           />
           {ready && props.highlight?.page === view.page ? (
@@ -367,7 +381,7 @@ export function PdfViewer(props: {
           </Box>
         </Box>
       ) : null}
-      {props.presentation === "bank" && !textOpen ? null : focused ? (
+      {focused && !textOpen ? null : focused ? (
         <details open={textOpen} {...stylex.props(styles.focusedTextPanel)}>
           <summary
             role="button"

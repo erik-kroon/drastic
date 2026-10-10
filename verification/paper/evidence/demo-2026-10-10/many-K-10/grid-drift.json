@@ -1,0 +1,84 @@
+{
+  "scope": "K-10",
+  "output": "/home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/many-K-10",
+  "adoptedComparisonEligible": false,
+  "comparatorStatus": null,
+  "difference": null,
+  "parityQualified": false,
+  "limitations": [
+    "Pixel comparison is not behavior/state or production qualification",
+    "Only demo fixtures qualify for board comparison",
+    "Non-default rendering, dimensions or unadopted policy: diagnostic only"
+  ],
+  "grid": [
+    {
+      "row": 0,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 11497,
+      "difference": 0.07984027777777777
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 6081,
+      "difference": 0.042229166666666665
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 10595,
+      "difference": 0.07357638888888889
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 12128,
+      "difference": 0.08422222222222223
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 9426,
+      "difference": 0.06545833333333333
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 6030,
+      "difference": 0.041875
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "pixels": 144000,
+      "changed": 7635,
+      "difference": 0.053020833333333336
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "pixels": 144000,
+      "changed": 6955,
+      "difference": 0.04829861111111111
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "pixels": 144000,
+      "changed": 3143,
+      "difference": 0.021826388888888888
+    }
+  ],
+  "gridCanvas": {
+    "width": 1440,
+    "height": 900
+  },
+  "sameDimensions": true,
+  "channelTolerance": 16
+}

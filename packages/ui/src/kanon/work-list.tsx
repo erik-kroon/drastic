@@ -14,6 +14,23 @@ const styles = stylex.create({
     padding: 0,
   },
   group: { display: "contents" },
+  controls: {
+    alignItems: "center",
+    borderBottomColor: kanon.colorRule,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    display: "flex",
+    minHeight: kanon.sizeRow,
+    justifyContent: "space-between",
+    gap: kanon.space2,
+    paddingInline: kanon.space8,
+  },
+  sort: {
+    color: kanon.colorSecondary,
+    fontFamily: kanon.fontUi,
+    fontSize: kanon.textCaption,
+    lineHeight: kanon.leadingBody,
+  },
   carded: {
     borderColor: kanon.colorRule,
     borderRadius: kanon.radiusCard,
@@ -109,7 +126,6 @@ const styles = stylex.create({
     flexShrink: 0,
     fontSize: kanon.textBody,
     lineHeight: kanon.leadingBody,
-    paddingInlineStart: kanon.space4,
     width: kanon.sizeStateColumn,
     "@container (max-width: 40rem)": { display: "none" },
   },
@@ -121,7 +137,9 @@ const styles = stylex.create({
     lineHeight: kanon.leadingBody,
     textAlign: "end",
     width: kanon.sizeAmountColumn,
-    whiteSpace: "nowrap",
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+    paddingBlock: kanon.space1,
   },
 });
 
@@ -131,6 +149,21 @@ const styles = stylex.create({
  */
 export function WorkList({ children, carded = false }: { children: ReactNode; carded?: boolean }) {
   return <ul {...stylex.props(styles.list, carded && styles.carded)}>{children}</ul>;
+}
+
+export function WorkListControls({
+  filterAction,
+  sortLabel,
+}: {
+  filterAction: ReactNode;
+  sortLabel: string;
+}) {
+  return (
+    <div {...stylex.props(styles.controls)}>
+      {filterAction}
+      <span {...stylex.props(styles.sort)}>{sortLabel}</span>
+    </div>
+  );
 }
 
 export function CountPill({ count }: { count: number | string }) {

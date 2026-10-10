@@ -219,6 +219,31 @@ function verifyAuthority(
   });
 }
 
+export function admitCredentialActor(transaction: Transaction, token: string) {
+  return Effect.gen(function* () {
+    if (token.length < 32 || token.length > 512) return yield* failure("Unauthorized");
+    const credentialHash = yield* hashToken(token);
+    const row = (yield* lockCredential(transaction, credentialHash))[0];
+
+    if (!row) return yield* failure("Unauthorized");
+
+    const credential = yield* decodeOne(CredentialRow, row);
+    const databaseTime = yield* readDatabaseTime(transaction);
+
+    if (credential.revokedAt !== null || !expiryIsCurrent(credential.expiresAt, databaseTime.now)) {
+      return yield* failure("Unauthorized");
+    }
+
+    const admission = (yield* lockAdmission(transaction, credential.actorId))[0];
+
+    if (admission && !(yield* decodeOne(IdentityRow, admission)).enabled) {
+      return yield* failure("Unauthorized");
+    }
+
+    return credential.actorId;
+  });
+}
+
 export function admitPrincipal(
   transaction: Transaction,
   access: AccessCredential,

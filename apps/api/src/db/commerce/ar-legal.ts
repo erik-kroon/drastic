@@ -347,6 +347,21 @@ export function insertIssue(
   );
 }
 
+export function readUnknownLegalDeliveryAttempts(tx: Transaction, book: string) {
+  return tx.execute<{ readonly id: string; readonly recordedAt: string }>(
+    sql`select a.id, a.body->>'startedAt' as "recordedAt"
+      from openerp.ar_legal_delivery_attempts a
+      where a.book_id = ${book} and not exists (
+        select 1 from openerp.ar_legal_delivery_reconciliations r
+        where r.book_id = a.book_id and r.attempt_id = a.id
+      ) and a.ordinal = (
+        select max(latest.ordinal) from openerp.ar_legal_delivery_attempts latest
+        where latest.book_id = a.book_id and latest.request_id = a.request_id
+      ) order by a.id collate "C"`,
+    "objects",
+  );
+}
+
 export function readDeliveryRequestSummaries(tx: Transaction, book: string) {
   return tx.execute<{
     readonly captureId: string;

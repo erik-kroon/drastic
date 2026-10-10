@@ -71,7 +71,7 @@ export function BookNavigation(props: {
           href={`${base}/`}
           active={home || reviewing}
           current={home}
-          count={waiting.data?.items.length}
+          count={waiting.data?.counts.open}
         >
           <NavIcon name="todo" />
           {copy.todo}

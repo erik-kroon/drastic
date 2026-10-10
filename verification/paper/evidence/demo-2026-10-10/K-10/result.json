@@ -1,0 +1,68 @@
+{
+  "scope": "K-10",
+  "sourceRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "comparatorRevision": "f447afbd240b4303802f1808b268d1a03184e305",
+  "referenceSha256": "7780afc0fa085b57f43fc6ab96f5f18cc3daa7b87f04e6d33e1085a75c4e0766",
+  "actualSha256": "68cb3cdbfb634051c1c06ab56501e64392cddc231dcd2383abf66ec49c1e65b0",
+  "diffSha256": "3c99a41b34c1e7cc66e5e374582ecfcfa32fa78caa199597664e1c3b601b38c2",
+  "sourceHashes": {
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
+    "apps/web/src/components/work-supplier-preview.tsx": "538e35b3ef495464443de17c31d05d6b7a5734b80a10aa66ec8462a7a4b899ba",
+    "apps/web/src/lib/company-work.ts": "7ffbac678fa30f88436452bd0fe7a0d286f17eebb246ceb3c11813a079865b41",
+    "apps/web/src/lib/bank-workspace.ts": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776",
+    "apps/web/src/lib/attention.ts": "f0935ea9050c343e0b7e6beb563a3ed7ec71d7b99584de1c0a6bb5f2f9437491",
+    "apps/web/src/components/commerce/supplier-acceptance.tsx": "eef80e363e775b6c3983c6bc717ee6d16a5d8d41d0b8799535e9ced47fc906ac",
+    "packages/ui/src/kanon/cards.tsx": "254d83db782c2eb7984e4467eb391f15096429f35b7661acb3826b810aadaa1b",
+    "packages/ui/src/kanon/layouts.tsx": "6531c7e5a81896e280f8b939fa74d16b79eee55be5a43630d7011d6c1b33d1f7",
+    "packages/ui/src/kanon/work-list.tsx": "4438f044a8de0c3e281418d68d023368b63be6362d0481be70c97c5ff8a899e7",
+    "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "packages/ui/src/kanon/record.tsx": "c213eb88dd91c17db8eed9315535dcb40891f35a34dae7607236db4929a1b66d",
+    "packages/ui/src/kanon/action.tsx": "017d80edd29f14d46b004287ddee7cdd266ea19288238854bea6d7f800534baf"
+  },
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output /home/user/workspace/repo/verification/paper/evidence/demo-2026-10-10/K-10",
+  "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-10 verification/paper/evidence/demo-2026-10-10/K-10/capture.json verification/paper/evidence/demo-2026-10-10/K-10",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
+    "time": "2026-10-10T13:46:05.199Z",
+    "clockPinned": false,
+    "applicationClock": "2026-10-02T06:54:00.000Z",
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "populated, first supplier selected",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.03289583333333333,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-10/actual.png",
+  "diff": "verification/paper/evidence/demo-2026-10-10/K-10/diff.png",
+  "passed": false
+}

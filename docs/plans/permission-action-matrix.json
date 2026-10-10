@@ -608,6 +608,17 @@
       ]
     },
     {
+      "name": "bureau_list_obligations",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/bureau-obligations.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/bureau-obligations.ts"
+      ]
+    },
+    {
       "name": "cases_get_context",
       "readOnly": true,
       "agentCallable": true,
@@ -2057,6 +2068,18 @@
       ]
     },
     {
+      "name": "company_initialize_native_ledger",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/company-setup.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
       "name": "company_prepare_activation",
       "readOnly": false,
       "agentCallable": false,
@@ -2509,6 +2532,17 @@
       ]
     },
     {
+      "name": "firm_get_portfolio",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts"
+      ]
+    },
+    {
       "name": "firm_list",
       "readOnly": true,
       "agentCallable": true,
@@ -2523,6 +2557,18 @@
       "name": "firm_remove_client",
       "readOnly": false,
       "agentCallable": true,
+      "contractSource": "packages/contracts/src/firms.ts",
+      "classification": "administration",
+      "exposed": false,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/company-firms.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "firm_save_access_request",
+      "readOnly": false,
+      "agentCallable": false,
       "contractSource": "packages/contracts/src/firms.ts",
       "classification": "administration",
       "exposed": false,
@@ -3035,6 +3081,18 @@
       ]
     },
     {
+      "name": "payroll_assess_variable_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/variable-pay-review.ts",
+      "classification": "prepare",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/variable-pay-review.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
       "name": "payroll_cancel_adjustment_instruction",
       "readOnly": false,
       "agentCallable": false,
@@ -3055,6 +3113,18 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/mileage-corrections.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
+      ]
+    },
+    {
+      "name": "payroll_dispose_variable_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/variable-pay-review.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/variable-pay-review.ts",
         "apps/api/src/application/capabilities/agent-policy.ts"
       ]
     },
@@ -3194,6 +3264,17 @@
       ]
     },
     {
+      "name": "payroll_get_variable_assessment",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/variable-pay-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/variable-pay-review.ts"
+      ]
+    },
+    {
       "name": "payroll_list_calculations",
       "readOnly": true,
       "agentCallable": true,
@@ -3235,6 +3316,17 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/payroll-runs.ts"
+      ]
+    },
+    {
+      "name": "payroll_list_variable_assessments",
+      "readOnly": true,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/variable-pay-review.ts",
+      "classification": "read",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/variable-pay-review.ts"
       ]
     },
     {
@@ -3421,6 +3513,18 @@
       "exposed": true,
       "applicationOwners": [
         "apps/api/src/application/capabilities/employee-claims.ts"
+      ]
+    },
+    {
+      "name": "payroll_select_variable_input",
+      "readOnly": false,
+      "agentCallable": true,
+      "contractSource": "packages/contracts/src/variable-pay-review.ts",
+      "classification": "record",
+      "exposed": true,
+      "applicationOwners": [
+        "apps/api/src/application/capabilities/variable-pay-review.ts",
+        "apps/api/src/application/capabilities/agent-policy.ts"
       ]
     },
     {

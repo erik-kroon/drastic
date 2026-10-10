@@ -68,6 +68,9 @@ export async function deleteSession(id: string) {
 
 export async function fixture(
   extraAccounts: ReadonlyArray<{ id: string; code: string; name: string }> = [],
+  periods: ReadonlyArray<{ id: string; startsOn: string; endsOn: string }> = [
+    { id: "period_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" },
+  ],
 ) {
   const id = randomBytes(8).toString("hex");
   const token = randomBytes(32).toString("hex");
@@ -87,7 +90,7 @@ export async function fixture(
       tokenExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     },
     fiscalYear: { id: "fy_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" },
-    periods: [{ id: "period_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" }],
+    periods,
     accounts: [
       { id: "account_bank", code: "1930", name: "Bank" },
       { id: "account_clearing", code: "2999", name: "Clearing" },

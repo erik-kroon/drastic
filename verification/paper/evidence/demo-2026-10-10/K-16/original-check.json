@@ -1,0 +1,54 @@
+{
+  "synthetic": true,
+  "passed": true,
+  "checks": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "tableFit": true,
+      "fit": {
+        "width": 347,
+        "available": 371,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 371,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "tableFit": true,
+      "fit": {
+        "width": 317,
+        "available": 341,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 341,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "tableFit": true,
+      "fit": {
+        "width": 347,
+        "available": 371,
+        "inside": true
+      },
+      "enlarged": {
+        "width": 665.09375,
+        "available": 371,
+        "scroll": 689
+      },
+      "escapeReturn": true
+    }
+  ]
+}

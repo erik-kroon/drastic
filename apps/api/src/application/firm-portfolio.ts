@@ -2,15 +2,24 @@ import * as Firms from "@open-erp/contracts/firms";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
 import * as Schema from "effect/Schema";
-import { getFirm } from "./firms";
+import { getFirmPortfolioWorkspace } from "./firms";
 import { getCompanySetup } from "./company-setup";
 import { bookSetup } from "./posting";
 import { listAttention } from "./workspace";
 import { listObligations } from "./closing/deadlines";
+import { listBureauObligations } from "./bureau-obligations";
+import { listUnknownLegalDeliveryAttempts } from "./commerce/legal-delivery";
 import { closingReadiness } from "./closing/proposals";
 import { bankWorkspace } from "./banking/workspace";
 import { listBankInventorySignoffs, getBankInventorySignoff } from "./banking/inventory-signoffs";
 import { failure } from "./failures";
+
+const stockholmDate = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Europe/Stockholm",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 function observedTime() {
   return DateTime.now.pipe(Effect.map((now) => DateTime.toDateUtc(now).toISOString()));
@@ -23,6 +32,72 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
     const setup = yield* bookSetup(token, { scope });
     const period = [...setup.periods].sort((a, b) => b.endsOn.localeCompare(a.endsOn))[0] ?? null;
     const deadlines = yield* listObligations(token, { scope });
+    const supplierObligations = yield* listBureauObligations(token, { scope });
+    const unknownLegalDeliveries = yield* listUnknownLegalDeliveryAttempts(token, { scope });
+
+    const knownDates = [
+      ...deadlines
+        .filter((item) => item.current_outcome === null)
+        .map((item) => ({
+          source: "deadline" as const,
+          id: item.id,
+          dueOn: stockholmDate.format(new Date(item.due_at)),
+        })),
+      ...supplierObligations.items
+        .filter(
+          (item) =>
+            item.dueOn !== null &&
+            (item.outstandingMinor === null || BigInt(item.outstandingMinor) > 0n),
+        )
+        .map((item) => ({
+          source: "supplier_obligation" as const,
+          id: item.obligationId,
+          dueOn: item.dueOn!,
+        })),
+    ];
+
+    const nearestKnownDeadline =
+      knownDates.sort(
+        (left, right) => left.dueOn.localeCompare(right.dueOn) || left.id.localeCompare(right.id),
+      )[0] ?? null;
+
+    const unknownOutcomes = {
+      coverage: "legal_delivery_provider_attempts_only" as const,
+      items: unknownLegalDeliveries.map((item) => ({
+        id: item.id,
+        kind: "legal_delivery_provider_unknown" as const,
+        recordedAt: item.recordedAt,
+      })),
+    };
+
+    const kinds = ["journal", "invoice", "expense", "document", "supplier", "recurring"] as const;
+
+    const counts = yield* Effect.forEach(kinds, (kind) =>
+      listAttention(token, { scope, kind, status: "open" }),
+    );
+
+    const latest = yield* listAttention(token, { scope, status: "all" });
+
+    const byKind = {
+      journal: counts[0]!.counts.open,
+      invoice: counts[1]!.counts.open,
+      expense: counts[2]!.counts.open,
+      document: counts[3]!.counts.open,
+      supplier: counts[4]!.counts.open,
+      recurring: counts[5]!.counts.open,
+    };
+
+    const openWork = {
+      total: Object.values(byKind)
+        .reduce((sum, count) => sum + BigInt(count), 0n)
+        .toString(),
+      byKind,
+      coverage: "canonical_attention_all_periods" as const,
+    };
+
+    const lastActivityAt = latest.items[0]?.updatedAt ?? null;
+
+    const assignedAccountantId = client.leadAvailable ? client.leadId : null;
 
     if (period === null) {
       return {
@@ -30,6 +105,13 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
         company,
         period,
         openTasks: null,
+        assignedAccountantId,
+        openWork,
+        supplierObligations,
+        unknownOutcomes,
+        nearestKnownDeadline,
+        lastActivityAt,
+        lastActivityCoverage: "canonical_attention_only",
         deadlines,
         bank: null,
         bankObservations: [],
@@ -122,6 +204,13 @@ function clientFacts(token: string, client: typeof Firms.Client.Type) {
       company,
       period,
       openTasks: work.counts.open,
+      assignedAccountantId,
+      openWork,
+      supplierObligations,
+      unknownOutcomes,
+      nearestKnownDeadline,
+      lastActivityAt,
+      lastActivityCoverage: "canonical_attention_only",
       deadlines,
       bank,
       bankObservations,
@@ -136,9 +225,9 @@ export const getFirmPortfolio = Effect.fn("firms.portfolio")(function* (
   command: { readonly firmId: string },
 ) {
   const observedFrom = yield* observedTime();
-  const workspace = yield* getFirm(token, command);
+  const workspace = yield* getFirmPortfolioWorkspace(token, command);
   const clients = yield* Effect.forEach(workspace.clients, (client) => clientFacts(token, client));
-  const current = yield* getFirm(token, command);
+  const current = yield* getFirmPortfolioWorkspace(token, command);
 
   if (JSON.stringify(current) !== JSON.stringify(workspace)) {
     return yield* failure("StaleDependency");
@@ -151,5 +240,51 @@ export const getFirmPortfolio = Effect.fn("firms.portfolio")(function* (
     observedFrom,
     observedUntil,
     clients,
+    needsToday: clients.flatMap((facts, index) => {
+      const review = current.clients[index]?.nextReviewOn;
+
+      const today = stockholmDate.format(new Date(observedUntil));
+
+      const firmReview =
+        review && review <= today
+          ? [
+              {
+                scope: facts.scope,
+                source: "firm_review" as const,
+                id: facts.scope.bookId,
+                dueOn: review,
+              },
+            ]
+          : [];
+
+      const deadlines = facts.deadlines
+        .filter(
+          (deadline) =>
+            stockholmDate.format(new Date(deadline.due_at)) <= today &&
+            deadline.current_outcome === null,
+        )
+        .map((deadline) => ({
+          scope: facts.scope,
+          source: "deadline" as const,
+          id: deadline.id,
+          dueOn: stockholmDate.format(new Date(deadline.due_at)),
+        }));
+
+      const supplierObligations = facts.supplierObligations.items
+        .filter(
+          (item) =>
+            item.dueOn !== null &&
+            item.dueOn <= today &&
+            (item.outstandingMinor === null || BigInt(item.outstandingMinor) > 0n),
+        )
+        .map((item) => ({
+          scope: facts.scope,
+          source: "supplier_obligation" as const,
+          id: item.obligationId,
+          dueOn: item.dueOn!,
+        }));
+
+      return [...firmReview, ...deadlines, ...supplierObligations];
+    }),
   }).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
 });

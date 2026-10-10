@@ -490,7 +490,7 @@ export function WorkspaceNavLink(
   > & {
     active?: boolean;
     current?: boolean;
-    count?: number;
+    count?: number | string;
   },
 ) {
   const current = props.current ?? props.active;
@@ -505,7 +505,9 @@ export function WorkspaceNavLink(
       {...stylex.props(styles.navItem, styles.navLink, props.active && styles.navActive)}
     >
       {props.children}
-      {props.count ? <span {...stylex.props(styles.navCount)}>{props.count}</span> : null}
+      {props.count && props.count !== "0" ? (
+        <span {...stylex.props(styles.navCount)}>{props.count}</span>
+      ) : null}
     </Link>
   );
 }
