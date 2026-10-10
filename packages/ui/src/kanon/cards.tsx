@@ -57,6 +57,7 @@ const styles = stylex.create({
     textAlign: "end",
     width: kanon.sizeLedgerColumn,
   },
+  signedNumber: { width: kanon.sizeAmountColumn, overflowWrap: "anywhere" },
   total: { fontWeight: kanon.weightSemibold },
   compareLabel: {
     color: kanon.colorCaption,
@@ -112,36 +113,52 @@ export type LedgerLine = { account: string; debit?: string; credit?: string };
 export function LedgerCard({
   lines,
   total,
+  signed = false,
 }: {
   lines: ReadonlyArray<LedgerLine>;
   total?: { debit: string; credit: string };
+  signed?: boolean;
 }) {
   const copy = useKanonCopy();
 
   return (
     <div role="table" {...stylex.props(styles.card)}>
-      <div role="row" {...stylex.props(styles.row, styles.headRow)}>
-        <span role="columnheader" {...stylex.props(styles.account, styles.head)}>
-          {copy.account}
-        </span>
-        <span role="columnheader" {...stylex.props(styles.head, styles.number)}>
-          {copy.debit}
-        </span>
-        <span role="columnheader" {...stylex.props(styles.head, styles.number)}>
-          {copy.credit}
-        </span>
-      </div>
+      {!signed ? (
+        <div role="row" {...stylex.props(styles.row, styles.headRow)}>
+          <span role="columnheader" {...stylex.props(styles.account, styles.head)}>
+            {copy.account}
+          </span>
+          <span role="columnheader" {...stylex.props(styles.head, styles.number)}>
+            {copy.debit}
+          </span>
+          <span role="columnheader" {...stylex.props(styles.head, styles.number)}>
+            {copy.credit}
+          </span>
+        </div>
+      ) : null}
       {lines.map((line) => (
-        <div role="row" key={line.account} {...stylex.props(styles.row)}>
-          <span role="cell" {...stylex.props(styles.account)}>
+        <div
+          role="row"
+          key={`${line.account}/${line.debit === undefined ? "credit" : "debit"}`}
+          {...stylex.props(styles.row)}
+        >
+          <span role="cell" title={line.account} {...stylex.props(styles.account)}>
             {line.account}
           </span>
-          <span role="cell" {...stylex.props(styles.value, styles.number)}>
-            {line.debit}
-          </span>
-          <span role="cell" {...stylex.props(styles.value, styles.number)}>
-            {line.credit}
-          </span>
+          {signed ? (
+            <span role="cell" {...stylex.props(styles.value, styles.number, styles.signedNumber)}>
+              {line.debit ?? (line.credit ? `−${line.credit}` : undefined)}
+            </span>
+          ) : (
+            <>
+              <span role="cell" {...stylex.props(styles.value, styles.number)}>
+                {line.debit}
+              </span>
+              <span role="cell" {...stylex.props(styles.value, styles.number)}>
+                {line.credit}
+              </span>
+            </>
+          )}
         </div>
       ))}
       {total !== undefined && (

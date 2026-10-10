@@ -115,10 +115,10 @@ const styles = stylex.create({
     minWidth: 0,
   },
   pane: { display: "contents" },
-  inactivePane: { "@media (max-width: 1023px)": { display: "none" } },
+  inactivePane: { "@container (max-width: 60rem)": { display: "none" } },
   paneSwitch: {
     display: "none",
-    "@media (max-width: 1023px)": {
+    "@container (max-width: 60rem)": {
       display: "flex",
       gap: kanon.space2,
       padding: kanon.space3,
@@ -194,8 +194,17 @@ const styles = stylex.create({
   },
   queueItemSelected: { backgroundColor: kanon.colorSurface, boxShadow: kanon.shadowSelected },
   queueText: { display: "flex", flexDirection: "column", gap: kanon.spaceHair, minWidth: 0 },
-  queueName: { color: kanon.colorText, fontSize: kanon.textBody, lineHeight: kanon.leadingBody },
-  queueMeta: { fontSize: kanon.textCaption, lineHeight: kanon.leadingBody },
+  queueName: {
+    color: kanon.colorText,
+    fontSize: kanon.textBody,
+    lineHeight: kanon.leadingBody,
+    overflowWrap: "anywhere",
+  },
+  queueMeta: {
+    fontSize: kanon.textCaption,
+    lineHeight: kanon.leadingBody,
+    overflowWrap: "anywhere",
+  },
   viewer: {
     backgroundColor: kanon.colorViewer,
     display: "flex",

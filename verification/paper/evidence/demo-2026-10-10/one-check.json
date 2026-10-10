@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "mode": "one",
+  "passed": true,
+  "waitingItems": 1,
+  "retainedBankRows": 1,
+  "retainedClients": 1,
+  "checks": [
+    "all waiting pages",
+    "retained bank rows",
+    "unchanged ledger"
+  ]
+}

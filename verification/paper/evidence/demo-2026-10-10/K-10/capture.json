@@ -1,0 +1,52 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-10/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-10 --output verification/paper/evidence/demo-2026-10-10/K-10",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceHashes": {
+    "apps/web/src/components/company-work-sections.tsx": "b3035dd52769f20d3cac464475758c1ad6d36ea720ec85ab91aa55f9ba697ab3",
+    "apps/web/src/components/work-home.tsx": "a950cfaade887b07aac7a2e792e14ecd533244698f8f087cfda433c3b789e0c1",
+    "apps/web/src/components/work-supplier-preview.tsx": "6fab1290e394cf687bab8dae450d366d3ed4a09f31096ec7ab07368876c08bfb",
+    "apps/web/src/components/commerce/supplier-acceptance.tsx": "eef80e363e775b6c3983c6bc717ee6d16a5d8d41d0b8799535e9ced47fc906ac",
+    "packages/ui/src/kanon/cards.tsx": "043370c0a7dce06985b485256909bdc98edd02bb134ce2b80af42f2172c23803",
+    "packages/ui/src/kanon/layouts.tsx": "aec6b50872c1d944564a326ad63f25cf40777758657275ac2f511de1e75f672f",
+    "packages/ui/src/kanon/work-list.tsx": "a322d5bd969950767eb48d2be210c9dedee99f4151299f129fbe2cc5d721d38f",
+    "packages/ui/src/kanon/detail-panel.tsx": "003bc0c286cec0b3652e522f4a242c94671d687c19dc0b8e16fd537f38ccf5ae",
+    "packages/ui/src/kanon/action.tsx": "8b76a6fccfc03baef518ec0131f27b3f9289f757fe4b5dc2695767309dd4dd9e"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic",
+    "time": "2026-10-10T11:06:21.698Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "populated, first supplier selected",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "5b4f3b8588d1fb6945198e89dd1a886529c2d3213085fa75f983b1b4171af329"
+}

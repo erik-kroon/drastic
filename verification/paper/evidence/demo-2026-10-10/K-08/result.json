@@ -1,0 +1,55 @@
+{
+  "scope": "K-08",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "comparatorRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "referenceSha256": "022cd8220dd09292f4db368797de983a5ce84c82d84c06fe76ed20e66cedc8a8",
+  "actualSha256": "459dbfd58e0c90eb80d18fdde36d56e50b61179a15e45748949ffc5bbaf99d16",
+  "diffSha256": "f2733072ff83de1b63d48685cc0c1129b75fd2e59b148097a0f416b0ec0ffcaa",
+  "sourceHashes": {
+    "apps/web/src/components/company-overview.tsx": "c1a23f75cc4dc9a3369ee6ea46a02a0574ed8ce865eac6b03bc1a9020dbc9598"
+  },
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-08 --output verification/paper/evidence/demo-2026-10-10/K-08",
+  "comparisonCommand": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/compare.mjs K-08 verification/paper/evidence/demo-2026-10-10/K-08/capture.json verification/paper/evidence/demo-2026-10-10/K-08",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/overview",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/overview",
+    "time": "2026-10-10T11:06:49.506Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "route default, partial fixture",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "difference": 0.07879861111111111,
+  "tolerance": 0.02,
+  "channelTolerance": 16,
+  "adoptedBy": "Erik Kroon",
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-08/actual.png",
+  "diff": "verification/paper/evidence/demo-2026-10-10/K-08/diff.png",
+  "passed": false
+}

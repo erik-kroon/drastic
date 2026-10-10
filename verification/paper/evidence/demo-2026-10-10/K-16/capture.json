@@ -1,0 +1,51 @@
+{
+  "actual": "verification/paper/evidence/demo-2026-10-10/K-16/actual.png",
+  "command": "/usr/local/bin/node /home/user/workspace/repo/verification/paper/capture.mjs K-16 --output verification/paper/evidence/demo-2026-10-10/K-16",
+  "sourceRevision": "644020ac00409cf3a8fddef90bbdae95ed788b5d",
+  "sourceHashes": {
+    "apps/web/src/components/voucher-workspace.tsx": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
+    "apps/web/src/routes/entities.$entityId.books.$bookId.books.tsx": "3cabe19b8a3d27ce23f83b0a8e01f71c4ce76bb2a7ddac8e0f881af7e6cbb082",
+    "apps/web/src/components/posted-records.tsx": "a73344c4134f02b1d310d039860cb162ecdd8f8e801cbed363e9a4e5b92952ee",
+    "apps/web/src/components/evidence-inspector.tsx": "594fcb3be6a37473492287333867ea2f215b53b5e22942150ea874d7ca04368e",
+    "apps/web/src/components/original-document.tsx": "7d0f3c7466698d859774792a20909751bd00e9a65c53d1028437088c19e09087",
+    "apps/web/src/lib/source-documents.ts": "836fd1a9fd61274e402fd209d801682b4d59ec7420051ad7040eb6d7311c4aff",
+    "packages/ui/src/components/record-sheet.tsx": "8c23d0e084ec3828135277122e50d0edededfe7d06fb91ba7c9a168a5aa1ae26",
+    "packages/ui/src/components/pdf-viewer.tsx": "09e127e6474f57342f2e84b9c54f9edeb36b314a6a4ff471d6561f4395212a9e"
+  },
+  "reviewer": "Automated capture; no human review or production qualification",
+  "conditions": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+    "fonts": {
+      "family": "Inter, system-ui, sans-serif",
+      "faces": [
+        {
+          "family": "Inter",
+          "status": "loaded",
+          "weight": "100 900"
+        }
+      ]
+    },
+    "deviceScaleFactor": 1,
+    "locale": "sv-SE",
+    "theme": "light",
+    "zoom": 1,
+    "zoomMethod": "CSS layout zoom; not native browser zoom",
+    "pane": "route default",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "route": "/entities/$entityId/books/$bookId/books",
+    "resolvedRoute": "/entities/entity_synthetic/books/book_synthetic/books?view=vouchers&work=%3Fstatus%3Dopen%26sort%3Doldest%26kind%3Dall&returnTo=owner%3A%257B%2522owner%2522%253A%2522home%2522%252C%2522search%2522%253A%257B%2522status%2522%253A%2522open%2522%252C%2522task%2522%253A%2522entity_synthetic%252Fbook_synthetic%252Fdocument%252Fsource_a50150673e264a72bd2ae5f42a843f2d%252F%2522%257D%257D&record=voucher_46d8ce351c2f4585a58c05684152861e&returnSupplier=supplier_invoice_draft_5d13b33d72ce4a1da49f72036d2aa556&returnSupplierReview=supplier_review_75be492b2f00439391255c31e88341d1",
+    "time": "2026-10-10T11:12:20.847Z",
+    "clockPinned": false,
+    "fixture": {
+      "synthetic": true,
+      "mode": "demo",
+      "state": "posted voucher selected",
+      "selection": null,
+      "boardContentMatch": false
+    }
+  },
+  "jsxSha256": "57646e701fb281f86e27cd766fedb0ccd0aa8847a9617c1f34f7f487c41874b1"
+}

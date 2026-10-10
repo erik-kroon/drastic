@@ -26,6 +26,8 @@ const artifacts = resolve(root, process.env.PAPER_ARTIFACTS ?? "test-results/pap
 
 await mkdir(artifacts, { recursive: true });
 
+await rm(join(artifacts, "runtime.json"), { force: true });
+
 const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim();
 
 const databaseName = process.env.PAPER_DATABASE ?? "postgres";
@@ -66,6 +68,13 @@ if (firmRecoveryHook !== undefined && firmRecoveryHook !== "0" && firmRecoveryHo
 const assetHook = process.env.PAPER_ASSETS;
 
 const loanHook = process.env.PAPER_LOANS;
+
+const demoHook = process.env.PAPER_DEMO;
+
+const demoSeed = demoHook === undefined ? undefined : await import("./seed-demo.mjs");
+
+if (demoSeed && !demoSeed.demoModes.includes(demoHook))
+  throw new Error("PAPER_DEMO must be demo, worst, empty, one or many");
 
 const foreignCashHook = process.env.PAPER_FOREIGN_CASH;
 
@@ -392,6 +401,14 @@ try {
   fixture.actor.name = "Elin Sund";
   fixture.actor.tokenExpiresAt = new Date(Date.now() + 86_400_000).toISOString();
 
+  if (demoSeed) {
+    fixture.entity.name = "Fjällby Konsult AB";
+    fixture.accounts.push(...demoSeed.demoAccounts);
+    fixture.accounts.find((account) => account.id === "account_bank").name = "Företagskonto";
+    fixture.accounts.find((account) => account.id === "account_clearing").name =
+      "Övriga kortfristiga skulder";
+  }
+
   if (payrollSeed) fixture.accounts.push(...payrollSeed.payrollAccounts);
 
   if (assetSeed) fixture.accounts.push(...assetSeed.assetAccounts);
@@ -568,6 +585,19 @@ try {
     });
     throw new Error(`Synthetic workspace readiness failed: HTTP ${workspaceReadiness.status}`);
   }
+
+  const demo = demoSeed
+    ? await demoSeed.seedDemo({
+        apiUrl: listening.url.origin,
+        accessToken,
+        fixture,
+        artifacts,
+        mode: demoHook,
+        webUrl: url,
+        email,
+        password: loginPassword,
+      })
+    : undefined;
 
   if (recurringSeed)
     recurringFixture = await recurringSeed.seedRecurring({
@@ -805,6 +835,8 @@ try {
       apiUrl: listening.url.origin,
       databaseName,
       workspace: `${url}/entities/${fixture.entity.id}/books/${fixture.book.id}`,
+      boards: demo?.boards,
+      demoMode: demoHook,
     }),
     { mode: 0o600 },
   );
@@ -853,6 +885,12 @@ try {
   ) {
     throw new Error("PAPER_DOCUMENT_INTELLIGENCE must be 0 or 1");
   }
+
+  await writeFile(
+    join(artifacts, "runtime.json"),
+    JSON.stringify({ sessionFile, boards: demo?.boards, demoMode: demoHook }),
+    { mode: 0o600 },
+  );
 
   console.log(JSON.stringify({ ready: true, url, sessionFile, artifacts }));
 
