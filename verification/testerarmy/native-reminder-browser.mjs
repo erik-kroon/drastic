@@ -9,6 +9,7 @@ const { chromium } = dependency("playwright-core");
 
 export function nativeReminderBrowser() {
   const browsers = new Map();
+  const motionFailures = new Map();
 
   return {
     name: "dedicated-native-reminder-zoom",
@@ -34,18 +35,49 @@ export function nativeReminderBrowser() {
       });
 
       let context;
+      const motionErrors = [];
 
       try {
         await mkdir(join(profile, "Default"));
         await writeFile(join(profile, "Default/Preferences"), preferences, { mode: 0o600 });
-        context = await chromium.launchPersistentContext(profile, {
+
+        const browserOptions = {
           headless: false,
           viewport: { width: 1440, height: 900 },
           locale: "sv-SE",
           timezoneId: "Europe/Stockholm",
-          args: ["--remote-debugging-port=0"],
-          timeout: 15000,
-        });
+          args: [
+            "--remote-debugging-port=0",
+            ...(request.env.OPENERP_REDUCED_MOTION === "1"
+              ? ["--force-prefers-reduced-motion"]
+              : []),
+          ],
+          timeout: 60000,
+        };
+
+        if (request.env.OPENERP_REDUCED_MOTION === "1") browserOptions.reducedMotion = "reduce";
+
+        context = await chromium.launchPersistentContext(profile, browserOptions);
+
+        if (request.env.OPENERP_REDUCED_MOTION === "1") {
+          const configureMotion = async (page) => {
+            await page.emulateMedia({ reducedMotion: "reduce" });
+            page.on("domcontentloaded", () => {
+              void page.emulateMedia({ reducedMotion: "reduce" }).catch((error) => {
+                motionErrors.push(error);
+              });
+            });
+          };
+
+          for (const page of context.pages()) await configureMotion(page);
+
+          context.on("page", (page) => {
+            void configureMotion(page).catch((error) => {
+              motionErrors.push(error);
+            });
+          });
+        }
+
         request.signal.throwIfAborted();
 
         const port = Number(
@@ -56,6 +88,7 @@ export function nativeReminderBrowser() {
           throw new Error("Invalid dedicated browser CDP port");
 
         browsers.set(profile, context);
+        motionFailures.set(profile, motionErrors);
         await writeFile(
           join(output, "native-reminder-browser.json"),
           JSON.stringify(
@@ -94,8 +127,13 @@ export function nativeReminderBrowser() {
 
       try {
         await context.close();
+
+        const failures = motionFailures.get(lease.id) ?? [];
+
+        if (failures.length) throw new AggregateError(failures, "Reduced-motion setup failed");
       } finally {
         browsers.delete(lease.id);
+        motionFailures.delete(lease.id);
         await rm(lease.id, { recursive: true, force: true });
       }
     },

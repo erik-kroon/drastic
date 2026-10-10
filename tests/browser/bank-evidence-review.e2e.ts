@@ -30,6 +30,13 @@ test("bank review compares the retained original and prepares without allocating
 }) => {
   const fixture = await bankReviewFixture(browser, app.baseUrl);
 
+  await browser.goto("about:blank");
+
+  const nativeBaseline = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+  }));
+
   const output = process.env.OPENERP_E2E_OUTPUT;
 
   if (!output) throw new Error("Use the disposable synthetic browser launcher");
@@ -43,6 +50,22 @@ test("bank review compares the retained original and prepares without allocating
   );
 
   const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
+
+  const nativeAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+
+  expect(nativeAccess.scrollWidth).toBeLessThanOrEqual(nativeAccess.width);
+
+  if (process.env.OPENERP_NATIVE_ZOOM === "1") {
+    expect(Math.abs(nativeAccess.dpr / nativeBaseline.dpr - 2)).toBeLessThan(0.02);
+    expect(Math.abs(nativeBaseline.width / nativeAccess.width - 2)).toBeLessThan(0.04);
+  }
+
+  if (process.env.OPENERP_REDUCED_MOTION === "1") expect(nativeAccess.reducedMotion).toBe(true);
 
   await expect(review.getByRole("button", "Förbered matchning", { exact: true })).toBeDisabled();
   await expect(review.getByRole("article")).toHaveCount(2);
@@ -163,6 +186,8 @@ test("bank review compares the retained original and prepares without allocating
     JSON.stringify(
       {
         syntheticOnly: true,
+        nativeBaseline,
+        nativeAccess,
         originalHash: fixture.expectedHash,
         statement: fixture.statement,
         vouchers: fixture.vouchers,
@@ -187,6 +212,13 @@ test("bank review refuses an original that differs from its retained expected ch
 }) => {
   const fixture = await bankReviewFixture(browser, app.baseUrl, true);
 
+  await browser.goto("about:blank");
+
+  const nativeBaseline = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+  }));
+
   const output = process.env.OPENERP_E2E_OUTPUT;
 
   if (!output) throw new Error("Use the disposable synthetic browser launcher");
@@ -200,6 +232,22 @@ test("bank review refuses an original that differs from its retained expected ch
   );
 
   const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
+
+  const nativeAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+
+  expect(nativeAccess.scrollWidth).toBeLessThanOrEqual(nativeAccess.width);
+
+  if (process.env.OPENERP_NATIVE_ZOOM === "1") {
+    expect(Math.abs(nativeAccess.dpr / nativeBaseline.dpr - 2)).toBeLessThan(0.02);
+    expect(Math.abs(nativeBaseline.width / nativeAccess.width - 2)).toBeLessThan(0.04);
+  }
+
+  if (process.env.OPENERP_REDUCED_MOTION === "1") expect(nativeAccess.reducedMotion).toBe(true);
 
   const candidateIndex = observedCandidates.candidates.findIndex(
     (item) =>
@@ -248,6 +296,8 @@ test("bank review refuses an original that differs from its retained expected ch
     JSON.stringify(
       {
         syntheticOnly: true,
+        nativeBaseline,
+        nativeAccess,
         expectedHash: fixture.expectedHash,
         retainedOccurrence: fixture.occurrence,
         evidence: fixture.evidence,
@@ -268,6 +318,13 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
 }) => {
   const fixture = await bankReviewFixture(browser, app.baseUrl);
 
+  await browser.goto("about:blank");
+
+  const nativeBaseline = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+  }));
+
   const output = process.env.OPENERP_E2E_OUTPUT;
 
   if (!output) throw new Error("Use the disposable synthetic browser launcher");
@@ -281,6 +338,22 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
   );
 
   const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
+
+  const nativeAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+
+  expect(nativeAccess.scrollWidth).toBeLessThanOrEqual(nativeAccess.width);
+
+  if (process.env.OPENERP_NATIVE_ZOOM === "1") {
+    expect(Math.abs(nativeAccess.dpr / nativeBaseline.dpr - 2)).toBeLessThan(0.02);
+    expect(Math.abs(nativeBaseline.width / nativeAccess.width - 2)).toBeLessThan(0.04);
+  }
+
+  if (process.env.OPENERP_REDUCED_MOTION === "1") expect(nativeAccess.reducedMotion).toBe(true);
 
   const candidateIndex = observedCandidates.candidates.findIndex(
     (item) =>
@@ -343,6 +416,8 @@ test("bank review preserves its draft but clears acknowledgment when real capaci
     JSON.stringify(
       {
         syntheticOnly: true,
+        nativeBaseline,
+        nativeAccess,
         concurrent,
         ledger: fixture.ledger,
         lifecycleSignal:
@@ -372,11 +447,35 @@ test("bank review retains original zoom and visible keyboard review without fina
     expectedHash: "sha256:dfa7eb88a6909af5c3e163abcc0240ca2b4518bbcb829ce3270752a7f5ef9e03",
   });
 
+  await browser.goto("about:blank");
+
+  const nativeBaseline = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+  }));
+
   const output = process.env.OPENERP_E2E_OUTPUT;
 
   if (!output) throw new Error("Use the disposable synthetic browser launcher");
 
   await app.open(fixture.workspace);
+
+  const bankRoute = new URL(fixture.path);
+
+  bankRoute.searchParams.delete("row");
+  await app.open(bankRoute.href);
+  await expect(screen.getByRole("searchbox", "Sök transaktioner", { exact: true })).toBeVisible();
+
+  const bankScreenshot = await app.screenshot("native-loop-bank-scoped");
+
+  const bankAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    route: `${window.location.pathname}${window.location.search}`,
+  }));
+
+  expect(bankAccess.scrollWidth).toBeLessThanOrEqual(bankAccess.width);
 
   const discovery = browser.waitForResponse("**/bank-match-candidates");
 
@@ -387,6 +486,22 @@ test("bank review retains original zoom and visible keyboard review without fina
   );
 
   const review = screen.getByRole("dialog", "Granska matchning", { exact: true });
+
+  const nativeAccess = await browser.evaluate(() => ({
+    dpr: window.devicePixelRatio,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  }));
+
+  expect(nativeAccess.scrollWidth).toBeLessThanOrEqual(nativeAccess.width);
+
+  if (process.env.OPENERP_NATIVE_ZOOM === "1") {
+    expect(Math.abs(nativeAccess.dpr / nativeBaseline.dpr - 2)).toBeLessThan(0.02);
+    expect(Math.abs(nativeBaseline.width / nativeAccess.width - 2)).toBeLessThan(0.04);
+  }
+
+  if (process.env.OPENERP_REDUCED_MOTION === "1") expect(nativeAccess.reducedMotion).toBe(true);
 
   const candidateIndex = observedCandidates.candidates.findIndex(
     (item) =>
@@ -497,7 +612,11 @@ test("bank review retains original zoom and visible keyboard review without fina
     JSON.stringify(
       {
         syntheticOnly: true,
+        nativeBaseline,
+        nativeAccess,
         originalHash: fixture.expectedHash,
+        bankScreenshot,
+        bankAccess,
         page: 2,
         zoom: 125,
         viewport,

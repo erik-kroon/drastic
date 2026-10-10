@@ -1,0 +1,21 @@
+{
+  "scope": "DRA-106 bank evidence and posting recovery, synthetic real application browser journeys",
+  "runs": {
+    "default": {
+      "run": "1989f9b0-a2c8-4b04-8c02-f3ca71008924",
+      "status": "passed",
+      "sourceIntegrity": "stable",
+      "revision": "73db4a25b4e054ecf2fa4b6a5c36f72ceea3e54c",
+      "applicationDigest": "a64d996d60f05fdf56ac1a327abd7baac4d10ecbb0b8b884e2540c814e908382",
+      "limits": "Revision plus exact input inventory; not clean-checkout qualification. Endpoint comparison detects retained changes, not transient edits reverted during execution."
+    },
+    "native-200-reduced-motion": {
+      "run": "d363afac-f3df-4c72-bbce-c285db42e6d5",
+      "status": "passed",
+      "sourceIntegrity": "stable",
+      "revision": "73db4a25b4e054ecf2fa4b6a5c36f72ceea3e54c",
+      "applicationDigest": "a64d996d60f05fdf56ac1a327abd7baac4d10ecbb0b8b884e2540c814e908382",
+      "limits": "Revision plus exact input inventory; not clean-checkout qualification. Endpoint comparison detects retained changes, not transient edits reverted during execution."
+    }
+  }
+}

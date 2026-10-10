@@ -77,8 +77,8 @@ const styles = stylex.create({
   bankViewport: {
     boxSizing: "border-box",
     justifySelf: "center",
-    width: 595,
-    maxWidth: "100%",
+    width: "100%",
+    maxWidth: 595,
     height: 480,
     maxHeight: 480,
     overflowX: "hidden",
