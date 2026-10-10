@@ -296,10 +296,9 @@ test("native supplier expiry renews unchanged approval and recovers one posting 
   await expect(screen.getByRole("region", "Original", { exact: true })).toBeVisible();
   await expect(screen.getByRole("region", "Beslut", { exact: true })).toBeVisible();
 
-  await expect(screen.getByRole("link", "Bank", { exact: true })).toHaveAttribute(
-    "href",
-    `${new URL(workspace).pathname}/accounts`,
-  );
+  await expect(
+    screen.getByRole("link", "Bank, Fjällby Konsult AB", { exact: true }),
+  ).toHaveAttribute("href", `${new URL(workspace).pathname}/accounts`);
 
   const frame = await browser.evaluate(async () => {
     await document.fonts.ready;

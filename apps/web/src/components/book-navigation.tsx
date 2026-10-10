@@ -86,6 +86,7 @@ export function BookNavigation(props: {
           {shows("bank") && (
             <WorkspaceNavLink
               href={`${base}/accounts`}
+              aria-label={`Bank, ${props.book.name.trim() || (locale === "sv" ? "aktuell bok" : "current book")}`}
               active={pathname === `${base}/accounts`}
               onPointerEnter={preloadAccounts}
               onFocus={preloadAccounts}

@@ -484,7 +484,10 @@ export function WorkspaceNavigation({
 }
 
 export function WorkspaceNavLink(
-  props: Pick<ComponentProps<typeof Link>, "href" | "onFocus" | "onPointerEnter" | "children"> & {
+  props: Pick<
+    ComponentProps<typeof Link>,
+    "href" | "onFocus" | "onPointerEnter" | "children" | "aria-label"
+  > & {
     active?: boolean;
     current?: boolean;
     count?: number;
@@ -497,6 +500,7 @@ export function WorkspaceNavLink(
       href={props.href}
       onFocus={props.onFocus}
       onPointerEnter={props.onPointerEnter}
+      aria-label={props["aria-label"]}
       aria-current={current ? "page" : undefined}
       {...stylex.props(styles.navItem, styles.navLink, props.active && styles.navActive)}
     >

@@ -39,6 +39,10 @@ test("the audience profile changes navigation only and survives reload", async (
   await expect(screen.getByRole("link", "Bokföring", { exact: true })).toBeVisible({
     timeout: 90_000,
   });
+  await expect(
+    screen.getByRole("link", "Bank, Fjällby Konsult AB", { exact: true }),
+  ).toHaveAttribute("href", `${new URL(workspace).pathname}/accounts`);
+
   const before = await admitted();
   const bureau = await app.screenshot("audience-bureau-navigation");
 
@@ -53,7 +57,7 @@ test("the audience profile changes navigation only and survives reload", async (
   ).toBeVisible();
 
   for (const hidden of [
-    "Bank",
+    "Bank, Fjällby Konsult AB",
     "Försäljning",
     "Inköp",
     "Bokföring",
@@ -84,6 +88,9 @@ test("the audience profile changes navigation only and survives reload", async (
   await screen.getByRole("option", "Visa som byrå", { exact: true }).click();
   await expect(screen.getByRole("link", "Bokföring", { exact: true })).toBeVisible();
   await expect(navigation("Arbete").getByRole("link")).toHaveCount(4);
+  await expect(
+    screen.getByRole("link", "Bank, Fjällby Konsult AB", { exact: true }),
+  ).toHaveAttribute("href", `${new URL(workspace).pathname}/accounts`);
   const restored = await app.screenshot("audience-bureau-restored");
 
   await writeFile(
