@@ -16,9 +16,9 @@
     "route": "/oauth/select"
   },
   "reviewer": "Codex: inspected actual and direct adopted Paper export",
-  "sourceRevision": "cd61bad1e4651c92bb9f6807f53437bb9d10c31f with exact working source hashes; not clean-checkout proof",
+  "sourceRevision": "d2d2d4531dc5e4d59f90cd68dbc899eb26601bed",
   "sourceHashes": {
-    "apps/web/src/components/oauth-access.tsx": "2d31432f446eb4cb35c10ab02f521168738719ffb695593ebeaeb36fcf45beef",
+    "apps/web/src/components/oauth-access.tsx": "54b1dcc7b88e7d9b0688a74b49a7d79bc427ca20253e3e999f4e3c5cd878e573",
     "apps/web/src/routes/oauth.select.tsx": "6e7ab923a6c235a67426f7999be2b63f904ca0c2c4b1b7ffe242565e9b9545bd",
     "packages/ui/src/kanon/access.tsx": "fb59df12e82895cee3e2d610bca54387364a4ef41287c2f45d4a44cb801119c9",
     "packages/ui/src/theme/access.stylex.ts": "afc7769e2976fc5346d4194c5a101eeab1a8b92ec463d8909d14e2d520fd4876"

@@ -993,7 +993,7 @@
       ],
       "route": "/oauth/consent",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/oauth-mcp.md",
       "requiredStates": ["consent", "loading", "error", "revoked", "keyboard"],
@@ -1010,7 +1010,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
-      "notes": "Adopted light state measured on its real OAuth route with the actual synthetic provider flow. Empty selections, retained consent reload, keyboard consent, denial without code and revoked grant refusal pass deterministic TesterArmy E2E. No Luna agent step or production onboarding claim. Dark, native zoom and management-screen qualification are separate. Fresh source capture pending after guarded SSR query read and component factoring; earlier measured receipt retained historically."
+      "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
     },
     {
       "id": "O-02",
@@ -1028,7 +1028,7 @@
       ],
       "route": "/oauth/select",
       "audience": "bureau",
-      "status": "unverified",
+      "status": "matches",
       "adoption": "approved",
       "behaviorSource": "docs/operations/oauth-mcp.md",
       "requiredStates": ["empty", "loading", "error", "revoked", "keyboard"],
@@ -1045,7 +1045,7 @@
         "adoptedBy": "Erik Kroon"
       },
       "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
-      "notes": "Adopted light state measured on its real OAuth route with the actual synthetic provider flow. Empty selections, retained consent reload, keyboard consent, denial without code and revoked grant refusal pass deterministic TesterArmy E2E. No Luna agent step or production onboarding claim. Dark, native zoom and management-screen qualification are separate. Fresh source capture pending after guarded SSR query read and component factoring; earlier measured receipt retained historically."
+      "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
     }
   ]
 }
