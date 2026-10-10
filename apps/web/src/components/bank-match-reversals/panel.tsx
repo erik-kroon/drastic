@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { bankUnmatchCopy } from "./copy";
 import { BankUnmatchReview } from "./review";
@@ -26,7 +28,7 @@ export function BankMatchReversals({
   const [planId, setPlanId] = useState<string | null>(null);
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const base = `${bookPath(book)}/bank-match-reversal-plans`;
 
   const saved = useQuery({
@@ -45,7 +47,7 @@ export function BankMatchReversals({
       readAccounting(
         base,
         Reversal.BankMatchReversalPlan,
-        mutationOptions(base, JSON.stringify(input), keys.current),
+        keys.current.options(base, JSON.stringify(input)),
       ),
     onSuccess: (plan) => {
       setPlanId(plan.id);
@@ -83,7 +85,7 @@ export function BankMatchReversals({
               reason: fields.get("reason"),
             });
 
-            if (decoded._tag === "None") {
+            if (Option.isNone(decoded)) {
               setInvalid(true);
 
               return;

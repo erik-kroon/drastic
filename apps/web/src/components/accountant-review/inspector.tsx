@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -54,7 +55,8 @@ export function ReviewPackInspector({
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/accountant-review-packs/${encodeURIComponent(id)}`,
+        (client) =>
+          client.accountantReview.getReviewPack({ params: { ...bookScope(book), id: id } }),
         Review.ReviewPackView,
         { signal },
       );
@@ -191,7 +193,10 @@ function ArtifactDownload({
   const download = useMutation({
     mutationFn: async () => {
       const artifact = await readAccounting(
-        `${bookPath(book)}/accountant-review-packs/${encodeURIComponent(pack.id)}/artifacts/${descriptor.format}`,
+        (client) =>
+          client.accountantReview.reviewPackArtifact({
+            params: { ...bookScope(book), id: pack.id, format: descriptor.format },
+          }),
         Review.ReviewArtifact,
       );
 

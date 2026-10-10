@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import { digest as digestNative } from "./json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as RegisterContract from "@open-erp/contracts/register-reports";
@@ -5,7 +6,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/register-reports";
 import { readTableAccess } from "../db/commerce/access";
@@ -108,9 +110,13 @@ function readCounts(transaction: Transaction, bookId: string, asOfDate: string, 
     const bounds = (yield* Db.readBounds(transaction, bookId, asOfDate, sequence))[0];
 
     if (!bounds) return yield* failure("InternalError");
+
     const accountCount = exact(bounds.accounts);
+
     const invoiceCount = exact(bounds.invoices);
+
     const allocationCount = exact(bounds.allocations);
+
     const lineCount = exact(bounds.lines);
 
     if (
@@ -135,6 +141,7 @@ function readCounts(transaction: Transaction, bookId: string, asOfDate: string, 
 function invoiceArithmeticHolds(rows: ReadonlyArray<JsonObject>) {
   return rows.every((row) => {
     const outstanding = exactOf(row.outstandingMinor);
+
     const recognized = exactOf(row.recognizedOutstandingMinor);
 
     return (
@@ -150,7 +157,9 @@ function invoiceArithmeticHolds(rows: ReadonlyArray<JsonObject>) {
 function lineArithmeticHolds(rows: ReadonlyArray<JsonObject>) {
   return rows.every((row) => {
     const allocated = exactOf(row.allocatedMinor);
+
     const debit = exactOf(row.debitMinor);
+
     const credit = exactOf(row.creditMinor);
 
     return allocated !== null && debit !== null && credit !== null && allocated <= debit + credit;
@@ -205,7 +214,9 @@ function readArrays(
     ))[0]?.value;
 
     if (!invoices) return yield* failure("InternalError");
+
     const invoiceRows = arrayOf(invoices);
+
     const allocationRows = arrayOf(allocations);
 
     if (!invoiceRows || !allocationRows) return yield* failure("InternalError");
@@ -222,14 +233,17 @@ function readArrays(
     ))[0]?.value;
 
     if (!lines) return yield* failure("InternalError");
+
     const lineRows = arrayOf(lines);
 
     if (!lineRows) return yield* failure("InternalError");
 
     if (!lineArithmeticHolds(lineRows)) return yield* failure("InvalidJournal");
+
     const controls = (yield* Db.readControls(transaction, bookId, invoices, lines))[0]?.value;
 
     if (!controls) return yield* failure("InternalError");
+
     const controlRows = arrayOf(controls);
 
     if (!controlRows) return yield* failure("InternalError");
@@ -261,6 +275,7 @@ function registerStatus(counts: RegisterCounts, controls: ReadonlyArray<JsonObje
 
   const differs = controls.some((row) => {
     const difference = exactOf(row.differenceMinor);
+
     const unexplained = row.unexplainedLineCount;
 
     if (
@@ -288,9 +303,13 @@ function readInventoryCursor(
     const decoded = objectOrNull((yield* Db.decodeCursor(transaction, cursor))[0]?.value);
 
     if (decoded === null) return yield* failure("InvalidJournal");
+
     const version = textOf(decoded.version);
+
     const parsedScope = objectOrNull(decoded.scope);
+
     const cutoff = textOf(decoded.cutoff);
+
     const after = textOf(decoded.after);
 
     if (
@@ -305,6 +324,7 @@ function readInventoryCursor(
     }
 
     const cutoffValue = exact(cutoff);
+
     const afterValue = exact(after);
 
     if (cutoffValue === null || afterValue === null) return yield* failure("InvalidJournal");
@@ -331,120 +351,126 @@ export const createRegisterReport = Effect.fn("registerReports.create")(function
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "create_register_report",
-        principal.actorId,
-        yield* toJsonObject(command.input),
-        ReportSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRegisterAccess(transaction, true);
-      const book = (yield* Db.readRegisterBook(transaction, command.scope.bookId))[0];
-
-      if (!book) return yield* failure("NotFound");
-
-      if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
-        return yield* unsupported();
-      }
-
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(input, ["asOfDate"]);
-      const asOfDate = calendarDate(textOf(input.asOfDate) ?? "");
-
-      if (asOfDate === null) return yield* failure("InvalidJournal");
-      const sequence = book.committedSequence;
-      const counts = yield* readCounts(transaction, command.scope.bookId, asOfDate, sequence);
-
-      const arrays = yield* readArrays(
-        transaction,
-        command.scope.bookId,
-        asOfDate,
-        sequence,
-        book.currency,
-      );
-
-      if (!arraysMatchBounds(arrays, counts)) return yield* failure("InvalidJournal");
-      const ordinal = (yield* Db.readNextOrdinal(transaction, command.scope.bookId))[0]?.ordinal;
-
-      if (ordinal === undefined) return yield* failure("InternalError");
-      const value = exact(ordinal);
-
-      if (value === null || value < 1n || value > maximumOrdinal) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const id = newId("register_report");
-      const status = registerStatus(counts, arrays.controlRows);
-
-      const body = yield* toJsonObject({
-        id,
-        ordinal,
-        kind: "synthetic_register_snapshot_v1",
-        scope: command.scope,
-        asOfDate,
-        sequence,
-        currency: book.currency,
-        currencyScale: book.currencyScale,
-        profileVersion: book.profileVersion,
-        knowledgeBasis: "current_known_facts_at_capture",
-        coverage: "not_established",
-        status,
-        invoiceCount: Number(counts.invoiceCount),
-        allocationCount: Number(counts.allocationCount),
-        ledgerLineCount: Number(counts.lineCount),
-        accountCount: Number(counts.accountCount),
-        createdAt: yield* isoNow(transaction),
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "create_register_report",
           actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
         },
-        controls: arrays.controlRows,
-        invoices: arrays.invoiceRows,
-        allocations: arrays.allocationRows,
-        ledgerLines: arrays.lineRows,
-      });
+        ReportSchema,
+        Effect.gen(function* () {
+          yield* requireRegisterAccess(transaction, true);
+          const book = (yield* Db.readRegisterBook(transaction, command.scope.bookId))[0];
 
-      const digest = yield* digestNative(body);
+          if (!book) return yield* failure("NotFound");
 
-      if (digest === undefined) return yield* failure("InternalError");
-      const sealed = { ...body, digest };
-      const bytes = (yield* Db.retainedBytes(transaction, sealed))[0]?.bytes;
+          if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
+            return yield* unsupported();
+          }
 
-      if (bytes === undefined) return yield* failure("InternalError");
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(input, ["asOfDate"]);
+          const asOfDate = calendarDate(textOf(input.asOfDate) ?? "");
 
-      if (BigInt(bytes) > BigInt(maximumRetainedBytes)) return yield* failure("InvalidJournal");
-      yield* Db.insertSnapshot(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        ordinal,
-        body: sealed,
-      });
+          if (asOfDate === null) return yield* failure("InvalidJournal");
 
-      const historyVersion = (yield* Db.readAllocationHistoryVersion(
-        transaction,
-        command.scope.bookId,
-        asOfDate,
-      ))[0]?.version;
+          const sequence = book.committedSequence;
 
-      if (historyVersion === undefined) return yield* failure("InternalError");
-      yield* Db.insertAllocationDependency(transaction, command.scope.bookId, id, historyVersion);
-      const result = yield* decode(ReportSchema, sealed);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "create_register_report",
-        principal.actorId,
-        result,
+          const counts = yield* readCounts(transaction, command.scope.bookId, asOfDate, sequence);
+
+          const arrays = yield* readArrays(
+            transaction,
+            command.scope.bookId,
+            asOfDate,
+            sequence,
+            book.currency,
+          );
+
+          if (!arraysMatchBounds(arrays, counts)) return yield* failure("InvalidJournal");
+
+          const ordinal = (yield* Db.readNextOrdinal(transaction, command.scope.bookId))[0]
+            ?.ordinal;
+
+          if (ordinal === undefined) return yield* failure("InternalError");
+
+          const value = exact(ordinal);
+
+          if (value === null || value < 1n || value > maximumOrdinal) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const id = newId("register_report");
+
+          const status = registerStatus(counts, arrays.controlRows);
+
+          const body = yield* toJsonObject({
+            id,
+            ordinal,
+            kind: "synthetic_register_snapshot_v1",
+            scope: command.scope,
+            asOfDate,
+            sequence,
+            currency: book.currency,
+            currencyScale: book.currencyScale,
+            profileVersion: book.profileVersion,
+            knowledgeBasis: "current_known_facts_at_capture",
+            coverage: "not_established",
+            status,
+            invoiceCount: Number(counts.invoiceCount),
+            allocationCount: Number(counts.allocationCount),
+            ledgerLineCount: Number(counts.lineCount),
+            accountCount: Number(counts.accountCount),
+            createdAt: yield* isoNow(transaction),
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "create_register_report",
+              actorId: principal.actorId,
+            },
+            controls: arrays.controlRows,
+            invoices: arrays.invoiceRows,
+            allocations: arrays.allocationRows,
+            ledgerLines: arrays.lineRows,
+          });
+
+          const digest = yield* digestNative(body);
+
+          if (digest === undefined) return yield* failure("InternalError");
+
+          const sealed = { ...body, digest };
+
+          const bytes = (yield* Db.retainedBytes(transaction, sealed))[0]?.bytes;
+
+          if (bytes === undefined) return yield* failure("InternalError");
+
+          if (BigInt(bytes) > BigInt(maximumRetainedBytes)) return yield* failure("InvalidJournal");
+          yield* Db.insertSnapshot(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            ordinal,
+            body: sealed,
+          });
+
+          const historyVersion = (yield* Db.readAllocationHistoryVersion(
+            transaction,
+            command.scope.bookId,
+            asOfDate,
+          ))[0]?.version;
+
+          if (historyVersion === undefined) return yield* failure("InternalError");
+          yield* Db.insertAllocationDependency(
+            transaction,
+            command.scope.bookId,
+            id,
+            historyVersion,
+          );
+          const result = yield* decode(ReportSchema, sealed);
+
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );
@@ -473,10 +499,13 @@ export const listRegisterReports = Effect.fn("registerReports.list")(function* (
     const current = (yield* Db.readOrdinalBound(transaction, command.scope.bookId))[0]?.current;
 
     if (current === undefined) return yield* failure("InternalError");
+
     const available = exact(current);
 
     if (available === null) return yield* failure("InternalError");
+
     let cutoff = available;
+
     let after = 0n;
 
     if (command.after !== undefined) {
@@ -512,17 +541,22 @@ export const listRegisterReports = Effect.fn("registerReports.list")(function* (
     const itemRows = arrayOf(rows);
 
     if (!itemRows) return yield* failure("InternalError");
+
     const remaining = cutoff - after;
+
     const expected = remaining < BigInt(inventoryPageSize) ? Number(remaining) : inventoryPageSize;
 
     if (itemRows.length !== expected) return yield* failure("InvalidJournal");
+
     const items = yield* Effect.forEach(itemRows, (row) => decode(SummarySchema, row));
+
     const cursorScope = yield* toJsonObject(command.scope);
 
     const first = (yield* Db.readCursor(transaction, cursorScope, cutoff.toString(), "0"))[0]
       ?.cursor;
 
     if (first === undefined) return yield* failure("InternalError");
+
     const last = after + BigInt(itemRows.length);
 
     const next =

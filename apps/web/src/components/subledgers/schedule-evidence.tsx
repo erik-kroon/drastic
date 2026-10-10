@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { subledgerCopy } from "./copy";
 
@@ -21,7 +23,7 @@ export function ScheduleEvidence({
 }) {
   const copy = subledgerCopy(locale);
   const contentId = useId();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
@@ -31,7 +33,7 @@ export function ScheduleEvidence({
       return readAccounting(
         path,
         Accounting.Evidence,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
   });
@@ -56,7 +58,7 @@ export function ScheduleEvidence({
             mediaType: "text/plain",
           });
 
-          if (decoded._tag === "None") {
+          if (Option.isNone(decoded)) {
             setInvalid(true);
 
             return;

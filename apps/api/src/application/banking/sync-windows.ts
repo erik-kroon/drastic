@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sync from "@open-erp/contracts/bank-sync-windows";
 import {
@@ -15,7 +16,10 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
+import { sha256Hex } from "../hashing";
 import * as ConnectorDb from "../../db/banking/connector";
 import * as BankDb from "../../db/banking/shared";
 import * as SyncDb from "../../db/banking/sync-windows";
@@ -470,184 +474,182 @@ export const appendSyncPage = Effect.fn("banking.sync.appendPage")(function* (
 
       if (!book) return yield* failure("Forbidden");
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "append_bank_sync_page",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "append_bank_sync_page",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
+        },
         Sync.RetainedSyncPage,
-      );
+        Effect.gen(function* () {
+          const input = command.input;
+          const rawBytes = Shared.byteLength(input.raw);
 
-      if (request.previous) return request.previous;
+          if (rawBytes < 1 || rawBytes > maximumRawBytes) return yield* failure("InvalidJournal");
 
-      const input = command.input;
-      const rawBytes = Shared.byteLength(input.raw);
+          const generation = (yield* SyncDb.readGeneration(
+            transaction,
+            command.scope.bookId,
+            input.generationId,
+          ))[0];
 
-      if (rawBytes < 1 || rawBytes > maximumRawBytes) return yield* failure("InvalidJournal");
+          if (!generation) return yield* failure("NotFound");
 
-      const generation = (yield* SyncDb.readGeneration(
-        transaction,
-        command.scope.bookId,
-        input.generationId,
-      ))[0];
+          const claimed = (yield* SyncDb.lockStreamByGeneration(
+            transaction,
+            command.scope.bookId,
+            generation.streamId,
+          ))[0];
 
-      if (!generation) return yield* failure("NotFound");
+          if (!claimed) return yield* failure("InternalError");
 
-      const claimed = (yield* SyncDb.lockStreamByGeneration(
-        transaction,
-        command.scope.bookId,
-        generation.streamId,
-      ))[0];
+          const consent = yield* readConsent(transaction, command.scope.bookId, claimed.consentId);
 
-      if (!claimed) return yield* failure("InternalError");
+          // Consent revocation blocks new pages. It does not erase the pages
+          // already retained, and it does not delete a staged generation.
+          if (consent.revokedAt !== null) return yield* failure("ApprovalRequired");
 
-      const consent = yield* readConsent(transaction, command.scope.bookId, claimed.consentId);
+          const retained = yield* SyncDb.readPages(
+            transaction,
+            command.scope.bookId,
+            generation.id,
+          );
 
-      // Consent revocation blocks new pages. It does not erase the pages
-      // already retained, and it does not delete a staged generation.
-      if (consent.revokedAt !== null) return yield* failure("ApprovalRequired");
+          // The raw digest is computed from the bytes actually held here, so a
+          // caller cannot assert a digest about content it does not prove. The
+          // ordinal is the caller's, so a re-offer after a crash reaches the leaf
+          // as a replay rather than being guessed at.
+          const proposed: Omit<SyncPage, "chainedDigest"> = {
+            generationId: generation.id,
+            ordinal: String(input.ordinal),
+            requestCursor: input.requestCursor,
+            nextCursor: input.nextCursor,
+            hasMore: input.hasMore,
+            rawDigest: `sha256:${yield* sha256Hex(input.raw)}`,
+            normalizedChangesDigest: yield* changesDigest(input.changes),
+            recordCount: String(input.changes.length),
+          };
 
-      const retained = yield* SyncDb.readPages(transaction, command.scope.bookId, generation.id);
+          // The chain digest links to the page this one follows, which is the
+          // retained page before this ordinal, not simply the newest one.
+          const prior = input.ordinal > 0 ? retained[input.ordinal - 1] : undefined;
 
-      // The raw digest is computed from the bytes actually held here, so a
-      // caller cannot assert a digest about content it does not prove. The
-      // ordinal is the caller's, so a re-offer after a crash reaches the leaf
-      // as a replay rather than being guessed at.
-      const proposed: Omit<SyncPage, "chainedDigest"> = {
-        generationId: generation.id,
-        ordinal: String(input.ordinal),
-        requestCursor: input.requestCursor,
-        nextCursor: input.nextCursor,
-        hasMore: input.hasMore,
-        rawDigest: `sha256:${yield* sha256Hex(input.raw)}`,
-        normalizedChangesDigest: yield* changesDigest(input.changes),
-        recordCount: String(input.changes.length),
-      };
+          const page: SyncPage = {
+            ...proposed,
+            chainedDigest: yield* chainedDigestOf(
+              prior?.chainedDigest ?? proposed.rawDigest,
+              proposed,
+            ),
+          };
 
-      // The chain digest links to the page this one follows, which is the
-      // retained page before this ordinal, not simply the newest one.
-      const prior = input.ordinal > 0 ? retained[input.ordinal - 1] : undefined;
+          // The leaf decides everything about this page: contiguous ordinal, the
+          // exact cursor chain, replay of an identical retained page, and refusal
+          // of a different raw response for one already retained. The owner never
+          // overwrites that evidence and never resolves the case itself.
+          const appended = yield* checked(
+            appendWindowPage({
+              generation: generationOf(generation, claimed.fence),
+              fence: input.fence,
+              leaseValid: leaseIsHeld(claimed.leaseUntil, Date.now()),
+              retainedPages: retained.map(pageOf),
+              page,
+            }),
+          );
 
-      const page: SyncPage = {
-        ...proposed,
-        chainedDigest: yield* chainedDigestOf(prior?.chainedDigest ?? proposed.rawDigest, proposed),
-      };
+          const replayed = input.ordinal < retained.length;
 
-      // The leaf decides everything about this page: contiguous ordinal, the
-      // exact cursor chain, replay of an identical retained page, and refusal
-      // of a different raw response for one already retained. The owner never
-      // overwrites that evidence and never resolves the case itself.
-      const appended = yield* checked(
-        appendWindowPage({
-          generation: generationOf(generation, claimed.fence),
-          fence: input.fence,
-          leaseValid: leaseIsHeld(claimed.leaseUntil, Date.now()),
-          retainedPages: retained.map(pageOf),
-          page,
+          if (!replayed) {
+            // A terminal page that neither moved the cursor nor reported no
+            // changes is not a provider answer the chain can express.
+
+            if (
+              !appended.hasMore &&
+              appended.nextCursor === appended.requestCursor &&
+              appended.recordCount !== "0"
+            ) {
+              return yield* failure("InvalidJournal");
+            }
+
+            yield* SyncDb.insertContent(transaction, {
+              bookId: command.scope.bookId,
+              sha256: appended.rawDigest,
+              bytes: input.raw,
+            });
+            yield* SyncDb.insertPage(transaction, {
+              bookId: command.scope.bookId,
+              generationId: generation.id,
+              ordinal: Number(appended.ordinal),
+              requestCursor: appended.requestCursor,
+              nextCursor: appended.nextCursor,
+              hasMore: appended.hasMore,
+              rawDigest: appended.rawDigest,
+              rawByteLength: rawBytes,
+              normalizedChangesDigest: appended.normalizedChangesDigest,
+              recordCount: Number(appended.recordCount),
+              chainedDigest: appended.chainedDigest,
+            });
+
+            if (input.changes.length > 0) {
+              yield* SyncDb.insertCandidates(transaction, {
+                bookId: command.scope.bookId,
+                generationId: generation.id,
+                pageOrdinal: Number(appended.ordinal),
+                candidates: input.changes.map((change) => ({
+                  kind: change.kind,
+                  sourceId: change.sourceId,
+                  rawLocator: change.rawLocator,
+                })),
+              });
+            }
+          }
+
+          let restarted: string | null = null;
+
+          if (input.mutationDuringPagination === true) {
+            // A provider mutation during pagination abandons this generation and
+            // begins a new one at the published cursor captured for this window:
+            // the same original base, never the failed page cursor.
+
+            const next = yield* checked(
+              compileWindowRestart({
+                streamId: claimed.id,
+                publishedCursor: claimed.publishedCursor,
+                publicationVersion: claimed.publicationVersion,
+                fence: claimed.fence,
+                attemptNumber: generation.attemptNumber,
+                maximumRestarts: String(maximumRestarts),
+                commandKey: command.idempotencyKey,
+              }),
+            );
+
+            yield* SyncDb.insertGeneration(transaction, {
+              bookId: command.scope.bookId,
+              id: next.id,
+              streamId: claimed.id,
+              baseCursor: next.baseCursor,
+              basePublicationVersion: next.basePublicationVersion,
+              attemptNumber: next.attemptNumber,
+              fence: next.fence,
+            });
+            yield* SyncDb.setCurrentGeneration(transaction, {
+              bookId: command.scope.bookId,
+              streamId: claimed.id,
+              generationId: next.id,
+            });
+            restarted = next.id;
+          }
+
+          const pageResult = yield* Shared.decode(
+            Sync.RetainedSyncPage,
+            pageBody(appended, replayed, restarted),
+          );
+
+          return { receipt: yield* Shared.toJsonObject(pageResult), result: pageResult };
         }),
       );
-
-      const replayed = input.ordinal < retained.length;
-
-      if (!replayed) {
-        // A terminal page that neither moved the cursor nor reported no
-        // changes is not a provider answer the chain can express.
-
-        if (
-          !appended.hasMore &&
-          appended.nextCursor === appended.requestCursor &&
-          appended.recordCount !== "0"
-        ) {
-          return yield* failure("InvalidJournal");
-        }
-
-        yield* SyncDb.insertContent(transaction, {
-          bookId: command.scope.bookId,
-          sha256: appended.rawDigest,
-          bytes: input.raw,
-        });
-        yield* SyncDb.insertPage(transaction, {
-          bookId: command.scope.bookId,
-          generationId: generation.id,
-          ordinal: Number(appended.ordinal),
-          requestCursor: appended.requestCursor,
-          nextCursor: appended.nextCursor,
-          hasMore: appended.hasMore,
-          rawDigest: appended.rawDigest,
-          rawByteLength: rawBytes,
-          normalizedChangesDigest: appended.normalizedChangesDigest,
-          recordCount: Number(appended.recordCount),
-          chainedDigest: appended.chainedDigest,
-        });
-
-        if (input.changes.length > 0) {
-          yield* SyncDb.insertCandidates(transaction, {
-            bookId: command.scope.bookId,
-            generationId: generation.id,
-            pageOrdinal: Number(appended.ordinal),
-            candidates: input.changes.map((change) => ({
-              kind: change.kind,
-              sourceId: change.sourceId,
-              rawLocator: change.rawLocator,
-            })),
-          });
-        }
-      }
-
-      let restarted: string | null = null;
-
-      if (input.mutationDuringPagination === true) {
-        // A provider mutation during pagination abandons this generation and
-        // begins a new one at the published cursor captured for this window:
-        // the same original base, never the failed page cursor.
-
-        const next = yield* checked(
-          compileWindowRestart({
-            streamId: claimed.id,
-            publishedCursor: claimed.publishedCursor,
-            publicationVersion: claimed.publicationVersion,
-            fence: claimed.fence,
-            attemptNumber: generation.attemptNumber,
-            maximumRestarts: String(maximumRestarts),
-            commandKey: command.idempotencyKey,
-          }),
-        );
-
-        yield* SyncDb.insertGeneration(transaction, {
-          bookId: command.scope.bookId,
-          id: next.id,
-          streamId: claimed.id,
-          baseCursor: next.baseCursor,
-          basePublicationVersion: next.basePublicationVersion,
-          attemptNumber: next.attemptNumber,
-          fence: next.fence,
-        });
-        yield* SyncDb.setCurrentGeneration(transaction, {
-          bookId: command.scope.bookId,
-          streamId: claimed.id,
-          generationId: next.id,
-        });
-        restarted = next.id;
-      }
-
-      const pageResult = yield* Shared.decode(
-        Sync.RetainedSyncPage,
-        pageBody(appended, replayed, restarted),
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "append_bank_sync_page",
-        principal.actorId,
-        yield* Shared.toJsonObject(pageResult),
-      );
-
-      return pageResult;
     }),
   );
 });

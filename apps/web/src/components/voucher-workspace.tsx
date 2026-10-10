@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -21,7 +23,7 @@ import {
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { JournalCorrection } from "@/components/journal-correction";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -51,7 +53,11 @@ export function VoucherWorkspace(props: Props) {
     initialPageParam: "0",
     queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${bookPath(props.book)}/vouchers?after=${encodeURIComponent(pageParam)}`,
+        (client) =>
+          client.accounting.listVouchers({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(Api.groups.accounting.endpoints.listVouchers, `after=${pageParam}`),
+          }),
         Accounting.VoucherPage,
         { signal },
       );

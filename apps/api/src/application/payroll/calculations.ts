@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Payroll from "@open-erp/contracts/payroll-calculations";
 import * as Profiles from "@open-erp/contracts/company-profiles";
@@ -6,7 +7,9 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { failure } from "../failures";
-import { newId, replay, saveCommand, versionedDigest } from "../posting";
+import { newId } from "../identifiers";
+
+import { versionedDigest } from "../json";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import type { Dates } from "../company-profile-basis";
 import {
@@ -537,148 +540,137 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
 
       const input = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        commandOperation,
-        principal.actorId,
-        input,
-        Payroll.PayrollCalculation,
-      );
-
-      // A committed identical command returns before any new-work, capacity or
-      // duplicate-economics work.
-      if (request.previous) return request.previous;
-
-      const submitted = yield* decode(Payroll.PreparePayRun, input);
-
-      const captured = yield* captureCalculationBasis(transaction, command.scope, submitted, {
-        kind: "regular",
-      });
-
-      const { basis, calculated, releaseRow, release } = captured;
-      const { employeeId, period, paymentOn } = captured;
-
-      const revision = yield* resolveEarningRevision(
-        transaction,
-        command.scope,
-        employeeId,
-        period,
-      );
-
-      const calculationId = newId("paycalc");
-      const planId = newId("payplan");
-      const clockRow = (yield* Db.readRecordedAt(transaction))[0];
-
-      if (!clockRow) return yield* failure("InternalError");
-
-      const clock = yield* decode(Schema.Struct({ recordedAt: Schema.String }), clockRow);
-
-      const recordedAt = clock.recordedAt;
-
-      const inputRefs = basisInputRefs(
-        basis,
-        releaseRow.id,
-        releaseRow.checksum,
-        release.calculatorVersion,
-      );
-
-      const sealed = yield* versionedDigest(
-        yield* toJsonObject({
-          schemaVersion: 1,
-          canonicalization: "openerp-c14n-v1",
-          owner: "payroll_calculation",
-          id: calculationId,
+        {
           scope: command.scope,
-          planId,
-          version: 1,
-          basis,
-          calculation: calculated,
-          createdBy: principal.actorId,
-          createdAt: recordedAt,
+          idempotencyKey: command.idempotencyKey,
+          operation: commandOperation,
+          actorId: principal.actorId,
+          input: input,
+        },
+        Payroll.PayrollCalculation,
+        Effect.gen(function* () {
+          const submitted = yield* decode(Payroll.PreparePayRun, input);
+
+          const captured = yield* captureCalculationBasis(transaction, command.scope, submitted, {
+            kind: "regular",
+          });
+
+          const { basis, calculated, releaseRow, release } = captured;
+          const { employeeId, period, paymentOn } = captured;
+
+          const revision = yield* resolveEarningRevision(
+            transaction,
+            command.scope,
+            employeeId,
+            period,
+          );
+
+          const calculationId = newId("paycalc");
+          const planId = newId("payplan");
+          const clockRow = (yield* Db.readRecordedAt(transaction))[0];
+
+          if (!clockRow) return yield* failure("InternalError");
+
+          const clock = yield* decode(Schema.Struct({ recordedAt: Schema.String }), clockRow);
+
+          const recordedAt = clock.recordedAt;
+
+          const inputRefs = basisInputRefs(
+            basis,
+            releaseRow.id,
+            releaseRow.checksum,
+            release.calculatorVersion,
+          );
+
+          const sealed = yield* versionedDigest(
+            yield* toJsonObject({
+              schemaVersion: 1,
+              canonicalization: "openerp-c14n-v1",
+              owner: "payroll_calculation",
+              id: calculationId,
+              scope: command.scope,
+              planId,
+              version: 1,
+              basis,
+              calculation: calculated,
+              createdBy: principal.actorId,
+              createdAt: recordedAt,
+            }),
+          );
+
+          const result = yield* decode(
+            Payroll.PayrollCalculation,
+            yield* toJsonObject({
+              id: calculationId,
+              scope: command.scope,
+              employeeId,
+              changeSetId: planId,
+              planDigest: sealed,
+              basis,
+              calculation: calculated,
+              inputRefs,
+              noFinancialEffect: true,
+              createdBy: principal.actorId,
+              createdAt: recordedAt,
+              receipt: {
+                key: command.idempotencyKey,
+                operation: commandOperation,
+                actorId: principal.actorId,
+              },
+            }),
+          );
+
+          const row = yield* toJsonObject(result);
+
+          yield* Ledger.insertPlan(transaction, {
+            bookId: command.scope.bookId,
+            id: planId,
+            plan: row,
+            digest: sealed,
+            createdBy: principal.actorId,
+          });
+
+          yield* Db.insertCalculation(transaction, {
+            bookId: command.scope.bookId,
+            id: calculationId,
+            employeeId,
+            revision,
+            changeSetId: planId,
+            planDigest: sealed,
+            ruleReleaseId: releaseRow.id,
+            earningsPeriodStart: period.startsOn,
+            earningsPeriodEnd: period.endsOn,
+            expectedPaymentOn: paymentOn,
+            grossMinor: calculated.grossMinor,
+            withholdingMinor: calculated.withholdingMinor,
+            netDeductionMinor: calculated.netDeductionMinor,
+            contributionBaseMinor: calculated.contributionBaseMinor,
+            employerContributionMinor: calculated.employerContributionMinor,
+            payableMinor: calculated.payableMinor,
+            noFinancialEffect: true,
+            body: row,
+            createdBy: principal.actorId,
+            createdAt: recordedAt,
+          });
+
+          yield* Db.insertInputRefs(
+            transaction,
+            inputRefs.map((reference, index) => ({
+              bookId: command.scope.bookId,
+              calculationId,
+              ordinal: index + 1,
+              kind: reference.kind,
+              resourceId: reference.resourceId,
+              version: reference.version,
+              reason: reference.reason,
+            })),
+          );
+
+          return { receipt: row, result: result };
         }),
       );
-
-      const result = yield* decode(
-        Payroll.PayrollCalculation,
-        yield* toJsonObject({
-          id: calculationId,
-          scope: command.scope,
-          employeeId,
-          changeSetId: planId,
-          planDigest: sealed,
-          basis,
-          calculation: calculated,
-          inputRefs,
-          noFinancialEffect: true,
-          createdBy: principal.actorId,
-          createdAt: recordedAt,
-          receipt: {
-            key: command.idempotencyKey,
-            operation: commandOperation,
-            actorId: principal.actorId,
-          },
-        }),
-      );
-
-      const row = yield* toJsonObject(result);
-
-      yield* Ledger.insertPlan(transaction, {
-        bookId: command.scope.bookId,
-        id: planId,
-        plan: row,
-        digest: sealed,
-        createdBy: principal.actorId,
-      });
-
-      yield* Db.insertCalculation(transaction, {
-        bookId: command.scope.bookId,
-        id: calculationId,
-        employeeId,
-        revision,
-        changeSetId: planId,
-        planDigest: sealed,
-        ruleReleaseId: releaseRow.id,
-        earningsPeriodStart: period.startsOn,
-        earningsPeriodEnd: period.endsOn,
-        expectedPaymentOn: paymentOn,
-        grossMinor: calculated.grossMinor,
-        withholdingMinor: calculated.withholdingMinor,
-        netDeductionMinor: calculated.netDeductionMinor,
-        contributionBaseMinor: calculated.contributionBaseMinor,
-        employerContributionMinor: calculated.employerContributionMinor,
-        payableMinor: calculated.payableMinor,
-        noFinancialEffect: true,
-        body: row,
-        createdBy: principal.actorId,
-        createdAt: recordedAt,
-      });
-
-      yield* Db.insertInputRefs(
-        transaction,
-        inputRefs.map((reference, index) => ({
-          bookId: command.scope.bookId,
-          calculationId,
-          ordinal: index + 1,
-          kind: reference.kind,
-          resourceId: reference.resourceId,
-          version: reference.version,
-          reason: reference.reason,
-        })),
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        commandOperation,
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );

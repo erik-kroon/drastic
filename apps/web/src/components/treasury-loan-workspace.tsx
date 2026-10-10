@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -49,7 +50,7 @@ export function TreasuryLoanWorkspace(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const loan = await readAccounting(
-        `${bookPath(book)}/treasury/loans/${encodeURIComponent(loanId)}`,
+        (client) => client.treasuryLoan.getLoan({ params: { ...bookScope(book), id: loanId } }),
         Loans.LoanView,
         { signal },
       );
@@ -60,7 +61,8 @@ export function TreasuryLoanWorkspace(props: {
 
       const view = reviewId
         ? await readAccounting(
-            `${bookPath(book)}/treasury/loans/reviews/${encodeURIComponent(reviewId)}`,
+            (client) =>
+              client.treasuryLoan.getLoanReview({ params: { ...bookScope(book), id: reviewId } }),
             Loans.LoanReviewView,
             { signal },
           )
@@ -77,9 +79,14 @@ export function TreasuryLoanWorkspace(props: {
           throw new Error("Loan accrual review identity mismatch");
       }
 
-      const voucher = view?.event?.postingReceipt
+      const voucherId = view?.event?.postingReceipt?.voucherId;
+
+      const voucher = voucherId
         ? await readAccounting(
-            `${bookPath(book)}/vouchers/${encodeURIComponent(view.event.postingReceipt.voucherId)}`,
+            (client) =>
+              client.accounting.getVoucher({
+                params: { ...bookScope(book), id: voucherId },
+              }),
             Accounting.Voucher,
             { signal },
           )
@@ -109,7 +116,10 @@ export function TreasuryLoanWorkspace(props: {
       const evidence = await Promise.all(
         rates.map(async (rate) => {
           const source = await readAccounting(
-            `${bookPath(book)}/evidence/${encodeURIComponent(rate.evidence.evidenceId)}`,
+            (client) =>
+              client.accounting.getEvidence({
+                params: { ...bookScope(book), id: rate.evidence.evidenceId },
+              }),
             Accounting.EvidenceContent,
             { signal },
           );

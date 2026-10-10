@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Controls from "@open-erp/contracts/subledger-controls";
@@ -6,7 +7,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -22,7 +23,10 @@ export function AssetValuationDirectory(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${bookPath(book)}/subledger-controls/valuations/for-schedule/${encodeURIComponent(scheduleId)}`,
+        (client) =>
+          client.subledgerControls.listAssetValuations({
+            params: { ...bookScope(book), id: scheduleId },
+          }),
         Controls.AssetValuationReviewList,
         { signal },
       );

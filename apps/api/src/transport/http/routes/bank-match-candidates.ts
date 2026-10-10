@@ -1,17 +1,10 @@
-import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
-import { authenticate } from "../auth";
-import { discoverBankMatchCandidates } from "../../../application/banking/candidates";
+import { BankMatchCandidateOperations } from "../../../application/operations/bank-match-candidates";
+import { operationHandlers } from "../operation-handlers";
 
 export const BankMatchCandidateHandlers = HttpApiBuilder.group(
   Api,
   "bankMatchCandidates",
-  (handlers) =>
-    handlers.handle("discoverBankMatchCandidates", ({ params, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        discoverBankMatchCandidates(token, { scope: scopeFromPath(params), input: payload }),
-      ),
-    ),
+  (handlers) => handlers.handleAll(operationHandlers(BankMatchCandidateOperations)),
 );

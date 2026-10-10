@@ -1,3 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { originalCoverage, sourceScope } from "./source-inventory";
 import * as Mapping from "@open-erp/contracts/onboarding-mappings";
 import { formatDate, formatMoment } from "./data";
@@ -9,7 +12,7 @@ import {
   SetupText,
   setupLayoutStyles,
 } from "@open-erp/ui/components/setup-parts";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Intake from "@open-erp/contracts/source-intake";
@@ -27,13 +30,7 @@ import {
 import { SetupTable } from "@open-erp/ui/components/setup-table";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { AccountingStatus } from "@/components/accounting-status";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
 import { Breadcrumb, PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
 
@@ -72,7 +69,10 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
     enabled: !!source,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(source?.occurrence.id ?? "")}/sie-previews`,
+        (client) =>
+          client.sieImport.listSieSourcePreviews({
+            params: { ...bookScope(book), id: source?.occurrence.id ?? "" },
+          }),
         Sie.SiePreviewInventory,
         { signal },
       ),
@@ -86,7 +86,8 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
     enabled: !!latest,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/sie-previews/${encodeURIComponent(latest?.id ?? "")}`,
+        (client) =>
+          client.sieImport.getSieSource({ params: { ...bookScope(book), id: latest?.id ?? "" } }),
         Sie.SiePreview,
         { signal },
       ),
@@ -98,7 +99,10 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
     enabled: !!latest?.planId,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/sie-plans/${encodeURIComponent(latest?.planId ?? "")}`,
+        (client) =>
+          client.sieImport.getSieSourcePlan({
+            params: { ...bookScope(book), id: latest?.planId ?? "" },
+          }),
         Sie.SiePlan,
         { signal },
       ),
@@ -110,7 +114,14 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
     enabled: !!latest,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/onboarding/account-mappings?previewId=${encodeURIComponent(latest?.id ?? "")}`,
+        (client) =>
+          client.onboardingMappings.getOnboardingMappings({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.onboardingMappings.endpoints.getOnboardingMappings,
+              `previewId=${latest?.id ?? ""}`,
+            ),
+          }),
         Mapping.OnboardingMappings,
         { signal },
       ),
@@ -153,7 +164,10 @@ export function OnboardingSources({
     enabled: inspecting && !!occurrence,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(occurrence?.id ?? "")}`,
+        (client) =>
+          client.sourceIntake.getSourceOccurrence({
+            params: { ...bookScope(book), id: occurrence?.id ?? "" },
+          }),
         Intake.SourceOccurrenceView,
         { signal },
       ),
@@ -416,7 +430,7 @@ function UploadSource({
   const [account, setAccount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const save = useMutation({
     mutationFn: async (input: typeof Intake.RetainSource.Type) => {
@@ -425,7 +439,7 @@ function UploadSource({
       const source = await readAccounting(
         sourcePath,
         Intake.SourceOccurrence,
-        mutationOptions(sourcePath, JSON.stringify(input), keys.current),
+        keys.current.options(sourcePath, JSON.stringify(input)),
       );
 
       const linkPath = `${bookPath(book)}/onboarding/sources`;
@@ -433,11 +447,7 @@ function UploadSource({
       return readAccounting(
         linkPath,
         Onboarding.OnboardingSource,
-        mutationOptions(
-          linkPath,
-          JSON.stringify({ occurrenceId: source.id, category }),
-          keys.current,
-        ),
+        keys.current.options(linkPath, JSON.stringify({ occurrenceId: source.id, category })),
       );
     },
     onSuccess: async () => {

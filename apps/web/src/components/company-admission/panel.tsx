@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useQuery } from "@tanstack/react-query";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import { Box } from "@open-erp/ui/components/box";
@@ -6,7 +8,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
 import { useBusinessDate } from "@/lib/use-business-date";
 import { english, swedish } from "./copy";
@@ -24,7 +26,14 @@ export function CompanyAdmission() {
     queryKey: [...bookKey(book), "company-profile", today],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/company-profile?${admissionQuery(today)}`,
+        (client) =>
+          client.companyProfile.getCompanyProfile({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.companyProfile.endpoints.getCompanyProfile,
+              `${admissionQuery(today)}`,
+            ),
+          }),
         Profiles.CompanyProfile,
         { signal },
       ),

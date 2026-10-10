@@ -1,3 +1,4 @@
+import type { CommandKeys } from "@/lib/command-keys";
 import { queryOptions } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as PeriodWork from "@open-erp/contracts/period-work";
@@ -38,7 +39,7 @@ export function advancePeriodWork(
   book: typeof Accounting.Book.Type,
   manifestId: string,
   boundedCount: number,
-  keys: Map<string, string>,
+  keys: CommandKeys,
 ): PeriodWorkCommand {
   const path = `${periodWorkPath(book, manifestId)}/advance`;
 
@@ -49,7 +50,7 @@ export function cancelPeriodWork(
   book: typeof Accounting.Book.Type,
   manifestId: string,
   expectedDigest: string,
-  keys: Map<string, string>,
+  keys: CommandKeys,
 ): PeriodWorkCommand {
   const path = `${periodWorkPath(book, manifestId)}/cancel`;
 
@@ -68,7 +69,7 @@ export function preparePeriodWorkBatch(
   book: typeof Accounting.Book.Type,
   manifestId: string,
   workIdentities: ReadonlyArray<string>,
-  keys: Map<string, string>,
+  keys: CommandKeys,
 ): PeriodWorkCommand {
   const path = `${bookPath(book)}/period-work/batches`;
 
@@ -84,7 +85,7 @@ export function approvePeriodWorkBatch(
   book: typeof Accounting.Book.Type,
   batchId: string,
   expectedDigest: string,
-  keys: Map<string, string>,
+  keys: CommandKeys,
 ): PeriodWorkCommand {
   const path = `${periodWorkBatchPath(book, batchId)}/approvals`;
   const body = JSON.stringify({ expectedDigest, acknowledgeSyntheticOnly: true });
@@ -101,7 +102,7 @@ export function executePeriodWorkBatch(
   expectedDigest: string,
   boundedCount: number,
   afterOrdinal: number | undefined,
-  keys: Map<string, string>,
+  keys: CommandKeys,
 ): PeriodWorkCommand {
   const path = `${periodWorkBatchPath(book, batchId)}/execute`;
 

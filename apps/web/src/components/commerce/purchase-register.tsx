@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -24,7 +26,7 @@ import {
 } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useOwnerReturn, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
 import { checkScope, commerceKey, commercePath } from "./shared";
@@ -80,7 +82,14 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
       if (pageParam) query.set("after", pageParam);
 
       const page = await readAccounting(
-        `${commercePath(book)}/supplier-invoice-drafts?${query}`,
+        (client) =>
+          client.supplierInvoiceDrafts.listSupplierInvoiceDrafts({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.supplierInvoiceDrafts.endpoints.listSupplierInvoiceDrafts,
+              `${query}`,
+            ),
+          }),
         Suppliers.SupplierInvoiceDraftList,
         { signal },
       );
@@ -242,7 +251,8 @@ function PurchasePreview(props: {
     enabled: !!voucherId,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(voucherId ?? "")}`,
+        (client) =>
+          client.accounting.getVoucher({ params: { ...bookScope(book), id: voucherId ?? "" } }),
         Accounting.Voucher,
         { signal },
       );

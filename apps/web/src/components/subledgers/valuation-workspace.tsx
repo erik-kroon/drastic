@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Controls from "@open-erp/contracts/subledger-controls";
@@ -17,7 +18,7 @@ import {
 } from "@open-erp/ui/components/asset-action";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 
@@ -38,7 +39,10 @@ export function AssetValuationWorkspace(props: {
       if (!scheduleId || !reviewId) throw new Error("Asset and valuation review are required");
 
       const view = await readAccounting(
-        `${bookPath(book)}/subledger-controls/valuations/${encodeURIComponent(reviewId)}`,
+        (client) =>
+          client.subledgerControls.getAssetValuation({
+            params: { ...bookScope(book), id: reviewId },
+          }),
         Controls.AssetValuationView,
         { signal },
       );
@@ -62,9 +66,14 @@ export function AssetValuationWorkspace(props: {
       )
         throw new Error("Posted valuation lineage mismatch");
 
-      const voucher = view.event
+      const voucherId = view.event?.postingReceipt.voucherId;
+
+      const voucher = voucherId
         ? await readAccounting(
-            `${bookPath(book)}/vouchers/${encodeURIComponent(view.event.postingReceipt.voucherId)}`,
+            (client) =>
+              client.accounting.getVoucher({
+                params: { ...bookScope(book), id: voucherId },
+              }),
             Accounting.Voucher,
             { signal },
           )

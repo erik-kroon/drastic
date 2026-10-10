@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -28,7 +29,7 @@ import { expenseTaxCopy } from "@/components/expense-tax/copy";
 import { vatCopy } from "@/components/vat-returns/copy";
 import { CaseSnapshots } from "@/components/case-snapshots";
 import { RecurringPreparation } from "@/components/recurring-preparation";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -112,7 +113,11 @@ export function AccountingWorkspace({
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 

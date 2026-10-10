@@ -1,9 +1,10 @@
+import { bookScope } from "@/lib/contract-client";
 import { queryOptions } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sources from "@open-erp/contracts/source-intake";
-import { bookKey, bookPath, readAccounting } from "./accounting-api";
+import { bookKey, readAccounting } from "./accounting-api";
 
 export const EnteredExpenseEvidence = Schema.Struct({
   kind: Schema.Literals(["expense_entry_v1", "supplier_invoice_source_v1"]),
@@ -37,7 +38,8 @@ export function sourceDocumentOptions(book: typeof Accounting.Book.Type, id: str
     gcTime: 0,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}`,
+        (client) =>
+          client.sourceIntake.getSourceOccurrence({ params: { ...bookScope(book), id: id } }),
         Sources.SourceOccurrenceView,
         { signal },
       );

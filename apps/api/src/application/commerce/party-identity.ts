@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "../book-commands";
+import * as Match from "effect/Match";
 import { prepareResolution, resolveDirectoryBalances } from "@open-erp/domain/party-identity";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as PartyIdentity from "@open-erp/contracts/party-identity";
@@ -5,7 +7,9 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { readLiveInvoicePage } from "../../db/commerce/invoices";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import * as DirectoryDb from "../../db/commerce/party-identity";
@@ -67,200 +71,194 @@ export const preparePartyResolution = Effect.fn("directory.prepareResolution")(f
 
     if (input.partyIds.length > maximumMembers) return yield* failure("UnsupportedProfile");
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      scope,
-      command.idempotencyKey,
-      "prepare_party_resolution",
-      principal.actorId,
-      yield* toJsonObject({
-        partyIds: input.partyIds,
-        canonicalPartyId: input.canonicalPartyId,
-        kind: input.kind,
-      }),
-      ResolutionSchema,
-    );
-
-    if (request.previous) return request.previous;
-
-    const heads = yield* DirectoryDb.readCounterpartyHeads(transaction, bookId, input.partyIds);
-
-    if (heads.length !== input.partyIds.length) return yield* failure("NotFound");
-
-    const byId = new Map(heads.map((head) => [head.id, head]));
-
-    // Every identifier the owner derives is marked unverified, because the
-    // retained record marks legal identity unverified. A bank account from a
-    // verified payee proposal is still unverified as identity: the leaf's
-    // own rule is that a bank account alone never proves legal identity.
-    const members: Array<{
-      partyId: string;
-      partyRevision: string;
-      bookId: string;
-      identifiers: Array<{ scheme: "unqualified"; value: string; verified: false }>;
-      redirectClosure: Array<string>;
-      identityEpoch: string;
-    }> = [];
-
-    for (const partyId of input.partyIds) {
-      const head = byId.get(partyId);
-
-      if (!head) return yield* failure("NotFound");
-
-      const revision = yield* decode(Commerce.CounterpartyRevision, head.revision);
-
-      members.push({
-        partyId,
-        partyRevision: head.currentRevision,
-        bookId,
-        identifiers: [
-          {
-            scheme: "unqualified",
-            value: revision.externalKey,
-            verified: false,
-          },
-        ],
-        redirectClosure: [],
-        identityEpoch: head.currentRevision,
-      });
-    }
-
-    const resolved = members;
-
-    let evidenceReviewed = false;
-    let evidenceRef: string | null = null;
-
-    if (input.kind === "same_legal_entity") {
-      if (input.evidenceId === null) return yield* failure("MissingEvidence");
-
-      const present = (yield* DirectoryDb.readEvidencePresent(
-        transaction,
-        bookId,
-        input.evidenceId,
-      ))[0]?.present;
-
-      if (!present) return yield* failure("MissingEvidence");
-
-      evidenceReviewed = true;
-      evidenceRef = input.evidenceId;
-    }
-
-    const memberDigest = yield* digest({
-      members: resolved.map((member) => ({
-        partyId: member.partyId,
-        partyRevision: member.partyRevision,
-        identifiers: member.identifiers,
-      })),
-      canonicalPartyId: input.canonicalPartyId,
-      kind: input.kind,
-    });
-
-    const invoiceRows = yield* DirectoryDb.readInvoiceIdsByCounterparty(
-      transaction,
-      bookId,
-      input.partyIds,
-      maximumObligations,
-    );
-
-    if (invoiceRows.length > maximumObligations) return yield* failure("UnsupportedProfile");
-
-    const live = yield* readLiveInvoicePage(
-      transaction,
-      bookId,
-      invoiceRows.map((row) => row.id),
-    );
-
-    const openObligationIds = live
-      .filter((row) => row.outstandingMinor !== null && BigInt(row.outstandingMinor) > 0n)
-      .map((row) => row.id);
-
-    const reservations =
-      openObligationIds.length === 0
-        ? []
-        : yield* DirectoryDb.readReservationItems(
-            transaction,
-            bookId,
-            openObligationIds,
-            maximumReservations,
-          );
-
-    if (reservations.length > maximumReservations) {
-      return yield* failure("UnsupportedProfile");
-    }
-
-    const drafts = yield* DirectoryDb.readUnissuedDrafts(
-      transaction,
-      bookId,
-      input.partyIds,
-      maximumDrafts,
-    );
-
-    if (drafts.length > maximumDrafts) return yield* failure("UnsupportedProfile");
-
-    const prepared = prepareResolution({
-      resolutionId: newId("party_resolution"),
-      members: resolved.map((member) => ({
-        ...member,
-        memberDigest,
-      })),
-      canonicalPartyId: input.canonicalPartyId,
-      kind: input.kind,
-      evidenceReviewed,
-      evidenceRef,
-      memberDigest,
-      openObligationIds,
-      paymentReservations: reservations.map((row) => row.exportId),
-      unissuedDependentDrafts: drafts.map((row) => row.id),
-    });
-
-    if (Result.isFailure(prepared)) return yield* failure("InvalidJournal");
-
-    const resolution = prepared.success;
-
-    const report = {
-      resolutionId: resolution.id,
-      members: resolved.map((member) => ({
-        partyId: member.partyId,
-        partyRevision: member.partyRevision,
-        identifiers: member.identifiers.map((identifier) => ({
-          scheme: "unqualified",
-          value: identifier.value,
-          verified: false,
-        })),
-        redirectClosure: [],
-      })),
-      canonicalPartyId: resolution.canonicalPartyId,
-      kind: resolution.kind,
-      evidenceReviewed: resolution.evidenceReviewed,
-      evidenceRef: resolution.evidenceRef,
-      memberDigest: resolution.memberDigest,
-      invalidatedObligationIds: resolution.downstreamInvalidation.filter((id) =>
-        openObligationIds.includes(id),
-      ),
-      invalidatedReservationIds: resolution.downstreamInvalidation.filter((id) =>
-        reservations.some((row) => row.exportId === id),
-      ),
-      invalidatedDraftIds: resolution.downstreamInvalidation.filter((id) =>
-        drafts.some((row) => row.id === id),
-      ),
-      receipt: {
-        key: command.idempotencyKey,
+      {
+        scope: scope,
+        idempotencyKey: command.idempotencyKey,
         operation: "prepare_party_resolution",
         actorId: principal.actorId,
+        input: yield* toJsonObject({
+          partyIds: input.partyIds,
+          canonicalPartyId: input.canonicalPartyId,
+          kind: input.kind,
+        }),
       },
-    };
+      ResolutionSchema,
+      Effect.gen(function* () {
+        const heads = yield* DirectoryDb.readCounterpartyHeads(transaction, bookId, input.partyIds);
 
-    yield* saveCommand(
-      transaction,
-      scope,
-      command.idempotencyKey,
-      request.expected,
-      "prepare_party_resolution",
-      principal.actorId,
-      yield* toJsonObject(report),
+        if (heads.length !== input.partyIds.length) return yield* failure("NotFound");
+
+        const byId = new Map(heads.map((head) => [head.id, head]));
+
+        // Every identifier the owner derives is marked unverified, because the
+        // retained record marks legal identity unverified. A bank account from a
+        // verified payee proposal is still unverified as identity: the leaf's
+        // own rule is that a bank account alone never proves legal identity.
+        const members: Array<{
+          partyId: string;
+          partyRevision: string;
+          bookId: string;
+          identifiers: Array<{ scheme: "unqualified"; value: string; verified: false }>;
+          redirectClosure: Array<string>;
+          identityEpoch: string;
+        }> = [];
+
+        for (const partyId of input.partyIds) {
+          const head = byId.get(partyId);
+
+          if (!head) return yield* failure("NotFound");
+
+          const revision = yield* decode(Commerce.CounterpartyRevision, head.revision);
+
+          members.push({
+            partyId,
+            partyRevision: head.currentRevision,
+            bookId,
+            identifiers: [
+              {
+                scheme: "unqualified",
+                value: revision.externalKey,
+                verified: false,
+              },
+            ],
+            redirectClosure: [],
+            identityEpoch: head.currentRevision,
+          });
+        }
+
+        const resolved = members;
+
+        let evidenceReviewed = false;
+        let evidenceRef: string | null = null;
+
+        if (input.kind === "same_legal_entity") {
+          if (input.evidenceId === null) return yield* failure("MissingEvidence");
+
+          const present = (yield* DirectoryDb.readEvidencePresent(
+            transaction,
+            bookId,
+            input.evidenceId,
+          ))[0]?.present;
+
+          if (!present) return yield* failure("MissingEvidence");
+
+          evidenceReviewed = true;
+          evidenceRef = input.evidenceId;
+        }
+
+        const memberDigest = yield* digest({
+          members: resolved.map((member) => ({
+            partyId: member.partyId,
+            partyRevision: member.partyRevision,
+            identifiers: member.identifiers,
+          })),
+          canonicalPartyId: input.canonicalPartyId,
+          kind: input.kind,
+        });
+
+        const invoiceRows = yield* DirectoryDb.readInvoiceIdsByCounterparty(
+          transaction,
+          bookId,
+          input.partyIds,
+          maximumObligations,
+        );
+
+        if (invoiceRows.length > maximumObligations) return yield* failure("UnsupportedProfile");
+
+        const live = yield* readLiveInvoicePage(
+          transaction,
+          bookId,
+          invoiceRows.map((row) => row.id),
+        );
+
+        const openObligationIds = live
+          .filter((row) => row.outstandingMinor !== null && BigInt(row.outstandingMinor) > 0n)
+          .map((row) => row.id);
+
+        const reservations =
+          openObligationIds.length === 0
+            ? []
+            : yield* DirectoryDb.readReservationItems(
+                transaction,
+                bookId,
+                openObligationIds,
+                maximumReservations,
+              );
+
+        if (reservations.length > maximumReservations) {
+          return yield* failure("UnsupportedProfile");
+        }
+
+        const drafts = yield* DirectoryDb.readUnissuedDrafts(
+          transaction,
+          bookId,
+          input.partyIds,
+          maximumDrafts,
+        );
+
+        if (drafts.length > maximumDrafts) return yield* failure("UnsupportedProfile");
+
+        const prepared = prepareResolution({
+          resolutionId: newId("party_resolution"),
+          members: resolved.map((member) => ({
+            ...member,
+            memberDigest,
+          })),
+          canonicalPartyId: input.canonicalPartyId,
+          kind: input.kind,
+          evidenceReviewed,
+          evidenceRef,
+          memberDigest,
+          openObligationIds,
+          paymentReservations: reservations.map((row) => row.exportId),
+          unissuedDependentDrafts: drafts.map((row) => row.id),
+        });
+
+        if (Result.isFailure(prepared)) return yield* failure("InvalidJournal");
+
+        const resolution = prepared.success;
+
+        const report = {
+          resolutionId: resolution.id,
+          members: resolved.map((member) => ({
+            partyId: member.partyId,
+            partyRevision: member.partyRevision,
+            identifiers: member.identifiers.map((identifier) => ({
+              scheme: "unqualified",
+              value: identifier.value,
+              verified: false,
+            })),
+            redirectClosure: [],
+          })),
+          canonicalPartyId: resolution.canonicalPartyId,
+          kind: resolution.kind,
+          evidenceReviewed: resolution.evidenceReviewed,
+          evidenceRef: resolution.evidenceRef,
+          memberDigest: resolution.memberDigest,
+          invalidatedObligationIds: resolution.downstreamInvalidation.filter((id) =>
+            openObligationIds.includes(id),
+          ),
+          invalidatedReservationIds: resolution.downstreamInvalidation.filter((id) =>
+            reservations.some((row) => row.exportId === id),
+          ),
+          invalidatedDraftIds: resolution.downstreamInvalidation.filter((id) =>
+            drafts.some((row) => row.id === id),
+          ),
+          receipt: {
+            key: command.idempotencyKey,
+            operation: "prepare_party_resolution",
+            actorId: principal.actorId,
+          },
+        };
+
+        return {
+          receipt: yield* toJsonObject(report),
+          result: yield* decode(ResolutionSchema, yield* toJsonObject(report)),
+        };
+      }),
     );
-
-    return yield* decode(ResolutionSchema, yield* toJsonObject(report));
   });
 });
 
@@ -368,12 +366,11 @@ export const readDirectoryBalances = Effect.fn("directory.balances")(function* (
 
       if (!identity) continue;
 
-      const role =
-        identity.direction === "customer"
-          ? "receivable"
-          : identity.direction === "supplier"
-            ? "payable"
-            : null;
+      const role = Match.value(identity.direction).pipe(
+        Match.when("customer", () => "receivable" as const),
+        Match.when("supplier", () => "payable" as const),
+        Match.orElse(() => null),
+      );
 
       if (role === null) continue;
 

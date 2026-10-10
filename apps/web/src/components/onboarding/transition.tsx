@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import {
   SetupBlock,
   SetupInlineAction,
@@ -465,7 +467,8 @@ export function OnboardingActivation({
     enabled: !!receipt,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/onboarding/activation-artifact`,
+        (client) =>
+          client.onboarding.getOnboardingActivationArtifact({ params: { ...bookScope(book) } }),
         Onboarding.OnboardingActivationArtifact,
         { signal },
       ),
@@ -669,7 +672,10 @@ function useFirstPeriodClosing(
     enabled: !!period,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-readiness`,
+        (client) =>
+          client.closing.closingReadiness({
+            params: { ...bookScope(book), periodId: period?.id ?? "" },
+          }),
         Closing.ClosingReadiness,
         { signal },
       ),
@@ -681,7 +687,11 @@ function useFirstPeriodClosing(
     enabled: !!period && period.locked,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-history`,
+        (client) =>
+          client.closing.closingHistory({
+            params: { ...bookScope(book), periodId: period?.id ?? "" },
+            query: httpQuery(Api.groups.closing.endpoints.closingHistory, ``),
+          }),
         Closing.ClosingHistory,
         { signal },
       ),

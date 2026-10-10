@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
@@ -39,7 +40,8 @@ export function InvoicePaymentReview(
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}`,
+        (client) =>
+          client.commerce.commerceGetAllocation({ params: { ...bookScope(book), id: id } }),
         Commerce.AllocationView,
         { signal },
       );

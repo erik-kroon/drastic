@@ -22,7 +22,7 @@ import {
 } from "../commerce/processor-settlements";
 import { readItemState } from "../commerce/fx";
 import { readSourceOccurrenceInTransaction } from "../source-retention";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { failure } from "../failures";
 import { readHolding } from "./foreign-cash";
 import { readProcessorAccount } from "./processor-fetches";

@@ -1,11 +1,13 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Settlement from "@open-erp/contracts/payroll-settlements";
 import * as Effect from "effect/Effect";
 import * as Db from "../../db/payroll/settlements";
 import type { Transaction } from "../../db/transaction";
 import { withBook, decode, toJsonObject, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { readOnboardingResponsibility } from "../onboarding-policy";
-import { newId, replay, saveCommand } from "../posting";
+import { readBookResponsibility } from "../book-responsibility";
+import { newId } from "../identifiers";
+
 import {
   InstructionRecord,
   claimBalance,
@@ -23,7 +25,7 @@ export const requireInstructionAuthority = Effect.fn("payroll.requireInstruction
     review: typeof Settlement.SettlementReview.Type,
     actorId: string,
   ) {
-    const responsibility = yield* readOnboardingResponsibility(tx, scope);
+    const responsibility = yield* readBookResponsibility(tx, scope);
 
     if (
       !responsibility ||
@@ -84,84 +86,76 @@ export const cancelAdjustmentInstruction = Effect.fn("payroll.cancelAdjustmentIn
         yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
         const operation = "payroll_cancel_adjustment_instruction";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           tx,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          principal.actorId,
-          { instructionId: command.instructionId, input: command.input },
-          Settlement.AdjustmentInstructionCancellation,
-        );
-
-        if (request.previous) return request.previous;
-
-        yield* authorize(principal, "cancel_payroll_adjustment_instruction");
-
-        const instruction = yield* readRetained(
-          tx,
-          command.scope,
-          "payroll_adjustment_instructions",
-          command.instructionId,
-          InstructionRecord,
-        );
-
-        const state = yield* netInstructionState(tx, command.scope, instruction.id);
-
-        if (
-          !state ||
-          instruction.digest !== command.input.instructionDigest ||
-          state.claimBalanceDigest !== command.input.claimBalanceDigest
-        )
-          return yield* failure("StaleDependency");
-
-        const execution = yield* readRetained(
-          tx,
-          command.scope,
-          "payroll_settlement_executions",
-          instruction.executionId,
-          Settlement.SettlementExecution,
-        );
-
-        const review = yield* readRetained(
-          tx,
-          command.scope,
-          "payroll_settlement_reviews",
-          execution.reviewId,
-          Settlement.SettlementReview,
-        );
-
-        yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
-
-        if (state.cancellation || state.reservedRunId || state.consumedRunId)
-          return yield* failure("AlreadyPosted");
-
-        const result = yield* seal(
-          tx,
-          command.scope,
-          principal,
-          operation,
-          command.idempotencyKey,
-          Settlement.AdjustmentInstructionCancellation,
           {
-            id: newId("payroll_instruction_cancellation"),
-            instructionId: instruction.id,
-            ...command.input,
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: { instructionId: command.instructionId, input: command.input },
           },
-        );
+          Settlement.AdjustmentInstructionCancellation,
+          Effect.gen(function* () {
+            yield* authorize(principal, "cancel_payroll_adjustment_instruction");
 
-        yield* persist(tx, "payroll_adjustment_instruction_cancellations", result);
-        yield* saveCommand(
-          tx,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          yield* toJsonObject(result),
-        );
+            const instruction = yield* readRetained(
+              tx,
+              command.scope,
+              "payroll_adjustment_instructions",
+              command.instructionId,
+              InstructionRecord,
+            );
 
-        return result;
+            const state = yield* netInstructionState(tx, command.scope, instruction.id);
+
+            if (
+              !state ||
+              instruction.digest !== command.input.instructionDigest ||
+              state.claimBalanceDigest !== command.input.claimBalanceDigest
+            )
+              return yield* failure("StaleDependency");
+
+            const execution = yield* readRetained(
+              tx,
+              command.scope,
+              "payroll_settlement_executions",
+              instruction.executionId,
+              Settlement.SettlementExecution,
+            );
+
+            const review = yield* readRetained(
+              tx,
+              command.scope,
+              "payroll_settlement_reviews",
+              execution.reviewId,
+              Settlement.SettlementReview,
+            );
+
+            yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
+
+            if (state.cancellation || state.reservedRunId || state.consumedRunId)
+              return yield* failure("AlreadyPosted");
+
+            const result = yield* seal(
+              tx,
+              command.scope,
+              principal,
+              operation,
+              command.idempotencyKey,
+              Settlement.AdjustmentInstructionCancellation,
+              {
+                id: newId("payroll_instruction_cancellation"),
+                instructionId: instruction.id,
+                ...command.input,
+              },
+            );
+
+            yield* persist(tx, "payroll_adjustment_instruction_cancellations", result);
+
+            return { receipt: yield* toJsonObject(result), result: result };
+          }),
+        );
       },
       "update",
     );

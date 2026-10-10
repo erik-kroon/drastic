@@ -2,9 +2,9 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { readEvidence, readTableAccess, type JsonObject } from "../../db/commerce/access";
-import { databaseFailure, type Transaction } from "../../db/transaction";
+import { type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
+import type { VerifiedPrincipal } from "../identity";
 
 export type Scope = typeof Accounting.Scope.Type;
 
@@ -28,22 +28,7 @@ export function toJsonObject(value: unknown) {
   );
 }
 
-export function withBook<Eff extends Effect.Effect<unknown, unknown, unknown>, A>(
-  token: string,
-  scope: Scope,
-  operatorOnly: boolean,
-  operation: (transaction: Transaction, principal: Principal) => Generator<Eff, A, never>,
-  lockMode: AuthorityLockMode = "share",
-) {
-  return withAdmittedPrincipal(
-    { token },
-    scope,
-    { operatorOnly },
-    (transaction, principal) =>
-      Effect.gen(() => operation(transaction, principal)).pipe(Effect.mapError(databaseFailure)),
-    lockMode,
-  );
-}
+export { withBook } from "../book-commands";
 
 const readOnlyLookups = new Set([
   "ar_legal_issues",

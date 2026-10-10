@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -12,7 +13,7 @@ import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceCommandForm } from "@/components/evidence-command-form";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
@@ -33,7 +34,10 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
     queryKey: [...commerceKey(props.book), "supplier-credit-history", invoice.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoices/${encodeURIComponent(invoice.id)}/supplier-credits`,
+        (client) =>
+          client.supplierCredits.supplierCreditHistory({
+            params: { ...bookScope(props.book), id: invoice.id },
+          }),
         Credits.SupplierCreditHistory,
         { signal },
       );
@@ -56,7 +60,11 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(props.book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     enabled: !!available,
     retry: false,
   });
@@ -182,7 +190,10 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-credit-reviews/${encodeURIComponent(props.id)}`,
+        (client) =>
+          client.supplierCredits.getSupplierCreditReview({
+            params: { ...bookScope(props.book), id: props.id },
+          }),
         Credits.SupplierCreditView,
         { signal },
       );
@@ -200,7 +211,11 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(props.book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 

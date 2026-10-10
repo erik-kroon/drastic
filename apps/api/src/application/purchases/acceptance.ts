@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "../book-commands";
+import { runBookCommand } from "../book-commands";
 import {
   citedSuggestions,
   inheritedSuggestionIds,
@@ -14,16 +16,11 @@ import * as Effect from "effect/Effect";
 import { readDraftAdoption, readCashOriginalAdoption } from "../../db/commerce/cash-invoices";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import {
-  digest,
-  executeChangeInTransaction,
-  isoNow,
-  newId,
-  prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "../posting";
+import { digest } from "../json";
+import { executeChangeInTransaction, prepareJournalInTransaction } from "../posting";
+import { validatePlan } from "../posting-validation";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as AcceptanceDb from "../../db/purchases/acceptance";
 import * as RecognitionDb from "../../db/purchases/recognition";
 import { createInvoiceInTransaction } from "../commerce/register";
@@ -389,222 +386,224 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       const book = yield* readBook(transaction, command.scope.bookId);
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_supplier_acceptance",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
-        ReviewSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      if (
-        (yield* readDraftAdoption(transaction, command.scope.bookId, command.input.draftId)).length
-      )
-        return yield* failure("UnsupportedProfile");
-
-      const swedish = command.input.profile === "swedish-purchase-v1";
-
-      const head = yield* readDraftForAcceptance(
-        transaction,
-        command.scope.bookId,
-        command.input.draftId,
-      );
-
-      if (
-        command.input.expectedRevision !== head.currentRevision ||
-        command.input.expectedDigest !== Shared.textField(head.body, "digest")
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (
-        (yield* AcceptanceDb.readAcceptanceForDraft(
-          transaction,
-          command.scope.bookId,
-          command.input.draftId,
-        ))[0]?.present === true
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-
-      yield* requireResolvedSupplierQuestions(transaction, command.scope, command.input.draftId);
-
-      const recalculated = yield* calculateSupplierDraft(
-        transaction,
-        command.scope.bookId,
-        book,
-        Shared.objectField(head.body, "content"),
-      );
-
-      if (!Shared.sameJson(recalculated, retainedFacts(head.body))) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (!draftAcceptable(head.body, command.input.profile)) return yield* Shared.unsupported();
-
-      const ordinal =
-        (yield* AcceptanceDb.readReviewCount(
-          transaction,
-          command.scope.bookId,
-          command.input.draftId,
-        ))[0]!.total + 1;
-
-      if (ordinal > maximumReviews) return yield* failure("InvalidJournal");
-
-      const sourceEvidenceId =
-        Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
-
-      if (
-        (yield* readCashOriginalAdoption(transaction, command.scope.bookId, sourceEvidenceId))
-          .length
-      )
-        return yield* failure("UnsupportedProfile");
-
-      const evidence = yield* Shared.readEvidenceReference(
-        transaction,
-        command.scope.bookId,
-        sourceEvidenceId,
-      );
-
-      if (
-        yield* Shared.evidenceHasPostedHistory(transaction, command.scope.bookId, sourceEvidenceId)
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-
-      yield* citedSuggestions(
-        transaction,
-        command.scope.bookId,
-        principal,
-        [
-          {
-            kind: "supplier_draft",
-            draftId: command.input.draftId,
-            revision: head.currentRevision,
-          },
-        ],
-        command.input.presentedSuggestionIds ?? [],
-      );
-
-      const content = Shared.objectField(head.body, "content");
-      const reviewId = newId("supplier_review");
-
-      const posting = yield* acceptancePosting(
-        transaction,
-        command.scope,
-        book,
-        head.body,
-        command.input,
-      );
-
-      const originalLines = posting.originalLines;
-      const inputVatAccountId = posting.inputVatAccountId;
-      const recognition = posting.recognition;
-      const profileWitness = posting.profileWitness;
-      const profileGaps = posting.profileGaps;
-
-      const plan = yield* prepareJournalInTransaction(transaction, principal, {
-        scope: command.scope,
-        idempotencyKey: `sa_${reviewId}_prepare`,
-        input: {
-          kind: "manual_journal",
-          evidenceId: sourceEvidenceId,
-          eventKey: `${swedish ? "swedish_supplier" : "synthetic_supplier"}_${Shared.textField(head.body, "id") ?? ""}`,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: Shared.textField(content, "documentDate") ?? "",
-          series: command.input.series,
-          description: Shared.textField(content, "title") ?? "",
-          rationale: command.input.reason,
-          taxAssessment: "not_applicable",
-          lines: posting.lines.map((line) => ({
-            accountId: Shared.textField(line, "accountId") ?? "",
-            debitMinor: Shared.textField(line, "debitMinor") ?? "0",
-            creditMinor: Shared.textField(line, "creditMinor") ?? "0",
-            description: Shared.textField(line, "description") ?? "",
-          })),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_supplier_acceptance",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
         },
-      });
+        ReviewSchema,
+        Effect.gen(function* () {
+          if (
+            (yield* readDraftAdoption(transaction, command.scope.bookId, command.input.draftId))
+              .length
+          )
+            return yield* failure("UnsupportedProfile");
 
-      const bodyFields: JsonObject = {
-        id: reviewId,
-        scope: command.scope,
-        version: 1,
-        profile: command.input.profile,
-        ordinal,
-        input: yield* Shared.toJsonObject(command.input),
-        draftSnapshot: head.body,
-        postingPlan: yield* Shared.toJsonObject(plan),
-        evidence,
-        legalBlockers,
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "prepare_supplier_acceptance",
-          principal.actorId,
-        ),
-      };
+          const swedish = command.input.profile === "swedish-purchase-v1";
 
-      const extras: JsonObject[] = [];
+          const head = yield* readDraftForAcceptance(
+            transaction,
+            command.scope.bookId,
+            command.input.draftId,
+          );
 
-      if (originalLines !== undefined) {
-        extras.push({ originalLines: yield* Shared.toJson(originalLines) });
-      }
+          if (
+            command.input.expectedRevision !== head.currentRevision ||
+            command.input.expectedDigest !== Shared.textField(head.body, "digest")
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-      if (recognition !== undefined) {
-        extras.push({ recognition: yield* Shared.toJsonObject(recognition) });
-      }
+          if (
+            (yield* AcceptanceDb.readAcceptanceForDraft(
+              transaction,
+              command.scope.bookId,
+              command.input.draftId,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
 
-      if (profileWitness !== undefined && profileWitness !== null) {
-        extras.push({ profileWitness: yield* Shared.toJsonObject(profileWitness) });
-      }
+          yield* requireResolvedSupplierQuestions(
+            transaction,
+            command.scope,
+            command.input.draftId,
+          );
 
-      if (profileGaps !== undefined) {
-        extras.push({ profileGaps: yield* Shared.toJson(profileGaps) });
-      }
+          const recalculated = yield* calculateSupplierDraft(
+            transaction,
+            command.scope.bookId,
+            book,
+            Shared.objectField(head.body, "content"),
+          );
 
-      if (inputVatAccountId !== undefined) extras.push({ inputVatAccountId });
-      const body = Object.assign({}, bodyFields, ...extras);
-      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+          if (!Shared.sameJson(recalculated, retainedFacts(head.body))) {
+            return yield* failure("StaleDependency");
+          }
 
-      if (Shared.byteLength(JSON.stringify(sealed)) > maximumReviewBytes) {
-        return yield* failure("InvalidJournal");
-      }
+          if (!draftAcceptable(head.body, command.input.profile))
+            return yield* Shared.unsupported();
 
-      const review = yield* Shared.decode(ReviewSchema, sealed);
-      const planId = plan.id;
-      const firstAction = plan.groups[0]?.actions[0];
+          const ordinal =
+            (yield* AcceptanceDb.readReviewCount(
+              transaction,
+              command.scope.bookId,
+              command.input.draftId,
+            ))[0]!.total + 1;
 
-      if (planId === "" || firstAction === undefined) {
-        return yield* failure("InternalError");
-      }
+          if (ordinal > maximumReviews) return yield* failure("InvalidJournal");
 
-      const eventId = firstAction.eventId;
-      yield* AcceptanceDb.insertReview(transaction, {
-        bookId: command.scope.bookId,
-        id: reviewId,
-        draftId: command.input.draftId,
-        draftRevision: head.currentRevision,
-        ordinal,
-        changeSetId: planId,
-        eventId,
-        evidenceId: sourceEvidenceId,
-        body: sealed,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_supplier_acceptance",
-        principal.actorId,
-        yield* Shared.toJsonObject(review),
+          const sourceEvidenceId =
+            Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
+
+          if (
+            (yield* readCashOriginalAdoption(transaction, command.scope.bookId, sourceEvidenceId))
+              .length
+          )
+            return yield* failure("UnsupportedProfile");
+
+          const evidence = yield* Shared.readEvidenceReference(
+            transaction,
+            command.scope.bookId,
+            sourceEvidenceId,
+          );
+
+          if (
+            yield* Shared.evidenceHasPostedHistory(
+              transaction,
+              command.scope.bookId,
+              sourceEvidenceId,
+            )
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
+
+          yield* citedSuggestions(
+            transaction,
+            command.scope.bookId,
+            principal,
+            [
+              {
+                kind: "supplier_draft",
+                draftId: command.input.draftId,
+                revision: head.currentRevision,
+              },
+            ],
+            command.input.presentedSuggestionIds ?? [],
+          );
+
+          const content = Shared.objectField(head.body, "content");
+          const reviewId = newId("supplier_review");
+
+          const posting = yield* acceptancePosting(
+            transaction,
+            command.scope,
+            book,
+            head.body,
+            command.input,
+          );
+
+          const originalLines = posting.originalLines;
+          const inputVatAccountId = posting.inputVatAccountId;
+          const recognition = posting.recognition;
+          const profileWitness = posting.profileWitness;
+          const profileGaps = posting.profileGaps;
+
+          const plan = yield* prepareJournalInTransaction(transaction, principal, {
+            scope: command.scope,
+            idempotencyKey: `sa_${reviewId}_prepare`,
+            input: {
+              kind: "manual_journal",
+              evidenceId: sourceEvidenceId,
+              eventKey: `${swedish ? "swedish_supplier" : "synthetic_supplier"}_${Shared.textField(head.body, "id") ?? ""}`,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: Shared.textField(content, "documentDate") ?? "",
+              series: command.input.series,
+              description: Shared.textField(content, "title") ?? "",
+              rationale: command.input.reason,
+              taxAssessment: "not_applicable",
+              lines: posting.lines.map((line) => ({
+                accountId: Shared.textField(line, "accountId") ?? "",
+                debitMinor: Shared.textField(line, "debitMinor") ?? "0",
+                creditMinor: Shared.textField(line, "creditMinor") ?? "0",
+                description: Shared.textField(line, "description") ?? "",
+              })),
+            },
+          });
+
+          const bodyFields: JsonObject = {
+            id: reviewId,
+            scope: command.scope,
+            version: 1,
+            profile: command.input.profile,
+            ordinal,
+            input: yield* Shared.toJsonObject(command.input),
+            draftSnapshot: head.body,
+            postingPlan: yield* Shared.toJsonObject(plan),
+            evidence,
+            legalBlockers,
+            createdAt: yield* isoNow(transaction),
+            receipt: Shared.receipt(
+              command.idempotencyKey,
+              "prepare_supplier_acceptance",
+              principal.actorId,
+            ),
+          };
+
+          const extras: JsonObject[] = [];
+
+          if (originalLines !== undefined) {
+            extras.push({ originalLines: yield* Shared.toJson(originalLines) });
+          }
+
+          if (recognition !== undefined) {
+            extras.push({ recognition: yield* Shared.toJsonObject(recognition) });
+          }
+
+          if (profileWitness !== undefined && profileWitness !== null) {
+            extras.push({ profileWitness: yield* Shared.toJsonObject(profileWitness) });
+          }
+
+          if (profileGaps !== undefined) {
+            extras.push({ profileGaps: yield* Shared.toJson(profileGaps) });
+          }
+
+          if (inputVatAccountId !== undefined) extras.push({ inputVatAccountId });
+          const body = Object.assign({}, bodyFields, ...extras);
+          const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+
+          if (Shared.byteLength(JSON.stringify(sealed)) > maximumReviewBytes) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const review = yield* Shared.decode(ReviewSchema, sealed);
+          const planId = plan.id;
+          const firstAction = plan.groups[0]?.actions[0];
+
+          if (planId === "" || firstAction === undefined) {
+            return yield* failure("InternalError");
+          }
+
+          const eventId = firstAction.eventId;
+          yield* AcceptanceDb.insertReview(transaction, {
+            bookId: command.scope.bookId,
+            id: reviewId,
+            draftId: command.input.draftId,
+            draftRevision: head.currentRevision,
+            ordinal,
+            changeSetId: planId,
+            eventId,
+            evidenceId: sourceEvidenceId,
+            body: sealed,
+          });
+
+          return { receipt: yield* Shared.toJsonObject(review), result: review };
+        }),
       );
-
-      return review;
     }),
   );
 });
@@ -821,143 +820,137 @@ export const approveSupplierAcceptanceInTransaction = Effect.fn(
     yield* Shared.requireColumns(transaction, Shared.accountColumns);
     const book = yield* readBook(transaction, command.scope.bookId);
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "approve_supplier_acceptance",
-      principal.actorId,
       {
-        reviewId: command.reviewId,
-        input: yield* Shared.toJsonObject(command.input),
-      } satisfies JsonObject,
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "approve_supplier_acceptance",
+        actorId: principal.actorId,
+        input: {
+          reviewId: command.reviewId,
+          input: yield* Shared.toJsonObject(command.input),
+        } satisfies JsonObject,
+      },
       ApprovalSchema,
-    );
+      Effect.gen(function* () {
+        const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
 
-    if (request.previous) return request.previous;
+        if (command.input.digest !== Shared.textField(review.body, "digest")) {
+          return yield* failure("StaleDependency");
+        }
 
-    const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
+        const proposal = yield* Shared.decode(ReviewSchema, review.body);
+        yield* requireCapturedPurchaseCategories(
+          transaction,
+          command.scope.bookId,
+          (proposal.originalLines ?? []).map((line) => line.treatment),
+        );
+        yield* requireResolvedSupplierQuestions(transaction, command.scope, proposal.input.draftId);
 
-    if (command.input.digest !== Shared.textField(review.body, "digest")) {
-      return yield* failure("StaleDependency");
-    }
+        const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
 
-    const proposal = yield* Shared.decode(ReviewSchema, review.body);
-    yield* requireCapturedPurchaseCategories(
-      transaction,
-      command.scope.bookId,
-      (proposal.originalLines ?? []).map((line) => line.treatment),
-    );
-    yield* requireResolvedSupplierQuestions(transaction, command.scope, proposal.input.draftId);
+        if (blockers.length > 0) return yield* failure("StaleDependency");
 
-    const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
+        const approval = yield* recordApproval(transaction, {
+          scope: command.scope,
+          reviewId: command.reviewId,
+          reviewDigest: Shared.textField(review.body, "digest") ?? "",
+          approverId: principal.actorId,
+          authorityBasis: yield* collectPostingPrincipalBasis(
+            transaction,
+            command.scope,
+            principal,
+            "approve_change",
+          ),
+          receipt: Shared.receipt(
+            command.idempotencyKey,
+            "approve_supplier_acceptance",
+            principal.actorId,
+          ),
+        });
 
-    if (blockers.length > 0) return yield* failure("StaleDependency");
+        const subject = {
+          kind: "supplier_draft" as const,
+          draftId: proposal.draftSnapshot.id,
+          revision: proposal.draftSnapshot.revision,
+        };
 
-    const approval = yield* recordApproval(transaction, {
-      scope: command.scope,
-      reviewId: command.reviewId,
-      reviewDigest: Shared.textField(review.body, "digest") ?? "",
-      approverId: principal.actorId,
-      authorityBasis: yield* collectPostingPrincipalBasis(
-        transaction,
-        command.scope,
-        principal,
-        "approve_change",
-      ),
-      receipt: Shared.receipt(
-        command.idempotencyKey,
-        "approve_supplier_acceptance",
-        principal.actorId,
-      ),
-    });
+        const inheritedIds = command.provenanceContext
+          ? []
+          : yield* inheritedSuggestionIds(
+              transaction,
+              command.scope.bookId,
+              principal,
+              proposal.input.presentedSuggestionIds ?? [],
+            );
 
-    const subject = {
-      kind: "supplier_draft" as const,
-      draftId: proposal.draftSnapshot.id,
-      revision: proposal.draftSnapshot.revision,
-    };
-
-    const inheritedIds = command.provenanceContext
-      ? []
-      : yield* inheritedSuggestionIds(
+        const exposure = yield* citedSuggestions(
           transaction,
           command.scope.bookId,
           principal,
-          proposal.input.presentedSuggestionIds ?? [],
+          [subject],
+          command.provenanceContext ? [] : (command.input.presentedSuggestionIds ?? inheritedIds),
         );
 
-    const exposure = yield* citedSuggestions(
-      transaction,
-      command.scope.bookId,
-      principal,
-      [subject],
-      command.provenanceContext ? [] : (command.input.presentedSuggestionIds ?? inheritedIds),
-    );
-
-    const comparisons: Comparison[] = exposure.records.map((record): Comparison => {
-      if (record.ranked.source !== "firm_memory_v0" && record.ranked.source !== "firm_memory_v1")
-        return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
-
-      const suggested =
-        record.ranked.source === "firm_memory_v1"
-          ? record.ranked.legacyItems[0]
-          : record.ranked.options[0];
-
-      const lines = proposal.originalLines;
-
-      if (!suggested || !lines)
-        return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
-
-      return {
-        coverage: "partial",
-        comparison: "not_comparable",
-        dimensions: {
-          account: lines.every((line) => line.expenseAccountId === suggested.expenseAccountId)
-            ? "unchanged"
-            : "changed",
-          vatRate: lines.every(
-            (line) =>
-              BigInt(line.treatment.rate.numerator) * 100n ===
-              BigInt(suggested.vatRatePercent) * BigInt(line.treatment.rate.denominator),
+        const comparisons: Comparison[] = exposure.records.map((record): Comparison => {
+          if (
+            record.ranked.source !== "firm_memory_v0" &&
+            record.ranked.source !== "firm_memory_v1"
           )
-            ? "unchanged"
-            : "changed",
-        },
-      };
-    });
+            return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
 
-    yield* recordDecision(transaction, {
-      bookId: command.scope.bookId,
-      actorId: principal.actorId,
-      kind: "supplier_approval",
-      id: approval.id,
-      subject: yield* Shared.toJsonObject(subject),
-      selected: yield* Shared.toJsonObject({
-        bookCommitSequence: book.committedSequence,
-        reviewId: proposal.id,
-        reviewDigest: proposal.digest,
-        draftDigest: proposal.draftSnapshot.digest,
-        input: proposal.input,
-        originalLines: proposal.originalLines ?? null,
-        postingPlan: proposal.postingPlan,
+          const suggested =
+            record.ranked.source === "firm_memory_v1"
+              ? record.ranked.legacyItems[0]
+              : record.ranked.options[0];
+
+          const lines = proposal.originalLines;
+
+          if (!suggested || !lines)
+            return { coverage: "partial", comparison: "not_comparable", dimensions: {} };
+
+          return {
+            coverage: "partial",
+            comparison: "not_comparable",
+            dimensions: {
+              account: lines.every((line) => line.expenseAccountId === suggested.expenseAccountId)
+                ? "unchanged"
+                : "changed",
+              vatRate: lines.every(
+                (line) =>
+                  BigInt(line.treatment.rate.numerator) * 100n ===
+                  BigInt(suggested.vatRatePercent) * BigInt(line.treatment.rate.denominator),
+              )
+                ? "unchanged"
+                : "changed",
+            },
+          };
+        });
+
+        yield* recordDecision(transaction, {
+          bookId: command.scope.bookId,
+          actorId: principal.actorId,
+          kind: "supplier_approval",
+          id: approval.id,
+          subject: yield* Shared.toJsonObject(subject),
+          selected: yield* Shared.toJsonObject({
+            bookCommitSequence: book.committedSequence,
+            reviewId: proposal.id,
+            reviewDigest: proposal.digest,
+            draftDigest: proposal.draftSnapshot.digest,
+            input: proposal.input,
+            originalLines: proposal.originalLines ?? null,
+            postingPlan: proposal.postingPlan,
+          }),
+          exposure,
+          comparisons,
+          forced: command.provenanceContext ? "batch_approved" : undefined,
+        });
+
+        return { receipt: yield* Shared.toJsonObject(approval), result: approval };
       }),
-      exposure,
-      comparisons,
-      forced: command.provenanceContext ? "batch_approved" : undefined,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "approve_supplier_acceptance",
-      principal.actorId,
-      yield* Shared.toJsonObject(approval),
     );
-
-    return approval;
   });
 });
 
@@ -1079,35 +1072,26 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
       const { scope, reviewId, input, idempotencyKey } = command,
         operation = "execute_supplier_acceptance";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId, input },
+        },
         Acceptance.SupplierAcceptanceReceipt,
+        Effect.gen(function* () {
+          const result = yield* executeAcceptanceInTransaction(transaction, principal, {
+            ...command,
+            operation,
+            approverId: principal.actorId,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const result = yield* executeAcceptanceInTransaction(transaction, principal, {
-        ...command,
-        operation,
-        approverId: principal.actorId,
-      });
-
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });

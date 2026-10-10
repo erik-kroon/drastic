@@ -1,3 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -21,7 +24,11 @@ export function customerDefaultsQuery(book: CommerceProps["book"], partyId: stri
     queryFn: async ({ signal }: { signal: AbortSignal }) => {
       try {
         const record = await readAccounting(
-          `${commercePath(book)}/directory/${encodeURIComponent(partyId)}/invoice-defaults`,
+          (client) =>
+            client.crmMaster.crmCustomerInvoiceDefaults({
+              params: { ...bookScope(book), partyId: partyId },
+              query: httpQuery(Api.groups.crmMaster.endpoints.crmCustomerInvoiceDefaults, ``),
+            }),
           Crm.CustomerInvoiceDefaults,
           { signal },
         );
@@ -155,7 +162,7 @@ export function CustomerInvoiceDefaults(
   const { book, locale, party } = props;
   const sv = locale === "sv";
   const client = useQueryClient();
-  const [keys] = useState(() => new Map<string, string>());
+  const { current: keys } = useCommandKeys();
   const defaults = useQuery(customerDefaultsQuery(book, party.id));
 
   const recipient = useQuery({
@@ -163,7 +170,11 @@ export function CustomerInvoiceDefaults(
     queryFn: async ({ signal }) => {
       try {
         const record = await readAccounting(
-          `${commercePath(book)}/directory/${encodeURIComponent(party.id)}/recipient`,
+          (client) =>
+            client.crmMaster.crmCustomerRecipient({
+              params: { ...bookScope(book), partyId: party.id },
+              query: httpQuery(Api.groups.crmMaster.endpoints.crmCustomerRecipient, ``),
+            }),
           Crm.ReviewedCustomerRecipient,
           { signal },
         );

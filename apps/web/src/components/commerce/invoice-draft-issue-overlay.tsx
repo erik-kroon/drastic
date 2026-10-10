@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +14,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { InvoiceDrafts } from "./invoice-drafts";
 import { InvoiceIssueReviewPanel, LegalInvoiceInspector } from "./invoice-issuance";
-import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, type CommerceProps } from "./shared";
 
 type Props = CommerceProps & {
   recordId?: string;
@@ -50,7 +52,11 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
     queryKey: [...commerceKey(book), "invoice-draft-lifecycle", recordId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(recordId)}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(book), id: recordId },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );
@@ -71,7 +77,10 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
     enabled: draft.data?.lifecycle.kind === "issued_synthetic",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(recordId)}/issue-reviews`,
+        (client) =>
+          client.invoiceIssuance.invoiceIssueHistory({
+            params: { ...bookScope(book), id: recordId },
+          }),
         Issuance.InvoiceIssueHistory,
         { signal },
       );

@@ -782,7 +782,11 @@ try {
   if (webMode === "built") {
     web = spawn("bun", ["run", "build", "--config", "tests/vite.config.ts"], {
       cwd: join(root, "apps/web"),
-      env: { ...process.env, OPENERP_E2E_API_URL: listening.url.origin },
+      env: {
+        ...process.env,
+        OPENERP_E2E_API_URL: listening.url.origin,
+        OPENERP_KANON_SHOWCASE: "1",
+      },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -816,7 +820,11 @@ try {
     ],
     {
       cwd: join(root, "apps/web"),
-      env: { ...process.env, OPENERP_E2E_API_URL: listening.url.origin },
+      env: {
+        ...process.env,
+        OPENERP_E2E_API_URL: listening.url.origin,
+        OPENERP_KANON_SHOWCASE: "1",
+      },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     },

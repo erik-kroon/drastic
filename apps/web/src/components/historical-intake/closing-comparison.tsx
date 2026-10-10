@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import { Box } from "@open-erp/ui/components/box";
@@ -5,7 +6,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { checkScope } from "@/components/commerce/shared";
 
 export function ClosingComparison({
@@ -23,7 +24,10 @@ export function ClosingComparison({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/sie-runs/${encodeURIComponent(sourceRunId)}/closing-comparison`,
+        (client) =>
+          client.historicalMigration.compareSieClosing({
+            params: { ...bookScope(book), id: sourceRunId },
+          }),
         Historical.ClosingComparison,
         { signal },
       );

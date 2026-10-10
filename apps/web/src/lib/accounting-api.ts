@@ -1,3 +1,6 @@
+import type { CommandKeys } from "./command-keys";
+import type * as Effect from "effect/Effect";
+import { runAccountingClient, type AccountingClient } from "./contract-client";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -22,11 +25,13 @@ export function bookKey(book: typeof Accounting.Book.Type) {
 }
 
 export async function readAccounting<S extends Schema.Top & { readonly DecodingServices: never }>(
-  path: string,
+  path: string | ((client: AccountingClient) => Effect.Effect<S["Type"], unknown>),
   schema: S,
   options?: RequestInit,
   timeoutMs = 20_000,
 ): Promise<S["Type"]> {
+  if (typeof path === "function") return runAccountingClient(path, options, timeoutMs);
+
   const headers = new Headers(options?.headers);
   headers.set("Content-Type", "application/json");
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -72,16 +77,8 @@ export async function readAccounting<S extends Schema.Top & { readonly DecodingS
 }
 
 // The same payload keeps its key after an uncertain network outcome.
-export function mutationOptions(
-  path: string,
-  body: string,
-  keys: Map<string, string>,
-): RequestInit {
-  const identity = `${path}:${body}`;
-  const key = keys.get(identity) ?? crypto.randomUUID();
-  keys.set(identity, key);
-
-  return { method: "POST", body, headers: { "Idempotency-Key": key } };
+export function mutationOptions(path: string, body: string, keys: CommandKeys): RequestInit {
+  return keys.options(path, body);
 }
 
 export function isUncertainWriteError(error: Error | null) {

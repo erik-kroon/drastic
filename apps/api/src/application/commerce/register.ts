@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { readSealedDraft } from "../../db/posting-admission";
 import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -11,7 +12,8 @@ import * as InvoiceDb from "../../db/commerce/invoices";
 import { lockBookForUpdate, readAccounts } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+
 import {
   commandReceipt,
   decode,
@@ -237,88 +239,85 @@ export const createCounterparty = Effect.fn("commerce.counterparties.create")(fu
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "commerce_create_counterparty",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "commerce_create_counterparty",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         CounterpartySchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, DraftDb.counterpartyTables, false);
+          yield* requireInsertAccess(transaction, [
+            "commerce_counterparties",
+            "commerce_counterparty_revisions",
+          ]);
+          const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
+          const book = books[0];
+
+          if (!book) return yield* failure("Forbidden");
+          yield* requireNativeWriter(book);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), createCounterpartyFields);
+          const input = yield* decode(CreateCounterpartySchema, command.input);
+          yield* requireText(input.externalKey, 200);
+          yield* requireText(input.displayName, 200);
+          yield* requireText(input.reason, 2000);
+
+          const evidence = yield* readEvidenceReference(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          );
+
+          const existing = yield* DraftDb.readCounterpartyByExternalKey(
+            transaction,
+            command.scope.bookId,
+            input.externalKey,
+          );
+
+          if (existing[0]?.present === true) return yield* failure("IdempotencyConflict");
+          const id = newId("counterparty");
+
+          const body = counterpartyRecord(
+            command.scope,
+            id,
+            "1",
+            input.externalKey,
+            input.role,
+            input.displayName,
+            input.evidenceId,
+            evidence,
+            input.reason,
+            yield* retainedNow(transaction),
+            commandReceipt(
+              command.idempotencyKey,
+              "commerce_create_counterparty",
+              principal.actorId,
+            ),
+          );
+
+          const result = yield* decode(CounterpartySchema, body);
+          yield* DraftDb.insertCounterparty(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            externalKey: input.externalKey,
+            role: input.role,
+          });
+          yield* DraftDb.insertCounterpartyRevision(transaction, {
+            bookId: command.scope.bookId,
+            counterpartyId: id,
+            revision: "1",
+            evidenceId: input.evidenceId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, DraftDb.counterpartyTables, false);
-      yield* requireInsertAccess(transaction, [
-        "commerce_counterparties",
-        "commerce_counterparty_revisions",
-      ]);
-      const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
-      const book = books[0];
-
-      if (!book) return yield* failure("Forbidden");
-      yield* requireNativeWriter(book);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), createCounterpartyFields);
-      const input = yield* decode(CreateCounterpartySchema, command.input);
-      yield* requireText(input.externalKey, 200);
-      yield* requireText(input.displayName, 200);
-      yield* requireText(input.reason, 2000);
-
-      const evidence = yield* readEvidenceReference(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      );
-
-      const existing = yield* DraftDb.readCounterpartyByExternalKey(
-        transaction,
-        command.scope.bookId,
-        input.externalKey,
-      );
-
-      if (existing[0]?.present === true) return yield* failure("IdempotencyConflict");
-      const id = newId("counterparty");
-
-      const body = counterpartyRecord(
-        command.scope,
-        id,
-        "1",
-        input.externalKey,
-        input.role,
-        input.displayName,
-        input.evidenceId,
-        evidence,
-        input.reason,
-        yield* retainedNow(transaction),
-        commandReceipt(command.idempotencyKey, "commerce_create_counterparty", principal.actorId),
-      );
-
-      const result = yield* decode(CounterpartySchema, body);
-      yield* DraftDb.insertCounterparty(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        externalKey: input.externalKey,
-        role: input.role,
-      });
-      yield* DraftDb.insertCounterpartyRevision(transaction, {
-        bookId: command.scope.bookId,
-        counterpartyId: id,
-        revision: "1",
-        evidenceId: input.evidenceId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "commerce_create_counterparty",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -340,87 +339,85 @@ export const reviseCounterparty = Effect.fn("commerce.counterparties.revise")(fu
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "commerce_revise_counterparty",
-        principal.actorId,
-        replayInput,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "commerce_revise_counterparty",
+          actorId: principal.actorId,
+          input: replayInput,
+        },
         CounterpartySchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, DraftDb.counterpartyTables, false);
+          yield* requireInsertAccess(transaction, [
+            "commerce_counterparties",
+            "commerce_counterparty_revisions",
+          ]);
+          const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
+          const book = books[0];
+
+          if (!book) return yield* failure("Forbidden");
+          yield* requireNativeWriter(book);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), reviseCounterpartyFields);
+          const input = yield* decode(ReviseCounterpartySchema, command.input);
+          yield* requireText(input.displayName, 200);
+          yield* requireText(input.reason, 2000);
+
+          const heads = yield* DraftDb.readCounterpartyHeadForUpdate(
+            transaction,
+            command.scope.bookId,
+            command.id,
+          );
+
+          const head = heads[0];
+
+          if (!head) return yield* failure("NotFound");
+
+          if (input.expectedRevision !== head.currentRevision)
+            return yield* failure("StaleDependency");
+
+          const evidence = yield* readEvidenceReference(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          );
+
+          const revision = (BigInt(head.currentRevision) + 1n).toString();
+
+          const body = counterpartyRecord(
+            command.scope,
+            command.id,
+            revision,
+            head.externalKey,
+            head.role,
+            input.displayName,
+            input.evidenceId,
+            evidence,
+            input.reason,
+            yield* retainedNow(transaction),
+            commandReceipt(
+              command.idempotencyKey,
+              "commerce_revise_counterparty",
+              principal.actorId,
+            ),
+          );
+
+          const result = yield* decode(CounterpartySchema, body);
+          yield* DraftDb.insertCounterpartyRevision(transaction, {
+            bookId: command.scope.bookId,
+            counterpartyId: command.id,
+            revision,
+            evidenceId: input.evidenceId,
+            body,
+          });
+          yield* DraftDb.advanceCounterpartyRevision(transaction, command.scope.bookId, command.id);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, DraftDb.counterpartyTables, false);
-      yield* requireInsertAccess(transaction, [
-        "commerce_counterparties",
-        "commerce_counterparty_revisions",
-      ]);
-      const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
-      const book = books[0];
-
-      if (!book) return yield* failure("Forbidden");
-      yield* requireNativeWriter(book);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), reviseCounterpartyFields);
-      const input = yield* decode(ReviseCounterpartySchema, command.input);
-      yield* requireText(input.displayName, 200);
-      yield* requireText(input.reason, 2000);
-
-      const heads = yield* DraftDb.readCounterpartyHeadForUpdate(
-        transaction,
-        command.scope.bookId,
-        command.id,
-      );
-
-      const head = heads[0];
-
-      if (!head) return yield* failure("NotFound");
-
-      if (input.expectedRevision !== head.currentRevision) return yield* failure("StaleDependency");
-
-      const evidence = yield* readEvidenceReference(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      );
-
-      const revision = (BigInt(head.currentRevision) + 1n).toString();
-
-      const body = counterpartyRecord(
-        command.scope,
-        command.id,
-        revision,
-        head.externalKey,
-        head.role,
-        input.displayName,
-        input.evidenceId,
-        evidence,
-        input.reason,
-        yield* retainedNow(transaction),
-        commandReceipt(command.idempotencyKey, "commerce_revise_counterparty", principal.actorId),
-      );
-
-      const result = yield* decode(CounterpartySchema, body);
-      yield* DraftDb.insertCounterpartyRevision(transaction, {
-        bookId: command.scope.bookId,
-        counterpartyId: command.id,
-        revision,
-        evidenceId: input.evidenceId,
-        body,
-      });
-      yield* DraftDb.advanceCounterpartyRevision(transaction, command.scope.bookId, command.id);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "commerce_revise_counterparty",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -632,189 +629,187 @@ type CreateInvoiceCommand = {
 
 export const createInvoiceInTransaction = Effect.fn("commerce.invoices.createInTransaction")(
   function* (transaction: Transaction, principal: Principal, command: CreateInvoiceCommand) {
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "commerce_create_invoice",
-      principal.actorId,
-      command.input,
-      InvoiceSchema,
-    );
-
-    if (request.previous) return request.previous;
-    yield* requireTableAccess(transaction, DraftDb.invoiceRegisterTables, false);
-    yield* requireInsertAccess(transaction, [
-      "commerce_invoices",
-      "commerce_invoice_revisions",
-      "commerce_control_accounts",
-    ]);
-    const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
-    const book = books[0];
-
-    if (!book) return yield* failure("Forbidden");
-    yield* requireNativeWriter(book);
-    yield* lockBookForUpdate(transaction, command.scope);
-    yield* exactKeys(yield* toJsonObject(command.input), createInvoiceFields);
-    const input = yield* decode(CreateInvoiceSchema, command.input);
-
-    if (
-      input.currency !== book.currency ||
-      !invoiceDirections.has(input.direction) ||
-      input.dueOn < input.issuedOn
-    ) {
-      return yield* failure("InvalidJournal");
-    }
-
-    yield* requireText(input.documentNumber, 200);
-    yield* requireText(input.description, 2000);
-
-    const evidence = yield* readEvidenceReference(
-      transaction,
-      command.scope.bookId,
-      input.evidenceId,
-    );
-
-    const parties = yield* DraftDb.readCounterpartyHead(
-      transaction,
-      command.scope.bookId,
-      input.counterpartyId,
-    );
-
-    const party = parties[0];
-
-    if (!party) return yield* failure("NotFound");
-
-    if (input.counterpartyRevision !== party.currentRevision)
-      return yield* failure("StaleDependency");
-
-    if (party.role !== input.direction && party.role !== "both") {
-      return yield* failure("InvalidJournal");
-    }
-
-    const line = yield* requireRecognition(
-      transaction,
-      command.scope.bookId,
-      input.recognitionVoucherId,
-      input.recognitionLineId,
-    );
-
-    yield* requireRecognitionAgreement(transaction, command.scope, input, line, evidence);
-
-    const duplicate = yield* DraftDb.readRegisterIdentity(
-      transaction,
-      command.scope.bookId,
-      input.counterpartyId,
-      input.documentNumber,
-      input.recognitionVoucherId,
-      input.recognitionLineId,
-    );
-
-    if (duplicate[0]?.present === true) return yield* failure("IdempotencyConflict");
-    yield* admitAccountRole(transaction, command.scope.bookId, input.controlAccountId, "commerce");
-    yield* admitLineOwner(
-      transaction,
-      command.scope.bookId,
-      input.recognitionVoucherId,
-      input.recognitionLineId,
-      "commerce",
-    );
-    yield* DraftDb.claimControlAccount(
-      transaction,
-      command.scope.bookId,
-      line.accountId,
-      input.direction,
-    );
-
-    const classified = yield* DraftDb.readControlAccount(
-      transaction,
-      command.scope.bookId,
-      line.accountId,
-      input.direction,
-    );
-
-    if (classified[0]?.present !== true) return yield* failure("InvalidJournal");
-    const id = newId("invoice");
-    const counterpartyName = party.revision.displayName;
-
-    if (typeof counterpartyName !== "string") return yield* failure("InternalError");
-    const evidenceReference = retainedReference(evidence);
-
-    const receipt = commandReceipt(
-      command.idempotencyKey,
-      "commerce_create_invoice",
-      principal.actorId,
-    );
-
-    const createdAt = yield* retainedNow(transaction);
-
-    const body: JsonObject = {
-      id,
-      scope: command.scope,
-      kind: invoiceKind,
-      direction: input.direction,
-      counterpartyId: party.id,
-      counterpartyRevision: party.currentRevision,
-      counterpartyName,
-      documentNumber: input.documentNumber,
-      issuedOn: input.issuedOn,
-      currency: book.currency,
-      currencyScale: book.currencyScale,
-      amountMinor: input.amountMinor,
-      controlAccountId: line.accountId,
-      evidence: evidenceReference,
-      recognition: {
-        voucherId: line.voucherId,
-        lineId: line.id,
-        eventId: line.eventId,
-        postingDate: line.postingDate,
-      } satisfies JsonObject,
-    };
-
-    yield* DraftDb.insertRegisteredInvoice(transaction, {
-      bookId: command.scope.bookId,
-      id,
-      direction: input.direction,
-      counterpartyId: party.id,
-      counterpartyRevision: party.currentRevision,
-      documentNumber: input.documentNumber,
-      issuedOn: input.issuedOn,
-      amountMinor: input.amountMinor,
-      controlAccountId: line.accountId,
-      recognitionVoucherId: line.voucherId,
-      recognitionLineId: line.id,
-      evidenceId: input.evidenceId,
-      body,
-    });
-    yield* DraftDb.insertInvoiceRevision(transaction, {
-      bookId: command.scope.bookId,
-      invoiceId: id,
-      revision: "1",
-      evidenceId: input.evidenceId,
-      body: {
-        id,
+      {
         scope: command.scope,
-        revision: "1",
-        dueOn: input.dueOn,
-        description: input.description,
-        evidence: evidenceReference,
-        reason: "Initial evidence-backed registration",
-        createdAt,
-        receipt,
-      } satisfies JsonObject,
-    });
-    const result = yield* liveInvoice(transaction, command.scope.bookId, id);
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "commerce_create_invoice",
-      principal.actorId,
-      result,
-    );
+        idempotencyKey: command.idempotencyKey,
+        operation: "commerce_create_invoice",
+        actorId: principal.actorId,
+        input: command.input,
+      },
+      InvoiceSchema,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, DraftDb.invoiceRegisterTables, false);
+        yield* requireInsertAccess(transaction, [
+          "commerce_invoices",
+          "commerce_invoice_revisions",
+          "commerce_control_accounts",
+        ]);
+        const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
+        const book = books[0];
 
-    return result;
+        if (!book) return yield* failure("Forbidden");
+        yield* requireNativeWriter(book);
+        yield* lockBookForUpdate(transaction, command.scope);
+        yield* exactKeys(yield* toJsonObject(command.input), createInvoiceFields);
+        const input = yield* decode(CreateInvoiceSchema, command.input);
+
+        if (
+          input.currency !== book.currency ||
+          !invoiceDirections.has(input.direction) ||
+          input.dueOn < input.issuedOn
+        ) {
+          return yield* failure("InvalidJournal");
+        }
+
+        yield* requireText(input.documentNumber, 200);
+        yield* requireText(input.description, 2000);
+
+        const evidence = yield* readEvidenceReference(
+          transaction,
+          command.scope.bookId,
+          input.evidenceId,
+        );
+
+        const parties = yield* DraftDb.readCounterpartyHead(
+          transaction,
+          command.scope.bookId,
+          input.counterpartyId,
+        );
+
+        const party = parties[0];
+
+        if (!party) return yield* failure("NotFound");
+
+        if (input.counterpartyRevision !== party.currentRevision)
+          return yield* failure("StaleDependency");
+
+        if (party.role !== input.direction && party.role !== "both") {
+          return yield* failure("InvalidJournal");
+        }
+
+        const line = yield* requireRecognition(
+          transaction,
+          command.scope.bookId,
+          input.recognitionVoucherId,
+          input.recognitionLineId,
+        );
+
+        yield* requireRecognitionAgreement(transaction, command.scope, input, line, evidence);
+
+        const duplicate = yield* DraftDb.readRegisterIdentity(
+          transaction,
+          command.scope.bookId,
+          input.counterpartyId,
+          input.documentNumber,
+          input.recognitionVoucherId,
+          input.recognitionLineId,
+        );
+
+        if (duplicate[0]?.present === true) return yield* failure("IdempotencyConflict");
+        yield* admitAccountRole(
+          transaction,
+          command.scope.bookId,
+          input.controlAccountId,
+          "commerce",
+        );
+        yield* admitLineOwner(
+          transaction,
+          command.scope.bookId,
+          input.recognitionVoucherId,
+          input.recognitionLineId,
+          "commerce",
+        );
+        yield* DraftDb.claimControlAccount(
+          transaction,
+          command.scope.bookId,
+          line.accountId,
+          input.direction,
+        );
+
+        const classified = yield* DraftDb.readControlAccount(
+          transaction,
+          command.scope.bookId,
+          line.accountId,
+          input.direction,
+        );
+
+        if (classified[0]?.present !== true) return yield* failure("InvalidJournal");
+        const id = newId("invoice");
+        const counterpartyName = party.revision.displayName;
+
+        if (typeof counterpartyName !== "string") return yield* failure("InternalError");
+        const evidenceReference = retainedReference(evidence);
+
+        const receipt = commandReceipt(
+          command.idempotencyKey,
+          "commerce_create_invoice",
+          principal.actorId,
+        );
+
+        const createdAt = yield* retainedNow(transaction);
+
+        const body: JsonObject = {
+          id,
+          scope: command.scope,
+          kind: invoiceKind,
+          direction: input.direction,
+          counterpartyId: party.id,
+          counterpartyRevision: party.currentRevision,
+          counterpartyName,
+          documentNumber: input.documentNumber,
+          issuedOn: input.issuedOn,
+          currency: book.currency,
+          currencyScale: book.currencyScale,
+          amountMinor: input.amountMinor,
+          controlAccountId: line.accountId,
+          evidence: evidenceReference,
+          recognition: {
+            voucherId: line.voucherId,
+            lineId: line.id,
+            eventId: line.eventId,
+            postingDate: line.postingDate,
+          } satisfies JsonObject,
+        };
+
+        yield* DraftDb.insertRegisteredInvoice(transaction, {
+          bookId: command.scope.bookId,
+          id,
+          direction: input.direction,
+          counterpartyId: party.id,
+          counterpartyRevision: party.currentRevision,
+          documentNumber: input.documentNumber,
+          issuedOn: input.issuedOn,
+          amountMinor: input.amountMinor,
+          controlAccountId: line.accountId,
+          recognitionVoucherId: line.voucherId,
+          recognitionLineId: line.id,
+          evidenceId: input.evidenceId,
+          body,
+        });
+        yield* DraftDb.insertInvoiceRevision(transaction, {
+          bookId: command.scope.bookId,
+          invoiceId: id,
+          revision: "1",
+          evidenceId: input.evidenceId,
+          body: {
+            id,
+            scope: command.scope,
+            revision: "1",
+            dueOn: input.dueOn,
+            description: input.description,
+            evidence: evidenceReference,
+            reason: "Initial evidence-backed registration",
+            createdAt,
+            receipt,
+          } satisfies JsonObject,
+        });
+        const result = yield* liveInvoice(transaction, command.scope.bookId, id);
+
+        return result;
+      }),
+    );
   },
 );
 
@@ -849,89 +844,84 @@ export const reviseInvoice = Effect.fn("commerce.invoices.revise")(function* (
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "commerce_revise_invoice",
-        principal.actorId,
-        replayInput,
-        InvoiceSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, DraftDb.invoiceRegisterTables, false);
-      yield* requireInsertAccess(transaction, ["commerce_invoice_revisions"]);
-      const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
-      const book = books[0];
-
-      if (!book) return yield* failure("Forbidden");
-      yield* requireNativeWriter(book);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), reviseInvoiceFields);
-      const input = yield* decode(ReviseInvoiceSchema, command.input);
-      yield* requireText(input.description, 2000);
-      yield* requireText(input.reason, 2000);
-
-      if (
-        (yield* readSealedDraft(transaction, command.scope.bookId, command.id, "register")).length
-      )
-        return yield* failure("Forbidden");
-
-      const heads = yield* DraftDb.readInvoiceHeadForUpdate(
-        transaction,
-        command.scope.bookId,
-        command.id,
-      );
-
-      const head = heads[0];
-
-      if (!head) return yield* failure("NotFound");
-
-      if (input.expectedRevision !== head.currentRevision) return yield* failure("StaleDependency");
-
-      if (input.dueOn < head.issuedOn) return yield* failure("InvalidJournal");
-
-      const evidence = yield* readEvidenceReference(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      );
-
-      yield* DraftDb.insertInvoiceRevision(transaction, {
-        bookId: command.scope.bookId,
-        invoiceId: command.id,
-        revision: (BigInt(head.currentRevision) + 1n).toString(),
-        evidenceId: input.evidenceId,
-        body: {
-          id: command.id,
+        {
           scope: command.scope,
-          revision: (BigInt(head.currentRevision) + 1n).toString(),
-          dueOn: input.dueOn,
-          description: input.description,
-          evidence: retainedReference(evidence),
-          reason: input.reason,
-          createdAt: yield* retainedNow(transaction),
-          receipt: commandReceipt(
-            command.idempotencyKey,
-            "commerce_revise_invoice",
-            principal.actorId,
-          ),
-        } satisfies JsonObject,
-      });
-      yield* DraftDb.advanceInvoiceRevision(transaction, command.scope.bookId, command.id);
-      const result = yield* liveInvoice(transaction, command.scope.bookId, command.id);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "commerce_revise_invoice",
-        principal.actorId,
-        result,
-      );
+          idempotencyKey: command.idempotencyKey,
+          operation: "commerce_revise_invoice",
+          actorId: principal.actorId,
+          input: replayInput,
+        },
+        InvoiceSchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, DraftDb.invoiceRegisterTables, false);
+          yield* requireInsertAccess(transaction, ["commerce_invoice_revisions"]);
+          const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
+          const book = books[0];
 
-      return result;
+          if (!book) return yield* failure("Forbidden");
+          yield* requireNativeWriter(book);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), reviseInvoiceFields);
+          const input = yield* decode(ReviseInvoiceSchema, command.input);
+          yield* requireText(input.description, 2000);
+          yield* requireText(input.reason, 2000);
+
+          if (
+            (yield* readSealedDraft(transaction, command.scope.bookId, command.id, "register"))
+              .length
+          )
+            return yield* failure("Forbidden");
+
+          const heads = yield* DraftDb.readInvoiceHeadForUpdate(
+            transaction,
+            command.scope.bookId,
+            command.id,
+          );
+
+          const head = heads[0];
+
+          if (!head) return yield* failure("NotFound");
+
+          if (input.expectedRevision !== head.currentRevision)
+            return yield* failure("StaleDependency");
+
+          if (input.dueOn < head.issuedOn) return yield* failure("InvalidJournal");
+
+          const evidence = yield* readEvidenceReference(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          );
+
+          yield* DraftDb.insertInvoiceRevision(transaction, {
+            bookId: command.scope.bookId,
+            invoiceId: command.id,
+            revision: (BigInt(head.currentRevision) + 1n).toString(),
+            evidenceId: input.evidenceId,
+            body: {
+              id: command.id,
+              scope: command.scope,
+              revision: (BigInt(head.currentRevision) + 1n).toString(),
+              dueOn: input.dueOn,
+              description: input.description,
+              evidence: retainedReference(evidence),
+              reason: input.reason,
+              createdAt: yield* retainedNow(transaction),
+              receipt: commandReceipt(
+                command.idempotencyKey,
+                "commerce_revise_invoice",
+                principal.actorId,
+              ),
+            } satisfies JsonObject,
+          });
+          yield* DraftDb.advanceInvoiceRevision(transaction, command.scope.bookId, command.id);
+          const result = yield* liveInvoice(transaction, command.scope.bookId, command.id);
+
+          return result;
+        }),
+      );
     },
     "update",
   );

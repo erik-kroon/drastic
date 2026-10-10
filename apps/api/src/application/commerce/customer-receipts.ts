@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/customer-credit-notes";
 import * as Receipts from "@open-erp/domain/customer-credits";
 import { AccountingError, FailureCode } from "@open-erp/domain/errors";
@@ -19,12 +20,10 @@ import {
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   sealActionInTransaction,
 } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { digest } from "../json";
 
 // NEXT-30. The application owner of customer unapplied cash, paid credits and
@@ -282,81 +281,76 @@ export const prepareCustomerReceipt = Effect.fn("commerce.prepareCustomerReceipt
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "prepare_customer_receipt";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      Contracts.CustomerReceiptView,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...ReceiptDb.receiptTables, "commerce_invoices"], true);
-
-    const legs = yield* buildReceiptLegs(
-      transaction,
-      command.scope,
-      command.input.customerId,
-      command.input.currency,
-      command.input.legs,
-    );
-
-    const compiled = Receipts.compileCustomerReceipt({
-      customerId: command.input.customerId,
-      currency: command.input.currency,
-      cashMinor: command.input.cashMinor,
-      legs,
-      surplusClassification: command.input.surplusClassification,
-      source: {
-        kind: "new_cash",
-        bankAccountId: command.input.bankAccountId,
-        evidenceId: command.input.evidenceId,
-      },
-      receivableControlAccountId: command.input.receivableControlAccountId,
-      creditLiabilityAccountId: command.input.creditLiabilityAccountId,
-    });
-
-    if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
-
-    const now = yield* isoNow(transaction);
-    const receiptId = newId("customer_receipt");
-    // The digest covers the input and the plan, never the fresh receipt id,
-    // so execution can reproduce it from retained rows and prove the preview
-    // did not go stale.
-
-    const previewDigest = yield* digest({
-      input: command.input,
-      plan: compiled.success,
-    });
-
-    const view = yield* decode(
-      Contracts.CustomerReceiptView,
-      yield* toJsonObject({
+      {
         scope: command.scope,
-        id: receiptId,
-        originId: null,
-        digest: previewDigest,
-        allocatedMinor: compiled.success.allocatedMinor,
-        creditOriginMinor: compiled.success.creditOriginMinor,
-        journal: compiled.success.journal,
-        createdAt: now,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
+      Contracts.CustomerReceiptView,
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [...ReceiptDb.receiptTables, "commerce_invoices"],
+          true,
+        );
+
+        const legs = yield* buildReceiptLegs(
+          transaction,
+          command.scope,
+          command.input.customerId,
+          command.input.currency,
+          command.input.legs,
+        );
+
+        const compiled = Receipts.compileCustomerReceipt({
+          customerId: command.input.customerId,
+          currency: command.input.currency,
+          cashMinor: command.input.cashMinor,
+          legs,
+          surplusClassification: command.input.surplusClassification,
+          source: {
+            kind: "new_cash",
+            bankAccountId: command.input.bankAccountId,
+            evidenceId: command.input.evidenceId,
+          },
+          receivableControlAccountId: command.input.receivableControlAccountId,
+          creditLiabilityAccountId: command.input.creditLiabilityAccountId,
+        });
+
+        if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
+
+        const now = yield* isoNow(transaction);
+        const receiptId = newId("customer_receipt");
+        // The digest covers the input and the plan, never the fresh receipt id,
+        // so execution can reproduce it from retained rows and prove the preview
+        // did not go stale.
+
+        const previewDigest = yield* digest({
+          input: command.input,
+          plan: compiled.success,
+        });
+
+        const view = yield* decode(
+          Contracts.CustomerReceiptView,
+          yield* toJsonObject({
+            scope: command.scope,
+            id: receiptId,
+            originId: null,
+            digest: previewDigest,
+            allocatedMinor: compiled.success.allocatedMinor,
+            creditOriginMinor: compiled.success.creditOriginMinor,
+            journal: compiled.success.journal,
+            createdAt: now,
+          }),
+        );
+
+        return { receipt: yield* toJsonObject({ ...view, plan: compiled.success }), result: view };
       }),
     );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject({ ...view, plan: compiled.success }),
-    );
-
-    return view;
   });
 });
 
@@ -375,127 +369,122 @@ export const executeCustomerReceipt = Effect.fn("commerce.executeCustomerReceipt
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "execute_customer_receipt";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      Contracts.CustomerReceiptView,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...ReceiptDb.receiptTables, "commerce_invoices"], true);
-
-    const prepare = command.input.prepare;
-
-    const legs = yield* buildReceiptLegs(
-      transaction,
-      command.scope,
-      prepare.customerId,
-      prepare.currency,
-      prepare.legs,
-    );
-
-    const compiled = Receipts.compileCustomerReceipt({
-      customerId: prepare.customerId,
-      currency: prepare.currency,
-      cashMinor: prepare.cashMinor,
-      legs,
-      surplusClassification: prepare.surplusClassification,
-      source: {
-        kind: "new_cash",
-        bankAccountId: prepare.bankAccountId,
-        evidenceId: prepare.evidenceId,
-      },
-      receivableControlAccountId: prepare.receivableControlAccountId,
-      creditLiabilityAccountId: prepare.creditLiabilityAccountId,
-    });
-
-    if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
-
-    const now = yield* isoNow(transaction);
-    const receiptId = newId("customer_receipt");
-
-    if (command.input.digest !== (yield* digest({ input: prepare, plan: compiled.success }))) {
-      return yield* failure("StaleDependency");
-    }
-
-    const postingReceipt = yield* postJournal(
-      transaction,
-      command.scope,
-      principal,
-      compiled.success.journal,
       {
-        fiscalYearId: prepare.fiscalYearId,
-        accountingPeriodId: prepare.accountingPeriodId,
-        postingDate: yield* currentPostingDate(
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
+      Contracts.CustomerReceiptView,
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [...ReceiptDb.receiptTables, "commerce_invoices"],
+          true,
+        );
+
+        const prepare = command.input.prepare;
+
+        const legs = yield* buildReceiptLegs(
           transaction,
           command.scope,
-          prepare.accountingPeriodId,
-        ),
-        series: prepare.series,
-        currency: prepare.currency,
-        description: `Customer receipt ${receiptId}`,
-        rationale: prepare.reason,
-        eventKey: `customer_receipt_${receiptId}`,
-        evidenceId: prepare.evidenceId,
-      },
-    );
+          prepare.customerId,
+          prepare.currency,
+          prepare.legs,
+        );
 
-    const originId = newId("customer_credit_origin");
+        const compiled = Receipts.compileCustomerReceipt({
+          customerId: prepare.customerId,
+          currency: prepare.currency,
+          cashMinor: prepare.cashMinor,
+          legs,
+          surplusClassification: prepare.surplusClassification,
+          source: {
+            kind: "new_cash",
+            bankAccountId: prepare.bankAccountId,
+            evidenceId: prepare.evidenceId,
+          },
+          receivableControlAccountId: prepare.receivableControlAccountId,
+          creditLiabilityAccountId: prepare.creditLiabilityAccountId,
+        });
 
-    const originDigest = yield* digest({
-      id: originId,
-      customerId: prepare.customerId,
-      currency: prepare.currency,
-      originalMinor: compiled.success.creditOriginMinor,
-      receiptId: postingReceipt.voucherId,
-    });
+        if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
 
-    if (BigInt(compiled.success.creditOriginMinor) > 0n) {
-      yield* ReceiptDb.insertOrigin(transaction, {
-        bookId: command.scope.bookId,
-        id: originId,
-        customerId: prepare.customerId,
-        currency: prepare.currency,
-        originalMinor: compiled.success.creditOriginMinor,
-        sourceKind: "new_cash",
-        sourceRef: prepare.bankAccountId,
-        creditLiabilityAccountId: prepare.creditLiabilityAccountId,
-        receivableControlAccountId: prepare.receivableControlAccountId,
-        receiptId: postingReceipt.voucherId,
-        digest: originDigest,
-      });
-    }
+        const now = yield* isoNow(transaction);
+        const receiptId = newId("customer_receipt");
 
-    const view = yield* decode(
-      Contracts.CustomerReceiptView,
-      yield* toJsonObject({
-        scope: command.scope,
-        id: receiptId,
-        originId: BigInt(compiled.success.creditOriginMinor) > 0n ? originId : null,
-        digest: originDigest,
-        allocatedMinor: compiled.success.allocatedMinor,
-        creditOriginMinor: compiled.success.creditOriginMinor,
-        journal: compiled.success.journal,
-        createdAt: now,
+        if (command.input.digest !== (yield* digest({ input: prepare, plan: compiled.success }))) {
+          return yield* failure("StaleDependency");
+        }
+
+        const postingReceipt = yield* postJournal(
+          transaction,
+          command.scope,
+          principal,
+          compiled.success.journal,
+          {
+            fiscalYearId: prepare.fiscalYearId,
+            accountingPeriodId: prepare.accountingPeriodId,
+            postingDate: yield* currentPostingDate(
+              transaction,
+              command.scope,
+              prepare.accountingPeriodId,
+            ),
+            series: prepare.series,
+            currency: prepare.currency,
+            description: `Customer receipt ${receiptId}`,
+            rationale: prepare.reason,
+            eventKey: `customer_receipt_${receiptId}`,
+            evidenceId: prepare.evidenceId,
+          },
+        );
+
+        const originId = newId("customer_credit_origin");
+
+        const originDigest = yield* digest({
+          id: originId,
+          customerId: prepare.customerId,
+          currency: prepare.currency,
+          originalMinor: compiled.success.creditOriginMinor,
+          receiptId: postingReceipt.voucherId,
+        });
+
+        if (BigInt(compiled.success.creditOriginMinor) > 0n) {
+          yield* ReceiptDb.insertOrigin(transaction, {
+            bookId: command.scope.bookId,
+            id: originId,
+            customerId: prepare.customerId,
+            currency: prepare.currency,
+            originalMinor: compiled.success.creditOriginMinor,
+            sourceKind: "new_cash",
+            sourceRef: prepare.bankAccountId,
+            creditLiabilityAccountId: prepare.creditLiabilityAccountId,
+            receivableControlAccountId: prepare.receivableControlAccountId,
+            receiptId: postingReceipt.voucherId,
+            digest: originDigest,
+          });
+        }
+
+        const view = yield* decode(
+          Contracts.CustomerReceiptView,
+          yield* toJsonObject({
+            scope: command.scope,
+            id: receiptId,
+            originId: BigInt(compiled.success.creditOriginMinor) > 0n ? originId : null,
+            digest: originDigest,
+            allocatedMinor: compiled.success.allocatedMinor,
+            creditOriginMinor: compiled.success.creditOriginMinor,
+            journal: compiled.success.journal,
+            createdAt: now,
+          }),
+        );
+
+        return { receipt: yield* toJsonObject(view), result: view };
       }),
     );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(view),
-    );
-
-    return view;
   });
 });
 
@@ -532,132 +521,127 @@ export const applyCustomerCredit = Effect.fn("commerce.applyCustomerCredit")(fun
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "apply_customer_credit";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject({ originId: command.originId, input: command.input }),
-      Contracts.CustomerCreditEffectView,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...ReceiptDb.receiptTables, "commerce_invoices"], true);
-
-    const { origin, remaining } = yield* readOriginWithEffects(
-      transaction,
-      command.scope,
-      command.originId,
-    );
-
-    const live = (yield* InvoiceDb.readLiveInvoice(
-      transaction,
-      command.scope.bookId,
-      command.input.invoiceId,
-    ))[0];
-
-    if (live === undefined || live.outstandingMinor === null) {
-      return yield* refuse({
-        code: "AllocationExceedsInvoice",
-        message: `Invoice ${command.input.invoiceId} has no retained remaining.`,
-      });
-    }
-
-    const destination = (yield* InvoiceDb.readLiveInvoice(
-      transaction,
-      command.scope.bookId,
-      command.input.invoiceId,
-    ))[0];
-
-    if (destination === undefined || destination.outstandingMinor === null) {
-      return yield* refuse({
-        code: "AllocationExceedsInvoice",
-        message: `Invoice ${command.input.invoiceId} has no retained remaining.`,
-      });
-    }
-
-    const applied = Receipts.applyCustomerCredit({
-      customerId: origin.customerId,
-      currency: origin.currency,
-      remainingCreditMinor: remaining,
-      destinationInvoiceId: command.input.invoiceId,
-      destinationRemainingMinor: destination.outstandingMinor,
-      amountMinor: command.input.amountMinor,
-      creditLiabilityAccountId: origin.creditLiabilityAccountId,
-      receivableControlAccountId: origin.receivableControlAccountId,
-    });
-
-    if (Result.isFailure(applied)) return yield* refuse(applied.failure);
-
-    const now = yield* isoNow(transaction);
-    const effectId = newId("customer_credit_effect");
-
-    const postingReceipt = yield* postJournal(
-      transaction,
-      command.scope,
-      principal,
-      applied.success.journal,
       {
-        fiscalYearId: command.input.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: yield* currentPostingDate(
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject({ originId: command.originId, input: command.input }),
+      },
+      Contracts.CustomerCreditEffectView,
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [...ReceiptDb.receiptTables, "commerce_invoices"],
+          true,
+        );
+
+        const { origin, remaining } = yield* readOriginWithEffects(
           transaction,
           command.scope,
-          command.input.accountingPeriodId,
-        ),
-        series: command.input.series,
-        currency: origin.currency,
-        description: `Apply customer credit ${origin.id}`,
-        rationale: command.input.reason,
-        eventKey: `customer_credit_apply_${effectId}`,
-        evidenceId: command.input.evidenceId,
-      },
-    );
+          command.originId,
+        );
 
-    const effectDigest = yield* digest({
-      id: effectId,
-      originId: origin.id,
-      consumedMinor: applied.success.appliedMinor,
-      receiptId: postingReceipt.voucherId,
-    });
+        const live = (yield* InvoiceDb.readLiveInvoice(
+          transaction,
+          command.scope.bookId,
+          command.input.invoiceId,
+        ))[0];
 
-    yield* ReceiptDb.insertEffect(transaction, {
-      bookId: command.scope.bookId,
-      id: effectId,
-      originId: origin.id,
-      kind: "apply_to_invoice",
-      signedConsumedMinor: applied.success.appliedMinor,
-      destinationIdentity: command.input.invoiceId,
-      receiptId: postingReceipt.voucherId,
-      digest: effectDigest,
-    });
+        if (live === undefined || live.outstandingMinor === null) {
+          return yield* refuse({
+            code: "AllocationExceedsInvoice",
+            message: `Invoice ${command.input.invoiceId} has no retained remaining.`,
+          });
+        }
 
-    const view = yield* decode(
-      Contracts.CustomerCreditEffectView,
-      yield* toJsonObject({
-        scope: command.scope,
-        id: effectId,
-        originId: origin.id,
-        digest: effectDigest,
-        consumedMinor: applied.success.appliedMinor,
-        journal: applied.success.journal,
-        createdAt: now,
+        const destination = (yield* InvoiceDb.readLiveInvoice(
+          transaction,
+          command.scope.bookId,
+          command.input.invoiceId,
+        ))[0];
+
+        if (destination === undefined || destination.outstandingMinor === null) {
+          return yield* refuse({
+            code: "AllocationExceedsInvoice",
+            message: `Invoice ${command.input.invoiceId} has no retained remaining.`,
+          });
+        }
+
+        const applied = Receipts.applyCustomerCredit({
+          customerId: origin.customerId,
+          currency: origin.currency,
+          remainingCreditMinor: remaining,
+          destinationInvoiceId: command.input.invoiceId,
+          destinationRemainingMinor: destination.outstandingMinor,
+          amountMinor: command.input.amountMinor,
+          creditLiabilityAccountId: origin.creditLiabilityAccountId,
+          receivableControlAccountId: origin.receivableControlAccountId,
+        });
+
+        if (Result.isFailure(applied)) return yield* refuse(applied.failure);
+
+        const now = yield* isoNow(transaction);
+        const effectId = newId("customer_credit_effect");
+
+        const postingReceipt = yield* postJournal(
+          transaction,
+          command.scope,
+          principal,
+          applied.success.journal,
+          {
+            fiscalYearId: command.input.fiscalYearId,
+            accountingPeriodId: command.input.accountingPeriodId,
+            postingDate: yield* currentPostingDate(
+              transaction,
+              command.scope,
+              command.input.accountingPeriodId,
+            ),
+            series: command.input.series,
+            currency: origin.currency,
+            description: `Apply customer credit ${origin.id}`,
+            rationale: command.input.reason,
+            eventKey: `customer_credit_apply_${effectId}`,
+            evidenceId: command.input.evidenceId,
+          },
+        );
+
+        const effectDigest = yield* digest({
+          id: effectId,
+          originId: origin.id,
+          consumedMinor: applied.success.appliedMinor,
+          receiptId: postingReceipt.voucherId,
+        });
+
+        yield* ReceiptDb.insertEffect(transaction, {
+          bookId: command.scope.bookId,
+          id: effectId,
+          originId: origin.id,
+          kind: "apply_to_invoice",
+          signedConsumedMinor: applied.success.appliedMinor,
+          destinationIdentity: command.input.invoiceId,
+          receiptId: postingReceipt.voucherId,
+          digest: effectDigest,
+        });
+
+        const view = yield* decode(
+          Contracts.CustomerCreditEffectView,
+          yield* toJsonObject({
+            scope: command.scope,
+            id: effectId,
+            originId: origin.id,
+            digest: effectDigest,
+            consumedMinor: applied.success.appliedMinor,
+            journal: applied.success.journal,
+            createdAt: now,
+          }),
+        );
+
+        return { receipt: yield* toJsonObject(view), result: view };
       }),
     );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(view),
-    );
-
-    return view;
   });
 });
 
@@ -677,109 +661,104 @@ export const refundCustomerCredit = Effect.fn("commerce.refundCustomerCredit")(f
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "refund_customer_credit";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject({ originId: command.originId, input: command.input }),
-      Contracts.CustomerCreditEffectView,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...ReceiptDb.receiptTables, "commerce_invoices"], true);
-
-    const { origin, remaining } = yield* readOriginWithEffects(
-      transaction,
-      command.scope,
-      command.originId,
-    );
-
-    const refunded = Receipts.recordCustomerRefund({
-      customerId: origin.customerId,
-      currency: origin.currency,
-      remainingCreditMinor: remaining,
-      amountMinor: command.input.amountMinor,
-      source: {
-        kind: "new_payment",
-        bankAccountId: command.input.cashAccountId,
-        evidenceId: command.input.evidenceId,
-      },
-      sourceCurrency: origin.currency,
-      creditLiabilityAccountId: origin.creditLiabilityAccountId,
-    });
-
-    if (Result.isFailure(refunded)) return yield* refuse(refunded.failure);
-
-    const now = yield* isoNow(transaction);
-    const effectId = newId("customer_credit_effect");
-
-    const postingReceipt = yield* postJournal(
-      transaction,
-      command.scope,
-      principal,
-      refunded.success.journal,
       {
-        fiscalYearId: command.input.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: yield* currentPostingDate(
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject({ originId: command.originId, input: command.input }),
+      },
+      Contracts.CustomerCreditEffectView,
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [...ReceiptDb.receiptTables, "commerce_invoices"],
+          true,
+        );
+
+        const { origin, remaining } = yield* readOriginWithEffects(
           transaction,
           command.scope,
-          command.input.accountingPeriodId,
-        ),
-        series: command.input.series,
-        currency: origin.currency,
-        description: `Refund customer credit ${origin.id}`,
-        rationale: command.input.reason,
-        eventKey: `customer_credit_refund_${effectId}`,
-        evidenceId: command.input.evidenceId,
-      },
-    );
+          command.originId,
+        );
 
-    const effectDigest = yield* digest({
-      id: effectId,
-      originId: origin.id,
-      consumedMinor: refunded.success.refundedMinor,
-      receiptId: postingReceipt.voucherId,
-    });
+        const refunded = Receipts.recordCustomerRefund({
+          customerId: origin.customerId,
+          currency: origin.currency,
+          remainingCreditMinor: remaining,
+          amountMinor: command.input.amountMinor,
+          source: {
+            kind: "new_payment",
+            bankAccountId: command.input.cashAccountId,
+            evidenceId: command.input.evidenceId,
+          },
+          sourceCurrency: origin.currency,
+          creditLiabilityAccountId: origin.creditLiabilityAccountId,
+        });
 
-    yield* ReceiptDb.insertEffect(transaction, {
-      bookId: command.scope.bookId,
-      id: effectId,
-      originId: origin.id,
-      kind: "cash_refund",
-      signedConsumedMinor: refunded.success.refundedMinor,
-      destinationIdentity: command.input.cashAccountId,
-      receiptId: postingReceipt.voucherId,
-      digest: effectDigest,
-    });
+        if (Result.isFailure(refunded)) return yield* refuse(refunded.failure);
 
-    const view = yield* decode(
-      Contracts.CustomerCreditEffectView,
-      yield* toJsonObject({
-        scope: command.scope,
-        id: effectId,
-        originId: origin.id,
-        digest: effectDigest,
-        consumedMinor: refunded.success.refundedMinor,
-        journal: refunded.success.journal,
-        createdAt: now,
+        const now = yield* isoNow(transaction);
+        const effectId = newId("customer_credit_effect");
+
+        const postingReceipt = yield* postJournal(
+          transaction,
+          command.scope,
+          principal,
+          refunded.success.journal,
+          {
+            fiscalYearId: command.input.fiscalYearId,
+            accountingPeriodId: command.input.accountingPeriodId,
+            postingDate: yield* currentPostingDate(
+              transaction,
+              command.scope,
+              command.input.accountingPeriodId,
+            ),
+            series: command.input.series,
+            currency: origin.currency,
+            description: `Refund customer credit ${origin.id}`,
+            rationale: command.input.reason,
+            eventKey: `customer_credit_refund_${effectId}`,
+            evidenceId: command.input.evidenceId,
+          },
+        );
+
+        const effectDigest = yield* digest({
+          id: effectId,
+          originId: origin.id,
+          consumedMinor: refunded.success.refundedMinor,
+          receiptId: postingReceipt.voucherId,
+        });
+
+        yield* ReceiptDb.insertEffect(transaction, {
+          bookId: command.scope.bookId,
+          id: effectId,
+          originId: origin.id,
+          kind: "cash_refund",
+          signedConsumedMinor: refunded.success.refundedMinor,
+          destinationIdentity: command.input.cashAccountId,
+          receiptId: postingReceipt.voucherId,
+          digest: effectDigest,
+        });
+
+        const view = yield* decode(
+          Contracts.CustomerCreditEffectView,
+          yield* toJsonObject({
+            scope: command.scope,
+            id: effectId,
+            originId: origin.id,
+            digest: effectDigest,
+            consumedMinor: refunded.success.refundedMinor,
+            journal: refunded.success.journal,
+            createdAt: now,
+          }),
+        );
+
+        return { receipt: yield* toJsonObject(view), result: view };
       }),
     );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(view),
-    );
-
-    return view;
   });
 });
 

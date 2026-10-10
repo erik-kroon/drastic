@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Credits from "@open-erp/contracts/customer-credit-notes";
 import * as Effect from "effect/Effect";
@@ -9,7 +10,9 @@ import type { Database } from "../../db/connection";
 import { base64, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
 import { renderCreditDocumentPdf } from "./credit-document-renderer";
 
@@ -272,75 +275,67 @@ export const renderCustomerCreditArtifact = Effect.fn("creditDocument.render")(f
     command.scope,
     false,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        payload,
-        Credits.CustomerCreditArtifactDescriptor,
-      );
-
-      if (request.previous) return request.previous;
-
-      const current = yield* checkedSource(tx, command.scope, command.id);
-
-      if (
-        current.document.digest !== source.document.digest ||
-        current.outboxId !== source.outboxId
-      )
-        return yield* failure("StaleDependency");
-
-      const retained = yield* existingArtifact(tx, command.scope, current.document.documentId);
-
-      if (retained && retained.sha256 !== sha256) return yield* failure("StaleDependency");
-
-      const descriptor =
-        retained ??
-        (yield* decode(Credits.CustomerCreditArtifactDescriptor, {
-          id: newId("credit_artifact"),
+        {
           scope: command.scope,
-          creditId: command.id,
-          documentId: current.document.documentId,
-          documentRevision: current.document.revision,
-          documentDigest: current.document.digest,
-          rendererVersion: command.input.rendererVersion,
-          mediaType: "application/pdf",
-          filename: `credit-${current.document.documentNumber}.pdf`,
-          sha256,
-          byteLength: rendered.success.length,
-          createdAt: yield* isoNow(tx),
-          createdBy: principal.actorId,
-          delivered: false,
-        }));
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: payload,
+        },
+        Credits.CustomerCreditArtifactDescriptor,
+        Effect.gen(function* () {
+          const current = yield* checkedSource(tx, command.scope, command.id);
 
-      if (!retained) {
-        yield* Db.insertArtifact(tx, {
-          bookId: command.scope.bookId,
-          id: descriptor.id,
-          documentId: descriptor.documentId,
-          documentRevision: BigInt(descriptor.documentRevision),
-          documentDigest: descriptor.documentDigest,
-          rendererVersion: descriptor.rendererVersion,
-          outboxId: current.outboxId,
-          descriptor: yield* toJsonObject(descriptor),
-          contentBase64,
-        });
-      }
+          if (
+            current.document.digest !== source.document.digest ||
+            current.outboxId !== source.outboxId
+          )
+            return yield* failure("StaleDependency");
 
-      yield* Db.acknowledge(tx, command.scope.bookId, current.outboxId);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(descriptor),
+          const retained = yield* existingArtifact(tx, command.scope, current.document.documentId);
+
+          if (retained && retained.sha256 !== sha256) return yield* failure("StaleDependency");
+
+          const descriptor =
+            retained ??
+            (yield* decode(Credits.CustomerCreditArtifactDescriptor, {
+              id: newId("credit_artifact"),
+              scope: command.scope,
+              creditId: command.id,
+              documentId: current.document.documentId,
+              documentRevision: current.document.revision,
+              documentDigest: current.document.digest,
+              rendererVersion: command.input.rendererVersion,
+              mediaType: "application/pdf",
+              filename: `credit-${current.document.documentNumber}.pdf`,
+              sha256,
+              byteLength: rendered.success.length,
+              createdAt: yield* isoNow(tx),
+              createdBy: principal.actorId,
+              delivered: false,
+            }));
+
+          if (!retained) {
+            yield* Db.insertArtifact(tx, {
+              bookId: command.scope.bookId,
+              id: descriptor.id,
+              documentId: descriptor.documentId,
+              documentRevision: BigInt(descriptor.documentRevision),
+              documentDigest: descriptor.documentDigest,
+              rendererVersion: descriptor.rendererVersion,
+              outboxId: current.outboxId,
+              descriptor: yield* toJsonObject(descriptor),
+              contentBase64,
+            });
+          }
+
+          yield* Db.acknowledge(tx, command.scope.bookId, current.outboxId);
+
+          return { receipt: yield* toJsonObject(descriptor), result: descriptor };
+        }),
       );
-
-      return descriptor;
     },
     "update",
   ).pipe(

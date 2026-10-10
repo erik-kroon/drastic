@@ -1,8 +1,10 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Closing from "@open-erp/contracts/closing";
 import * as Effect from "effect/Effect";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as Db from "../../db/posting";
 import * as ClosingDb from "../../db/closing/inventories";
 import type { Transaction } from "../../db/transaction";
@@ -126,6 +128,7 @@ function retainFamilies(
       }
 
       if (declaration.rationale.trim().length < 1) return yield* failure("InvalidJournal");
+
       const reviewed = calendarDate(declaration.reviewedOn);
 
       if (reviewed === null || reviewed > today) return yield* failure("InvalidJournal");
@@ -155,6 +158,7 @@ function retainFamilies(
       .filter((declaration) => declaration !== null)
       .sort((left, right) => {
         const leftFamily = left!.family;
+
         const rightFamily = right!.family;
 
         return leftFamily < rightFamily ? -1 : leftFamily > rightFamily ? 1 : 0;
@@ -232,6 +236,7 @@ export function closingBasisDependencies(
 function readCurrentBasis(transaction: Transaction, bookId: string, periodId: string) {
   return Effect.gen(function* () {
     yield* requireProviderBounds(transaction, bookId);
+
     const period = (yield* ClosingDb.readPeriod(transaction, bookId, periodId, "share"))[0];
 
     if (period === undefined) return yield* failure("NotFound");
@@ -260,102 +265,103 @@ export const declareInventory = Effect.fn("closing.declareInventory")(function* 
     function* (transaction, principal) {
       yield* requireAccess(transaction, ["closing_inventories"]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "declare_closing_inventory",
-        principal.actorId,
-        yield* toJsonObject({ periodId: command.periodId, input: command.input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "declare_closing_inventory",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ periodId: command.periodId, input: command.input }),
+        },
         InventorySchema,
-      );
+        Effect.gen(function* () {
+          yield* requireSyntheticProfile(transaction, command.scope.bookId);
 
-      if (request.previous) return request.previous;
-      yield* requireSyntheticProfile(transaction, command.scope.bookId);
-
-      if (
-        (yield* ClosingDb.readPeriod(transaction, command.scope.bookId, command.periodId, "update"))
-          .length === 0
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const declared = command.input.families;
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(
-        input,
-        declared === undefined ? [...bankInventoryInputKeys] : [...inventoryInputKeys],
-      );
-      yield* requireDeclaredAccounts(
-        transaction,
-        command.scope.bookId,
-        command.input.bankAccountIds,
-      );
-
-      const evidence = (yield* ClosingDb.readEvidence(
-        transaction,
-        command.scope.bookId,
-        command.input.evidenceId,
-      ))[0];
-
-      if (!evidence) return yield* failure("MissingEvidence");
-      const today = calendarDate((yield* isoNow(transaction)).slice(0, 10));
-
-      const retained =
-        declared === undefined
-          ? null
-          : yield* retainFamilies(
+          if (
+            (yield* ClosingDb.readPeriod(
               transaction,
               command.scope.bookId,
-              declared,
-              today ?? new Date(0),
-            );
+              command.periodId,
+              "update",
+            )).length === 0
+          ) {
+            return yield* failure("NotFound");
+          }
 
-      const revision = (yield* ClosingDb.readNextInventoryOrdinal(
-        transaction,
-        command.scope.bookId,
-        command.periodId,
-      ))[0]?.ordinal;
+          const declared = command.input.families;
 
-      if (revision === undefined) return yield* failure("InternalError");
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(
+            input,
+            declared === undefined ? [...bankInventoryInputKeys] : [...inventoryInputKeys],
+          );
+          yield* requireDeclaredAccounts(
+            transaction,
+            command.scope.bookId,
+            command.input.bankAccountIds,
+          );
 
-      if (BigInt(revision) > maximumInventoryOrdinal) return yield* unsupported();
-      const id = newId("closing_inventory");
+          const evidence = (yield* ClosingDb.readEvidence(
+            transaction,
+            command.scope.bookId,
+            command.input.evidenceId,
+          ))[0];
 
-      const base: JsonObject = {
-        ...withoutFields(input, ["families"]),
-        id,
-        evidenceSha256: evidence.sha256,
-        actorId: principal.actorId,
-        declaredAt: yield* isoNow(transaction),
-        revision,
-        coverage:
-          retained === null ? "synthetic_bank_sources_only" : "synthetic_family_inventory_v1",
-      };
+          if (!evidence) return yield* failure("MissingEvidence");
 
-      const body = yield* toJsonObject(
-        retained === null ? base : Object.assign({}, base, { families: retained }),
+          const today = calendarDate((yield* isoNow(transaction)).slice(0, 10));
+
+          const retained =
+            declared === undefined
+              ? null
+              : yield* retainFamilies(
+                  transaction,
+                  command.scope.bookId,
+                  declared,
+                  today ?? new Date(0),
+                );
+
+          const revision = (yield* ClosingDb.readNextInventoryOrdinal(
+            transaction,
+            command.scope.bookId,
+            command.periodId,
+          ))[0]?.ordinal;
+
+          if (revision === undefined) return yield* failure("InternalError");
+
+          if (BigInt(revision) > maximumInventoryOrdinal) return yield* unsupported();
+
+          const id = newId("closing_inventory");
+
+          const base: JsonObject = {
+            ...withoutFields(input, ["families"]),
+            id,
+            evidenceSha256: evidence.sha256,
+            actorId: principal.actorId,
+            declaredAt: yield* isoNow(transaction),
+            revision,
+            coverage:
+              retained === null ? "synthetic_bank_sources_only" : "synthetic_family_inventory_v1",
+          };
+
+          const body = yield* toJsonObject(
+            retained === null ? base : Object.assign({}, base, { families: retained }),
+          );
+
+          yield* ClosingDb.insertInventory(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            periodId: command.periodId,
+            ordinal: revision,
+            body,
+          });
+
+          const result = yield* decode(InventorySchema, body);
+
+          return result;
+        }),
       );
-
-      yield* ClosingDb.insertInventory(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        periodId: command.periodId,
-        ordinal: revision,
-        body,
-      });
-      const result = yield* decode(InventorySchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "declare_closing_inventory",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -377,83 +383,84 @@ export const approveProposal = Effect.fn("closing.approveProposal")(function* (
     function* (transaction, principal) {
       yield* requireAccess(transaction, ["closing_approvals"]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_closing",
-        principal.actorId,
-        yield* toJsonObject({ proposalId: command.id, input: command.input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_closing",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ proposalId: command.id, input: command.input }),
+        },
         ApprovalSchema,
+        Effect.gen(function* () {
+          yield* exactKeys(yield* toJsonObject(command.input), ["digest"]);
+
+          const proposal = (yield* ClosingDb.readProposal(
+            transaction,
+            command.scope.bookId,
+            command.id,
+            "update",
+          ))[0];
+
+          if (!proposal) return yield* failure("NotFound");
+
+          if (
+            (yield* ClosingDb.readPeriod(
+              transaction,
+              command.scope.bookId,
+              proposal.periodId,
+              "update",
+            )).length === 0
+          ) {
+            return yield* failure("NotFound");
+          }
+
+          const basis = yield* readCurrentBasis(
+            transaction,
+            command.scope.bookId,
+            proposal.periodId,
+          );
+
+          const captured = proposal.body.basis;
+
+          const current =
+            captured !== undefined &&
+            captured !== null &&
+            (yield* ClosingDb.sameJson(transaction, yield* toJsonObject(captured), basis));
+
+          if (current === false || command.input.digest !== textField(proposal.body, "digest")) {
+            return yield* failure("StaleDependency");
+          }
+
+          const now = yield* Db.readDatabaseTime(transaction);
+
+          const id = newId("closing_approval");
+
+          const expiresAt = new Date(Date.parse(now.now) + approvalWindowMs).toISOString();
+
+          const body = yield* toJsonObject({
+            id,
+            proposalId: command.id,
+            digest: command.input.digest,
+            actorId: principal.actorId,
+            expiresAt,
+          } satisfies JsonObject);
+
+          yield* ClosingDb.insertApproval(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            proposalId: command.id,
+            actorId: principal.actorId,
+            expiresAt,
+            body,
+          });
+
+          const result = yield* decode(ApprovalSchema, body);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* exactKeys(yield* toJsonObject(command.input), ["digest"]);
-
-      const proposal = (yield* ClosingDb.readProposal(
-        transaction,
-        command.scope.bookId,
-        command.id,
-        "update",
-      ))[0];
-
-      if (!proposal) return yield* failure("NotFound");
-
-      if (
-        (yield* ClosingDb.readPeriod(
-          transaction,
-          command.scope.bookId,
-          proposal.periodId,
-          "update",
-        )).length === 0
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const basis = yield* readCurrentBasis(transaction, command.scope.bookId, proposal.periodId);
-      const captured = proposal.body.basis;
-
-      const current =
-        captured !== undefined &&
-        captured !== null &&
-        (yield* ClosingDb.sameJson(transaction, yield* toJsonObject(captured), basis));
-
-      if (current === false || command.input.digest !== textField(proposal.body, "digest")) {
-        return yield* failure("StaleDependency");
-      }
-
-      const now = yield* Db.readDatabaseTime(transaction);
-      const id = newId("closing_approval");
-      const expiresAt = new Date(Date.parse(now.now) + approvalWindowMs).toISOString();
-
-      const body = yield* toJsonObject({
-        id,
-        proposalId: command.id,
-        digest: command.input.digest,
-        actorId: principal.actorId,
-        expiresAt,
-      } satisfies JsonObject);
-
-      yield* ClosingDb.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        proposalId: command.id,
-        actorId: principal.actorId,
-        expiresAt,
-        body,
-      });
-      const result = yield* decode(ApprovalSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_closing",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

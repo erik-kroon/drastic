@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/historical-adoptions";
 import * as Domain from "@open-erp/domain/historical-adoptions";
 import * as Effect from "effect/Effect";
@@ -7,7 +8,9 @@ import { decode, withBook, type Scope } from "../commerce/support";
 import { approvalExpiry } from "../commerce/approval";
 import { readHistoricalObligation } from "../commerce/historical-obligations";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readPool, domainPool, checkedAdoption } from "./adoption-basis";
 import { authorize } from "../authority";
 
@@ -45,69 +48,65 @@ export const prepareHistoricalAdoption = Effect.fn("historical.prepareAdoption")
       const { scope, input, idempotencyKey } = command,
         operation = "prepare_historical_adoption";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         Contracts.AdoptionPlan,
-      );
+        Effect.gen(function* () {
+          const pool = yield* readPool(tx, scope, input.poolId);
 
-      if (request.previous) return request.previous;
-      const pool = yield* readPool(tx, scope, input.poolId);
+          if (pool.digest !== input.poolDigest) return yield* failure("StaleDependency");
 
-      if (pool.digest !== input.poolDigest) return yield* failure("StaleDependency");
-      const current = yield* domainPool(tx, scope, pool);
-      const item = pool.sourceItems.find((row) => row.sourceIdentity === input.sourceIdentity);
+          const current = yield* domainPool(tx, scope, pool);
 
-      if (!item) return yield* failure("NotFound");
-      const known = yield* Db.readKnownIdentities(tx, scope.bookId, pool.sourceSystem);
+          const item = pool.sourceItems.find((row) => row.sourceIdentity === input.sourceIdentity);
 
-      const plan = yield* checkedAdoption(
-        Domain.prepareAdoption({
-          pool: current.control,
-          item,
-          fullHistorySelected: pool.basisMode === "full_history",
-          openingSetSelected: pool.basisMode === "opening_set",
-          assignedMinor: current.adoptions.map((row) => row.openingResidualMinor),
-          knownSourceIdentities: known.map((row) => row.sourceIdentity),
-          knownNativeObligationIds: [],
-          nativeObligationId: null,
-          adoptionId: newId("historicaladoption"),
-          liveObligationId: newId("historicalobligation"),
+          if (!item) return yield* failure("NotFound");
+
+          const known = yield* Db.readKnownIdentities(tx, scope.bookId, pool.sourceSystem);
+
+          const plan = yield* checkedAdoption(
+            Domain.prepareAdoption({
+              pool: current.control,
+              item,
+              fullHistorySelected: pool.basisMode === "full_history",
+              openingSetSelected: pool.basisMode === "opening_set",
+              assignedMinor: current.adoptions.map((row) => row.openingResidualMinor),
+              knownSourceIdentities: known.map((row) => row.sourceIdentity),
+              knownNativeObligationIds: [],
+              nativeObligationId: null,
+              adoptionId: newId("historicaladoption"),
+              liveObligationId: newId("historicalobligation"),
+            }),
+          );
+
+          const body = {
+            id: newId("historicalplan"),
+            scope,
+            input,
+            poolVersion: current.version,
+            capturedPool: pool,
+            plan,
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const result = yield* decode(Contracts.AdoptionPlan, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertPlan(tx, scope.bookId, result);
+
+          return result;
         }),
       );
-
-      const body = {
-        id: newId("historicalplan"),
-        scope,
-        input,
-        poolVersion: current.version,
-        capturedPool: pool,
-        plan,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const result = yield* decode(Contracts.AdoptionPlan, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertPlan(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -134,49 +133,41 @@ export const approveHistoricalAdoption = Effect.fn("historical.approveAdoption")
       const { scope, id, input, idempotencyKey } = command,
         operation = "approve_historical_adoption";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { planId: id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { planId: id, input },
+        },
         Contracts.Approval,
+        Effect.gen(function* () {
+          yield* authorize(principal, "approve_historical_adoption");
+          const plan = yield* readAdoptionPlan(tx, scope, id);
+
+          if (plan.digest !== input.digest) return yield* failure("StaleDependency");
+
+          const pool = yield* readPool(tx, scope, plan.input.poolId),
+            current = yield* domainPool(tx, scope, pool);
+
+          if (current.version !== plan.poolVersion) return yield* failure("StaleDependency");
+
+          const result = yield* decode(Contracts.Approval, {
+            id: newId("historicalapproval"),
+            planId: id,
+            planDigest: plan.digest,
+            actorId: principal.actorId,
+            expiresAt: yield* approvalExpiry(tx),
+            createdAt: yield* isoNow(tx),
+          });
+
+          yield* Db.insertApproval(tx, scope.bookId, result);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      yield* authorize(principal, "approve_historical_adoption");
-      const plan = yield* readAdoptionPlan(tx, scope, id);
-
-      if (plan.digest !== input.digest) return yield* failure("StaleDependency");
-
-      const pool = yield* readPool(tx, scope, plan.input.poolId),
-        current = yield* domainPool(tx, scope, pool);
-
-      if (current.version !== plan.poolVersion) return yield* failure("StaleDependency");
-
-      const result = yield* decode(Contracts.Approval, {
-        id: newId("historicalapproval"),
-        planId: id,
-        planDigest: plan.digest,
-        actorId: principal.actorId,
-        expiresAt: yield* approvalExpiry(tx),
-        createdAt: yield* isoNow(tx),
-      });
-
-      yield* Db.insertApproval(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -194,75 +185,72 @@ export const executeHistoricalAdoption = Effect.fn("historical.executeAdoption")
       const { scope, id, input, idempotencyKey } = command,
         operation = "execute_historical_adoption";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { planId: id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { planId: id, input },
+        },
         Contracts.Adoption,
-      );
+        Effect.gen(function* () {
+          const plan = yield* readAdoptionPlan(tx, scope, id);
 
-      if (request.previous) return request.previous;
-      const plan = yield* readAdoptionPlan(tx, scope, id);
+          if (plan.digest !== input.digest) return yield* failure("StaleDependency");
 
-      if (plan.digest !== input.digest) return yield* failure("StaleDependency");
+          if ((yield* Db.readAdoptionForPlan(tx, scope.bookId, id)).length)
+            return yield* failure("AlreadyPosted");
 
-      if ((yield* Db.readAdoptionForPlan(tx, scope.bookId, id)).length)
-        return yield* failure("AlreadyPosted");
+          const pool = yield* readPool(tx, scope, plan.input.poolId),
+            current = yield* domainPool(tx, scope, pool);
 
-      const pool = yield* readPool(tx, scope, plan.input.poolId),
-        current = yield* domainPool(tx, scope, pool);
+          const known = yield* Db.readKnownIdentities(tx, scope.bookId, pool.sourceSystem);
+          yield* checkedAdoption(
+            Domain.assertConservedPoolAssignment(plan.plan, current.control, {
+              poolVersion: current.version,
+              exactReviewedResidualMinor: pool.exactResidualMinor,
+              assignedMinor: current.adoptions.map((row) => row.openingResidualMinor),
+              knownSourceIdentities: known.map((row) => row.sourceIdentity),
+              knownNativeObligationIds: [],
+            }),
+          );
+          const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
 
-      const known = yield* Db.readKnownIdentities(tx, scope.bookId, pool.sourceSystem);
-      yield* checkedAdoption(
-        Domain.assertConservedPoolAssignment(plan.plan, current.control, {
-          poolVersion: current.version,
-          exactReviewedResidualMinor: pool.exactResidualMinor,
-          assignedMinor: current.adoptions.map((row) => row.openingResidualMinor),
-          knownSourceIdentities: known.map((row) => row.sourceIdentity),
-          knownNativeObligationIds: [],
+          if (!row) return yield* failure("ApprovalRequired");
+
+          const approval = yield* decode(Contracts.Approval, row.body);
+
+          if (approval.planId !== plan.id || approval.planDigest !== plan.digest)
+            return yield* failure("ApprovalRequired");
+
+          const item = pool.sourceItems.find(
+            (row) => row.sourceIdentity === plan.plan.sourceIdentity,
+          );
+
+          if (!item) return yield* failure("InternalError");
+
+          const result = yield* decode(Contracts.Adoption, {
+            id: plan.plan.adoptionId,
+            scope,
+            planId: id,
+            poolId: pool.id,
+            sourceIdentity: item.sourceIdentity,
+            liveObligationId: plan.plan.liveObligationId,
+            openingResidualMinor: plan.plan.residualAtCutoverMinor,
+            sourceItem: item,
+            approvalId: approval.id,
+            journalIds: [],
+            glDeltaMinor: "0",
+            createdAt: yield* isoNow(tx),
+          });
+
+          yield* Db.insertAdoption(tx, scope.bookId, pool.sourcePlanId, pool.sourceSystem, result);
+
+          return result;
         }),
       );
-      const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
-
-      if (!row) return yield* failure("ApprovalRequired");
-      const approval = yield* decode(Contracts.Approval, row.body);
-
-      if (approval.planId !== plan.id || approval.planDigest !== plan.digest)
-        return yield* failure("ApprovalRequired");
-      const item = pool.sourceItems.find((row) => row.sourceIdentity === plan.plan.sourceIdentity);
-
-      if (!item) return yield* failure("InternalError");
-
-      const result = yield* decode(Contracts.Adoption, {
-        id: plan.plan.adoptionId,
-        scope,
-        planId: id,
-        poolId: pool.id,
-        sourceIdentity: item.sourceIdentity,
-        liveObligationId: plan.plan.liveObligationId,
-        openingResidualMinor: plan.plan.residualAtCutoverMinor,
-        sourceItem: item,
-        approvalId: approval.id,
-        journalIds: [],
-        glDeltaMinor: "0",
-        createdAt: yield* isoNow(tx),
-      });
-
-      yield* Db.insertAdoption(tx, scope.bookId, pool.sourcePlanId, pool.sourceSystem, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/historical-adoptions";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -8,7 +9,9 @@ import * as SourceDb from "../../db/sie-import";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readPlan, requireStaged } from "./historical-shared";
 import { readOriginalPool, readPool, readRevision, sourceResiduals } from "./adoption-basis";
 import { authorize } from "../authority";
@@ -47,154 +50,146 @@ export const rereviewHistoricalPool = Effect.fn("historical.rereviewPool")(funct
       const { scope, id, input, idempotencyKey } = command;
       const operation = "rereview_historical_pool";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { poolId: id, input },
-        Contracts.PoolRevision,
-      );
-
-      if (request.previous) return request.previous;
-
-      yield* authorize(principal, "rereview_historical_pool");
-      const pool = yield* readPool(tx, scope, id);
-
-      if (pool.digest !== input.expectedPoolDigest) return yield* failure("StaleDependency");
-
-      if ((yield* Db.readAdoptions(tx, scope.bookId, id)).length)
-        return yield* failure("AlreadyPosted");
-      const row = (yield* HistoricalDb.readItems(tx, scope.bookId, input.admissionId))[0];
-
-      if (!row) return yield* failure("NotFound");
-      const admission = yield* decode(Historical.ItemAdmission, row.body);
-
-      if (admission.digest !== input.admissionDigest) return yield* failure("StaleDependency");
-
-      if (admission.id === pool.input.admissionId) return yield* failure("IdempotencyConflict");
-      yield* requireStaged(tx, scope, admission.sourcePlanId);
-      const original = yield* sourceIdentity(tx, scope, pool.sourcePlanId);
-      const reviewed = yield* sourceIdentity(tx, scope, admission.sourcePlanId);
-
-      if (
-        original.source.sha256 !== reviewed.source.sha256 ||
-        original.source.sourceSystem !== reviewed.source.sourceSystem ||
-        (yield* digest(original.plan.input.mappings)) !==
-          (yield* digest(reviewed.plan.input.mappings)) ||
-        (yield* digest(original.plan.input.openingControls)) !==
-          (yield* digest(reviewed.plan.input.openingControls))
-      )
-        return yield* failure("StaleDependency");
-
-      const items = admission.openItems.filter(
-        (item) => item.sourceAccount === pool.input.sourceAccount,
-      );
-
-      const controls = admission.openItemControls.filter(
-        (item) => item.sourceAccount === pool.input.sourceAccount,
-      );
-
-      if (
-        controls.length !== 1 ||
-        controls[0]!.currency !== pool.currency ||
-        items.length !== pool.sourceItems.length ||
-        items.some(
-          (item) =>
-            item.currency !== pool.currency ||
-            item.asOf !== pool.input.cutoverOn ||
-            !pool.sourceItems.some((saved) => saved.sourceIdentity === item.sourceIdentity) ||
-            (pool.input.direction === "AR"
-              ? BigInt(item.outstandingMinor) < 0n
-              : BigInt(item.outstandingMinor) > 0n),
-        )
-      )
-        return yield* failure("UnsupportedProfile");
-
-      const sourceItems = yield* sourceResiduals(
-        admission,
-        items,
-        pool.sourcePlanId,
-        pool.input.direction,
-        pool.currency,
-        pool.controlAccountId,
-      );
-
-      const exact = sourceItems.reduce(
-        (sum, item) =>
-          sum +
-          (item.residualAtCutover.kind === "evidenced"
-            ? BigInt(item.residualAtCutover.amountMinor)
-            : 0n),
-        0n,
-      );
-
-      const signed = pool.input.direction === "AR" ? exact : -exact;
-
-      if (exact <= 0n || signed !== BigInt(controls[0]!.independentOutstandingMinor))
-        return yield* failure("InvalidJournal");
-      const prior = yield* readRevision(tx, scope, id);
-      const createdAt = yield* isoNow(tx);
-
-      const poolBody = {
-        id: pool.id,
-        scope,
-        sourcePlanId: pool.sourcePlanId,
-        sourceSystem: pool.sourceSystem,
-        basisMode: pool.basisMode,
-        controlAccountId: pool.controlAccountId,
-        currency: pool.currency,
-        basisDigest: pool.basisDigest,
-        input: {
-          ...pool.input,
-          admissionId: admission.id,
-          admissionDigest: admission.digest,
-          rationale: input.rationale,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { poolId: id, input },
         },
-        sourceItems,
-        exactResidualMinor: exact.toString(),
-        partitionDigest: yield* digest({
-          admissionDigest: admission.digest,
-          sourceItems,
-          control: controls[0]!,
+        Contracts.PoolRevision,
+        Effect.gen(function* () {
+          yield* authorize(principal, "rereview_historical_pool");
+          const pool = yield* readPool(tx, scope, id);
+
+          if (pool.digest !== input.expectedPoolDigest) return yield* failure("StaleDependency");
+
+          if ((yield* Db.readAdoptions(tx, scope.bookId, id)).length)
+            return yield* failure("AlreadyPosted");
+          const row = (yield* HistoricalDb.readItems(tx, scope.bookId, input.admissionId))[0];
+
+          if (!row) return yield* failure("NotFound");
+          const admission = yield* decode(Historical.ItemAdmission, row.body);
+
+          if (admission.digest !== input.admissionDigest) return yield* failure("StaleDependency");
+
+          if (admission.id === pool.input.admissionId) return yield* failure("IdempotencyConflict");
+          yield* requireStaged(tx, scope, admission.sourcePlanId);
+          const original = yield* sourceIdentity(tx, scope, pool.sourcePlanId);
+          const reviewed = yield* sourceIdentity(tx, scope, admission.sourcePlanId);
+
+          if (
+            original.source.sha256 !== reviewed.source.sha256 ||
+            original.source.sourceSystem !== reviewed.source.sourceSystem ||
+            (yield* digest(original.plan.input.mappings)) !==
+              (yield* digest(reviewed.plan.input.mappings)) ||
+            (yield* digest(original.plan.input.openingControls)) !==
+              (yield* digest(reviewed.plan.input.openingControls))
+          )
+            return yield* failure("StaleDependency");
+
+          const items = admission.openItems.filter(
+            (item) => item.sourceAccount === pool.input.sourceAccount,
+          );
+
+          const controls = admission.openItemControls.filter(
+            (item) => item.sourceAccount === pool.input.sourceAccount,
+          );
+
+          if (
+            controls.length !== 1 ||
+            controls[0]!.currency !== pool.currency ||
+            items.length !== pool.sourceItems.length ||
+            items.some(
+              (item) =>
+                item.currency !== pool.currency ||
+                item.asOf !== pool.input.cutoverOn ||
+                !pool.sourceItems.some((saved) => saved.sourceIdentity === item.sourceIdentity) ||
+                (pool.input.direction === "AR"
+                  ? BigInt(item.outstandingMinor) < 0n
+                  : BigInt(item.outstandingMinor) > 0n),
+            )
+          )
+            return yield* failure("UnsupportedProfile");
+
+          const sourceItems = yield* sourceResiduals(
+            admission,
+            items,
+            pool.sourcePlanId,
+            pool.input.direction,
+            pool.currency,
+            pool.controlAccountId,
+          );
+
+          const exact = sourceItems.reduce(
+            (sum, item) =>
+              sum +
+              (item.residualAtCutover.kind === "evidenced"
+                ? BigInt(item.residualAtCutover.amountMinor)
+                : 0n),
+            0n,
+          );
+
+          const signed = pool.input.direction === "AR" ? exact : -exact;
+
+          if (exact <= 0n || signed !== BigInt(controls[0]!.independentOutstandingMinor))
+            return yield* failure("InvalidJournal");
+          const prior = yield* readRevision(tx, scope, id);
+          const createdAt = yield* isoNow(tx);
+
+          const poolBody = {
+            id: pool.id,
+            scope,
+            sourcePlanId: pool.sourcePlanId,
+            sourceSystem: pool.sourceSystem,
+            basisMode: pool.basisMode,
+            controlAccountId: pool.controlAccountId,
+            currency: pool.currency,
+            basisDigest: pool.basisDigest,
+            input: {
+              ...pool.input,
+              admissionId: admission.id,
+              admissionDigest: admission.digest,
+              rationale: input.rationale,
+            },
+            sourceItems,
+            exactResidualMinor: exact.toString(),
+            partitionDigest: yield* digest({
+              admissionDigest: admission.digest,
+              sourceItems,
+              control: controls[0]!,
+            }),
+            createdBy: principal.actorId,
+            createdAt,
+          };
+
+          const current = yield* decode(Contracts.Pool, {
+            ...poolBody,
+            digest: yield* digest(poolBody),
+          });
+
+          const body = {
+            id: newId("historicalrevision"),
+            poolId: id,
+            ordinal: (prior?.ordinal ?? 0) + 1,
+            input,
+            pool: current,
+            createdBy: principal.actorId,
+            createdAt,
+          };
+
+          const result = yield* decode(Contracts.PoolRevision, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertRevision(tx, scope.bookId, result);
+
+          return result;
         }),
-        createdBy: principal.actorId,
-        createdAt,
-      };
-
-      const current = yield* decode(Contracts.Pool, {
-        ...poolBody,
-        digest: yield* digest(poolBody),
-      });
-
-      const body = {
-        id: newId("historicalrevision"),
-        poolId: id,
-        ordinal: (prior?.ordinal ?? 0) + 1,
-        input,
-        pool: current,
-        createdBy: principal.actorId,
-        createdAt,
-      };
-
-      const result = yield* decode(Contracts.PoolRevision, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertRevision(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
       );
-
-      return result;
     },
     "update",
   );

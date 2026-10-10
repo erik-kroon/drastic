@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import { digest as digestNative } from "./json";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import { calculateVatDraft } from "@open-erp/jurisdiction-se/vat";
@@ -7,7 +8,8 @@ import { failure } from "./failures";
 import { lockBookForUpdate } from "../db/posting";
 import * as VatDb from "../db/vat-return-drafts";
 import type { Transaction } from "../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   exactKeys,
@@ -193,79 +195,72 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_vat_return_draft",
-        principal.actorId,
-        payload,
-        DraftSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireDraftAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(payload, draftInputKeys);
-      yield* requireSupportedMode(command.input);
-      yield* requireOrderedInterval(command.input);
-
-      const periodEvidenceSha256 =
-        command.input.periodEvidenceId === null
-          ? null
-          : ((yield* VatDb.readEvidenceDigest(
-              transaction,
-              command.scope.bookId,
-              command.input.periodEvidenceId,
-            ))[0]?.sha256 ?? null);
-
-      if (command.input.periodEvidenceId !== null && periodEvidenceSha256 === null) {
-        return yield* failure("MissingEvidence");
-      }
-
-      const basis = yield* readBasis(transaction, command.scope.bookId);
-      const calculation = calculateVatDraft(basis, command.input);
-      yield* decode(CalculationSchema, calculation);
-      yield* requireCalculationLineage(basis, calculation, command.input);
-
-      const ordinal = (yield* VatDb.readNextDraftOrdinal(transaction, command.scope.bookId))[0]
-        ?.ordinal;
-
-      if (ordinal === undefined || ordinal > maximumDrafts) return yield* unsupported();
-
-      const body = yield* digestBody({
-        id: newId("vatdraft"),
-        scope: command.scope,
-        input: command.input,
-        basis,
-        calculation,
-        periodEvidenceSha256,
-        recordedAt: yield* isoNow(transaction),
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "prepare_vat_return_draft",
           actorId: principal.actorId,
+          input: payload,
         },
-      });
+        DraftSchema,
+        Effect.gen(function* () {
+          yield* requireDraftAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(payload, draftInputKeys);
+          yield* requireSupportedMode(command.input);
+          yield* requireOrderedInterval(command.input);
 
-      const draft = yield* decode(DraftSchema, body);
-      yield* VatDb.insertDraft(transaction, {
-        bookId: command.scope.bookId,
-        id: draft.id,
-        ordinal,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_vat_return_draft",
-        principal.actorId,
-        draft,
+          const periodEvidenceSha256 =
+            command.input.periodEvidenceId === null
+              ? null
+              : ((yield* VatDb.readEvidenceDigest(
+                  transaction,
+                  command.scope.bookId,
+                  command.input.periodEvidenceId,
+                ))[0]?.sha256 ?? null);
+
+          if (command.input.periodEvidenceId !== null && periodEvidenceSha256 === null) {
+            return yield* failure("MissingEvidence");
+          }
+
+          const basis = yield* readBasis(transaction, command.scope.bookId);
+          const calculation = calculateVatDraft(basis, command.input);
+          yield* decode(CalculationSchema, calculation);
+          yield* requireCalculationLineage(basis, calculation, command.input);
+
+          const ordinal = (yield* VatDb.readNextDraftOrdinal(transaction, command.scope.bookId))[0]
+            ?.ordinal;
+
+          if (ordinal === undefined || ordinal > maximumDrafts) return yield* unsupported();
+
+          const body = yield* digestBody({
+            id: newId("vatdraft"),
+            scope: command.scope,
+            input: command.input,
+            basis,
+            calculation,
+            periodEvidenceSha256,
+            recordedAt: yield* isoNow(transaction),
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "prepare_vat_return_draft",
+              actorId: principal.actorId,
+            },
+          });
+
+          const draft = yield* decode(DraftSchema, body);
+          yield* VatDb.insertDraft(transaction, {
+            bookId: command.scope.bookId,
+            id: draft.id,
+            ordinal,
+            body,
+          });
+
+          return draft;
+        }),
       );
-
-      return draft;
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Credits from "@open-erp/contracts/supplier-credits";
 import * as Refunds from "@open-erp/contracts/supplier-refunds";
@@ -9,17 +10,15 @@ import { failure } from "../failures";
 import * as CreditDb from "../../db/purchases/credits";
 import * as RefundDb from "../../db/purchases/refunds";
 import { liveInvoice } from "../commerce/register";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import {
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   prepareJournalInTransaction,
   approveChangeInTransaction,
   executeChangeInTransaction,
-  validatePlan,
 } from "../posting";
+import { validatePlan } from "../posting-validation";
 import * as Shared from "./shared";
 import * as Recognition from "./recognition";
 import { checkedPaidCredit, paidCreditSnapshot } from "./credit-basis";
@@ -387,95 +386,87 @@ export const preparePaidSupplierCredit = Effect.fn("purchases.refunds.preparePai
       const { scope, input, idempotencyKey } = command,
         operation = "prepare_paid_supplier_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
-        Refunds.PaidSupplierCreditReview,
-      );
-
-      if (request.previous) return request.previous;
-
-      const reviewCount =
-        (yield* CreditDb.countReviews(tx, scope.bookId, input.invoiceId))[0]?.total ??
-        maximumReviews;
-
-      if (reviewCount >= maximumReviews) return yield* failure("InvalidJournal");
-
-      const snapshot = yield* paidCreditSnapshot(tx, scope, input);
-      const id = newId("paid_supplier_credit_review");
-      const lines = paidJournalLines(snapshot);
-
-      if (lines.length < 2) return yield* failure("InvalidJournal");
-
-      const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
-        scope,
-        idempotencyKey: newId("paid_supplier_credit_prepare"),
-        input: {
-          kind: "manual_journal",
-          evidenceId: input.creditEvidenceId,
-          eventKey: `paid_credit_${id}`,
-          accountingPeriodId: input.accountingPeriodId,
-          postingDate: input.creditDate,
-          series: input.series,
-          description: `Paid supplier credit ${input.supplierCreditNumber}`,
-          rationale: input.reason,
-          taxAssessment: "not_applicable",
-          lines: lines.map((line) => ({
-            accountId: line.accountId,
-            debitMinor: line.debitMinor,
-            creditMinor: line.creditMinor,
-            description: line.description,
-          })),
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
         },
-      });
+        Refunds.PaidSupplierCreditReview,
+        Effect.gen(function* () {
+          const reviewCount =
+            (yield* CreditDb.countReviews(tx, scope.bookId, input.invoiceId))[0]?.total ??
+            maximumReviews;
 
-      const body = {
-        id,
-        scope,
-        profile: input.profile,
-        input,
-        snapshot,
-        postingPlan,
-        taxMinor: snapshot.taxMinor,
-        createdAt: yield* isoNow(tx),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
+          if (reviewCount >= maximumReviews) return yield* failure("InvalidJournal");
 
-      const result = yield* Shared.decode(Refunds.PaidSupplierCreditReview, {
-        ...body,
-        digest: yield* digest(body),
-      });
+          const snapshot = yield* paidCreditSnapshot(tx, scope, input);
+          const id = newId("paid_supplier_credit_review");
+          const lines = paidJournalLines(snapshot);
 
-      if (Shared.byteLength(JSON.stringify(result)) > maximumReviewBytes)
-        return yield* failure("InvalidJournal");
-      const action = postingPlan.groups[0]?.actions[0];
+          if (lines.length < 2) return yield* failure("InvalidJournal");
 
-      if (!action) return yield* failure("InternalError");
-      yield* RefundDb.insertPaidReview(
-        tx,
-        scope.bookId,
-        yield* Shared.toJsonObject(result),
-        result.id,
-        input.invoiceId,
-        postingPlan.id,
-        action.eventId,
-        input.creditEvidenceId,
+          const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
+            scope,
+            idempotencyKey: newId("paid_supplier_credit_prepare"),
+            input: {
+              kind: "manual_journal",
+              evidenceId: input.creditEvidenceId,
+              eventKey: `paid_credit_${id}`,
+              accountingPeriodId: input.accountingPeriodId,
+              postingDate: input.creditDate,
+              series: input.series,
+              description: `Paid supplier credit ${input.supplierCreditNumber}`,
+              rationale: input.reason,
+              taxAssessment: "not_applicable",
+              lines: lines.map((line) => ({
+                accountId: line.accountId,
+                debitMinor: line.debitMinor,
+                creditMinor: line.creditMinor,
+                description: line.description,
+              })),
+            },
+          });
+
+          const body = {
+            id,
+            scope,
+            profile: input.profile,
+            input,
+            snapshot,
+            postingPlan,
+            taxMinor: snapshot.taxMinor,
+            createdAt: yield* isoNow(tx),
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const result = yield* Shared.decode(Refunds.PaidSupplierCreditReview, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          if (Shared.byteLength(JSON.stringify(result)) > maximumReviewBytes)
+            return yield* failure("InvalidJournal");
+          const action = postingPlan.groups[0]?.actions[0];
+
+          if (!action) return yield* failure("InternalError");
+          yield* RefundDb.insertPaidReview(
+            tx,
+            scope.bookId,
+            yield* Shared.toJsonObject(result),
+            result.id,
+            input.invoiceId,
+            postingPlan.id,
+            action.eventId,
+            input.creditEvidenceId,
+          );
+
+          return result;
+        }),
       );
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -496,55 +487,50 @@ export const approvePaidSupplierCreditInTransaction = Effect.fn(
     const { scope, reviewId, input, idempotencyKey } = command,
       operation = "approve_paid_supplier_credit";
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       tx,
-      scope,
-      idempotencyKey,
-      operation,
-      principal.actorId,
-      { reviewId, input },
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { reviewId, input },
+      },
       Refunds.PaidSupplierCreditApproval,
+      Effect.gen(function* () {
+        const review = yield* checkedPaidCredit(tx, scope, reviewId, input.digest);
+
+        if (
+          (yield* RefundDb.readPaidApprovals(tx, scope.bookId, reviewId)).length >= maximumApprovals
+        )
+          return yield* failure("InvalidJournal");
+        const now = yield* isoNow(tx);
+
+        const result = yield* Shared.decode(Refunds.PaidSupplierCreditApproval, {
+          id: newId("paid_credit_approval"),
+          scope,
+          reviewId,
+          digest: review.digest,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          createdAt: now,
+          receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+        });
+
+        yield* RefundDb.insertPaidApproval(
+          tx,
+          scope.bookId,
+          yield* Shared.toJsonObject(result),
+          result.id,
+          reviewId,
+          result.actorId,
+          result.digest,
+          result.expiresAt,
+        );
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const review = yield* checkedPaidCredit(tx, scope, reviewId, input.digest);
-
-    if ((yield* RefundDb.readPaidApprovals(tx, scope.bookId, reviewId)).length >= maximumApprovals)
-      return yield* failure("InvalidJournal");
-    const now = yield* isoNow(tx);
-
-    const result = yield* Shared.decode(Refunds.PaidSupplierCreditApproval, {
-      id: newId("paid_credit_approval"),
-      scope,
-      reviewId,
-      digest: review.digest,
-      actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      createdAt: now,
-      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-    });
-
-    yield* RefundDb.insertPaidApproval(
-      tx,
-      scope.bookId,
-      yield* Shared.toJsonObject(result),
-      result.id,
-      reviewId,
-      result.actorId,
-      result.digest,
-      result.expiresAt,
-    );
-    yield* saveCommand(
-      tx,
-      scope,
-      idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      result,
-    );
-
-    return result;
   });
 });
 
@@ -692,148 +678,140 @@ export const executePaidSupplierCredit = Effect.fn("purchases.refunds.executePai
       const { scope, reviewId, input, idempotencyKey } = command,
         operation = "execute_paid_supplier_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId, input },
+        },
         Refunds.PaidSupplierCreditReceipt,
+        Effect.gen(function* () {
+          const review = yield* checkedPaidCredit(tx, scope, reviewId, input.digest);
+
+          const row = (yield* RefundDb.readPaidApprovals(tx, scope.bookId, reviewId)).find(
+            (candidate) => candidate.id === input.approvalId,
+          );
+
+          if (!row) return yield* failure("ApprovalRequired");
+          const approval = yield* Shared.decode(Refunds.PaidSupplierCreditApproval, row.body);
+
+          if (
+            approval.actorId !== principal.actorId ||
+            approval.digest !== review.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
+          )
+            return yield* failure("ApprovalRequired");
+
+          const kernel = yield* approveChangeInTransaction(tx, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("paid_credit_approve"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest },
+          });
+
+          const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("paid_credit_post"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
+            owner: { kind: "supplier_credit", id: reviewId },
+          });
+
+          const invoice = review.snapshot.invoice;
+
+          const controlLine = findPaidControlLine(review);
+
+          if (!controlLine) return yield* failure("InternalError");
+
+          const owned = yield* recordPaidRecognition(tx, scope, principal, review, approval, {
+            postingReceipt,
+            idempotencyKey,
+            operation,
+            reviewId,
+          });
+
+          const createdAt = yield* isoNow(tx);
+
+          const body = {
+            id: newId("paid_supplier_credit"),
+            scope,
+            reviewId,
+            reviewDigest: review.digest,
+            approvalId: approval.id,
+            invoiceId: review.input.invoiceId,
+            supplierCreditNumber: review.input.supplierCreditNumber,
+            creditDate: review.input.creditDate,
+            amountMinor: review.input.amountMinor,
+            taxMinor: review.taxMinor,
+            recognitionId: owned?.id ?? null,
+            taxFactIds: owned?.taxFactIds ?? [],
+            originalAllocatedMinor: review.snapshot.paid.positionBefore.paidMinor,
+            outstandingAfterMinor: review.snapshot.paid.unpaidAfterMinor,
+            postingReceipt,
+            creditEvidence: review.snapshot.creditEvidence,
+            status: "credited",
+            paid: true,
+            apReleaseMinor: review.snapshot.paid.apReleaseMinor,
+            refundPrincipalIncreaseMinor: review.snapshot.paid.refundPrincipalIncreaseMinor,
+            refundReceivableAccountId: review.snapshot.paid.refundReceivableAccountId,
+            unpaidAfterMinor: review.snapshot.paid.unpaidAfterMinor,
+            refundPrincipalAfterMinor: review.snapshot.paid.refundPrincipalAfterMinor,
+            createdAt,
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const result = yield* Shared.decode(Refunds.PaidSupplierCreditReceipt, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* CreditDb.insertCredit(
+            tx,
+            scope.bookId,
+            result,
+            invoice.counterpartyId,
+            controlLine.lineId,
+          );
+
+          const increaseBody = {
+            id: newId("refund_principal_increase"),
+            scope,
+            creditId: result.id,
+            invoiceId: review.input.invoiceId,
+            apReleaseMinor: review.snapshot.paid.apReleaseMinor,
+            refundIncreaseMinor: review.snapshot.paid.refundPrincipalIncreaseMinor,
+            refundReceivableAccountId: review.snapshot.paid.refundReceivableAccountId,
+            creditDate: review.input.creditDate,
+            createdAt,
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const increaseDigest = yield* digest(increaseBody);
+
+          yield* RefundDb.insertPrincipalIncrease(
+            tx,
+            scope.bookId,
+            increaseBody.id,
+            result.id,
+            review.input.invoiceId,
+            review.snapshot.paid.apReleaseMinor,
+            review.snapshot.paid.refundPrincipalIncreaseMinor,
+            review.snapshot.paid.refundReceivableAccountId,
+            yield* Shared.toJsonObject({ ...increaseBody, digest: increaseDigest }),
+            increaseDigest,
+            createdAt,
+          );
+
+          // Conservation: the live paid position must equal the sealed
+          // position-after, or a concurrent payment, credit or refund moved it.
+          yield* checkPaidConservation(tx, scope, review);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const review = yield* checkedPaidCredit(tx, scope, reviewId, input.digest);
-
-      const row = (yield* RefundDb.readPaidApprovals(tx, scope.bookId, reviewId)).find(
-        (candidate) => candidate.id === input.approvalId,
-      );
-
-      if (!row) return yield* failure("ApprovalRequired");
-      const approval = yield* Shared.decode(Refunds.PaidSupplierCreditApproval, row.body);
-
-      if (
-        approval.actorId !== principal.actorId ||
-        approval.digest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
-      )
-        return yield* failure("ApprovalRequired");
-
-      const kernel = yield* approveChangeInTransaction(tx, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("paid_credit_approve"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest },
-      });
-
-      const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("paid_credit_post"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
-        owner: { kind: "supplier_credit", id: reviewId },
-      });
-
-      const invoice = review.snapshot.invoice;
-
-      const controlLine = findPaidControlLine(review);
-
-      if (!controlLine) return yield* failure("InternalError");
-
-      const owned = yield* recordPaidRecognition(tx, scope, principal, review, approval, {
-        postingReceipt,
-        idempotencyKey,
-        operation,
-        reviewId,
-      });
-
-      const createdAt = yield* isoNow(tx);
-
-      const body = {
-        id: newId("paid_supplier_credit"),
-        scope,
-        reviewId,
-        reviewDigest: review.digest,
-        approvalId: approval.id,
-        invoiceId: review.input.invoiceId,
-        supplierCreditNumber: review.input.supplierCreditNumber,
-        creditDate: review.input.creditDate,
-        amountMinor: review.input.amountMinor,
-        taxMinor: review.taxMinor,
-        recognitionId: owned?.id ?? null,
-        taxFactIds: owned?.taxFactIds ?? [],
-        originalAllocatedMinor: review.snapshot.paid.positionBefore.paidMinor,
-        outstandingAfterMinor: review.snapshot.paid.unpaidAfterMinor,
-        postingReceipt,
-        creditEvidence: review.snapshot.creditEvidence,
-        status: "credited",
-        paid: true,
-        apReleaseMinor: review.snapshot.paid.apReleaseMinor,
-        refundPrincipalIncreaseMinor: review.snapshot.paid.refundPrincipalIncreaseMinor,
-        refundReceivableAccountId: review.snapshot.paid.refundReceivableAccountId,
-        unpaidAfterMinor: review.snapshot.paid.unpaidAfterMinor,
-        refundPrincipalAfterMinor: review.snapshot.paid.refundPrincipalAfterMinor,
-        createdAt,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const result = yield* Shared.decode(Refunds.PaidSupplierCreditReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* CreditDb.insertCredit(
-        tx,
-        scope.bookId,
-        result,
-        invoice.counterpartyId,
-        controlLine.lineId,
-      );
-
-      const increaseBody = {
-        id: newId("refund_principal_increase"),
-        scope,
-        creditId: result.id,
-        invoiceId: review.input.invoiceId,
-        apReleaseMinor: review.snapshot.paid.apReleaseMinor,
-        refundIncreaseMinor: review.snapshot.paid.refundPrincipalIncreaseMinor,
-        refundReceivableAccountId: review.snapshot.paid.refundReceivableAccountId,
-        creditDate: review.input.creditDate,
-        createdAt,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const increaseDigest = yield* digest(increaseBody);
-
-      yield* RefundDb.insertPrincipalIncrease(
-        tx,
-        scope.bookId,
-        increaseBody.id,
-        result.id,
-        review.input.invoiceId,
-        review.snapshot.paid.apReleaseMinor,
-        review.snapshot.paid.refundPrincipalIncreaseMinor,
-        review.snapshot.paid.refundReceivableAccountId,
-        yield* Shared.toJsonObject({ ...increaseBody, digest: increaseDigest }),
-        increaseDigest,
-        createdAt,
-      );
-
-      // Conservation: the live paid position must equal the sealed
-      // position-after, or a concurrent payment, credit or refund moved it.
-      yield* checkPaidConservation(tx, scope, review);
-
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -1081,95 +1059,87 @@ export const prepareSupplierRefund = Effect.fn("purchases.refunds.prepareRefund"
       const { scope, input, idempotencyKey } = command,
         operation = "prepare_supplier_refund";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         Refunds.SupplierRefundReview,
+        Effect.gen(function* () {
+          const reviewCount =
+            (yield* RefundDb.readRefundReviewCount(tx, scope.bookId, input.invoiceId))[0]?.total ??
+            maximumReviews;
+
+          if (reviewCount >= maximumReviews) return yield* failure("InvalidJournal");
+
+          const plan = yield* refundPlan(tx, scope, input);
+          const id = newId("supplier_refund_review");
+
+          const postingPlan =
+            plan.journal === null
+              ? null
+              : yield* prepareJournalInTransaction(tx, principal, {
+                  scope,
+                  idempotencyKey: newId("supplier_refund_prepare"),
+                  input: {
+                    kind: "manual_journal",
+                    evidenceId: input.refundEvidenceId,
+                    eventKey: `supplier_refund_${id}`,
+                    accountingPeriodId: input.accountingPeriodId,
+                    postingDate: input.refundDate,
+                    series: input.series,
+                    description: `Supplier refund ${input.amountMinor}`,
+                    rationale: input.reason,
+                    taxAssessment: "not_applicable",
+                    lines: plan.journal.map((line) => ({
+                      accountId: line.accountId,
+                      debitMinor: line.debitMinor,
+                      creditMinor: line.creditMinor,
+                      description: line.description,
+                    })),
+                  },
+                });
+
+          const body = {
+            id,
+            scope,
+            input,
+            snapshot: plan.snapshot,
+            postingPlan,
+            createdAt: yield* isoNow(tx),
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const result = yield* Shared.decode(Refunds.SupplierRefundReview, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          if (Shared.byteLength(JSON.stringify(result)) > maximumReviewBytes)
+            return yield* failure("InvalidJournal");
+
+          const action = postingPlan?.groups[0]?.actions[0];
+
+          if (postingPlan !== null && !action) return yield* failure("InternalError");
+
+          yield* RefundDb.insertRefundReview(
+            tx,
+            scope.bookId,
+            yield* Shared.toJsonObject(result),
+            result.id,
+            input.invoiceId,
+            postingPlan?.id ?? null,
+            action?.eventId ?? null,
+            input.refundEvidenceId,
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const reviewCount =
-        (yield* RefundDb.readRefundReviewCount(tx, scope.bookId, input.invoiceId))[0]?.total ??
-        maximumReviews;
-
-      if (reviewCount >= maximumReviews) return yield* failure("InvalidJournal");
-
-      const plan = yield* refundPlan(tx, scope, input);
-      const id = newId("supplier_refund_review");
-
-      const postingPlan =
-        plan.journal === null
-          ? null
-          : yield* prepareJournalInTransaction(tx, principal, {
-              scope,
-              idempotencyKey: newId("supplier_refund_prepare"),
-              input: {
-                kind: "manual_journal",
-                evidenceId: input.refundEvidenceId,
-                eventKey: `supplier_refund_${id}`,
-                accountingPeriodId: input.accountingPeriodId,
-                postingDate: input.refundDate,
-                series: input.series,
-                description: `Supplier refund ${input.amountMinor}`,
-                rationale: input.reason,
-                taxAssessment: "not_applicable",
-                lines: plan.journal.map((line) => ({
-                  accountId: line.accountId,
-                  debitMinor: line.debitMinor,
-                  creditMinor: line.creditMinor,
-                  description: line.description,
-                })),
-              },
-            });
-
-      const body = {
-        id,
-        scope,
-        input,
-        snapshot: plan.snapshot,
-        postingPlan,
-        createdAt: yield* isoNow(tx),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const result = yield* Shared.decode(Refunds.SupplierRefundReview, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      if (Shared.byteLength(JSON.stringify(result)) > maximumReviewBytes)
-        return yield* failure("InvalidJournal");
-
-      const action = postingPlan?.groups[0]?.actions[0];
-
-      if (postingPlan !== null && !action) return yield* failure("InternalError");
-
-      yield* RefundDb.insertRefundReview(
-        tx,
-        scope.bookId,
-        yield* Shared.toJsonObject(result),
-        result.id,
-        input.invoiceId,
-        postingPlan?.id ?? null,
-        action?.eventId ?? null,
-        input.refundEvidenceId,
-      );
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -1190,57 +1160,51 @@ export const approveSupplierRefundInTransaction = Effect.fn(
     const { scope, reviewId, input, idempotencyKey } = command,
       operation = "approve_supplier_refund";
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       tx,
-      scope,
-      idempotencyKey,
-      operation,
-      principal.actorId,
-      { reviewId, input },
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { reviewId, input },
+      },
       Refunds.SupplierRefundApproval,
+      Effect.gen(function* () {
+        const review = yield* checkedRefund(tx, scope, reviewId, input.digest);
+
+        if (
+          (yield* RefundDb.readRefundApprovals(tx, scope.bookId, reviewId)).length >=
+          maximumApprovals
+        )
+          return yield* failure("InvalidJournal");
+        const now = yield* isoNow(tx);
+
+        const result = yield* Shared.decode(Refunds.SupplierRefundApproval, {
+          id: newId("supplier_refund_approval"),
+          scope,
+          reviewId,
+          digest: review.digest,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          createdAt: now,
+          receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+        });
+
+        yield* RefundDb.insertRefundApproval(
+          tx,
+          scope.bookId,
+          yield* Shared.toJsonObject(result),
+          result.id,
+          reviewId,
+          result.actorId,
+          result.digest,
+          result.expiresAt,
+        );
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const review = yield* checkedRefund(tx, scope, reviewId, input.digest);
-
-    if (
-      (yield* RefundDb.readRefundApprovals(tx, scope.bookId, reviewId)).length >= maximumApprovals
-    )
-      return yield* failure("InvalidJournal");
-    const now = yield* isoNow(tx);
-
-    const result = yield* Shared.decode(Refunds.SupplierRefundApproval, {
-      id: newId("supplier_refund_approval"),
-      scope,
-      reviewId,
-      digest: review.digest,
-      actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      createdAt: now,
-      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-    });
-
-    yield* RefundDb.insertRefundApproval(
-      tx,
-      scope.bookId,
-      yield* Shared.toJsonObject(result),
-      result.id,
-      reviewId,
-      result.actorId,
-      result.digest,
-      result.expiresAt,
-    );
-    yield* saveCommand(
-      tx,
-      scope,
-      idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      result,
-    );
-
-    return result;
   });
 });
 
@@ -1301,141 +1265,133 @@ export const executeSupplierRefund = Effect.fn("purchases.refunds.executeRefund"
       const { scope, reviewId, input, idempotencyKey } = command,
         operation = "execute_supplier_refund";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId, input },
+        },
         Refunds.SupplierRefundReceipt,
+        Effect.gen(function* () {
+          const review = yield* checkedRefund(tx, scope, reviewId, input.digest);
+
+          const row = (yield* RefundDb.readRefundApprovals(tx, scope.bookId, reviewId)).find(
+            (candidate) => candidate.id === input.approvalId,
+          );
+
+          if (!row) return yield* failure("ApprovalRequired");
+          const approval = yield* Shared.decode(Refunds.SupplierRefundApproval, row.body);
+
+          if (
+            approval.actorId !== principal.actorId ||
+            approval.digest !== review.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
+          )
+            return yield* failure("ApprovalRequired");
+
+          // A refund receipt posts no expense reversal and no additional VAT
+          // credit: cash against the refund receivable, or nothing when the
+          // receipt adopts an already posted refund-control credit.
+          const plan = review.postingPlan;
+
+          const postingReceipt =
+            plan === null
+              ? null
+              : yield* Effect.gen(function* () {
+                  const kernel = yield* approveChangeInTransaction(tx, principal, {
+                    scope,
+                    changeSetId: plan.id,
+                    idempotencyKey: newId("supplier_refund_approve"),
+                    input: { version: 1, planDigest: plan.planDigest },
+                  });
+
+                  return yield* executeChangeInTransaction(tx, principal, {
+                    scope,
+                    changeSetId: plan.id,
+                    idempotencyKey: newId("supplier_refund_post"),
+                    input: {
+                      version: 1,
+                      planDigest: plan.planDigest,
+                      approvalId: kernel.id,
+                    },
+                    owner: { kind: "supplier_refund", id: reviewId },
+                  });
+                });
+
+          const createdAt = yield* isoNow(tx);
+
+          const body = {
+            id: newId("supplier_refund"),
+            scope,
+            reviewId,
+            reviewDigest: review.digest,
+            approvalId: approval.id,
+            invoiceId: review.input.invoiceId,
+            refundDate: review.input.refundDate,
+            amountMinor: review.input.amountMinor,
+            sourceKind: review.input.source.kind,
+            voucherId: postingReceipt?.voucherId ?? null,
+            adoptedRef: review.snapshot.adoptedRef,
+            postingReceipt,
+            refundEvidence: review.snapshot.refundEvidence,
+            createdAt,
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const result = yield* Shared.decode(Refunds.SupplierRefundReceipt, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* RefundDb.insertRefund(
+            tx,
+            scope.bookId,
+            yield* Shared.toJsonObject(result),
+            result.id,
+            reviewId,
+            approval.id,
+            review.input.invoiceId,
+            review.input.amountMinor,
+            review.input.refundDate,
+            postingReceipt?.voucherId ?? null,
+            review.snapshot.adoptedRef,
+            review.input.source.kind,
+            review.input.refundEvidenceId,
+            result.digest,
+            result.createdAt,
+          );
+
+          let ordinal = 0;
+
+          for (const allocation of review.input.allocations) {
+            ordinal += 1;
+            yield* RefundDb.insertRefundAllocation(
+              tx,
+              scope.bookId,
+              result.id,
+              ordinal,
+              allocation.allocationId,
+              allocation.amountMinor,
+            );
+          }
+
+          yield* RefundDb.insertSourceUsage(
+            tx,
+            scope.bookId,
+            result.id,
+            review.input.source.kind,
+            review.input.source.kind === "unposted_cash" ? review.input.source.bankAccountId : null,
+            review.input.source.kind === "unposted_cash" ? review.input.source.evidenceId : null,
+            review.snapshot.adoptedRef,
+            review.input.amountMinor,
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const review = yield* checkedRefund(tx, scope, reviewId, input.digest);
-
-      const row = (yield* RefundDb.readRefundApprovals(tx, scope.bookId, reviewId)).find(
-        (candidate) => candidate.id === input.approvalId,
-      );
-
-      if (!row) return yield* failure("ApprovalRequired");
-      const approval = yield* Shared.decode(Refunds.SupplierRefundApproval, row.body);
-
-      if (
-        approval.actorId !== principal.actorId ||
-        approval.digest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
-      )
-        return yield* failure("ApprovalRequired");
-
-      // A refund receipt posts no expense reversal and no additional VAT
-      // credit: cash against the refund receivable, or nothing when the
-      // receipt adopts an already posted refund-control credit.
-      const plan = review.postingPlan;
-
-      const postingReceipt =
-        plan === null
-          ? null
-          : yield* Effect.gen(function* () {
-              const kernel = yield* approveChangeInTransaction(tx, principal, {
-                scope,
-                changeSetId: plan.id,
-                idempotencyKey: newId("supplier_refund_approve"),
-                input: { version: 1, planDigest: plan.planDigest },
-              });
-
-              return yield* executeChangeInTransaction(tx, principal, {
-                scope,
-                changeSetId: plan.id,
-                idempotencyKey: newId("supplier_refund_post"),
-                input: {
-                  version: 1,
-                  planDigest: plan.planDigest,
-                  approvalId: kernel.id,
-                },
-                owner: { kind: "supplier_refund", id: reviewId },
-              });
-            });
-
-      const createdAt = yield* isoNow(tx);
-
-      const body = {
-        id: newId("supplier_refund"),
-        scope,
-        reviewId,
-        reviewDigest: review.digest,
-        approvalId: approval.id,
-        invoiceId: review.input.invoiceId,
-        refundDate: review.input.refundDate,
-        amountMinor: review.input.amountMinor,
-        sourceKind: review.input.source.kind,
-        voucherId: postingReceipt?.voucherId ?? null,
-        adoptedRef: review.snapshot.adoptedRef,
-        postingReceipt,
-        refundEvidence: review.snapshot.refundEvidence,
-        createdAt,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const result = yield* Shared.decode(Refunds.SupplierRefundReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* RefundDb.insertRefund(
-        tx,
-        scope.bookId,
-        yield* Shared.toJsonObject(result),
-        result.id,
-        reviewId,
-        approval.id,
-        review.input.invoiceId,
-        review.input.amountMinor,
-        review.input.refundDate,
-        postingReceipt?.voucherId ?? null,
-        review.snapshot.adoptedRef,
-        review.input.source.kind,
-        review.input.refundEvidenceId,
-        result.digest,
-        result.createdAt,
-      );
-
-      let ordinal = 0;
-
-      for (const allocation of review.input.allocations) {
-        ordinal += 1;
-        yield* RefundDb.insertRefundAllocation(
-          tx,
-          scope.bookId,
-          result.id,
-          ordinal,
-          allocation.allocationId,
-          allocation.amountMinor,
-        );
-      }
-
-      yield* RefundDb.insertSourceUsage(
-        tx,
-        scope.bookId,
-        result.id,
-        review.input.source.kind,
-        review.input.source.kind === "unposted_cash" ? review.input.source.bankAccountId : null,
-        review.input.source.kind === "unposted_cash" ? review.input.source.evidenceId : null,
-        review.snapshot.adoptedRef,
-        review.input.amountMinor,
-      );
-
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });

@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
@@ -13,7 +15,6 @@ import {
   bookKey,
   bookPath,
   booksKey,
-  mutationOptions,
   readAccounting,
   requiresNewProposal,
 } from "@/lib/accounting-api";
@@ -37,7 +38,7 @@ export function JournalReview({
     queryKey: [...bookKey(book), "change-set", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/change-sets/${encodeURIComponent(id)}`,
+        (client) => client.accounting.getChange({ params: { ...bookScope(book), id: id } }),
         Accounting.ChangeSet,
         { signal },
       );
@@ -97,7 +98,7 @@ function PlanReview({
 }) {
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [stale, setStale] = useState(false);
   const [operatorApproval, setOperatorApproval] = useState("");
   const base = `${bookPath(book)}/change-sets/${encodeURIComponent(plan.id)}`;
@@ -106,11 +107,7 @@ function PlanReview({
     mutationFn: () => {
       const path = `${base}/validate`;
 
-      return readAccounting(
-        path,
-        Accounting.ValidationReport,
-        mutationOptions(path, "{}", keys.current),
-      );
+      return readAccounting(path, Accounting.ValidationReport, keys.current.options(path, "{}"));
     },
     onError: (error) => {
       if (requiresNewProposal(error)) setStale(true);
@@ -129,7 +126,7 @@ function PlanReview({
       return readAccounting(
         path,
         Accounting.Approval,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onError: (error) => {
@@ -150,7 +147,7 @@ function PlanReview({
       return readAccounting(
         path,
         Accounting.ExecutionReceipt,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: () => {

@@ -1,4 +1,7 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+
 import { useForm } from "@tanstack/react-form";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -11,13 +14,7 @@ import { RecordSection, RecordSummary, RecordFact } from "@open-erp/ui/component
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 export function ConsentDetail({ id }: { id: string }) {
   const { book, setup, locale } = useBookWorkspace();
@@ -68,7 +65,14 @@ export function ConsentDetail({ id }: { id: string }) {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/bank-connector-feeds?consentId=${encodeURIComponent(id)}`,
+        (client) =>
+          client.bankConnector.listConnectorFeeds({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.bankConnector.endpoints.listConnectorFeeds,
+              `consentId=${id}`,
+            ),
+          }),
         Connector.ConnectorFeedInventory,
         { signal },
       );
@@ -274,7 +278,7 @@ function RetainedFeedEvidence({
 function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/bank-connector-consents/${encodeURIComponent(id)}/revoke`;
 
   const save = useMutation({
@@ -282,7 +286,7 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
       const result = await readAccounting(
         path,
         Connector.ConnectorRevocation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (result.consentId !== id) throw new Error("Connector revocation identity mismatch");

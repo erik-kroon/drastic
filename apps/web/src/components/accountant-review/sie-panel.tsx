@@ -1,3 +1,5 @@
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -9,7 +11,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { sieCopy } from "./sie-copy";
 
@@ -23,7 +25,7 @@ export function SiePanel({
   locale: Locale;
 }) {
   const copy = sieCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [id, setId] = useState("");
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
@@ -34,7 +36,7 @@ export function SiePanel({
 
   const prepare = useMutation({
     mutationFn: (input: typeof Sie.PrepareSie.Type) =>
-      readAccounting(path, Sie.SieView, mutationOptions(path, JSON.stringify(input), keys.current)),
+      readAccounting(path, Sie.SieView, keys.current.options(path, JSON.stringify(input))),
     onSuccess: async (view) => {
       if (
         view.capture.scope.bookId !== book.id ||
@@ -110,7 +112,7 @@ export function SiePanel({
               legalNameEvidenceId: values.get("sieEvidence"),
             });
 
-            if (decoded._tag === "None") {
+            if (Option.isNone(decoded)) {
               setError(copy.invalid);
 
               return;

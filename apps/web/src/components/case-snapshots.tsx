@@ -1,4 +1,8 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,7 +14,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { CaseContextPanel } from "@/components/case-context";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { ReviewTarget } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
@@ -94,7 +98,7 @@ function CaptureCases({
   onCaptured: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const capture = useMutation({
@@ -104,7 +108,7 @@ function CaptureCases({
       return readAccounting(
         path,
         Cases.CaseSnapshot,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (snapshot) => onCaptured(snapshot.id),
@@ -123,7 +127,7 @@ function CaptureCases({
           caseId === "" ? {} : { caseId },
         );
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;
@@ -193,7 +197,14 @@ function CapturedCases({
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/case-snapshots/${encodeURIComponent(snapshotId)}/cases?maxItems=50${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.cases.listCases({
+            params: { ...bookScope(book), snapshotId: snapshotId },
+            query: httpQuery(
+              Api.groups.cases.endpoints.listCases,
+              `maxItems=50${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Cases.CasePage,
         { signal },
       );

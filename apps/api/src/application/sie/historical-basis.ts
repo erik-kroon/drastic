@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Effect from "effect/Effect";
@@ -11,11 +12,9 @@ import {
   createEvidenceInTransaction,
   prepareJournalInTransaction,
   executeChangeInTransaction,
-  replay,
-  saveCommand,
-  isoNow,
-  validatePlan,
 } from "../posting";
+import { validatePlan } from "../posting-validation";
+import { isoNow } from "../command-receipts";
 import {
   readBasis,
   readPlan,
@@ -155,29 +154,27 @@ export const selectBasis = Effect.fn("historical.selectBasis")(function* (
     function* (tx, principal) {
       const operation = "select_historical_basis";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
+        },
         Historical.Basis,
-      );
+        Effect.gen(function* () {
+          const result = yield* selectBasisInTransaction(
+            tx,
+            principal,
+            command.scope,
+            command.input,
+          );
 
-      if (request.previous) return request.previous;
-      const result = yield* selectBasisInTransaction(tx, principal, command.scope, command.input);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );
@@ -281,42 +278,35 @@ export const prepareOpening = Effect.fn("historical.prepareOpening")(function* (
     function* (tx, principal) {
       const operation = "prepare_historical_opening";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
+        },
         Historical.OpeningPreparation,
+        Effect.gen(function* () {
+          const proposal = yield* openingProposal(tx, principal, command);
+
+          const basis = yield* selectBasisInTransaction(tx, principal, command.scope, {
+            fiscalYearId: command.input.fiscalYearId,
+            cutoverOn: command.input.cutoverOn,
+            sourcePlanId: command.input.sourcePlanId,
+            sourceDigest: command.input.sourceDigest,
+            controls: command.input.controls,
+            rationale: command.input.rationale,
+            mode: "opening_set",
+            changeSetId: proposal.id,
+          });
+
+          const result = { basis, proposal };
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const proposal = yield* openingProposal(tx, principal, command);
-
-      const basis = yield* selectBasisInTransaction(tx, principal, command.scope, {
-        fiscalYearId: command.input.fiscalYearId,
-        cutoverOn: command.input.cutoverOn,
-        sourcePlanId: command.input.sourcePlanId,
-        sourceDigest: command.input.sourceDigest,
-        controls: command.input.controls,
-        rationale: command.input.rationale,
-        mode: "opening_set",
-        changeSetId: proposal.id,
-      });
-
-      const result = { basis, proposal };
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -333,43 +323,37 @@ export const refreshOpening = Effect.fn("historical.refreshOpening")(function* (
     function* (tx, principal) {
       const operation = "refresh_historical_opening";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { fiscalYearId: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { fiscalYearId: command.id, input: command.input },
+        },
         Historical.OpeningPreparation,
+        Effect.gen(function* () {
+          const basis = yield* readBasis(tx, command.scope, command.id);
+
+          if (basis.mode !== "opening_set" || basis.voucherId)
+            return yield* failure("AlreadyPosted");
+
+          if (basis.changeSetId === null || basis.changeSetId !== command.input.expectedChangeSetId)
+            return yield* failure("StaleDependency");
+
+          const proposal = yield* openingProposal(tx, principal, {
+            ...command,
+            input: { ...basis, ...command.input },
+          });
+
+          const updated = { ...basis, changeSetId: proposal.id };
+          yield* Db.replaceOpening(tx, command.scope.bookId, basis.changeSetId, updated);
+          const result = { basis: updated, proposal };
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const basis = yield* readBasis(tx, command.scope, command.id);
-
-      if (basis.mode !== "opening_set" || basis.voucherId) return yield* failure("AlreadyPosted");
-
-      if (basis.changeSetId === null || basis.changeSetId !== command.input.expectedChangeSetId)
-        return yield* failure("StaleDependency");
-
-      const proposal = yield* openingProposal(tx, principal, {
-        ...command,
-        input: { ...basis, ...command.input },
-      });
-
-      const updated = { ...basis, changeSetId: proposal.id };
-      yield* Db.replaceOpening(tx, command.scope.bookId, basis.changeSetId, updated);
-      const result = { basis: updated, proposal };
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -392,50 +376,42 @@ export const postOpening = Effect.fn("historical.postOpening")(function* (
         approvalId: command.approvalId,
       };
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: payload,
+        },
         Historical.Basis,
+        Effect.gen(function* () {
+          const basis = yield* readBasis(tx, command.scope, command.id);
+
+          if (basis.mode !== "opening_set" || basis.changeSetId === null)
+            return yield* failure("InvalidJournal");
+
+          if (basis.voucherId) return yield* failure("AlreadyPosted");
+
+          const receipt = yield* executeChangeInTransaction(tx, principal, {
+            scope: command.scope,
+            changeSetId: basis.changeSetId,
+            idempotencyKey: `${command.idempotencyKey}_ledger`,
+            input: { version: 1, planDigest: command.planDigest, approvalId: command.approvalId },
+          });
+
+          yield* Db.recordOpening(tx, command.scope.bookId, command.id, receipt.voucherId);
+
+          const result = yield* decode(Historical.Basis, {
+            ...basis,
+            voucherId: receipt.voucherId,
+            ledgerReceipt: receipt,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const basis = yield* readBasis(tx, command.scope, command.id);
-
-      if (basis.mode !== "opening_set" || basis.changeSetId === null)
-        return yield* failure("InvalidJournal");
-
-      if (basis.voucherId) return yield* failure("AlreadyPosted");
-
-      const receipt = yield* executeChangeInTransaction(tx, principal, {
-        scope: command.scope,
-        changeSetId: basis.changeSetId,
-        idempotencyKey: `${command.idempotencyKey}_ledger`,
-        input: { version: 1, planDigest: command.planDigest, approvalId: command.approvalId },
-      });
-
-      yield* Db.recordOpening(tx, command.scope.bookId, command.id, receipt.voucherId);
-
-      const result = yield* decode(Historical.Basis, {
-        ...basis,
-        voucherId: receipt.voucherId,
-        ledgerReceipt: receipt,
-      });
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

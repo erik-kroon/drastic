@@ -1,9 +1,13 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Signoffs from "@open-erp/contracts/bank-signoffs";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import * as SignoffDb from "../../db/banking/signoffs";
 import * as BankDb from "../../db/banking/shared";
 import * as Shared from "./shared";
@@ -125,184 +129,180 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_bank_signoff",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
-        PlanSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeBankProfile(book.profile, book.authority);
-
-      if (
-        !Shared.identifierPattern.test(command.input.coverageReportId) ||
-        !Shared.identifierPattern.test(command.input.reconciliationId)
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const coverage = (yield* SignoffDb.readCoverage(
-        transaction,
-        command.scope.bookId,
-        command.input.coverageReportId,
-      ))[0];
-
-      if (!coverage) return yield* failure("NotFound");
-
-      const report = (yield* SignoffDb.readCapacityReconciliation(
-        transaction,
-        command.scope.bookId,
-        command.input.reconciliationId,
-      ))[0];
-
-      if (!report) return yield* failure("NotFound");
-
-      if (
-        (yield* SignoffDb.readSignoffPlanCount(transaction, command.scope.bookId))[0]!.total >= 200
-      ) {
-        return yield* Shared.unsupported();
-      }
-
-      const dependencyDigest = (yield* BankDb.readCoverageDependencyDigest(
-        transaction,
-        command.scope.bookId,
-        coverage.inventoryId,
-      ))[0]?.digest;
-
-      if (dependencyDigest === undefined || dependencyDigest === null) {
-        return yield* Shared.unsupported();
-      }
-
-      if (dependencyDigest !== Shared.textField(coverage.body, "dependencyDigest")) {
-        return yield* failure("StaleDependency");
-      }
-
-      const accountCandidate = Shared.arrayField(coverage.body, "accounts").find(
-        (candidate) => Shared.textField(candidate, "accountId") === report.accountId,
-      );
-
-      if (
-        !Shared.isJsonObject(accountCandidate) ||
-        !coverageAccountIsComplete(accountCandidate, coverage.body)
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const account = accountCandidate;
-
-      const startsOn = Shared.textField(report.body, "startsOn");
-      const endsOn = Shared.textField(report.body, "endsOn");
-
-      if (startsOn === undefined || endsOn === undefined) return yield* failure("StaleDependency");
-
-      const accountSequence =
-        (yield* SignoffDb.readAccountLedgerSequence(
-          transaction,
-          command.scope.bookId,
-          report.accountId,
-          endsOn,
-        ))[0]?.sequence ?? "0";
-
-      const coverageInput = Shared.objectField(coverage.body, "input");
-      const checkpoint = Shared.objectField(report.body, "checkpoint");
-
-      if (
-        startsOn !== Shared.textField(coverageInput, "startsOn") ||
-        endsOn !== Shared.textField(coverageInput, "endsOn") ||
-        Shared.textField(report.body, "currency") !== book.currency ||
-        report.body.currencyScale !== book.currencyScale ||
-        Shared.textField(checkpoint, "sequence") !== Shared.textField(coverage.body, "sequence") ||
-        Shared.textField(checkpoint, "sourceRevision") !==
-          Shared.textField(account, "sourceRevision") ||
-        Shared.textField(report.body, "accountLedgerSequence") !== accountSequence
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (!resolutionIsComplete(report.body, account)) return yield* failure("InvalidJournal");
-
-      const statementBasis = Shared.arrayField(account, "statements")
-        .map((statement) => Shared.objectField(statement, "statement"))
-        .sort((left, right) =>
-          (Shared.textField(left, "id") ?? "") < (Shared.textField(right, "id") ?? "") ? -1 : 1,
-        );
-
-      const reportStatements = Shared.arrayField(report.body, "statements")
-        .filter(Shared.isJsonObject)
-        .sort((left, right) => ((left.id ?? "") < (right.id ?? "") ? -1 : 1));
-
-      const statementDigestSource = yield* Shared.toJsonObject({ statements: statementBasis });
-
-      if (!Shared.sameJson(statementBasis, reportStatements)) {
-        return yield* failure("StaleDependency");
-      }
-
-      const inventory = Shared.objectField(coverage.body, "inventory");
-
-      const body = Object.assign(
-        {},
         {
-          id: newId("banksignoff"),
-          version: 1,
           scope: command.scope,
-          input: command.input,
-          accountId: report.accountId,
-          startsOn,
-          endsOn,
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          basis: {
-            inventoryId: coverage.inventoryId,
-            inventoryDigest: yield* digest(inventory),
-            coverageDigest: Shared.textField(coverage.body, "digest") ?? "",
-            reconciliationDigest: yield* digest(report.body),
-            statementDigest: yield* digest(statementDigestSource),
-            allocationDigest: yield* digest({
-              matches: report.body.matches ?? null,
-              allocations: report.body.allocations ?? null,
-            }),
-            dependencyDigest,
-            sourceRevision: Shared.textField(account, "sourceRevision") ?? "0",
-            ledgerSequence: book.committedSequence,
-            accountLedgerSequence: accountSequence,
-            checkVersion: "bank_signoff_v1",
-          } satisfies JsonObject,
-          reviewScope: "selected_declared_bank_account",
-          coverage: "not_established",
-          financialCloseReady: false,
-          createdAt: yield* isoNow(transaction),
-          receipt: Shared.receipt(
-            command.idempotencyKey,
-            "prepare_bank_signoff",
-            principal.actorId,
-          ),
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_bank_signoff",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
         },
-      ) satisfies JsonObject;
+        PlanSchema,
+        Effect.gen(function* () {
+          yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
-      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
-      const plan = yield* Shared.decode(PlanSchema, sealed);
-      yield* SignoffDb.insertSignoffPlan(transaction, {
-        bookId: command.scope.bookId,
-        id: plan.id,
-        coverageReportId: coverage.id,
-        reconciliationId: report.id,
-        body: sealed,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_bank_signoff",
-        principal.actorId,
-        yield* Shared.toJsonObject(plan),
+          if (
+            !Shared.identifierPattern.test(command.input.coverageReportId) ||
+            !Shared.identifierPattern.test(command.input.reconciliationId)
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const coverage = (yield* SignoffDb.readCoverage(
+            transaction,
+            command.scope.bookId,
+            command.input.coverageReportId,
+          ))[0];
+
+          if (!coverage) return yield* failure("NotFound");
+
+          const report = (yield* SignoffDb.readCapacityReconciliation(
+            transaction,
+            command.scope.bookId,
+            command.input.reconciliationId,
+          ))[0];
+
+          if (!report) return yield* failure("NotFound");
+
+          if (
+            (yield* SignoffDb.readSignoffPlanCount(transaction, command.scope.bookId))[0]!.total >=
+            200
+          ) {
+            return yield* Shared.unsupported();
+          }
+
+          const dependencyDigest = (yield* BankDb.readCoverageDependencyDigest(
+            transaction,
+            command.scope.bookId,
+            coverage.inventoryId,
+          ))[0]?.digest;
+
+          if (dependencyDigest === undefined || dependencyDigest === null) {
+            return yield* Shared.unsupported();
+          }
+
+          if (dependencyDigest !== Shared.textField(coverage.body, "dependencyDigest")) {
+            return yield* failure("StaleDependency");
+          }
+
+          const accountCandidate = Shared.arrayField(coverage.body, "accounts").find(
+            (candidate) => Shared.textField(candidate, "accountId") === report.accountId,
+          );
+
+          if (
+            !Shared.isJsonObject(accountCandidate) ||
+            !coverageAccountIsComplete(accountCandidate, coverage.body)
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const account = accountCandidate;
+
+          const startsOn = Shared.textField(report.body, "startsOn");
+          const endsOn = Shared.textField(report.body, "endsOn");
+
+          if (startsOn === undefined || endsOn === undefined)
+            return yield* failure("StaleDependency");
+
+          const accountSequence =
+            (yield* SignoffDb.readAccountLedgerSequence(
+              transaction,
+              command.scope.bookId,
+              report.accountId,
+              endsOn,
+            ))[0]?.sequence ?? "0";
+
+          const coverageInput = Shared.objectField(coverage.body, "input");
+          const checkpoint = Shared.objectField(report.body, "checkpoint");
+
+          if (
+            startsOn !== Shared.textField(coverageInput, "startsOn") ||
+            endsOn !== Shared.textField(coverageInput, "endsOn") ||
+            Shared.textField(report.body, "currency") !== book.currency ||
+            report.body.currencyScale !== book.currencyScale ||
+            Shared.textField(checkpoint, "sequence") !==
+              Shared.textField(coverage.body, "sequence") ||
+            Shared.textField(checkpoint, "sourceRevision") !==
+              Shared.textField(account, "sourceRevision") ||
+            Shared.textField(report.body, "accountLedgerSequence") !== accountSequence
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          if (!resolutionIsComplete(report.body, account)) return yield* failure("InvalidJournal");
+
+          const statementBasis = Shared.arrayField(account, "statements")
+            .map((statement) => Shared.objectField(statement, "statement"))
+            .sort((left, right) =>
+              (Shared.textField(left, "id") ?? "") < (Shared.textField(right, "id") ?? "") ? -1 : 1,
+            );
+
+          const reportStatements = Shared.arrayField(report.body, "statements")
+            .filter(Shared.isJsonObject)
+            .sort((left, right) => ((left.id ?? "") < (right.id ?? "") ? -1 : 1));
+
+          const statementDigestSource = yield* Shared.toJsonObject({ statements: statementBasis });
+
+          if (!Shared.sameJson(statementBasis, reportStatements)) {
+            return yield* failure("StaleDependency");
+          }
+
+          const inventory = Shared.objectField(coverage.body, "inventory");
+
+          const body = Object.assign(
+            {},
+            {
+              id: newId("banksignoff"),
+              version: 1,
+              scope: command.scope,
+              input: command.input,
+              accountId: report.accountId,
+              startsOn,
+              endsOn,
+              currency: book.currency,
+              currencyScale: book.currencyScale,
+              basis: {
+                inventoryId: coverage.inventoryId,
+                inventoryDigest: yield* digest(inventory),
+                coverageDigest: Shared.textField(coverage.body, "digest") ?? "",
+                reconciliationDigest: yield* digest(report.body),
+                statementDigest: yield* digest(statementDigestSource),
+                allocationDigest: yield* digest({
+                  matches: report.body.matches ?? null,
+                  allocations: report.body.allocations ?? null,
+                }),
+                dependencyDigest,
+                sourceRevision: Shared.textField(account, "sourceRevision") ?? "0",
+                ledgerSequence: book.committedSequence,
+                accountLedgerSequence: accountSequence,
+                checkVersion: "bank_signoff_v1",
+              } satisfies JsonObject,
+              reviewScope: "selected_declared_bank_account",
+              coverage: "not_established",
+              financialCloseReady: false,
+              createdAt: yield* isoNow(transaction),
+              receipt: Shared.receipt(
+                command.idempotencyKey,
+                "prepare_bank_signoff",
+                principal.actorId,
+              ),
+            },
+          ) satisfies JsonObject;
+
+          const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+          const plan = yield* Shared.decode(PlanSchema, sealed);
+          yield* SignoffDb.insertSignoffPlan(transaction, {
+            bookId: command.scope.bookId,
+            id: plan.id,
+            coverageReportId: coverage.id,
+            reconciliationId: report.id,
+            body: sealed,
+          });
+
+          return { receipt: yield* Shared.toJsonObject(plan), result: plan };
+        }),
       );
-
-      return plan;
     }),
   );
 });

@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +11,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -61,7 +63,7 @@ export function BankImport({
   const sourceId = useId();
   const matchesId = useId();
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const imported = useMutation({
@@ -71,7 +73,7 @@ export function BankImport({
       const evidence = await readAccounting(
         evidencePath,
         Accounting.Evidence,
-        mutationOptions(evidencePath, JSON.stringify(draft.evidence), keys.current),
+        keys.current.options(evidencePath, JSON.stringify(draft.evidence)),
       );
 
       const path = `${bookPath(book)}/bank-statements`;
@@ -85,7 +87,7 @@ export function BankImport({
       return readAccounting(
         path,
         Bank.StatementImportReceipt,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: async (receipt) => {
@@ -109,7 +111,7 @@ export function BankImport({
 
     const matchesText = fields.get("matches");
 
-    if (evidence._tag === "None" || !Schema.is(Schema.String)(matchesText)) {
+    if (Option.isNone(evidence) || !Schema.is(Schema.String)(matchesText)) {
       setInputError(copy.bank_invalid);
 
       return;
@@ -124,7 +126,7 @@ export function BankImport({
         onExcessProperty: "error",
       })(JSON.parse(matchesText.trim() || "[]"));
 
-      if (source._tag === "None" || matches._tag === "None") {
+      if (Option.isNone(source) || Option.isNone(matches)) {
         setInputError(copy.bank_invalid);
 
         return;

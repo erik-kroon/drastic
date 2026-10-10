@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
@@ -63,7 +65,11 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoices/${encodeURIComponent(invoice.id)}/payments?${query}`,
+        (client) =>
+          client.commerce.commerceInvoicePayments({
+            params: { ...bookScope(book), id: invoice.id },
+            query: httpQuery(Api.groups.commerce.endpoints.commerceInvoicePayments, `${query}`),
+          }),
         Commerce.InvoicePayments,
         { signal },
       );

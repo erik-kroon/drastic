@@ -1,61 +1,8 @@
 import { Api } from "@open-erp/contracts/api";
-import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
-import { authenticate } from "../auth";
-import * as Firms from "../../../application/firms";
-import { getFirmPortfolio } from "../../../application/firm-portfolio";
+import { FirmOperations } from "../../../application/operations/firms";
+import { operationHandlers } from "../operation-handlers";
 
 export const FirmHandlers = HttpApiBuilder.group(Api, "firms", (handlers) =>
-  handlers
-    .handle("listFirms", () => Effect.flatMap(authenticate, (token) => Firms.listFirms(token)))
-    .handle("getFirm", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => Firms.getFirm(token, { firmId: params.firmId })),
-    )
-    .handle("getFirmPortfolio", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => getFirmPortfolio(token, params)),
-    )
-    .handle("createFirm", ({ headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        Firms.createFirm(token, {
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("saveFirmClient", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        Firms.saveFirmClient(token, {
-          firmId: params.firmId,
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("removeFirmClient", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        Firms.removeFirmClient(token, {
-          firmId: params.firmId,
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("saveFirmMember", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        Firms.saveFirmMember(token, {
-          firmId: params.firmId,
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("saveFirmAccessRequest", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        Firms.saveFirmAccessRequest(token, {
-          firmId: params.firmId,
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    ),
+  handlers.handleAll(operationHandlers(FirmOperations)),
 );

@@ -5,7 +5,8 @@ import type { Transaction } from "../db/transaction";
 import type { VerifiedPrincipal } from "../db/identity";
 import * as Db from "../db/decision-provenance";
 import { failure } from "./failures";
-import { digest, newId } from "./posting";
+import { digest } from "./json";
+import { newId } from "./identifiers";
 import { decode, toJsonObject } from "./purchases/shared";
 
 type Subject = typeof Contract.DecisionSubject.Type;

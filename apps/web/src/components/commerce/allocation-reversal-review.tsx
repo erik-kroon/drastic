@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import type * as Commerce from "@open-erp/contracts/commerce";
@@ -46,7 +47,10 @@ export function CommerceAllocationReversalReview(props: ReviewProps) {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/allocation-reversal-plans/${encodeURIComponent(id)}`,
+        (client) =>
+          client.commerceAllocationReversals.getCommerceAllocationReversal({
+            params: { ...bookScope(book), id: id },
+          }),
         Reversal.CommerceAllocationReversalView,
         { signal },
       );

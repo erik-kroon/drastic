@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Runs from "@open-erp/contracts/payroll-runs";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -20,7 +21,7 @@ export function PayrollRunReview(props: {
   runId: string;
 }) {
   const client = useQueryClient();
-  const [keys] = useState(() => new Map<string, string>());
+  const { current: keys } = useCommandKeys();
   const root = `${bookPath(props.book)}/payroll/runs/${encodeURIComponent(props.runId)}`;
   const queryKey = [...bookKey(props.book), "payroll", "runs", props.runId];
 

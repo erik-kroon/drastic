@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/historical-adoptions";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Domain from "@open-erp/domain/historical-adoptions";
@@ -13,7 +14,9 @@ import * as PartitionsDb from "../../db/sie-partitions";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readBasis, readPlan } from "./historical-shared";
 import { readPartition } from "./partitions";
 
@@ -202,157 +205,159 @@ export const createHistoricalPool = Effect.fn("historical.createPool")(function*
       const { scope, input, idempotencyKey } = command,
         operation = "create_historical_pool";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         Contracts.Pool,
-      );
+        Effect.gen(function* () {
+          const row = (yield* HistoricalDb.readItems(tx, scope.bookId, input.admissionId))[0];
 
-      if (request.previous) return request.previous;
-      const row = (yield* HistoricalDb.readItems(tx, scope.bookId, input.admissionId))[0];
+          if (!row) return yield* failure("NotFound");
+          const admission = yield* decode(Historical.ItemAdmission, row.body);
 
-      if (!row) return yield* failure("NotFound");
-      const admission = yield* decode(Historical.ItemAdmission, row.body);
+          if (admission.digest !== input.admissionDigest) return yield* failure("StaleDependency");
 
-      if (admission.digest !== input.admissionDigest) return yield* failure("StaleDependency");
+          const { plan, accountId } = yield* readAdmissionControl(
+            tx,
+            scope,
+            admission.sourcePlanId,
+            input.sourceAccount,
+          );
 
-      const { plan, accountId } = yield* readAdmissionControl(
-        tx,
-        scope,
-        admission.sourcePlanId,
-        input.sourceAccount,
-      );
+          yield* requireUnusedPoolControl(tx, scope, accountId, input);
+          const basis = yield* readBasis(tx, scope, input.basisFiscalYearId);
+          const previewRow = (yield* SieDb.readPreview(tx, scope.bookId, plan.previewId))[0];
 
-      yield* requireUnusedPoolControl(tx, scope, accountId, input);
-      const basis = yield* readBasis(tx, scope, input.basisFiscalYearId);
-      const previewRow = (yield* SieDb.readPreview(tx, scope.bookId, plan.previewId))[0];
+          if (!previewRow) return yield* failure("MissingEvidence");
+          const preview = yield* decode(SieContracts.SiePreview, previewRow.body);
+          const occurrence = (yield* SieDb.readSource(tx, scope.bookId, preview.occurrenceId))[0];
 
-      if (!previewRow) return yield* failure("MissingEvidence");
-      const preview = yield* decode(SieContracts.SiePreview, previewRow.body);
-      const occurrence = (yield* SieDb.readSource(tx, scope.bookId, preview.occurrenceId))[0];
-
-      if (!occurrence) return yield* failure("MissingEvidence");
-      const book = (yield* Ledger.readBook(tx, scope))[0];
-
-      if (
-        !book ||
-        book.profile !== "synthetic-core-v1" ||
-        basis.sourcePlanId !== admission.sourcePlanId ||
-        basis.sourceDigest !== plan.digest
-      )
-        return yield* failure("UnsupportedProfile");
-
-      if (basis.mode === "opening_set") {
-        if (!basis.voucherId || basis.cutoverOn !== input.cutoverOn)
-          return yield* failure("ApprovalRequired");
-      } else {
-        const run = (yield* Db.readPostedRun(tx, scope.bookId, plan.id))[0];
-
-        if (!run) return yield* failure("ApprovalRequired");
-
-        if (run.partitionId) {
-          const partition = yield* readPartition(tx, scope, run.partitionId);
-          const comparisons = yield* PartitionsDb.readYearComparisons(tx, scope.bookId, run.id);
+          if (!occurrence) return yield* failure("MissingEvidence");
+          const book = (yield* Ledger.readBook(tx, scope))[0];
 
           if (
-            partition.years.at(-1)?.endsOn !== input.cutoverOn ||
-            comparisons.length !== partition.years.length
+            !book ||
+            book.profile !== "synthetic-core-v1" ||
+            basis.sourcePlanId !== admission.sourcePlanId ||
+            basis.sourceDigest !== plan.digest
           )
-            return yield* failure("StaleDependency");
-        } else {
-          const year = (yield* Ledger.readFiscalYear(tx, scope.bookId, input.basisFiscalYearId))[0];
+            return yield* failure("UnsupportedProfile");
 
-          if (!year || year.endsOn !== input.cutoverOn) return yield* failure("InvalidJournal");
-        }
-      }
+          if (basis.mode === "opening_set") {
+            if (!basis.voucherId || basis.cutoverOn !== input.cutoverOn)
+              return yield* failure("ApprovalRequired");
+          } else {
+            const run = (yield* Db.readPostedRun(tx, scope.bookId, plan.id))[0];
 
-      if ((yield* Db.readPoolForSource(tx, scope.bookId, admission.id, input.sourceAccount)).length)
-        return yield* failure("AlreadyPosted");
+            if (!run) return yield* failure("ApprovalRequired");
 
-      const control = admission.openItemControls.filter(
-        (row) => row.sourceAccount === input.sourceAccount,
-      );
+            if (run.partitionId) {
+              const partition = yield* readPartition(tx, scope, run.partitionId);
+              const comparisons = yield* PartitionsDb.readYearComparisons(tx, scope.bookId, run.id);
 
-      const items = admission.openItems.filter((row) => row.sourceAccount === input.sourceAccount);
+              if (
+                partition.years.at(-1)?.endsOn !== input.cutoverOn ||
+                comparisons.length !== partition.years.length
+              )
+                return yield* failure("StaleDependency");
+            } else {
+              const year = (yield* Ledger.readFiscalYear(
+                tx,
+                scope.bookId,
+                input.basisFiscalYearId,
+              ))[0];
 
-      if (
-        !accountId ||
-        items.length === 0 ||
-        control.length !== 1 ||
-        control[0]!.currency !== book.currency ||
-        items.some(
-          (row) =>
-            row.currency !== book.currency ||
-            row.asOf !== input.cutoverOn ||
-            (input.direction === "AR"
-              ? BigInt(row.outstandingMinor) < 0n
-              : BigInt(row.outstandingMinor) > 0n),
-        )
-      )
-        return yield* failure("UnsupportedProfile");
+              if (!year || year.endsOn !== input.cutoverOn) return yield* failure("InvalidJournal");
+            }
+          }
 
-      const sourceItems = yield* sourceResiduals(
-        admission,
-        items,
-        plan.id,
-        input.direction,
-        book.currency,
-        accountId,
-      );
+          if (
+            (yield* Db.readPoolForSource(tx, scope.bookId, admission.id, input.sourceAccount))
+              .length
+          )
+            return yield* failure("AlreadyPosted");
 
-      const exact = sourceItems.reduce(
-        (sum, row) =>
-          sum +
-          (row.residualAtCutover.kind === "evidenced"
-            ? BigInt(row.residualAtCutover.amountMinor)
-            : 0n),
-        0n,
-      );
+          const control = admission.openItemControls.filter(
+            (row) => row.sourceAccount === input.sourceAccount,
+          );
 
-      const signed = input.direction === "AR" ? exact : -exact;
+          const items = admission.openItems.filter(
+            (row) => row.sourceAccount === input.sourceAccount,
+          );
 
-      if (exact <= 0n || signed !== BigInt(control[0]!.independentOutstandingMinor))
-        return yield* failure("InvalidJournal");
+          if (
+            !accountId ||
+            items.length === 0 ||
+            control.length !== 1 ||
+            control[0]!.currency !== book.currency ||
+            items.some(
+              (row) =>
+                row.currency !== book.currency ||
+                row.asOf !== input.cutoverOn ||
+                (input.direction === "AR"
+                  ? BigInt(row.outstandingMinor) < 0n
+                  : BigInt(row.outstandingMinor) > 0n),
+            )
+          )
+            return yield* failure("UnsupportedProfile");
 
-      const body = {
-        id: newId("historicalpool"),
-        scope,
-        input,
-        sourcePlanId: plan.id,
-        sourceSystem: occurrence.sourceSystem,
-        basisMode: basis.mode,
-        controlAccountId: accountId,
-        currency: book.currency,
-        exactResidualMinor: exact.toString(),
-        partitionDigest: yield* digest({
-          admissionDigest: admission.digest,
-          sourceItems,
-          control: control[0]!,
+          const sourceItems = yield* sourceResiduals(
+            admission,
+            items,
+            plan.id,
+            input.direction,
+            book.currency,
+            accountId,
+          );
+
+          const exact = sourceItems.reduce(
+            (sum, row) =>
+              sum +
+              (row.residualAtCutover.kind === "evidenced"
+                ? BigInt(row.residualAtCutover.amountMinor)
+                : 0n),
+            0n,
+          );
+
+          const signed = input.direction === "AR" ? exact : -exact;
+
+          if (exact <= 0n || signed !== BigInt(control[0]!.independentOutstandingMinor))
+            return yield* failure("InvalidJournal");
+
+          const body = {
+            id: newId("historicalpool"),
+            scope,
+            input,
+            sourcePlanId: plan.id,
+            sourceSystem: occurrence.sourceSystem,
+            basisMode: basis.mode,
+            controlAccountId: accountId,
+            currency: book.currency,
+            exactResidualMinor: exact.toString(),
+            partitionDigest: yield* digest({
+              admissionDigest: admission.digest,
+              sourceItems,
+              control: control[0]!,
+            }),
+            sourceItems,
+            basisDigest: yield* digest(basis),
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const result = yield* decode(Contracts.Pool, { ...body, digest: yield* digest(body) });
+          yield* assertPoolBasis(tx, scope, result);
+          yield* Db.insertPool(tx, scope.bookId, result);
+
+          return result;
         }),
-        sourceItems,
-        basisDigest: yield* digest(basis),
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const result = yield* decode(Contracts.Pool, { ...body, digest: yield* digest(body) });
-      yield* assertPoolBasis(tx, scope, result);
-      yield* Db.insertPool(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
       );
-
-      return result;
     },
     "update",
   );

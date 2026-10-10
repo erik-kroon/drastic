@@ -937,6 +937,9 @@ test("existing composer explicitly replaces customer defaults and retains an ent
     async (page, workspace) => {
       await page.goto(`${workspace}/sales?view=parties&record=${context.customer.id}`);
 
+      await page.getByText("Edit details", { exact: true }).click();
+      await page.getByText("Invoice defaults", { exact: true }).click();
+
       try {
         await page.getByLabel("Email destination", { exact: true }).waitFor();
       } catch (error) {
@@ -982,7 +985,7 @@ test("existing composer explicitly replaces customer defaults and retains an ent
         .toBe("1");
       await page.getByLabel("Recipient reference", { exact: true }).click();
       await page
-        .getByRole("option", { name: "browser-billing@example.invalid · 1", exact: true })
+        .getByRole("option", { name: "browser-billing@example.invalid, 1", exact: true })
         .click();
       await page
         .getByLabel("Change reason", { exact: true })

@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import * as Schema from "effect/Schema";
 import { useQuery } from "@tanstack/react-query";
 import * as O from "@open-erp/contracts/onboarding";
@@ -255,7 +257,14 @@ export function ImportBatchesDialog({
     queryKey: [...bookKey(book), "onboarding", "import-batch", financialRunId],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/onboarding/import-batches?financialRunId=${encodeURIComponent(financialRunId)}`,
+        (client) =>
+          client.onboarding.getOnboardingImportBatch({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.onboarding.endpoints.getOnboardingImportBatch,
+              `financialRunId=${financialRunId}`,
+            ),
+          }),
         O.OnboardingImportBatchWorkspace,
         { signal },
       ),

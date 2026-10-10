@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -23,7 +25,7 @@ import { decimalToMinor, formatMinorAmount, minorToDecimal } from "@/lib/workspa
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { CommandForm } from "@/components/commerce/shared";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { subledgerCopy } from "./copy";
 import { ScheduleForm } from "./schedule-form";
@@ -223,13 +225,13 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
   const { book, setup, locale, id } = props;
   const copy = subledgerCopy(locale);
   const [editing, setEditing] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const schedule = useQuery({
     queryKey: [...bookKey(book), "schedule", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/schedules/${id}`,
+        (client) => client.subledgers.getSchedule({ params: { ...bookScope(book), id: id } }),
         Subledgers.ScheduleView,
         { signal },
       );
@@ -257,7 +259,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       const result = await readAccounting(
         path,
         Subledgers.SchedulePreparation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (
@@ -604,7 +606,10 @@ function OperatorAssetImpairmentPanel(props: {
     ],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/subledger-controls/impairments/for-schedule/${encodeURIComponent(schedule.current.scheduleId)}`,
+        (client) =>
+          client.subledgerControls.listAssetImpairmentReviews({
+            params: { ...bookScope(book), id: schedule.current.scheduleId },
+          }),
         Controls.AssetImpairmentReviewList,
         { signal },
       );

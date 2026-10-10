@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -24,7 +26,7 @@ import { OriginalDocument } from "@/components/original-document";
 import { WorkReviewFooter, WorkPreviewActions } from "@open-erp/ui/components/work-controls";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { encodeOwnerReturn, useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspace-api";
@@ -687,7 +689,7 @@ export function DocumentUpload({
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [occurrenceKey] = useState(() => crypto.randomUUID());
   const [fileError, setFileError] = useState<string | null>(null);
   const sizeLimit = sie ? 524288 : statement ? 65536 : Sources.maxSourceBytes;
@@ -731,7 +733,7 @@ export function DocumentUpload({
       return readAccounting(
         path,
         Sources.SourceOccurrence,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (source) => {
@@ -815,7 +817,8 @@ function DocumentDetail({ id }: { id: string }) {
     gcTime: 0,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}`,
+        (client) =>
+          client.sourceIntake.getSourceOccurrence({ params: { ...bookScope(book), id: id } }),
         Sources.SourceOccurrenceView,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Effect from "effect/Effect";
@@ -10,19 +11,17 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import {
   approveChangeInTransaction,
   createEvidenceInTransaction,
-  digest,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareManualJournalInTransaction,
-  replay,
-  saveCommand,
   validateManualJournalPlanInTransaction,
 } from "./posting";
+import { digest } from "./json";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import * as Db from "../db/posting";
 import * as RecoveryDb from "../db/posting-recovery";
 import * as CorrectionDb from "../db/posting-corrections";
-import { readOnboardingResponsibility } from "./onboarding-policy";
+import { readBookResponsibility } from "./book-responsibility";
 import { databaseFailure, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
@@ -475,60 +474,52 @@ function revokeApprovalInTransaction(
   command: { approvalId: string; idempotencyKey: string; input: { reason: string } },
 ) {
   return Effect.gen(function* () {
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      scope,
-      command.idempotencyKey,
-      "revoke_posting_approval",
-      principal.actorId,
-      { id: command.approvalId, input: command.input },
+      {
+        scope: scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "revoke_posting_approval",
+        actorId: principal.actorId,
+        input: { id: command.approvalId, input: command.input },
+      },
       Recovery.ApprovalRevocation,
+      Effect.gen(function* () {
+        const approval = (yield* Db.readApproval(
+          transaction,
+          scope.bookId,
+          command.approvalId,
+          "update",
+        ))[0];
+
+        if (!approval) return yield* failure("NotFound");
+
+        if (approval.consumedAt !== null) return yield* failure("AlreadyPosted");
+
+        if ((yield* Db.readApprovalRevocation(transaction, scope.bookId, approval.id)).length > 0) {
+          return yield* failure("ApprovalRequired");
+        }
+
+        const result = yield* decode(Recovery.ApprovalRevocation, {
+          approvalId: approval.id,
+          changeSetId: approval.changeSetId,
+          planDigest: approval.digest,
+          actorId: principal.actorId,
+          reason: command.input.reason,
+          revokedAt: yield* isoNow(transaction),
+        });
+
+        yield* RecoveryDb.insertApprovalRevocation(transaction, {
+          bookId: scope.bookId,
+          approvalId: approval.id,
+          actorId: principal.actorId,
+          reason: command.input.reason,
+          revokedAt: result.revokedAt,
+        });
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const approval = (yield* Db.readApproval(
-      transaction,
-      scope.bookId,
-      command.approvalId,
-      "update",
-    ))[0];
-
-    if (!approval) return yield* failure("NotFound");
-
-    if (approval.consumedAt !== null) return yield* failure("AlreadyPosted");
-
-    if ((yield* Db.readApprovalRevocation(transaction, scope.bookId, approval.id)).length > 0) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    const result = yield* decode(Recovery.ApprovalRevocation, {
-      approvalId: approval.id,
-      changeSetId: approval.changeSetId,
-      planDigest: approval.digest,
-      actorId: principal.actorId,
-      reason: command.input.reason,
-      revokedAt: yield* isoNow(transaction),
-    });
-
-    yield* RecoveryDb.insertApprovalRevocation(transaction, {
-      bookId: scope.bookId,
-      approvalId: approval.id,
-      actorId: principal.actorId,
-      reason: command.input.reason,
-      revokedAt: result.revokedAt,
-    });
-    yield* saveCommand(
-      transaction,
-      scope,
-      command.idempotencyKey,
-      request.expected,
-      "revoke_posting_approval",
-      principal.actorId,
-      result,
-    );
-
-    return result;
   });
 }
 
@@ -668,7 +659,7 @@ function observeApprovalState(
     if (membership.length === 0 || admission?.enabled === false) return "authority_lost" as const;
 
     if (approval.responsibilityRequired) {
-      const responsibility = yield* readOnboardingResponsibility(transaction, scope);
+      const responsibility = yield* readBookResponsibility(transaction, scope);
 
       if (responsibility && responsibility.assignments.bookkeepingApproverId !== approval.actorId)
         return "authority_lost" as const;

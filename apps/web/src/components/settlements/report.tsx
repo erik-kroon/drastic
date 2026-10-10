@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -11,7 +14,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { BankMatches, BankStatementDetails } from "@/components/bank-statement";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { settlementCopy } from "./copy";
 
@@ -27,7 +30,7 @@ export function CapacityReports({
   const copy = settlementCopy(locale);
   const [id, setId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const mutation = useMutation({
     mutationFn: (input: typeof Bank.ReconcileBank.Type) => {
@@ -36,7 +39,7 @@ export function CapacityReports({
       return readAccounting(
         path,
         Settlement.BankCapacityReconciliation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (report) => setId(report.id),
@@ -60,7 +63,7 @@ export function CapacityReports({
             endsOn: fields.get("endsOn"),
           });
 
-          if (result._tag === "None") {
+          if (Option.isNone(result)) {
             setError(copy.invalid);
 
             return;
@@ -165,7 +168,10 @@ function CapacityReport({
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/bank-capacity-reconciliations/${encodeURIComponent(id)}`,
+        (client) =>
+          client.settlements.getBankCapacityReconciliation({
+            params: { ...bookScope(book), id: id },
+          }),
         Settlement.BankCapacityReconciliationView,
         { signal },
       );

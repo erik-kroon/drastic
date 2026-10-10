@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -14,7 +17,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { reviewCopy } from "./copy";
 import { ReviewPackInspector } from "./inspector";
@@ -100,12 +103,16 @@ function PreparePack({
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 
   const period = setup.data?.periods.at(-1);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
 
@@ -116,14 +123,13 @@ function PreparePack({
       const report = await readAccounting(
         reportPath,
         Reports.ReportSnapshot,
-        mutationOptions(
+        keys.current.options(
           reportPath,
           JSON.stringify({
             kind: "trial_balance_v1",
             startsOn: draft.startsOn,
             endsOn: draft.endsOn,
           }),
-          keys.current,
         ),
       );
 
@@ -147,7 +153,7 @@ function PreparePack({
       const result = await readAccounting(
         path,
         Review.ReviewPackView,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (
@@ -192,7 +198,7 @@ function PreparePack({
           excludedSources: source || reason ? [{ name: source, reason }] : [],
         });
 
-        if (decoded._tag === "None" || decoded.value.startsOn > decoded.value.endsOn) {
+        if (Option.isNone(decoded) || decoded.value.startsOn > decoded.value.endsOn) {
           setError(copy.invalid);
 
           return;

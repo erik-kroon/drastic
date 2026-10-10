@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -87,7 +89,14 @@ export function SupplierInvoiceDrafts(
       if (pageParam !== "") query.set("after", pageParam);
 
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-invoice-drafts?${query}`,
+        (client) =>
+          client.supplierInvoiceDrafts.listSupplierInvoiceDrafts({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.supplierInvoiceDrafts.endpoints.listSupplierInvoiceDrafts,
+              `${query}`,
+            ),
+          }),
         Suppliers.SupplierInvoiceDraftList,
         { signal },
       );
@@ -640,7 +649,10 @@ function SupplierDraftHistory(
     queryKey: [...commerceKey(props.book), "supplier-invoice-draft-history", props.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-invoice-drafts/${encodeURIComponent(props.id)}/revisions`,
+        (client) =>
+          client.supplierInvoiceDrafts.supplierInvoiceDraftHistory({
+            params: { ...bookScope(props.book), id: props.id },
+          }),
         Suppliers.SupplierInvoiceDraftHistory,
         { signal },
       );

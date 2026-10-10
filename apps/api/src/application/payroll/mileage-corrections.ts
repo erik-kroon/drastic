@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Mileage from "@open-erp/contracts/mileage-corrections";
@@ -9,7 +10,8 @@ import * as Foundation from "../../db/payroll-foundation";
 import type { Transaction } from "../../db/transaction";
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { newId, replay, saveCommand, isoNow } from "../posting";
+import { newId } from "../identifiers";
+import { isoNow } from "../command-receipts";
 import {
   requireMileageAccess,
   readMileageRecord,
@@ -247,63 +249,54 @@ export const prepareMileageCorrection = Effect.fn("mileage.prepare")(function* (
 
       const operation = "payroll_prepare_mileage_correction";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
-        Mileage.MileageCorrectionView,
-      );
-
-      if (request.previous) return request.previous;
-
-      const captured = yield* captureMileageCorrection(tx, command.scope, command.input);
-
-      const comparison = yield* prepareMileageComparison(
-        tx,
-        command.scope,
-        principal,
-        command.idempotencyKey,
-        captured,
-      );
-
-      const retained = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Mileage.MileageCorrectionProposal,
         {
-          id: newId("mileage_correction"),
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
           input: command.input,
-          employee: captured.employee,
-          original: captured.original,
-          sources: captured.sources,
-          comparison,
-          journal: mileageJournal(command.input, captured, comparison),
-          dependencyDigest: captured.dependencyDigest,
-          blockers: captured.blockers,
         },
+        Mileage.MileageCorrectionView,
+        Effect.gen(function* () {
+          const captured = yield* captureMileageCorrection(tx, command.scope, command.input);
+
+          const comparison = yield* prepareMileageComparison(
+            tx,
+            command.scope,
+            principal,
+            command.idempotencyKey,
+            captured,
+          );
+
+          const retained = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Mileage.MileageCorrectionProposal,
+            {
+              id: newId("mileage_correction"),
+              input: command.input,
+              employee: captured.employee,
+              original: captured.original,
+              sources: captured.sources,
+              comparison,
+              journal: mileageJournal(command.input, captured, comparison),
+              dependencyDigest: captured.dependencyDigest,
+              blockers: captured.blockers,
+            },
+          );
+
+          yield* persistMileageRecord(tx, "payroll_mileage_correction_proposals", retained);
+
+          const view = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          return { receipt: yield* toJsonObject(view), result: view };
+        }),
       );
-
-      yield* persistMileageRecord(tx, "payroll_mileage_correction_proposals", retained);
-
-      const view = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(view),
-      );
-
-      return view;
     },
     "update",
   );
@@ -322,104 +315,95 @@ export const reviewMileageCorrection = Effect.fn("mileage.review")(function* (
 
       const operation = "payroll_review_mileage_correction";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { proposalId: command.proposalId, input: command.input },
-        Mileage.MileageCorrectionView,
-      );
-
-      if (request.previous) return request.previous;
-
-      const retained = yield* proposal(
-        tx,
-        command.scope,
-        command.proposalId,
-        command.input.proposalDigest,
-      );
-
-      const state = yield* mileageLifecycle(tx, command.scope, retained.id);
-
-      if (state.cancellation) return yield* failure("ApprovalRequired");
-
-      if (state.link) return yield* failure("AlreadyPosted");
-
-      yield* currentMileageProposal(tx, command.scope, retained);
-
-      if (
-        !retained.comparison ||
-        !retained.sources.recoveryBasis ||
-        !retained.sources.recoveryReason
-      )
-        return yield* failure("MissingEvidence");
-
-      const lawful = yield* readRetained(
-        tx,
-        command.scope,
-        "payroll_adjustment_bases",
-        command.input.lawfulBasisId,
-        Settlement.AdjustmentBasis,
-      );
-
-      if (
-        lawful.createdBy === retained.createdBy ||
-        lawful.comparisonDigest !== retained.comparison.paidComparisonDigest ||
-        lawful.evidence.sha256 !== retained.sources.recoveryBasis.sha256.slice(7) ||
-        lawful.input.reason !== retained.sources.recoveryReason
-      )
-        return yield* failure("ApprovalRequired");
-
-      const review = yield* prepareSettlementInTransaction(tx, principal, {
-        scope: command.scope,
-        idempotencyKey: `${command.idempotencyKey}_settlement`,
-        input: {
-          kind: "gross_recovery",
-          mileageSource: { proposalId: retained.id, proposalDigest: retained.digest },
-          comparisonId: retained.comparison.paidComparisonId,
-          lawfulBasisId: lawful.id,
-          recoveryReceivableAccountId: retained.input.recoveryReceivableAccountId,
-          futureMonth: null,
-          evidenceId: lawful.evidence.evidenceId,
-          accountingPeriodId: retained.input.accountingPeriodId,
-          postingDate: retained.input.postingDate,
-          series: retained.input.series,
-          reason: retained.sources.recoveryReason,
-        },
-      });
-
-      const link = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Mileage.MileageCorrectionReviewLink,
         {
-          id: newId("mileage_review_link"),
-          proposalId: retained.id,
-          proposalDigest: retained.digest,
-          reviewId: review.id,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { proposalId: command.proposalId, input: command.input },
         },
+        Mileage.MileageCorrectionView,
+        Effect.gen(function* () {
+          const retained = yield* proposal(
+            tx,
+            command.scope,
+            command.proposalId,
+            command.input.proposalDigest,
+          );
+
+          const state = yield* mileageLifecycle(tx, command.scope, retained.id);
+
+          if (state.cancellation) return yield* failure("ApprovalRequired");
+
+          if (state.link) return yield* failure("AlreadyPosted");
+
+          yield* currentMileageProposal(tx, command.scope, retained);
+
+          if (
+            !retained.comparison ||
+            !retained.sources.recoveryBasis ||
+            !retained.sources.recoveryReason
+          )
+            return yield* failure("MissingEvidence");
+
+          const lawful = yield* readRetained(
+            tx,
+            command.scope,
+            "payroll_adjustment_bases",
+            command.input.lawfulBasisId,
+            Settlement.AdjustmentBasis,
+          );
+
+          if (
+            lawful.createdBy === retained.createdBy ||
+            lawful.comparisonDigest !== retained.comparison.paidComparisonDigest ||
+            lawful.evidence.sha256 !== retained.sources.recoveryBasis.sha256.slice(7) ||
+            lawful.input.reason !== retained.sources.recoveryReason
+          )
+            return yield* failure("ApprovalRequired");
+
+          const review = yield* prepareSettlementInTransaction(tx, principal, {
+            scope: command.scope,
+            idempotencyKey: `${command.idempotencyKey}_settlement`,
+            input: {
+              kind: "gross_recovery",
+              mileageSource: { proposalId: retained.id, proposalDigest: retained.digest },
+              comparisonId: retained.comparison.paidComparisonId,
+              lawfulBasisId: lawful.id,
+              recoveryReceivableAccountId: retained.input.recoveryReceivableAccountId,
+              futureMonth: null,
+              evidenceId: lawful.evidence.evidenceId,
+              accountingPeriodId: retained.input.accountingPeriodId,
+              postingDate: retained.input.postingDate,
+              series: retained.input.series,
+              reason: retained.sources.recoveryReason,
+            },
+          });
+
+          const link = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Mileage.MileageCorrectionReviewLink,
+            {
+              id: newId("mileage_review_link"),
+              proposalId: retained.id,
+              proposalDigest: retained.digest,
+              reviewId: review.id,
+            },
+          );
+
+          yield* persistMileageRecord(tx, "payroll_mileage_correction_review_links", link);
+
+          const view = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          return { receipt: yield* toJsonObject(view), result: view };
+        }),
       );
-
-      yield* persistMileageRecord(tx, "payroll_mileage_correction_review_links", link);
-
-      const view = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(view),
-      );
-
-      return view;
     },
     "update",
   );
@@ -438,65 +422,56 @@ export const submitMileageCorrection = Effect.fn("mileage.submit")(function* (
 
       const operation = "payroll_submit_mileage_correction";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { proposalId: command.proposalId, input: command.input },
-        Mileage.MileageCorrectionView,
-      );
-
-      if (request.previous) return request.previous;
-
-      const retained = yield* proposal(
-        tx,
-        command.scope,
-        command.proposalId,
-        command.input.proposalDigest,
-      );
-
-      const view = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      if (
-        !view.current.canSubmit ||
-        !view.settlementReview ||
-        view.settlementReview.digest !== command.input.reviewDigest
-      )
-        return yield* failure("ApprovalRequired");
-
-      const submitted = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Mileage.MileageCorrectionSubmission,
         {
-          id: newId("mileage_submission"),
-          proposalId: retained.id,
-          proposalDigest: retained.digest,
-          reviewId: view.settlementReview.id,
-          reviewDigest: view.settlementReview.digest,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { proposalId: command.proposalId, input: command.input },
         },
+        Mileage.MileageCorrectionView,
+        Effect.gen(function* () {
+          const retained = yield* proposal(
+            tx,
+            command.scope,
+            command.proposalId,
+            command.input.proposalDigest,
+          );
+
+          const view = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          if (
+            !view.current.canSubmit ||
+            !view.settlementReview ||
+            view.settlementReview.digest !== command.input.reviewDigest
+          )
+            return yield* failure("ApprovalRequired");
+
+          const submitted = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Mileage.MileageCorrectionSubmission,
+            {
+              id: newId("mileage_submission"),
+              proposalId: retained.id,
+              proposalDigest: retained.digest,
+              reviewId: view.settlementReview.id,
+              reviewDigest: view.settlementReview.digest,
+            },
+          );
+
+          yield* persistMileageRecord(tx, "payroll_mileage_correction_submissions", submitted);
+
+          const result = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      yield* persistMileageRecord(tx, "payroll_mileage_correction_submissions", submitted);
-
-      const result = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -515,58 +490,49 @@ export const cancelMileageCorrection = Effect.fn("mileage.cancel")(function* (
 
       const operation = "payroll_cancel_mileage_correction";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { proposalId: command.proposalId, input: command.input },
-        Mileage.MileageCorrectionView,
-      );
-
-      if (request.previous) return request.previous;
-
-      const retained = yield* proposal(
-        tx,
-        command.scope,
-        command.proposalId,
-        command.input.proposalDigest,
-      );
-
-      const view = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      if (!view.current.canCancel) return yield* failure("AlreadyPosted");
-
-      const cancelled = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Mileage.MileageCorrectionCancellation,
         {
-          id: newId("mileage_cancellation"),
-          proposalId: retained.id,
-          proposalDigest: retained.digest,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { proposalId: command.proposalId, input: command.input },
         },
+        Mileage.MileageCorrectionView,
+        Effect.gen(function* () {
+          const retained = yield* proposal(
+            tx,
+            command.scope,
+            command.proposalId,
+            command.input.proposalDigest,
+          );
+
+          const view = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          if (!view.current.canCancel) return yield* failure("AlreadyPosted");
+
+          const cancelled = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Mileage.MileageCorrectionCancellation,
+            {
+              id: newId("mileage_cancellation"),
+              proposalId: retained.id,
+              proposalDigest: retained.digest,
+            },
+          );
+
+          yield* persistMileageRecord(tx, "payroll_mileage_correction_cancellations", cancelled);
+
+          const result = yield* mileageViewInTransaction(tx, command.scope, retained);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      yield* persistMileageRecord(tx, "payroll_mileage_correction_cancellations", cancelled);
-
-      const result = yield* mileageViewInTransaction(tx, command.scope, retained);
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );

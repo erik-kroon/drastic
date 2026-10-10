@@ -1,4 +1,8 @@
-import { useRef, useState } from "react";
+import * as Match from "effect/Match";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -23,7 +27,6 @@ import {
   bookKey,
   bookPath,
   isUncertainWriteError,
-  mutationOptions,
   readAccounting,
   requiresNewProposal,
 } from "@/lib/accounting-api";
@@ -94,7 +97,11 @@ function SavedDrafts({ book, locale, onOpen }: Pick<Props, "book" | "locale" | "
   const drafts = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "drafts"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.listVatDrafts({ params: { ...bookScope(book) } }),
+        Vat.VatDraftList,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -139,7 +146,8 @@ function SavedReclassifications({
     queryKey: [...bookKey(book), "vat-returns", "reclassifications"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/vat-returns/reclassifications`,
+        (client) =>
+          client.vatReturns.listVatControlReclassifications({ params: { ...bookScope(book) } }),
         Vat.VatControlReclassificationList,
         { signal },
       );
@@ -200,7 +208,7 @@ function PreparationDetail(
     queryKey: [...bookKey(book), "vat-returns", "draft", draftId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/vat-returns/drafts/${encodeURIComponent(draftId)}`,
+        (client) => client.vatReturns.getVatDraft({ params: { ...bookScope(book), id: draftId } }),
         Vat.VatDraftView,
         { signal },
       );
@@ -241,7 +249,7 @@ function PreparationForm(
   const copy = vatCopy(locale);
   const labels = reclassificationCopy(locale);
   const path = `${bookPath(book)}/vat-returns/reclassifications`;
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
@@ -249,7 +257,7 @@ function PreparationForm(
       readAccounting(
         path,
         Vat.VatControlReclassificationReview,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       ),
     onSuccess: (review) => props.onOpen(review.id),
   });
@@ -302,7 +310,7 @@ function PreparationForm(
           acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;
@@ -486,8 +494,8 @@ function ReviewDetail({
 }: Pick<Props, "book" | "locale" | "onOpen"> & { id: string }) {
   const labels = reclassificationCopy(locale);
   const client = useQueryClient();
-  const approvalKeys = useRef(new Map<string, string>());
-  const executionKeys = useRef(new Map<string, string>());
+  const approvalKeys = useCommandKeys();
+  const executionKeys = useCommandKeys();
   const [selectedApprovalId, setSelectedApprovalId] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const base = `${bookPath(book)}/vat-returns/reclassifications/${encodeURIComponent(id)}`;
@@ -519,7 +527,7 @@ function ReviewDetail({
       return readAccounting(
         path,
         Vat.VatControlReclassificationApproval,
-        mutationOptions(path, JSON.stringify(input), approvalKeys.current),
+        approvalKeys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: () => {
@@ -535,7 +543,7 @@ function ReviewDetail({
       return readAccounting(
         path,
         Vat.VatControlReclassificationEffect,
-        mutationOptions(path, JSON.stringify(input), executionKeys.current),
+        executionKeys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: () => {
@@ -1117,7 +1125,10 @@ function RequestRecovery({
   const recovery = useMutation({
     mutationFn: (value: string) =>
       readAccounting(
-        `${bookPath(book)}/vat-returns/reclassifications/requests/${encodeURIComponent(value)}`,
+        (client) =>
+          client.vatReturns.recoverVatControlReclassification({
+            params: { ...bookScope(book), key: value },
+          }),
         Vat.VatControlReclassificationRecovery,
       ),
     onSuccess: () => {
@@ -1285,11 +1296,11 @@ const en = {
   accountRoles: "Account-role bindings",
   role: "Role",
   roleName: (role: string): string =>
-    role === "output_vat_control"
-      ? "Output VAT control"
-      : role === "input_vat_control"
-        ? "Input VAT control"
-        : "VAT settlement control",
+    Match.value(role).pipe(
+      Match.when("output_vat_control", () => "Output VAT control"),
+      Match.when("input_vat_control", () => "Input VAT control"),
+      Match.orElse(() => "VAT settlement control"),
+    ),
   account: "Account",
   version: "Version",
   state: "State",
@@ -1407,11 +1418,11 @@ const sv: typeof en = {
   accountRoles: "Kontoroller",
   role: "Roll",
   roleName: (role: string): string =>
-    role === "output_vat_control"
-      ? "Utgående momskonto"
-      : role === "input_vat_control"
-        ? "Ingående momskonto"
-        : "Momskonto för avstämning",
+    Match.value(role).pipe(
+      Match.when("output_vat_control", () => "Utgående momskonto"),
+      Match.when("input_vat_control", () => "Ingående momskonto"),
+      Match.orElse(() => "Momskonto för avstämning"),
+    ),
   account: "Konto",
   version: "Version",
   state: "Läge",

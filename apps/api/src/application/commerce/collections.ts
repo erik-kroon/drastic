@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Collections from "@open-erp/contracts/collections";
 import * as Effect from "effect/Effect";
@@ -5,7 +6,8 @@ import { readInstant } from "../../db/commerce/access";
 import * as CollectionDb from "../../db/commerce/collections";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import type { Transaction } from "../../db/transaction";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {
@@ -88,90 +90,83 @@ export const openDispute = Effect.fn("commerce.collections.openDispute")(functio
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "open_collection_dispute",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "open_collection_dispute",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         DisputeSchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, CollectionDb.collectionTables, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          const input = yield* decode(DisputeInputSchema, command.input);
+
+          if (
+            input.reason.trim().length === 0 ||
+            input.ownerId.length < 3 ||
+            input.ownerId.length > 128
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const evidence = yield* CollectionDb.readEvidenceExists(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          );
+
+          if (evidence[0]?.present !== true) return yield* failure("MissingEvidence");
+
+          const members = yield* CollectionDb.readBookMembership(
+            transaction,
+            command.scope.bookId,
+            input.ownerId,
+          );
+
+          if (members[0]?.present !== true) return yield* failure("InvalidJournal");
+
+          const invoices = yield* CollectionDb.readCustomerInvoice(
+            transaction,
+            command.scope.bookId,
+            input.invoiceId,
+          );
+
+          const invoice = invoices[0];
+
+          if (!invoice) return yield* failure("NotFound");
+          const id = newId("collection_dispute");
+
+          const withoutDigest: JsonObject = {
+            id,
+            scope: command.scope,
+            invoiceId: invoice.id,
+            customerId: invoice.counterpartyId,
+            reason: input.reason,
+            evidenceId: input.evidenceId,
+            ownerId: input.ownerId,
+            holdReminders: input.holdReminders,
+            createdBy: principal.actorId,
+            createdAt: yield* retainedNow(transaction),
+          };
+
+          const digest = yield* digestNative(withoutDigest);
+          const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+          const result = yield* decode(DisputeSchema, body);
+          yield* CollectionDb.insertDispute(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            invoiceId: invoice.id,
+            customerId: invoice.counterpartyId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, CollectionDb.collectionTables, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const input = yield* decode(DisputeInputSchema, command.input);
-
-      if (
-        input.reason.trim().length === 0 ||
-        input.ownerId.length < 3 ||
-        input.ownerId.length > 128
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const evidence = yield* CollectionDb.readEvidenceExists(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      );
-
-      if (evidence[0]?.present !== true) return yield* failure("MissingEvidence");
-
-      const members = yield* CollectionDb.readBookMembership(
-        transaction,
-        command.scope.bookId,
-        input.ownerId,
-      );
-
-      if (members[0]?.present !== true) return yield* failure("InvalidJournal");
-
-      const invoices = yield* CollectionDb.readCustomerInvoice(
-        transaction,
-        command.scope.bookId,
-        input.invoiceId,
-      );
-
-      const invoice = invoices[0];
-
-      if (!invoice) return yield* failure("NotFound");
-      const id = newId("collection_dispute");
-
-      const withoutDigest: JsonObject = {
-        id,
-        scope: command.scope,
-        invoiceId: invoice.id,
-        customerId: invoice.counterpartyId,
-        reason: input.reason,
-        evidenceId: input.evidenceId,
-        ownerId: input.ownerId,
-        holdReminders: input.holdReminders,
-        createdBy: principal.actorId,
-        createdAt: yield* retainedNow(transaction),
-      };
-
-      const digest = yield* digestNative(withoutDigest);
-      const body: JsonObject = Object.assign({}, withoutDigest, { digest });
-      const result = yield* decode(DisputeSchema, body);
-      yield* CollectionDb.insertDispute(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        invoiceId: invoice.id,
-        customerId: invoice.counterpartyId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "open_collection_dispute",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -190,140 +185,133 @@ export const recordAction = Effect.fn("commerce.collections.recordAction")(funct
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "record_collection_action",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "record_collection_action",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         ActionSchema,
+        Effect.gen(function* () {
+          const input = yield* decode(ActionInputSchema, command.input);
+          yield* requireTableAccess(transaction, CollectionDb.collectionTables, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+
+          if (input.note.trim().length === 0) return yield* failure("InvalidJournal");
+
+          const members = yield* CollectionDb.readBookMembership(
+            transaction,
+            command.scope.bookId,
+            input.ownerId,
+          );
+
+          if (members[0]?.present !== true) return yield* failure("InvalidJournal");
+
+          const invoices = yield* CollectionDb.readCustomerInvoice(
+            transaction,
+            command.scope.bookId,
+            input.invoiceId,
+          );
+
+          const invoice = invoices[0];
+
+          if (!invoice) return yield* failure("NotFound");
+          let disputeId: string | null = null;
+
+          if (input.kind === "dispute_resolved") {
+            if (input.disputeId === null) return yield* failure("NotFound");
+
+            const disputes = yield* CollectionDb.readInvoiceDispute(
+              transaction,
+              command.scope.bookId,
+              invoice.id,
+              input.disputeId,
+            );
+
+            const dispute = disputes[0];
+
+            if (!dispute) return yield* failure("NotFound");
+
+            const resolved = yield* CollectionDb.readDisputeResolutionExists(
+              transaction,
+              command.scope.bookId,
+              dispute.id,
+            );
+
+            if (resolved[0]?.present === true) return yield* failure("AlreadyPosted");
+            disputeId = dispute.id;
+          } else if (input.disputeId !== null) {
+            return yield* failure("InvalidJournal");
+          }
+
+          let outstandingMinor: string | null = null;
+
+          if (input.kind === "reminder_prepared") {
+            yield* requireTableAccess(transaction, InvoiceDb.commerceInvoiceTables, false);
+
+            const outstanding = yield* InvoiceDb.readInvoiceOutstanding(
+              transaction,
+              command.scope.bookId,
+              invoice.id,
+            );
+
+            const live = outstanding[0];
+
+            const holds = yield* CollectionDb.readOpenReminderHold(
+              transaction,
+              command.scope.bookId,
+              invoice.id,
+            );
+
+            if (
+              !live ||
+              (live.status !== "open" && live.status !== "partially_allocated") ||
+              live.outstandingMinor === null ||
+              BigInt(live.outstandingMinor) <= 0n ||
+              holds[0]?.present === true
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            outstandingMinor = live.outstandingMinor;
+          }
+
+          const id = newId("collection_action");
+
+          const withoutDigest: JsonObject = {
+            id,
+            scope: command.scope,
+            customerId: invoice.counterpartyId,
+            invoiceId: invoice.id,
+            disputeId,
+            kind: input.kind,
+            note: input.note,
+            ownerId: input.ownerId,
+            createdBy: principal.actorId,
+            createdAt: yield* retainedNow(transaction),
+            outstandingMinor,
+            sendAuthorized: false,
+          };
+
+          const digest = yield* digestNative(withoutDigest);
+          const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+          const result = yield* decode(ActionSchema, body);
+          yield* CollectionDb.insertEvent(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            customerId: invoice.counterpartyId,
+            invoiceId: invoice.id,
+            disputeId,
+            kind: input.kind,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const input = yield* decode(ActionInputSchema, command.input);
-      yield* requireTableAccess(transaction, CollectionDb.collectionTables, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-
-      if (input.note.trim().length === 0) return yield* failure("InvalidJournal");
-
-      const members = yield* CollectionDb.readBookMembership(
-        transaction,
-        command.scope.bookId,
-        input.ownerId,
-      );
-
-      if (members[0]?.present !== true) return yield* failure("InvalidJournal");
-
-      const invoices = yield* CollectionDb.readCustomerInvoice(
-        transaction,
-        command.scope.bookId,
-        input.invoiceId,
-      );
-
-      const invoice = invoices[0];
-
-      if (!invoice) return yield* failure("NotFound");
-      let disputeId: string | null = null;
-
-      if (input.kind === "dispute_resolved") {
-        if (input.disputeId === null) return yield* failure("NotFound");
-
-        const disputes = yield* CollectionDb.readInvoiceDispute(
-          transaction,
-          command.scope.bookId,
-          invoice.id,
-          input.disputeId,
-        );
-
-        const dispute = disputes[0];
-
-        if (!dispute) return yield* failure("NotFound");
-
-        const resolved = yield* CollectionDb.readDisputeResolutionExists(
-          transaction,
-          command.scope.bookId,
-          dispute.id,
-        );
-
-        if (resolved[0]?.present === true) return yield* failure("AlreadyPosted");
-        disputeId = dispute.id;
-      } else if (input.disputeId !== null) {
-        return yield* failure("InvalidJournal");
-      }
-
-      let outstandingMinor: string | null = null;
-
-      if (input.kind === "reminder_prepared") {
-        yield* requireTableAccess(transaction, InvoiceDb.commerceInvoiceTables, false);
-
-        const outstanding = yield* InvoiceDb.readInvoiceOutstanding(
-          transaction,
-          command.scope.bookId,
-          invoice.id,
-        );
-
-        const live = outstanding[0];
-
-        const holds = yield* CollectionDb.readOpenReminderHold(
-          transaction,
-          command.scope.bookId,
-          invoice.id,
-        );
-
-        if (
-          !live ||
-          (live.status !== "open" && live.status !== "partially_allocated") ||
-          live.outstandingMinor === null ||
-          BigInt(live.outstandingMinor) <= 0n ||
-          holds[0]?.present === true
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        outstandingMinor = live.outstandingMinor;
-      }
-
-      const id = newId("collection_action");
-
-      const withoutDigest: JsonObject = {
-        id,
-        scope: command.scope,
-        customerId: invoice.counterpartyId,
-        invoiceId: invoice.id,
-        disputeId,
-        kind: input.kind,
-        note: input.note,
-        ownerId: input.ownerId,
-        createdBy: principal.actorId,
-        createdAt: yield* retainedNow(transaction),
-        outstandingMinor,
-        sendAuthorized: false,
-      };
-
-      const digest = yield* digestNative(withoutDigest);
-      const body: JsonObject = Object.assign({}, withoutDigest, { digest });
-      const result = yield* decode(ActionSchema, body);
-      yield* CollectionDb.insertEvent(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        customerId: invoice.counterpartyId,
-        invoiceId: invoice.id,
-        disputeId,
-        kind: input.kind,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "record_collection_action",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -460,82 +448,75 @@ export const captureStatement = Effect.fn("commerce.collections.captureStatement
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_collection_statement",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_collection_statement",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         StatementSchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, CollectionDb.collectionWorklistTables, false);
+          yield* requireInsertAccess(transaction, ["collection_statements"]);
+          yield* lockBookForUpdate(transaction, command.scope);
+          const input = yield* decode(StatementInputSchema, command.input);
+
+          if (!accountingDate.test(input.asOf)) return yield* failure("InvalidJournal");
+          const cutoffAt = yield* retainedNow(transaction);
+
+          if (input.asOf > cutoffAt.slice(0, 10)) return yield* failure("InvalidJournal");
+          yield* requireCustomer(transaction, command.scope.bookId, input.customerId);
+
+          const blocked = yield* InvoiceDb.readBlockedCustomerInvoices(
+            transaction,
+            command.scope.bookId,
+            input.customerId,
+            input.asOf,
+          );
+
+          if (blocked[0]?.present === true) return yield* failure("StaleDependency");
+
+          const items = yield* InvoiceDb.readCustomerStatementItems(
+            transaction,
+            command.scope.bookId,
+            input.customerId,
+            input.asOf,
+            cutoffAt,
+          );
+
+          const withoutDigest: JsonObject = {
+            id: newId("collection_statement"),
+            scope: command.scope,
+            customerId: input.customerId,
+            asOf: input.asOf,
+            cutoffAt,
+            items: items[0]?.body ?? [],
+            createdBy: principal.actorId,
+            createdAt: cutoffAt,
+          };
+
+          const digest = yield* digestNative(withoutDigest);
+          const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+          const result = yield* decode(StatementSchema, body);
+          yield* CollectionDb.insertStatement(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            customerId: input.customerId,
+            body,
+          });
+          yield* CollectionDb.insertStatementArtifact(
+            transaction,
+            command.scope.bookId,
+            result.id,
+            yield* canonicalNative(body),
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, CollectionDb.collectionWorklistTables, false);
-      yield* requireInsertAccess(transaction, ["collection_statements"]);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const input = yield* decode(StatementInputSchema, command.input);
-
-      if (!accountingDate.test(input.asOf)) return yield* failure("InvalidJournal");
-      const cutoffAt = yield* retainedNow(transaction);
-
-      if (input.asOf > cutoffAt.slice(0, 10)) return yield* failure("InvalidJournal");
-      yield* requireCustomer(transaction, command.scope.bookId, input.customerId);
-
-      const blocked = yield* InvoiceDb.readBlockedCustomerInvoices(
-        transaction,
-        command.scope.bookId,
-        input.customerId,
-        input.asOf,
-      );
-
-      if (blocked[0]?.present === true) return yield* failure("StaleDependency");
-
-      const items = yield* InvoiceDb.readCustomerStatementItems(
-        transaction,
-        command.scope.bookId,
-        input.customerId,
-        input.asOf,
-        cutoffAt,
-      );
-
-      const withoutDigest: JsonObject = {
-        id: newId("collection_statement"),
-        scope: command.scope,
-        customerId: input.customerId,
-        asOf: input.asOf,
-        cutoffAt,
-        items: items[0]?.body ?? [],
-        createdBy: principal.actorId,
-        createdAt: cutoffAt,
-      };
-
-      const digest = yield* digestNative(withoutDigest);
-      const body: JsonObject = Object.assign({}, withoutDigest, { digest });
-      const result = yield* decode(StatementSchema, body);
-      yield* CollectionDb.insertStatement(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        customerId: input.customerId,
-        body,
-      });
-      yield* CollectionDb.insertStatementArtifact(
-        transaction,
-        command.scope.bookId,
-        result.id,
-        yield* canonicalNative(body),
-      );
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_collection_statement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

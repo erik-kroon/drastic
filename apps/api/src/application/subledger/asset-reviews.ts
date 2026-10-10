@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Controls from "@open-erp/contracts/subledger-controls";
 import * as Subledgers from "@open-erp/contracts/subledgers";
@@ -8,16 +9,11 @@ import * as Schedules from "../../db/subledger/schedules";
 import type { Transaction } from "../../db/transaction";
 import { decode, withBook, type Scope, type Principal } from "../commerce/support";
 import { failure } from "../failures";
-import {
-  createEvidenceInTransaction,
-  prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "../posting";
+import { createEvidenceInTransaction, prepareJournalInTransaction } from "../posting";
+import { validatePlan } from "../posting-validation";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { impairmentBasis, disposalBasis } from "./asset-basis";
 
 export type Identified = { readonly scope: Scope; readonly id: string };
@@ -128,105 +124,98 @@ export const prepareDisposal = Effect.fn("subledger.prepareDisposal")(function* 
       const { scope, input, idempotencyKey } = command;
       const operation = "prepare_subledger_disposal";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         Controls.AssetDisposalReview,
+        Effect.gen(function* () {
+          const basis = yield* disposalBasis(tx, scope, input);
+
+          const ordinal =
+            (yield* Db.listReviews(tx, scope.bookId, "disposal", input.scheduleId)).length + 1;
+
+          if (ordinal > 20) return yield* failure("UnsupportedProfile");
+          const id = newId("asset_disposal_review");
+
+          const lines: Array<(typeof Accounting.PrepareJournal.Type.lines)[number]> =
+            basis.carryingBasis.lines
+              .filter((line) => BigInt(line.debitMinor) > 0n)
+              .map((line) => ({
+                accountId: line.accountId,
+                debitMinor: "0",
+                creditMinor: line.debitMinor,
+                description: "Release gross asset control",
+              }));
+
+          if (BigInt(basis.totalAccumulatedMinor) > 0n)
+            lines.push({
+              accountId: basis.schedule.terms.creditAccountId,
+              debitMinor: basis.totalAccumulatedMinor,
+              creditMinor: "0",
+              description: "Release accumulated recognition",
+            });
+
+          if (BigInt(basis.impairmentMinor ?? "0") > 0n) {
+            if (!basis.impairmentAccountId) return yield* failure("InternalError");
+            lines.push({
+              accountId: basis.impairmentAccountId,
+              debitMinor: basis.impairmentMinor ?? "0",
+              creditMinor: "0",
+              description: "Release accumulated impairment",
+            });
+          }
+
+          if (BigInt(basis.carryingMinor) > 0n)
+            lines.push({
+              accountId: input.lossAccountId,
+              debitMinor: basis.carryingMinor,
+              creditMinor: "0",
+              description: "Recognize disposal loss",
+            });
+
+          const posting = yield* preparePosting(
+            tx,
+            principal,
+            scope,
+            id,
+            input,
+            lines,
+            JSON.stringify({ reviewId: id, input, basisSnapshotDigest: yield* digest(basis) }),
+          );
+
+          const body = {
+            id,
+            scope,
+            ordinal,
+            version: 1,
+            input,
+            basis,
+            ...posting,
+            coverage: "not_established",
+            legalPolicyApproved: false,
+            requiresPostingApproval: true,
+            createdAt: yield* isoNow(tx),
+            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const result = yield* decode(Controls.AssetDisposalReview, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          if (new TextEncoder().encode(JSON.stringify(result)).length > 1048576)
+            return yield* failure("UnsupportedProfile");
+          yield* Db.insertDisposalReview(tx, scope.bookId, result);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const basis = yield* disposalBasis(tx, scope, input);
-
-      const ordinal =
-        (yield* Db.listReviews(tx, scope.bookId, "disposal", input.scheduleId)).length + 1;
-
-      if (ordinal > 20) return yield* failure("UnsupportedProfile");
-      const id = newId("asset_disposal_review");
-
-      const lines: Array<(typeof Accounting.PrepareJournal.Type.lines)[number]> =
-        basis.carryingBasis.lines
-          .filter((line) => BigInt(line.debitMinor) > 0n)
-          .map((line) => ({
-            accountId: line.accountId,
-            debitMinor: "0",
-            creditMinor: line.debitMinor,
-            description: "Release gross asset control",
-          }));
-
-      if (BigInt(basis.totalAccumulatedMinor) > 0n)
-        lines.push({
-          accountId: basis.schedule.terms.creditAccountId,
-          debitMinor: basis.totalAccumulatedMinor,
-          creditMinor: "0",
-          description: "Release accumulated recognition",
-        });
-
-      if (BigInt(basis.impairmentMinor ?? "0") > 0n) {
-        if (!basis.impairmentAccountId) return yield* failure("InternalError");
-        lines.push({
-          accountId: basis.impairmentAccountId,
-          debitMinor: basis.impairmentMinor ?? "0",
-          creditMinor: "0",
-          description: "Release accumulated impairment",
-        });
-      }
-
-      if (BigInt(basis.carryingMinor) > 0n)
-        lines.push({
-          accountId: input.lossAccountId,
-          debitMinor: basis.carryingMinor,
-          creditMinor: "0",
-          description: "Recognize disposal loss",
-        });
-
-      const posting = yield* preparePosting(
-        tx,
-        principal,
-        scope,
-        id,
-        input,
-        lines,
-        JSON.stringify({ reviewId: id, input, basisSnapshotDigest: yield* digest(basis) }),
-      );
-
-      const body = {
-        id,
-        scope,
-        ordinal,
-        version: 1,
-        input,
-        basis,
-        ...posting,
-        coverage: "not_established",
-        legalPolicyApproved: false,
-        requiresPostingApproval: true,
-        createdAt: yield* isoNow(tx),
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const result = yield* decode(Controls.AssetDisposalReview, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      if (new TextEncoder().encode(JSON.stringify(result)).length > 1048576)
-        return yield* failure("UnsupportedProfile");
-      yield* Db.insertDisposalReview(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -248,187 +237,179 @@ export const prepareImpairment = Effect.fn("subledger.prepareImpairment")(functi
       const { scope, input, idempotencyKey } = command;
       const operation = "prepare_subledger_impairment";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         Controls.AssetImpairmentReview,
-      );
+        Effect.gen(function* () {
+          if ((yield* Db.readDecision(tx, scope.bookId, input.decisionKey)).length)
+            return yield* failure("IdempotencyConflict");
+          const basis = yield* impairmentBasis(tx, scope, input);
+          const current = basis.schedule;
 
-      if (request.previous) return request.previous;
+          const ordinal =
+            (yield* Db.listReviews(tx, scope.bookId, "impairment", input.scheduleId)).length + 1;
 
-      if ((yield* Db.readDecision(tx, scope.bookId, input.decisionKey)).length)
-        return yield* failure("IdempotencyConflict");
-      const basis = yield* impairmentBasis(tx, scope, input);
-      const current = basis.schedule;
+          if (ordinal > 20 || current.revision >= 20) return yield* failure("UnsupportedProfile");
 
-      const ordinal =
-        (yield* Db.listReviews(tx, scope.bookId, "impairment", input.scheduleId)).length + 1;
+          const id = newId("asset_impairment_review"),
+            now = yield* isoNow(tx);
 
-      if (ordinal > 20 || current.revision >= 20) return yield* failure("UnsupportedProfile");
+          const prefix = basis.occurrences.filter(
+            (row) => row.state === "posted" || row.state === "reversed",
+          ).length;
 
-      const id = newId("asset_impairment_review"),
-        now = yield* isoNow(tx);
+          const occurrences = current.occurrences.slice(0, prefix);
 
-      const prefix = basis.occurrences.filter(
-        (row) => row.state === "posted" || row.state === "reversed",
-      ).length;
+          const periods = yield* Schedules.readPeriods(
+            tx,
+            scope.bookId,
+            input.installments.map((p) => p.accountingPeriodId),
+          );
 
-      const occurrences = current.occurrences.slice(0, prefix);
+          const years = yield* Ledger.readAllFiscalYears(tx, scope.bookId);
 
-      const periods = yield* Schedules.readPeriods(
-        tx,
-        scope.bookId,
-        input.installments.map((p) => p.accountingPeriodId),
-      );
+          let last =
+            [now.slice(0, 10), input.postingDate, basis.carryingBasis.input.effectiveOn]
+              .sort()
+              .at(-1) ?? input.postingDate;
 
-      const years = yield* Ledger.readAllFiscalYears(tx, scope.bookId);
+          for (const period of input.installments) {
+            const retained = periods.find((row) => row.id === period.accountingPeriodId);
+            const year = years.find((row) => row.id === retained?.fiscalYearId);
 
-      let last =
-        [now.slice(0, 10), input.postingDate, basis.carryingBasis.input.effectiveOn]
-          .sort()
-          .at(-1) ?? input.postingDate;
+            if (
+              !Accounting.isCalendarDate(period.postingDate) ||
+              period.postingDate <= last ||
+              !retained ||
+              !year ||
+              retained.startsOn < year.startsOn ||
+              retained.endsOn > year.endsOn ||
+              period.postingDate < retained.startsOn ||
+              period.postingDate > retained.endsOn ||
+              BigInt(period.amountMinor) <= 0n
+            )
+              return yield* failure("InvalidJournal");
 
-      for (const period of input.installments) {
-        const retained = periods.find((row) => row.id === period.accountingPeriodId);
-        const year = years.find((row) => row.id === retained?.fiscalYearId);
+            if (retained.locked) return yield* failure("PeriodLocked");
+            last = period.postingDate;
+            occurrences.push({
+              ...period,
+              ordinal: occurrences.length + 1,
+              eventKey: newId("impairment_occurrence"),
+            });
+          }
 
-        if (
-          !Accounting.isCalendarDate(period.postingDate) ||
-          period.postingDate <= last ||
-          !retained ||
-          !year ||
-          retained.startsOn < year.startsOn ||
-          retained.endsOn > year.endsOn ||
-          period.postingDate < retained.startsOn ||
-          period.postingDate > retained.endsOn ||
-          BigInt(period.amountMinor) <= 0n
-        )
-          return yield* failure("InvalidJournal");
+          if (occurrences.length > 120) return yield* failure("InvalidJournal");
 
-        if (retained.locked) return yield* failure("PeriodLocked");
-        last = period.postingDate;
-        occurrences.push({
-          ...period,
-          ordinal: occurrences.length + 1,
-          eventKey: newId("impairment_occurrence"),
-        });
-      }
+          const priorRevision = Object.fromEntries(
+            Object.entries(current).filter(([name]) => name !== "digest" && name !== "amendment"),
+          );
 
-      if (occurrences.length > 120) return yield* failure("InvalidJournal");
+          const revisionBody = {
+            ...priorRevision,
+            revision: current.revision + 1,
+            previousDigest: current.digest,
+            allocatedMinor: (BigInt(basis.recognizedMinor) + BigInt(input.futureMinor)).toString(),
+            terms: {
+              ...current.terms,
+              periods: occurrences.map(({ postingDate, accountingPeriodId }) => ({
+                postingDate,
+                accountingPeriodId,
+              })),
+              residualMinor: input.residualMinor,
+              allocationPolicy: "explicit_remaining_minor_v1",
+              usefulPeriods: occurrences.length,
+            },
+            occurrences,
+            amendment: {
+              kind: "impairment_v1",
+              reviewId: id,
+              input,
+              recognizedMinor: basis.recognizedMinor,
+              reversedMinor: basis.reversedMinor,
+              priorImpairmentMinor: basis.priorImpairmentMinor,
+              impairmentMinor: input.impairmentMinor,
+              netImpairmentMinor: (
+                BigInt(basis.priorImpairmentMinor) + BigInt(input.impairmentMinor)
+              ).toString(),
+              basisDigest: basis.carryingBasis.digest,
+              basisScheduleDigest: basis.carryingBasis.scheduleDigest,
+              sourceSha256: basis.sourceSha256,
+              reviewSha256: basis.reviewSha256,
+              reviewedOn: now.slice(0, 10),
+            },
+            createdAt: now,
+            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          };
 
-      const priorRevision = Object.fromEntries(
-        Object.entries(current).filter(([name]) => name !== "digest" && name !== "amendment"),
-      );
+          const proposedRevision = yield* decode(Subledgers.ScheduleRevision, {
+            ...revisionBody,
+            digest: yield* digest(revisionBody),
+          });
 
-      const revisionBody = {
-        ...priorRevision,
-        revision: current.revision + 1,
-        previousDigest: current.digest,
-        allocatedMinor: (BigInt(basis.recognizedMinor) + BigInt(input.futureMinor)).toString(),
-        terms: {
-          ...current.terms,
-          periods: occurrences.map(({ postingDate, accountingPeriodId }) => ({
-            postingDate,
-            accountingPeriodId,
-          })),
-          residualMinor: input.residualMinor,
-          allocationPolicy: "explicit_remaining_minor_v1",
-          usefulPeriods: occurrences.length,
-        },
-        occurrences,
-        amendment: {
-          kind: "impairment_v1",
-          reviewId: id,
-          input,
-          recognizedMinor: basis.recognizedMinor,
-          reversedMinor: basis.reversedMinor,
-          priorImpairmentMinor: basis.priorImpairmentMinor,
-          impairmentMinor: input.impairmentMinor,
-          netImpairmentMinor: (
-            BigInt(basis.priorImpairmentMinor) + BigInt(input.impairmentMinor)
-          ).toString(),
-          basisDigest: basis.carryingBasis.digest,
-          basisScheduleDigest: basis.carryingBasis.scheduleDigest,
-          sourceSha256: basis.sourceSha256,
-          reviewSha256: basis.reviewSha256,
-          reviewedOn: now.slice(0, 10),
-        },
-        createdAt: now,
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      };
+          const posting = yield* preparePosting(
+            tx,
+            principal,
+            scope,
+            id,
+            input,
+            [
+              {
+                accountId: input.lossAccountId,
+                debitMinor: input.impairmentMinor,
+                creditMinor: "0",
+                description: "Synthetic asset impairment loss",
+              },
+              {
+                accountId: input.accumulatedImpairmentAccountId,
+                debitMinor: "0",
+                creditMinor: input.impairmentMinor,
+                description: "Synthetic accumulated impairment",
+              },
+            ],
+            JSON.stringify({
+              reviewId: id,
+              input,
+              basisDigest: yield* digest(basis),
+              proposedRevisionDigest: proposedRevision.digest,
+            }),
+          );
 
-      const proposedRevision = yield* decode(Subledgers.ScheduleRevision, {
-        ...revisionBody,
-        digest: yield* digest(revisionBody),
-      });
+          const body = {
+            id,
+            scope,
+            ordinal,
+            version: 1,
+            input,
+            basis,
+            proposedRevision,
+            ...posting,
+            coverage: "not_established",
+            legalPolicyApproved: false,
+            requiresPostingApproval: true,
+            createdAt: now,
+            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          };
 
-      const posting = yield* preparePosting(
-        tx,
-        principal,
-        scope,
-        id,
-        input,
-        [
-          {
-            accountId: input.lossAccountId,
-            debitMinor: input.impairmentMinor,
-            creditMinor: "0",
-            description: "Synthetic asset impairment loss",
-          },
-          {
-            accountId: input.accumulatedImpairmentAccountId,
-            debitMinor: "0",
-            creditMinor: input.impairmentMinor,
-            description: "Synthetic accumulated impairment",
-          },
-        ],
-        JSON.stringify({
-          reviewId: id,
-          input,
-          basisDigest: yield* digest(basis),
-          proposedRevisionDigest: proposedRevision.digest,
+          const result = yield* decode(Controls.AssetImpairmentReview, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          if (new TextEncoder().encode(JSON.stringify(result)).length > 1048576)
+            return yield* failure("UnsupportedProfile");
+          yield* Db.insertImpairmentReview(tx, scope.bookId, result);
+
+          return result;
         }),
       );
-
-      const body = {
-        id,
-        scope,
-        ordinal,
-        version: 1,
-        input,
-        basis,
-        proposedRevision,
-        ...posting,
-        coverage: "not_established",
-        legalPolicyApproved: false,
-        requiresPostingApproval: true,
-        createdAt: now,
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const result = yield* decode(Controls.AssetImpairmentReview, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      if (new TextEncoder().encode(JSON.stringify(result)).length > 1048576)
-        return yield* failure("UnsupportedProfile");
-      yield* Db.insertImpairmentReview(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

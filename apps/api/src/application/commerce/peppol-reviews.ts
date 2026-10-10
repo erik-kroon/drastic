@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/peppol-exchange";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -6,7 +7,9 @@ import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { sourceDigest } from "../../adapters/storage/retained-objects";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { renderPeppol, readPeppolDocument } from "./peppol-document";
 import { accessPoint, capturePeppol, currentBinding } from "./peppol-context";
@@ -169,107 +172,112 @@ export const preparePeppolReview = Effect.fn("peppol.prepareReview")(function* (
   const invalid = yield* classifyValidation(validation, hash, rendered.expected);
 
   return yield* withBook(token, command.scope, false, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_prepare_review",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "peppol_prepare_review",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Review,
+      Effect.gen(function* () {
+        yield* PostingDb.lockBookForUpdate(tx, command.scope);
+        yield* requireTableAccess(tx, reviewTables, true);
+        const current = yield* Effect.result(capturePeppol(tx, command.scope, command.input));
+
+        if (
+          Result.isFailure(current) &&
+          (!("code" in current.failure) ||
+            !["StaleDependency", "InvalidJournal", "MissingEvidence", "NotFound"].includes(
+              current.failure.code,
+            ))
+        )
+          return yield* current.failure;
+
+        const changed =
+          Result.isFailure(current) ||
+          (yield* digest(current.success)) !== (yield* digest(initial.basis));
+
+        const blockers = [
+          ...(invalid ? [invalid] : []),
+          ...(changed ? ["dependencies_changed" as const] : []),
+        ];
+
+        const at = yield* isoNow(tx);
+
+        const preparer = (yield* Db.readReviewPreparer(
+          tx,
+          command.scope.bookId,
+          principal.actorId,
+        ))[0];
+
+        if (!preparer) return yield* failure("MissingEvidence");
+
+        const body = {
+          createdByName: preparer.name,
+          id: newId("peppol_review"),
+          scope: command.scope,
+          input: command.input,
+          source: yield* decode(
+            Contracts.ReviewSource,
+            yield* toJsonObject(initial.basis.document),
+          ),
+          sender: initial.basis.sender,
+          recipient: initial.basis.recipient,
+          rendererVersion: "ubl21-se-domestic-25-v2" as const,
+          ...rendered,
+          xmlSha256: hash,
+          validation,
+          createdBy: principal.actorId,
+          createdAt: at,
+        };
+
+        const artifact =
+          blockers.length === 0
+            ? yield* retainArtifact(
+                tx,
+                command.scope,
+                initial.basis,
+                command.input,
+                rendered,
+                validation,
+                candidate,
+                hash,
+                principal.actorId,
+                at,
+              )
+            : null;
+
+        const result = artifact
+          ? {
+              ...body,
+              outcome: "ready" as const,
+              artifact: { id: artifact.id, digest: artifact.digest },
+            }
+          : { ...body, outcome: "blocked" as const, blockers };
+
+        const review = yield* decode(Contracts.Review, {
+          ...result,
+          digest: yield* digest(result),
+        });
+
+        yield* Db.insertReview(tx, command.scope.bookId, {
+          id: review.id,
+          candidate,
+          kind: command.input.document.kind,
+          sourceId: command.input.document.id,
+          senderId: review.sender.id,
+          recipientId: review.recipient.id,
+          actorId: principal.actorId,
+          createdAt: at,
+          body: yield* toJsonObject(review),
+        });
+
+        return { receipt: yield* toJsonObject(review), result: review };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* PostingDb.lockBookForUpdate(tx, command.scope);
-    yield* requireTableAccess(tx, reviewTables, true);
-    const current = yield* Effect.result(capturePeppol(tx, command.scope, command.input));
-
-    if (
-      Result.isFailure(current) &&
-      (!("code" in current.failure) ||
-        !["StaleDependency", "InvalidJournal", "MissingEvidence", "NotFound"].includes(
-          current.failure.code,
-        ))
-    )
-      return yield* current.failure;
-
-    const changed =
-      Result.isFailure(current) ||
-      (yield* digest(current.success)) !== (yield* digest(initial.basis));
-
-    const blockers = [
-      ...(invalid ? [invalid] : []),
-      ...(changed ? ["dependencies_changed" as const] : []),
-    ];
-
-    const at = yield* isoNow(tx);
-    const preparer = (yield* Db.readReviewPreparer(tx, command.scope.bookId, principal.actorId))[0];
-
-    if (!preparer) return yield* failure("MissingEvidence");
-
-    const body = {
-      createdByName: preparer.name,
-      id: newId("peppol_review"),
-      scope: command.scope,
-      input: command.input,
-      source: yield* decode(Contracts.ReviewSource, yield* toJsonObject(initial.basis.document)),
-      sender: initial.basis.sender,
-      recipient: initial.basis.recipient,
-      rendererVersion: "ubl21-se-domestic-25-v2" as const,
-      ...rendered,
-      xmlSha256: hash,
-      validation,
-      createdBy: principal.actorId,
-      createdAt: at,
-    };
-
-    const artifact =
-      blockers.length === 0
-        ? yield* retainArtifact(
-            tx,
-            command.scope,
-            initial.basis,
-            command.input,
-            rendered,
-            validation,
-            candidate,
-            hash,
-            principal.actorId,
-            at,
-          )
-        : null;
-
-    const result = artifact
-      ? {
-          ...body,
-          outcome: "ready" as const,
-          artifact: { id: artifact.id, digest: artifact.digest },
-        }
-      : { ...body, outcome: "blocked" as const, blockers };
-
-    const review = yield* decode(Contracts.Review, { ...result, digest: yield* digest(result) });
-    yield* Db.insertReview(tx, command.scope.bookId, {
-      id: review.id,
-      candidate,
-      kind: command.input.document.kind,
-      sourceId: command.input.document.id,
-      senderId: review.sender.id,
-      recipientId: review.recipient.id,
-      actorId: principal.actorId,
-      createdAt: at,
-      body: yield* toJsonObject(review),
-    });
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "peppol_prepare_review",
-      principal.actorId,
-      yield* toJsonObject(review),
-    );
-
-    return review;
   });
 });
 
@@ -419,46 +427,39 @@ export const returnPeppolReview = Effect.fn("peppol.returnReview")(function* (
 
     if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_return_review",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "peppol_return_review",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.ReviewReturn,
+      Effect.gen(function* () {
+        const prior = (yield* Db.readReviewReturn(tx, command.scope.bookId, review.id))[0];
+
+        const body = {
+          id: newId("peppol_review_return"),
+          reviewId: review.id,
+          reviewDigest: review.digest,
+          actorId: principal.actorId,
+          createdAt: yield* isoNow(tx),
+        };
+
+        const returned = prior
+          ? yield* decode(Contracts.ReviewReturn, prior.body)
+          : yield* decode(Contracts.ReviewReturn, { ...body, digest: yield* digest(body) });
+
+        if (!prior)
+          yield* Db.insertReviewReturn(tx, command.scope.bookId, {
+            ...returned,
+            body: yield* toJsonObject(returned),
+          });
+
+        return { receipt: yield* toJsonObject(returned), result: returned };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const prior = (yield* Db.readReviewReturn(tx, command.scope.bookId, review.id))[0];
-
-    const body = {
-      id: newId("peppol_review_return"),
-      reviewId: review.id,
-      reviewDigest: review.digest,
-      actorId: principal.actorId,
-      createdAt: yield* isoNow(tx),
-    };
-
-    const returned = prior
-      ? yield* decode(Contracts.ReviewReturn, prior.body)
-      : yield* decode(Contracts.ReviewReturn, { ...body, digest: yield* digest(body) });
-
-    if (!prior)
-      yield* Db.insertReviewReturn(tx, command.scope.bookId, {
-        ...returned,
-        body: yield* toJsonObject(returned),
-      });
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "peppol_return_review",
-      principal.actorId,
-      yield* toJsonObject(returned),
-    );
-
-    return returned;
   });
 });

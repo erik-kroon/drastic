@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { closingCopy } from "./copy";
 import { FamilyInventoryFields, readFamilyDecisions } from "./inventory";
@@ -124,7 +126,7 @@ export function PeriodClosing(props: {
 }) {
   const { book, periodId, locale, onPrepared } = props;
   const copy = closingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
   const path = `${bookPath(book)}/periods/${encodeURIComponent(periodId)}`;
@@ -155,7 +157,7 @@ export function PeriodClosing(props: {
       return readAccounting(
         endpoint,
         Closing.ClosingInventory,
-        mutationOptions(endpoint, JSON.stringify(input), keys.current),
+        keys.current.options(endpoint, JSON.stringify(input)),
       );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: bookKey(book) }),
@@ -168,7 +170,7 @@ export function PeriodClosing(props: {
       return readAccounting(
         endpoint,
         Closing.ClosingProposal,
-        mutationOptions(endpoint, JSON.stringify(input), keys.current),
+        keys.current.options(endpoint, JSON.stringify(input)),
       );
     },
     onSuccess: (result) => onPrepared(result.id),
@@ -222,7 +224,7 @@ export function PeriodClosing(props: {
                   families: readFamilyDecisions(values),
                 });
 
-                if (result._tag === "None") {
+                if (Option.isNone(result)) {
                   setError(copy.invalid);
 
                   return;
@@ -280,7 +282,7 @@ export function PeriodClosing(props: {
                 reason: new FormData(event.currentTarget).get("reason"),
               });
 
-              if (result._tag === "None") {
+              if (Option.isNone(result)) {
                 setError(copy.invalid);
 
                 return;

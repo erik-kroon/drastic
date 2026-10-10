@@ -1,3 +1,6 @@
+import * as Match from "effect/Match";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +24,6 @@ import {
   bookPath,
   booksKey,
   isUncertainWriteError,
-  mutationOptions,
   readAccounting,
 } from "@/lib/accounting-api";
 import { english, swedish } from "./copy";
@@ -61,7 +63,11 @@ export function CompanySetupPanel() {
   const setup = useQuery({
     queryKey: [...bookKey(book), "company-setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/company-setup`, Setup.CompanySetup, { signal }),
+      readAccounting(
+        (client) => client.companySetup.getCompanySetup({ params: { ...bookScope(book) } }),
+        Setup.CompanySetup,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -97,7 +103,7 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
   const { book, locale } = useBookWorkspace();
   const copy = locale === "sv" ? swedish : english;
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const [step, setStep] = useState(() => {
     if (saved.missing.some((field) => field === "legalForm" || field === "organizationNumber"))
@@ -118,11 +124,7 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
 
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.SaveCompanySetup.Type) =>
-      readAccounting(
-        path,
-        Setup.CompanySetup,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      ),
+      readAccounting(path, Setup.CompanySetup, keys.current.options(path, JSON.stringify(input))),
     onSuccess: async (result) => {
       cache.setQueryData([...bookKey(book), "company-setup"], result);
       await cache.invalidateQueries({ queryKey: booksKey });
@@ -327,7 +329,11 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
                       ]}
                       onValueChange={(value) => {
                         field.handleChange(
-                          value === "true" ? true : value === "false" ? false : null,
+                          Match.value(value).pipe(
+                            Match.when("true", () => true),
+                            Match.when("false", () => false),
+                            Match.orElse(() => null),
+                          ),
                         );
 
                         if (value !== "true") form.setFieldValue("vatPeriod", null);

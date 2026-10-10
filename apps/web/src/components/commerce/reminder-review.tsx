@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { defaultStringifySearch, useSearch, useNavigate } from "@tanstack/react-router";
@@ -36,7 +38,8 @@ export function ReminderReview({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/ar-legal-issues/${encodeURIComponent(issueId)}`,
+        (client) =>
+          client.arLegalIssue.getArLegalIssue({ params: { ...bookScope(book), id: issueId } }),
         Ar.ArLegalIssueReceipt,
         { signal },
       );
@@ -57,7 +60,11 @@ export function ReminderReview({
       if (!customerId) throw new Error("Invoice customer is unavailable.");
 
       const result = await readAccounting(
-        `${commercePath(book)}/directory/${encodeURIComponent(customerId)}/recipient`,
+        (client) =>
+          client.crmMaster.crmCustomerRecipient({
+            params: { ...bookScope(book), partyId: customerId },
+            query: httpQuery(Api.groups.crmMaster.endpoints.crmCustomerRecipient, ``),
+          }),
         Crm.ReviewedCustomerRecipient,
         { signal },
       );

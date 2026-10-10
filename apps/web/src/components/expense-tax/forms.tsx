@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +11,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { expenseTaxCopy } from "./copy";
 
@@ -84,7 +86,7 @@ export function TaxSourceForm(
   const copy = expenseTaxCopy(locale);
   // Capture the edited revision. A background read cannot change the submitted expected digest.
   const [current] = useState(props.current);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
@@ -94,7 +96,7 @@ export function TaxSourceForm(
       return readAccounting(
         path,
         Tax.TaxSourceRevision,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (source) => props.onSaved(source.sourceId),
@@ -133,7 +135,7 @@ export function TaxSourceForm(
           },
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;
@@ -257,18 +259,14 @@ export function TaxReviewForm(
   const [source] = useState(props.source);
   const previous = source.reviewCurrent ? source.latestReview?.facts : null;
   const copy = expenseTaxCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
     mutationFn: (input: typeof Tax.ReviewTaxSource.Type) => {
       const path = `${bookPath(book)}/expense-tax/sources/${source.current.sourceId}/reviews`;
 
-      return readAccounting(
-        path,
-        Tax.TaxReview,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      );
+      return readAccounting(path, Tax.TaxReview, keys.current.options(path, JSON.stringify(input)));
     },
     onSuccess: () => props.onSaved(),
   });
@@ -300,7 +298,7 @@ export function TaxReviewForm(
           },
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;
@@ -408,7 +406,7 @@ export function TaxReviewForm(
 export function TaxEvidenceForm({ book, locale }: Common) {
   const copy = expenseTaxCopy(locale);
   const contentId = useId();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
@@ -418,7 +416,7 @@ export function TaxEvidenceForm({ book, locale }: Common) {
       return readAccounting(
         path,
         Accounting.Evidence,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
   });
@@ -443,7 +441,7 @@ export function TaxEvidenceForm({ book, locale }: Common) {
             mediaType: "text/plain",
           });
 
-          if (decoded._tag === "None") {
+          if (Option.isNone(decoded)) {
             setInvalid(true);
 
             return;

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -121,7 +122,10 @@ function RequestLookup({
     queryKey: [...bookKey(book), "posting-recovery", "request", key],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/posting-requests/${encodeURIComponent(key)}`,
+        (client) =>
+          client.postingRecovery.recoverPostingRequest({
+            params: { ...bookScope(book), key: key },
+          }),
         Recovery.RecoveredPostingRequest,
         { signal },
       ),

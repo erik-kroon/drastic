@@ -1,9 +1,12 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as SupplierInbox from "@open-erp/contracts/supplier-inbox";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import * as InboxDb from "../../db/purchases/inbox";
 import * as IntakeDb from "../../db/purchases/intake";
 import * as Shared from "./shared";
@@ -210,83 +213,76 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "register_supplier_inbox",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "register_supplier_inbox",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
+        },
         ViewSchema,
+        Effect.gen(function* () {
+          yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
+          const { occurrenceId, channel, messageIdentity } = command.input;
+
+          if (
+            (channel === "email" &&
+              (messageIdentity === null ||
+                messageIdentity.length < 1 ||
+                messageIdentity.length > 200)) ||
+            (channel === "upload" && messageIdentity !== null)
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const occurrence = (yield* InboxDb.readOccurrence(
+            transaction,
+            command.scope.bookId,
+            occurrenceId,
+          ))[0];
+
+          if (!occurrence) return yield* failure("NotFound");
+
+          if (
+            messageIdentity !== null &&
+            (yield* InboxDb.readMessageIdentityConflict(
+              transaction,
+              command.scope.bookId,
+              channel,
+              messageIdentity,
+              occurrenceId,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("IdempotencyConflict");
+          }
+
+          yield* InboxDb.insertInbox(transaction, {
+            bookId: command.scope.bookId,
+            occurrenceId,
+            channel,
+            messageIdentity,
+          });
+
+          if (
+            (yield* InboxDb.readRegistration(
+              transaction,
+              command.scope.bookId,
+              occurrenceId,
+              channel,
+              messageIdentity,
+            ))[0]?.registered !== true
+          ) {
+            return yield* failure("IdempotencyConflict");
+          }
+
+          const view = yield* inboxView(transaction, command.scope.bookId, occurrenceId);
+
+          return { receipt: yield* Shared.toJsonObject(view), result: view };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
-
-      const { occurrenceId, channel, messageIdentity } = command.input;
-
-      if (
-        (channel === "email" &&
-          (messageIdentity === null ||
-            messageIdentity.length < 1 ||
-            messageIdentity.length > 200)) ||
-        (channel === "upload" && messageIdentity !== null)
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const occurrence = (yield* InboxDb.readOccurrence(
-        transaction,
-        command.scope.bookId,
-        occurrenceId,
-      ))[0];
-
-      if (!occurrence) return yield* failure("NotFound");
-
-      if (
-        messageIdentity !== null &&
-        (yield* InboxDb.readMessageIdentityConflict(
-          transaction,
-          command.scope.bookId,
-          channel,
-          messageIdentity,
-          occurrenceId,
-        ))[0]?.present === true
-      ) {
-        return yield* failure("IdempotencyConflict");
-      }
-
-      yield* InboxDb.insertInbox(transaction, {
-        bookId: command.scope.bookId,
-        occurrenceId,
-        channel,
-        messageIdentity,
-      });
-
-      if (
-        (yield* InboxDb.readRegistration(
-          transaction,
-          command.scope.bookId,
-          occurrenceId,
-          channel,
-          messageIdentity,
-        ))[0]?.registered !== true
-      ) {
-        return yield* failure("IdempotencyConflict");
-      }
-
-      const view = yield* inboxView(transaction, command.scope.bookId, occurrenceId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "register_supplier_inbox",
-        principal.actorId,
-        yield* Shared.toJsonObject(view),
-      );
-
-      return view;
     }),
   );
 });
@@ -306,75 +302,71 @@ export const recordSupplierExtraction = Effect.fn("purchases.inbox.recordExtract
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "record_supplier_extraction",
-        principal.actorId,
         {
-          occurrenceId: command.occurrenceId,
-          input: yield* Shared.toJsonObject(command.input),
-        } satisfies JsonObject,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "record_supplier_extraction",
+          actorId: principal.actorId,
+          input: {
+            occurrenceId: command.occurrenceId,
+            input: yield* Shared.toJsonObject(command.input),
+          } satisfies JsonObject,
+        },
         ViewSchema,
+        Effect.gen(function* () {
+          yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
+          if (Shared.byteLength(JSON.stringify(command.input)) > maximumExtractionBytes) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (
+            (yield* InboxDb.readInboxForUpdate(
+              transaction,
+              command.scope.bookId,
+              command.occurrenceId,
+            )).length === 0
+          ) {
+            return yield* failure("NotFound");
+          }
+
+          const attemptCount = (yield* InboxDb.readAttemptCount(
+            transaction,
+            command.scope.bookId,
+            command.occurrenceId,
+          ))[0]!.total;
+
+          if (attemptCount >= maximumAttempts) return yield* failure("InvalidJournal");
+
+          const ordinal = attemptCount + 1;
+
+          const body = Object.assign({}, command.input, {
+            id: newId("supplier_extraction"),
+            occurrenceId: command.occurrenceId,
+            ordinal,
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(transaction),
+          }) satisfies JsonObject;
+
+          if (Shared.byteLength(JSON.stringify(body)) > 65536) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const attemptId = newId("supplier_extraction");
+          yield* InboxDb.insertAttempt(transaction, {
+            bookId: command.scope.bookId,
+            id: attemptId,
+            occurrenceId: command.occurrenceId,
+            ordinal,
+            body: Object.assign({}, body, { id: attemptId }),
+          });
+          const view = yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
+
+          return { receipt: yield* Shared.toJsonObject(view), result: view };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
-
-      if (Shared.byteLength(JSON.stringify(command.input)) > maximumExtractionBytes) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* InboxDb.readInboxForUpdate(transaction, command.scope.bookId, command.occurrenceId))
-          .length === 0
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const attemptCount = (yield* InboxDb.readAttemptCount(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-      ))[0]!.total;
-
-      if (attemptCount >= maximumAttempts) return yield* failure("InvalidJournal");
-
-      const ordinal = attemptCount + 1;
-
-      const body = Object.assign({}, command.input, {
-        id: newId("supplier_extraction"),
-        occurrenceId: command.occurrenceId,
-        ordinal,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-      }) satisfies JsonObject;
-
-      if (Shared.byteLength(JSON.stringify(body)) > 65536) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const attemptId = newId("supplier_extraction");
-      yield* InboxDb.insertAttempt(transaction, {
-        bookId: command.scope.bookId,
-        id: attemptId,
-        occurrenceId: command.occurrenceId,
-        ordinal,
-        body: Object.assign({}, body, { id: attemptId }),
-      });
-      const view = yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "record_supplier_extraction",
-        principal.actorId,
-        yield* Shared.toJsonObject(view),
-      );
-
-      return view;
     }),
   );
 });
@@ -399,102 +391,93 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       yield* Shared.readBook(transaction, command.scope.bookId);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "review_supplier_inbox",
-        principal.actorId,
         {
-          occurrenceId: command.occurrenceId,
-          input: yield* Shared.toJsonObject(command.input),
-        } satisfies JsonObject,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "review_supplier_inbox",
+          actorId: principal.actorId,
+          input: {
+            occurrenceId: command.occurrenceId,
+            input: yield* Shared.toJsonObject(command.input),
+          } satisfies JsonObject,
+        },
         ReviewSchema,
+        Effect.gen(function* () {
+          const entry = (yield* InboxDb.readInboxForUpdate(
+            transaction,
+            command.scope.bookId,
+            command.occurrenceId,
+          ))[0];
+
+          if (!entry) return yield* failure("NotFound");
+
+          if (entry.draftId !== null) return yield* failure("IdempotencyConflict");
+          const attemptId = command.input.reviewAttemptId;
+
+          if (
+            attemptId !== null &&
+            (yield* InboxDb.readAttemptPresence(
+              transaction,
+              command.scope.bookId,
+              command.occurrenceId,
+              attemptId,
+            ))[0]?.present !== true
+          ) {
+            return yield* failure("NotFound");
+          }
+
+          const draftContent = yield* Shared.toJsonObject(command.input.draft);
+
+          const sourceEvidenceId = Shared.textField(
+            Shared.objectField(draftContent, "content"),
+            "sourceEvidenceId",
+          );
+
+          if (sourceEvidenceId === undefined) return yield* failure("InvalidJournal");
+
+          yield* requireOriginalEvidence(
+            transaction,
+            command.scope.bookId,
+            command.occurrenceId,
+            sourceEvidenceId,
+          );
+
+          const draftKey = `ap_${(yield* sha256Hex(
+            `${command.scope.bookId}:${command.occurrenceId}`,
+          )).slice(0, 60)}`;
+
+          const draft = yield* createSupplierInvoiceDraftInTransaction(transaction, principal, {
+            scope: command.scope,
+            idempotencyKey: newId("supplier_draft"),
+            input: { draftKey, content: command.input.draft.content },
+          });
+
+          yield* InboxDb.bindDraft(
+            transaction,
+            command.scope.bookId,
+            command.occurrenceId,
+            Shared.textField(yield* Shared.toJsonObject(draft), "id") ?? "",
+            command.input.reviewReason,
+            attemptId,
+          );
+          const view = yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
+
+          const result = yield* Shared.decode(
+            ReviewSchema,
+            Object.assign(
+              {},
+              {
+                inbox: yield* Shared.toJsonObject(view),
+                draft,
+              },
+            ),
+          );
+
+          return { receipt: yield* Shared.toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const entry = (yield* InboxDb.readInboxForUpdate(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-      ))[0];
-
-      if (!entry) return yield* failure("NotFound");
-
-      if (entry.draftId !== null) return yield* failure("IdempotencyConflict");
-      const attemptId = command.input.reviewAttemptId;
-
-      if (
-        attemptId !== null &&
-        (yield* InboxDb.readAttemptPresence(
-          transaction,
-          command.scope.bookId,
-          command.occurrenceId,
-          attemptId,
-        ))[0]?.present !== true
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const draftContent = yield* Shared.toJsonObject(command.input.draft);
-
-      const sourceEvidenceId = Shared.textField(
-        Shared.objectField(draftContent, "content"),
-        "sourceEvidenceId",
-      );
-
-      if (sourceEvidenceId === undefined) return yield* failure("InvalidJournal");
-
-      yield* requireOriginalEvidence(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-        sourceEvidenceId,
-      );
-
-      const draftKey = `ap_${(yield* sha256Hex(
-        `${command.scope.bookId}:${command.occurrenceId}`,
-      )).slice(0, 60)}`;
-
-      const draft = yield* createSupplierInvoiceDraftInTransaction(transaction, principal, {
-        scope: command.scope,
-        idempotencyKey: newId("supplier_draft"),
-        input: { draftKey, content: command.input.draft.content },
-      });
-
-      yield* InboxDb.bindDraft(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-        Shared.textField(yield* Shared.toJsonObject(draft), "id") ?? "",
-        command.input.reviewReason,
-        attemptId,
-      );
-      const view = yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
-
-      const result = yield* Shared.decode(
-        ReviewSchema,
-        Object.assign(
-          {},
-          {
-            inbox: yield* Shared.toJsonObject(view),
-            draft,
-          },
-        ),
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "review_supplier_inbox",
-        principal.actorId,
-        yield* Shared.toJsonObject(result),
-      );
-
-      return result;
     }),
   );
 });

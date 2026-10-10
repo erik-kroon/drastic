@@ -1,9 +1,11 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Deadlines from "@open-erp/contracts/deadlines";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/deadlines";
 import * as RuleDb from "../../db/rule-impact";
@@ -211,139 +213,131 @@ export const saveObligation = Effect.fn("deadlines.saveObligation")(function* (
         input: command.input,
       });
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "deadline_save",
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "deadline_save",
+          actorId: principal.actorId,
+          input: payload,
+        },
         DeadlineSchema,
+        Effect.gen(function* () {
+          yield* requireDeadlineAccess(transaction, true);
+
+          if (!/^[a-zA-Z0-9_-]{1,128}$/.test(command.id)) return yield* failure("InvalidJournal");
+          const input = yield* toJsonObject(command.input);
+          const basis = yield* validateInput(input);
+          const dueAt = text(input, "dueAt")!;
+
+          if (Number.isNaN(Date.parse(dueAt))) return yield* failure("InvalidJournal");
+          const timeZone = text(input, "timeZone")!;
+
+          if ((yield* Db.knownTimeZone(transaction, timeZone))[0]?.present !== true) {
+            return yield* failure("InvalidJournal");
+          }
+
+          // When a reviewed release for this family and jurisdiction exists, the
+          // declared rule reference has to be that release. No release row means the
+          // declared basis is retained unreviewed, not silently upgraded.
+
+          const declaredRelease = (yield* RuleDb.readRelease(transaction, basis.ruleReference))[0];
+
+          if (
+            declaredRelease &&
+            (declaredRelease.jurisdiction !== basis.jurisdiction ||
+              declaredRelease.family !== basis.family ||
+              declaredRelease.version !== basis.ruleVersion)
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const responsibleActorId = text(input, "responsibleActorId")!;
+
+          if (
+            (yield* Db.responsibleMember(transaction, command.scope.bookId, responsibleActorId))[0]
+              ?.present !== true
+          ) {
+            return yield* failure("Forbidden");
+          }
+
+          const overrideReason = text(input, "overrideReason");
+
+          const basisRow = {
+            bookId: command.scope.bookId,
+            id: command.id,
+            title: text(input, "title")!,
+            periodId: text(input, "periodId")!,
+            responsibleActorId,
+            dueAt,
+            timeZone,
+            sourceReference: text(input, "sourceReference")!,
+            sourceRevision: text(input, "sourceRevision")!,
+            overrideReason:
+              overrideReason === null || overrideReason.length === 0 ? null : overrideReason,
+            outcomeKind: text(input, "outcomeKind")!,
+            jurisdiction: text(input, "jurisdiction")!,
+            statutoryBasis: yield* toJsonObject(basis),
+            requiredEnvironment: text(input, "requiredEnvironment")!,
+          };
+
+          const existing = (yield* Db.readObligation(
+            transaction,
+            command.scope.bookId,
+            command.id,
+            true,
+          ))[0];
+
+          if (existing) {
+            if (
+              command.expectedRevision === null ||
+              Number(existing.revision) !== command.expectedRevision
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            const changed = (yield* Db.sourceChanged(
+              transaction,
+              command.scope.bookId,
+              command.id,
+              dueAt,
+              text(input, "sourceReference")!,
+              text(input, "sourceRevision")!,
+            ))[0]?.changed;
+
+            if (changed === undefined) return yield* failure("InternalError");
+
+            if (changed && (overrideReason === null || overrideReason.length === 0)) {
+              return yield* failure("InvalidJournal");
+            }
+
+            yield* Db.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              obligationId: command.id,
+              revision: String(Number(existing.revision) + 1),
+              changedBy: principal.actorId,
+              priorDueAt: existing.dueAt,
+              priorSourceReference: existing.sourceReference,
+              priorSourceRevision: existing.sourceRevision,
+              reason: overrideReason ?? defaultRevisionReason,
+            });
+            yield* Db.updateBasis(transaction, basisRow);
+          } else {
+            if (command.expectedRevision !== null) return yield* failure("StaleDependency");
+            yield* Db.insertObligation(transaction, basisRow);
+          }
+
+          yield* linkAmendment(transaction, command.scope.bookId, command.id, command.input);
+
+          const result = yield* decode(
+            DeadlineSchema,
+            (yield* Db.readProjection(transaction, command.scope.bookId, command.id))[0]!.body,
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDeadlineAccess(transaction, true);
-
-      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(command.id)) return yield* failure("InvalidJournal");
-      const input = yield* toJsonObject(command.input);
-      const basis = yield* validateInput(input);
-      const dueAt = text(input, "dueAt")!;
-
-      if (Number.isNaN(Date.parse(dueAt))) return yield* failure("InvalidJournal");
-      const timeZone = text(input, "timeZone")!;
-
-      if ((yield* Db.knownTimeZone(transaction, timeZone))[0]?.present !== true) {
-        return yield* failure("InvalidJournal");
-      }
-
-      // When a reviewed release for this family and jurisdiction exists, the
-      // declared rule reference has to be that release. No release row means the
-      // declared basis is retained unreviewed, not silently upgraded.
-
-      const declaredRelease = (yield* RuleDb.readRelease(transaction, basis.ruleReference))[0];
-
-      if (
-        declaredRelease &&
-        (declaredRelease.jurisdiction !== basis.jurisdiction ||
-          declaredRelease.family !== basis.family ||
-          declaredRelease.version !== basis.ruleVersion)
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const responsibleActorId = text(input, "responsibleActorId")!;
-
-      if (
-        (yield* Db.responsibleMember(transaction, command.scope.bookId, responsibleActorId))[0]
-          ?.present !== true
-      ) {
-        return yield* failure("Forbidden");
-      }
-
-      const overrideReason = text(input, "overrideReason");
-
-      const basisRow = {
-        bookId: command.scope.bookId,
-        id: command.id,
-        title: text(input, "title")!,
-        periodId: text(input, "periodId")!,
-        responsibleActorId,
-        dueAt,
-        timeZone,
-        sourceReference: text(input, "sourceReference")!,
-        sourceRevision: text(input, "sourceRevision")!,
-        overrideReason:
-          overrideReason === null || overrideReason.length === 0 ? null : overrideReason,
-        outcomeKind: text(input, "outcomeKind")!,
-        jurisdiction: text(input, "jurisdiction")!,
-        statutoryBasis: yield* toJsonObject(basis),
-        requiredEnvironment: text(input, "requiredEnvironment")!,
-      };
-
-      const existing = (yield* Db.readObligation(
-        transaction,
-        command.scope.bookId,
-        command.id,
-        true,
-      ))[0];
-
-      if (existing) {
-        if (
-          command.expectedRevision === null ||
-          Number(existing.revision) !== command.expectedRevision
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        const changed = (yield* Db.sourceChanged(
-          transaction,
-          command.scope.bookId,
-          command.id,
-          dueAt,
-          text(input, "sourceReference")!,
-          text(input, "sourceRevision")!,
-        ))[0]?.changed;
-
-        if (changed === undefined) return yield* failure("InternalError");
-
-        if (changed && (overrideReason === null || overrideReason.length === 0)) {
-          return yield* failure("InvalidJournal");
-        }
-
-        yield* Db.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          obligationId: command.id,
-          revision: String(Number(existing.revision) + 1),
-          changedBy: principal.actorId,
-          priorDueAt: existing.dueAt,
-          priorSourceReference: existing.sourceReference,
-          priorSourceRevision: existing.sourceRevision,
-          reason: overrideReason ?? defaultRevisionReason,
-        });
-        yield* Db.updateBasis(transaction, basisRow);
-      } else {
-        if (command.expectedRevision !== null) return yield* failure("StaleDependency");
-        yield* Db.insertObligation(transaction, basisRow);
-      }
-
-      yield* linkAmendment(transaction, command.scope.bookId, command.id, command.input);
-
-      const result = yield* decode(
-        DeadlineSchema,
-        (yield* Db.readProjection(transaction, command.scope.bookId, command.id))[0]!.body,
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "deadline_save",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -365,62 +359,54 @@ export const recordActivity = Effect.fn("deadlines.recordActivity")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject({ id: command.id, action: command.action });
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "deadline_activity",
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "deadline_activity",
+          actorId: principal.actorId,
+          input: payload,
+        },
         DeadlineSchema,
+        Effect.gen(function* () {
+          yield* requireDeadlineAccess(transaction, true);
+
+          if (!activityActions.some((choice) => choice === command.action)) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const existing = (yield* Db.readObligation(
+            transaction,
+            command.scope.bookId,
+            command.id,
+            true,
+          ))[0];
+
+          if (!existing) return yield* failure("NotFound");
+          const recordedAt = yield* isoNow(transaction);
+
+          // A dismissed reminder and a fulfilled obligation stay separate states.
+          yield* Db.insertActivity(transaction, {
+            bookId: command.scope.bookId,
+            obligationId: command.id,
+            id: newId("deadline_activity"),
+            action: command.action,
+            reference: null,
+            outcomeKind: null,
+            recordedBy: principal.actorId,
+            recordedAt,
+          });
+          yield* Db.dismissReminder(transaction, command.scope.bookId, command.id, recordedAt);
+
+          const result = yield* decode(
+            DeadlineSchema,
+            (yield* Db.readProjection(transaction, command.scope.bookId, command.id))[0]!.body,
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDeadlineAccess(transaction, true);
-
-      if (!activityActions.some((choice) => choice === command.action)) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const existing = (yield* Db.readObligation(
-        transaction,
-        command.scope.bookId,
-        command.id,
-        true,
-      ))[0];
-
-      if (!existing) return yield* failure("NotFound");
-      const recordedAt = yield* isoNow(transaction);
-
-      // A dismissed reminder and a fulfilled obligation stay separate states.
-      yield* Db.insertActivity(transaction, {
-        bookId: command.scope.bookId,
-        obligationId: command.id,
-        id: newId("deadline_activity"),
-        action: command.action,
-        reference: null,
-        outcomeKind: null,
-        recordedBy: principal.actorId,
-        recordedAt,
-      });
-      yield* Db.dismissReminder(transaction, command.scope.bookId, command.id, recordedAt);
-
-      const result = yield* decode(
-        DeadlineSchema,
-        (yield* Db.readProjection(transaction, command.scope.bookId, command.id))[0]!.body,
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "deadline_activity",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -461,35 +447,28 @@ export const revokeFeed = Effect.fn("deadlines.revokeFeed")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject({ id: command.id });
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "deadline_feed_revoke",
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "deadline_feed_revoke",
+          actorId: principal.actorId,
+          input: payload,
+        },
         RevokedSchema,
+        Effect.gen(function* () {
+          yield* requireDeadlineAccess(transaction, true);
+
+          if ((yield* Db.revokeFeed(transaction, command.scope.bookId, command.id)).length === 0) {
+            return yield* failure("NotFound");
+          }
+
+          const result = yield* decode(RevokedSchema, { id: command.id, revoked: true });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDeadlineAccess(transaction, true);
-
-      if ((yield* Db.revokeFeed(transaction, command.scope.bookId, command.id)).length === 0) {
-        return yield* failure("NotFound");
-      }
-
-      const result = yield* decode(RevokedSchema, { id: command.id, revoked: true });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "deadline_feed_revoke",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

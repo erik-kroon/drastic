@@ -19,10 +19,10 @@ import * as Schedules from "../db/subledger/schedules";
 import * as Acceptance from "../db/purchases/acceptance";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
-import { isoNow } from "./posting";
+import { isoNow } from "./command-receipts";
 import { admitInvoiceRecognitionChild } from "./commerce/recognition-replacements";
 import { admitScheduleCorrectionChild } from "./subledger/occurrence-corrections";
-import { readPostingBasis } from "./subledger/schedules";
+import { readPostingBasis } from "./subledger/schedule-basis";
 import { ownerRequireReady, validateOwnerLine } from "./subledger/owners";
 import { decode, objectField, textField, type JsonObject, type Scope } from "./commerce/support";
 
@@ -450,6 +450,7 @@ const matchesSupersededAcceptance = Effect.fn("posting.matchesSupersededAcceptan
     return false;
 
   // The receipt test remains mandatory: executed acceptance is never superseded.
+
   return (
     (yield* Acceptance.readReviewByChangeSet(tx, scope.bookId, source.changeId))[0]?.present ===
     false

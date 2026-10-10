@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Credits from "@open-erp/contracts/supplier-credits";
 import * as Effect from "effect/Effect";
@@ -6,12 +7,10 @@ import { failure } from "../failures";
 import * as CreditDb from "../../db/purchases/credits";
 import { creditSnapshot, checkedCredit } from "./credit-basis";
 import { liveInvoice } from "../commerce/register";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import {
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   prepareJournalInTransaction,
   approveChangeInTransaction,
   executeChangeInTransaction,
@@ -236,82 +235,77 @@ export const prepareSupplierCredit = Effect.fn("purchases.credits.prepare")(func
       const { scope, input, idempotencyKey } = command,
         operation = "prepare_supplier_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
-        Credits.SupplierCreditReview,
-      );
-
-      if (request.previous) return request.previous;
-
-      if (((yield* CreditDb.countReviews(tx, scope.bookId, input.invoiceId))[0]?.total ?? 50) >= 50)
-        return yield* failure("InvalidJournal");
-      const snapshot = yield* creditSnapshot(tx, scope, input);
-      const id = newId("supplier_credit_review");
-      const lines = creditJournalLines(snapshot);
-
-      if (lines.length < 2) return yield* failure("InvalidJournal");
-
-      const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
-        scope,
-        idempotencyKey: newId("supplier_credit_prepare"),
-        input: {
-          kind: "manual_journal",
-          evidenceId: input.creditEvidenceId,
-          eventKey: `credit_${id}`,
-          accountingPeriodId: input.accountingPeriodId,
-          postingDate: input.creditDate,
-          series: input.series,
-          description: `Supplier credit ${input.supplierCreditNumber}`,
-          rationale: input.reason,
-          taxAssessment: "not_applicable",
-          lines: lines.map((line) => ({
-            accountId: line.accountId,
-            debitMinor: line.debitMinor,
-            creditMinor: line.creditMinor,
-            description: line.description,
-          })),
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
         },
-      });
+        Credits.SupplierCreditReview,
+        Effect.gen(function* () {
+          if (
+            ((yield* CreditDb.countReviews(tx, scope.bookId, input.invoiceId))[0]?.total ?? 50) >=
+            50
+          )
+            return yield* failure("InvalidJournal");
+          const snapshot = yield* creditSnapshot(tx, scope, input);
+          const id = newId("supplier_credit_review");
+          const lines = creditJournalLines(snapshot);
 
-      const body = {
-        id,
-        scope,
-        profile: input.profile,
-        input,
-        snapshot,
-        postingPlan,
-        taxMinor: snapshot.taxMinor,
-        createdAt: yield* isoNow(tx),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
+          if (lines.length < 2) return yield* failure("InvalidJournal");
 
-      const result = yield* Shared.decode(Credits.SupplierCreditReview, {
-        ...body,
-        digest: yield* digest(body),
-      });
+          const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
+            scope,
+            idempotencyKey: newId("supplier_credit_prepare"),
+            input: {
+              kind: "manual_journal",
+              evidenceId: input.creditEvidenceId,
+              eventKey: `credit_${id}`,
+              accountingPeriodId: input.accountingPeriodId,
+              postingDate: input.creditDate,
+              series: input.series,
+              description: `Supplier credit ${input.supplierCreditNumber}`,
+              rationale: input.reason,
+              taxAssessment: "not_applicable",
+              lines: lines.map((line) => ({
+                accountId: line.accountId,
+                debitMinor: line.debitMinor,
+                creditMinor: line.creditMinor,
+                description: line.description,
+              })),
+            },
+          });
 
-      if (Shared.byteLength(JSON.stringify(result)) > 262144)
-        return yield* failure("InvalidJournal");
-      const action = postingPlan.groups[0]?.actions[0];
+          const body = {
+            id,
+            scope,
+            profile: input.profile,
+            input,
+            snapshot,
+            postingPlan,
+            taxMinor: snapshot.taxMinor,
+            createdAt: yield* isoNow(tx),
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
 
-      if (!action) return yield* failure("InternalError");
-      yield* CreditDb.insertReview(tx, scope.bookId, result, action.eventId);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
+          const result = yield* Shared.decode(Credits.SupplierCreditReview, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          if (Shared.byteLength(JSON.stringify(result)) > 262144)
+            return yield* failure("InvalidJournal");
+          const action = postingPlan.groups[0]?.actions[0];
+
+          if (!action) return yield* failure("InternalError");
+          yield* CreditDb.insertReview(tx, scope.bookId, result, action.eventId);
+
+          return result;
+        }),
       );
-
-      return result;
     }),
   );
 });
@@ -332,46 +326,39 @@ export const approveSupplierCreditInTransaction = Effect.fn(
     const { scope, reviewId, input, idempotencyKey } = command,
       operation = "approve_supplier_credit";
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       tx,
-      scope,
-      idempotencyKey,
-      operation,
-      principal.actorId,
-      { reviewId, input },
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { reviewId, input },
+      },
       Credits.SupplierCreditApproval,
+      Effect.gen(function* () {
+        const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
+
+        if ((yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).length >= 50)
+          return yield* failure("InvalidJournal");
+        const now = yield* isoNow(tx);
+
+        const result = yield* Shared.decode(Credits.SupplierCreditApproval, {
+          id: newId("credit_approval"),
+          scope,
+          reviewId,
+          digest: review.digest,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
+          createdAt: now,
+          receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+        });
+
+        yield* CreditDb.insertApproval(tx, scope.bookId, result);
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
-
-    if ((yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).length >= 50)
-      return yield* failure("InvalidJournal");
-    const now = yield* isoNow(tx);
-
-    const result = yield* Shared.decode(Credits.SupplierCreditApproval, {
-      id: newId("credit_approval"),
-      scope,
-      reviewId,
-      digest: review.digest,
-      actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
-      createdAt: now,
-      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-    });
-
-    yield* CreditDb.insertApproval(tx, scope.bookId, result);
-    yield* saveCommand(
-      tx,
-      scope,
-      idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      result,
-    );
-
-    return result;
   });
 });
 
@@ -398,173 +385,171 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
       const { scope, reviewId, input, idempotencyKey } = command,
         operation = "execute_supplier_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId, input },
+        },
         Credits.SupplierCreditReceipt,
-      );
+        Effect.gen(function* () {
+          // A paid credit review carries its payable/refund-receivable split and
+          // belongs to the paid owner: the unpaid path must not execute it, even
+          // though both share the review table. The decoded review drops the
+          // marker, so the raw row is inspected.
+          const raw = (yield* CreditDb.readCreditReview(tx, scope.bookId, reviewId))[0];
 
-      if (request.previous) return request.previous;
+          const marker = raw
+            ? Shared.objectField(Shared.objectField(raw.body, "snapshot"), "paid")
+            : {};
 
-      // A paid credit review carries its payable/refund-receivable split and
-      // belongs to the paid owner: the unpaid path must not execute it, even
-      // though both share the review table. The decoded review drops the
-      // marker, so the raw row is inspected.
-      const raw = (yield* CreditDb.readCreditReview(tx, scope.bookId, reviewId))[0];
+          if (Object.keys(marker).length) return yield* failure("StaleDependency");
 
-      const marker = raw
-        ? Shared.objectField(Shared.objectField(raw.body, "snapshot"), "paid")
-        : {};
+          const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
 
-      if (Object.keys(marker).length) return yield* failure("StaleDependency");
+          const row = (yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).find(
+            (row) => row.id === input.approvalId,
+          );
 
-      const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
+          if (!row) return yield* failure("ApprovalRequired");
+          const approval = yield* Shared.decode(Credits.SupplierCreditApproval, row.body);
 
-      const row = (yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).find(
-        (row) => row.id === input.approvalId,
-      );
+          if (
+            approval.actorId !== principal.actorId ||
+            approval.digest !== review.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
+          )
+            return yield* failure("ApprovalRequired");
 
-      if (!row) return yield* failure("ApprovalRequired");
-      const approval = yield* Shared.decode(Credits.SupplierCreditApproval, row.body);
+          const kernel = yield* approveChangeInTransaction(tx, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("credit_approve"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest },
+          });
 
-      if (
-        approval.actorId !== principal.actorId ||
-        approval.digest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
-      )
-        return yield* failure("ApprovalRequired");
+          const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("credit_post"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
+            owner: { kind: "supplier_credit", id: reviewId },
+          });
 
-      const kernel = yield* approveChangeInTransaction(tx, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("credit_approve"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest },
-      });
+          const invoice = review.snapshot.invoice;
 
-      const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("credit_post"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
-        owner: { kind: "supplier_credit", id: reviewId },
-      });
+          if (invoice.outstandingMinor === null) return yield* failure("StaleDependency");
 
-      const invoice = review.snapshot.invoice;
+          const creditRecognitionId =
+            invoice.counterpartyId === null
+              ? null
+              : yield* Recognition.creditRecognitionId(
+                  Recognition.creditEconomicKey(
+                    invoice.counterpartyId,
+                    review.input.supplierCreditNumber,
+                  ),
+                );
 
-      if (invoice.outstandingMinor === null) return yield* failure("StaleDependency");
+          const owned =
+            review.snapshot.recognitionId === undefined ||
+            review.snapshot.lineReleases === undefined ||
+            review.snapshot.taxAdjustments === undefined ||
+            creditRecognitionId === null
+              ? null
+              : yield* Recognition.recordCreditRecognitionInTransaction(tx, {
+                  scope,
+                  bookId: scope.bookId,
+                  actorId: principal.actorId,
+                  receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+                  recognitionId: creditRecognitionId,
+                  originalRecognitionId: review.snapshot.recognitionId,
+                  invoiceId: invoice.id,
+                  supplierCreditNumber: review.input.supplierCreditNumber,
+                  reviewId,
+                  approvalId: approval.id,
+                  changeSetId: review.postingPlan.id,
+                  voucherId: postingReceipt.voucherId,
+                  counterpartyId: invoice.counterpartyId,
+                  creditDate: review.input.creditDate,
+                  taxPoint: {
+                    taxPointOn: review.input.creditDate,
+                    basis: "document_date",
+                  },
+                  currency: invoice.currency,
+                  currencyScale: invoice.currencyScale,
+                  creditGrossMinor: review.input.amountMinor,
+                  releasedDeductionMinor: review.snapshot.lineReleases
+                    .reduce((sum, release) => sum + BigInt(release.releasedDeductionMinor), 0n)
+                    .toString(),
+                  lineReleases: review.snapshot.lineReleases,
+                  taxAdjustments: review.snapshot.taxAdjustments,
+                  creditEvidence: review.snapshot.creditEvidence,
+                  witness: review.snapshot.profileWitness ?? null,
+                  gaps: [],
+                });
 
-      const creditRecognitionId =
-        invoice.counterpartyId === null
-          ? null
-          : yield* Recognition.creditRecognitionId(
-              Recognition.creditEconomicKey(
-                invoice.counterpartyId,
-                review.input.supplierCreditNumber,
-              ),
-            );
-
-      const owned =
-        review.snapshot.recognitionId === undefined ||
-        review.snapshot.lineReleases === undefined ||
-        review.snapshot.taxAdjustments === undefined ||
-        creditRecognitionId === null
-          ? null
-          : yield* Recognition.recordCreditRecognitionInTransaction(tx, {
-              scope,
+          if (owned !== null) {
+            yield* Recognition.consumeLineCapacities(tx, {
               bookId: scope.bookId,
-              actorId: principal.actorId,
-              receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-              recognitionId: creditRecognitionId,
-              originalRecognitionId: review.snapshot.recognitionId,
-              invoiceId: invoice.id,
-              supplierCreditNumber: review.input.supplierCreditNumber,
-              reviewId,
-              approvalId: approval.id,
-              changeSetId: review.postingPlan.id,
-              voucherId: postingReceipt.voucherId,
-              counterpartyId: invoice.counterpartyId,
-              creditDate: review.input.creditDate,
-              taxPoint: {
-                taxPointOn: review.input.creditDate,
-                basis: "document_date",
-              },
-              currency: invoice.currency,
-              currencyScale: invoice.currencyScale,
-              creditGrossMinor: review.input.amountMinor,
-              releasedDeductionMinor: review.snapshot.lineReleases
-                .reduce((sum, release) => sum + BigInt(release.releasedDeductionMinor), 0n)
-                .toString(),
-              lineReleases: review.snapshot.lineReleases,
-              taxAdjustments: review.snapshot.taxAdjustments,
-              creditEvidence: review.snapshot.creditEvidence,
-              witness: review.snapshot.profileWitness ?? null,
-              gaps: [],
+              recognitionId: review.snapshot.recognitionId ?? "",
+              recordedAt: owned.recordedAt,
+              releases: review.snapshot.lineReleases ?? [],
             });
+          }
 
-      if (owned !== null) {
-        yield* Recognition.consumeLineCapacities(tx, {
-          bookId: scope.bookId,
-          recognitionId: review.snapshot.recognitionId ?? "",
-          recordedAt: owned.recordedAt,
-          releases: review.snapshot.lineReleases ?? [],
-        });
-      }
+          const body = {
+            id: newId("supplier_credit"),
+            scope,
+            reviewId,
+            reviewDigest: review.digest,
+            approvalId: approval.id,
+            invoiceId: review.input.invoiceId,
+            supplierCreditNumber: review.input.supplierCreditNumber,
+            creditDate: review.input.creditDate,
+            amountMinor: review.input.amountMinor,
+            taxMinor: review.taxMinor,
+            recognitionId: owned?.id ?? null,
+            taxFactIds: owned?.taxFactIds ?? [],
+            originalAllocatedMinor: invoice.recordedAllocatedMinor,
+            outstandingAfterMinor: (
+              BigInt(invoice.outstandingMinor) - BigInt(review.input.amountMinor)
+            ).toString(),
+            postingReceipt,
+            creditEvidence: review.snapshot.creditEvidence,
+            status: "credited",
+            paid: false,
+            createdAt: yield* isoNow(tx),
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
 
-      const body = {
-        id: newId("supplier_credit"),
-        scope,
-        reviewId,
-        reviewDigest: review.digest,
-        approvalId: approval.id,
-        invoiceId: review.input.invoiceId,
-        supplierCreditNumber: review.input.supplierCreditNumber,
-        creditDate: review.input.creditDate,
-        amountMinor: review.input.amountMinor,
-        taxMinor: review.taxMinor,
-        recognitionId: owned?.id ?? null,
-        taxFactIds: owned?.taxFactIds ?? [],
-        originalAllocatedMinor: invoice.recordedAllocatedMinor,
-        outstandingAfterMinor: (
-          BigInt(invoice.outstandingMinor) - BigInt(review.input.amountMinor)
-        ).toString(),
-        postingReceipt,
-        creditEvidence: review.snapshot.creditEvidence,
-        status: "credited",
-        paid: false,
-        createdAt: yield* isoNow(tx),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
+          const result = yield* Shared.decode(Credits.SupplierCreditReceipt, {
+            ...body,
+            digest: yield* digest(body),
+          });
 
-      const result = yield* Shared.decode(Credits.SupplierCreditReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
+          const line = review.postingPlan.groups[0]?.actions[0]?.lines[0];
 
-      const line = review.postingPlan.groups[0]?.actions[0]?.lines[0];
+          if (!line) return yield* failure("InternalError");
+          yield* CreditDb.insertCredit(
+            tx,
+            scope.bookId,
+            result,
+            invoice.counterpartyId,
+            line.lineId,
+          );
 
-      if (!line) return yield* failure("InternalError");
-      yield* CreditDb.insertCredit(tx, scope.bookId, result, invoice.counterpartyId, line.lineId);
+          if (
+            (yield* liveInvoice(tx, scope.bookId, invoice.id)).outstandingMinor !==
+            result.outstandingAfterMinor
+          )
+            return yield* failure("InvalidJournal");
 
-      if (
-        (yield* liveInvoice(tx, scope.bookId, invoice.id)).outstandingMinor !==
-        result.outstandingAfterMinor
-      )
-        return yield* failure("InvalidJournal");
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
+          return result;
+        }),
       );
-
-      return result;
     }),
   );
 });

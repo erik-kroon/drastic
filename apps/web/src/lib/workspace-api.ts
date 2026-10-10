@@ -1,7 +1,9 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { queryOptions } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
-import { bookKey, bookPath, readAccounting } from "./accounting-api";
+import { bookKey, readAccounting } from "./accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 export function workQueryOptions(
@@ -23,9 +25,17 @@ export function workQueryOptions(
   return queryOptions({
     queryKey: [...bookKey(book), "work", query.toString()],
     queryFn: async ({ signal }) => {
-      const page = await readAccounting(`${bookPath(book)}/work?${query}`, Workspace.WorkPage, {
-        signal,
-      });
+      const page = await readAccounting(
+        (client) =>
+          client.workspace.listWorkspaceWork({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.workspace.endpoints.listWorkspaceWork, `${query}`),
+          }),
+        Workspace.WorkPage,
+        {
+          signal,
+        },
+      );
 
       if (page.scope.entityId !== book.entityId || page.scope.bookId !== book.id)
         throw new Error("Work list scope mismatch");

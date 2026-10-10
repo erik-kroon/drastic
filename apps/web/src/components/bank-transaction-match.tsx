@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { submitBankWithCitationRefresh } from "@/lib/bank-citation-request";
 import { useRef, useState, type ReactNode } from "react";
 import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
@@ -52,7 +54,7 @@ import { CommandForm, checkScope, type CommerceProps } from "@/components/commer
 import { bankCandidateCopy } from "@/components/bank-match-candidates/copy";
 import { BankUnmatchReview } from "@/components/bank-match-reversals/review";
 import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/notice";
-import { mutationOptions } from "@/lib/accounting-api";
+
 import { WorkQuestionsEntry } from "./work-questions";
 import { accountingCopy } from "@/lib/accounting-copy";
 import {
@@ -1578,7 +1580,7 @@ function UndoMatch(props: Props & { allocationId: string }) {
   const { book, locale, allocationId } = props;
   const sv = locale === "sv";
   const [reason, setReason] = useState("");
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/bank-match-reversal-plans`;
 
   const prepare = useMutation({
@@ -1586,13 +1588,12 @@ function UndoMatch(props: Props & { allocationId: string }) {
       readAccounting(
         path,
         Reversal.BankMatchReversalPlan,
-        mutationOptions(
+        keys.current.options(
           path,
           JSON.stringify({
             target: { kind: "allocation", allocationPlanId: allocationId },
             reason: explanation,
           }),
-          keys.current,
         ),
       ),
     onSuccess: (plan) => props.onReversal(plan.id),
@@ -1684,13 +1685,21 @@ function MatchingTransactions(
     queryFn: async ({ signal }) => {
       const [statement, voucher] = await Promise.all([
         readAccounting(
-          `${bookPath(book)}/bank-statements/${encodeURIComponent(leg.statementId)}`,
+          (client) =>
+            client.reconciliation.getBankStatement({
+              params: { ...bookScope(book), id: leg.statementId },
+            }),
           BankStatementView,
           { signal },
         ),
-        readAccounting(`${bookPath(book)}/vouchers/${encodeURIComponent(leg.voucherId)}`, Voucher, {
-          signal,
-        }),
+        readAccounting(
+          (client) =>
+            client.accounting.getVoucher({ params: { ...bookScope(book), id: leg.voucherId } }),
+          Voucher,
+          {
+            signal,
+          },
+        ),
       ]);
 
       const source = statement.statement.rows.find((row) => row.rowOrdinal === leg.rowOrdinal);

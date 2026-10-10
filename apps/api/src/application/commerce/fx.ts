@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import * as ProcessorDb from "../../db/banking/processor-clearing";
 import { admitPosting, type PostingOwner } from "../posting-admission";
@@ -12,16 +13,10 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type VerifiedPrincipal } from "../identity";
-import {
-  digest,
-  isoNow,
-  newId,
-  readBook,
-  readPeriod,
-  readVoucher,
-  replay,
-  saveCommand,
-} from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { readBook, readPeriod, readVoucher } from "../posting-validation";
 import * as Db from "../../db/posting";
 import * as FxDb from "../../db/commerce/fx";
 import { databaseFailure, type Transaction } from "../../db/transaction";
@@ -2526,57 +2521,50 @@ export const prepareRecognition = Effect.fn("commerceFx.prepareRecognition")(fun
 ) {
   return yield* withBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_commerce_fx_recognition",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_commerce_fx_recognition",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         RecognitionSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const snapshot = yield* recognitionSnapshot(transaction, command.scope, command.input);
+          const id = newId("fx_review");
+
+          const bodyWithoutDigest = makeReviewBody(
+            command.scope,
+            id,
+            command.input,
+            snapshot,
+            principal,
+            command.idempotencyKey,
+            "prepare_commerce_fx_recognition",
+            yield* isoNow(transaction),
+            { itemId: newId("fx_item") },
+          );
+
+          const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+            digest: yield* reviewDigest(bodyWithoutDigest),
+          });
+
+          const result = yield* decode(RecognitionSchema, body);
+          yield* FxDb.insertRecognitionReview(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            itemId: result.itemId,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const snapshot = yield* recognitionSnapshot(transaction, command.scope, command.input);
-      const id = newId("fx_review");
-
-      const bodyWithoutDigest = makeReviewBody(
-        command.scope,
-        id,
-        command.input,
-        snapshot,
-        principal,
-        command.idempotencyKey,
-        "prepare_commerce_fx_recognition",
-        yield* isoNow(transaction),
-        { itemId: newId("fx_item") },
-      );
-
-      const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
-        digest: yield* reviewDigest(bodyWithoutDigest),
-      });
-
-      const result = yield* decode(RecognitionSchema, body);
-      yield* FxDb.insertRecognitionReview(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        itemId: result.itemId,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_commerce_fx_recognition",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -2592,74 +2580,72 @@ export const approveRecognition = Effect.fn("commerceFx.approveRecognition")(fun
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_commerce_fx_recognition",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_commerce_fx_recognition",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CommerceFx.FxApproval,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedReview(
+            transaction,
+            "recognition",
+            command.scope,
+            command.id,
+          );
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "recognition", command.scope, review);
+
+          if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const expiresAt = new Date(
+            Date.parse(yield* isoNow(transaction)) + 60 * 60 * 1000,
+          ).toISOString();
+
+          const body = {
+            id: newId("fx_recognition_approval"),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
+            scope: command.scope,
+            kind: "recognition",
+            reviewId: review.id,
+            reviewDigest: review.digest,
+            actorId: principal.actorId,
+            expiresAt,
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "approve_commerce_fx_recognition",
+              principal.actorId,
+            ),
+          } satisfies JsonObject;
+
+          yield* FxDb.insertRecognitionApproval(transaction, {
+            bookId: command.scope.bookId,
+            id: String(body.id),
+            reviewId: review.id,
+            actorId: principal.actorId,
+            digest: review.digest,
+            expiresAt,
+            body,
+          });
+          const result = yield* decode(CommerceFx.FxApproval, body);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedReview(transaction, "recognition", command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "recognition", command.scope, review);
-
-      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const expiresAt = new Date(
-        Date.parse(yield* isoNow(transaction)) + 60 * 60 * 1000,
-      ).toISOString();
-
-      const body = {
-        id: newId("fx_recognition_approval"),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-          "informational",
-        ),
-        scope: command.scope,
-        kind: "recognition",
-        reviewId: review.id,
-        reviewDigest: review.digest,
-        actorId: principal.actorId,
-        expiresAt,
-        receipt: commandReceipt(
-          command.idempotencyKey,
-          "approve_commerce_fx_recognition",
-          principal.actorId,
-        ),
-      } satisfies JsonObject;
-
-      yield* FxDb.insertRecognitionApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: String(body.id),
-        reviewId: review.id,
-        actorId: principal.actorId,
-        digest: review.digest,
-        expiresAt,
-        body,
-      });
-      const result = yield* decode(CommerceFx.FxApproval, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_commerce_fx_recognition",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -2675,47 +2661,45 @@ export const executeRecognition = Effect.fn("commerceFx.executeRecognition")(fun
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "execute_commerce_fx_recognition",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "execute_commerce_fx_recognition",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         ItemSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedReview(
+            transaction,
+            "recognition",
+            command.scope,
+            command.id,
+          );
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "recognition", command.scope, review);
+
+          const result = yield* executeReview(
+            transaction,
+            principal,
+            command.scope,
+            "recognition",
+            review,
+            command.input,
+            command.idempotencyKey,
+          );
+
+          const receipt = yield* decode(ItemSchema, result);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedReview(transaction, "recognition", command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "recognition", command.scope, review);
-
-      const result = yield* executeReview(
-        transaction,
-        principal,
-        command.scope,
-        "recognition",
-        review,
-        command.input,
-        command.idempotencyKey,
-      );
-
-      const receipt = yield* decode(ItemSchema, result);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "execute_commerce_fx_recognition",
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     }),
   );
 });
@@ -2726,56 +2710,49 @@ export const prepareSettlement = Effect.fn("commerceFx.prepareSettlement")(funct
 ) {
   return yield* withBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_commerce_fx_settlement",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_commerce_fx_settlement",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         SettlementSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const snapshot = yield* settlementSnapshot(transaction, command.scope, command.input);
+
+          const bodyWithoutDigest = makeReviewBody(
+            command.scope,
+            newId("fx_settlement_review"),
+            command.input,
+            snapshot,
+            principal,
+            command.idempotencyKey,
+            "prepare_commerce_fx_settlement",
+            yield* isoNow(transaction),
+            { itemId: command.input.itemId },
+          );
+
+          const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+            digest: yield* reviewDigest(bodyWithoutDigest),
+          });
+
+          const result = yield* decode(SettlementSchema, body);
+          yield* FxDb.insertSettlementReview(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            itemId: result.itemId,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const snapshot = yield* settlementSnapshot(transaction, command.scope, command.input);
-
-      const bodyWithoutDigest = makeReviewBody(
-        command.scope,
-        newId("fx_settlement_review"),
-        command.input,
-        snapshot,
-        principal,
-        command.idempotencyKey,
-        "prepare_commerce_fx_settlement",
-        yield* isoNow(transaction),
-        { itemId: command.input.itemId },
-      );
-
-      const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
-        digest: yield* reviewDigest(bodyWithoutDigest),
-      });
-
-      const result = yield* decode(SettlementSchema, body);
-      yield* FxDb.insertSettlementReview(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        itemId: result.itemId,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_commerce_fx_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -2786,56 +2763,49 @@ export const preparePartialSettlement = Effect.fn("commerceFx.preparePartialSett
 ) {
   return yield* withBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_commerce_fx_partial_settlement",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_commerce_fx_partial_settlement",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         PartialSettlementSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const snapshot = yield* settlementSnapshot(transaction, command.scope, command.input);
+
+          const bodyWithoutDigest = makeReviewBody(
+            command.scope,
+            newId("fx_partial_settlement_review"),
+            command.input,
+            snapshot,
+            principal,
+            command.idempotencyKey,
+            "prepare_commerce_fx_partial_settlement",
+            yield* isoNow(transaction),
+            { itemId: command.input.itemId },
+          );
+
+          const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+            digest: yield* reviewDigest(bodyWithoutDigest),
+          });
+
+          const result = yield* decode(PartialSettlementSchema, body);
+          yield* FxDb.insertSettlementReview(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            itemId: result.itemId,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const snapshot = yield* settlementSnapshot(transaction, command.scope, command.input);
-
-      const bodyWithoutDigest = makeReviewBody(
-        command.scope,
-        newId("fx_partial_settlement_review"),
-        command.input,
-        snapshot,
-        principal,
-        command.idempotencyKey,
-        "prepare_commerce_fx_partial_settlement",
-        yield* isoNow(transaction),
-        { itemId: command.input.itemId },
-      );
-
-      const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
-        digest: yield* reviewDigest(bodyWithoutDigest),
-      });
-
-      const result = yield* decode(PartialSettlementSchema, body);
-      yield* FxDb.insertSettlementReview(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        itemId: result.itemId,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_commerce_fx_partial_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -2899,48 +2869,40 @@ export const approveSettlement = Effect.fn("commerceFx.approveSettlement")(funct
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_commerce_fx_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_commerce_fx_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CommerceFx.FxApproval,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "settlement", command.scope, review);
+
+          if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const result = yield* approveSettlementLike(
+            transaction,
+            principal,
+            command.scope,
+            "settlement",
+            review,
+            command.idempotencyKey,
+            "approve_commerce_fx_settlement",
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "settlement", command.scope, review);
-
-      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const result = yield* approveSettlementLike(
-        transaction,
-        principal,
-        command.scope,
-        "settlement",
-        review,
-        command.idempotencyKey,
-        "approve_commerce_fx_settlement",
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_commerce_fx_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -2956,48 +2918,40 @@ export const approvePartialSettlement = Effect.fn("commerceFx.approvePartialSett
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_commerce_fx_partial_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_commerce_fx_partial_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CommerceFx.FxApproval,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "partial_settlement", command.scope, review);
+
+          if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const result = yield* approveSettlementLike(
+            transaction,
+            principal,
+            command.scope,
+            "partial_settlement",
+            review,
+            command.idempotencyKey,
+            "approve_commerce_fx_partial_settlement",
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "partial_settlement", command.scope, review);
-
-      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const result = yield* approveSettlementLike(
-        transaction,
-        principal,
-        command.scope,
-        "partial_settlement",
-        review,
-        command.idempotencyKey,
-        "approve_commerce_fx_partial_settlement",
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_commerce_fx_partial_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -3034,42 +2988,35 @@ export const executeSettlement = Effect.fn("commerceFx.executeSettlement")(funct
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "execute_commerce_fx_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "execute_commerce_fx_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         FullSettlementReceiptSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
+
+          const result = yield* executeSettlementLike(
+            transaction,
+            principal,
+            command.scope,
+            review,
+            command.input,
+            command.idempotencyKey,
+          );
+
+          const receipt = yield* decode(FullSettlementReceiptSchema, result);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
-
-      const result = yield* executeSettlementLike(
-        transaction,
-        principal,
-        command.scope,
-        review,
-        command.input,
-        command.idempotencyKey,
-      );
-
-      const receipt = yield* decode(FullSettlementReceiptSchema, result);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "execute_commerce_fx_settlement",
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     }),
   );
 });
@@ -3085,42 +3032,35 @@ export const executePartialSettlement = Effect.fn("commerceFx.executePartialSett
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "execute_commerce_fx_partial_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "execute_commerce_fx_partial_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         PartialSettlementReceiptSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
+
+          const result = yield* executeSettlementLike(
+            transaction,
+            principal,
+            command.scope,
+            review,
+            command.input,
+            command.idempotencyKey,
+          );
+
+          const receipt = yield* decode(PartialSettlementReceiptSchema, result);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedSettlementReview(transaction, command.scope, command.id);
-
-      const result = yield* executeSettlementLike(
-        transaction,
-        principal,
-        command.scope,
-        review,
-        command.input,
-        command.idempotencyKey,
-      );
-
-      const receipt = yield* decode(PartialSettlementReceiptSchema, result);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "execute_commerce_fx_partial_settlement",
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     }),
   );
 });
@@ -3131,56 +3071,49 @@ export const prepareFeeSettlement = Effect.fn("commerceFx.prepareFeeSettlement")
 ) {
   return yield* withBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_commerce_fx_fee_settlement",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_commerce_fx_fee_settlement",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         FeeSettlementSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const snapshot = yield* feeSettlementSnapshot(transaction, command.scope, command.input);
+
+          const bodyWithoutDigest = makeReviewBody(
+            command.scope,
+            newId("fx_fee_settlement_review"),
+            command.input,
+            snapshot,
+            principal,
+            command.idempotencyKey,
+            "prepare_commerce_fx_fee_settlement",
+            yield* isoNow(transaction),
+            { itemId: command.input.itemId },
+          );
+
+          const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+            digest: yield* reviewDigest(bodyWithoutDigest),
+          });
+
+          const result = yield* decode(FeeSettlementSchema, body);
+          yield* FxDb.insertSettlementReview(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            itemId: result.itemId,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const snapshot = yield* feeSettlementSnapshot(transaction, command.scope, command.input);
-
-      const bodyWithoutDigest = makeReviewBody(
-        command.scope,
-        newId("fx_fee_settlement_review"),
-        command.input,
-        snapshot,
-        principal,
-        command.idempotencyKey,
-        "prepare_commerce_fx_fee_settlement",
-        yield* isoNow(transaction),
-        { itemId: command.input.itemId },
-      );
-
-      const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
-        digest: yield* reviewDigest(bodyWithoutDigest),
-      });
-
-      const result = yield* decode(FeeSettlementSchema, body);
-      yield* FxDb.insertSettlementReview(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        itemId: result.itemId,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_commerce_fx_fee_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -3196,48 +3129,44 @@ export const approveFeeSettlement = Effect.fn("commerceFx.approveFeeSettlement")
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_commerce_fx_fee_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_commerce_fx_fee_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CommerceFx.FxApproval,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedFeeSettlementReview(
+            transaction,
+            command.scope,
+            command.id,
+          );
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
+
+          if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const result = yield* approveSettlementLike(
+            transaction,
+            principal,
+            command.scope,
+            "fee_settlement",
+            review,
+            command.idempotencyKey,
+            "approve_commerce_fx_fee_settlement",
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedFeeSettlementReview(transaction, command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
-
-      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const result = yield* approveSettlementLike(
-        transaction,
-        principal,
-        command.scope,
-        "fee_settlement",
-        review,
-        command.idempotencyKey,
-        "approve_commerce_fx_fee_settlement",
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_commerce_fx_fee_settlement",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -3253,47 +3182,44 @@ export const executeFeeSettlement = Effect.fn("commerceFx.executeFeeSettlement")
 ) {
   return yield* withBook(token, command.scope, true, (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "execute_commerce_fx_fee_settlement",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "execute_commerce_fx_fee_settlement",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         FeeSettlementReceiptSchema,
+        Effect.gen(function* () {
+          yield* requireDirectAccess(transaction, true);
+
+          const review = yield* readSavedFeeSettlementReview(
+            transaction,
+            command.scope,
+            command.id,
+          );
+
+          if (command.input.version !== 1 || command.input.digest !== review.digest)
+            return yield* failure("StaleDependency");
+          yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
+
+          const result = yield* executeReview(
+            transaction,
+            principal,
+            command.scope,
+            "fee_settlement",
+            review,
+            command.input,
+            command.idempotencyKey,
+          );
+
+          const receipt = yield* decode(FeeSettlementReceiptSchema, result);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireDirectAccess(transaction, true);
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const review = yield* readSavedFeeSettlementReview(transaction, command.scope, command.id);
-
-      if (command.input.version !== 1 || command.input.digest !== review.digest)
-        return yield* failure("StaleDependency");
-      yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
-
-      const result = yield* executeReview(
-        transaction,
-        principal,
-        command.scope,
-        "fee_settlement",
-        review,
-        command.input,
-        command.idempotencyKey,
-      );
-
-      const receipt = yield* decode(FeeSettlementReceiptSchema, result);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "execute_commerce_fx_fee_settlement",
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     }),
   );
 });
@@ -3305,56 +3231,49 @@ export const prepareSettlementCorrection = Effect.fn("commerceFx.prepareSettleme
   ) {
     return yield* withBook(token, command.scope, false, (transaction, principal) =>
       Effect.gen(function* () {
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "prepare_commerce_fx_settlement_correction",
-          principal.actorId,
-          command.input,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "prepare_commerce_fx_settlement_correction",
+            actorId: principal.actorId,
+            input: command.input,
+          },
           CorrectionSchema,
+          Effect.gen(function* () {
+            yield* requireDirectAccess(transaction, true);
+
+            const snapshot = yield* correctionSnapshot(transaction, command.scope, command.input);
+
+            const bodyWithoutDigest = makeReviewBody(
+              command.scope,
+              newId("fx_settlement_correction_review"),
+              command.input,
+              snapshot,
+              principal,
+              command.idempotencyKey,
+              "prepare_commerce_fx_settlement_correction",
+              yield* isoNow(transaction),
+              { settlementId: command.input.settlementId },
+            );
+
+            const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+              digest: yield* reviewDigest(bodyWithoutDigest),
+            });
+
+            const result = yield* decode(CorrectionSchema, body);
+            yield* FxDb.insertCorrectionReview(transaction, {
+              bookId: command.scope.bookId,
+              id: result.id,
+              settlementId: result.settlementId,
+              actorId: principal.actorId,
+              body,
+            });
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireDirectAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const snapshot = yield* correctionSnapshot(transaction, command.scope, command.input);
-
-        const bodyWithoutDigest = makeReviewBody(
-          command.scope,
-          newId("fx_settlement_correction_review"),
-          command.input,
-          snapshot,
-          principal,
-          command.idempotencyKey,
-          "prepare_commerce_fx_settlement_correction",
-          yield* isoNow(transaction),
-          { settlementId: command.input.settlementId },
-        );
-
-        const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
-          digest: yield* reviewDigest(bodyWithoutDigest),
-        });
-
-        const result = yield* decode(CorrectionSchema, body);
-        yield* FxDb.insertCorrectionReview(transaction, {
-          bookId: command.scope.bookId,
-          id: result.id,
-          settlementId: result.settlementId,
-          actorId: principal.actorId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "prepare_commerce_fx_settlement_correction",
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     );
   },
@@ -3372,75 +3291,73 @@ export const approveSettlementCorrection = Effect.fn("commerceFx.approveSettleme
   ) {
     return yield* withBook(token, command.scope, true, (transaction, principal) =>
       Effect.gen(function* () {
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "approve_commerce_fx_settlement_correction",
-          principal.actorId,
-          { id: command.id, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "approve_commerce_fx_settlement_correction",
+            actorId: principal.actorId,
+            input: { id: command.id, input: command.input },
+          },
           CommerceFx.FxApproval,
+          Effect.gen(function* () {
+            yield* requireDirectAccess(transaction, true);
+
+            const review = yield* readSavedReview(
+              transaction,
+              "correction",
+              command.scope,
+              command.id,
+            );
+
+            if (command.input.version !== 1 || command.input.digest !== review.digest)
+              return yield* failure("StaleDependency");
+            yield* assertReviewCurrent(transaction, "correction", command.scope, review);
+
+            if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+            const approvalId = newId("fx_correction_approval");
+
+            const expiresAt = new Date(
+              Date.parse(yield* isoNow(transaction)) + 60 * 60 * 1000,
+            ).toISOString();
+
+            const body = {
+              id: approvalId,
+              scope: command.scope,
+              kind: "correction",
+              authorityBasis: yield* collectPostingPrincipalBasis(
+                transaction,
+                command.scope,
+                principal,
+                "approve_change",
+                "informational",
+              ),
+              reviewId: review.id,
+              reviewDigest: review.digest,
+              actorId: principal.actorId,
+              expiresAt,
+              receipt: commandReceipt(
+                command.idempotencyKey,
+                "approve_commerce_fx_settlement_correction",
+                principal.actorId,
+              ),
+            } satisfies JsonObject;
+
+            yield* FxDb.insertCorrectionApproval(transaction, {
+              bookId: command.scope.bookId,
+              id: approvalId,
+              reviewId: review.id,
+              actorId: principal.actorId,
+              digest: review.digest,
+              expiresAt,
+              body,
+            });
+            const result = yield* decode(CommerceFx.FxApproval, body);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireDirectAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const review = yield* readSavedReview(transaction, "correction", command.scope, command.id);
-
-        if (command.input.version !== 1 || command.input.digest !== review.digest)
-          return yield* failure("StaleDependency");
-        yield* assertReviewCurrent(transaction, "correction", command.scope, review);
-
-        if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-        const approvalId = newId("fx_correction_approval");
-
-        const expiresAt = new Date(
-          Date.parse(yield* isoNow(transaction)) + 60 * 60 * 1000,
-        ).toISOString();
-
-        const body = {
-          id: approvalId,
-          scope: command.scope,
-          kind: "correction",
-          authorityBasis: yield* collectPostingPrincipalBasis(
-            transaction,
-            command.scope,
-            principal,
-            "approve_change",
-            "informational",
-          ),
-          reviewId: review.id,
-          reviewDigest: review.digest,
-          actorId: principal.actorId,
-          expiresAt,
-          receipt: commandReceipt(
-            command.idempotencyKey,
-            "approve_commerce_fx_settlement_correction",
-            principal.actorId,
-          ),
-        } satisfies JsonObject;
-
-        yield* FxDb.insertCorrectionApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: approvalId,
-          reviewId: review.id,
-          actorId: principal.actorId,
-          digest: review.digest,
-          expiresAt,
-          body,
-        });
-        const result = yield* decode(CommerceFx.FxApproval, body);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "approve_commerce_fx_settlement_correction",
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     );
   },
@@ -3458,47 +3375,45 @@ export const executeSettlementCorrection = Effect.fn("commerceFx.executeSettleme
   ) {
     return yield* withBook(token, command.scope, true, (transaction, principal) =>
       Effect.gen(function* () {
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "execute_commerce_fx_settlement_correction",
-          principal.actorId,
-          { id: command.id, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "execute_commerce_fx_settlement_correction",
+            actorId: principal.actorId,
+            input: { id: command.id, input: command.input },
+          },
           CorrectionReceiptSchema,
+          Effect.gen(function* () {
+            yield* requireDirectAccess(transaction, true);
+
+            const review = yield* readSavedReview(
+              transaction,
+              "correction",
+              command.scope,
+              command.id,
+            );
+
+            if (command.input.version !== 1 || command.input.digest !== review.digest)
+              return yield* failure("StaleDependency");
+            yield* assertReviewCurrent(transaction, "correction", command.scope, review);
+
+            const result = yield* executeReview(
+              transaction,
+              principal,
+              command.scope,
+              "correction",
+              review,
+              command.input,
+              command.idempotencyKey,
+            );
+
+            const receipt = yield* decode(CorrectionReceiptSchema, result);
+
+            return receipt;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireDirectAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const review = yield* readSavedReview(transaction, "correction", command.scope, command.id);
-
-        if (command.input.version !== 1 || command.input.digest !== review.digest)
-          return yield* failure("StaleDependency");
-        yield* assertReviewCurrent(transaction, "correction", command.scope, review);
-
-        const result = yield* executeReview(
-          transaction,
-          principal,
-          command.scope,
-          "correction",
-          review,
-          command.input,
-          command.idempotencyKey,
-        );
-
-        const receipt = yield* decode(CorrectionReceiptSchema, result);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "execute_commerce_fx_settlement_correction",
-          principal.actorId,
-          receipt,
-        );
-
-        return receipt;
       }),
     );
   },

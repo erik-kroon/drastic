@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import { prepareReplacement } from "@open-erp/domain/payment-resolutions";
 import * as Payments from "@open-erp/contracts/supplier-payment-batches";
 import * as Resolutions from "@open-erp/contracts/payment-resolutions";
@@ -5,7 +6,9 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { liveInvoice } from "../commerce/register";
 import { decode, toJsonObject } from "../commerce/support";
 import * as Shared from "./shared";
@@ -237,119 +240,115 @@ export const preparePaymentReplacement = Effect.fn("payments.resolutions.replace
       const bookId = scope.bookId;
       const input = command.input;
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        scope,
-        command.idempotencyKey,
-        "prepare_payment_replacement",
-        principal.actorId,
-        yield* toJsonObject({
-          resolutionKey: input.resolutionKey,
-          newExportId: input.newExportId,
-          invoiceId: input.invoiceId,
-        }),
-        ReplacementSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      // The resolution being replaced is found by its own command key, never
-      // by trusting the caller's description of it.
-      const savedRows = yield* ResolutionDb.readResolutionByKey(
-        transaction,
-        bookId,
-        input.resolutionKey,
-      );
-
-      const savedRow = savedRows[0];
-
-      if (!savedRow) return yield* failure("NotFound");
-
-      const savedBody = yield* decode(ResolutionSchema, savedRow.body);
-
-      if (savedBody.invoiceId !== input.invoiceId) return yield* failure("StaleDependency");
-
-      // A replacement needs an effective release, and no proof branch can
-      // produce one from currently retained evidence. This gate is exercised
-      // rather than assumed: it refuses today, and it opens the day a proof
-      // branch becomes satisfiable without any change here.
-      if (savedBody.resubmission !== "permitted") return yield* failure("StaleDependency");
-
-      const exported = (yield* ResolutionDb.readInstructionExport(
-        transaction,
-        bookId,
-        input.newExportId,
-      ))[0];
-
-      if (!exported) return yield* failure("NotFound");
-
-      const decodedExport = yield* decode(ExportSchema, exported.body);
-
-      if (decodedExport.selection.items.length > maximumItems) {
-        return yield* failure("UnsupportedProfile");
-      }
-
-      const item = itemOf(decodedExport, input.invoiceId);
-
-      if (item === undefined) return yield* failure("NotFound");
-
-      const beneficiaryRevision = item.counterpartyRevision;
-
-      if (beneficiaryRevision === undefined) return yield* failure("UnsupportedProfile");
-
-      const live = yield* liveInvoice(transaction, bookId, input.invoiceId);
-
-      const liveOutstanding =
-        typeof live.outstandingMinor === "string" ? live.outstandingMinor : item.outstandingMinor;
-
-      const replacement = prepareReplacement({
-        resolution: {
-          instructionId: savedBody.exportId,
-          proofDigest: savedBody.proofDigest,
-          releasedAmountMinor: savedBody.releasedAmountMinor,
-          outcomeInventoryVersion: inventoryOf([]),
-          reservationVersion: reservationOf([]),
-          invoiceCapacities: [{ invoiceId: input.invoiceId, amountMinor: item.amountMinor }],
-          commandKey: input.resolutionKey,
+        {
+          scope: scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_payment_replacement",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({
+            resolutionKey: input.resolutionKey,
+            newExportId: input.newExportId,
+            invoiceId: input.invoiceId,
+          }),
         },
-        releasedEffectiveMinor: savedBody.releasedAmountMinor,
-        liveOutstandingMinor: liveOutstanding,
-        otherReservationsMinor: "0",
-        predecessorId: savedBody.exportId,
-        newInstructionId: input.newExportId,
-        currentBeneficiaryRevision: beneficiaryRevision,
-        reviewedBeneficiaryRevision: beneficiaryRevision,
-        approvedNewDigest: decodedExport.digest,
-      });
+        ReplacementSchema,
+        Effect.gen(function* () {
+          // The resolution being replaced is found by its own command key, never
+          // by trusting the caller's description of it.
+          const savedRows = yield* ResolutionDb.readResolutionByKey(
+            transaction,
+            bookId,
+            input.resolutionKey,
+          );
 
-      if (Result.isFailure(replacement)) return yield* failure("InvalidJournal");
+          const savedRow = savedRows[0];
 
-      const report = {
-        replacementId: newId("payment_replacement"),
-        newInstructionId: input.newExportId,
-        predecessorId: savedBody.exportId,
-        resolutionId: savedBody.resolutionId,
-        approvedNewDigest: decodedExport.digest,
-        compiledAmountMinor: replacement.success.compiledAmountMinor,
-        beneficiaryRevision,
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "prepare_payment_replacement",
-          principal.actorId,
-        ),
-      };
+          if (!savedRow) return yield* failure("NotFound");
 
-      yield* saveCommand(
-        transaction,
-        scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_payment_replacement",
-        principal.actorId,
-        yield* toJsonObject(report),
+          const savedBody = yield* decode(ResolutionSchema, savedRow.body);
+
+          if (savedBody.invoiceId !== input.invoiceId) return yield* failure("StaleDependency");
+
+          // A replacement needs an effective release, and no proof branch can
+          // produce one from currently retained evidence. This gate is exercised
+          // rather than assumed: it refuses today, and it opens the day a proof
+          // branch becomes satisfiable without any change here.
+          if (savedBody.resubmission !== "permitted") return yield* failure("StaleDependency");
+
+          const exported = (yield* ResolutionDb.readInstructionExport(
+            transaction,
+            bookId,
+            input.newExportId,
+          ))[0];
+
+          if (!exported) return yield* failure("NotFound");
+
+          const decodedExport = yield* decode(ExportSchema, exported.body);
+
+          if (decodedExport.selection.items.length > maximumItems) {
+            return yield* failure("UnsupportedProfile");
+          }
+
+          const item = itemOf(decodedExport, input.invoiceId);
+
+          if (item === undefined) return yield* failure("NotFound");
+
+          const beneficiaryRevision = item.counterpartyRevision;
+
+          if (beneficiaryRevision === undefined) return yield* failure("UnsupportedProfile");
+
+          const live = yield* liveInvoice(transaction, bookId, input.invoiceId);
+
+          const liveOutstanding =
+            typeof live.outstandingMinor === "string"
+              ? live.outstandingMinor
+              : item.outstandingMinor;
+
+          const replacement = prepareReplacement({
+            resolution: {
+              instructionId: savedBody.exportId,
+              proofDigest: savedBody.proofDigest,
+              releasedAmountMinor: savedBody.releasedAmountMinor,
+              outcomeInventoryVersion: inventoryOf([]),
+              reservationVersion: reservationOf([]),
+              invoiceCapacities: [{ invoiceId: input.invoiceId, amountMinor: item.amountMinor }],
+              commandKey: input.resolutionKey,
+            },
+            releasedEffectiveMinor: savedBody.releasedAmountMinor,
+            liveOutstandingMinor: liveOutstanding,
+            otherReservationsMinor: "0",
+            predecessorId: savedBody.exportId,
+            newInstructionId: input.newExportId,
+            currentBeneficiaryRevision: beneficiaryRevision,
+            reviewedBeneficiaryRevision: beneficiaryRevision,
+            approvedNewDigest: decodedExport.digest,
+          });
+
+          if (Result.isFailure(replacement)) return yield* failure("InvalidJournal");
+
+          const report = {
+            replacementId: newId("payment_replacement"),
+            newInstructionId: input.newExportId,
+            predecessorId: savedBody.exportId,
+            resolutionId: savedBody.resolutionId,
+            approvedNewDigest: decodedExport.digest,
+            compiledAmountMinor: replacement.success.compiledAmountMinor,
+            beneficiaryRevision,
+            receipt: Shared.receipt(
+              command.idempotencyKey,
+              "prepare_payment_replacement",
+              principal.actorId,
+            ),
+          };
+
+          return {
+            receipt: yield* toJsonObject(report),
+            result: yield* decode(ReplacementSchema, yield* toJsonObject(report)),
+          };
+        }),
       );
-
-      return yield* decode(ReplacementSchema, yield* toJsonObject(report));
     }),
   );
 });

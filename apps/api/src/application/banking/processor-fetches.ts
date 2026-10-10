@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/processor-clearing";
 import * as Clearing from "@open-erp/domain/processor-clearing";
 import * as Effect from "effect/Effect";
@@ -20,7 +21,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay } from "../command-receipts";
 import { failure, logFailure } from "../failures";
 import { registerProcessorCashHolding } from "./processor-cash";
 
@@ -337,103 +340,99 @@ export const fetchProcessorObservations = Effect.fn("processor.fetch")(function*
   }
 
   return yield* withBook(token, command.scope, false, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "processor_fetch",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "processor_fetch",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Fetch,
+      Effect.gen(function* () {
+        yield* Posting.lockBookForUpdate(tx, command.scope);
+        const account = yield* readProcessorAccount(tx, command.scope, initial.account.id);
+
+        if (account.digest !== initial.account.digest) return yield* failure("StaleDependency");
+        const first = pages[0]?.page;
+
+        if (!first) return yield* failure("InvalidJournal");
+        const firstRetained = pages[0];
+
+        if (!firstRetained) return yield* failure("InvalidJournal");
+        yield* registerProcessorCashHolding(tx, command.scope, account, firstRetained.rawSourceRef);
+
+        const control = {
+          reportId: first.reportId,
+          openingMinor: first.openingMinor,
+          closingMinor: first.closingMinor,
+          complete: first.complete,
+        };
+
+        const controlDigest = yield* digest(control);
+        const observations: Array<typeof Contracts.Observation.Type> = [];
+        const sourceLinks: Array<{ observationId: string; rawSourceRef: string }> = [];
+        const seen = new Set<string>();
+
+        for (const retained of pages) {
+          const page = retained.page;
+
+          if (
+            (yield* digest({
+              reportId: page.reportId,
+              openingMinor: page.openingMinor,
+              closingMinor: page.closingMinor,
+              complete: page.complete,
+            })) !== controlDigest
+          )
+            return yield* failure("StaleDependency");
+
+          for (const observation of yield* normalize(tx, command.scope, account, retained)) {
+            if (seen.has(observation.id)) continue;
+            seen.add(observation.id);
+            observations.push(observation);
+            sourceLinks.push({
+              observationId: observation.id,
+              rawSourceRef: retained.rawSourceRef,
+            });
+          }
+        }
+
+        const body = {
+          id: initial.fetchId,
+          accountId: account.id,
+          selection: command.input,
+          profileDigest: account.digest,
+          rawSourceRefs: pages.map((page) => page.rawSourceRef),
+          reportId: control.reportId,
+          openingMinor: control.openingMinor,
+          closingMinor: control.closingMinor,
+          providerComplete: control.complete && command.input.view === "balance",
+          membershipComplete: control.complete && command.input.view === "automatic_payout",
+          observations,
+        };
+
+        const fetched = yield* decode(Contracts.Fetch, { ...body, digest: yield* digest(body) });
+        yield* Db.insertFetch(tx, {
+          bookId: command.scope.bookId,
+          id: fetched.id,
+          accountId: account.id,
+          body: yield* toJsonObject(fetched),
+        });
+
+        for (const link of sourceLinks)
+          yield* Db.insertSourceOccurrence(tx, {
+            bookId: command.scope.bookId,
+            fetchId: fetched.id,
+            ...link,
+            payoutMembershipId:
+              command.input.view === "automatic_payout" ? command.input.providerPayoutId : null,
+            body: yield* toJsonObject(link),
+          });
+
+        return { receipt: yield* toJsonObject(fetched), result: fetched };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* Posting.lockBookForUpdate(tx, command.scope);
-    const account = yield* readProcessorAccount(tx, command.scope, initial.account.id);
-
-    if (account.digest !== initial.account.digest) return yield* failure("StaleDependency");
-    const first = pages[0]?.page;
-
-    if (!first) return yield* failure("InvalidJournal");
-    const firstRetained = pages[0];
-
-    if (!firstRetained) return yield* failure("InvalidJournal");
-    yield* registerProcessorCashHolding(tx, command.scope, account, firstRetained.rawSourceRef);
-
-    const control = {
-      reportId: first.reportId,
-      openingMinor: first.openingMinor,
-      closingMinor: first.closingMinor,
-      complete: first.complete,
-    };
-
-    const controlDigest = yield* digest(control);
-    const observations: Array<typeof Contracts.Observation.Type> = [];
-    const sourceLinks: Array<{ observationId: string; rawSourceRef: string }> = [];
-    const seen = new Set<string>();
-
-    for (const retained of pages) {
-      const page = retained.page;
-
-      if (
-        (yield* digest({
-          reportId: page.reportId,
-          openingMinor: page.openingMinor,
-          closingMinor: page.closingMinor,
-          complete: page.complete,
-        })) !== controlDigest
-      )
-        return yield* failure("StaleDependency");
-
-      for (const observation of yield* normalize(tx, command.scope, account, retained)) {
-        if (seen.has(observation.id)) continue;
-        seen.add(observation.id);
-        observations.push(observation);
-        sourceLinks.push({ observationId: observation.id, rawSourceRef: retained.rawSourceRef });
-      }
-    }
-
-    const body = {
-      id: initial.fetchId,
-      accountId: account.id,
-      selection: command.input,
-      profileDigest: account.digest,
-      rawSourceRefs: pages.map((page) => page.rawSourceRef),
-      reportId: control.reportId,
-      openingMinor: control.openingMinor,
-      closingMinor: control.closingMinor,
-      providerComplete: control.complete && command.input.view === "balance",
-      membershipComplete: control.complete && command.input.view === "automatic_payout",
-      observations,
-    };
-
-    const fetched = yield* decode(Contracts.Fetch, { ...body, digest: yield* digest(body) });
-    yield* Db.insertFetch(tx, {
-      bookId: command.scope.bookId,
-      id: fetched.id,
-      accountId: account.id,
-      body: yield* toJsonObject(fetched),
-    });
-
-    for (const link of sourceLinks)
-      yield* Db.insertSourceOccurrence(tx, {
-        bookId: command.scope.bookId,
-        fetchId: fetched.id,
-        ...link,
-        payoutMembershipId:
-          command.input.view === "automatic_payout" ? command.input.providerPayoutId : null,
-        body: yield* toJsonObject(link),
-      });
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "processor_fetch",
-      principal.actorId,
-      yield* toJsonObject(fetched),
-    );
-
-    return fetched;
   });
 });

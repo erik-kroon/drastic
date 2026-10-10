@@ -21,7 +21,8 @@ import {
 } from "../commerce/support";
 import { readSourceBytesInTransaction } from "../source-retention";
 import { assessSource } from "../vat/expense-tax";
-import { digest, isoNow } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
 import { economicKey } from "../purchases/recognition";
 
 export const requireClaimsAccess = Effect.fn("claims.access")(function* (

@@ -1,3 +1,5 @@
+import type { CommandKeys } from "@/lib/command-keys";
+import { checkScope } from "@/lib/commerce-scope";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -12,7 +14,6 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import {
   bookKey,
-  bookPath,
   mutationOptions,
   readAccounting,
   isUncertainWriteError,
@@ -28,9 +29,7 @@ import {
 
 export type CommerceProps = { book: typeof Accounting.Book.Type; locale: Locale };
 
-export const commercePath = (book: CommerceProps["book"]) => `${bookPath(book)}/commerce`;
-
-export const commerceKey = (book: CommerceProps["book"]) => [...bookKey(book), "commerce"];
+export { commercePath, commerceKey, checkScope } from "@/lib/commerce-scope";
 
 export function Details({
   title,
@@ -74,11 +73,6 @@ export function Evidence({
       reference={{ ...reference, locator: reference.evidenceId }}
     />
   );
-}
-
-export function checkScope(book: CommerceProps["book"], scope: typeof Accounting.Scope.Type) {
-  if (scope.bookId !== book.id || scope.entityId !== book.entityId)
-    throw new Error("Commerce response scope mismatch");
 }
 
 export function Field(props: {
@@ -190,7 +184,7 @@ export function CommandForm<
     onSuccess?: (result: O["Type"]) => void;
     onNewCommand?: () => void;
     validate?: (result: O["Type"], input: S["Type"]) => void;
-    keys?: Map<string, string>;
+    keys?: CommandKeys;
     executeRequest?: (
       request: { key: string; input: S["Type"] },
       retain: (request: { key: string; input: S["Type"] }) => void,

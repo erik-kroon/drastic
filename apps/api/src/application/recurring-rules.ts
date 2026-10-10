@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import { digest as digestNative } from "./json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
@@ -6,7 +7,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/recurring-rules";
 import * as PostingDb from "../db/posting";
@@ -105,131 +107,134 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "propose_recurring_rule",
-        principal.actorId,
-        yield* toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "propose_recurring_rule",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
+        },
         RuleSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireRuleAccess(transaction, true);
 
-      if (request.previous) return request.previous;
-      yield* requireRuleAccess(transaction, true);
-      const book = yield* requireNativeProfile(transaction, command.scope);
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(input, [...ruleKeys]);
+          const book = yield* requireNativeProfile(transaction, command.scope);
 
-      if (
-        input.kind !== "synthetic_recurring_preparation_v1" ||
-        input.taxAssessment !== "not_applicable" ||
-        (input.sign !== "positive" && input.sign !== "negative")
-      ) {
-        return yield* failure("InvalidJournal");
-      }
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(input, [...ruleKeys]);
 
-      const name = text(input, "name");
-      const description = text(input, "description");
-      const series = text(input, "series");
-      const accountId = text(input, "accountId");
-      const counterpartAccountId = text(input, "counterpartAccountId");
-      const sourceBankAccountId = text(input, "sourceBankAccountId");
+          if (
+            input.kind !== "synthetic_recurring_preparation_v1" ||
+            input.taxAssessment !== "not_applicable" ||
+            (input.sign !== "positive" && input.sign !== "negative")
+          ) {
+            return yield* failure("InvalidJournal");
+          }
 
-      if (
-        name === null ||
-        name.length < 1 ||
-        name.length > descriptionLimit ||
-        description === null ||
-        description.length < 1 ||
-        description.length > descriptionLimit ||
-        series === null ||
-        !/^[A-Z0-9]{1,16}$/.test(series) ||
-        accountId === null ||
-        counterpartAccountId === null ||
-        sourceBankAccountId === null ||
-        accountId === counterpartAccountId
-      ) {
-        return yield* failure("InvalidJournal");
-      }
+          const name = text(input, "name");
 
-      const accounts = yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
-        accountId,
-        counterpartAccountId,
-      ]);
+          const description = text(input, "description");
 
-      if (accounts.length !== 2 || accounts.some((row) => !row.active)) {
-        return yield* failure("InvalidJournal");
-      }
+          const series = text(input, "series");
 
-      const source = yield* transaction.execute<{ readonly accountId: string }>(
-        sql`
+          const accountId = text(input, "accountId");
+
+          const counterpartAccountId = text(input, "counterpartAccountId");
+
+          const sourceBankAccountId = text(input, "sourceBankAccountId");
+
+          if (
+            name === null ||
+            name.length < 1 ||
+            name.length > descriptionLimit ||
+            description === null ||
+            description.length < 1 ||
+            description.length > descriptionLimit ||
+            series === null ||
+            !/^[A-Z0-9]{1,16}$/.test(series) ||
+            accountId === null ||
+            counterpartAccountId === null ||
+            sourceBankAccountId === null ||
+            accountId === counterpartAccountId
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const accounts = yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
+            accountId,
+            counterpartAccountId,
+          ]);
+
+          if (accounts.length !== 2 || accounts.some((row) => !row.active)) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const source = yield* transaction.execute<{ readonly accountId: string }>(
+            sql`
           select account_id as "accountId" from openerp.bank_sources
           where book_id = ${command.scope.bookId} and account_id = ${accountId}
             and source_bank_account_id = ${sourceBankAccountId}
           for share
         `,
-        "objects",
+            "objects",
+          );
+
+          if (source.length === 0) return yield* failure("InvalidJournal");
+
+          const id = newId("rule");
+
+          const dependencies: Array<JsonObject> = [
+            {
+              kind: "profile",
+              resourceId: command.scope.bookId,
+              version: book.profileVersion.toString(),
+              reason: "Synthetic book currency and profile",
+            },
+            {
+              kind: "writer_epoch",
+              resourceId: command.scope.bookId,
+              version: book.writerEpoch.toString(),
+              reason: "Native writer authority",
+            },
+            ...[...accounts]
+              .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
+              .map((row) => ({
+                kind: "account",
+                resourceId: row.id,
+                version: row.version,
+                reason: "Exact recurring account configuration",
+              })),
+          ];
+
+          const base = yield* toJsonObject({
+            id,
+            version: 1,
+            scope: command.scope,
+            input,
+            dependencies,
+            createdAt: yield* isoNow(transaction),
+            proposedBy: principal.actorId,
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "propose_recurring_rule",
+              actorId: principal.actorId,
+            },
+          });
+
+          const digest = yield* digestNative(base);
+
+          if (digest === undefined) return yield* failure("InternalError");
+
+          const body = yield* toJsonObject({ ...base, digest });
+          yield* Db.insertRule(transaction, { bookId: command.scope.bookId, id, body });
+
+          const result = yield* decode(RuleSchema, body);
+
+          return result;
+        }),
       );
-
-      if (source.length === 0) return yield* failure("InvalidJournal");
-      const id = newId("rule");
-
-      const dependencies: Array<JsonObject> = [
-        {
-          kind: "profile",
-          resourceId: command.scope.bookId,
-          version: book.profileVersion.toString(),
-          reason: "Synthetic book currency and profile",
-        },
-        {
-          kind: "writer_epoch",
-          resourceId: command.scope.bookId,
-          version: book.writerEpoch.toString(),
-          reason: "Native writer authority",
-        },
-        ...[...accounts]
-          .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
-          .map((row) => ({
-            kind: "account",
-            resourceId: row.id,
-            version: row.version,
-            reason: "Exact recurring account configuration",
-          })),
-      ];
-
-      const base = yield* toJsonObject({
-        id,
-        version: 1,
-        scope: command.scope,
-        input,
-        dependencies,
-        createdAt: yield* isoNow(transaction),
-        proposedBy: principal.actorId,
-        receipt: {
-          key: command.idempotencyKey,
-          operation: "propose_recurring_rule",
-          actorId: principal.actorId,
-        },
-      });
-
-      const digest = yield* digestNative(base);
-
-      if (digest === undefined) return yield* failure("InternalError");
-      const body = yield* toJsonObject({ ...base, digest });
-      yield* Db.insertRule(transaction, { bookId: command.scope.bookId, id, body });
-      const result = yield* decode(RuleSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "propose_recurring_rule",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -241,6 +246,7 @@ export const getRule = Effect.fn("recurring.getRule")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireRuleAccess(transaction, false);
+
     const rule = (yield* Db.readRule(transaction, command.scope.bookId, command.ruleId))[0];
 
     if (!rule) return yield* failure("NotFound");
@@ -280,109 +286,112 @@ export const simulateRule = Effect.fn("recurring.simulateRule")(function* (
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "simulate_recurring_rule",
-        principal.actorId,
-        yield* toJsonObject(command.input),
-        SimulationSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRuleAccess(transaction, true);
-      const rule = (yield* Db.readRule(transaction, command.scope.bookId, command.input.ruleId))[0];
-
-      if (!rule) return yield* failure("NotFound");
-      const startsOn = calendarDate(command.input.startsOn);
-      const endsOn = calendarDate(command.input.endsOn);
-
-      if (startsOn === null || endsOn === null || startsOn > endsOn) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const configured = objectOrNull(rule.body.input);
-      const accountId = configured === null ? null : text(configured, "accountId");
-
-      const counterpartAccountId =
-        configured === null ? null : text(configured, "counterpartAccountId");
-
-      if (accountId === null || counterpartAccountId === null) {
-        return yield* failure("InternalError");
-      }
-
-      yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
-        accountId,
-        counterpartAccountId,
-      ]);
-      yield* Db.lockSelectionPeriods(transaction, command.scope.bookId, startsOn, endsOn);
-
-      const selected = (yield* Db.readSelection(
-        transaction,
-        command.scope.bookId,
-        rule.body,
-        startsOn,
-        endsOn,
-      ))[0];
-
-      if (!selected?.current || selected.selection === null) {
-        return yield* failure("StaleDependency");
-      }
-
-      const selection = yield* decode(SelectionSchema, selected.selection);
-
-      if (selection.matchingCount > maximumSelectedObservations) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const id = newId("simulation");
-
-      const base = yield* toJsonObject({
-        startsOn: selection.startsOn,
-        endsOn: selection.endsOn,
-        sourceRevision: selection.sourceRevision,
-        sequence: selection.sequence,
-        rows: selection.rows,
-        matchingCount: selection.matchingCount,
-        totalMinor: selection.totalMinor,
-        unmatchedCount: selection.unmatchedCount,
-        alreadyMatchedCount: selection.alreadyMatchedCount,
-        overlappingRuleIds: selection.overlappingRuleIds,
-        blockers: selection.blockers,
-        id,
-        ruleId: rule.body.id,
-        ruleDigest: rule.body.digest,
-        createdAt: yield* isoNow(transaction),
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "simulate_recurring_rule",
           actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
         },
-      });
+        SimulationSchema,
+        Effect.gen(function* () {
+          yield* requireRuleAccess(transaction, true);
 
-      const digest = yield* digestNative(base);
+          const rule = (yield* Db.readRule(
+            transaction,
+            command.scope.bookId,
+            command.input.ruleId,
+          ))[0];
 
-      if (digest === undefined) return yield* failure("InternalError");
-      const body = yield* toJsonObject({ ...base, digest });
-      yield* Db.insertSimulation(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        ruleId: command.input.ruleId,
-        body,
-      });
-      const result = yield* decode(SimulationSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "simulate_recurring_rule",
-        principal.actorId,
-        result,
+          if (!rule) return yield* failure("NotFound");
+
+          const startsOn = calendarDate(command.input.startsOn);
+
+          const endsOn = calendarDate(command.input.endsOn);
+
+          if (startsOn === null || endsOn === null || startsOn > endsOn) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const configured = objectOrNull(rule.body.input);
+
+          const accountId = configured === null ? null : text(configured, "accountId");
+
+          const counterpartAccountId =
+            configured === null ? null : text(configured, "counterpartAccountId");
+
+          if (accountId === null || counterpartAccountId === null) {
+            return yield* failure("InternalError");
+          }
+
+          yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
+            accountId,
+            counterpartAccountId,
+          ]);
+          yield* Db.lockSelectionPeriods(transaction, command.scope.bookId, startsOn, endsOn);
+
+          const selected = (yield* Db.readSelection(
+            transaction,
+            command.scope.bookId,
+            rule.body,
+            startsOn,
+            endsOn,
+          ))[0];
+
+          if (!selected?.current || selected.selection === null) {
+            return yield* failure("StaleDependency");
+          }
+
+          const selection = yield* decode(SelectionSchema, selected.selection);
+
+          if (selection.matchingCount > maximumSelectedObservations) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const id = newId("simulation");
+
+          const base = yield* toJsonObject({
+            startsOn: selection.startsOn,
+            endsOn: selection.endsOn,
+            sourceRevision: selection.sourceRevision,
+            sequence: selection.sequence,
+            rows: selection.rows,
+            matchingCount: selection.matchingCount,
+            totalMinor: selection.totalMinor,
+            unmatchedCount: selection.unmatchedCount,
+            alreadyMatchedCount: selection.alreadyMatchedCount,
+            overlappingRuleIds: selection.overlappingRuleIds,
+            blockers: selection.blockers,
+            id,
+            ruleId: rule.body.id,
+            ruleDigest: rule.body.digest,
+            createdAt: yield* isoNow(transaction),
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "simulate_recurring_rule",
+              actorId: principal.actorId,
+            },
+          });
+
+          const digest = yield* digestNative(base);
+
+          if (digest === undefined) return yield* failure("InternalError");
+
+          const body = yield* toJsonObject({ ...base, digest });
+          yield* Db.insertSimulation(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            ruleId: command.input.ruleId,
+            body,
+          });
+
+          const result = yield* decode(SimulationSchema, body);
+
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );

@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
@@ -11,7 +12,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { DocumentUpload } from "@/components/document-inbox";
 import { OriginalDocument } from "@/components/original-document";
-import { bookKey, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { CommandForm, commercePath, checkScope, type CommerceProps } from "./shared";
 import { SupplierExtraction } from "./supplier-extraction";
 
@@ -75,7 +76,7 @@ function SupplierInboxEntry(props: {
   onRefresh: () => void;
 }) {
   const sv = props.commerceProps.locale === "sv";
-  const extractionKeys = useRef(new Map<string, string>());
+  const extractionKeys = useCommandKeys();
   const [view, setView] = useState<PdfView>({ page: 1, zoom: 100 });
   const [quote, setQuote] = useState<typeof Extraction.DocumentSourceLocator.Type>();
 
@@ -199,7 +200,7 @@ export function SupplierInbox(
   const { book, locale } = props;
   const sv = locale === "sv";
   const [upload, setUpload] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const client = useQueryClient();
   const path = `${commercePath(book)}/supplier-inbox`;
 
@@ -249,7 +250,7 @@ export function SupplierInbox(
       const result = await readAccounting(
         path,
         Inbox.SupplierInboxView,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       checkScope(book, result.occurrence.occurrence.scope);

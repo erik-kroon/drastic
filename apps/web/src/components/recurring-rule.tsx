@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,13 +13,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PreparationSelection } from "@/components/preparation-selection";
-import {
-  bookKey,
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  requiresNewProposal,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, requiresNewProposal } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -39,7 +36,7 @@ export function RecurringRulePanel({
     queryKey: [...bookKey(book), "recurring-rule", id],
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/recurring-rules/${encodeURIComponent(id)}`,
+        (client) => client.automation.getRecurringRule({ params: { ...bookScope(book), id: id } }),
         Automation.RecurringRuleView,
         { signal },
       );
@@ -254,7 +251,7 @@ function SimulateRule(props: {
 }) {
   const { book, ruleId, locale, onSimulated } = props;
   const copy = accountingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const client = useQueryClient();
   const [inputError, setInputError] = useState("");
 
@@ -265,7 +262,7 @@ function SimulateRule(props: {
       return readAccounting(
         path,
         Automation.RuleSimulation,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (result) => {
@@ -293,7 +290,7 @@ function SimulateRule(props: {
           endsOn: fields.get("endsOn"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;
@@ -391,7 +388,8 @@ function SimulationReview(props: {
     queryKey: [...bookKey(book), "rule-simulation", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/recurring-rule-simulations/${encodeURIComponent(id)}`,
+        (client) =>
+          client.automation.getRecurringSimulation({ params: { ...bookScope(book), id: id } }),
         Automation.RuleSimulation,
         { signal },
       );
@@ -475,7 +473,7 @@ function ActivateRule({
 }) {
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const activation = useMutation({
     mutationFn: (payload: typeof Automation.ActivateRecurringRule.Type) => {
@@ -484,7 +482,7 @@ function ActivateRule({
       return readAccounting(
         path,
         Automation.RuleActivation,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: () => client.invalidateQueries({ queryKey: [...bookKey(book), "recurring-rule"] }),
@@ -585,7 +583,7 @@ function DeactivateRule({
 }) {
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const deactivation = useMutation({
@@ -595,7 +593,7 @@ function DeactivateRule({
       return readAccounting(
         path,
         Automation.RuleDeactivation,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: () => client.invalidateQueries({ queryKey: [...bookKey(book), "recurring-rule"] }),
@@ -618,7 +616,7 @@ function DeactivateRule({
           reason: new FormData(event.currentTarget).get("reason"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;
@@ -695,7 +693,7 @@ function CreateRun(props: {
   const { book, activation, locale, allowed } = props;
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const run = useMutation({
@@ -705,7 +703,7 @@ function CreateRun(props: {
       return readAccounting(
         path,
         Automation.PreparationRun,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: async (result) => {
@@ -735,7 +733,7 @@ function CreateRun(props: {
           endsOn: fields.get("endsOn"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;

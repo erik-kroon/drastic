@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as Contracts from "@open-erp/contracts/commerce-fx";
 import * as Chain from "@open-erp/domain/fx-chain-repair";
@@ -22,7 +23,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 
 // NEXT-41. The application owner of late FX valuation and consumed-chain
 // correction.
@@ -143,6 +146,7 @@ function buildChainEvents(
 function readPriorEffects(transaction: Transaction, scope: Scope, itemId: string) {
   return Effect.gen(function* () {
     const plans = yield* ChainDb.listRemeasurementPlansForItem(transaction, scope.bookId, itemId);
+
     const attributed: Array<Chain.AttributedLine> = [];
 
     for (const row of plans) {
@@ -180,219 +184,221 @@ export const prepareFxChainRepair = Effect.fn("commerceFx.prepareChainRepair")(f
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "prepare_fx_chain_repair";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      Contracts.ChainRepairReview,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(
-      transaction,
-      [
-        ...ChainDb.chainRepairTables,
-        "commerce_fx_items",
-        "commerce_fx_settlements",
-        "commerce_fx_remeasurement_reviews",
-        "exchange_rate_revisions",
-        "exchange_rate_withdrawals",
-      ],
-      true,
-    );
-    yield* lockBookForUpdate(transaction, command.scope);
-
-    const state = yield* readItemState(transaction, command.scope, command.input.itemId);
-    const book = yield* readBookCurrency(transaction, command.scope);
-
-    const rate = yield* readRateRevision(
-      transaction,
-      command.scope,
-      command.input.rateObservationId,
-      command.input.rateDigest,
-      state.item.original.currency,
-      book.currency,
-    );
-
-    // v1 covers chains whose only history is settlements. An item with prior
-    // remeasurement effects needs the layered handler, which replays those
-    // effects as valuation events; guessing them would double-count.
-    const priorEffects = yield* readPriorEffects(transaction, command.scope, command.input.itemId);
-
-    if (priorEffects.length > 0) {
-      return yield* failure("UnsupportedProfile");
-    }
-
-    const settlementRows = yield* ChainDb.readSettlementEvents(
-      transaction,
-      command.scope.bookId,
-      command.input.itemId,
-    );
-
-    // The settlement dates carry their original attribution as already
-    // applied, derived from the same fixed retained facts the replay uses.
-    // A settlement's release and realized gain do not depend on the corrected
-    // rate, so stating them here is not a guess: it is what the replay must
-    // produce, and the leaf verifies it.
-    const settlementAttribution: Array<Chain.AttributedLine> = [];
-
-    for (const row of settlementRows) {
-      const release = BigInt(row.carryingReleasedMinor);
-      const consideration = BigInt(row.considerationMinor);
-      const gain = row.direction === "supplier" ? release - consideration : consideration - release;
-
-      settlementAttribution.push({
-        accountingOn: row.postingDate,
-        role: "ar_movement",
-        amountMinor: (-release).toString(),
-      });
-      settlementAttribution.push({
-        accountingOn: row.postingDate,
-        role: "pnl",
-        amountMinor: gain.toString(),
-      });
-    }
-
-    // The leaf converts minor units at a minor-per-minor rate, so the reviewed
-    // major-unit rate carries both scales. Without them a foreign currency
-    // whose scale differs from the book's would replay at the wrong magnitude.
-    const minorRate = {
-      numerator: BigInt(rate.terms.rateNumerator) * 10n ** BigInt(book.scale),
-      denominator: BigInt(rate.terms.rateDenominator) * 10n ** BigInt(state.item.original.scale),
-    };
-
-    const events = buildChainEvents(
-      [],
-      settlementRows.map((row) => ({
-        accountingOn: row.postingDate,
-        originalUnitsMinor: row.originalReleasedMinor,
-        pairedReleaseMinor: row.carryingReleasedMinor,
-        cashConsiderationMinor: row.considerationMinor,
-        direction: row.direction,
-        eventId: row.id,
-      })),
       {
-        accountingOn: command.input.accountingCutoff,
-        remainingForeignMinor: state.item.remainingOriginalMinor,
-        rateNumerator: minorRate.numerator.toString(),
-        rateDenominator: minorRate.denominator.toString(),
-        eventId: `chain_repair_valuation_${command.input.repairKey}`,
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
       },
-    );
-
-    // The expected ending is the corrected target for the remaining foreign
-    // amount at the same minor-unit rate the leaf applies. The leaf verifies
-    // the full replay arrives there, so a missing settlement fails here rather
-    // than posting against a partial chain.
-    const target = roundRational(
-      BigInt(state.item.remainingOriginalMinor) * minorRate.numerator,
-      minorRate.denominator,
-      "half_up",
-    );
-
-    if (Result.isFailure(target)) {
-      return yield* failure("InvalidJournal");
-    }
-
-    // The sealed basis is retained whole, so execution re-verifies the same
-    // frozen chain rather than reconstructing a different one.
-    const basisInput: Chain.ChainBasis = {
-      itemId: command.input.itemId,
-      activeChainRevision: state.item.digest,
-      anchorForeignMinor: state.item.initialOriginalMinor,
-      anchorCarryingMinor: state.item.initialCarryingMinor,
-      events,
-      oldEffective: [...priorEffects, ...settlementAttribution],
-      plannedCurrentCarryingMinor: target.success.toString(),
-      repairKey: command.input.repairKey,
-      knownRepairKeys: yield* readKnownRepairKeys(
-        transaction,
-        command.scope,
-        command.input.itemId,
-        null,
-      ),
-      closedPeriodWithoutPolicy: yield* readClosedPeriodWithoutPolicy(
-        transaction,
-        command.scope,
-        command.input.accountingCutoff,
-      ),
-    };
-
-    const repaired = Chain.calculateChainRepair(basisInput);
-
-    if (Result.isFailure(repaired)) return yield* refuse(repaired.failure);
-
-    const reviewId = newId("fx_chain_repair_review");
-    const now = yield* isoNow(transaction);
-    const control = state.item.accountBindings.find((binding) => binding.role === "control");
-
-    if (control === undefined) return yield* failure("InvalidJournal");
-
-    const body = {
-      id: reviewId,
-      scope: command.scope,
-      version: 1,
-      actorId: principal.actorId,
-      repair: repaired.success,
-      basis: basisInput,
-      gainAccountId: command.input.unrealizedGainAccountId,
-      lossAccountId: command.input.unrealizedLossAccountId,
-      controlAccountId: control.accountId,
-      rateEvidenceId: rate.terms.evidenceId,
-    };
-
-    const reviewDigest = yield* digest(body);
-
-    if (
-      (yield* ChainDb.readReviewByRepairKey(
-        transaction,
-        command.scope.bookId,
-        command.input.repairKey,
-      )).length > 0
-    ) {
-      return yield* failure("AlreadyPosted");
-    }
-
-    const review = yield* decode(
       Contracts.ChainRepairReview,
-      yield* toJsonObject({
-        ...body,
-        digest: reviewDigest,
-        posting: {
-          fiscalYearId: command.input.fiscalYearId,
-          accountingPeriodId: command.input.accountingPeriodId,
-          series: command.input.series,
-          bookCurrency: book.currency,
-        },
-        createdAt: now,
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [
+            ...ChainDb.chainRepairTables,
+            "commerce_fx_items",
+            "commerce_fx_settlements",
+            "commerce_fx_remeasurement_reviews",
+            "exchange_rate_revisions",
+            "exchange_rate_withdrawals",
+          ],
+          true,
+        );
+        yield* lockBookForUpdate(transaction, command.scope);
+
+        const state = yield* readItemState(transaction, command.scope, command.input.itemId);
+
+        const book = yield* readBookCurrency(transaction, command.scope);
+
+        const rate = yield* readRateRevision(
+          transaction,
+          command.scope,
+          command.input.rateObservationId,
+          command.input.rateDigest,
+          state.item.original.currency,
+          book.currency,
+        );
+
+        // v1 covers chains whose only history is settlements. An item with prior
+        // remeasurement effects needs the layered handler, which replays those
+        // effects as valuation events; guessing them would double-count.
+        const priorEffects = yield* readPriorEffects(
+          transaction,
+          command.scope,
+          command.input.itemId,
+        );
+
+        if (priorEffects.length > 0) {
+          return yield* failure("UnsupportedProfile");
+        }
+
+        const settlementRows = yield* ChainDb.readSettlementEvents(
+          transaction,
+          command.scope.bookId,
+          command.input.itemId,
+        );
+
+        // The settlement dates carry their original attribution as already
+        // applied, derived from the same fixed retained facts the replay uses.
+        // A settlement's release and realized gain do not depend on the corrected
+        // rate, so stating them here is not a guess: it is what the replay must
+        // produce, and the leaf verifies it.
+        const settlementAttribution: Array<Chain.AttributedLine> = [];
+
+        for (const row of settlementRows) {
+          const release = BigInt(row.carryingReleasedMinor);
+
+          const consideration = BigInt(row.considerationMinor);
+
+          const gain =
+            row.direction === "supplier" ? release - consideration : consideration - release;
+
+          settlementAttribution.push({
+            accountingOn: row.postingDate,
+            role: "ar_movement",
+            amountMinor: (-release).toString(),
+          });
+          settlementAttribution.push({
+            accountingOn: row.postingDate,
+            role: "pnl",
+            amountMinor: gain.toString(),
+          });
+        }
+
+        // The leaf converts minor units at a minor-per-minor rate, so the reviewed
+        // major-unit rate carries both scales. Without them a foreign currency
+        // whose scale differs from the book's would replay at the wrong magnitude.
+        const minorRate = {
+          numerator: BigInt(rate.terms.rateNumerator) * 10n ** BigInt(book.scale),
+          denominator:
+            BigInt(rate.terms.rateDenominator) * 10n ** BigInt(state.item.original.scale),
+        };
+
+        const events = buildChainEvents(
+          [],
+          settlementRows.map((row) => ({
+            accountingOn: row.postingDate,
+            originalUnitsMinor: row.originalReleasedMinor,
+            pairedReleaseMinor: row.carryingReleasedMinor,
+            cashConsiderationMinor: row.considerationMinor,
+            direction: row.direction,
+            eventId: row.id,
+          })),
+          {
+            accountingOn: command.input.accountingCutoff,
+            remainingForeignMinor: state.item.remainingOriginalMinor,
+            rateNumerator: minorRate.numerator.toString(),
+            rateDenominator: minorRate.denominator.toString(),
+            eventId: `chain_repair_valuation_${command.input.repairKey}`,
+          },
+        );
+
+        // The expected ending is the corrected target for the remaining foreign
+        // amount at the same minor-unit rate the leaf applies. The leaf verifies
+        // the full replay arrives there, so a missing settlement fails here rather
+        // than posting against a partial chain.
+        const target = roundRational(
+          BigInt(state.item.remainingOriginalMinor) * minorRate.numerator,
+          minorRate.denominator,
+          "half_up",
+        );
+
+        if (Result.isFailure(target)) {
+          return yield* failure("InvalidJournal");
+        }
+
+        // The sealed basis is retained whole, so execution re-verifies the same
+        // frozen chain rather than reconstructing a different one.
+        const basisInput: Chain.ChainBasis = {
+          itemId: command.input.itemId,
+          activeChainRevision: state.item.digest,
+          anchorForeignMinor: state.item.initialOriginalMinor,
+          anchorCarryingMinor: state.item.initialCarryingMinor,
+          events,
+          oldEffective: [...priorEffects, ...settlementAttribution],
+          plannedCurrentCarryingMinor: target.success.toString(),
+          repairKey: command.input.repairKey,
+          knownRepairKeys: yield* readKnownRepairKeys(
+            transaction,
+            command.scope,
+            command.input.itemId,
+            null,
+          ),
+          closedPeriodWithoutPolicy: yield* readClosedPeriodWithoutPolicy(
+            transaction,
+            command.scope,
+            command.input.accountingCutoff,
+          ),
+        };
+
+        const repaired = Chain.calculateChainRepair(basisInput);
+
+        if (Result.isFailure(repaired)) return yield* refuse(repaired.failure);
+
+        const reviewId = newId("fx_chain_repair_review");
+
+        const now = yield* isoNow(transaction);
+
+        const control = state.item.accountBindings.find((binding) => binding.role === "control");
+
+        if (control === undefined) return yield* failure("InvalidJournal");
+
+        const body = {
+          id: reviewId,
+          scope: command.scope,
+          version: 1,
+          actorId: principal.actorId,
+          repair: repaired.success,
+          basis: basisInput,
+          gainAccountId: command.input.unrealizedGainAccountId,
+          lossAccountId: command.input.unrealizedLossAccountId,
+          controlAccountId: control.accountId,
+          rateEvidenceId: rate.terms.evidenceId,
+        };
+
+        const reviewDigest = yield* digest(body);
+
+        if (
+          (yield* ChainDb.readReviewByRepairKey(
+            transaction,
+            command.scope.bookId,
+            command.input.repairKey,
+          )).length > 0
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+
+        const review = yield* decode(
+          Contracts.ChainRepairReview,
+          yield* toJsonObject({
+            ...body,
+            digest: reviewDigest,
+            posting: {
+              fiscalYearId: command.input.fiscalYearId,
+              accountingPeriodId: command.input.accountingPeriodId,
+              series: command.input.series,
+              bookCurrency: book.currency,
+            },
+            createdAt: now,
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          }),
+        );
+
+        // The retained review is the full decoded contract, so a later read
+        // decodes exactly what was sealed rather than a partial body.
+        yield* ChainDb.insertReview(transaction, {
+          bookId: command.scope.bookId,
+          id: reviewId,
+          actorId: principal.actorId,
+          body: yield* toJsonObject(review),
+        });
+
+        return { receipt: yield* toJsonObject(review), result: review };
       }),
     );
-
-    // The retained review is the full decoded contract, so a later read
-    // decodes exactly what was sealed rather than a partial body.
-    yield* ChainDb.insertReview(transaction, {
-      bookId: command.scope.bookId,
-      id: reviewId,
-      actorId: principal.actorId,
-      body: yield* toJsonObject(review),
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(review),
-    );
-
-    return review;
   });
 });
 
@@ -416,6 +422,7 @@ function readRateRevision(
 ) {
   return Effect.gen(function* () {
     const rows = yield* FxDb.readCurrentRate(transaction, scope.bookId, observationId);
+
     const row = rows[0];
 
     if (row === undefined) return yield* failure("NotFound");
@@ -485,80 +492,76 @@ export const approveFxChainRepair = Effect.fn("commerceFx.approveChainRepair")(f
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "approve_fx_chain_repair";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject({ reviewId: command.reviewId, input: command.input }),
-      Contracts.ChainRepairApproval,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...ChainDb.chainRepairTables], true);
-    yield* lockBookForUpdate(transaction, command.scope);
-
-    const row = (yield* ChainDb.readReview(transaction, command.scope.bookId, command.reviewId))[0];
-
-    if (row === undefined) return yield* failure("NotFound");
-
-    const review = yield* decode(Contracts.ChainRepairReview, row.body);
-
-    if (command.input.version !== 1 || command.input.digest !== review.digest) {
-      return yield* failure("StaleDependency");
-    }
-
-    if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-    const now = yield* isoNow(transaction);
-    const approvalId = newId("fx_chain_repair_approval");
-
-    const body = {
-      id: approvalId,
-      scope: command.scope,
-      reviewId: review.id,
-      digest: review.digest,
-      version: 1,
-      actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + 60 * 60 * 1000).toISOString(),
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
-
-    const approval = yield* decode(Contracts.ChainRepairApproval, body);
-
-    yield* ChainDb.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: approvalId,
-      reviewId: review.id,
-      actorId: principal.actorId,
-      digest: review.digest,
-      expiresAt: approval.expiresAt,
-      body: {
-        ...(yield* toJsonObject(approval)),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-          "informational",
-        ),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject({ reviewId: command.reviewId, input: command.input }),
       },
-    });
+      Contracts.ChainRepairApproval,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, [...ChainDb.chainRepairTables], true);
+        yield* lockBookForUpdate(transaction, command.scope);
 
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(approval),
+        const row = (yield* ChainDb.readReview(
+          transaction,
+          command.scope.bookId,
+          command.reviewId,
+        ))[0];
+
+        if (row === undefined) return yield* failure("NotFound");
+
+        const review = yield* decode(Contracts.ChainRepairReview, row.body);
+
+        if (command.input.version !== 1 || command.input.digest !== review.digest) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+
+        const now = yield* isoNow(transaction);
+
+        const approvalId = newId("fx_chain_repair_approval");
+
+        const body = {
+          id: approvalId,
+          scope: command.scope,
+          reviewId: review.id,
+          digest: review.digest,
+          version: 1,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + 60 * 60 * 1000).toISOString(),
+          createdAt: now,
+          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        };
+
+        const approval = yield* decode(Contracts.ChainRepairApproval, body);
+
+        yield* ChainDb.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approvalId,
+          reviewId: review.id,
+          actorId: principal.actorId,
+          digest: review.digest,
+          expiresAt: approval.expiresAt,
+          body: {
+            ...(yield* toJsonObject(approval)),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
+          },
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
     );
-
-    return approval;
   });
 });
 
@@ -668,6 +671,7 @@ export const executeFxChainRepair = Effect.fn("commerceFx.executeChainRepair")(f
     }
 
     const now = yield* isoNow(transaction);
+
     const journal = buildCorrectionJournal(review);
 
     if (journal.length === 0) {

@@ -1,6 +1,25 @@
+import {
+  type Plan,
+  type Action,
+  VoucherSchema,
+  ActionSchema,
+  manualJournalContext,
+  type ManualContext,
+  decode,
+  voucherFromRow,
+  readVoucher,
+  readBook,
+  readPeriod,
+  isCompanyManualAction,
+  readManualAdmission,
+  validateActionWithContext,
+  validatePlanWithContext,
+} from "./posting-validation";
+import { type Scope, executionApproval } from "./posting-approval";
+import { runBookCommand } from "./book-commands";
 import { admitOAuthRead, McpReadResource } from "../db/oauth-admission";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
-import { requireOnboardingResponsibility } from "./onboarding-policy";
+import { requireBookResponsibility } from "./book-responsibility";
 import * as OnboardingCaseDb from "../db/onboarding";
 import * as OnboardingLifecycleDb from "../db/onboarding-lifecycle";
 import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
@@ -19,30 +38,28 @@ import {
   admitScheduleEvent,
   type PostingOwner,
 } from "./posting-admission";
-import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
+import { recordHistoricalOpening } from "../db/posting-admission";
 import {
   applyOriginalAssignmentsInTransaction,
   resolveAssignmentsInTransaction,
 } from "./dimensions/assignments";
 import * as Accounting from "@open-erp/contracts/accounting";
-import * as Profiles from "@open-erp/contracts/company-profiles";
-import * as ProfileDb from "../db/company-profiles";
-import { digest, versionedDigest } from "./json";
+
+import { versionedDigest } from "./json";
 import { resolveCompanyProfileInTransaction } from "./company-profiles";
 
-export { digest, versionedDigest } from "./json";
+import { replay, saveCommand, isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
+import { sha256Hex } from "./hashing";
 
-import {
-  ExecutionReceipt as DomainExecutionReceipt,
-  ManualCompanyAdmission,
-} from "@open-erp/domain/ledger";
-import { orderPostingGroups, reversedLines, validatePostingLines } from "@open-erp/domain/posting";
+import { ExecutionReceipt as DomainExecutionReceipt } from "@open-erp/domain/ledger";
+import { orderPostingGroups, reversedLines } from "@open-erp/domain/posting";
 import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { failure, postingFailure } from "./failures";
+import { failure } from "./failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
 import * as Db from "../db/posting";
 import { readLiveCredential } from "../db/preparation-jobs";
@@ -50,15 +67,7 @@ import { admitHumanActor, hashToken } from "../db/human-actor";
 import * as CorrectionDb from "../db/posting-corrections";
 import { databaseFailure, withTransaction, type Transaction } from "../db/transaction";
 
-type Scope = typeof Accounting.Scope.Type;
-
-type Plan = typeof Accounting.ChangeSet.Type;
-
-type Action = typeof Accounting.VoucherPostingAction.Type;
-
 type ExecutionReceipt = typeof Accounting.ExecutionReceipt.Type;
-
-type JsonObject = Schema.JsonObject;
 
 type Principal = VerifiedPrincipal;
 
@@ -66,10 +75,6 @@ type PrepareJournalCommand =
   typeof import("@open-erp/contracts/capabilities").Capabilities.ledger_prepare_journal.input.Type;
 
 const PlanSchema = Accounting.ChangeSet;
-
-const VoucherSchema = Accounting.Voucher;
-
-const ActionSchema = Accounting.VoucherPostingAction;
 
 const ApprovalSchema = Accounting.Approval;
 
@@ -85,52 +90,16 @@ const BookStatusSchema = Accounting.BookStatus;
 
 const BookDirectorySchema = Schema.Array(Accounting.Book);
 
-const manualJournalContext = Object.freeze({ kind: "public_manual_journal" as const });
-
-type ManualContext = typeof manualJournalContext;
-
 // Only an owning legal application operation may present these purposes. Every other
 // posting purpose stays synthetic and manual.
-const legalPostingPurposes: ReadonlyArray<string> = [
-  "legal_ar_recognition",
-  "legal_customer_credit_v1",
-];
 
 // Only the financial-close application operation may present this purpose. It
 // moves the sealed transfer delta and nothing else; the statement owner
 // recognizes its vouchers as owned transfers through the retained purpose.
-const transferPostingPurposes: ReadonlyArray<string> = ["result_transfer_v1"];
 
 const EvidenceSchema = Accounting.Evidence;
 
 const EvidenceContentSchema = Accounting.EvidenceContent;
-
-export function newId(prefix: string) {
-  return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
-}
-
-function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(
-    Effect.mapError((cause) => failure("InternalError", cause)),
-  );
-}
-
-function requestDigest(operation: string, actorId: string, input: JsonObject) {
-  return digest({ operation, actor: actorId, input }, "InternalError");
-}
-
-export function sha256Hex(value: string) {
-  return Effect.tryPromise({
-    try: async () => {
-      const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-
-      return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join(
-        "",
-      );
-    },
-    catch: () => failure("InternalError"),
-  });
-}
 
 function withBook<A>(
   token: string,
@@ -227,202 +196,6 @@ function lockPlan(transaction: Transaction, scope: Scope, changeSetId: string) {
   );
 }
 
-function voucherFromRow(row: Db.VoucherRow) {
-  return {
-    id: row.id,
-    number: row.number.toString(),
-    sequence: row.sequence.toString(),
-    recordedAt: row.recordedAt,
-    action: row.action,
-  };
-}
-
-export function readVoucher(transaction: Transaction, scope: Scope, voucherId: string) {
-  return Db.readVoucher(transaction, scope.bookId, voucherId).pipe(
-    Effect.flatMap((rows) => {
-      const row = rows[0];
-
-      if (!row) return failure("NotFound");
-
-      return decode(VoucherSchema, voucherFromRow(row));
-    }),
-  );
-}
-
-export function readBook(transaction: Transaction, scope: Scope) {
-  return Db.readBook(transaction, scope).pipe(
-    Effect.flatMap((rows) => {
-      const row = rows[0];
-
-      if (!row) return failure("Forbidden");
-
-      return Effect.succeed(row);
-    }),
-  );
-}
-
-export function readPeriod(transaction: Transaction, scope: Scope, periodId: string) {
-  return Db.readPeriod(transaction, scope.bookId, periodId).pipe(
-    Effect.flatMap((rows) => {
-      const row = rows[0];
-
-      if (!row) return failure("AccountingPeriodMissing");
-
-      return readFiscalYear(transaction, scope, row.fiscalYearId).pipe(
-        Effect.flatMap((fiscalYearRows) => {
-          const fiscalYear = fiscalYearRows[0];
-
-          if (!fiscalYear) return failure("AccountingPeriodMissing");
-
-          return Effect.succeed({ ...row, fiscalYear });
-        }),
-      );
-    }),
-  );
-}
-
-function readFiscalYear(transaction: Transaction, scope: Scope, fiscalYearId: string) {
-  return Db.readFiscalYear(transaction, scope.bookId, fiscalYearId);
-}
-
-function validateReversalAction(transaction: Transaction, scope: Scope, action: Action) {
-  return Effect.gen(function* () {
-    if (!action.correctsVoucherId) return yield* failure("InvalidJournal");
-    const original = yield* readVoucher(transaction, scope, action.correctsVoucherId);
-
-    if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
-
-    if (original.action.kind !== "post_voucher") return yield* failure("InvalidJournal");
-
-    if (original.action.lines.length !== action.lines.length)
-      return yield* failure("InvalidJournal");
-
-    if (original.action.eventId !== action.eventId) return yield* failure("InvalidJournal");
-
-    if (JSON.stringify(original.action.evidenceRefs) !== JSON.stringify(action.evidenceRefs)) {
-      return yield* failure("InvalidJournal");
-    }
-
-    if (action.occurrenceKey !== action.correctsVoucherId) return yield* failure("InvalidJournal");
-
-    for (const [index, line] of action.lines.entries()) {
-      const originalLine = original.action.lines[index];
-
-      if (
-        !originalLine ||
-        line.accountId !== originalLine.accountId ||
-        line.debitMinor !== originalLine.creditMinor ||
-        line.creditMinor !== originalLine.debitMinor
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-    }
-  });
-}
-
-function isCompanyManualAction(action: Action) {
-  return (
-    action.manualCompanyAdmission !== undefined &&
-    action.kind === "post_voucher" &&
-    action.postingPurpose === "adjustment" &&
-    action.correctsVoucherId === null &&
-    action.occurrenceKey === "manual_journal" &&
-    action.taxAssessment === "not_applicable" &&
-    action.vatReclassification === undefined &&
-    !["legalIssue", "legalCredit", "resultTransfer", "assetProceeds", "foreignCurrency"].some(
-      (name) => name in action,
-    ) &&
-    action.manualCompanyAdmission.witness.selectorDate === action.postingDate
-  );
-}
-
-const readManualAdmission = Effect.fn("posting.readManualAdmission")(function* (
-  transaction: Transaction,
-  scope: Scope,
-  book: { currency: string },
-  postingOn: string,
-  code: "UnsupportedProfile" | "StaleDependency",
-) {
-  if (!Accounting.isCalendarDate(postingOn)) return yield* failure(code);
-
-  const resolved = yield* resolveCompanyProfileInTransaction(transaction, scope, "actual_company", {
-    postingOn,
-    taxPointOn: null,
-    paymentOn: null,
-    reportOn: null,
-    taxPeriodOn: null,
-  });
-
-  const witness = resolved.families.find(
-    (family) => family.family === "posting_eligibility",
-  )?.witness;
-
-  if (!witness || witness.activationId === null) return yield* failure(code);
-
-  const row = (yield* ProfileDb.readRuleReleases(transaction, "posting_eligibility")).find(
-    (entry) => entry.id === witness.ruleReleaseId && entry.checksum === witness.ruleReleaseChecksum,
-  );
-
-  if (!row) return yield* failure(code);
-
-  const release = yield* Schema.decodeUnknownEffect(Profiles.RuleRelease)(row.body).pipe(
-    Effect.mapError(() => failure(code)),
-  );
-
-  if (
-    release.calculatorVersion !== "manual-journal-v1" ||
-    !release.requiredFactKinds.includes("accounting_method") ||
-    !release.requiredFactKinds.includes("base_currency") ||
-    release.applicability.accountingMethods.length === 0 ||
-    !release.applicability.baseCurrencies?.includes(book.currency)
-  )
-    return yield* failure(code);
-
-  const currentFacts = yield* ProfileDb.readFactRevisions(
-    transaction,
-    scope.entityId,
-    postingOn,
-    postingOn,
-  );
-
-  if (
-    currentFacts.some(
-      (fact) => fact.supersedesId !== null && witness.factRevisionIds.includes(fact.supersedesId),
-    )
-  )
-    return yield* failure(code);
-
-  const currencyRow = currentFacts.find(
-    (fact) => fact.factKind === "base_currency" && witness.factRevisionIds.includes(fact.id),
-  );
-
-  if (!currencyRow) return yield* failure(code);
-
-  const currency = yield* Schema.decodeUnknownEffect(Profiles.FactRevision)(currencyRow.body).pipe(
-    Effect.mapError(() => failure(code)),
-  );
-
-  if (
-    currency.factKind !== "base_currency" ||
-    currency.value.state !== "known" ||
-    currency.value.value !== book.currency
-  )
-    return yield* failure(code);
-
-  const membership = (yield* ProfileDb.readFamilyMembership(
-    transaction,
-    scope.bookId,
-    "posting_eligibility",
-  ))[0];
-
-  if (!membership) return yield* failure(code);
-
-  return yield* Schema.decodeUnknownEffect(ManualCompanyAdmission)({
-    witness,
-    membershipEpoch: membership.membershipEpoch.toString(),
-  }).pipe(Effect.mapError(() => failure(code)));
-});
-
 const retainedManualContext = Effect.fn("posting.retainedManualContext")(function* (
   transaction: Transaction,
   scope: Scope,
@@ -457,97 +230,6 @@ const retainedManualContext = Effect.fn("posting.retainedManualContext")(functio
   return manualJournalContext;
 });
 
-function supportsPostingProfile(
-  book: { currency: string; profile: string },
-  action: Action,
-  manualContext?: ManualContext,
-) {
-  if (action.currency !== book.currency) return false;
-
-  if (action.manualCompanyAdmission !== undefined) {
-    return (
-      manualContext === manualJournalContext &&
-      book.profile === "company-setup-v1" &&
-      isCompanyManualAction(action)
-    );
-  }
-
-  return book.profile === "synthetic-core-v1";
-}
-
-function validateActionWithContext(
-  transaction: Transaction,
-  scope: Scope,
-  book: { currency: string; profile: string; authority: string },
-  action: Action,
-  allowLegal = false,
-  allowTransfer = false,
-  allowAsset = false,
-  manualContext?: ManualContext,
-) {
-  return Effect.gen(function* () {
-    const lines = validatePostingLines(action.lines);
-
-    if (Result.isFailure(lines)) return yield* postingFailure(lines.failure.code);
-
-    if (!supportsPostingProfile(book, action, manualContext)) {
-      return yield* failure("UnsupportedProfile");
-    }
-
-    if (book.authority !== "native") return yield* failure("StaleDependency");
-
-    const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
-
-    if (period.locked) return yield* failure("PeriodLocked");
-
-    if (
-      period.fiscalYearId !== action.fiscalYearId ||
-      action.postingDate < period.startsOn ||
-      action.postingDate > period.endsOn ||
-      action.postingDate < period.fiscalYear.startsOn ||
-      action.postingDate > period.fiscalYear.endsOn
-    ) {
-      return yield* failure("PostingDateOutsidePeriod");
-    }
-
-    const accountRows = yield* Db.readAccounts(
-      transaction,
-      scope.bookId,
-      action.lines.map((line) => line.accountId),
-    );
-
-    if (accountRows.length !== new Set(action.lines.map((line) => line.accountId)).size) {
-      return yield* failure("AccountMissing");
-    }
-
-    if (action.postingPurpose !== "reversal" && accountRows.some((account) => !account.active)) {
-      return yield* failure("AccountInactive");
-    }
-
-    const eventRows = yield* Db.readEventById(transaction, scope.bookId, action.eventId);
-
-    if (eventRows.length !== 1) return yield* failure("InvalidJournal");
-
-    for (const reference of action.evidenceRefs) {
-      const evidenceRows = yield* Db.readEvidence(transaction, scope.bookId, reference.evidenceId);
-
-      if (evidenceRows[0]?.sha256 !== reference.sha256) return yield* failure("MissingEvidence");
-    }
-
-    if (action.postingPurpose === "reversal") {
-      yield* validateReversalAction(transaction, scope, action);
-    } else if (
-      (action.postingPurpose !== "adjustment" &&
-        !(allowLegal && legalPostingPurposes.includes(action.postingPurpose)) &&
-        !(allowTransfer && transferPostingPurposes.includes(action.postingPurpose)) &&
-        !(allowAsset && action.postingPurpose === "asset_proceeds_disposal_v1")) ||
-      action.correctsVoucherId !== null
-    ) {
-      return yield* failure("InvalidJournal");
-    }
-  });
-}
-
 export function validateAction(
   transaction: Transaction,
   scope: Scope,
@@ -568,118 +250,6 @@ export function validateAction(
   );
 }
 
-function validatePlanWithContext(
-  transaction: Transaction,
-  scope: Scope,
-  plan: Plan,
-  allowLegal = false,
-  allowTransfer = false,
-  allowAsset = false,
-  manualContext?: ManualContext,
-) {
-  return Effect.gen(function* () {
-    const planWithoutDigest = Object.fromEntries(
-      Object.entries(plan).filter(([key]) => key !== "planDigest"),
-    );
-
-    const sealedDigest = yield* versionedDigest(planWithoutDigest, "StaleDependency");
-
-    if (sealedDigest !== plan.planDigest) return yield* failure("StaleDependency");
-
-    const groups = orderPostingGroups(
-      plan.groups.map((group) => ({ id: group.id, dependsOnGroupIds: group.dependsOnGroupIds })),
-    );
-
-    if (Result.isFailure(groups)) return yield* failure("InvalidJournal");
-    const book = yield* readBook(transaction, scope);
-
-    if (manualContext === manualJournalContext) {
-      const action = plan.groups[0]?.actions[0];
-
-      if (
-        plan.groups.length !== 1 ||
-        plan.groups[0]?.actions.length !== 1 ||
-        !action ||
-        !isCompanyManualAction(action)
-      )
-        return yield* failure("UnsupportedProfile");
-
-      const current = yield* readManualAdmission(
-        transaction,
-        scope,
-        book,
-        action.postingDate,
-        "StaleDependency",
-      );
-
-      if (!equalJson(action.manualCompanyAdmission, current))
-        return yield* failure("StaleDependency");
-    }
-
-    const accountVersions = new Map(
-      (yield* Db.readAccounts(
-        transaction,
-        scope.bookId,
-        plan.dependencies.flatMap((dependency) =>
-          dependency.kind === "account" ? [dependency.resourceId] : [],
-        ),
-      )).map((account) => [account.id, account.version.toString()]),
-    );
-
-    for (const dependency of plan.dependencies) {
-      let currentVersion: string | undefined;
-
-      if (dependency.kind === "profile") currentVersion = book.profileVersion.toString();
-
-      if (dependency.kind === "writer_epoch") currentVersion = book.writerEpoch.toString();
-
-      if (dependency.kind === "period") {
-        const periodRows = yield* Db.readPeriod(transaction, scope.bookId, dependency.resourceId);
-        currentVersion = periodRows[0]?.version.toString();
-      }
-
-      if (dependency.kind === "account") {
-        currentVersion = accountVersions.get(dependency.resourceId);
-      }
-
-      if (currentVersion !== dependency.version) return yield* failure("StaleDependency");
-    }
-
-    const groupsById = new Map(plan.groups.map((group) => [group.id, group]));
-
-    for (const group of groups.success) {
-      const storedGroup = groupsById.get(group.id);
-
-      if (!storedGroup) return yield* failure("InvalidJournal");
-
-      for (const action of storedGroup.actions) {
-        const decodedAction = yield* decode(ActionSchema, action);
-        yield* validateActionWithContext(
-          transaction,
-          scope,
-          book,
-          decodedAction,
-          allowLegal,
-          allowTransfer,
-          allowAsset,
-          manualContext,
-        );
-      }
-    }
-  });
-}
-
-export function validatePlan(
-  transaction: Transaction,
-  scope: Scope,
-  plan: Plan,
-  allowLegal = false,
-  allowTransfer = false,
-  allowAsset = false,
-) {
-  return validatePlanWithContext(transaction, scope, plan, allowLegal, allowTransfer, allowAsset);
-}
-
 export const validateManualJournalPlanInTransaction = Effect.fn(
   "posting.validateManualJournalPlanInTransaction",
 )(function* (transaction: Transaction, scope: Scope, plan: Plan) {
@@ -696,77 +266,6 @@ export const validateManualJournalPlanInTransaction = Effect.fn(
   );
 });
 
-export function replay<A>(
-  transaction: Transaction,
-  scope: Scope,
-  key: string,
-  operation: string,
-  actorId: string,
-  input: JsonObject,
-  schema: Schema.Decoder<A>,
-) {
-  return Effect.gen(function* () {
-    const expected = yield* requestDigest(operation, actorId, input);
-    const reserved = (yield* readReservedCommand(transaction, scope.bookId, key))[0];
-
-    if (reserved) {
-      const savedOperation =
-        reserved.command.operation === "revoke_approval"
-          ? "revoke_posting_approval"
-          : reserved.command.operation;
-
-      const payload =
-        reserved.command.operation === "create_evidence" ||
-        reserved.command.operation === "prepare_journal"
-          ? reserved.command.input
-          : { id: reserved.command.id ?? null, input: reserved.command.input ?? null };
-
-      if (
-        savedOperation !== operation ||
-        reserved.actorId !== actorId ||
-        !equalJson(payload, input)
-      )
-        return yield* failure("IdempotencyConflict");
-    }
-
-    const rows = yield* Db.readCommandReceipt(transaction, scope.bookId, key, "update");
-    const row = rows[0];
-
-    if (!row) return { expected, previous: undefined } as const;
-
-    if (row.requestDigest !== expected || row.operation !== operation) {
-      return yield* failure("IdempotencyConflict");
-    }
-
-    return { expected, previous: yield* decode(schema, row.result) } as const;
-  });
-}
-
-export function saveCommand(
-  transaction: Transaction,
-  scope: Scope,
-  key: string,
-  request: string,
-  operation: string,
-  actorId: string,
-  result: JsonObject,
-) {
-  return Db.insertCommandReceipt(transaction, {
-    bookId: scope.bookId,
-    key,
-    requestDigest: request,
-    operation,
-    actorId,
-    result,
-  });
-}
-
-export function isoNow(transaction: Transaction) {
-  return Db.readDatabaseTime(transaction).pipe(
-    Effect.map((row) => new Date(row.now).toISOString()),
-  );
-}
-
 export const createEvidenceInTransaction = Effect.fn("posting.createEvidenceInTransaction")(
   function* (
     transaction: Transaction,
@@ -778,65 +277,56 @@ export const createEvidenceInTransaction = Effect.fn("posting.createEvidenceInTr
     },
   ) {
     return yield* Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "create_evidence",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "create_evidence",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         EvidenceSchema,
+        Effect.gen(function* () {
+          if (command.input.mediaType === "application/json") {
+            yield* Effect.try({
+              try: () => JSON.parse(command.input.content),
+              catch: () => failure("MissingEvidence"),
+            });
+          }
+
+          const sha256 = yield* sha256Hex(command.input.content);
+          const createdAt = yield* isoNow(transaction);
+          const existing = yield* Db.readEvidenceBySha(transaction, command.scope.bookId, sha256);
+
+          const row =
+            existing[0] ??
+            (yield* Db.insertEvidence(transaction, {
+              bookId: command.scope.bookId,
+              id: newId("evidence"),
+              title: command.input.title,
+              content: command.input.content,
+              mediaType: command.input.mediaType,
+              origin: command.input.origin,
+              sha256,
+              createdBy: principal.actorId,
+              createdAt,
+            }))[0];
+
+          if (!row) return yield* failure("InternalError");
+
+          const result = yield* decode(EvidenceSchema, {
+            id: row.id,
+            title: row.title,
+            sha256: row.sha256,
+            mediaType: row.mediaType,
+            origin: row.origin,
+            createdAt: row.createdAt,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      if (command.input.mediaType === "application/json") {
-        yield* Effect.try({
-          try: () => JSON.parse(command.input.content),
-          catch: () => failure("MissingEvidence"),
-        });
-      }
-
-      const sha256 = yield* sha256Hex(command.input.content);
-      const createdAt = yield* isoNow(transaction);
-      const existing = yield* Db.readEvidenceBySha(transaction, command.scope.bookId, sha256);
-
-      const row =
-        existing[0] ??
-        (yield* Db.insertEvidence(transaction, {
-          bookId: command.scope.bookId,
-          id: newId("evidence"),
-          title: command.input.title,
-          content: command.input.content,
-          mediaType: command.input.mediaType,
-          origin: command.input.origin,
-          sha256,
-          createdBy: principal.actorId,
-          createdAt,
-        }))[0];
-
-      if (!row) return yield* failure("InternalError");
-
-      const result = yield* decode(EvidenceSchema, {
-        id: row.id,
-        title: row.title,
-        sha256: row.sha256,
-        mediaType: row.mediaType,
-        origin: row.origin,
-        createdAt: row.createdAt,
-      });
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "create_evidence",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     });
   },
 );
@@ -1315,46 +805,39 @@ export const validateChange = Effect.fn("posting.validateChange")(function* (
       const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
       const manualContext = yield* retainedManualContext(transaction, command.scope, plan);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "validate_change",
-        principal.actorId,
-        { id: command.changeSetId },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "validate_change",
+          actorId: principal.actorId,
+          input: { id: command.changeSetId },
+        },
         ValidationSchema,
+        Effect.gen(function* () {
+          yield* validatePlanWithContext(
+            transaction,
+            command.scope,
+            plan,
+            false,
+            false,
+            false,
+            manualContext,
+          );
+
+          const result = {
+            changeSetId: plan.id,
+            planDigest: plan.planDigest,
+            status: "valid" as const,
+            checkedAt: yield* isoNow(transaction),
+          };
+
+          const decoded = yield* decode(ValidationSchema, result);
+
+          return decoded;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* validatePlanWithContext(
-        transaction,
-        command.scope,
-        plan,
-        false,
-        false,
-        false,
-        manualContext,
-      );
-
-      const result = {
-        changeSetId: plan.id,
-        planDigest: plan.planDigest,
-        status: "valid" as const,
-        checkedAt: yield* isoNow(transaction),
-      };
-
-      const decoded = yield* decode(ValidationSchema, result);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "validate_change",
-        principal.actorId,
-        decoded,
-      );
-
-      return decoded;
     }),
   );
 });
@@ -1395,93 +878,90 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         return yield* failure("UnsupportedProfile");
       }
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_change",
-        principal.actorId,
-        { id: command.changeSetId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "approve_change",
+          actorId: principal.actorId,
+          input: { id: command.changeSetId, input: command.input },
+        },
         ApprovalSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireBookResponsibility(
+            transaction,
+            command.scope,
+            principal.actorId,
+            "bookkeepingApproverId",
+          );
+          const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
 
-      if (request.previous) return request.previous;
-
-      yield* requireOnboardingResponsibility(
-        transaction,
-        command.scope,
-        principal.actorId,
-        "bookkeepingApproverId",
-      );
-      const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
-
-      if (command.input.planDigest !== plan.planDigest || command.input.version !== plan.version) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* validatePlanWithContext(
-        transaction,
-        command.scope,
-        plan,
-        command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
-        command.owner?.kind === "financial_close",
-        isAssetProceedsOwner(command.owner),
-        manualContext,
-      );
-
-      if (command.owner !== undefined || manualContext === manualJournalContext) {
-        for (const group of plan.groups) {
-          for (const action of group.actions) {
-            yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
+          if (
+            command.input.planDigest !== plan.planDigest ||
+            command.input.version !== plan.version
+          ) {
+            return yield* failure("StaleDependency");
           }
-        }
-      }
 
-      if (
-        (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length > 0
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
+          yield* validatePlanWithContext(
+            transaction,
+            command.scope,
+            plan,
+            command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+            command.owner?.kind === "financial_close",
+            isAssetProceedsOwner(command.owner),
+            manualContext,
+          );
 
-      const now = yield* Db.readDatabaseTime(transaction);
-      const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+          if (command.owner !== undefined || manualContext === manualJournalContext) {
+            for (const group of plan.groups) {
+              for (const action of group.actions) {
+                yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
+              }
+            }
+          }
 
-      const approval = yield* Db.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: newId("approval"),
-        changeSetId: plan.id,
-        digest: plan.planDigest,
-        actorId: principal.actorId,
-        expiresAt,
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-        ),
-      }).pipe(
-        Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"))),
+          if (
+            (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length >
+            0
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
+
+          const now = yield* Db.readDatabaseTime(transaction);
+          const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+
+          const approval = yield* Db.insertApproval(transaction, {
+            bookId: command.scope.bookId,
+            id: newId("approval"),
+            changeSetId: plan.id,
+            digest: plan.planDigest,
+            actorId: principal.actorId,
+            expiresAt,
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+            ),
+          }).pipe(
+            Effect.flatMap((rows) =>
+              rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"),
+            ),
+          );
+
+          const result = yield* decode(ApprovalSchema, {
+            id: approval.id,
+            changeSetId: approval.changeSetId,
+            planDigest: approval.digest,
+            actorId: approval.actorId,
+            expiresAt: approval.expiresAt,
+          });
+
+          return result;
+        }),
       );
-
-      const result = yield* decode(ApprovalSchema, {
-        id: approval.id,
-        changeSetId: approval.changeSetId,
-        planDigest: approval.digest,
-        actorId: approval.actorId,
-        expiresAt: approval.expiresAt,
-      });
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_change",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     });
   },
 );
@@ -1530,57 +1010,6 @@ function assertPlanUnposted(transaction: Transaction, scope: Scope, plan: Plan) 
 // Current approval authority for an exact plan digest. Named operations that seal
 // their own plan reuse this rather than repeating the consumption, membership,
 // admission, revocation and expiry checks.
-export function readExecutionApprovalInTransaction(
-  transaction: Transaction,
-  scope: Scope,
-  plan: { readonly id: string; readonly planDigest: string },
-  approvalId: string,
-) {
-  return executionApproval(transaction, scope, plan, approvalId);
-}
-
-function executionApproval(
-  transaction: Transaction,
-  scope: Scope,
-  plan: { readonly id: string; readonly planDigest: string },
-  approvalId: string,
-) {
-  return Effect.gen(function* () {
-    const approvalRows = yield* Db.readApproval(transaction, scope.bookId, approvalId, "update");
-    const approval = approvalRows[0];
-
-    if (
-      !approval ||
-      approval.changeSetId !== plan.id ||
-      approval.digest !== plan.planDigest ||
-      approval.consumedAt !== null
-    ) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    if (
-      (yield* Db.readOperatorMembership(transaction, scope.bookId, approval.actorId)).length === 0
-    ) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    const admission = yield* Db.readActorAdmission(transaction, approval.actorId);
-
-    if (admission[0]?.enabled === false) return yield* failure("ApprovalRequired");
-
-    if ((yield* Db.readApprovalRevocation(transaction, scope.bookId, approval.id)).length > 0) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    const now = yield* Db.readDatabaseTime(transaction);
-
-    if (Date.parse(approval.expiresAt) <= Date.parse(now.now)) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    return approval;
-  });
-}
 
 function requireOnboardingPostingAuthority(
   transaction: Transaction,
@@ -1628,232 +1057,230 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
 
     const settlement = yield* readSupplierPostingReservation(transaction, command);
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "execute_change",
-      principal.actorId,
-      { id: command.changeSetId, input: command.input },
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "execute_change",
+        actorId: principal.actorId,
+        input: { id: command.changeSetId, input: command.input },
+      },
       ReceiptSchema,
+      Effect.gen(function* () {
+        yield* requireOnboardingPostingAuthority(transaction, command.scope, command.owner);
+
+        yield* assertPeriodWorkFence(transaction, command.scope.bookId, command.changeSetId);
+
+        const plan = yield* lockPlan(transaction, command.scope, command.changeSetId);
+
+        if (
+          command.input.planDigest !== plan.planDigest ||
+          command.input.version !== plan.version
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (
+          command.allowCorrectionChild !== true &&
+          (yield* CorrectionDb.readBundleByChangeSet(
+            transaction,
+            command.scope.bookId,
+            command.changeSetId,
+          )).length > 0
+        ) {
+          return yield* failure("UnsupportedProfile");
+        }
+
+        const groupOrder = orderPostingGroups(
+          plan.groups.map((group) => ({
+            id: group.id,
+            dependsOnGroupIds: group.dependsOnGroupIds,
+          })),
+        );
+
+        if (Result.isFailure(groupOrder)) return yield* failure("InvalidJournal");
+
+        if (plan.groups.length !== 1 || plan.groups[0]?.actions.length !== 1) {
+          return yield* failure("UnsupportedProfile");
+        }
+
+        const group = plan.groups[0];
+        const actionValue = group?.actions[0];
+
+        if (!group || !actionValue) return yield* failure("InvalidJournal");
+        const action = yield* decode(ActionSchema, actionValue);
+        yield* validatePlanWithContext(
+          transaction,
+          command.scope,
+          plan,
+          command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+          command.owner?.kind === "financial_close",
+          isAssetProceedsOwner(command.owner),
+          manualContext,
+        );
+        yield* assertPlanUnposted(transaction, command.scope, plan);
+        yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
+
+        const approval = yield* executionApproval(
+          transaction,
+          command.scope,
+          plan,
+          command.input.approvalId,
+        );
+
+        yield* requireBookResponsibility(
+          transaction,
+          command.scope,
+          approval.actorId,
+          "bookkeepingApproverId",
+        );
+
+        const counter = yield* Db.allocateSeriesCounter(
+          transaction,
+          command.scope.bookId,
+          action.fiscalYearId,
+          action.series,
+        );
+
+        const voucherNumber = counter[0]?.lastNumber;
+        const sequence = yield* Db.allocateSequence(transaction, command.scope.bookId);
+        const sequenceValue = sequence[0]?.sequence;
+
+        if (voucherNumber === undefined || sequenceValue === undefined) {
+          return yield* failure("InternalError");
+        }
+
+        const voucherId = settlement?.reservedVoucherId ?? newId("voucher");
+
+        const voucher = yield* Db.insertVoucher(transaction, {
+          bookId: command.scope.bookId,
+          id: voucherId,
+          fiscalYearId: action.fiscalYearId,
+          periodId: action.accountingPeriodId,
+          series: action.series,
+          number: voucherNumber,
+          sequence: sequenceValue,
+          postingDate: action.postingDate,
+          eventId: action.eventId,
+          postingPurpose: action.postingPurpose,
+          occurrenceKey: action.occurrenceKey,
+          correctsVoucherId: action.correctsVoucherId,
+          changeSetId: plan.id,
+          action,
+          expectedLineCount: action.lines.length,
+        });
+
+        yield* recordHistoricalOpening(
+          transaction,
+          command.scope.bookId,
+          action.fiscalYearId,
+          plan.id,
+          voucherId,
+        );
+        const recordedAt = voucher[0]?.recordedAt;
+
+        if (recordedAt === undefined) return yield* failure("InternalError");
+        yield* Db.insertJournalLines(
+          transaction,
+          action.lines.map((line, index) => ({
+            bookId: command.scope.bookId,
+            voucherId,
+            id: line.lineId,
+            ordinal: index + 1,
+            accountId: line.accountId,
+            debitMinor: line.debitMinor,
+            creditMinor: line.creditMinor,
+            description: line.description,
+          })),
+        );
+
+        // NEXT-14. The original dimension assignment of each line is retained in
+        // this same transaction, after the line it belongs to and before the
+        // receipt. The sealed assignments are re-resolved against the current
+        // catalogue first, so a change since approval refuses instead of
+        // re-classifying an approved posting.
+        yield* applyOriginalAssignmentsInTransaction(transaction, command.scope, action, voucherId);
+
+        const receipt = yield* decode(ReceiptSchema, {
+          id: newId("receipt"),
+          changeSetId: plan.id,
+          voucherId,
+          planDigest: plan.planDigest,
+          sequence: sequenceValue.toString(),
+          voucherNumber: voucherNumber.toString(),
+          committedAt: recordedAt,
+        } satisfies typeof DomainExecutionReceipt.Type);
+
+        const groupReceipt = yield* decode(GroupReceiptSchema, {
+          id: receipt.id,
+          changeSetId: plan.id,
+          groupId: group.id,
+          planDigest: plan.planDigest,
+          executionReceipts: [receipt],
+          committedAt: recordedAt,
+        });
+
+        yield* Db.insertExecutionReceipt(transaction, {
+          bookId: command.scope.bookId,
+          id: receipt.id,
+          changeSetId: plan.id,
+          voucherId,
+          approvalId: approval.id,
+          body: receipt,
+        });
+        yield* Db.insertGroupReceipt(transaction, {
+          bookId: command.scope.bookId,
+          id: groupReceipt.id,
+          changeSetId: plan.id,
+          groupId: group.id,
+          planDigest: plan.planDigest,
+          body: groupReceipt,
+          committedAt: recordedAt,
+        });
+        yield* Db.insertApprovalConsumption(transaction, {
+          bookId: command.scope.bookId,
+          approvalId: approval.id,
+          changeSetId: plan.id,
+          groupId: group.id,
+          planDigest: plan.planDigest,
+          receiptId: groupReceipt.id,
+          approverId: approval.actorId,
+          consumedById: principal.actorId,
+          consumedAt: recordedAt,
+          approverBasis: yield* collectPostingActorBasis(
+            transaction,
+            command.scope,
+            approval.actorId,
+            "approve_change",
+          ),
+          executorBasis: yield* collectPostingPrincipalBasis(
+            transaction,
+            command.scope,
+            principal,
+            "execute_change",
+          ),
+        });
+
+        const consumed = yield* Db.consumeApproval(
+          transaction,
+          command.scope.bookId,
+          approval.id,
+          recordedAt,
+        );
+
+        if (consumed.length !== 1) return yield* failure("InternalError");
+        yield* Db.insertOutbox(transaction, {
+          bookId: command.scope.bookId,
+          id: newId("outbox"),
+          receiptId: receipt.id,
+          kind: "voucher.posted.v1",
+          payload: receipt,
+        });
+
+        return receipt;
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    yield* requireOnboardingPostingAuthority(transaction, command.scope, command.owner);
-
-    yield* assertPeriodWorkFence(transaction, command.scope.bookId, command.changeSetId);
-
-    const plan = yield* lockPlan(transaction, command.scope, command.changeSetId);
-
-    if (command.input.planDigest !== plan.planDigest || command.input.version !== plan.version) {
-      return yield* failure("StaleDependency");
-    }
-
-    if (
-      command.allowCorrectionChild !== true &&
-      (yield* CorrectionDb.readBundleByChangeSet(
-        transaction,
-        command.scope.bookId,
-        command.changeSetId,
-      )).length > 0
-    ) {
-      return yield* failure("UnsupportedProfile");
-    }
-
-    const groupOrder = orderPostingGroups(
-      plan.groups.map((group) => ({ id: group.id, dependsOnGroupIds: group.dependsOnGroupIds })),
-    );
-
-    if (Result.isFailure(groupOrder)) return yield* failure("InvalidJournal");
-
-    if (plan.groups.length !== 1 || plan.groups[0]?.actions.length !== 1) {
-      return yield* failure("UnsupportedProfile");
-    }
-
-    const group = plan.groups[0];
-    const actionValue = group?.actions[0];
-
-    if (!group || !actionValue) return yield* failure("InvalidJournal");
-    const action = yield* decode(ActionSchema, actionValue);
-    yield* validatePlanWithContext(
-      transaction,
-      command.scope,
-      plan,
-      command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
-      command.owner?.kind === "financial_close",
-      isAssetProceedsOwner(command.owner),
-      manualContext,
-    );
-    yield* assertPlanUnposted(transaction, command.scope, plan);
-    yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
-
-    const approval = yield* executionApproval(
-      transaction,
-      command.scope,
-      plan,
-      command.input.approvalId,
-    );
-
-    yield* requireOnboardingResponsibility(
-      transaction,
-      command.scope,
-      approval.actorId,
-      "bookkeepingApproverId",
-    );
-
-    const counter = yield* Db.allocateSeriesCounter(
-      transaction,
-      command.scope.bookId,
-      action.fiscalYearId,
-      action.series,
-    );
-
-    const voucherNumber = counter[0]?.lastNumber;
-    const sequence = yield* Db.allocateSequence(transaction, command.scope.bookId);
-    const sequenceValue = sequence[0]?.sequence;
-
-    if (voucherNumber === undefined || sequenceValue === undefined) {
-      return yield* failure("InternalError");
-    }
-
-    const voucherId = settlement?.reservedVoucherId ?? newId("voucher");
-
-    const voucher = yield* Db.insertVoucher(transaction, {
-      bookId: command.scope.bookId,
-      id: voucherId,
-      fiscalYearId: action.fiscalYearId,
-      periodId: action.accountingPeriodId,
-      series: action.series,
-      number: voucherNumber,
-      sequence: sequenceValue,
-      postingDate: action.postingDate,
-      eventId: action.eventId,
-      postingPurpose: action.postingPurpose,
-      occurrenceKey: action.occurrenceKey,
-      correctsVoucherId: action.correctsVoucherId,
-      changeSetId: plan.id,
-      action,
-      expectedLineCount: action.lines.length,
-    });
-
-    yield* recordHistoricalOpening(
-      transaction,
-      command.scope.bookId,
-      action.fiscalYearId,
-      plan.id,
-      voucherId,
-    );
-    const recordedAt = voucher[0]?.recordedAt;
-
-    if (recordedAt === undefined) return yield* failure("InternalError");
-    yield* Db.insertJournalLines(
-      transaction,
-      action.lines.map((line, index) => ({
-        bookId: command.scope.bookId,
-        voucherId,
-        id: line.lineId,
-        ordinal: index + 1,
-        accountId: line.accountId,
-        debitMinor: line.debitMinor,
-        creditMinor: line.creditMinor,
-        description: line.description,
-      })),
-    );
-
-    // NEXT-14. The original dimension assignment of each line is retained in
-    // this same transaction, after the line it belongs to and before the
-    // receipt. The sealed assignments are re-resolved against the current
-    // catalogue first, so a change since approval refuses instead of
-    // re-classifying an approved posting.
-    yield* applyOriginalAssignmentsInTransaction(transaction, command.scope, action, voucherId);
-
-    const receipt = yield* decode(ReceiptSchema, {
-      id: newId("receipt"),
-      changeSetId: plan.id,
-      voucherId,
-      planDigest: plan.planDigest,
-      sequence: sequenceValue.toString(),
-      voucherNumber: voucherNumber.toString(),
-      committedAt: recordedAt,
-    } satisfies typeof DomainExecutionReceipt.Type);
-
-    const groupReceipt = yield* decode(GroupReceiptSchema, {
-      id: receipt.id,
-      changeSetId: plan.id,
-      groupId: group.id,
-      planDigest: plan.planDigest,
-      executionReceipts: [receipt],
-      committedAt: recordedAt,
-    });
-
-    yield* Db.insertExecutionReceipt(transaction, {
-      bookId: command.scope.bookId,
-      id: receipt.id,
-      changeSetId: plan.id,
-      voucherId,
-      approvalId: approval.id,
-      body: receipt,
-    });
-    yield* Db.insertGroupReceipt(transaction, {
-      bookId: command.scope.bookId,
-      id: groupReceipt.id,
-      changeSetId: plan.id,
-      groupId: group.id,
-      planDigest: plan.planDigest,
-      body: groupReceipt,
-      committedAt: recordedAt,
-    });
-    yield* Db.insertApprovalConsumption(transaction, {
-      bookId: command.scope.bookId,
-      approvalId: approval.id,
-      changeSetId: plan.id,
-      groupId: group.id,
-      planDigest: plan.planDigest,
-      receiptId: groupReceipt.id,
-      approverId: approval.actorId,
-      consumedById: principal.actorId,
-      consumedAt: recordedAt,
-      approverBasis: yield* collectPostingActorBasis(
-        transaction,
-        command.scope,
-        approval.actorId,
-        "approve_change",
-      ),
-      executorBasis: yield* collectPostingPrincipalBasis(
-        transaction,
-        command.scope,
-        principal,
-        "execute_change",
-      ),
-    });
-
-    const consumed = yield* Db.consumeApproval(
-      transaction,
-      command.scope.bookId,
-      approval.id,
-      recordedAt,
-    );
-
-    if (consumed.length !== 1) return yield* failure("InternalError");
-    yield* Db.insertOutbox(transaction, {
-      bookId: command.scope.bookId,
-      id: newId("outbox"),
-      receiptId: receipt.id,
-      kind: "voucher.posted.v1",
-      payload: receipt,
-    });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "execute_change",
-      principal.actorId,
-      receipt,
-    );
-
-    return receipt;
   });
 });
 
@@ -1977,116 +1404,112 @@ export const prepareCorrectionInTransaction = Effect.fn("posting.prepareCorrecti
     )
       return yield* failure("ApprovalRequired");
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "prepare_correction",
-      principal.actorId,
-      { id: command.voucherId, input: command.input },
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "prepare_correction",
+        actorId: principal.actorId,
+        input: { id: command.voucherId, input: command.input },
+      },
       PlanSchema,
-    );
+      Effect.gen(function* () {
+        if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
 
-    if (request.previous) return request.previous;
+        if (original.action.postingPurpose !== "adjustment")
+          return yield* failure("UnsupportedProfile");
 
-    if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
-
-    if (original.action.postingPurpose !== "adjustment")
-      return yield* failure("UnsupportedProfile");
-
-    const period = yield* readPeriod(transaction, command.scope, command.input.accountingPeriodId);
-
-    if (period.locked) return yield* failure("PeriodLocked");
-
-    if (command.input.postingDate < original.action.postingDate) {
-      return yield* failure("InvalidJournal");
-    }
-
-    const book = yield* readBook(transaction, command.scope);
-
-    const actionValue = {
-      ...original.action,
-      correctsVoucherId: command.voucherId,
-      postingPurpose: "reversal" as const,
-      occurrenceKey: command.voucherId,
-      fiscalYearId: period.fiscalYearId,
-      accountingPeriodId: command.input.accountingPeriodId,
-      postingDate: command.input.postingDate,
-      description: `Reversal: ${original.action.description.slice(0, 1990)}`,
-      rationale: command.input.rationale,
-      lines: reversedLines(original.action.lines, () => newId("line")),
-    };
-
-    const action = yield* decode(ActionSchema, actionValue);
-    yield* validateAction(transaction, command.scope, book, action);
-    const createdAt = yield* isoNow(transaction);
-
-    const planWithoutDigest = {
-      schemaVersion: "1" as const,
-      canonicalization: "openerp-c14n-v1" as const,
-      id: newId("change"),
-      version: 1 as const,
-      scope: { entityId: command.scope.entityId, bookId: command.scope.bookId },
-      createdAt,
-      dependencies: [
-        {
-          kind: "profile" as const,
-          resourceId: book.id,
-          version: book.profileVersion.toString(),
-          reason: "Book currency and supported profile",
-        },
-        {
-          kind: "writer_epoch" as const,
-          resourceId: book.id,
-          version: book.writerEpoch.toString(),
-          reason: "Single authoritative writer",
-        },
-        {
-          kind: "period" as const,
-          resourceId: period.id,
-          version: period.version.toString(),
-          reason: "Posting dates and lock state",
-        },
-        ...(yield* Db.readAccounts(
+        const period = yield* readPeriod(
           transaction,
-          command.scope.bookId,
-          action.lines.map((line) => line.accountId),
-        )).map((account) => ({
-          kind: "account" as const,
-          resourceId: account.id,
-          version: account.version.toString(),
-          reason: "Exact account configuration",
-        })),
-      ],
-      groups: [
-        {
-          id: newId("group"),
-          dependsOnGroupIds: [],
-          actions: [action],
-        },
-      ],
-    };
+          command.scope,
+          command.input.accountingPeriodId,
+        );
 
-    const planDigest = yield* versionedDigest(planWithoutDigest);
-    const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
-    yield* Db.insertPlan(transaction, {
-      bookId: command.scope.bookId,
-      id: plan.id,
-      plan,
-      digest: planDigest,
-      createdBy: principal.actorId,
-    });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "prepare_correction",
-      principal.actorId,
-      plan,
+        if (period.locked) return yield* failure("PeriodLocked");
+
+        if (command.input.postingDate < original.action.postingDate) {
+          return yield* failure("InvalidJournal");
+        }
+
+        const book = yield* readBook(transaction, command.scope);
+
+        const actionValue = {
+          ...original.action,
+          correctsVoucherId: command.voucherId,
+          postingPurpose: "reversal" as const,
+          occurrenceKey: command.voucherId,
+          fiscalYearId: period.fiscalYearId,
+          accountingPeriodId: command.input.accountingPeriodId,
+          postingDate: command.input.postingDate,
+          description: `Reversal: ${original.action.description.slice(0, 1990)}`,
+          rationale: command.input.rationale,
+          lines: reversedLines(original.action.lines, () => newId("line")),
+        };
+
+        const action = yield* decode(ActionSchema, actionValue);
+        yield* validateAction(transaction, command.scope, book, action);
+        const createdAt = yield* isoNow(transaction);
+
+        const planWithoutDigest = {
+          schemaVersion: "1" as const,
+          canonicalization: "openerp-c14n-v1" as const,
+          id: newId("change"),
+          version: 1 as const,
+          scope: { entityId: command.scope.entityId, bookId: command.scope.bookId },
+          createdAt,
+          dependencies: [
+            {
+              kind: "profile" as const,
+              resourceId: book.id,
+              version: book.profileVersion.toString(),
+              reason: "Book currency and supported profile",
+            },
+            {
+              kind: "writer_epoch" as const,
+              resourceId: book.id,
+              version: book.writerEpoch.toString(),
+              reason: "Single authoritative writer",
+            },
+            {
+              kind: "period" as const,
+              resourceId: period.id,
+              version: period.version.toString(),
+              reason: "Posting dates and lock state",
+            },
+            ...(yield* Db.readAccounts(
+              transaction,
+              command.scope.bookId,
+              action.lines.map((line) => line.accountId),
+            )).map((account) => ({
+              kind: "account" as const,
+              resourceId: account.id,
+              version: account.version.toString(),
+              reason: "Exact account configuration",
+            })),
+          ],
+          groups: [
+            {
+              id: newId("group"),
+              dependsOnGroupIds: [],
+              actions: [action],
+            },
+          ],
+        };
+
+        const planDigest = yield* versionedDigest(planWithoutDigest);
+        const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
+        yield* Db.insertPlan(transaction, {
+          bookId: command.scope.bookId,
+          id: plan.id,
+          plan,
+          digest: planDigest,
+          createdBy: principal.actorId,
+        });
+
+        return plan;
+      }),
     );
-
-    return plan;
   },
 );
 

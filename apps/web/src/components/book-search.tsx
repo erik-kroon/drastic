@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +11,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
-import { checkScope, commerceKey, commercePath } from "@/components/commerce/shared";
+import { checkScope, commerceKey } from "@/components/commerce/shared";
 import type { Locale } from "@/paraglide/runtime";
 
 export function BookSearch({
@@ -31,7 +33,11 @@ export function BookSearch({
     enabled: open && term.length >= 2,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/sales-register?${params}`,
+        (client) =>
+          client.invoiceDrafts.salesRegister({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.salesRegister, `${params}`),
+          }),
         Sales.SalesPage,
         { signal },
       );

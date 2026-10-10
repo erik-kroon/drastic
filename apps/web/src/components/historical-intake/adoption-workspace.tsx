@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Adoption from "@open-erp/contracts/historical-adoptions";
@@ -94,7 +95,10 @@ export function HistoricalAdoptionWorkspace({ planId }: { planId: string }) {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/historical-adoption-plans/${encodeURIComponent(planId)}/workspace`,
+        (client) =>
+          client.historicalAdoptions.getHistoricalAdoptionWorkspace({
+            params: { ...bookScope(book), id: planId },
+          }),
         Adoption.AdoptionWorkspace,
         { signal },
       );

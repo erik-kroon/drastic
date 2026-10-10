@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
@@ -124,7 +125,8 @@ export function CorrectionChainView({
     queryKey: [...bookKey(book), "correction-chain", id],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(id)}/correction-chain`,
+        (client) =>
+          client.corrections.getCorrectionChain({ params: { ...bookScope(book), id: id } }),
         Corrections.CorrectionChain,
         { signal },
       ),

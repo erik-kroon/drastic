@@ -13,7 +13,7 @@ import { decode, readEvidenceReference, requireTableAccess, type Scope } from ".
 import { readCapacity } from "../subledger/owners";
 import { admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
-import { validatePlan } from "../posting";
+import { validatePlan } from "../posting-validation";
 
 export function nextDay(date: string) {
   return new Date(Date.parse(`${date}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);

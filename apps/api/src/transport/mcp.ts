@@ -10,7 +10,8 @@ import * as Tool from "effect/ai/Tool";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { authenticate, sameOrigin } from "./http/auth";
 import { authConfiguration } from "../adapters/auth/configuration";
-import { capabilities } from "../application/capabilities";
+import { capabilities } from "../application/capabilities/index";
+import { operationCatalogue } from "../application/operation-catalogue";
 import { capabilityAgentPolicy } from "../application/capabilities/agent-policy";
 import { failure } from "../application/failures";
 import { RequestEnvironment } from "../runtime/environment";
@@ -34,7 +35,7 @@ const CallTool = Schema.Struct({
 
 // Discovery and invocation share this filtered set. Unknown writes are withheld;
 // owner-declared exclusions also apply to reads and cannot be overridden here.
-const tools = Object.entries(capabilities)
+const tools = [...operationCatalogue]
   .filter(([name, capability]) => capabilityAgentPolicy(name, capability).exposed)
   .map(([name, capability]) => ({ name, capability }));
 

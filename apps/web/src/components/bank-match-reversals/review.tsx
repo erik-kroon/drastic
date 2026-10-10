@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Reversal from "@open-erp/contracts/bank-match-reversals";
@@ -9,7 +10,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
 import { bankUnmatchCopy } from "./copy";
@@ -29,9 +30,9 @@ export function BankUnmatchReview({
   const client = useQueryClient();
   const [reviewed, setReviewed] = useState(false);
   const [reason, setReason] = useState("");
-  const approvalKeys = useRef(new Map<string, string>());
-  const executionKeys = useRef(new Map<string, string>());
-  const revocationKeys = useRef(new Map<string, string>());
+  const approvalKeys = useCommandKeys();
+  const executionKeys = useCommandKeys();
+  const revocationKeys = useCommandKeys();
   const base = `${bookPath(book)}/bank-match-reversal-plans/${encodeURIComponent(id)}`;
 
   const plan = useQuery({
@@ -52,7 +53,7 @@ export function BankUnmatchReview({
       readAccounting(
         `${base}/approve`,
         Reversal.BankMatchReversalApproval,
-        mutationOptions(`${base}/approve`, JSON.stringify(input), approvalKeys.current),
+        approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
     onSuccess: () => {
       approvalKeys.current.clear();
@@ -68,7 +69,7 @@ export function BankUnmatchReview({
       readAccounting(
         `${base}/execute`,
         Reversal.BankMatchReversalExecution,
-        mutationOptions(`${base}/execute`, JSON.stringify(input), executionKeys.current),
+        executionKeys.current.options(`${base}/execute`, JSON.stringify(input)),
       ),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: bookKey(book) });
@@ -82,7 +83,7 @@ export function BankUnmatchReview({
       return readAccounting(
         path,
         Reversal.BankMatchReversalRevocation,
-        mutationOptions(path, JSON.stringify({ reason: explanation }), revocationKeys.current),
+        revocationKeys.current.options(path, JSON.stringify({ reason: explanation })),
       );
     },
     onSuccess: () => {

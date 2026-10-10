@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sie4E from "@open-erp/contracts/sie4e";
 import {
@@ -27,7 +28,8 @@ import {
 } from "./commerce/support";
 import { canonicalText, digest } from "./json";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { base64, sha256HexOf } from "./bytes";
 import { parseSie } from "./sie-import-parser";
 
@@ -442,343 +444,336 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_sie_book_export",
-        principal.actorId,
-        payload,
-        CaptureSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireSieBookAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(payload, inputKeys);
-
-      const input = command.input;
-
-      if (!isRealDate(input.asOf) || input.legalName.trim() !== input.legalName)
-        return yield* failure("InvalidJournal");
-
-      const book = (yield* SieDb.readSieBookBook(transaction, command.scope.bookId))[0];
-
-      yield* requireNativeProfile(book);
-
-      if (book === undefined) return yield* failure("NotFound");
-
-      const year = (yield* SieDb.readSieBookFiscalYear(
-        transaction,
-        command.scope.bookId,
-        input.fiscalYearId,
-      ))[0];
-
-      if (year === undefined) return yield* failure("NotFound");
-
-      if (input.asOf < year.startsOn || input.asOf > year.endsOn)
-        return yield* failure("InvalidJournal");
-
-      const evidence = (yield* readEvidence(
-        transaction,
-        command.scope.bookId,
-        input.legalNameEvidenceId,
-      ))[0];
-
-      if (evidence === undefined) return yield* failure("MissingEvidence");
-
-      const boundary = book.committedSequence;
-
-      const base = (yield* StatementDb.readStatementOpeningBase(
-        transaction,
-        command.scope.bookId,
-        year.id,
-      ))[0];
-
-      const openingVoucherId =
-        base?.mode === "opening_set" ? (base.openingVoucherId ?? null) : null;
-
-      const { objectMap, assignments } = yield* captureDimensions(
-        transaction,
-        command.scope.bookId,
-        year.startsOn,
-        input.asOf,
-        boundary,
-        openingVoucherId,
-      );
-
-      const prior = (yield* SieDb.readSieBookPriorVoucher(
-        transaction,
-        command.scope.bookId,
-        year.startsOn,
-        boundary,
-      ))[0];
-
-      const establishedOpening = openingVoucherId !== null || prior?.present === true;
-
-      const accounts = yield* SieDb.readSieBookAccounts(
-        transaction,
-        command.scope.bookId,
-        SieDb.maximumSieBookAccounts,
-      );
-
-      if (accounts.length > SieDb.maximumSieBookAccounts) return yield* unsupported();
-
-      const opening = yield* SieDb.readSieBookLines(
-        transaction,
-        command.scope.bookId,
-        year.startsOn,
-        input.asOf,
-        boundary,
-        openingVoucherId,
-        maximumLines,
-        "opening",
-      );
-
-      if (opening.length > maximumLines) return yield* unsupported();
-
-      if (opening.some((line) => line.postingDate > input.asOf))
-        return yield* blocked(
-          "The selected opening voucher is later than the requested as-of date.",
-        );
-
-      const lines = yield* SieDb.readSieBookLines(
-        transaction,
-        command.scope.bookId,
-        year.startsOn,
-        input.asOf,
-        boundary,
-        openingVoucherId,
-        maximumLines,
-      );
-
-      if (lines.length > maximumLines) return yield* unsupported();
-
-      const lineIdentities = new Set(
-        [...opening, ...lines].map((line) => `${line.voucherId}:${line.lineId}`),
-      );
-
-      if ([...assignments.keys()].some((identity) => !lineIdentities.has(identity)))
-        return yield* blocked("A retained dimension assignment has no selected journal line.");
-
-      // A voucher dated inside the selected window but labelled with another
-      // fiscal year is an inconsistent selection, never a silently dropped one.
-      if (lines.some((line) => line.fiscalYearId !== year.id))
-        return yield* blocked(
-          `A voucher dated between ${year.startsOn} and ${input.asOf} carries a fiscal year other than ${year.id}. The selected-year membership is not consistent and was not narrowed to hide it.`,
-        );
-
-      const membership = yield* Effect.try({
-        try: () =>
-          buildSie4EMembership({
-            accounts: accounts.map((account) => ({
-              accountId: account.id,
-              code: account.code,
-              name: account.name,
-              active: account.active,
-              version: account.version,
-            })),
-            classifications: input.accountClassifications,
-            opening: opening.map((entry) => ({
-              accountId: entry.accountId,
-              minor: (BigInt(entry.debitMinor) - BigInt(entry.creditMinor)).toString(),
-            })),
-            lines: lines.map((line) => ({
-              voucherId: line.voucherId,
-              lineId: line.lineId,
-              ordinalInVoucher: line.ordinal,
-              sequence: line.sequence,
-              fiscalYearId: line.fiscalYearId,
-              series: line.series,
-              number: line.number,
-              postingDate: line.postingDate,
-              eventId: line.eventId,
-              changeSetId: line.changeSetId,
-              correctsVoucherId: line.correctsVoucherId,
-              accountId: line.accountId,
-              accountCode: line.accountCode,
-              debitMinor: line.debitMinor,
-              creditMinor: line.creditMinor,
-              description: line.description,
-            })),
-            establishedOpening,
-          }),
-        catch: asDomainFailure,
-      });
-
-      if (membership.vouchers > maximumVouchers) return yield* unsupported();
-
-      // One membership position per retained row, and the persisted row body
-      // carries that same position, so a page cursor and a retained row can
-      // never disagree about the order.
-      const dimensionedLines = membership.lines.map((line) => ({
-        ...line,
-        originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
-      }));
-
-      const openingLines = opening.map((line) => ({
-        ...line,
-        rowId: `OPENING:${line.voucherId}:${line.lineId}`,
-        ordinal: 0,
-        ordinalInVoucher: line.ordinal,
-        kind: "opening_line" as const,
-        signedMinor: (BigInt(line.debitMinor) - BigInt(line.creditMinor)).toString(),
-        originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
-      }));
-
-      const retained = [
-        ...membership.accounts,
-        ...membership.balances,
-        ...openingLines,
-        ...dimensionedLines,
-      ].map((row, index) => Object.assign({}, row, { ordinal: index + 1 }));
-
-      const sourceDigest = yield* digest(yield* toJsonObject({ rows: retained, objectMap }));
-      const cutoff = yield* isoNow(transaction);
-
-      const body = yield* toJsonObject({
-        kind: "complete_book_sie_v1",
-        id: newId("siebook"),
-        scope: command.scope,
-        fiscalYear: { id: year.id, startsOn: year.startsOn, endsOn: year.endsOn },
-        asOf: input.asOf,
-        ledgerBoundary: boundary,
-        recordedCutoff: cutoff,
-        generationDate: cutoff.slice(0, 10),
-        currency: book.currency,
-        currencyScale: 2,
-        legalName: input.legalName,
-        organizationNumber: input.organizationNumber,
-        legalNameEvidenceSha256: evidence.sha256,
-        openingBasis: {
-          representation:
-            openingVoucherId === null ? "prior_native_balance" : "opening_set_voucher",
-          basisId: openingVoucherId === null ? year.id : (base?.sourcePlanId ?? year.id),
-          openingVoucherId,
-          established: establishedOpening,
-          reviewed: false,
-        },
-        dimensions: objectMap.dimensions.map((dimension) => dimension.code),
-        objectMap,
-        counts: {
-          accounts: membership.accounts.length,
-          balances: membership.balances.length,
-          vouchers: membership.vouchers,
-          lines: membership.lines.length,
-          openingLines: openingLines.length,
-        },
-        openingControlTotalMinor: membership.controlTotals.openingMinor.toString(),
-        movementControlTotalMinor: membership.controlTotals.movementMinor.toString(),
-        closingControlTotalMinor: membership.controlTotals.closingMinor.toString(),
-        sourceDigest,
-        rendererRelease: {
-          version: "openerp-sie4e-v3",
-          format: "SIE4E",
-          specificationEdition: "4C-2025-08-06",
-          specificationSha256: "96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1",
-        },
-        emittedRecords: {
-          recordProfile: [
-            "#FLAGGA",
-            "#PROGRAM",
-            "#FORMAT",
-            "#GEN",
-            "#SIETYP",
-            "#ORGNR",
-            "#FNAMN",
-            "#RAR",
-            "#VALUTA",
-            "#PROSA",
-            "#KONTO",
-            "#DIM",
-            "#OBJEKT",
-            "#IB",
-            "#UB",
-            "#RES",
-            "#OIB",
-            "#OUB",
-            "#VER",
-            "#TRANS",
-          ],
-          objectRecords: "original_assignments_and_balances",
-          priorYearRecords: "absent",
-        },
-        coverageLimitations: [
-          ...membership.limitations,
-          ...(input.asOf < year.endsOn
-            ? [
-                {
-                  code: "year_to_date_scope" as const,
-                  detail: `This export is year-to-date through ${input.asOf}. The fiscal year ends ${year.endsOn} and no future activity is fabricated.`,
-                },
-              ]
-            : []),
-          {
-            code: "original_assignment_states" as const,
-            detail:
-              "Original opening and transaction values use retained dimension and object codes. Unassigned, historical-exemption and not-recorded states remain distinct in retained membership; SIE has no separate object for these states. Object balances partition each dimension independently. Period balances are absent.",
-          },
-        ],
-        createdBy: principal.actorId,
-        createdAt: cutoff,
-        noFinancialEffect: true,
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "prepare_sie_book_export",
           actorId: principal.actorId,
+          input: payload,
         },
-      });
-
-      const capture = yield* decode(
         CaptureSchema,
-        Object.assign({}, body, { digest: yield* digest(body) }),
-      );
+        Effect.gen(function* () {
+          yield* requireSieBookAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(payload, inputKeys);
 
-      const highest = (yield* SieDb.readSieBookHighestOrdinal(
-        transaction,
-        command.scope.bookId,
-      ))[0];
+          const input = command.input;
 
-      const ordinal = BigInt(highest?.ordinal ?? "0") + 1n;
+          if (!isRealDate(input.asOf) || input.legalName.trim() !== input.legalName)
+            return yield* failure("InvalidJournal");
 
-      if (ordinal > 9223372036854775807n) return yield* unsupported();
+          const book = (yield* SieDb.readSieBookBook(transaction, command.scope.bookId))[0];
 
-      yield* SieDb.insertSieBookExport(transaction, {
-        bookId: command.scope.bookId,
-        id: capture.id,
-        ordinal,
-        fiscalYearId: year.id,
-        asOf: input.asOf,
-        sequence: BigInt(boundary),
-        evidenceId: input.legalNameEvidenceId,
-        actorId: principal.actorId,
-        body: yield* toJsonObject(capture),
-      });
+          yield* requireNativeProfile(book);
 
-      yield* SieDb.insertSieBookExportRows(
-        transaction,
-        yield* Effect.forEach(retained, (row, index) =>
-          Effect.map(toJsonObject(row), (encoded) => ({
+          if (book === undefined) return yield* failure("NotFound");
+
+          const year = (yield* SieDb.readSieBookFiscalYear(
+            transaction,
+            command.scope.bookId,
+            input.fiscalYearId,
+          ))[0];
+
+          if (year === undefined) return yield* failure("NotFound");
+
+          if (input.asOf < year.startsOn || input.asOf > year.endsOn)
+            return yield* failure("InvalidJournal");
+
+          const evidence = (yield* readEvidence(
+            transaction,
+            command.scope.bookId,
+            input.legalNameEvidenceId,
+          ))[0];
+
+          if (evidence === undefined) return yield* failure("MissingEvidence");
+
+          const boundary = book.committedSequence;
+
+          const base = (yield* StatementDb.readStatementOpeningBase(
+            transaction,
+            command.scope.bookId,
+            year.id,
+          ))[0];
+
+          const openingVoucherId =
+            base?.mode === "opening_set" ? (base.openingVoucherId ?? null) : null;
+
+          const { objectMap, assignments } = yield* captureDimensions(
+            transaction,
+            command.scope.bookId,
+            year.startsOn,
+            input.asOf,
+            boundary,
+            openingVoucherId,
+          );
+
+          const prior = (yield* SieDb.readSieBookPriorVoucher(
+            transaction,
+            command.scope.bookId,
+            year.startsOn,
+            boundary,
+          ))[0];
+
+          const establishedOpening = openingVoucherId !== null || prior?.present === true;
+
+          const accounts = yield* SieDb.readSieBookAccounts(
+            transaction,
+            command.scope.bookId,
+            SieDb.maximumSieBookAccounts,
+          );
+
+          if (accounts.length > SieDb.maximumSieBookAccounts) return yield* unsupported();
+
+          const opening = yield* SieDb.readSieBookLines(
+            transaction,
+            command.scope.bookId,
+            year.startsOn,
+            input.asOf,
+            boundary,
+            openingVoucherId,
+            maximumLines,
+            "opening",
+          );
+
+          if (opening.length > maximumLines) return yield* unsupported();
+
+          if (opening.some((line) => line.postingDate > input.asOf))
+            return yield* blocked(
+              "The selected opening voucher is later than the requested as-of date.",
+            );
+
+          const lines = yield* SieDb.readSieBookLines(
+            transaction,
+            command.scope.bookId,
+            year.startsOn,
+            input.asOf,
+            boundary,
+            openingVoucherId,
+            maximumLines,
+          );
+
+          if (lines.length > maximumLines) return yield* unsupported();
+
+          const lineIdentities = new Set(
+            [...opening, ...lines].map((line) => `${line.voucherId}:${line.lineId}`),
+          );
+
+          if ([...assignments.keys()].some((identity) => !lineIdentities.has(identity)))
+            return yield* blocked("A retained dimension assignment has no selected journal line.");
+
+          // A voucher dated inside the selected window but labelled with another
+          // fiscal year is an inconsistent selection, never a silently dropped one.
+          if (lines.some((line) => line.fiscalYearId !== year.id))
+            return yield* blocked(
+              `A voucher dated between ${year.startsOn} and ${input.asOf} carries a fiscal year other than ${year.id}. The selected-year membership is not consistent and was not narrowed to hide it.`,
+            );
+
+          const membership = yield* Effect.try({
+            try: () =>
+              buildSie4EMembership({
+                accounts: accounts.map((account) => ({
+                  accountId: account.id,
+                  code: account.code,
+                  name: account.name,
+                  active: account.active,
+                  version: account.version,
+                })),
+                classifications: input.accountClassifications,
+                opening: opening.map((entry) => ({
+                  accountId: entry.accountId,
+                  minor: (BigInt(entry.debitMinor) - BigInt(entry.creditMinor)).toString(),
+                })),
+                lines: lines.map((line) => ({
+                  voucherId: line.voucherId,
+                  lineId: line.lineId,
+                  ordinalInVoucher: line.ordinal,
+                  sequence: line.sequence,
+                  fiscalYearId: line.fiscalYearId,
+                  series: line.series,
+                  number: line.number,
+                  postingDate: line.postingDate,
+                  eventId: line.eventId,
+                  changeSetId: line.changeSetId,
+                  correctsVoucherId: line.correctsVoucherId,
+                  accountId: line.accountId,
+                  accountCode: line.accountCode,
+                  debitMinor: line.debitMinor,
+                  creditMinor: line.creditMinor,
+                  description: line.description,
+                })),
+                establishedOpening,
+              }),
+            catch: asDomainFailure,
+          });
+
+          if (membership.vouchers > maximumVouchers) return yield* unsupported();
+
+          // One membership position per retained row, and the persisted row body
+          // carries that same position, so a page cursor and a retained row can
+          // never disagree about the order.
+          const dimensionedLines = membership.lines.map((line) => ({
+            ...line,
+            originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
+          }));
+
+          const openingLines = opening.map((line) => ({
+            ...line,
+            rowId: `OPENING:${line.voucherId}:${line.lineId}`,
+            ordinal: 0,
+            ordinalInVoucher: line.ordinal,
+            kind: "opening_line" as const,
+            signedMinor: (BigInt(line.debitMinor) - BigInt(line.creditMinor)).toString(),
+            originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
+          }));
+
+          const retained = [
+            ...membership.accounts,
+            ...membership.balances,
+            ...openingLines,
+            ...dimensionedLines,
+          ].map((row, index) => Object.assign({}, row, { ordinal: index + 1 }));
+
+          const sourceDigest = yield* digest(yield* toJsonObject({ rows: retained, objectMap }));
+          const cutoff = yield* isoNow(transaction);
+
+          const body = yield* toJsonObject({
+            kind: "complete_book_sie_v1",
+            id: newId("siebook"),
+            scope: command.scope,
+            fiscalYear: { id: year.id, startsOn: year.startsOn, endsOn: year.endsOn },
+            asOf: input.asOf,
+            ledgerBoundary: boundary,
+            recordedCutoff: cutoff,
+            generationDate: cutoff.slice(0, 10),
+            currency: book.currency,
+            currencyScale: 2,
+            legalName: input.legalName,
+            organizationNumber: input.organizationNumber,
+            legalNameEvidenceSha256: evidence.sha256,
+            openingBasis: {
+              representation:
+                openingVoucherId === null ? "prior_native_balance" : "opening_set_voucher",
+              basisId: openingVoucherId === null ? year.id : (base?.sourcePlanId ?? year.id),
+              openingVoucherId,
+              established: establishedOpening,
+              reviewed: false,
+            },
+            dimensions: objectMap.dimensions.map((dimension) => dimension.code),
+            objectMap,
+            counts: {
+              accounts: membership.accounts.length,
+              balances: membership.balances.length,
+              vouchers: membership.vouchers,
+              lines: membership.lines.length,
+              openingLines: openingLines.length,
+            },
+            openingControlTotalMinor: membership.controlTotals.openingMinor.toString(),
+            movementControlTotalMinor: membership.controlTotals.movementMinor.toString(),
+            closingControlTotalMinor: membership.controlTotals.closingMinor.toString(),
+            sourceDigest,
+            rendererRelease: {
+              version: "openerp-sie4e-v3",
+              format: "SIE4E",
+              specificationEdition: "4C-2025-08-06",
+              specificationSha256:
+                "96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1",
+            },
+            emittedRecords: {
+              recordProfile: [
+                "#FLAGGA",
+                "#PROGRAM",
+                "#FORMAT",
+                "#GEN",
+                "#SIETYP",
+                "#ORGNR",
+                "#FNAMN",
+                "#RAR",
+                "#VALUTA",
+                "#PROSA",
+                "#KONTO",
+                "#DIM",
+                "#OBJEKT",
+                "#IB",
+                "#UB",
+                "#RES",
+                "#OIB",
+                "#OUB",
+                "#VER",
+                "#TRANS",
+              ],
+              objectRecords: "original_assignments_and_balances",
+              priorYearRecords: "absent",
+            },
+            coverageLimitations: [
+              ...membership.limitations,
+              ...(input.asOf < year.endsOn
+                ? [
+                    {
+                      code: "year_to_date_scope" as const,
+                      detail: `This export is year-to-date through ${input.asOf}. The fiscal year ends ${year.endsOn} and no future activity is fabricated.`,
+                    },
+                  ]
+                : []),
+              {
+                code: "original_assignment_states" as const,
+                detail:
+                  "Original opening and transaction values use retained dimension and object codes. Unassigned, historical-exemption and not-recorded states remain distinct in retained membership; SIE has no separate object for these states. Object balances partition each dimension independently. Period balances are absent.",
+              },
+            ],
+            createdBy: principal.actorId,
+            createdAt: cutoff,
+            noFinancialEffect: true,
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "prepare_sie_book_export",
+              actorId: principal.actorId,
+            },
+          });
+
+          const capture = yield* decode(
+            CaptureSchema,
+            Object.assign({}, body, { digest: yield* digest(body) }),
+          );
+
+          const highest = (yield* SieDb.readSieBookHighestOrdinal(
+            transaction,
+            command.scope.bookId,
+          ))[0];
+
+          const ordinal = BigInt(highest?.ordinal ?? "0") + 1n;
+
+          if (ordinal > 9223372036854775807n) return yield* unsupported();
+
+          yield* SieDb.insertSieBookExport(transaction, {
             bookId: command.scope.bookId,
-            exportId: capture.id,
-            ordinal: index + 1,
-            rowId: row.rowId,
-            body: encoded,
-          })),
-        ),
-      );
+            id: capture.id,
+            ordinal,
+            fiscalYearId: year.id,
+            asOf: input.asOf,
+            sequence: BigInt(boundary),
+            evidenceId: input.legalNameEvidenceId,
+            actorId: principal.actorId,
+            body: yield* toJsonObject(capture),
+          });
 
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_sie_book_export",
-        principal.actorId,
-        yield* toJsonObject(capture),
-      );
+          yield* SieDb.insertSieBookExportRows(
+            transaction,
+            yield* Effect.forEach(retained, (row, index) =>
+              Effect.map(toJsonObject(row), (encoded) => ({
+                bookId: command.scope.bookId,
+                exportId: capture.id,
+                ordinal: index + 1,
+                rowId: row.rowId,
+                body: encoded,
+              })),
+            ),
+          );
 
-      return capture;
+          return { receipt: yield* toJsonObject(capture), result: capture };
+        }),
+      );
     },
     "update",
   );

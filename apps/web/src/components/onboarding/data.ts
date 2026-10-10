@@ -1,16 +1,11 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import * as Onboarding from "@open-erp/contracts/onboarding";
-import { useRef } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 
 export async function readOnboardingWorkspace(path: string, signal: AbortSignal) {
   const first = await readAccounting(path, Onboarding.OnboardingWorkspace, { signal });
@@ -71,14 +66,14 @@ export function useOnboardingCommand<
 >(path: string, input: I, output: O, onSuccess?: (result: O["Type"]) => void) {
   const { book } = useBookWorkspace();
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const mutation = useMutation({
     mutationFn: (value: I["Type"]) =>
       readAccounting(
         path,
         output,
-        mutationOptions(path, JSON.stringify(Schema.decodeUnknownSync(input)(value)), keys.current),
+        keys.current.options(path, JSON.stringify(Schema.decodeUnknownSync(input)(value))),
       ),
     onSuccess: async (result) => {
       await cache.invalidateQueries({ queryKey: bookKey(book) });

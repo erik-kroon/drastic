@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "../book-commands";
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Service from "@open-erp/contracts/service-purchases";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
@@ -12,18 +14,16 @@ import * as Result from "effect/Result";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { questionSummary, requireResolvedSupplierQuestions } from "../work-questions";
+import { digest } from "../json";
 import {
-  digest,
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  sha256Hex,
-  validatePlan,
 } from "../posting";
+import { validatePlan } from "../posting-validation";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import { decodeRelease } from "../company-profile-basis";
 import * as CompanyDb from "../../db/company-profiles";
 import { createInvoiceInTransaction } from "../commerce/register";
@@ -795,161 +795,164 @@ export const prepareServicePurchase = Effect.fn("purchases.service-purchases.pre
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_service_purchase",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
-        ReviewSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      const head = yield* readDraftForService(
-        transaction,
-        command.scope.bookId,
-        command.input.draftId,
-      );
-
-      if (
-        command.input.expectedRevision !== head.currentRevision ||
-        command.input.expectedDigest !== Shared.textField(head.body, "digest")
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* requireResolvedSupplierQuestions(transaction, command.scope, command.input.draftId);
-
-      if (
-        (yield* Db.readAcceptanceForDraft(
-          transaction,
-          command.scope.bookId,
-          command.input.draftId,
-        ))[0]?.present === true
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-
-      if (!serviceDraftAcceptable(head.body)) return yield* Shared.unsupported();
-
-      const ordinal =
-        (yield* Db.readReviewCount(transaction, command.scope.bookId, command.input.draftId))[0]!
-          .total + 1;
-
-      if (ordinal > maximumReviews) return yield* failure("InvalidJournal");
-
-      const sourceEvidenceId =
-        Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
-
-      const evidence = yield* Shared.readEvidenceReference(
-        transaction,
-        command.scope.bookId,
-        sourceEvidenceId,
-      );
-
-      if (
-        yield* Shared.evidenceHasPostedHistory(transaction, command.scope.bookId, sourceEvidenceId)
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-
-      const content = Shared.objectField(head.body, "content");
-      const reviewId = newId("service_review");
-
-      const posting = yield* serviceRecognition(
-        transaction,
-        command.scope,
-        book,
-        head.body,
-        command.input,
-      );
-
-      const plan = yield* prepareJournalInTransaction(transaction, principal, {
-        scope: command.scope,
-        idempotencyKey: `sp_${reviewId}_prepare`,
-        input: {
-          kind: "manual_journal",
-          evidenceId: sourceEvidenceId,
-          eventKey: `service_purchase_${Shared.textField(head.body, "id") ?? ""}`,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: Shared.textField(content, "documentDate") ?? "",
-          series: command.input.series,
-          description: `Cross-border service: ${Shared.textField(content, "title") ?? ""}`,
-          rationale: command.input.reason,
-          taxAssessment: "not_applicable",
-          lines: posting.lines.map((line) => ({
-            accountId: Shared.textField(line, "accountId") ?? "",
-            debitMinor: Shared.textField(line, "debitMinor") ?? "0",
-            creditMinor: Shared.textField(line, "creditMinor") ?? "0",
-            description: Shared.textField(line, "description") ?? "",
-          })),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_service_purchase",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
         },
-      });
+        ReviewSchema,
+        Effect.gen(function* () {
+          const head = yield* readDraftForService(
+            transaction,
+            command.scope.bookId,
+            command.input.draftId,
+          );
 
-      const body: JsonObject = {
-        id: reviewId,
-        scope: command.scope,
-        version: 1,
-        profile: command.input.profile,
-        ordinal,
-        input: yield* Shared.toJsonObject(command.input),
-        draftSnapshot: head.body,
-        postingPlan: yield* Shared.toJsonObject(plan),
-        evidence,
-        originalLines: yield* Shared.toJson(posting.originalLines),
-        recognition: yield* Shared.toJsonObject(posting.recognition),
-        releaseSelection: yield* Shared.toJsonObject(posting.releaseSelection),
-        profileWitness: yield* Shared.toJsonObject(posting.profileWitness),
-        profileGaps: yield* Shared.toJson(posting.profileGaps),
-        inputVatAccountId: posting.inputVatAccountId,
-        outputVatAccountId: posting.outputVatAccountId,
-        legalBlockers,
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "prepare_service_purchase",
-          principal.actorId,
-        ),
-      };
+          if (
+            command.input.expectedRevision !== head.currentRevision ||
+            command.input.expectedDigest !== Shared.textField(head.body, "digest")
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+          yield* requireResolvedSupplierQuestions(
+            transaction,
+            command.scope,
+            command.input.draftId,
+          );
 
-      if (Shared.byteLength(JSON.stringify(sealed)) > maximumReviewBytes) {
-        return yield* failure("InvalidJournal");
-      }
+          if (
+            (yield* Db.readAcceptanceForDraft(
+              transaction,
+              command.scope.bookId,
+              command.input.draftId,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
 
-      const review = yield* Shared.decode(ReviewSchema, sealed);
-      const planId = plan.id;
-      const firstAction = plan.groups[0]?.actions[0];
+          if (!serviceDraftAcceptable(head.body)) return yield* Shared.unsupported();
 
-      if (planId === "" || firstAction === undefined) {
-        return yield* failure("InternalError");
-      }
+          const ordinal =
+            (yield* Db.readReviewCount(
+              transaction,
+              command.scope.bookId,
+              command.input.draftId,
+            ))[0]!.total + 1;
 
-      yield* Db.insertReview(transaction, {
-        bookId: command.scope.bookId,
-        id: reviewId,
-        draftId: command.input.draftId,
-        draftRevision: head.currentRevision,
-        ordinal,
-        changeSetId: planId,
-        eventId: firstAction.eventId,
-        evidenceId: sourceEvidenceId,
-        body: sealed,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_service_purchase",
-        principal.actorId,
-        yield* Shared.toJsonObject(review),
+          if (ordinal > maximumReviews) return yield* failure("InvalidJournal");
+
+          const sourceEvidenceId =
+            Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
+
+          const evidence = yield* Shared.readEvidenceReference(
+            transaction,
+            command.scope.bookId,
+            sourceEvidenceId,
+          );
+
+          if (
+            yield* Shared.evidenceHasPostedHistory(
+              transaction,
+              command.scope.bookId,
+              sourceEvidenceId,
+            )
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
+
+          const content = Shared.objectField(head.body, "content");
+          const reviewId = newId("service_review");
+
+          const posting = yield* serviceRecognition(
+            transaction,
+            command.scope,
+            book,
+            head.body,
+            command.input,
+          );
+
+          const plan = yield* prepareJournalInTransaction(transaction, principal, {
+            scope: command.scope,
+            idempotencyKey: `sp_${reviewId}_prepare`,
+            input: {
+              kind: "manual_journal",
+              evidenceId: sourceEvidenceId,
+              eventKey: `service_purchase_${Shared.textField(head.body, "id") ?? ""}`,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: Shared.textField(content, "documentDate") ?? "",
+              series: command.input.series,
+              description: `Cross-border service: ${Shared.textField(content, "title") ?? ""}`,
+              rationale: command.input.reason,
+              taxAssessment: "not_applicable",
+              lines: posting.lines.map((line) => ({
+                accountId: Shared.textField(line, "accountId") ?? "",
+                debitMinor: Shared.textField(line, "debitMinor") ?? "0",
+                creditMinor: Shared.textField(line, "creditMinor") ?? "0",
+                description: Shared.textField(line, "description") ?? "",
+              })),
+            },
+          });
+
+          const body: JsonObject = {
+            id: reviewId,
+            scope: command.scope,
+            version: 1,
+            profile: command.input.profile,
+            ordinal,
+            input: yield* Shared.toJsonObject(command.input),
+            draftSnapshot: head.body,
+            postingPlan: yield* Shared.toJsonObject(plan),
+            evidence,
+            originalLines: yield* Shared.toJson(posting.originalLines),
+            recognition: yield* Shared.toJsonObject(posting.recognition),
+            releaseSelection: yield* Shared.toJsonObject(posting.releaseSelection),
+            profileWitness: yield* Shared.toJsonObject(posting.profileWitness),
+            profileGaps: yield* Shared.toJson(posting.profileGaps),
+            inputVatAccountId: posting.inputVatAccountId,
+            outputVatAccountId: posting.outputVatAccountId,
+            legalBlockers,
+            createdAt: yield* isoNow(transaction),
+            receipt: Shared.receipt(
+              command.idempotencyKey,
+              "prepare_service_purchase",
+              principal.actorId,
+            ),
+          };
+
+          const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+
+          if (Shared.byteLength(JSON.stringify(sealed)) > maximumReviewBytes) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const review = yield* Shared.decode(ReviewSchema, sealed);
+          const planId = plan.id;
+          const firstAction = plan.groups[0]?.actions[0];
+
+          if (planId === "" || firstAction === undefined) {
+            return yield* failure("InternalError");
+          }
+
+          yield* Db.insertReview(transaction, {
+            bookId: command.scope.bookId,
+            id: reviewId,
+            draftId: command.input.draftId,
+            draftRevision: head.currentRevision,
+            ordinal,
+            changeSetId: planId,
+            eventId: firstAction.eventId,
+            evidenceId: sourceEvidenceId,
+            body: sealed,
+          });
+
+          return { receipt: yield* Shared.toJsonObject(review), result: review };
+        }),
       );
-
-      return review;
     }),
   );
 });
@@ -1060,88 +1063,80 @@ export const approveServicePurchaseInTransaction = Effect.fn(
     const book = yield* Shared.readBook(transaction, command.scope.bookId);
     void book;
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "approve_service_purchase",
-      principal.actorId,
       {
-        reviewId: command.reviewId,
-        input: yield* Shared.toJsonObject(command.input),
-      } satisfies JsonObject,
-      ApprovalSchema,
-    );
-
-    if (request.previous) return request.previous;
-
-    const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
-
-    if (command.input.digest !== Shared.textField(review.body, "digest")) {
-      return yield* failure("StaleDependency");
-    }
-
-    yield* requireResolvedSupplierQuestions(
-      transaction,
-      command.scope,
-      Shared.textField(Shared.objectField(review.body, "input"), "draftId") ?? "",
-    );
-
-    const blockers = yield* serviceBlockers(transaction, command.scope, review);
-
-    if (blockers.length > 0) return yield* failure("StaleDependency");
-
-    const ordinal =
-      (yield* Db.readApprovalCount(transaction, command.scope.bookId, command.reviewId))[0]!.total +
-      1;
-
-    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-    const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
-
-    if (now === undefined) return yield* failure("InternalError");
-
-    const body = Object.assign(
-      {},
-      {
-        id: newId("service_approval"),
         scope: command.scope,
-        reviewId: command.reviewId,
-        digest: Shared.textField(review.body, "digest") ?? "",
-        version: 1,
+        idempotencyKey: command.idempotencyKey,
+        operation: "approve_service_purchase",
         actorId: principal.actorId,
-        ordinal,
-        expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "approve_service_purchase",
-          principal.actorId,
-        ),
+        input: {
+          reviewId: command.reviewId,
+          input: yield* Shared.toJsonObject(command.input),
+        } satisfies JsonObject,
       },
-    ) satisfies JsonObject;
+      ApprovalSchema,
+      Effect.gen(function* () {
+        const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
 
-    const approval = yield* Shared.decode(ApprovalSchema, body);
-    yield* Db.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: Shared.textField(body, "id") ?? "",
-      reviewId: command.reviewId,
-      ordinal,
-      actorId: principal.actorId,
-      digest: Shared.textField(body, "digest") ?? "",
-      expiresAt: Shared.textField(body, "expiresAt") ?? "",
-      body: yield* Shared.toJsonObject(body),
-    });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "approve_service_purchase",
-      principal.actorId,
-      yield* Shared.toJsonObject(approval),
+        if (command.input.digest !== Shared.textField(review.body, "digest")) {
+          return yield* failure("StaleDependency");
+        }
+
+        yield* requireResolvedSupplierQuestions(
+          transaction,
+          command.scope,
+          Shared.textField(Shared.objectField(review.body, "input"), "draftId") ?? "",
+        );
+
+        const blockers = yield* serviceBlockers(transaction, command.scope, review);
+
+        if (blockers.length > 0) return yield* failure("StaleDependency");
+
+        const ordinal =
+          (yield* Db.readApprovalCount(transaction, command.scope.bookId, command.reviewId))[0]!
+            .total + 1;
+
+        if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+        const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
+
+        if (now === undefined) return yield* failure("InternalError");
+
+        const body = Object.assign(
+          {},
+          {
+            id: newId("service_approval"),
+            scope: command.scope,
+            reviewId: command.reviewId,
+            digest: Shared.textField(review.body, "digest") ?? "",
+            version: 1,
+            actorId: principal.actorId,
+            ordinal,
+            expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+            createdAt: yield* isoNow(transaction),
+            receipt: Shared.receipt(
+              command.idempotencyKey,
+              "approve_service_purchase",
+              principal.actorId,
+            ),
+          },
+        ) satisfies JsonObject;
+
+        const approval = yield* Shared.decode(ApprovalSchema, body);
+        yield* Db.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: Shared.textField(body, "id") ?? "",
+          reviewId: command.reviewId,
+          ordinal,
+          actorId: principal.actorId,
+          digest: Shared.textField(body, "digest") ?? "",
+          expiresAt: Shared.textField(body, "expiresAt") ?? "",
+          body: yield* Shared.toJsonObject(body),
+        });
+
+        return { receipt: yield* Shared.toJsonObject(approval), result: approval };
+      }),
     );
-
-    return approval;
   });
 });
 
@@ -1199,172 +1194,165 @@ export const executeServicePurchase = Effect.fn("purchases.service-purchases.exe
       const { scope, reviewId, input, idempotencyKey } = command,
         operation = "execute_service_purchase";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId, input },
+        },
         Service.ServicePurchaseReceipt,
+        Effect.gen(function* () {
+          yield* Shared.requireTables(transaction, serviceTables, serviceInserts);
+          const book = yield* Shared.readBook(transaction, scope.bookId);
+          const row = yield* readReview(transaction, scope.bookId, reviewId);
+          const review = yield* Shared.decode(ReviewSchema, row.body);
+
+          if (review.digest !== input.digest) return yield* failure("StaleDependency");
+
+          yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
+
+          if ((yield* serviceBlockers(transaction, scope, row)).length)
+            return yield* failure("StaleDependency");
+
+          const approval = (yield* Db.readApprovalById(
+            transaction,
+            scope.bookId,
+            input.approvalId,
+            reviewId,
+          ))[0];
+
+          if (
+            !approval ||
+            approval.actorId !== principal.actorId ||
+            approval.digest !== review.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
+            (yield* Db.readAcceptanceByApproval(transaction, scope.bookId, approval.id))[0]?.present
+          )
+            return yield* failure("ApprovalRequired");
+
+          const identity = yield* requireServiceIdentity(transaction, scope, review);
+
+          const kernel = yield* approveChangeInTransaction(transaction, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("service_approve"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest },
+          });
+
+          const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
+            scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: newId("service_post"),
+            input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
+            owner: { kind: "service_purchase", id: reviewId },
+          });
+
+          const draft = review.draftSnapshot;
+
+          const line = review.postingPlan.groups[0]?.actions[0]?.lines.find(
+            (line) =>
+              line.accountId === review.input.controlAccountId &&
+              line.creditMinor === review.recognition.payableMinor,
+          );
+
+          if (
+            !line ||
+            draft.content.documentDate === null ||
+            draft.content.dueDate === null ||
+            draft.content.supplierDocumentNumber === null
+          )
+            return yield* failure("InvalidJournal");
+
+          const invoice = yield* createInvoiceInTransaction(transaction, principal, {
+            scope,
+            idempotencyKey: newId("service_register"),
+            input: {
+              kind: "synthetic_invoice_v1",
+              direction: "supplier",
+              counterpartyId: draft.content.counterpartyId,
+              counterpartyRevision: draft.content.counterpartyRevision,
+              documentNumber: draft.content.supplierDocumentNumber,
+              issuedOn: draft.content.documentDate,
+              dueOn: draft.content.dueDate,
+              currency: draft.content.currency,
+              amountMinor: review.recognition.payableMinor,
+              controlAccountId: review.input.controlAccountId,
+              recognitionVoucherId: postingReceipt.voucherId,
+              recognitionLineId: line.lineId,
+              evidenceId: review.evidence.evidenceId,
+              description: `Cross-border service: ${draft.content.title}`,
+            },
+          });
+
+          const owned = yield* recordServiceRecognitionInTransaction(transaction, {
+            scope,
+            bookId: scope.bookId,
+            actorId: principal.actorId,
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+            recognitionId: yield* serviceRecognitionId(identity.key),
+            economicKey: identity.key,
+            reviewId: review.id,
+            draftId: draft.id,
+            draftRevision: draft.revision,
+            draftDigest: draft.digest,
+            counterpartyId: draft.content.counterpartyId,
+            documentNumber: draft.content.supplierDocumentNumber ?? "",
+            approvalId: approval.id,
+            changeSetId: review.postingPlan.id,
+            voucherId: postingReceipt.voucherId,
+            payableId: invoice.id,
+            currency: book.currency,
+            currencyScale: book.currencyScale,
+            recognitionDate: draft.content.documentDate ?? "",
+            taxPoint: {
+              taxPointOn: review.recognition.lines[0]?.taxPointOn ?? "",
+              basis: review.input.taxPoint.basis,
+            },
+            plan: review.recognition,
+            selections: review.originalLines,
+            releaseSelection: review.releaseSelection,
+            inputVatAccountId: review.inputVatAccountId,
+            outputVatAccountId: review.outputVatAccountId,
+            witness: review.profileWitness ?? null,
+            gaps: review.profileGaps ?? [],
+          });
+
+          const body = {
+            id: newId("service_purchase"),
+            scope,
+            reviewId,
+            reviewDigest: review.digest,
+            approvalId: approval.id,
+            profile: review.profile,
+            draftId: draft.id,
+            draftRevision: draft.revision,
+            draftDigest: draft.digest,
+            supplierDocumentNumber: draft.content.supplierDocumentNumber ?? "",
+            accepted: true,
+            recognized: true,
+            paid: false,
+            postingReceipt,
+            registerInvoiceId: invoice.id,
+            recognitionId: owned.id,
+            taxFactIds: owned.taxFactIds,
+            legalBlockers: review.legalBlockers,
+            createdAt: yield* isoNow(transaction),
+            receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+          };
+
+          const result = yield* Shared.decode(Service.ServicePurchaseReceipt, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertServicePurchase(transaction, scope.bookId, result);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireTables(transaction, serviceTables, serviceInserts);
-      const book = yield* Shared.readBook(transaction, scope.bookId);
-      const row = yield* readReview(transaction, scope.bookId, reviewId);
-      const review = yield* Shared.decode(ReviewSchema, row.body);
-
-      if (review.digest !== input.digest) return yield* failure("StaleDependency");
-
-      yield* requireResolvedSupplierQuestions(transaction, scope, review.input.draftId);
-
-      if ((yield* serviceBlockers(transaction, scope, row)).length)
-        return yield* failure("StaleDependency");
-
-      const approval = (yield* Db.readApprovalById(
-        transaction,
-        scope.bookId,
-        input.approvalId,
-        reviewId,
-      ))[0];
-
-      if (
-        !approval ||
-        approval.actorId !== principal.actorId ||
-        approval.digest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
-        (yield* Db.readAcceptanceByApproval(transaction, scope.bookId, approval.id))[0]?.present
-      )
-        return yield* failure("ApprovalRequired");
-
-      const identity = yield* requireServiceIdentity(transaction, scope, review);
-
-      const kernel = yield* approveChangeInTransaction(transaction, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("service_approve"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest },
-      });
-
-      const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
-        scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: newId("service_post"),
-        input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
-        owner: { kind: "service_purchase", id: reviewId },
-      });
-
-      const draft = review.draftSnapshot;
-
-      const line = review.postingPlan.groups[0]?.actions[0]?.lines.find(
-        (line) =>
-          line.accountId === review.input.controlAccountId &&
-          line.creditMinor === review.recognition.payableMinor,
-      );
-
-      if (
-        !line ||
-        draft.content.documentDate === null ||
-        draft.content.dueDate === null ||
-        draft.content.supplierDocumentNumber === null
-      )
-        return yield* failure("InvalidJournal");
-
-      const invoice = yield* createInvoiceInTransaction(transaction, principal, {
-        scope,
-        idempotencyKey: newId("service_register"),
-        input: {
-          kind: "synthetic_invoice_v1",
-          direction: "supplier",
-          counterpartyId: draft.content.counterpartyId,
-          counterpartyRevision: draft.content.counterpartyRevision,
-          documentNumber: draft.content.supplierDocumentNumber,
-          issuedOn: draft.content.documentDate,
-          dueOn: draft.content.dueDate,
-          currency: draft.content.currency,
-          amountMinor: review.recognition.payableMinor,
-          controlAccountId: review.input.controlAccountId,
-          recognitionVoucherId: postingReceipt.voucherId,
-          recognitionLineId: line.lineId,
-          evidenceId: review.evidence.evidenceId,
-          description: `Cross-border service: ${draft.content.title}`,
-        },
-      });
-
-      const owned = yield* recordServiceRecognitionInTransaction(transaction, {
-        scope,
-        bookId: scope.bookId,
-        actorId: principal.actorId,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-        recognitionId: yield* serviceRecognitionId(identity.key),
-        economicKey: identity.key,
-        reviewId: review.id,
-        draftId: draft.id,
-        draftRevision: draft.revision,
-        draftDigest: draft.digest,
-        counterpartyId: draft.content.counterpartyId,
-        documentNumber: draft.content.supplierDocumentNumber ?? "",
-        approvalId: approval.id,
-        changeSetId: review.postingPlan.id,
-        voucherId: postingReceipt.voucherId,
-        payableId: invoice.id,
-        currency: book.currency,
-        currencyScale: book.currencyScale,
-        recognitionDate: draft.content.documentDate ?? "",
-        taxPoint: {
-          taxPointOn: review.recognition.lines[0]?.taxPointOn ?? "",
-          basis: review.input.taxPoint.basis,
-        },
-        plan: review.recognition,
-        selections: review.originalLines,
-        releaseSelection: review.releaseSelection,
-        inputVatAccountId: review.inputVatAccountId,
-        outputVatAccountId: review.outputVatAccountId,
-        witness: review.profileWitness ?? null,
-        gaps: review.profileGaps ?? [],
-      });
-
-      const body = {
-        id: newId("service_purchase"),
-        scope,
-        reviewId,
-        reviewDigest: review.digest,
-        approvalId: approval.id,
-        profile: review.profile,
-        draftId: draft.id,
-        draftRevision: draft.revision,
-        draftDigest: draft.digest,
-        supplierDocumentNumber: draft.content.supplierDocumentNumber ?? "",
-        accepted: true,
-        recognized: true,
-        paid: false,
-        postingReceipt,
-        registerInvoiceId: invoice.id,
-        recognitionId: owned.id,
-        taxFactIds: owned.taxFactIds,
-        legalBlockers: review.legalBlockers,
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      };
-
-      const result = yield* Shared.decode(Service.ServicePurchaseReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertServicePurchase(transaction, scope.bookId, result);
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });

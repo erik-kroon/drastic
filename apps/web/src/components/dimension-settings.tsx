@@ -1,3 +1,5 @@
+import type { CommandKeys } from "@/lib/command-keys";
+import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -34,7 +36,7 @@ type SaveRequest = { kind: "dimension"; item: Item } | { kind: "value"; item: Va
 
 async function saveDimensionRequest(
   path: string,
-  keys: Map<string, string>,
+  keys: CommandKeys,
   request: SaveRequest,
 ): Promise<SaveResult> {
   if (request.kind === "dimension") {
@@ -96,7 +98,7 @@ export function DimensionSettings({
   const [dimension, setDimension] = useState<Item>(empty);
   const [value, setValue] = useState<Value>({ ...empty, dimensionCode: "" });
   const [saved, setSaved] = useState(false);
-  const [keys] = useState(() => new Map<string, string>());
+  const { current: keys } = useCommandKeys();
   const path = `${bookPath(book)}/dimensions`;
   const key = [...bookKey(book), "dimensions"];
 

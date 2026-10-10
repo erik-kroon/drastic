@@ -1,9 +1,11 @@
+import { runBookCommand } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as CaseContract from "@open-erp/contracts/cases";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/cases";
 import * as PostingDb from "../db/posting";
@@ -320,162 +322,155 @@ export const prepareSnapshot = Effect.fn("cases.prepareSnapshot")(function* (
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_case_snapshot",
-        principal.actorId,
-        yield* toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_case_snapshot",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
+        },
         SnapshotSchema,
+        Effect.gen(function* () {
+          yield* requireCaseAccess(transaction, true);
+          const book = (yield* PostingDb.readBook(transaction, command.scope))[0];
+
+          if (!book) return yield* failure("NotFound");
+
+          if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
+            return yield* unsupported();
+          }
+
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(input, input.caseId === undefined ? [] : ["caseId"]);
+          const caseId = input.caseId === undefined ? null : input.caseId;
+
+          if (
+            caseId !== null &&
+            (typeof caseId !== "string" || !/^[a-z][a-z0-9_-]{2,127}$/.test(caseId))
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const base = baseUri(command.scope);
+          const counts = (yield* Db.countCaseCapture(transaction, command.scope.bookId, caseId))[0];
+
+          if (!counts) return yield* failure("InternalError");
+          const selected = exact(counts.selected);
+          const plans = exact(counts.plans);
+
+          if (selected === null || plans === null) return yield* failure("InternalError");
+
+          if (caseId !== null && selected === 0n) return yield* failure("NotFound");
+
+          if (selected > BigInt(maximumCases)) return yield* failure("InvalidJournal");
+
+          if (plans > BigInt(maximumPlans)) return yield* failure("InvalidJournal");
+          const facts = yield* Db.readCaseCapture(transaction, command.scope.bookId, caseId, base);
+          const planRows = yield* Db.readCasePlanRefs(transaction, command.scope.bookId, caseId);
+
+          const resolved = bundleByPlan(
+            yield* Db.readPlanBundles(
+              transaction,
+              command.scope.bookId,
+              planRows.map((row) => row.changeSetId),
+              base,
+            ),
+          );
+
+          if (resolved.ambiguous) return yield* unsupported();
+          const bodies: Array<JsonObject> = [];
+          const bodyIds: Array<string> = [];
+
+          for (const row of facts) {
+            const bundle =
+              row.latestPlanId === null ? undefined : resolved.bundles.get(row.latestPlanId);
+
+            bodies.push(yield* caseView(row, base, bundle));
+            bodyIds.push(row.id);
+          }
+
+          const planBodies: Array<JsonObject> = [];
+
+          for (const row of planRows) {
+            const view = planView(row, base, resolved.bundles.get(row.changeSetId));
+
+            if (view === null) return yield* failure("InternalError");
+            planBodies.push(view);
+          }
+
+          let postedDebit = 0n;
+          let postedCredit = 0n;
+
+          for (const row of facts) {
+            const debit = exact(row.postedDebitMinor);
+            const credit = exact(row.postedCreditMinor);
+
+            if (debit === null || credit === null) return yield* failure("InternalError");
+            postedDebit += debit;
+            postedCredit += credit;
+          }
+
+          const id = newId("case_snapshot");
+
+          const body = yield* toJsonObject({
+            id,
+            scope: command.scope,
+            schemaVersion: "1",
+            kind: "manual_journal_cases",
+            selectedCaseId: caseId,
+            capturedAt: yield* isoNow(transaction),
+            preparedBy: principal.actorId,
+            sequence: book.committedSequence.toString(),
+            profile: book.profile,
+            profileVersion: book.profileVersion.toString(),
+            writerEpoch: book.writerEpoch.toString(),
+            totals: {
+              cases: String(facts.length),
+              proposedCases: String(facts.filter((row) => row.state === "proposed").length),
+              postedCases: String(facts.filter((row) => row.state === "posted").length),
+              reversedCases: String(facts.filter((row) => row.state === "reversed").length),
+              plans: plans.toString(),
+              postedDebitMinor: postedDebit.toString(),
+              postedCreditMinor: postedCredit.toString(),
+            },
+            coverage: {
+              status: "unknown",
+              bankImportsIncluded: false,
+              reconciliationReportId: null,
+              reason:
+                "Only events created by manual-journal proposals are selected. Imported bank rows are not business cases and this snapshot does not assess source completion; inspect an explicit bank reconciliation report separately.",
+            },
+          });
+
+          yield* Db.insertSnapshot(transaction, { bookId: command.scope.bookId, id, body });
+          yield* Db.insertItems(
+            transaction,
+            bodies.map((value, index) => ({
+              bookId: command.scope.bookId,
+              snapshotId: id,
+              eventId: bodyIds[index]!,
+              ordinal: String(index + 1),
+              body: value,
+            })),
+          );
+          yield* Db.insertPlans(
+            transaction,
+            planRows.map((row, index) => ({
+              bookId: command.scope.bookId,
+              snapshotId: id,
+              eventId: row.eventId,
+              ordinal: row.ordinal,
+              changeSetId: row.changeSetId,
+              body: planBodies[index]!,
+            })),
+          );
+          const result = yield* decode(SnapshotSchema, body);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireCaseAccess(transaction, true);
-      const book = (yield* PostingDb.readBook(transaction, command.scope))[0];
-
-      if (!book) return yield* failure("NotFound");
-
-      if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
-        return yield* unsupported();
-      }
-
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(input, input.caseId === undefined ? [] : ["caseId"]);
-      const caseId = input.caseId === undefined ? null : input.caseId;
-
-      if (
-        caseId !== null &&
-        (typeof caseId !== "string" || !/^[a-z][a-z0-9_-]{2,127}$/.test(caseId))
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const base = baseUri(command.scope);
-      const counts = (yield* Db.countCaseCapture(transaction, command.scope.bookId, caseId))[0];
-
-      if (!counts) return yield* failure("InternalError");
-      const selected = exact(counts.selected);
-      const plans = exact(counts.plans);
-
-      if (selected === null || plans === null) return yield* failure("InternalError");
-
-      if (caseId !== null && selected === 0n) return yield* failure("NotFound");
-
-      if (selected > BigInt(maximumCases)) return yield* failure("InvalidJournal");
-
-      if (plans > BigInt(maximumPlans)) return yield* failure("InvalidJournal");
-      const facts = yield* Db.readCaseCapture(transaction, command.scope.bookId, caseId, base);
-      const planRows = yield* Db.readCasePlanRefs(transaction, command.scope.bookId, caseId);
-
-      const resolved = bundleByPlan(
-        yield* Db.readPlanBundles(
-          transaction,
-          command.scope.bookId,
-          planRows.map((row) => row.changeSetId),
-          base,
-        ),
-      );
-
-      if (resolved.ambiguous) return yield* unsupported();
-      const bodies: Array<JsonObject> = [];
-      const bodyIds: Array<string> = [];
-
-      for (const row of facts) {
-        const bundle =
-          row.latestPlanId === null ? undefined : resolved.bundles.get(row.latestPlanId);
-
-        bodies.push(yield* caseView(row, base, bundle));
-        bodyIds.push(row.id);
-      }
-
-      const planBodies: Array<JsonObject> = [];
-
-      for (const row of planRows) {
-        const view = planView(row, base, resolved.bundles.get(row.changeSetId));
-
-        if (view === null) return yield* failure("InternalError");
-        planBodies.push(view);
-      }
-
-      let postedDebit = 0n;
-      let postedCredit = 0n;
-
-      for (const row of facts) {
-        const debit = exact(row.postedDebitMinor);
-        const credit = exact(row.postedCreditMinor);
-
-        if (debit === null || credit === null) return yield* failure("InternalError");
-        postedDebit += debit;
-        postedCredit += credit;
-      }
-
-      const id = newId("case_snapshot");
-
-      const body = yield* toJsonObject({
-        id,
-        scope: command.scope,
-        schemaVersion: "1",
-        kind: "manual_journal_cases",
-        selectedCaseId: caseId,
-        capturedAt: yield* isoNow(transaction),
-        preparedBy: principal.actorId,
-        sequence: book.committedSequence.toString(),
-        profile: book.profile,
-        profileVersion: book.profileVersion.toString(),
-        writerEpoch: book.writerEpoch.toString(),
-        totals: {
-          cases: String(facts.length),
-          proposedCases: String(facts.filter((row) => row.state === "proposed").length),
-          postedCases: String(facts.filter((row) => row.state === "posted").length),
-          reversedCases: String(facts.filter((row) => row.state === "reversed").length),
-          plans: plans.toString(),
-          postedDebitMinor: postedDebit.toString(),
-          postedCreditMinor: postedCredit.toString(),
-        },
-        coverage: {
-          status: "unknown",
-          bankImportsIncluded: false,
-          reconciliationReportId: null,
-          reason:
-            "Only events created by manual-journal proposals are selected. Imported bank rows are not business cases and this snapshot does not assess source completion; inspect an explicit bank reconciliation report separately.",
-        },
-      });
-
-      yield* Db.insertSnapshot(transaction, { bookId: command.scope.bookId, id, body });
-      yield* Db.insertItems(
-        transaction,
-        bodies.map((value, index) => ({
-          bookId: command.scope.bookId,
-          snapshotId: id,
-          eventId: bodyIds[index]!,
-          ordinal: String(index + 1),
-          body: value,
-        })),
-      );
-      yield* Db.insertPlans(
-        transaction,
-        planRows.map((row, index) => ({
-          bookId: command.scope.bookId,
-          snapshotId: id,
-          eventId: row.eventId,
-          ordinal: row.ordinal,
-          changeSetId: row.changeSetId,
-          body: planBodies[index]!,
-        })),
-      );
-      const result = yield* decode(SnapshotSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_case_snapshot",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

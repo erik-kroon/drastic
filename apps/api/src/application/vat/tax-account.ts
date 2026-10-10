@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { admitAccountRole } from "../resource-admission";
 import { canonicalText as canonicalNative } from "../json";
 import * as Tax from "@open-erp/contracts/tax-account";
@@ -20,7 +21,9 @@ import {
 } from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
-import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import { digestBody, digestValue } from "./basis";
 
 type StatementInput = typeof Tax.RecordTaxAccountStatement.Type;
@@ -342,87 +345,80 @@ export const resolveEventClassification = Effect.fn("taxAccount.resolveEventClas
         Effect.gen(function* () {
           const payload = yield* toJsonObject({ eventId: command.id, input: command.input });
 
-          const request = yield* replay(
+          return yield* runBookCommand(
             transaction,
-            command.scope,
-            command.idempotencyKey,
-            "resolve_tax_account_event_classification",
-            principal.actorId,
-            payload,
-            ResolutionSchema,
-          );
-
-          if (request.previous) return request.previous;
-          yield* requireTaxAccountAccess(transaction, true);
-          yield* Db.lockBookForUpdate(transaction, command.scope);
-          yield* readBook(transaction, command.scope);
-
-          const classification = yield* readEventClassification(
-            transaction,
-            command.scope.bookId,
-            command.id,
-          );
-
-          if (classification.statementDigest !== command.input.expectedStatementDigest) {
-            return yield* failure("StaleDependency");
-          }
-
-          if (classification.event.input.classification !== "unknown") {
-            return yield* failure("InvalidJournal");
-          }
-
-          if (classification.resolution !== null) {
-            return yield* failure("IdempotencyConflict");
-          }
-
-          const evidence = yield* Db.readEvidence(
-            transaction,
-            command.scope.bookId,
-            command.input.evidenceId,
-          );
-
-          const sha256 = evidence[0]?.sha256;
-
-          if (sha256 === undefined) return yield* failure("MissingEvidence");
-          const count = yield* TaxDb.readResolutionCount(transaction, command.scope.bookId);
-
-          if ((count[0]?.total ?? 0) >= resolutionBound) return yield* unsupported();
-
-          const body = yield* digestBody({
-            id: newId("taxclassification"),
-            scope: command.scope,
-            eventId: command.id,
-            statementId: classification.statementId,
-            statementDigest: classification.statementDigest,
-            input: command.input,
-            evidenceSha256: sha256,
-            createdAt: yield* isoNow(transaction),
-            receipt: {
-              key: command.idempotencyKey,
+            {
+              scope: command.scope,
+              idempotencyKey: command.idempotencyKey,
               operation: "resolve_tax_account_event_classification",
               actorId: principal.actorId,
+              input: payload,
             },
-          });
+            ResolutionSchema,
+            Effect.gen(function* () {
+              yield* requireTaxAccountAccess(transaction, true);
 
-          const resolution = yield* decode(ResolutionSchema, body);
-          yield* TaxDb.insertResolution(transaction, {
-            bookId: command.scope.bookId,
-            id: resolution.id,
-            eventId: command.id,
-            evidenceId: command.input.evidenceId,
-            body,
-          });
-          yield* saveCommand(
-            transaction,
-            command.scope,
-            command.idempotencyKey,
-            request.expected,
-            "resolve_tax_account_event_classification",
-            principal.actorId,
-            resolution,
+              yield* readBook(transaction, command.scope);
+
+              const classification = yield* readEventClassification(
+                transaction,
+                command.scope.bookId,
+                command.id,
+              );
+
+              if (classification.statementDigest !== command.input.expectedStatementDigest) {
+                return yield* failure("StaleDependency");
+              }
+
+              if (classification.event.input.classification !== "unknown") {
+                return yield* failure("InvalidJournal");
+              }
+
+              if (classification.resolution !== null) {
+                return yield* failure("IdempotencyConflict");
+              }
+
+              const evidence = yield* Db.readEvidence(
+                transaction,
+                command.scope.bookId,
+                command.input.evidenceId,
+              );
+
+              const sha256 = evidence[0]?.sha256;
+
+              if (sha256 === undefined) return yield* failure("MissingEvidence");
+              const count = yield* TaxDb.readResolutionCount(transaction, command.scope.bookId);
+
+              if ((count[0]?.total ?? 0) >= resolutionBound) return yield* unsupported();
+
+              const body = yield* digestBody({
+                id: newId("taxclassification"),
+                scope: command.scope,
+                eventId: command.id,
+                statementId: classification.statementId,
+                statementDigest: classification.statementDigest,
+                input: command.input,
+                evidenceSha256: sha256,
+                createdAt: yield* isoNow(transaction),
+                receipt: {
+                  key: command.idempotencyKey,
+                  operation: "resolve_tax_account_event_classification",
+                  actorId: principal.actorId,
+                },
+              });
+
+              const resolution = yield* decode(ResolutionSchema, body);
+              yield* TaxDb.insertResolution(transaction, {
+                bookId: command.scope.bookId,
+                id: resolution.id,
+                eventId: command.id,
+                evidenceId: command.input.evidenceId,
+                body,
+              });
+
+              return resolution;
+            }),
           );
-
-          return resolution;
         }),
       "update",
     );
@@ -671,56 +667,47 @@ export const matchEvent = Effect.fn("taxAccount.matchEvent")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "match_tax_account_event",
-          principal.actorId,
-          payload,
-          MatchSchema,
-        );
-
-        if (request.previous) return request.previous;
-
-        const evidence = yield* Db.readEvidence(
-          transaction,
-          command.scope.bookId,
-          command.input.evidenceId,
-        );
-
-        const sha256 = evidence[0]?.sha256;
-
-        if (sha256 === undefined) return yield* failure("MissingEvidence");
-
-        const match = yield* recordTaxAccountMatch(
-          transaction,
-          command.scope,
           {
-            selection: command.input.selection,
-            rationale: command.input.rationale,
-            evidenceId: command.input.evidenceId,
-            expectedBasisDigest: command.input.expectedBasisDigest,
-          },
-          sha256,
-          {
-            key: command.idempotencyKey,
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "match_tax_account_event",
             actorId: principal.actorId,
+            input: payload,
           },
-        );
+          MatchSchema,
+          Effect.gen(function* () {
+            const evidence = yield* Db.readEvidence(
+              transaction,
+              command.scope.bookId,
+              command.input.evidenceId,
+            );
 
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "match_tax_account_event",
-          principal.actorId,
-          match,
-        );
+            const sha256 = evidence[0]?.sha256;
 
-        return match;
+            if (sha256 === undefined) return yield* failure("MissingEvidence");
+
+            const match = yield* recordTaxAccountMatch(
+              transaction,
+              command.scope,
+              {
+                selection: command.input.selection,
+                rationale: command.input.rationale,
+                evidenceId: command.input.evidenceId,
+                expectedBasisDigest: command.input.expectedBasisDigest,
+              },
+              sha256,
+              {
+                key: command.idempotencyKey,
+                operation: "match_tax_account_event",
+                actorId: principal.actorId,
+              },
+            );
+
+            return match;
+          }),
+        );
       }),
     "update",
   );
@@ -743,92 +730,85 @@ export const unmatchEvent = Effect.fn("taxAccount.unmatchEvent")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "unmatch_tax_account_event",
-          principal.actorId,
-          payload,
-          UnmatchSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireTaxAccountAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        yield* readBook(transaction, command.scope);
-        const row = (yield* TaxDb.readMatch(transaction, command.scope.bookId, command.id))[0];
-
-        if (row === undefined) return yield* failure("NotFound");
-        const match = yield* decode(MatchSchema, row.body);
-
-        if (match.digest !== command.input.expectedDigest) {
-          return yield* failure("StaleDependency");
-        }
-
-        if (
-          (yield* TaxDb.readAssessmentConsumption(transaction, command.scope.bookId, match.id))
-            .length > 0
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        if (
-          (yield* TaxDb.readMatchCapacity(transaction, command.scope.bookId, match.id))[0]
-            ?.reserved !== true
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const evidence = yield* Db.readEvidence(
-          transaction,
-          command.scope.bookId,
-          command.input.evidenceId,
-        );
-
-        const sha256 = evidence[0]?.sha256;
-
-        if (sha256 === undefined) return yield* failure("MissingEvidence");
-        yield* readOpenPeriod(
-          transaction,
-          command.scope.bookId,
-          match.basis.event.input.occurredOn,
-        );
-
-        const body = yield* digestBody({
-          id: newId("taxunmatch"),
-          scope: command.scope,
-          matchId: match.id,
-          input: command.input,
-          evidenceSha256: sha256,
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "unmatch_tax_account_event",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          UnmatchSchema,
+          Effect.gen(function* () {
+            yield* requireTaxAccountAccess(transaction, true);
 
-        const unmatch = yield* decode(UnmatchSchema, body);
-        yield* TaxDb.insertUnmatch(transaction, {
-          bookId: command.scope.bookId,
-          id: unmatch.id,
-          matchId: match.id,
-          evidenceId: command.input.evidenceId,
-          body,
-        });
-        yield* TaxDb.releaseMatchCapacity(transaction, command.scope.bookId, match.id);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "unmatch_tax_account_event",
-          principal.actorId,
-          unmatch,
+            yield* readBook(transaction, command.scope);
+            const row = (yield* TaxDb.readMatch(transaction, command.scope.bookId, command.id))[0];
+
+            if (row === undefined) return yield* failure("NotFound");
+            const match = yield* decode(MatchSchema, row.body);
+
+            if (match.digest !== command.input.expectedDigest) {
+              return yield* failure("StaleDependency");
+            }
+
+            if (
+              (yield* TaxDb.readAssessmentConsumption(transaction, command.scope.bookId, match.id))
+                .length > 0
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            if (
+              (yield* TaxDb.readMatchCapacity(transaction, command.scope.bookId, match.id))[0]
+                ?.reserved !== true
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const evidence = yield* Db.readEvidence(
+              transaction,
+              command.scope.bookId,
+              command.input.evidenceId,
+            );
+
+            const sha256 = evidence[0]?.sha256;
+
+            if (sha256 === undefined) return yield* failure("MissingEvidence");
+            yield* readOpenPeriod(
+              transaction,
+              command.scope.bookId,
+              match.basis.event.input.occurredOn,
+            );
+
+            const body = yield* digestBody({
+              id: newId("taxunmatch"),
+              scope: command.scope,
+              matchId: match.id,
+              input: command.input,
+              evidenceSha256: sha256,
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "unmatch_tax_account_event",
+                actorId: principal.actorId,
+              },
+            });
+
+            const unmatch = yield* decode(UnmatchSchema, body);
+            yield* TaxDb.insertUnmatch(transaction, {
+              bookId: command.scope.bookId,
+              id: unmatch.id,
+              matchId: match.id,
+              evidenceId: command.input.evidenceId,
+              body,
+            });
+            yield* TaxDb.releaseMatchCapacity(transaction, command.scope.bookId, match.id);
+
+            return unmatch;
+          }),
         );
-
-        return unmatch;
       }),
     "update",
   );
@@ -1747,190 +1727,183 @@ export const createControl = Effect.fn("taxAccount.createControl")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "create_tax_account_control",
-          principal.actorId,
-          payload,
-          ControlSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireTaxAccountAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const book = yield* readBook(transaction, command.scope);
-
-        const account = yield* admitControlInterval(
-          transaction,
-          command.scope,
-          command.input,
-          book,
-        );
-
-        const source = yield* readSourceRollforward(
-          transaction,
-          command.scope,
-          command.input,
-          account.id,
-          account.active,
-        );
-
-        const diagnostics = source.diagnostics;
-        const statements = source.statements;
-
-        const totals = (yield* TaxDb.readLedgerTotals(
-          transaction,
-          command.scope.bookId,
-          account.id,
-          command.input.startsOn,
-          command.input.endsOn,
-          book.committedSequence.toString(),
-        ))[0];
-
-        if (totals === undefined) return yield* failure("InternalError");
-        const ledgerOpening = minor(totals.opening);
-        const ledgerMovement = minor(totals.movement);
-        const ledgerClosing = minor(totals.closing);
-
-        if (
-          source.sourceOpeningMinor !== null &&
-          source.sourceMovementMinor !== null &&
-          source.sourceClosingMinor !== null &&
-          (source.sourceOpeningMinor !== ledgerOpening ||
-            source.sourceMovementMinor !== ledgerMovement ||
-            source.sourceClosingMinor !== ledgerClosing)
-        ) {
-          diagnostics.push("source_ledger_difference");
-        }
-
-        const matches = yield* readAccountMatches(
-          transaction,
-          command.scope,
-          account.id,
-          command.input.endsOn,
-        );
-
-        const ledgerLines = yield* TaxDb.readLedgerLines(
-          transaction,
-          command.scope.bookId,
-          account.id,
-          command.input.startsOn,
-          command.input.endsOn,
-          book.committedSequence.toString(),
-        );
-
-        const usableMatches = matches.filter((item) => item.usable === true);
-        const remaining = readUnmatchedItems(usableMatches, source.eventIds, ledgerLines);
-        const remainingEvents = remaining.eventIds;
-        const remainingLines = remaining.lines;
-        const remainingLineIds = remaining.lineIds;
-
-        if (remainingEvents.length > 0) diagnostics.push("unmatched_events");
-
-        if (remainingLines.length > 0) diagnostics.push("unmatched_ledger_lines");
-
-        if (matches.some((item) => item.active === true && item.usable !== true)) {
-          diagnostics.push("invalid_matches");
-        }
-
-        const dependencyDigest = yield* readDependencyDigest(
-          transaction,
-          command.scope,
-          book,
-          account.id,
-          command.input.startsOn,
-          command.input.endsOn,
-          true,
-        );
-
-        if (dependencyDigest === null) return yield* unsupported();
-
-        const body = yield* digestBody({
-          id: newId("taxcontrol"),
-          scope: command.scope,
-          input: command.input,
-          kind: "synthetic_tax_account_gl_control_v3",
-          dependencyDigest,
-          classificationResolutions: source.classificationResolutions,
-          sequence: book.committedSequence.toString(),
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          account: {
-            id: account.id,
-            code: account.code,
-            name: account.name,
-            version: account.version.toString(),
-            active: account.active,
-          },
-          statements,
-          ledgerLines: ledgerLines.map((row) => row.item),
-          sourceGaps: source.gaps,
-          sourceOverlaps: source.overlaps,
-          balanceBreaks: source.breaks,
-          sourceOpeningMinor: source.sourceOpeningMinor?.toString() ?? null,
-          sourceMovementMinor: source.sourceMovementMinor?.toString() ?? null,
-          sourceClosingMinor: source.sourceClosingMinor?.toString() ?? null,
-          ledgerOpeningMinor: ledgerOpening.toString(),
-          ledgerMovementMinor: ledgerMovement.toString(),
-          ledgerClosingMinor: ledgerClosing.toString(),
-          openingDifferenceMinor:
-            source.sourceOpeningMinor === null
-              ? null
-              : (source.sourceOpeningMinor - ledgerOpening).toString(),
-          movementDifferenceMinor:
-            source.sourceMovementMinor === null
-              ? null
-              : (source.sourceMovementMinor - ledgerMovement).toString(),
-          closingDifferenceMinor:
-            source.sourceClosingMinor === null
-              ? null
-              : (source.sourceClosingMinor - ledgerClosing).toString(),
-          matches,
-          unmatchedLedgerLines: remainingLines,
-          unmatchedEventIds: remainingEvents,
-          unmatchedLedgerLineIds: remainingLineIds,
-          unknownClassificationEventIds: source.unknownEventIds,
-          diagnostics,
-          coverage: "not_established",
-          reconciled: false,
-          financialCloseReady: false,
-          taxReturnEffect: "none",
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "create_tax_account_control",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          ControlSchema,
+          Effect.gen(function* () {
+            yield* requireTaxAccountAccess(transaction, true);
 
-        const control = yield* decode(ControlSchema, body);
-        const content = yield* canonicalNative(body);
+            const book = yield* readBook(transaction, command.scope);
 
-        if (content === undefined) return yield* failure("InternalError");
-        const byteLength = new TextEncoder().encode(content).byteLength;
+            const account = yield* admitControlInterval(
+              transaction,
+              command.scope,
+              command.input,
+              book,
+            );
 
-        if (byteLength > controlByteBound) return yield* unsupported();
-        yield* TaxDb.insertControl(transaction, {
-          bookId: command.scope.bookId,
-          id: control.id,
-          body,
-          content,
-          sha256: yield* sha256Hex(content),
-          byteLength,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "create_tax_account_control",
-          principal.actorId,
-          control,
+            const source = yield* readSourceRollforward(
+              transaction,
+              command.scope,
+              command.input,
+              account.id,
+              account.active,
+            );
+
+            const diagnostics = source.diagnostics;
+            const statements = source.statements;
+
+            const totals = (yield* TaxDb.readLedgerTotals(
+              transaction,
+              command.scope.bookId,
+              account.id,
+              command.input.startsOn,
+              command.input.endsOn,
+              book.committedSequence.toString(),
+            ))[0];
+
+            if (totals === undefined) return yield* failure("InternalError");
+            const ledgerOpening = minor(totals.opening);
+            const ledgerMovement = minor(totals.movement);
+            const ledgerClosing = minor(totals.closing);
+
+            if (
+              source.sourceOpeningMinor !== null &&
+              source.sourceMovementMinor !== null &&
+              source.sourceClosingMinor !== null &&
+              (source.sourceOpeningMinor !== ledgerOpening ||
+                source.sourceMovementMinor !== ledgerMovement ||
+                source.sourceClosingMinor !== ledgerClosing)
+            ) {
+              diagnostics.push("source_ledger_difference");
+            }
+
+            const matches = yield* readAccountMatches(
+              transaction,
+              command.scope,
+              account.id,
+              command.input.endsOn,
+            );
+
+            const ledgerLines = yield* TaxDb.readLedgerLines(
+              transaction,
+              command.scope.bookId,
+              account.id,
+              command.input.startsOn,
+              command.input.endsOn,
+              book.committedSequence.toString(),
+            );
+
+            const usableMatches = matches.filter((item) => item.usable === true);
+            const remaining = readUnmatchedItems(usableMatches, source.eventIds, ledgerLines);
+            const remainingEvents = remaining.eventIds;
+            const remainingLines = remaining.lines;
+            const remainingLineIds = remaining.lineIds;
+
+            if (remainingEvents.length > 0) diagnostics.push("unmatched_events");
+
+            if (remainingLines.length > 0) diagnostics.push("unmatched_ledger_lines");
+
+            if (matches.some((item) => item.active === true && item.usable !== true)) {
+              diagnostics.push("invalid_matches");
+            }
+
+            const dependencyDigest = yield* readDependencyDigest(
+              transaction,
+              command.scope,
+              book,
+              account.id,
+              command.input.startsOn,
+              command.input.endsOn,
+              true,
+            );
+
+            if (dependencyDigest === null) return yield* unsupported();
+
+            const body = yield* digestBody({
+              id: newId("taxcontrol"),
+              scope: command.scope,
+              input: command.input,
+              kind: "synthetic_tax_account_gl_control_v3",
+              dependencyDigest,
+              classificationResolutions: source.classificationResolutions,
+              sequence: book.committedSequence.toString(),
+              currency: book.currency,
+              currencyScale: book.currencyScale,
+              account: {
+                id: account.id,
+                code: account.code,
+                name: account.name,
+                version: account.version.toString(),
+                active: account.active,
+              },
+              statements,
+              ledgerLines: ledgerLines.map((row) => row.item),
+              sourceGaps: source.gaps,
+              sourceOverlaps: source.overlaps,
+              balanceBreaks: source.breaks,
+              sourceOpeningMinor: source.sourceOpeningMinor?.toString() ?? null,
+              sourceMovementMinor: source.sourceMovementMinor?.toString() ?? null,
+              sourceClosingMinor: source.sourceClosingMinor?.toString() ?? null,
+              ledgerOpeningMinor: ledgerOpening.toString(),
+              ledgerMovementMinor: ledgerMovement.toString(),
+              ledgerClosingMinor: ledgerClosing.toString(),
+              openingDifferenceMinor:
+                source.sourceOpeningMinor === null
+                  ? null
+                  : (source.sourceOpeningMinor - ledgerOpening).toString(),
+              movementDifferenceMinor:
+                source.sourceMovementMinor === null
+                  ? null
+                  : (source.sourceMovementMinor - ledgerMovement).toString(),
+              closingDifferenceMinor:
+                source.sourceClosingMinor === null
+                  ? null
+                  : (source.sourceClosingMinor - ledgerClosing).toString(),
+              matches,
+              unmatchedLedgerLines: remainingLines,
+              unmatchedEventIds: remainingEvents,
+              unmatchedLedgerLineIds: remainingLineIds,
+              unknownClassificationEventIds: source.unknownEventIds,
+              diagnostics,
+              coverage: "not_established",
+              reconciled: false,
+              financialCloseReady: false,
+              taxReturnEffect: "none",
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "create_tax_account_control",
+                actorId: principal.actorId,
+              },
+            });
+
+            const control = yield* decode(ControlSchema, body);
+            const content = yield* canonicalNative(body);
+
+            if (content === undefined) return yield* failure("InternalError");
+            const byteLength = new TextEncoder().encode(content).byteLength;
+
+            if (byteLength > controlByteBound) return yield* unsupported();
+            yield* TaxDb.insertControl(transaction, {
+              bookId: command.scope.bookId,
+              id: control.id,
+              body,
+              content,
+              sha256: yield* sha256Hex(content),
+              byteLength,
+            });
+
+            return control;
+          }),
         );
-
-        return control;
       }),
     "update",
   );

@@ -1,3 +1,5 @@
+import * as Option from "effect/Option";
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -49,9 +51,9 @@ export function Allocations(props: CommerceProps) {
             lineId: fields.get("lineId"),
           });
 
-          setInvalid(parsed._tag === "None");
+          setInvalid(Option.isNone(parsed));
 
-          if (parsed._tag === "Some") setPayment(parsed.value);
+          if (Option.isSome(parsed)) setPayment(parsed.value);
         }}
       >
         <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
@@ -94,7 +96,10 @@ function PaymentAllocation(
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/payments/${encodeURIComponent(payment.voucherId)}/lines/${encodeURIComponent(payment.lineId)}/capacity`,
+        (client) =>
+          client.commerce.commerceGetPaymentCapacity({
+            params: { ...bookScope(book), voucherId: payment.voucherId, lineId: payment.lineId },
+          }),
         Commerce.PaymentCapacity,
         { signal },
       );
@@ -235,7 +240,8 @@ function AllocationReview(props: CommerceProps & { id: string }) {
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}`,
+        (client) =>
+          client.commerce.commerceGetAllocation({ params: { ...bookScope(book), id: id } }),
         Commerce.AllocationView,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { recordDecision } from "../decision-provenance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Historical from "@open-erp/contracts/historical-migration";
@@ -10,7 +11,7 @@ import * as PartitionDb from "../../db/sie-partitions";
 import { readPartition } from "./partitions";
 import * as Db from "../../db/historical";
 import * as OnboardingDb from "../../db/onboarding-imports";
-import { requireAcceptedOnboardingOpening } from "../onboarding-lifecycle";
+import { requireAcceptedOnboardingOpening } from "../onboarding/lifecycle";
 import * as Ledger from "../../db/posting";
 import * as SourceDb from "../../db/sie-import";
 import type { Transaction } from "../../db/transaction";
@@ -20,12 +21,10 @@ import {
   createEvidenceInTransaction,
   prepareJournalInTransaction,
   executeChangeInTransaction,
-  replay,
-  saveCommand,
-  isoNow,
-  newId,
-  digest,
 } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { digest } from "../json";
 import {
   readPlan,
   readBasis,
@@ -196,126 +195,121 @@ export const startFinancialRunInTransaction = Effect.fn(
 
   if (command.partitionId) Object.assign(input, { partitionId: command.partitionId });
 
-  const request = yield* replay(
+  return yield* runBookCommand(
     tx,
-    scope,
-    idempotencyKey,
-    operation,
-    principal.actorId,
-    input,
+    {
+      scope: scope,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: input,
+    },
     Historical.RunStart,
-  );
+    Effect.gen(function* () {
+      const { source, plan, vouchers } = yield* readSource(tx, scope, id);
 
-  if (request.previous) return request.previous;
-  const { source, plan, vouchers } = yield* readSource(tx, scope, id);
+      if (source.status !== "staged") return yield* failure("StaleDependency");
 
-  if (source.status !== "staged") return yield* failure("StaleDependency");
+      const partition = command.partitionId
+        ? yield* readPartition(tx, scope, command.partitionId)
+        : undefined;
 
-  const partition = command.partitionId
-    ? yield* readPartition(tx, scope, command.partitionId)
-    : undefined;
-
-  if (partition) yield* requirePartitionSource(partition, plan, vouchers, command.fiscalYearId);
-  const basis = yield* readBasis(tx, scope, command.fiscalYearId);
-  const year = (yield* Ledger.readFiscalYear(tx, scope.bookId, command.fiscalYearId))[0];
-
-  if (
-    !year ||
-    basis.mode !== "full_history" ||
-    basis.sourcePlanId !== plan.id ||
-    basis.sourceDigest !== command.planDigest ||
-    plan.digest !== command.planDigest
-  )
-    return yield* failure("ApprovalRequired");
-
-  if (
-    (yield* Db.readRunForSource(tx, scope.bookId, id)).length ||
-    (yield* Db.readPostedDates(tx, scope.bookId)).some((row) =>
-      partition
-        ? partition.years.some((mapped) => mapped.fiscalYearId === row.fiscalYearId)
-        : row.fiscalYearId === year.id,
-    )
-  )
-    return yield* failure("AlreadyPosted");
-
-  yield* requireVoucherMembership(plan, vouchers, year, partition);
-
-  const sourceYears = partition
-    ? partition.years.map((row) => row.sourceYear)
-    : [...new Set(plan.input.openingControls.map((c) => c.year))];
-
-  if (!partition && sourceYears.length !== 1) return yield* failure("UnsupportedProfile");
-  const movements = new Map<string, bigint>();
-
-  for (const voucher of vouchers) {
-    yield* linesFor(plan, voucher, partition);
-
-    for (const item of voucher.transactions.filter((row) => row.kind === "TRANS")) {
-      const amount = minorUnits(item.amount);
+      if (partition) yield* requirePartitionSource(partition, plan, vouchers, command.fiscalYearId);
+      const basis = yield* readBasis(tx, scope, command.fiscalYearId);
+      const year = (yield* Ledger.readFiscalYear(tx, scope.bookId, command.fiscalYearId))[0];
 
       if (
-        amount === undefined ||
-        !plan.input.openingControls.some((c) => c.sourceAccount === item.account)
+        !year ||
+        basis.mode !== "full_history" ||
+        basis.sourcePlanId !== plan.id ||
+        basis.sourceDigest !== command.planDigest ||
+        plan.digest !== command.planDigest
+      )
+        return yield* failure("ApprovalRequired");
+
+      if (
+        (yield* Db.readRunForSource(tx, scope.bookId, id)).length ||
+        (yield* Db.readPostedDates(tx, scope.bookId)).some((row) =>
+          partition
+            ? partition.years.some((mapped) => mapped.fiscalYearId === row.fiscalYearId)
+            : row.fiscalYearId === year.id,
+        )
+      )
+        return yield* failure("AlreadyPosted");
+
+      yield* requireVoucherMembership(plan, vouchers, year, partition);
+
+      const sourceYears = partition
+        ? partition.years.map((row) => row.sourceYear)
+        : [...new Set(plan.input.openingControls.map((c) => c.year))];
+
+      if (!partition && sourceYears.length !== 1) return yield* failure("UnsupportedProfile");
+      const movements = new Map<string, bigint>();
+
+      for (const voucher of vouchers) {
+        yield* linesFor(plan, voucher, partition);
+
+        for (const item of voucher.transactions.filter((row) => row.kind === "TRANS")) {
+          const amount = minorUnits(item.amount);
+
+          if (
+            amount === undefined ||
+            !plan.input.openingControls.some((c) => c.sourceAccount === item.account)
+          )
+            return yield* failure("InvalidJournal");
+          movements.set(item.account, (movements.get(item.account) ?? 0n) + amount);
+        }
+      }
+
+      if (
+        !partition &&
+        plan.input.openingControls.some(
+          (c) =>
+            (movements.get(c.sourceAccount) ?? 0n) !==
+            BigInt(c.independentClosingMinor) - BigInt(c.independentOpeningMinor),
+        )
       )
         return yield* failure("InvalidJournal");
-      movements.set(item.account, (movements.get(item.account) ?? 0n) + amount);
-    }
-  }
+      const prior = yield* Db.readBalances(tx, scope.bookId, year.startsOn, false);
 
-  if (
-    !partition &&
-    plan.input.openingControls.some(
-      (c) =>
-        (movements.get(c.sourceAccount) ?? 0n) !==
-        BigInt(c.independentClosingMinor) - BigInt(c.independentOpeningMinor),
-    )
-  )
-    return yield* failure("InvalidJournal");
-  const prior = yield* Db.readBalances(tx, scope.bookId, year.startsOn, false);
+      if (
+        !sameBalances(
+          partition
+            ? new Map(
+                partition.years[0]!.controls.map((row) => [
+                  row.accountId,
+                  BigInt(row.openingMinor),
+                ]),
+              )
+            : mappedControls(plan, "opening"),
+          new Map(prior.map((row) => [row.accountId, BigInt(row.amount)])),
+        )
+      )
+        return yield* failure("InvalidJournal");
 
-  if (
-    !sameBalances(
-      partition
-        ? new Map(
-            partition.years[0]!.controls.map((row) => [row.accountId, BigInt(row.openingMinor)]),
-          )
-        : mappedControls(plan, "opening"),
-      new Map(prior.map((row) => [row.accountId, BigInt(row.amount)])),
-    )
-  )
-    return yield* failure("InvalidJournal");
+      const run: Db.RunRow = {
+        id: newId("siefin"),
+        partitionId: partition?.id ?? null,
+        yearOrdinal: 0,
+        sourceRunId: id,
+        fiscalYearId: year.id,
+        planDigest: plan.digest,
+        nextOrdinal: 1,
+        fence: "1",
+        status: vouchers.length === 0 ? "posted" : "running",
+        leaseUntil: lease(yield* isoNow(tx)),
+      };
 
-  const run: Db.RunRow = {
-    id: newId("siefin"),
-    partitionId: partition?.id ?? null,
-    yearOrdinal: 0,
-    sourceRunId: id,
-    fiscalYearId: year.id,
-    planDigest: plan.digest,
-    nextOrdinal: 1,
-    fence: "1",
-    status: vouchers.length === 0 ? "posted" : "running",
-    leaseUntil: lease(yield* isoNow(tx)),
-  };
+      yield* Db.insertRun(tx, scope.bookId, run);
 
-  yield* Db.insertRun(tx, scope.bookId, run);
+      const result = yield* decode(Historical.RunStart, {
+        ...run,
+        sourceYear: sourceYears[0] ?? "",
+      });
 
-  const result = yield* decode(Historical.RunStart, {
-    ...run,
-    sourceYear: sourceYears[0] ?? "",
-  });
-
-  yield* saveCommand(
-    tx,
-    scope,
-    idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    result,
+      return result;
+    }),
   );
-
-  return result;
 });
 
 export const startFinancialRun = Effect.fn("historical.startFinancialRun")(function* (
@@ -373,108 +367,106 @@ export const prepareFinancialVoucherInTransaction = Effect.fn(
   const { scope, id, idempotencyKey, input } = command;
   const operation = "prepare_sie_financial_voucher";
 
-  const request = yield* replay(
+  return yield* runBookCommand(
     tx,
-    scope,
-    idempotencyKey,
-    operation,
-    principal.actorId,
-    { runId: id, input },
-    Accounting.ChangeSet,
-  );
-
-  if (request.previous) return request.previous;
-  const run = yield* readRun(tx, scope, id);
-  yield* checkCursor(tx, run, { ...input, ordinal: batchRange?.firstOrdinal ?? run.nextOrdinal });
-
-  if (
-    batchRange &&
-    (batchRange.count < 1 ||
-      batchRange.count > 20 ||
-      input.ordinal < batchRange.firstOrdinal ||
-      input.ordinal >= batchRange.firstOrdinal + batchRange.count)
-  )
-    return yield* failure("InvalidJournal");
-
-  if (!batchRange && (input.ordinal < run.nextOrdinal || input.ordinal >= run.nextOrdinal + 20))
-    return yield* failure("StaleDependency");
-
-  const { plan, vouchers } = yield* readSource(tx, scope, run.sourceRunId);
-
-  const partition = run.partitionId ? yield* readPartition(tx, scope, run.partitionId) : undefined;
-
-  const sourceOrdinal = partition?.vouchers[input.ordinal - 1]?.ordinal ?? input.ordinal;
-  const voucher = vouchers.find((row) => row.ordinal === sourceOrdinal);
-
-  if (!voucher) return yield* failure("NotFound");
-
-  if (partition && partition.vouchers[input.ordinal - 1]?.sourceYearOrdinal !== run.yearOrdinal)
-    return yield* failure("InvalidJournal");
-  const date = sourceDate(voucher);
-  const period = (yield* Ledger.readPeriod(tx, scope.bookId, input.accountingPeriodId))[0];
-
-  if (
-    !date ||
-    !period ||
-    period.fiscalYearId !== run.fiscalYearId ||
-    date < period.startsOn ||
-    date > period.endsOn
-  )
-    return yield* failure("InvalidJournal");
-
-  const evidence = yield* createEvidenceInTransaction(tx, principal, {
-    scope,
-    idempotencyKey: `${idempotencyKey}_evidence`,
-    input: {
-      title: `SIE ${voucher.sourceReference}`,
-      origin: "Retained SIE source voucher",
-      mediaType: "application/json",
-      content: JSON.stringify({
-        sourcePlanId: plan.id,
-        sourcePlanDigest: plan.digest,
-        sourceSha256: plan.sourceSha256,
-        sourceRunId: run.sourceRunId,
-        voucher,
-      }),
+    {
+      scope: scope,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: { runId: id, input },
     },
-  });
+    Accounting.ChangeSet,
+    Effect.gen(function* () {
+      const run = yield* readRun(tx, scope, id);
+      yield* checkCursor(tx, run, {
+        ...input,
+        ordinal: batchRange?.firstOrdinal ?? run.nextOrdinal,
+      });
 
-  const journalInput: typeof Accounting.PrepareJournal.Type = {
-    kind: "manual_journal",
-    evidenceId: evidence.id,
-    eventKey: `sie_${run.sourceRunId}_${voucher.ordinal}`,
-    accountingPeriodId: period.id,
-    postingDate: date,
-    series: input.series,
-    description: `SIE ${voucher.sourceReference}`,
-    rationale: input.rationale,
-    taxAssessment: "not_applicable",
-    lines: yield* linesFor(plan, voucher, partition),
-  };
+      if (
+        batchRange &&
+        (batchRange.count < 1 ||
+          batchRange.count > 20 ||
+          input.ordinal < batchRange.firstOrdinal ||
+          input.ordinal >= batchRange.firstOrdinal + batchRange.count)
+      )
+        return yield* failure("InvalidJournal");
 
-  if (partition)
-    Object.assign(journalInput, {
-      dimensionPolicy: partition.vouchers[input.ordinal - 1]!.dimensionPolicy,
-    });
+      if (!batchRange && (input.ordinal < run.nextOrdinal || input.ordinal >= run.nextOrdinal + 20))
+        return yield* failure("StaleDependency");
 
-  const result = yield* prepareJournalInTransaction(tx, principal, {
-    scope,
-    idempotencyKey: `${idempotencyKey}_journal`,
-    input: journalInput,
-  });
+      const { plan, vouchers } = yield* readSource(tx, scope, run.sourceRunId);
 
-  yield* Db.insertProposal(tx, scope.bookId, run.id, input.ordinal, result.id);
-  yield* saveCommand(
-    tx,
-    scope,
-    idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    result,
+      const partition = run.partitionId
+        ? yield* readPartition(tx, scope, run.partitionId)
+        : undefined;
+
+      const sourceOrdinal = partition?.vouchers[input.ordinal - 1]?.ordinal ?? input.ordinal;
+      const voucher = vouchers.find((row) => row.ordinal === sourceOrdinal);
+
+      if (!voucher) return yield* failure("NotFound");
+
+      if (partition && partition.vouchers[input.ordinal - 1]?.sourceYearOrdinal !== run.yearOrdinal)
+        return yield* failure("InvalidJournal");
+      const date = sourceDate(voucher);
+      const period = (yield* Ledger.readPeriod(tx, scope.bookId, input.accountingPeriodId))[0];
+
+      if (
+        !date ||
+        !period ||
+        period.fiscalYearId !== run.fiscalYearId ||
+        date < period.startsOn ||
+        date > period.endsOn
+      )
+        return yield* failure("InvalidJournal");
+
+      const evidence = yield* createEvidenceInTransaction(tx, principal, {
+        scope,
+        idempotencyKey: `${idempotencyKey}_evidence`,
+        input: {
+          title: `SIE ${voucher.sourceReference}`,
+          origin: "Retained SIE source voucher",
+          mediaType: "application/json",
+          content: JSON.stringify({
+            sourcePlanId: plan.id,
+            sourcePlanDigest: plan.digest,
+            sourceSha256: plan.sourceSha256,
+            sourceRunId: run.sourceRunId,
+            voucher,
+          }),
+        },
+      });
+
+      const journalInput: typeof Accounting.PrepareJournal.Type = {
+        kind: "manual_journal",
+        evidenceId: evidence.id,
+        eventKey: `sie_${run.sourceRunId}_${voucher.ordinal}`,
+        accountingPeriodId: period.id,
+        postingDate: date,
+        series: input.series,
+        description: `SIE ${voucher.sourceReference}`,
+        rationale: input.rationale,
+        taxAssessment: "not_applicable",
+        lines: yield* linesFor(plan, voucher, partition),
+      };
+
+      if (partition)
+        Object.assign(journalInput, {
+          dimensionPolicy: partition.vouchers[input.ordinal - 1]!.dimensionPolicy,
+        });
+
+      const result = yield* prepareJournalInTransaction(tx, principal, {
+        scope,
+        idempotencyKey: `${idempotencyKey}_journal`,
+        input: journalInput,
+      });
+
+      yield* Db.insertProposal(tx, scope.bookId, run.id, input.ordinal, result.id);
+
+      return result;
+    }),
   );
-
-  return result;
 });
 
 export const prepareFinancialVoucher = Effect.fn("historical.prepareFinancialVoucher")(function* (
@@ -652,147 +644,143 @@ export const advanceFinancialRunInTransaction = Effect.fn(
   const { scope, id, idempotencyKey, input } = command;
   const operation = "advance_sie_financial_run";
 
-  const request = yield* replay(
+  return yield* runBookCommand(
     tx,
-    scope,
-    idempotencyKey,
-    operation,
-    principal.actorId,
-    { runId: id, input },
+    {
+      scope: scope,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: { runId: id, input },
+    },
     Historical.Chunk,
+    Effect.gen(function* () {
+      const run = yield* readRun(tx, scope, id);
+      yield* checkCursor(tx, run, { ...input, ordinal: input.firstOrdinal });
+      const { plan, vouchers } = yield* readSource(tx, scope, run.sourceRunId);
+
+      const onboardingQualified =
+        (yield* OnboardingDb.readQualifiedPlan(tx, scope.bookId, plan.id, plan.digest)).length > 0;
+
+      if (onboardingQualified) yield* requireAcceptedOnboardingOpening(tx, scope, plan.id, run.id);
+
+      if (
+        input.items.length < 1 ||
+        input.items.length > 20 ||
+        run.nextOrdinal + input.items.length - 1 > plan.voucherCount
+      )
+        return yield* failure("InvalidJournal");
+
+      const partition = run.partitionId
+        ? yield* readPartition(tx, scope, run.partitionId)
+        : undefined;
+
+      if (
+        partition &&
+        partition.vouchers
+          .slice(run.nextOrdinal - 1, run.nextOrdinal - 1 + input.items.length)
+          .some((row) => row.sourceYearOrdinal !== (run.yearOrdinal ?? 0))
+      )
+        return yield* failure("InvalidJournal");
+      const items: Array<(typeof Historical.Run.Type.items)[number]> = [];
+
+      for (const [index, binding] of input.items.entries()) {
+        const sourceOrdinal =
+          partition?.vouchers[run.nextOrdinal + index - 1]?.ordinal ?? run.nextOrdinal + index;
+
+        const voucher = vouchers.find((v) => v.ordinal === sourceOrdinal);
+        const row = (yield* Ledger.readPlan(tx, scope.bookId, binding.changeSetId))[0];
+
+        if (!voucher || !row) return yield* failure("StaleDependency");
+        const change = yield* decode(Accounting.ChangeSet, row.plan);
+
+        if (change.planDigest !== binding.planDigest) return yield* failure("StaleDependency");
+        const expected = yield* linesFor(plan, voucher, partition);
+        yield* requireSourceJournal(change, run, voucher, expected);
+
+        if (onboardingQualified) {
+          const preparers = yield* OnboardingDb.readProposalPreparers(tx, scope.bookId, change.id);
+          const approval = (yield* Ledger.readApproval(tx, scope.bookId, binding.approvalId))[0];
+
+          if (preparers.length !== 1 || !approval || preparers[0]?.actorId === approval.actorId)
+            return yield* failure("ApprovalRequired");
+        }
+
+        const receipt = yield* executeChangeInTransaction(tx, principal, {
+          scope,
+          changeSetId: change.id,
+          idempotencyKey: `${idempotencyKey}_ledger_${index + 1}`,
+          owner: { kind: "historical_import", id: run.id },
+          input: { version: 1, planDigest: change.planDigest, approvalId: binding.approvalId },
+        });
+
+        const item = {
+          ordinal: run.nextOrdinal + index,
+          sourceReference:
+            partition?.vouchers[run.nextOrdinal + index - 1]?.scopedIdentity ??
+            voucher.sourceReference,
+          sourceDigest: yield* digest(voucher),
+          ledgerReceipt: receipt,
+        };
+
+        const approval = (yield* Ledger.readApproval(tx, scope.bookId, binding.approvalId))[0];
+
+        if (!approval) return yield* failure("InternalError");
+
+        yield* recordDecision(tx, {
+          bookId: scope.bookId,
+          actorId: approval.actorId,
+          kind: "historical_voucher",
+          id: change.id,
+          subject: {
+            kind: "historical_voucher",
+            runId: run.id,
+            sourceOrdinal,
+            sourceDigest: item.sourceDigest,
+          },
+          selected: yield* toJsonObject({
+            sourceReference: item.sourceReference,
+            changeSetId: change.id,
+            planDigest: change.planDigest,
+            approvalId: binding.approvalId,
+            approvedBy: approval.actorId,
+            executedBy: principal.actorId,
+            ledgerReceipt: receipt,
+            sourceVoucher: voucher,
+          }),
+          forced: "historical_import",
+        });
+
+        yield* Db.insertPosting(tx, scope.bookId, run.id, item, change.id);
+        items.push(item);
+      }
+
+      const next = run.nextOrdinal + items.length;
+
+      const { yearOrdinal, fiscalYearId } = yield* finishPartitionYear(
+        tx,
+        scope,
+        run,
+        partition,
+        next,
+        plan.voucherCount,
+      );
+
+      const updated: Db.RunRow = {
+        ...run,
+        fiscalYearId,
+        yearOrdinal,
+        nextOrdinal: next,
+        status: next > plan.voucherCount ? "posted" : "running",
+        leaseUntil: lease(yield* isoNow(tx)),
+      };
+
+      yield* Db.updateRun(tx, scope.bookId, updated);
+      const result = yield* decode(Historical.Chunk, { ...updated, items });
+
+      return result;
+    }),
   );
-
-  if (request.previous) return request.previous;
-  const run = yield* readRun(tx, scope, id);
-  yield* checkCursor(tx, run, { ...input, ordinal: input.firstOrdinal });
-  const { plan, vouchers } = yield* readSource(tx, scope, run.sourceRunId);
-
-  const onboardingQualified =
-    (yield* OnboardingDb.readQualifiedPlan(tx, scope.bookId, plan.id, plan.digest)).length > 0;
-
-  if (onboardingQualified) yield* requireAcceptedOnboardingOpening(tx, scope, plan.id, run.id);
-
-  if (
-    input.items.length < 1 ||
-    input.items.length > 20 ||
-    run.nextOrdinal + input.items.length - 1 > plan.voucherCount
-  )
-    return yield* failure("InvalidJournal");
-
-  const partition = run.partitionId ? yield* readPartition(tx, scope, run.partitionId) : undefined;
-
-  if (
-    partition &&
-    partition.vouchers
-      .slice(run.nextOrdinal - 1, run.nextOrdinal - 1 + input.items.length)
-      .some((row) => row.sourceYearOrdinal !== (run.yearOrdinal ?? 0))
-  )
-    return yield* failure("InvalidJournal");
-  const items: Array<(typeof Historical.Run.Type.items)[number]> = [];
-
-  for (const [index, binding] of input.items.entries()) {
-    const sourceOrdinal =
-      partition?.vouchers[run.nextOrdinal + index - 1]?.ordinal ?? run.nextOrdinal + index;
-
-    const voucher = vouchers.find((v) => v.ordinal === sourceOrdinal);
-    const row = (yield* Ledger.readPlan(tx, scope.bookId, binding.changeSetId))[0];
-
-    if (!voucher || !row) return yield* failure("StaleDependency");
-    const change = yield* decode(Accounting.ChangeSet, row.plan);
-
-    if (change.planDigest !== binding.planDigest) return yield* failure("StaleDependency");
-    const expected = yield* linesFor(plan, voucher, partition);
-    yield* requireSourceJournal(change, run, voucher, expected);
-
-    if (onboardingQualified) {
-      const preparers = yield* OnboardingDb.readProposalPreparers(tx, scope.bookId, change.id);
-      const approval = (yield* Ledger.readApproval(tx, scope.bookId, binding.approvalId))[0];
-
-      if (preparers.length !== 1 || !approval || preparers[0]?.actorId === approval.actorId)
-        return yield* failure("ApprovalRequired");
-    }
-
-    const receipt = yield* executeChangeInTransaction(tx, principal, {
-      scope,
-      changeSetId: change.id,
-      idempotencyKey: `${idempotencyKey}_ledger_${index + 1}`,
-      owner: { kind: "historical_import", id: run.id },
-      input: { version: 1, planDigest: change.planDigest, approvalId: binding.approvalId },
-    });
-
-    const item = {
-      ordinal: run.nextOrdinal + index,
-      sourceReference:
-        partition?.vouchers[run.nextOrdinal + index - 1]?.scopedIdentity ?? voucher.sourceReference,
-      sourceDigest: yield* digest(voucher),
-      ledgerReceipt: receipt,
-    };
-
-    const approval = (yield* Ledger.readApproval(tx, scope.bookId, binding.approvalId))[0];
-
-    if (!approval) return yield* failure("InternalError");
-
-    yield* recordDecision(tx, {
-      bookId: scope.bookId,
-      actorId: approval.actorId,
-      kind: "historical_voucher",
-      id: change.id,
-      subject: {
-        kind: "historical_voucher",
-        runId: run.id,
-        sourceOrdinal,
-        sourceDigest: item.sourceDigest,
-      },
-      selected: yield* toJsonObject({
-        sourceReference: item.sourceReference,
-        changeSetId: change.id,
-        planDigest: change.planDigest,
-        approvalId: binding.approvalId,
-        approvedBy: approval.actorId,
-        executedBy: principal.actorId,
-        ledgerReceipt: receipt,
-        sourceVoucher: voucher,
-      }),
-      forced: "historical_import",
-    });
-
-    yield* Db.insertPosting(tx, scope.bookId, run.id, item, change.id);
-    items.push(item);
-  }
-
-  const next = run.nextOrdinal + items.length;
-
-  const { yearOrdinal, fiscalYearId } = yield* finishPartitionYear(
-    tx,
-    scope,
-    run,
-    partition,
-    next,
-    plan.voucherCount,
-  );
-
-  const updated: Db.RunRow = {
-    ...run,
-    fiscalYearId,
-    yearOrdinal,
-    nextOrdinal: next,
-    status: next > plan.voucherCount ? "posted" : "running",
-    leaseUntil: lease(yield* isoNow(tx)),
-  };
-
-  yield* Db.updateRun(tx, scope.bookId, updated);
-  const result = yield* decode(Historical.Chunk, { ...updated, items });
-  yield* saveCommand(
-    tx,
-    scope,
-    idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    result,
-  );
-
-  return result;
 });
 
 export const advanceFinancialRun = Effect.fn("historical.advanceFinancialRun")(function* (
@@ -832,43 +820,37 @@ export const reclaimFinancialRun = Effect.fn("historical.reclaimFinancialRun")(f
     function* (tx, principal) {
       const operation = "reclaim_sie_financial_run";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { runId: command.id, action: command.action },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { runId: command.id, action: command.action },
+        },
         Historical.Fence,
+        Effect.gen(function* () {
+          const run = yield* readRun(tx, command.scope, command.id);
+
+          if (run.status === "posted") return yield* failure("InvalidJournal");
+
+          if (BigInt(run.fence) >= 9223372036854775807n)
+            return yield* failure("UnsupportedProfile");
+
+          const updated: Db.RunRow = {
+            ...run,
+            status: command.action === "pause" ? "paused" : "running",
+            fence: (BigInt(run.fence) + 1n).toString(),
+            leaseUntil: lease(yield* isoNow(tx)),
+          };
+
+          yield* Db.updateRun(tx, command.scope.bookId, updated);
+          const result = yield* decode(Historical.Fence, updated);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const run = yield* readRun(tx, command.scope, command.id);
-
-      if (run.status === "posted") return yield* failure("InvalidJournal");
-
-      if (BigInt(run.fence) >= 9223372036854775807n) return yield* failure("UnsupportedProfile");
-
-      const updated: Db.RunRow = {
-        ...run,
-        status: command.action === "pause" ? "paused" : "running",
-        fence: (BigInt(run.fence) + 1n).toString(),
-        leaseUntil: lease(yield* isoNow(tx)),
-      };
-
-      yield* Db.updateRun(tx, command.scope.bookId, updated);
-      const result = yield* decode(Historical.Fence, updated);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

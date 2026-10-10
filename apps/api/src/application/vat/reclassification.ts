@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import { admitPosting } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -20,7 +21,8 @@ import {
 } from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { digestBody, digestValue, readCurrentFactObservations } from "./basis";
 
 type ReclassificationInput = typeof Vat.PrepareVatControlReclassification.Type;
@@ -1201,191 +1203,183 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "prepare_vat_control_reclassification",
-          principal.actorId,
-          payload,
-          ReviewSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireReclassificationAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const basis = yield* readReclassificationBasis(
-          transaction,
-          command.scope,
-          command.input,
-          true,
-        );
-
-        const reviews = yield* VatDb.countRows(
-          transaction,
-          "vat_control_reclassification_reviews",
-          command.scope.bookId,
-        );
-
-        if ((reviews[0]?.total ?? 0) >= reviewBound) return yield* unsupported();
-
-        const ordinal = (yield* VatDb.countReviewsForObligation(
-          transaction,
-          command.scope.bookId,
-          basis.obligation.id,
-        ))[0]?.ordinal;
-
-        if (ordinal === undefined || ordinal > obligationReviewBound) return yield* unsupported();
-        const book = (yield* VatDb.readControlBook(transaction, command.scope.bookId))[0];
-
-        const period = (yield* Db.readPeriod(
-          transaction,
-          command.scope.bookId,
-          command.input.accountingPeriodId,
-        ))[0];
-
-        if (book === undefined || period === undefined) return yield* failure("NotFound");
-
-        const accounts = yield* Db.readAccounts(transaction, command.scope.bookId, [
-          command.input.outputAccountId,
-          command.input.inputAccountId,
-          command.input.settlementAccountId,
-        ]);
-
-        const eventKey = `vat_control_reclassification_${basis.obligation.id}`;
-
-        const existingEvents = yield* Db.readEvent(
-          transaction,
-          command.scope.bookId,
-          command.input.roleEvidenceId,
-          eventKey,
-        );
-
-        const eventId = existingEvents[0]?.id ?? newId("event");
-
-        if (existingEvents.length === 0) {
-          yield* Db.insertEvent(
-            transaction,
-            command.scope.bookId,
-            eventId,
-            command.input.roleEvidenceId,
-            eventKey,
-          );
-        }
-
-        const reviewId = newId("vatreview");
-        let changeSetId: string | null = null;
-        let plan: typeof Accounting.ChangeSet.Type | null = null;
-
-        if (basis.postingLines.length > 0) {
-          changeSetId = newId("change");
-
-          const action = yield* decode(ActionSchema, {
-            kind: "post_voucher",
-            correctsVoucherId: null,
-            eventId,
-            postingPurpose: "vat_control_reclassification_v1",
-            occurrenceKey: eventKey,
-            fiscalYearId: period.fiscalYearId,
-            accountingPeriodId: period.id,
-            postingDate: command.input.postingDate,
-            series: command.input.series,
-            currency: book.currency,
-            description: `VAT control reclassification ${basis.obligation.id}`,
-            rationale: command.input.rationale,
-            taxAssessment: "not_applicable",
-            vatReclassification: {
-              reviewId,
-              obligationId: basis.obligation.id,
-              draftId: command.input.draftId,
-            },
-            lines: basis.postingLines.map((line) => ({
-              lineId: String(line.lineId),
-              accountId: String(line.accountId),
-              debitMinor: String(line.debitMinor),
-              creditMinor: String(line.creditMinor),
-              description: String(line.description),
-            })),
-            evidenceRefs: [
-              {
-                evidenceId: command.input.roleEvidenceId,
-                sha256: basis.roleEvidenceSha256,
-                locator: "vat-control-account-roles",
-              },
-              {
-                evidenceId: command.input.reviewEvidenceId,
-                sha256: basis.reviewEvidenceSha256,
-                locator: "vat-control-reclassification-review",
-              },
-            ],
-          });
-
-          plan = yield* sealPlan(
-            transaction,
-            command.scope,
-            changeSetId,
-            buildDependencies(book, period, accounts),
-            [action],
-          );
-        }
-
-        const body = yield* digestBody({
-          id: reviewId,
-          scope: command.scope,
-          version: 1,
-          ordinal,
-          state: "prepared",
-          input: command.input,
-          basis,
-          postingPlan: plan,
-          requiresOperatorApproval: true,
-          assessmentEffect: "none",
-          cashTransferEffect: "none",
-          filingReady: false,
-          externalState: "not_submitted",
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "prepare_vat_control_reclassification",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          ReviewSchema,
+          Effect.gen(function* () {
+            yield* requireReclassificationAccess(transaction, true);
 
-        const review = yield* decode(ReviewSchema, body);
-        yield* VatDb.insertReview(transaction, {
-          bookId: command.scope.bookId,
-          id: reviewId,
-          obligationId: basis.obligation.id,
-          profileId: basis.profile.id,
-          draftId: command.input.draftId,
-          actorId: principal.actorId,
-          ordinal,
-          changeSetId,
-          body,
-        });
+            const basis = yield* readReclassificationBasis(
+              transaction,
+              command.scope,
+              command.input,
+              true,
+            );
 
-        if (plan !== null && changeSetId !== null) {
-          yield* Db.insertPlan(transaction, {
-            bookId: command.scope.bookId,
-            id: changeSetId,
-            plan: yield* toJsonObject(plan),
-            digest: plan.planDigest,
-            createdBy: principal.actorId,
-          });
-        }
+            const reviews = yield* VatDb.countRows(
+              transaction,
+              "vat_control_reclassification_reviews",
+              command.scope.bookId,
+            );
 
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "prepare_vat_control_reclassification",
-          principal.actorId,
-          review,
+            if ((reviews[0]?.total ?? 0) >= reviewBound) return yield* unsupported();
+
+            const ordinal = (yield* VatDb.countReviewsForObligation(
+              transaction,
+              command.scope.bookId,
+              basis.obligation.id,
+            ))[0]?.ordinal;
+
+            if (ordinal === undefined || ordinal > obligationReviewBound)
+              return yield* unsupported();
+            const book = (yield* VatDb.readControlBook(transaction, command.scope.bookId))[0];
+
+            const period = (yield* Db.readPeriod(
+              transaction,
+              command.scope.bookId,
+              command.input.accountingPeriodId,
+            ))[0];
+
+            if (book === undefined || period === undefined) return yield* failure("NotFound");
+
+            const accounts = yield* Db.readAccounts(transaction, command.scope.bookId, [
+              command.input.outputAccountId,
+              command.input.inputAccountId,
+              command.input.settlementAccountId,
+            ]);
+
+            const eventKey = `vat_control_reclassification_${basis.obligation.id}`;
+
+            const existingEvents = yield* Db.readEvent(
+              transaction,
+              command.scope.bookId,
+              command.input.roleEvidenceId,
+              eventKey,
+            );
+
+            const eventId = existingEvents[0]?.id ?? newId("event");
+
+            if (existingEvents.length === 0) {
+              yield* Db.insertEvent(
+                transaction,
+                command.scope.bookId,
+                eventId,
+                command.input.roleEvidenceId,
+                eventKey,
+              );
+            }
+
+            const reviewId = newId("vatreview");
+            let changeSetId: string | null = null;
+            let plan: typeof Accounting.ChangeSet.Type | null = null;
+
+            if (basis.postingLines.length > 0) {
+              changeSetId = newId("change");
+
+              const action = yield* decode(ActionSchema, {
+                kind: "post_voucher",
+                correctsVoucherId: null,
+                eventId,
+                postingPurpose: "vat_control_reclassification_v1",
+                occurrenceKey: eventKey,
+                fiscalYearId: period.fiscalYearId,
+                accountingPeriodId: period.id,
+                postingDate: command.input.postingDate,
+                series: command.input.series,
+                currency: book.currency,
+                description: `VAT control reclassification ${basis.obligation.id}`,
+                rationale: command.input.rationale,
+                taxAssessment: "not_applicable",
+                vatReclassification: {
+                  reviewId,
+                  obligationId: basis.obligation.id,
+                  draftId: command.input.draftId,
+                },
+                lines: basis.postingLines.map((line) => ({
+                  lineId: String(line.lineId),
+                  accountId: String(line.accountId),
+                  debitMinor: String(line.debitMinor),
+                  creditMinor: String(line.creditMinor),
+                  description: String(line.description),
+                })),
+                evidenceRefs: [
+                  {
+                    evidenceId: command.input.roleEvidenceId,
+                    sha256: basis.roleEvidenceSha256,
+                    locator: "vat-control-account-roles",
+                  },
+                  {
+                    evidenceId: command.input.reviewEvidenceId,
+                    sha256: basis.reviewEvidenceSha256,
+                    locator: "vat-control-reclassification-review",
+                  },
+                ],
+              });
+
+              plan = yield* sealPlan(
+                transaction,
+                command.scope,
+                changeSetId,
+                buildDependencies(book, period, accounts),
+                [action],
+              );
+            }
+
+            const body = yield* digestBody({
+              id: reviewId,
+              scope: command.scope,
+              version: 1,
+              ordinal,
+              state: "prepared",
+              input: command.input,
+              basis,
+              postingPlan: plan,
+              requiresOperatorApproval: true,
+              assessmentEffect: "none",
+              cashTransferEffect: "none",
+              filingReady: false,
+              externalState: "not_submitted",
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "prepare_vat_control_reclassification",
+                actorId: principal.actorId,
+              },
+            });
+
+            const review = yield* decode(ReviewSchema, body);
+            yield* VatDb.insertReview(transaction, {
+              bookId: command.scope.bookId,
+              id: reviewId,
+              obligationId: basis.obligation.id,
+              profileId: basis.profile.id,
+              draftId: command.input.draftId,
+              actorId: principal.actorId,
+              ordinal,
+              changeSetId,
+              body,
+            });
+
+            if (plan !== null && changeSetId !== null) {
+              yield* Db.insertPlan(transaction, {
+                bookId: command.scope.bookId,
+                id: changeSetId,
+                plan: yield* toJsonObject(plan),
+                digest: plan.planDigest,
+                createdBy: principal.actorId,
+              });
+            }
+
+            return review;
+          }),
         );
-
-        return review;
       }),
     "update",
   );
@@ -1599,130 +1593,123 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "approve_vat_control_reclassification",
-          principal.actorId,
-          payload,
-          DomainApprovalSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireReclassificationAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
-
-        if (row === undefined) return yield* failure("NotFound");
-        const review = yield* decode(ReviewSchema, row.body);
-
-        if (review.digest !== command.input.expectedReviewDigest) {
-          return yield* failure("StaleDependency");
-        }
-
-        const retained = yield* VatDb.countApprovalsForReview(
-          transaction,
-          command.scope.bookId,
-          review.id,
-        );
-
-        if ((retained[0]?.total ?? 0) >= approvalBound) return yield* unsupported();
-
-        const current = yield* readReclassificationBasis(
-          transaction,
-          command.scope,
-          review.input,
-          false,
-        );
-
-        if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
-
-        const { plan } = yield* requirePlanCurrent(
-          transaction,
-          command.scope,
-          review,
-          row.changeSetId,
-        );
-
-        let kernelApproval: typeof Accounting.Approval.Type | null = null;
-
-        if (plan !== null) {
-          if (
-            (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length >
-            0
-          ) {
-            return yield* failure("AlreadyPosted");
-          }
-
-          const now = yield* Db.readDatabaseTime(transaction);
-
-          const stored = (yield* Db.insertApproval(transaction, {
-            bookId: command.scope.bookId,
-            id: newId("approval"),
-            changeSetId: plan.id,
-            digest: plan.planDigest,
-            actorId: principal.actorId,
-            expiresAt: new Date(Date.parse(now.now) + approvalLifetimeMs).toISOString(),
-            authorityBasis: yield* collectPostingPrincipalBasis(
-              transaction,
-              command.scope,
-              principal,
-              "approve_change",
-              "informational",
-            ),
-          }))[0];
-
-          if (stored === undefined) return yield* failure("InternalError");
-          kernelApproval = yield* decode(KernelApprovalSchema, {
-            id: stored.id,
-            changeSetId: stored.changeSetId,
-            planDigest: stored.digest,
-            actorId: stored.actorId,
-            expiresAt: stored.expiresAt,
-          });
-        }
-
-        const createdAt = yield* isoNow(transaction);
-
-        const body = yield* digestBody({
-          id: newId("vatapproval"),
-          scope: command.scope,
-          version: 1,
-          reviewId: review.id,
-          reviewDigest: review.digest,
-          actorId: principal.actorId,
-          expiresAt: new Date(Date.parse(createdAt) + approvalLifetimeMs).toISOString(),
-          kernelApproval,
-          createdAt,
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "approve_vat_control_reclassification",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          DomainApprovalSchema,
+          Effect.gen(function* () {
+            yield* requireReclassificationAccess(transaction, true);
 
-        const approval = yield* decode(DomainApprovalSchema, body);
-        yield* VatDb.insertDomainApproval(transaction, command.scope.bookId, {
-          id: approval.id,
-          reviewId: review.id,
-          actorId: principal.actorId,
-          reviewDigest: review.digest,
-          kernelApprovalId: kernelApproval?.id ?? null,
-          expiresAt: approval.expiresAt,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "approve_vat_control_reclassification",
-          principal.actorId,
-          approval,
+            const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
+
+            if (row === undefined) return yield* failure("NotFound");
+            const review = yield* decode(ReviewSchema, row.body);
+
+            if (review.digest !== command.input.expectedReviewDigest) {
+              return yield* failure("StaleDependency");
+            }
+
+            const retained = yield* VatDb.countApprovalsForReview(
+              transaction,
+              command.scope.bookId,
+              review.id,
+            );
+
+            if ((retained[0]?.total ?? 0) >= approvalBound) return yield* unsupported();
+
+            const current = yield* readReclassificationBasis(
+              transaction,
+              command.scope,
+              review.input,
+              false,
+            );
+
+            if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
+
+            const { plan } = yield* requirePlanCurrent(
+              transaction,
+              command.scope,
+              review,
+              row.changeSetId,
+            );
+
+            let kernelApproval: typeof Accounting.Approval.Type | null = null;
+
+            if (plan !== null) {
+              if (
+                (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id))
+                  .length > 0
+              ) {
+                return yield* failure("AlreadyPosted");
+              }
+
+              const now = yield* Db.readDatabaseTime(transaction);
+
+              const stored = (yield* Db.insertApproval(transaction, {
+                bookId: command.scope.bookId,
+                id: newId("approval"),
+                changeSetId: plan.id,
+                digest: plan.planDigest,
+                actorId: principal.actorId,
+                expiresAt: new Date(Date.parse(now.now) + approvalLifetimeMs).toISOString(),
+                authorityBasis: yield* collectPostingPrincipalBasis(
+                  transaction,
+                  command.scope,
+                  principal,
+                  "approve_change",
+                  "informational",
+                ),
+              }))[0];
+
+              if (stored === undefined) return yield* failure("InternalError");
+              kernelApproval = yield* decode(KernelApprovalSchema, {
+                id: stored.id,
+                changeSetId: stored.changeSetId,
+                planDigest: stored.digest,
+                actorId: stored.actorId,
+                expiresAt: stored.expiresAt,
+              });
+            }
+
+            const createdAt = yield* isoNow(transaction);
+
+            const body = yield* digestBody({
+              id: newId("vatapproval"),
+              scope: command.scope,
+              version: 1,
+              reviewId: review.id,
+              reviewDigest: review.digest,
+              actorId: principal.actorId,
+              expiresAt: new Date(Date.parse(createdAt) + approvalLifetimeMs).toISOString(),
+              kernelApproval,
+              createdAt,
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "approve_vat_control_reclassification",
+                actorId: principal.actorId,
+              },
+            });
+
+            const approval = yield* decode(DomainApprovalSchema, body);
+            yield* VatDb.insertDomainApproval(transaction, command.scope.bookId, {
+              id: approval.id,
+              reviewId: review.id,
+              actorId: principal.actorId,
+              reviewDigest: review.digest,
+              kernelApprovalId: kernelApproval?.id ?? null,
+              expiresAt: approval.expiresAt,
+              body,
+            });
+
+            return approval;
+          }),
         );
-
-        return approval;
       }),
     "update",
   );
@@ -1954,165 +1941,158 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "execute_vat_control_reclassification",
-          principal.actorId,
-          payload,
-          EffectSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireReclassificationAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
-
-        if (row === undefined) return yield* failure("NotFound");
-        const review = yield* decode(ReviewSchema, row.body);
-
-        if (review.digest !== command.input.expectedReviewDigest) {
-          return yield* failure("StaleDependency");
-        }
-
-        if (
-          (yield* VatDb.readEffectByObligation(
-            transaction,
-            command.scope.bookId,
-            row.obligationId,
-          ))[0] !== undefined
-        ) {
-          return yield* failure("AlreadyPosted");
-        }
-
-        const approval = yield* readCurrentApproval(
-          transaction,
-          command.scope,
-          command.input.approvalId,
-          review,
-        );
-
-        const current = yield* readReclassificationBasis(
-          transaction,
-          command.scope,
-          review.input,
-          false,
-        );
-
-        if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
-
-        const inventory = yield* VatDb.countRows(
-          transaction,
-          "vat_control_reclassification_contributions",
-          command.scope.bookId,
-        );
-
-        if (
-          (inventory[0]?.total ?? 0) + review.basis.contributions.length >
-          contributionInventoryBound
-        ) {
-          return yield* unsupported();
-        }
-
-        const { plan, action, changeSetId } = yield* requirePlanCurrent(
-          transaction,
-          command.scope,
-          review,
-          row.changeSetId,
-        );
-
-        const effectId = newId("vateffect");
-        const createdAt = yield* isoNow(transaction);
-        let postingReceipt: typeof Accounting.ExecutionReceipt.Type | null = null;
-
-        if (plan !== null && action !== null) {
-          if (approval.kernelApprovalId === null) return yield* failure("ApprovalRequired");
-          postingReceipt = yield* commitReclassificationVoucher(
-            transaction,
-            command.scope,
-            principal,
-            plan,
-            action,
-            approval.kernelApprovalId,
-          );
-        }
-
-        const body = yield* digestBody({
-          id: effectId,
-          scope: command.scope,
-          version: 1,
-          obligationId: review.basis.obligation.id,
-          draftId: review.input.draftId,
-          reviewId: review.id,
-          reviewDigest: review.digest,
-          approvalId: approval.id,
-          outcome: postingReceipt === null ? "no_effect" : "posted",
-          amounts: review.basis.amounts,
-          changeSetId: postingReceipt === null ? null : (changeSetId ?? null),
-          voucherId: postingReceipt === null ? null : postingReceipt.voucherId,
-          postingReceipt,
-          postingDate: review.input.postingDate,
-          assessmentEffect: "none",
-          cashTransferEffect: "none",
-          filingReady: false,
-          externalState: "not_submitted",
-          createdAt,
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "execute_vat_control_reclassification",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          EffectSchema,
+          Effect.gen(function* () {
+            yield* requireReclassificationAccess(transaction, true);
 
-        const effect = yield* decode(EffectSchema, body);
-        yield* VatDb.insertEffect(transaction, {
-          bookId: command.scope.bookId,
-          id: effectId,
-          obligationId: effect.obligationId,
-          reviewId: effect.reviewId,
-          approvalId: effect.approvalId,
-          draftId: effect.draftId,
-          outcome: effect.outcome,
-          changeSetId: effect.changeSetId,
-          voucherId: effect.voucherId,
-          postingReceiptId: postingReceipt?.id ?? null,
-          postingDate: review.input.postingDate,
-          body,
-        });
+            const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
 
-        if (postingReceipt !== null) {
-          const contributions = yield* Effect.forEach(review.basis.contributions, (contribution) =>
-            toJsonObject(contribution),
-          );
+            if (row === undefined) return yield* failure("NotFound");
+            const review = yield* decode(ReviewSchema, row.body);
 
-          yield* VatDb.insertContributions(
-            transaction,
-            contributions.map((contribution, index) => ({
+            if (review.digest !== command.input.expectedReviewDigest) {
+              return yield* failure("StaleDependency");
+            }
+
+            if (
+              (yield* VatDb.readEffectByObligation(
+                transaction,
+                command.scope.bookId,
+                row.obligationId,
+              ))[0] !== undefined
+            ) {
+              return yield* failure("AlreadyPosted");
+            }
+
+            const approval = yield* readCurrentApproval(
+              transaction,
+              command.scope,
+              command.input.approvalId,
+              review,
+            );
+
+            const current = yield* readReclassificationBasis(
+              transaction,
+              command.scope,
+              review.input,
+              false,
+            );
+
+            if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
+
+            const inventory = yield* VatDb.countRows(
+              transaction,
+              "vat_control_reclassification_contributions",
+              command.scope.bookId,
+            );
+
+            if (
+              (inventory[0]?.total ?? 0) + review.basis.contributions.length >
+              contributionInventoryBound
+            ) {
+              return yield* unsupported();
+            }
+
+            const { plan, action, changeSetId } = yield* requirePlanCurrent(
+              transaction,
+              command.scope,
+              review,
+              row.changeSetId,
+            );
+
+            const effectId = newId("vateffect");
+            const createdAt = yield* isoNow(transaction);
+            let postingReceipt: typeof Accounting.ExecutionReceipt.Type | null = null;
+
+            if (plan !== null && action !== null) {
+              if (approval.kernelApprovalId === null) return yield* failure("ApprovalRequired");
+              postingReceipt = yield* commitReclassificationVoucher(
+                transaction,
+                command.scope,
+                principal,
+                plan,
+                action,
+                approval.kernelApprovalId,
+              );
+            }
+
+            const body = yield* digestBody({
+              id: effectId,
+              scope: command.scope,
+              version: 1,
+              obligationId: review.basis.obligation.id,
+              draftId: review.input.draftId,
+              reviewId: review.id,
+              reviewDigest: review.digest,
+              approvalId: approval.id,
+              outcome: postingReceipt === null ? "no_effect" : "posted",
+              amounts: review.basis.amounts,
+              changeSetId: postingReceipt === null ? null : (changeSetId ?? null),
+              voucherId: postingReceipt === null ? null : postingReceipt.voucherId,
+              postingReceipt,
+              postingDate: review.input.postingDate,
+              assessmentEffect: "none",
+              cashTransferEffect: "none",
+              filingReady: false,
+              externalState: "not_submitted",
+              createdAt,
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "execute_vat_control_reclassification",
+                actorId: principal.actorId,
+              },
+            });
+
+            const effect = yield* decode(EffectSchema, body);
+            yield* VatDb.insertEffect(transaction, {
               bookId: command.scope.bookId,
-              id: newId("vatcontribution"),
-              effectId,
-              ordinal: index + 1,
-              factId: review.basis.contributions[index]?.factId ?? "",
-              factRevisionId: review.basis.contributions[index]?.factRevisionId ?? "",
-              voucherId: review.basis.contributions[index]?.voucherId ?? "",
-              lineId: review.basis.contributions[index]?.lineId ?? "",
-              body: contribution,
-            })),
-          );
-        }
+              id: effectId,
+              obligationId: effect.obligationId,
+              reviewId: effect.reviewId,
+              approvalId: effect.approvalId,
+              draftId: effect.draftId,
+              outcome: effect.outcome,
+              changeSetId: effect.changeSetId,
+              voucherId: effect.voucherId,
+              postingReceiptId: postingReceipt?.id ?? null,
+              postingDate: review.input.postingDate,
+              body,
+            });
 
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "execute_vat_control_reclassification",
-          principal.actorId,
-          effect,
+            if (postingReceipt !== null) {
+              const contributions = yield* Effect.forEach(
+                review.basis.contributions,
+                (contribution) => toJsonObject(contribution),
+              );
+
+              yield* VatDb.insertContributions(
+                transaction,
+                contributions.map((contribution, index) => ({
+                  bookId: command.scope.bookId,
+                  id: newId("vatcontribution"),
+                  effectId,
+                  ordinal: index + 1,
+                  factId: review.basis.contributions[index]?.factId ?? "",
+                  factRevisionId: review.basis.contributions[index]?.factRevisionId ?? "",
+                  voucherId: review.basis.contributions[index]?.voucherId ?? "",
+                  lineId: review.basis.contributions[index]?.lineId ?? "",
+                  body: contribution,
+                })),
+              );
+            }
+
+            return effect;
+          }),
         );
-
-        return effect;
       }),
     "update",
   );

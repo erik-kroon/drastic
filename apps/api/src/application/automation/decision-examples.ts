@@ -11,7 +11,9 @@ import * as Result from "effect/Result";
 import * as Db from "../../db/decision-examples";
 import { withBook, decode, toJsonObject } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import * as Shared from "../purchases/shared";
 
 const versions = {

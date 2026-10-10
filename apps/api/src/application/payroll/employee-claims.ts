@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Claims from "@open-erp/contracts/employee-claims";
 import * as Inputs from "@open-erp/contracts/payroll-inputs";
 import * as Effect from "effect/Effect";
@@ -6,12 +7,14 @@ import * as Db from "../../db/payroll/employee-claims";
 import * as InputDb from "../../db/payroll/inputs";
 import * as Foundation from "../../db/payroll-foundation";
 import * as Ledger from "../../db/posting";
-import { readOnboardingResponsibility } from "../onboarding-policy";
+import { readBookResponsibility } from "../book-responsibility";
 import type { Transaction } from "../../db/transaction";
 import type { VerifiedPrincipal } from "../identity";
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { approveChangeInTransaction, newId, replay, saveCommand } from "../posting";
+import { approveChangeInTransaction } from "../posting";
+import { newId } from "../identifiers";
+
 import {
   checkedReview,
   executeInputInTransaction,
@@ -121,34 +124,26 @@ export const submitEmployeeClaim = Effect.fn("claims.submit")(function* (
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
       const operation = "submit_employee_claim";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
+        },
         Claims.EmployeeClaimRevision,
+        Effect.gen(function* () {
+          if ((yield* Db.claimKey(tx, command.scope.bookId, command.input.claimKey)).length)
+            return yield* failure("AlreadyPosted");
+          const claimId = newId("employee_claim");
+          yield* Db.insertClaim(tx, command.scope.bookId, claimId, command.input);
+          const result = yield* revisionRecord(tx, principal, command, claimId, null);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      if ((yield* Db.claimKey(tx, command.scope.bookId, command.input.claimKey)).length)
-        return yield* failure("AlreadyPosted");
-      const claimId = newId("employee_claim");
-      yield* Db.insertClaim(tx, command.scope.bookId, claimId, command.input);
-      const result = yield* revisionRecord(tx, principal, command, claimId, null);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -166,59 +161,55 @@ export const reviseEmployeeClaim = Effect.fn("claims.revise")(function* (
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
       const operation = "revise_employee_claim";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { claimId: command.claimId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { claimId: command.claimId, input: command.input },
+        },
         Claims.EmployeeClaimRevision,
+        Effect.gen(function* () {
+          const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
+
+          if (current.digest !== command.input.expectedRevisionDigest)
+            return yield* failure("StaleDependency");
+
+          if (
+            (yield* Db.records(
+              tx,
+              command.scope.bookId,
+              "employee_claim_recognitions",
+              command.claimId,
+            )).length
+          )
+            return yield* failure("AlreadyPosted");
+
+          if (
+            current.input.claimKey !== command.input.claimKey ||
+            current.input.employeeId !== command.input.employeeId ||
+            current.input.month !== command.input.month
+          )
+            return yield* failure("UnsupportedProfile");
+
+          const input = yield* decode(
+            Claims.SubmitEmployeeClaim,
+            yield* toJsonObject(command.input),
+          );
+
+          const result = yield* revisionRecord(
+            tx,
+            principal,
+            { ...command, input },
+            command.claimId,
+            current,
+          );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
-
-      if (current.digest !== command.input.expectedRevisionDigest)
-        return yield* failure("StaleDependency");
-
-      if (
-        (yield* Db.records(
-          tx,
-          command.scope.bookId,
-          "employee_claim_recognitions",
-          command.claimId,
-        )).length
-      )
-        return yield* failure("AlreadyPosted");
-
-      if (
-        current.input.claimKey !== command.input.claimKey ||
-        current.input.employeeId !== command.input.employeeId ||
-        current.input.month !== command.input.month
-      )
-        return yield* failure("UnsupportedProfile");
-      const input = yield* decode(Claims.SubmitEmployeeClaim, yield* toJsonObject(command.input));
-
-      const result = yield* revisionRecord(
-        tx,
-        principal,
-        { ...command, input },
-        command.claimId,
-        current,
-      );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -236,126 +227,120 @@ export const reviewEmployeeClaim = Effect.fn("claims.review")(function* (
       yield* Basis.requireClaimsAccess(tx, command.scope, principal.actorId, true);
       const operation = "review_employee_claim";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { claimId: command.claimId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { claimId: command.claimId, input: command.input },
+        },
         Claims.EmployeeClaimReview,
-      );
+        Effect.gen(function* () {
+          const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
 
-      if (request.previous) return request.previous;
-      const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
+          if (current.digest !== command.input.revisionDigest)
+            return yield* failure("StaleDependency");
 
-      if (current.digest !== command.input.revisionDigest) return yield* failure("StaleDependency");
+          if (
+            (yield* Db.records(
+              tx,
+              command.scope.bookId,
+              "employee_claim_recognitions",
+              command.claimId,
+            )).length
+          )
+            return yield* failure("AlreadyPosted");
 
-      if (
-        (yield* Db.records(
-          tx,
-          command.scope.bookId,
-          "employee_claim_recognitions",
-          command.claimId,
-        )).length
-      )
-        return yield* failure("AlreadyPosted");
+          if (
+            (yield* Basis.employeeRevision(
+              tx,
+              command.scope,
+              current.input.employeeId,
+              current.input.month,
+            )).id !== current.employeeRevisionId
+          )
+            return yield* failure("StaleDependency");
 
-      if (
-        (yield* Basis.employeeRevision(
-          tx,
-          command.scope,
-          current.input.employeeId,
-          current.input.month,
-        )).id !== current.employeeRevisionId
-      )
-        return yield* failure("StaleDependency");
+          const items = yield* Basis.captureClaimSources(
+            tx,
+            command.scope,
+            current.input,
+            current.claimId,
+          );
 
-      const items = yield* Basis.captureClaimSources(
-        tx,
-        command.scope,
-        current.input,
-        current.claimId,
-      );
+          if (!equalJson(items, current.items)) return yield* failure("StaleDependency");
+          const id = newId("claim_review");
 
-      if (!equalJson(items, current.items)) return yield* failure("StaleDependency");
-      const id = newId("claim_review");
+          const input = {
+            ...(yield* Basis.claimInput(tx, command.scope, current, command.input, items)),
+            economicKey: `claim:${command.claimId}:${id}`,
+          };
 
-      const input = {
-        ...(yield* Basis.claimInput(tx, command.scope, current, command.input, items)),
-        economicKey: `claim:${command.claimId}:${id}`,
-      };
+          const preparedInput = yield* Basis.sealClaimRecord(
+            tx,
+            command.scope,
+            principal.actorId,
+            command.idempotencyKey,
+            "submit_payroll_input",
+            Inputs.PayrollInput,
+            yield* toJsonObject({ id: newId("payroll_input"), input }),
+          );
 
-      const preparedInput = yield* Basis.sealClaimRecord(
-        tx,
-        command.scope,
-        principal.actorId,
-        command.idempotencyKey,
-        "submit_payroll_input",
-        Inputs.PayrollInput,
-        yield* toJsonObject({ id: newId("payroll_input"), input }),
-      );
+          yield* InputDb.insertInput(tx, preparedInput);
 
-      yield* InputDb.insertInput(tx, preparedInput);
+          const preparedRecognition = yield* prepareInputReviewInTransaction(
+            tx,
+            command.scope,
+            principal,
+            command.idempotencyKey,
+            preparedInput,
+            null,
+          );
 
-      const preparedRecognition = yield* prepareInputReviewInTransaction(
-        tx,
-        command.scope,
-        principal,
-        command.idempotencyKey,
-        preparedInput,
-        null,
-      );
+          const qualified = items.find((item) => item.outcome === "qualified");
+          const contribution = qualified?.assessment?.contribution;
 
-      const qualified = items.find((item) => item.outcome === "qualified");
-      const contribution = qualified?.assessment?.contribution;
+          if (
+            !contribution ||
+            contribution.grossMinor !== preparedRecognition.outputs.reimbursementMinor
+          )
+            return yield* failure("StaleDependency");
+          const direct = BigInt(command.input.directMinor);
+          const liability = BigInt(contribution.grossMinor);
 
-      if (
-        !contribution ||
-        contribution.grossMinor !== preparedRecognition.outputs.reimbursementMinor
-      )
-        return yield* failure("StaleDependency");
-      const direct = BigInt(command.input.directMinor);
-      const liability = BigInt(contribution.grossMinor);
+          if (direct < 0n || direct > liability) return yield* failure("InvalidJournal");
 
-      if (direct < 0n || direct > liability) return yield* failure("InvalidJournal");
+          const result = yield* Basis.sealClaimRecord(
+            tx,
+            command.scope,
+            principal.actorId,
+            command.idempotencyKey,
+            operation,
+            Claims.EmployeeClaimReview,
+            yield* toJsonObject({
+              id,
+              claimId: command.claimId,
+              revisionId: current.id,
+              revisionDigest: current.digest,
+              input: command.input,
+              items,
+              expenseMinor: contribution.expenseMinor,
+              deductibleVatMinor: contribution.deductibleMinor,
+              liabilityMinor: contribution.grossMinor,
+              directMinor: direct.toString(),
+              payrollMinor: (liability - direct).toString(),
+              preparedInput,
+              preparedRecognition,
+            }),
+          );
 
-      const result = yield* Basis.sealClaimRecord(
-        tx,
-        command.scope,
-        principal.actorId,
-        command.idempotencyKey,
-        operation,
-        Claims.EmployeeClaimReview,
-        yield* toJsonObject({
-          id,
-          claimId: command.claimId,
-          revisionId: current.id,
-          revisionDigest: current.digest,
-          input: command.input,
-          items,
-          expenseMinor: contribution.expenseMinor,
-          deductibleVatMinor: contribution.deductibleMinor,
-          liabilityMinor: contribution.grossMinor,
-          directMinor: direct.toString(),
-          payrollMinor: (liability - direct).toString(),
-          preparedInput,
-          preparedRecognition,
+          yield* Basis.retainClaimRecord(tx, "employee_claim_reviews", result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
         }),
       );
-
-      yield* Basis.retainClaimRecord(tx, "employee_claim_reviews", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -374,162 +359,159 @@ export const approveEmployeeClaim = Effect.fn("claims.approve")(function* (
       yield* authorize(principal, "approve_employee_claim");
       const operation = "approve_employee_claim";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId: command.reviewId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId: command.reviewId, input: command.input },
+        },
         Claims.EmployeeClaimRecognition,
-      );
+        Effect.gen(function* () {
+          const review = yield* Basis.readClaimRecord(
+            tx,
+            command.scope,
+            "employee_claim_reviews",
+            command.reviewId,
+            Claims.EmployeeClaimReview,
+          );
 
-      if (request.previous) return request.previous;
+          if (review.digest !== command.input.reviewDigest)
+            return yield* failure("StaleDependency");
 
-      const review = yield* Basis.readClaimRecord(
-        tx,
-        command.scope,
-        "employee_claim_reviews",
-        command.reviewId,
-        Claims.EmployeeClaimReview,
-      );
+          if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
 
-      if (review.digest !== command.input.reviewDigest) return yield* failure("StaleDependency");
+          if (
+            (yield* Db.records(
+              tx,
+              command.scope.bookId,
+              "employee_claim_recognitions",
+              review.claimId,
+            )).length
+          )
+            return yield* failure("AlreadyPosted");
 
-      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+          const current = yield* Basis.currentClaimRevision(tx, command.scope, review.claimId);
 
-      if (
-        (yield* Db.records(tx, command.scope.bookId, "employee_claim_recognitions", review.claimId))
-          .length
-      )
-        return yield* failure("AlreadyPosted");
+          const reviews = yield* Basis.claimHistory(
+            tx,
+            command.scope,
+            review.claimId,
+            "employee_claim_reviews",
+            Claims.EmployeeClaimReview,
+          );
 
-      const current = yield* Basis.currentClaimRevision(tx, command.scope, review.claimId);
+          const completions = yield* Basis.claimHistory(
+            tx,
+            command.scope,
+            review.claimId,
+            "employee_claim_completion_requests",
+            Claims.ClaimCompletionRequest,
+          );
 
-      const reviews = yield* Basis.claimHistory(
-        tx,
-        command.scope,
-        review.claimId,
-        "employee_claim_reviews",
-        Claims.EmployeeClaimReview,
-      );
+          if (
+            reviews.at(-1)?.id !== review.id ||
+            (yield* currentReviewState(tx, command.scope, current, review, completions)).length
+          )
+            return yield* failure("StaleDependency");
 
-      const completions = yield* Basis.claimHistory(
-        tx,
-        command.scope,
-        review.claimId,
-        "employee_claim_completion_requests",
-        Claims.ClaimCompletionRequest,
-      );
+          const canonical = yield* checkedReview(
+            tx,
+            command.scope,
+            review.preparedRecognition.id,
+            review.preparedRecognition.digest,
+            true,
+            review.id,
+          );
 
-      if (
-        reviews.at(-1)?.id !== review.id ||
-        (yield* currentReviewState(tx, command.scope, current, review, completions)).length
-      )
-        return yield* failure("StaleDependency");
+          const owner = { kind: "employee_claim" as const, id: review.id };
 
-      const canonical = yield* checkedReview(
-        tx,
-        command.scope,
-        review.preparedRecognition.id,
-        review.preparedRecognition.digest,
-        true,
-        review.id,
-      );
+          const approval = yield* approveChangeInTransaction(tx, principal, {
+            scope: command.scope,
+            changeSetId: canonical.postingPlan.id,
+            idempotencyKey: `${review.id}_approve`,
+            owner,
+            input: { version: 1, planDigest: canonical.postingPlan.planDigest },
+          });
 
-      const owner = { kind: "employee_claim" as const, id: review.id };
+          const inputExecution = yield* executeInputInTransaction(
+            tx,
+            command.scope,
+            principal,
+            canonical,
+            approval.id,
+            `${review.id}_execute`,
+            owner,
+          );
 
-      const approval = yield* approveChangeInTransaction(tx, principal, {
-        scope: command.scope,
-        changeSetId: canonical.postingPlan.id,
-        idempotencyKey: `${review.id}_approve`,
-        owner,
-        input: { version: 1, planDigest: canonical.postingPlan.planDigest },
-      });
+          const id = newId("claim_recognition");
 
-      const inputExecution = yield* executeInputInTransaction(
-        tx,
-        command.scope,
-        principal,
-        canonical,
-        approval.id,
-        `${review.id}_execute`,
-        owner,
-      );
+          const makeInstruction = function* (kind: "direct" | "payroll", amountMinor: string) {
+            if (BigInt(amountMinor) === 0n) return null;
 
-      const id = newId("claim_recognition");
+            const instruction = yield* Basis.sealClaimRecord(
+              tx,
+              command.scope,
+              principal.actorId,
+              command.idempotencyKey,
+              operation,
+              Claims.ClaimInstruction,
+              yield* toJsonObject({
+                id: newId("claim_instruction"),
+                claimId: review.claimId,
+                recognitionId: id,
+                kind,
+                parentInputId: review.preparedInput.id,
+                parentExecutionId: inputExecution.id,
+                employeeId: current.input.employeeId,
+                employeeRevisionId: current.employeeRevisionId,
+                month: current.input.month,
+                amountMinor,
+                liabilityAccountId: review.preparedInput.input.liabilityAccountId,
+                evidence: review.preparedInput.input.evidence,
+              }),
+            );
 
-      const makeInstruction = function* (kind: "direct" | "payroll", amountMinor: string) {
-        if (BigInt(amountMinor) === 0n) return null;
+            yield* Basis.retainClaimRecord(tx, "employee_claim_instructions", instruction);
 
-        const instruction = yield* Basis.sealClaimRecord(
-          tx,
-          command.scope,
-          principal.actorId,
-          command.idempotencyKey,
-          operation,
-          Claims.ClaimInstruction,
-          yield* toJsonObject({
-            id: newId("claim_instruction"),
-            claimId: review.claimId,
-            recognitionId: id,
-            kind,
-            parentInputId: review.preparedInput.id,
-            parentExecutionId: inputExecution.id,
-            employeeId: current.input.employeeId,
-            employeeRevisionId: current.employeeRevisionId,
-            month: current.input.month,
-            amountMinor,
-            liabilityAccountId: review.preparedInput.input.liabilityAccountId,
-            evidence: review.preparedInput.input.evidence,
-          }),
-        );
+            return instruction;
+          };
 
-        yield* Basis.retainClaimRecord(tx, "employee_claim_instructions", instruction);
+          const directInstruction = yield* Effect.gen(() =>
+            makeInstruction("direct", review.directMinor),
+          );
 
-        return instruction;
-      };
+          const payrollInstruction = yield* Effect.gen(() =>
+            makeInstruction("payroll", review.payrollMinor),
+          );
 
-      const directInstruction = yield* Effect.gen(() =>
-        makeInstruction("direct", review.directMinor),
-      );
+          const result = yield* Basis.sealClaimRecord(
+            tx,
+            command.scope,
+            principal.actorId,
+            command.idempotencyKey,
+            operation,
+            Claims.EmployeeClaimRecognition,
+            yield* toJsonObject({
+              id,
+              claimId: review.claimId,
+              reviewId: review.id,
+              reviewDigest: review.digest,
+              approvalId: approval.id,
+              inputExecution,
+              postingReceipt: inputExecution.postingReceipt,
+              directInstruction,
+              payrollInstruction,
+            }),
+          );
 
-      const payrollInstruction = yield* Effect.gen(() =>
-        makeInstruction("payroll", review.payrollMinor),
-      );
+          yield* Basis.retainClaimRecord(tx, "employee_claim_recognitions", result);
 
-      const result = yield* Basis.sealClaimRecord(
-        tx,
-        command.scope,
-        principal.actorId,
-        command.idempotencyKey,
-        operation,
-        Claims.EmployeeClaimRecognition,
-        yield* toJsonObject({
-          id,
-          claimId: review.claimId,
-          reviewId: review.id,
-          reviewDigest: review.digest,
-          approvalId: approval.id,
-          inputExecution,
-          postingReceipt: inputExecution.postingReceipt,
-          directInstruction,
-          payrollInstruction,
+          return { receipt: yield* toJsonObject(result), result: result };
         }),
       );
-
-      yield* Basis.retainClaimRecord(tx, "employee_claim_recognitions", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -548,58 +530,52 @@ export const requestClaimCompletion = Effect.fn("claims.completion")(function* (
       yield* authorize(principal, "request_claim_completion");
       const operation = "request_claim_completion";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { claimId: command.claimId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { claimId: command.claimId, input: command.input },
+        },
         Claims.ClaimCompletionRequest,
-      );
+        Effect.gen(function* () {
+          const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
 
-      if (request.previous) return request.previous;
-      const current = yield* Basis.currentClaimRevision(tx, command.scope, command.claimId);
+          if (current.digest !== command.input.revisionDigest)
+            return yield* failure("StaleDependency");
 
-      if (current.digest !== command.input.revisionDigest) return yield* failure("StaleDependency");
+          if (
+            (yield* Db.records(
+              tx,
+              command.scope.bookId,
+              "employee_claim_recognitions",
+              command.claimId,
+            )).length
+          )
+            return yield* failure("AlreadyPosted");
 
-      if (
-        (yield* Db.records(
-          tx,
-          command.scope.bookId,
-          "employee_claim_recognitions",
-          command.claimId,
-        )).length
-      )
-        return yield* failure("AlreadyPosted");
+          const result = yield* Basis.sealClaimRecord(
+            tx,
+            command.scope,
+            principal.actorId,
+            command.idempotencyKey,
+            operation,
+            Claims.ClaimCompletionRequest,
+            yield* toJsonObject({
+              id: newId("claim_completion"),
+              claimId: command.claimId,
+              revisionId: current.id,
+              input: command.input,
+            }),
+          );
 
-      const result = yield* Basis.sealClaimRecord(
-        tx,
-        command.scope,
-        principal.actorId,
-        command.idempotencyKey,
-        operation,
-        Claims.ClaimCompletionRequest,
-        yield* toJsonObject({
-          id: newId("claim_completion"),
-          claimId: command.claimId,
-          revisionId: current.id,
-          input: command.input,
+          yield* Basis.retainClaimRecord(tx, "employee_claim_completion_requests", result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
         }),
       );
-
-      yield* Basis.retainClaimRecord(tx, "employee_claim_completion_requests", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -749,7 +725,7 @@ const readView = Effect.fn("claims.view")(function* (
     permits(principal, "approve_employee_claim") &&
     (yield* Ledger.readOperatorMembership(tx, scope.bookId, principal.actorId)).length === 1;
 
-  const responsibility = yield* readOnboardingResponsibility(tx, scope);
+  const responsibility = yield* readBookResponsibility(tx, scope);
 
   if (responsibility && responsibility.assignments.bookkeepingApproverId !== principal.actorId)
     reviewBlockers.push("bookkeeping_approver_required");

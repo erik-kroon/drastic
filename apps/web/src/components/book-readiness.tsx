@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -6,7 +7,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { useBusinessDate } from "@/lib/use-business-date";
 import type { Locale } from "@/paraglide/runtime";
@@ -27,9 +28,13 @@ export function BookReadiness({
   const status = useQuery({
     queryKey: [...bookKey(book), "status", today],
     queryFn: async ({ signal }) => {
-      const result = await readAccounting(`${bookPath(book)}/status`, Accounting.BookStatus, {
-        signal,
-      });
+      const result = await readAccounting(
+        (client) => client.accounting.bookStatus({ params: { ...bookScope(book) } }),
+        Accounting.BookStatus,
+        {
+          signal,
+        },
+      );
 
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Book status scope mismatch");

@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 
@@ -27,7 +29,7 @@ export function RateForm(
   const onDiscard = props.onDiscard;
   const copy = exchangeRateCopy(locale);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const save = useMutation({
     mutationFn: async (input: typeof Rates.CreateExchangeRate.Type) => {
@@ -40,7 +42,7 @@ export function RateForm(
       const result = await readAccounting(
         path,
         Rates.ExchangeRateRevision,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
 
       if (
@@ -87,7 +89,7 @@ export function RateForm(
           },
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;
@@ -229,7 +231,7 @@ export function ConversionForm(
   const onDiscard = props.onDiscard;
   const copy = exchangeRateCopy(locale);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const save = useMutation({
     mutationFn: async (input: typeof Rates.CaptureConversionReview.Type) => {
@@ -238,7 +240,7 @@ export function ConversionForm(
       const result = await readAccounting(
         path,
         Rates.ConversionReview,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (
@@ -284,7 +286,7 @@ export function ConversionForm(
           rationale: fields.get("rationale"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;

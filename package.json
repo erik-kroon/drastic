@@ -29,7 +29,6 @@
   "scripts": {
     "dev": "vp run --filter api --filter web dev",
     "build": "vp run --filter api --filter web build",
-    "alchemy:dev": "bun alchemy dev --config infra/alchemy/alchemy.run.ts",
     "alchemy:plan": "bun alchemy plan --config infra/alchemy/alchemy.run.ts",
     "alchemy:deploy": "bun alchemy deploy --config infra/alchemy/alchemy.run.ts",
     "alchemy:destroy": "bun alchemy destroy --config infra/alchemy/alchemy.run.ts",
@@ -43,7 +42,6 @@
     "format": "oxfmt --write apps/api apps/web/src infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config scripts apps/web/vite.config.ts vite.config.ts",
     "format:check": "oxfmt --check apps/api apps/web/src infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config scripts apps/web/vite.config.ts vite.config.ts",
     "staged": "vp staged",
-    "tsgo": "tsc",
     "prepare": "effect-tsgo patch --typescript",
     "test": "vp test run",
     "test:e2e": "vp test run",

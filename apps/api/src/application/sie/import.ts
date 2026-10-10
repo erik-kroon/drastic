@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { Buffer } from "node:buffer";
 import { getSourceOccurrence } from "../source-retention";
 import { parseSie } from "../sie-import-parser";
@@ -14,7 +15,9 @@ import {
   type Scope,
 } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { checkControls } from "./source-controls";
 
 type Identified = { readonly scope: Scope; readonly id: string };
@@ -104,88 +107,84 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
       const { scope, id, idempotencyKey, input } = command;
       const operation = "capture_sie_source";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { occurrenceId: id, preview: input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { occurrenceId: id, preview: input },
+        },
         Sie.SiePreview,
-      );
+        Effect.gen(function* () {
+          yield* requireInsertAccess(transaction, ["sie_source_previews", "command_receipts"]);
+          const source = (yield* Db.readSource(transaction, scope.bookId, id))[0];
 
-      if (request.previous) return request.previous;
-      yield* requireInsertAccess(transaction, ["sie_source_previews", "command_receipts"]);
-      const source = (yield* Db.readSource(transaction, scope.bookId, id))[0];
+          if (!source) return yield* failure("NotFound");
 
-      if (!source) return yield* failure("NotFound");
+          if (
+            input.profile === "synthetic_sie4_partition_v1" &&
+            !source.sourceSystem.startsWith("synthetic_")
+          )
+            return yield* failure("UnsupportedProfile");
+          const retained = yield* getSourceOccurrence(token, { scope, occurrenceId: id });
+          const bytes = Buffer.from(retained.contentBase64, "base64");
 
-      if (
-        input.profile === "synthetic_sie4_partition_v1" &&
-        !source.sourceSystem.startsWith("synthetic_")
-      )
-        return yield* failure("UnsupportedProfile");
-      const retained = yield* getSourceOccurrence(token, { scope, occurrenceId: id });
-      const bytes = Buffer.from(retained.contentBase64, "base64");
+          if (bytes.length > 524288 || retained.occurrence.byteLength !== bytes.length)
+            return yield* failure("UnsupportedProfile");
 
-      if (bytes.length > 524288 || retained.occurrence.byteLength !== bytes.length)
-        return yield* failure("UnsupportedProfile");
+          const parsed = parseSie(
+            bytes,
+            input.encoding,
+            input.profile === "synthetic_sie4_partition_v1"
+              ? "export_validation"
+              : "historical_import",
+          );
 
-      const parsed = parseSie(
-        bytes,
-        input.encoding,
-        input.profile === "synthetic_sie4_partition_v1" ? "export_validation" : "historical_import",
-      );
+          if (
+            parsed.records.length > 4000 ||
+            parsed.vouchers.length > 500 ||
+            Buffer.byteLength(JSON.stringify(parsed)) > 1048576
+          )
+            return yield* failure("UnsupportedProfile");
+          const history = yield* Db.listPreviews(transaction, scope.bookId, id);
 
-      if (
-        parsed.records.length > 4000 ||
-        parsed.vouchers.length > 500 ||
-        Buffer.byteLength(JSON.stringify(parsed)) > 1048576
-      )
-        return yield* failure("UnsupportedProfile");
-      const history = yield* Db.listPreviews(transaction, scope.bookId, id);
+          if (history.some((row) => row.runId !== null))
+            return yield* failure("IdempotencyConflict");
 
-      if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
+          if (history.length >= 50) return yield* failure("UnsupportedProfile");
+          const previous = history[0] ? yield* decode(Sie.SiePreview, history[0].body) : undefined;
 
-      if (history.length >= 50) return yield* failure("UnsupportedProfile");
-      const previous = history[0] ? yield* decode(Sie.SiePreview, history[0].body) : undefined;
+          const body = Object.assign({}, input, parsed, {
+            sourceSha256: source.sha256,
+            id: newId("siepreview"),
+            scope,
+            occurrenceId: id,
+            createdBy: principal.actorId,
+            ordinal: (previous?.ordinal ?? 0) + 1,
+            createdAt: yield* isoNow(transaction),
+          });
 
-      const body = Object.assign({}, input, parsed, {
-        sourceSha256: source.sha256,
-        id: newId("siepreview"),
-        scope,
-        occurrenceId: id,
-        createdBy: principal.actorId,
-        ordinal: (previous?.ordinal ?? 0) + 1,
-        createdAt: yield* isoNow(transaction),
-      });
+          const result = yield* decode(
+            Sie.SiePreview,
+            Object.assign({}, body, {
+              digest: yield* digest(body),
+              receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+            }),
+          );
 
-      const result = yield* decode(
-        Sie.SiePreview,
-        Object.assign({}, body, {
-          digest: yield* digest(body),
-          receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          if (
+            result.records.length > 4000 ||
+            result.vouchers.length > 500 ||
+            new TextEncoder().encode(JSON.stringify(input)).length > 1048576
+          )
+            return yield* failure("UnsupportedProfile");
+          yield* Db.insertPreview(transaction, scope.bookId, result.id, id, result.ordinal, result);
+
+          return result;
         }),
       );
-
-      if (
-        result.records.length > 4000 ||
-        result.vouchers.length > 500 ||
-        new TextEncoder().encode(JSON.stringify(input)).length > 1048576
-      )
-        return yield* failure("UnsupportedProfile");
-      yield* Db.insertPreview(transaction, scope.bookId, result.id, id, result.ordinal, result);
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -205,74 +204,68 @@ export const sealSourcePlanInTransaction = Effect.fn("sie.sealSourcePlanInTransa
   const { scope, id, idempotencyKey, input } = command;
   const operation = "seal_sie_source_plan";
 
-  const request = yield* replay(
+  return yield* runBookCommand(
     transaction,
-    scope,
-    idempotencyKey,
-    operation,
-    principal.actorId,
-    { previewId: id, input },
+    {
+      scope: scope,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: { previewId: id, input },
+    },
     Sie.SiePlan,
+    Effect.gen(function* () {
+      yield* requireInsertAccess(transaction, ["sie_source_plans", "command_receipts"]);
+      const preview = yield* readPreview(transaction, scope, id);
+      const source = (yield* Db.readSource(transaction, scope.bookId, preview.occurrenceId))[0];
+
+      if (!source) return yield* failure("MissingEvidence");
+
+      if (source.sourceSystem.startsWith("synthetic_") !== (input.sourceKind === "synthetic"))
+        return yield* failure("UnsupportedProfile");
+      const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
+      if (history[0]?.body.id !== id) return yield* failure("StaleDependency");
+
+      if (!preview.ready || input.digest !== preview.digest)
+        return yield* failure("ApprovalRequired");
+
+      if (history.some((row) => row.body.id === id && row.planId !== null))
+        return yield* failure("IdempotencyConflict");
+
+      const accounts = yield* PostingDb.readAccounts(transaction, scope.bookId, [
+        ...new Set(input.mappings.map((m) => m.accountId)),
+      ]);
+
+      if (input.mappings.some((m) => !accounts.some((a) => a.id === m.accountId)))
+        return yield* failure("InvalidJournal");
+      yield* checkControls(preview, input);
+
+      const body = {
+        id: newId("sieplan"),
+        scope,
+        previewId: id,
+        previewDigest: preview.digest,
+        sourceSha256: preview.sourceSha256,
+        input,
+        voucherCount: preview.vouchers.length,
+        createdBy: principal.actorId,
+        createdAt: yield* isoNow(transaction),
+        financialAdmission: "unsupported" as const,
+        unreconstructableDetail: true as const,
+      };
+
+      const result = yield* decode(Sie.SiePlan, {
+        ...body,
+        digest: yield* digest(body),
+        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+      });
+
+      yield* Db.insertPlan(transaction, scope.bookId, result.id, id, result);
+
+      return result;
+    }),
   );
-
-  if (request.previous) return request.previous;
-  yield* requireInsertAccess(transaction, ["sie_source_plans", "command_receipts"]);
-  const preview = yield* readPreview(transaction, scope, id);
-  const source = (yield* Db.readSource(transaction, scope.bookId, preview.occurrenceId))[0];
-
-  if (!source) return yield* failure("MissingEvidence");
-
-  if (source.sourceSystem.startsWith("synthetic_") !== (input.sourceKind === "synthetic"))
-    return yield* failure("UnsupportedProfile");
-  const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
-
-  if (history[0]?.body.id !== id) return yield* failure("StaleDependency");
-
-  if (!preview.ready || input.digest !== preview.digest) return yield* failure("ApprovalRequired");
-
-  if (history.some((row) => row.body.id === id && row.planId !== null))
-    return yield* failure("IdempotencyConflict");
-
-  const accounts = yield* PostingDb.readAccounts(transaction, scope.bookId, [
-    ...new Set(input.mappings.map((m) => m.accountId)),
-  ]);
-
-  if (input.mappings.some((m) => !accounts.some((a) => a.id === m.accountId)))
-    return yield* failure("InvalidJournal");
-  yield* checkControls(preview, input);
-
-  const body = {
-    id: newId("sieplan"),
-    scope,
-    previewId: id,
-    previewDigest: preview.digest,
-    sourceSha256: preview.sourceSha256,
-    input,
-    voucherCount: preview.vouchers.length,
-    createdBy: principal.actorId,
-    createdAt: yield* isoNow(transaction),
-    financialAdmission: "unsupported" as const,
-    unreconstructableDetail: true as const,
-  };
-
-  const result = yield* decode(Sie.SiePlan, {
-    ...body,
-    digest: yield* digest(body),
-    receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-  });
-
-  yield* Db.insertPlan(transaction, scope.bookId, result.id, id, result);
-  yield* saveCommand(
-    transaction,
-    scope,
-    idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    result,
-  );
-
-  return result;
 });
 
 export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
@@ -307,55 +300,48 @@ export const startSourceRunInTransaction = Effect.fn("sie.startSourceRunInTransa
   const { scope, id, idempotencyKey } = command;
   const operation = "start_sie_source_run";
 
-  const request = yield* replay(
+  return yield* runBookCommand(
     transaction,
-    scope,
-    idempotencyKey,
-    operation,
-    principal.actorId,
-    { planId: id, digest: command.digest },
+    {
+      scope: scope,
+      idempotencyKey: idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: { planId: id, digest: command.digest },
+    },
     Sie.SieRunStart,
+    Effect.gen(function* () {
+      yield* requireInsertAccess(transaction, ["sie_source_runs", "command_receipts"]);
+      const plan = yield* readPlan(transaction, scope, id);
+
+      if (plan.digest !== command.digest) return yield* failure("StaleDependency");
+      const preview = yield* readPreview(transaction, scope, plan.previewId);
+      const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
+      if (history[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
+
+      if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
+
+      const row = {
+        id: newId("sierun"),
+        planId: id,
+        nextOrdinal: 1,
+        fence: "1",
+        leaseUntil: new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
+        status: "running" as const,
+      };
+
+      const result = yield* decode(Sie.SieRunStart, {
+        ...row,
+        planDigest: plan.digest,
+        financialAdmission: "unsupported",
+      });
+
+      yield* Db.insertRun(transaction, scope.bookId, row);
+
+      return result;
+    }),
   );
-
-  if (request.previous) return request.previous;
-  yield* requireInsertAccess(transaction, ["sie_source_runs", "command_receipts"]);
-  const plan = yield* readPlan(transaction, scope, id);
-
-  if (plan.digest !== command.digest) return yield* failure("StaleDependency");
-  const preview = yield* readPreview(transaction, scope, plan.previewId);
-  const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
-
-  if (history[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
-
-  if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
-
-  const row = {
-    id: newId("sierun"),
-    planId: id,
-    nextOrdinal: 1,
-    fence: "1",
-    leaseUntil: new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
-    status: "running" as const,
-  };
-
-  const result = yield* decode(Sie.SieRunStart, {
-    ...row,
-    planDigest: plan.digest,
-    financialAdmission: "unsupported",
-  });
-
-  yield* Db.insertRun(transaction, scope.bookId, row);
-  yield* saveCommand(
-    transaction,
-    scope,
-    idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    result,
-  );
-
-  return result;
 });
 
 export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
@@ -407,84 +393,78 @@ export const advanceSourceRunInTransaction = Effect.fn("sie.advanceSourceRunInTr
     const { scope, id, idempotencyKey, input } = command;
     const operation = "advance_sie_source_run";
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      scope,
-      idempotencyKey,
-      operation,
-      principal.actorId,
-      { runId: id, input },
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { runId: id, input },
+      },
       Sie.SieChunk,
+      Effect.gen(function* () {
+        yield* requireInsertAccess(transaction, [
+          "sie_source_vouchers",
+          "sie_source_chunks",
+          "command_receipts",
+        ]);
+        const run = yield* readRun(transaction, scope, id);
+        const plan = yield* readPlan(transaction, scope, run.planId);
+        const preview = yield* readPreview(transaction, scope, plan.previewId);
+        const now = Date.parse(yield* isoNow(transaction));
+
+        if (
+          run.status !== "running" ||
+          run.leaseUntil === null ||
+          Date.parse(run.leaseUntil) <= now ||
+          input.fence !== run.fence ||
+          input.planDigest !== plan.digest ||
+          input.firstOrdinal !== run.nextOrdinal
+        )
+          return yield* failure("StaleDependency");
+        const firstOrdinal = run.nextOrdinal;
+        const lastOrdinal = Math.min(plan.voucherCount, firstOrdinal + 199);
+
+        if (firstOrdinal > plan.voucherCount) return yield* failure("IdempotencyConflict");
+
+        const vouchers = preview.vouchers
+          .filter((v) => v.ordinal >= firstOrdinal && v.ordinal <= lastOrdinal)
+          .sort((a, b) => a.ordinal - b.ordinal);
+
+        if (
+          vouchers.length !== lastOrdinal - firstOrdinal + 1 ||
+          vouchers.some((v, i) => v.ordinal !== firstOrdinal + i)
+        )
+          return yield* failure("MissingEvidence");
+
+        if (vouchers.reduce((sum, v) => sum + v.transactions.length, 0) > 2000)
+          return yield* failure("UnsupportedProfile");
+
+        const result = yield* decode(Sie.SieChunk, {
+          runId: id,
+          planDigest: plan.digest,
+          firstOrdinal,
+          lastOrdinal,
+          fence: run.fence,
+          voucherCount: vouchers.length,
+          membershipDigest: yield* digest(vouchers),
+          receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+        });
+
+        yield* Db.insertVouchers(transaction, scope.bookId, id, vouchers);
+        yield* Db.insertChunk(transaction, scope.bookId, id, firstOrdinal, result);
+        yield* Db.advanceRun(transaction, scope.bookId, {
+          ...run,
+          nextOrdinal: lastOrdinal + 1,
+          leaseUntil:
+            lastOrdinal === plan.voucherCount ? null : new Date(now + 900000).toISOString(),
+          status: lastOrdinal === plan.voucherCount ? "staged" : "running",
+        });
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* requireInsertAccess(transaction, [
-      "sie_source_vouchers",
-      "sie_source_chunks",
-      "command_receipts",
-    ]);
-    const run = yield* readRun(transaction, scope, id);
-    const plan = yield* readPlan(transaction, scope, run.planId);
-    const preview = yield* readPreview(transaction, scope, plan.previewId);
-    const now = Date.parse(yield* isoNow(transaction));
-
-    if (
-      run.status !== "running" ||
-      run.leaseUntil === null ||
-      Date.parse(run.leaseUntil) <= now ||
-      input.fence !== run.fence ||
-      input.planDigest !== plan.digest ||
-      input.firstOrdinal !== run.nextOrdinal
-    )
-      return yield* failure("StaleDependency");
-    const firstOrdinal = run.nextOrdinal;
-    const lastOrdinal = Math.min(plan.voucherCount, firstOrdinal + 199);
-
-    if (firstOrdinal > plan.voucherCount) return yield* failure("IdempotencyConflict");
-
-    const vouchers = preview.vouchers
-      .filter((v) => v.ordinal >= firstOrdinal && v.ordinal <= lastOrdinal)
-      .sort((a, b) => a.ordinal - b.ordinal);
-
-    if (
-      vouchers.length !== lastOrdinal - firstOrdinal + 1 ||
-      vouchers.some((v, i) => v.ordinal !== firstOrdinal + i)
-    )
-      return yield* failure("MissingEvidence");
-
-    if (vouchers.reduce((sum, v) => sum + v.transactions.length, 0) > 2000)
-      return yield* failure("UnsupportedProfile");
-
-    const result = yield* decode(Sie.SieChunk, {
-      runId: id,
-      planDigest: plan.digest,
-      firstOrdinal,
-      lastOrdinal,
-      fence: run.fence,
-      voucherCount: vouchers.length,
-      membershipDigest: yield* digest(vouchers),
-      receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-    });
-
-    yield* Db.insertVouchers(transaction, scope.bookId, id, vouchers);
-    yield* Db.insertChunk(transaction, scope.bookId, id, firstOrdinal, result);
-    yield* Db.advanceRun(transaction, scope.bookId, {
-      ...run,
-      nextOrdinal: lastOrdinal + 1,
-      leaseUntil: lastOrdinal === plan.voucherCount ? null : new Date(now + 900000).toISOString(),
-      status: lastOrdinal === plan.voucherCount ? "staged" : "running",
-    });
-    yield* saveCommand(
-      transaction,
-      scope,
-      idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      result,
-    );
-
-    return result;
   },
 );
 
@@ -521,46 +501,40 @@ export const reclaimSourceRun = Effect.fn("sie.reclaimSourceRun")(function* (
       const { scope, id, idempotencyKey, action } = command;
       const operation = "reclaim_sie_source_run";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { runId: id, action },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { runId: id, action },
+        },
         Sie.SieFence,
+        Effect.gen(function* () {
+          const run = yield* readRun(transaction, scope, id);
+
+          if (run.status === "staged") return yield* failure("InvalidJournal");
+
+          if (BigInt(run.fence) >= 9223372036854775807n)
+            return yield* failure("UnsupportedProfile");
+
+          const updated = {
+            ...run,
+            fence: (BigInt(run.fence) + 1n).toString(),
+            status: action === "pause" ? ("paused" as const) : ("running" as const),
+            leaseUntil:
+              action === "pause"
+                ? null
+                : new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
+          };
+
+          const result = yield* decode(Sie.SieFence, updated);
+          yield* Db.advanceRun(transaction, scope.bookId, updated);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const run = yield* readRun(transaction, scope, id);
-
-      if (run.status === "staged") return yield* failure("InvalidJournal");
-
-      if (BigInt(run.fence) >= 9223372036854775807n) return yield* failure("UnsupportedProfile");
-
-      const updated = {
-        ...run,
-        fence: (BigInt(run.fence) + 1n).toString(),
-        status: action === "pause" ? ("paused" as const) : ("running" as const),
-        leaseUntil:
-          action === "pause"
-            ? null
-            : new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
-      };
-
-      const result = yield* decode(Sie.SieFence, updated);
-      yield* Db.advanceRun(transaction, scope.bookId, updated);
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -7,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { controlCopy } from "./copy";
 
@@ -80,7 +81,8 @@ export function ControlInspector({
     queryKey: [...bookKey(book), "subledger-controls", "snapshot", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/subledger-controls/snapshots/${encodeURIComponent(id)}`,
+        (client) =>
+          client.subledgerControls.getSubledgerControl({ params: { ...bookScope(book), id: id } }),
         Controls.SubledgerControlView,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/dimensions";
 import type { OriginalDimensionAssignment } from "@open-erp/domain/dimensions";
 import * as Restatement from "@open-erp/domain/dimension-restatement";
@@ -15,7 +16,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 
 // NEXT-43. The application owner of reviewed dimension restatement.
 //
@@ -239,111 +242,102 @@ export const prepareDimensionRestatement = Effect.fn("dimensions.prepareRestatem
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "prepare_dimension_restatement";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
       Contracts.RestatementPlanView,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, Catalogue.classificationTables, true);
+
+        const lines = selectionOf(command.input);
+
+        if (lines === null) return yield* failure("InvalidJournal");
+
+        const sealed: Array<Restatement.RestatementLine> = [];
+
+        for (const line of lines) {
+          const identity: Catalogue.LineIdentity = {
+            voucherId: line.voucherId,
+            lineId: line.lineId,
+          };
+
+          const rows = yield* Catalogue.readOriginalAssignmentsForLine(
+            transaction,
+            command.scope.bookId,
+            identity,
+          );
+
+          const [head, signedMinor, retainedFinancialDigest, revisions] = yield* Effect.all([
+            readHead(transaction, command.scope.bookId, identity),
+            readLineAmount(transaction, command.scope.bookId, identity),
+            readLineFinancialDigest(transaction, command.scope.bookId, identity),
+            Catalogue.readClassificationRevisions(transaction, command.scope.bookId, identity),
+          ]);
+
+          if (retainedFinancialDigest === null) return yield* failure("NotFound");
+
+          sealed.push({
+            lineId: line.lineId,
+            financialDigest: retainedFinancialDigest,
+            retainedFinancialDigest,
+            signedMinor: signedMinor.toString(),
+            originalAssignments: rows.map(toOriginal),
+            currentAssignments: [...readCurrentReviewed(revisions, rows.map(toOriginal))],
+            currentHeadRevision: head.revisionId,
+          });
+        }
+
+        const compiled = Restatement.prepareRestatement({
+          analyticalScope: command.input.analyticalScope,
+          policy: command.input.dimensionPolicy,
+          lines: sealed,
+          changes: command.input.changes.map((change) => ({
+            lineId: change.lineId,
+            expectedHeadRevision: change.expectedHeadRevision,
+            desiredAssignments: change.desiredAssignments,
+            reason: change.reason,
+          })),
+        });
+
+        if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
+
+        const planId = newId("dimension_restatement");
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          scope: command.scope,
+          planId,
+          analyticalScope: command.input.analyticalScope,
+          plan: compiled.success,
+        };
+
+        const planDigest = yield* digest(body);
+
+        yield* Catalogue.insertRestatementPlan(transaction, {
+          bookId: command.scope.bookId,
+          id: planId,
+          analyticalScope: command.input.analyticalScope,
+          reason: command.input.reason,
+          digest: planDigest,
+          plan: yield* toJsonObject(compiled.success),
+          selection: lines.map((line) => ({ lineId: line.lineId, voucherId: line.voucherId })),
+          recordedAt: now,
+        });
+
+        const view = yield* decode(
+          Contracts.RestatementPlanView,
+          yield* toJsonObject({ ...body, digest: planDigest, createdAt: now }),
+        );
+
+        return { receipt: yield* toJsonObject(view), result: view };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, Catalogue.classificationTables, true);
-
-    const lines = selectionOf(command.input);
-
-    if (lines === null) return yield* failure("InvalidJournal");
-
-    const sealed: Array<Restatement.RestatementLine> = [];
-
-    for (const line of lines) {
-      const identity: Catalogue.LineIdentity = {
-        voucherId: line.voucherId,
-        lineId: line.lineId,
-      };
-
-      const rows = yield* Catalogue.readOriginalAssignmentsForLine(
-        transaction,
-        command.scope.bookId,
-        identity,
-      );
-
-      const [head, signedMinor, retainedFinancialDigest, revisions] = yield* Effect.all([
-        readHead(transaction, command.scope.bookId, identity),
-        readLineAmount(transaction, command.scope.bookId, identity),
-        readLineFinancialDigest(transaction, command.scope.bookId, identity),
-        Catalogue.readClassificationRevisions(transaction, command.scope.bookId, identity),
-      ]);
-
-      if (retainedFinancialDigest === null) return yield* failure("NotFound");
-
-      sealed.push({
-        lineId: line.lineId,
-        financialDigest: retainedFinancialDigest,
-        retainedFinancialDigest,
-        signedMinor: signedMinor.toString(),
-        originalAssignments: rows.map(toOriginal),
-        currentAssignments: [...readCurrentReviewed(revisions, rows.map(toOriginal))],
-        currentHeadRevision: head.revisionId,
-      });
-    }
-
-    const compiled = Restatement.prepareRestatement({
-      analyticalScope: command.input.analyticalScope,
-      policy: command.input.dimensionPolicy,
-      lines: sealed,
-      changes: command.input.changes.map((change) => ({
-        lineId: change.lineId,
-        expectedHeadRevision: change.expectedHeadRevision,
-        desiredAssignments: change.desiredAssignments,
-        reason: change.reason,
-      })),
-    });
-
-    if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
-
-    const planId = newId("dimension_restatement");
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      scope: command.scope,
-      planId,
-      analyticalScope: command.input.analyticalScope,
-      plan: compiled.success,
-    };
-
-    const planDigest = yield* digest(body);
-
-    yield* Catalogue.insertRestatementPlan(transaction, {
-      bookId: command.scope.bookId,
-      id: planId,
-      analyticalScope: command.input.analyticalScope,
-      reason: command.input.reason,
-      digest: planDigest,
-      plan: yield* toJsonObject(compiled.success),
-      selection: lines.map((line) => ({ lineId: line.lineId, voucherId: line.voucherId })),
-      recordedAt: now,
-    });
-
-    const view = yield* decode(
-      Contracts.RestatementPlanView,
-      yield* toJsonObject({ ...body, digest: planDigest, createdAt: now }),
-    );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(view),
-    );
-
-    return view;
   });
 });
 
@@ -377,152 +371,143 @@ export const applyDimensionRestatement = Effect.fn("dimensions.applyRestatement"
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "apply_dimension_restatement";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      Contracts.RestatementApplied,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, Catalogue.classificationTables, true);
-
-    const row = (yield* Catalogue.readRestatementPlan(
-      transaction,
-      command.scope.bookId,
-      command.planId,
-    ))[0];
-
-    if (row === undefined) return yield* failure("NotFound");
-
-    if (row.digest !== command.input.digest) return yield* failure("StaleDependency");
-
-    const plan = Schema.decodeUnknownSync(SealedPlanSchema)(row.plan);
-    const selection = Catalogue.decodePlanSelection(row.selection);
-    const voucherOf = new Map(selection.map((entry) => [entry.lineId, entry.voucherId]));
-    const now = yield* isoNow(transaction);
-    const results: Array<typeof Contracts.RestatementAppliedLine.Type> = [];
-    let appended = 0;
-    let replayed = 0;
-
-    for (const entry of plan.assignments) {
-      const voucherId = voucherOf.get(entry.lineId);
-
-      if (voucherId === undefined) return yield* failure("InvalidJournal");
-
-      const identity: Catalogue.LineIdentity = { voucherId, lineId: entry.lineId };
-      const head = yield* readHead(transaction, command.scope.bookId, identity);
-
-      const original = (yield* Catalogue.readOriginalAssignmentsForLine(
-        transaction,
-        command.scope.bookId,
-        identity,
-      )).map(toOriginal);
-
-      const revisions = yield* Catalogue.readClassificationRevisions(
-        transaction,
-        command.scope.bookId,
-        identity,
-      );
-
-      const current = readCurrentReviewed(revisions, original);
-
-      const outcome = Restatement.appendRevision(
-        head,
-        entry.expectedHeadRevision,
-        decodeAssignments(entry.desiredAssignments),
-        current,
-        now,
-      );
-
-      if (Result.isFailure(outcome)) return yield* refuse(outcome.failure);
-
-      if (outcome.success.outcome === "replayed") {
-        replayed += 1;
-
-        results.push({
-          voucherId,
-          lineId: entry.lineId,
-          outcome: "replayed",
-          revisionId: outcome.success.head.revisionId,
-          version: outcome.success.head.version,
-        });
-
-        continue;
-      }
-
-      const revision = outcome.success.revision;
-
-      appended += 1;
-
-      yield* Catalogue.insertClassificationRevision(transaction, {
-        bookId: command.scope.bookId,
-        voucherId,
-        lineId: entry.lineId,
-        revisionId: revision.revisionId,
-        analyticalScope: row.analyticalScope,
-        reason: entry.reason,
-        assignments: toJsonAssignments(revision.assignments),
-        recordedAt: now,
-      });
-
-      if (head.revisionId === 0) {
-        yield* Catalogue.insertClassificationHead(transaction, {
-          bookId: command.scope.bookId,
-          voucherId,
-          lineId: entry.lineId,
-          revisionId: revision.revisionId,
-          version: outcome.success.head.version,
-          recordedAt: now,
-        });
-      } else {
-        yield* Catalogue.updateClassificationHead(transaction, {
-          bookId: command.scope.bookId,
-          voucherId,
-          lineId: entry.lineId,
-          revisionId: revision.revisionId,
-          version: outcome.success.head.version,
-          recordedAt: now,
-        });
-      }
-
-      results.push({
-        voucherId,
-        lineId: entry.lineId,
-        outcome: "appended",
-        revisionId: revision.revisionId,
-        version: outcome.success.head.version,
-      });
-    }
-
-    const view = yield* decode(
-      Contracts.RestatementApplied,
-      yield* toJsonObject({
+      {
         scope: command.scope,
-        planId: command.planId,
-        digest: command.input.digest,
-        appendedCount: appended,
-        replayedCount: replayed,
-        lines: results,
-        createdAt: now,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
+      Contracts.RestatementApplied,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, Catalogue.classificationTables, true);
+
+        const row = (yield* Catalogue.readRestatementPlan(
+          transaction,
+          command.scope.bookId,
+          command.planId,
+        ))[0];
+
+        if (row === undefined) return yield* failure("NotFound");
+
+        if (row.digest !== command.input.digest) return yield* failure("StaleDependency");
+
+        const plan = Schema.decodeUnknownSync(SealedPlanSchema)(row.plan);
+        const selection = Catalogue.decodePlanSelection(row.selection);
+        const voucherOf = new Map(selection.map((entry) => [entry.lineId, entry.voucherId]));
+        const now = yield* isoNow(transaction);
+        const results: Array<typeof Contracts.RestatementAppliedLine.Type> = [];
+        let appended = 0;
+        let replayed = 0;
+
+        for (const entry of plan.assignments) {
+          const voucherId = voucherOf.get(entry.lineId);
+
+          if (voucherId === undefined) return yield* failure("InvalidJournal");
+
+          const identity: Catalogue.LineIdentity = { voucherId, lineId: entry.lineId };
+          const head = yield* readHead(transaction, command.scope.bookId, identity);
+
+          const original = (yield* Catalogue.readOriginalAssignmentsForLine(
+            transaction,
+            command.scope.bookId,
+            identity,
+          )).map(toOriginal);
+
+          const revisions = yield* Catalogue.readClassificationRevisions(
+            transaction,
+            command.scope.bookId,
+            identity,
+          );
+
+          const current = readCurrentReviewed(revisions, original);
+
+          const outcome = Restatement.appendRevision(
+            head,
+            entry.expectedHeadRevision,
+            decodeAssignments(entry.desiredAssignments),
+            current,
+            now,
+          );
+
+          if (Result.isFailure(outcome)) return yield* refuse(outcome.failure);
+
+          if (outcome.success.outcome === "replayed") {
+            replayed += 1;
+
+            results.push({
+              voucherId,
+              lineId: entry.lineId,
+              outcome: "replayed",
+              revisionId: outcome.success.head.revisionId,
+              version: outcome.success.head.version,
+            });
+
+            continue;
+          }
+
+          const revision = outcome.success.revision;
+
+          appended += 1;
+
+          yield* Catalogue.insertClassificationRevision(transaction, {
+            bookId: command.scope.bookId,
+            voucherId,
+            lineId: entry.lineId,
+            revisionId: revision.revisionId,
+            analyticalScope: row.analyticalScope,
+            reason: entry.reason,
+            assignments: toJsonAssignments(revision.assignments),
+            recordedAt: now,
+          });
+
+          if (head.revisionId === 0) {
+            yield* Catalogue.insertClassificationHead(transaction, {
+              bookId: command.scope.bookId,
+              voucherId,
+              lineId: entry.lineId,
+              revisionId: revision.revisionId,
+              version: outcome.success.head.version,
+              recordedAt: now,
+            });
+          } else {
+            yield* Catalogue.updateClassificationHead(transaction, {
+              bookId: command.scope.bookId,
+              voucherId,
+              lineId: entry.lineId,
+              revisionId: revision.revisionId,
+              version: outcome.success.head.version,
+              recordedAt: now,
+            });
+          }
+
+          results.push({
+            voucherId,
+            lineId: entry.lineId,
+            outcome: "appended",
+            revisionId: revision.revisionId,
+            version: outcome.success.head.version,
+          });
+        }
+
+        const view = yield* decode(
+          Contracts.RestatementApplied,
+          yield* toJsonObject({
+            scope: command.scope,
+            planId: command.planId,
+            digest: command.input.digest,
+            appendedCount: appended,
+            replayedCount: replayed,
+            lines: results,
+            createdAt: now,
+          }),
+        );
+
+        return { receipt: yield* toJsonObject(view), result: view };
       }),
     );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(view),
-    );
-
-    return view;
   });
 });
 

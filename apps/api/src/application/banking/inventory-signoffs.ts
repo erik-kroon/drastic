@@ -1,10 +1,14 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as AccountSignoffs from "@open-erp/contracts/bank-signoffs";
 import * as Signoffs from "@open-erp/contracts/bank-inventory-signoffs";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import * as SignoffDb from "../../db/banking/signoffs";
 import * as BankDb from "../../db/banking/shared";
 import * as Shared from "./shared";
@@ -98,242 +102,238 @@ export const prepareBankInventorySignoff = Effect.fn("banking.inventorySignoff.p
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope.bookId);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_bank_inventory_signoff",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_bank_inventory_signoff",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
+        },
         PlanSchema,
-      );
+        Effect.gen(function* () {
+          yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+          const planIds = [...command.input.signoffPlanIds].sort();
 
-      const planIds = [...command.input.signoffPlanIds].sort();
+          if (new Set(planIds).size !== planIds.length) return yield* failure("InvalidJournal");
 
-      if (new Set(planIds).size !== planIds.length) return yield* failure("InvalidJournal");
+          const inventory = (yield* SignoffDb.readInventory(
+            transaction,
+            command.scope.bookId,
+            command.input.inventoryId,
+          ))[0];
 
-      const inventory = (yield* SignoffDb.readInventory(
-        transaction,
-        command.scope.bookId,
-        command.input.inventoryId,
-      ))[0];
+          if (!inventory) return yield* failure("NotFound");
 
-      if (!inventory) return yield* failure("NotFound");
+          const period = (yield* SignoffDb.readPeriod(
+            transaction,
+            command.scope.bookId,
+            inventory.periodId,
+          ))[0];
 
-      const period = (yield* SignoffDb.readPeriod(
-        transaction,
-        command.scope.bookId,
-        inventory.periodId,
-      ))[0];
+          if (!period) return yield* failure("NotFound");
 
-      if (!period) return yield* failure("NotFound");
+          if (
+            command.input.startsOn !== period.startsOn ||
+            command.input.endsOn !== period.endsOn
+          ) {
+            return yield* failure("InvalidJournal");
+          }
 
-      if (command.input.startsOn !== period.startsOn || command.input.endsOn !== period.endsOn) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* SignoffDb.readInventorySuperseded(
-          transaction,
-          command.scope.bookId,
-          inventory.periodId,
-          inventory.ordinal,
-        ))[0]?.present === true
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const declaredIds = accountIdsFromJsonArray(
-        Shared.arrayField(inventory.body, "bankAccountIds"),
-      );
-
-      if (
-        Shared.textField(inventory.body, "coverage") !== "synthetic_family_inventory_v1" ||
-        declaredIds.length < 1 ||
-        declaredIds.length > 100 ||
-        new Set(declaredIds).size !== declaredIds.length ||
-        requiredBankFamilyCount(inventory.body) !== 1
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        declaredIds.length !== planIds.length ||
-        (yield* SignoffDb.readUndeclaredBankSources(
-          transaction,
-          command.scope.bookId,
-          declaredIds,
-        ))[0]?.present === true
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* SignoffDb.readInventorySignoffPlanCount(transaction, command.scope.bookId))[0]!
-          .total >= 200
-      ) {
-        return yield* Shared.unsupported();
-      }
-
-      const dependencyDigest = (yield* BankDb.readCoverageDependencyDigest(
-        transaction,
-        command.scope.bookId,
-        inventory.id,
-      ))[0]?.digest;
-
-      if (dependencyDigest === undefined || dependencyDigest === null) {
-        return yield* Shared.unsupported();
-      }
-
-      const signedAccountIds = (yield* SignoffDb.readSignedAccountIds(
-        transaction,
-        command.scope.bookId,
-        planIds,
-      )).flatMap((row) => (row.accountId === null ? [] : [row.accountId]));
-
-      const expectedIds = [...declaredIds].sort();
-
-      if (JSON.stringify(signedAccountIds) !== JSON.stringify(expectedIds)) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const inventoryDigest = yield* digest(inventory.body);
-
-      const members = yield* Effect.forEach(
-        yield* SignoffDb.readSignedAccountMembers(transaction, command.scope.bookId, planIds),
-        (member) =>
-          Effect.gen(function* () {
-            const plan = yield* Shared.decode(AccountSignoffs.BankSignoffPlan, member.plan);
-
-            const signoff = yield* Shared.decode(
-              AccountSignoffs.BankReconciliationSignoff,
-              member.signoff,
-            );
-
-            if (
-              !Shared.sameJson(Shared.objectField(member.plan, "scope"), command.scope) ||
-              plan.startsOn !== command.input.startsOn ||
-              plan.endsOn !== command.input.endsOn ||
-              plan.currency !== book.currency ||
-              plan.currencyScale !== book.currencyScale ||
-              plan.basis.inventoryId !== inventory.id ||
-              plan.basis.inventoryDigest !== inventoryDigest ||
-              plan.basis.ledgerSequence !== book.committedSequence ||
-              plan.basis.dependencyDigest !== dependencyDigest ||
-              !Shared.isEmptyJsonArray(member.coverage.diagnostics) ||
-              member.coverage.hasReviewGaps !== false
-            ) {
-              return yield* failure("StaleDependency");
-            }
-
-            const account = (yield* BankDb.readAccount(
+          if (
+            (yield* SignoffDb.readInventorySuperseded(
               transaction,
               command.scope.bookId,
-              Shared.textField(member.plan, "accountId") ?? "",
-            ))[0];
+              inventory.periodId,
+              inventory.ordinal,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-            if (!account?.active) return yield* failure("StaleDependency");
+          const declaredIds = accountIdsFromJsonArray(
+            Shared.arrayField(inventory.body, "bankAccountIds"),
+          );
 
-            if (plan.digest !== (yield* digest(stripDigest(member.plan)))) {
-              return yield* failure("StaleDependency");
-            }
+          if (
+            Shared.textField(inventory.body, "coverage") !== "synthetic_family_inventory_v1" ||
+            declaredIds.length < 1 ||
+            declaredIds.length > 100 ||
+            new Set(declaredIds).size !== declaredIds.length ||
+            requiredBankFamilyCount(inventory.body) !== 1
+          ) {
+            return yield* failure("InvalidJournal");
+          }
 
-            if (signoff.digest !== plan.digest || signoff.planId !== plan.id) {
-              return yield* failure("StaleDependency");
-            }
+          if (
+            declaredIds.length !== planIds.length ||
+            (yield* SignoffDb.readUndeclaredBankSources(
+              transaction,
+              command.scope.bookId,
+              declaredIds,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("InvalidJournal");
+          }
 
-            const content = yield* Shared.canonicalText({
-              plan: member.plan,
-              signoff: member.signoff,
-            });
+          if (
+            (yield* SignoffDb.readInventorySignoffPlanCount(transaction, command.scope.bookId))[0]!
+              .total >= 200
+          ) {
+            return yield* Shared.unsupported();
+          }
 
-            if (
-              content !== member.content ||
-              member.byteLength !== Shared.byteLength(content) ||
-              member.sha256 !== (yield* sha256Hex(content))
-            ) {
-              return yield* failure("StaleDependency");
-            }
+          const dependencyDigest = (yield* BankDb.readCoverageDependencyDigest(
+            transaction,
+            command.scope.bookId,
+            inventory.id,
+          ))[0]?.digest;
 
-            return {
-              accountId: plan.accountId,
-              plan,
-              signoff,
-              artifact: {
-                sha256: member.sha256,
-                byteLength: member.byteLength,
-                mediaType: "application/json" as const,
-              },
-            };
-          }),
-      );
+          if (dependencyDigest === undefined || dependencyDigest === null) {
+            return yield* Shared.unsupported();
+          }
 
-      const membersBody = yield* Shared.toJson(members);
+          const signedAccountIds = (yield* SignoffDb.readSignedAccountIds(
+            transaction,
+            command.scope.bookId,
+            planIds,
+          )).flatMap((row) => (row.accountId === null ? [] : [row.accountId]));
 
-      const body = Object.assign(
-        {},
-        {
-          id: newId("bank_inventory_signoff"),
-          version: 1,
-          scope: command.scope,
-          input: command.input,
-          periodId: period.id,
-          startsOn: period.startsOn,
-          endsOn: period.endsOn,
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          inventory: inventory.body,
-          members: membersBody,
-          basis: {
+          const expectedIds = [...declaredIds].sort();
+
+          if (JSON.stringify(signedAccountIds) !== JSON.stringify(expectedIds)) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const inventoryDigest = yield* digest(inventory.body);
+
+          const members = yield* Effect.forEach(
+            yield* SignoffDb.readSignedAccountMembers(transaction, command.scope.bookId, planIds),
+            (member) =>
+              Effect.gen(function* () {
+                const plan = yield* Shared.decode(AccountSignoffs.BankSignoffPlan, member.plan);
+
+                const signoff = yield* Shared.decode(
+                  AccountSignoffs.BankReconciliationSignoff,
+                  member.signoff,
+                );
+
+                if (
+                  !Shared.sameJson(Shared.objectField(member.plan, "scope"), command.scope) ||
+                  plan.startsOn !== command.input.startsOn ||
+                  plan.endsOn !== command.input.endsOn ||
+                  plan.currency !== book.currency ||
+                  plan.currencyScale !== book.currencyScale ||
+                  plan.basis.inventoryId !== inventory.id ||
+                  plan.basis.inventoryDigest !== inventoryDigest ||
+                  plan.basis.ledgerSequence !== book.committedSequence ||
+                  plan.basis.dependencyDigest !== dependencyDigest ||
+                  !Shared.isEmptyJsonArray(member.coverage.diagnostics) ||
+                  member.coverage.hasReviewGaps !== false
+                ) {
+                  return yield* failure("StaleDependency");
+                }
+
+                const account = (yield* BankDb.readAccount(
+                  transaction,
+                  command.scope.bookId,
+                  Shared.textField(member.plan, "accountId") ?? "",
+                ))[0];
+
+                if (!account?.active) return yield* failure("StaleDependency");
+
+                if (plan.digest !== (yield* digest(stripDigest(member.plan)))) {
+                  return yield* failure("StaleDependency");
+                }
+
+                if (signoff.digest !== plan.digest || signoff.planId !== plan.id) {
+                  return yield* failure("StaleDependency");
+                }
+
+                const content = yield* Shared.canonicalText({
+                  plan: member.plan,
+                  signoff: member.signoff,
+                });
+
+                if (
+                  content !== member.content ||
+                  member.byteLength !== Shared.byteLength(content) ||
+                  member.sha256 !== (yield* sha256Hex(content))
+                ) {
+                  return yield* failure("StaleDependency");
+                }
+
+                return {
+                  accountId: plan.accountId,
+                  plan,
+                  signoff,
+                  artifact: {
+                    sha256: member.sha256,
+                    byteLength: member.byteLength,
+                    mediaType: "application/json" as const,
+                  },
+                };
+              }),
+          );
+
+          const membersBody = yield* Shared.toJson(members);
+
+          const body = Object.assign(
+            {},
+            {
+              id: newId("bank_inventory_signoff"),
+              version: 1,
+              scope: command.scope,
+              input: command.input,
+              periodId: period.id,
+              startsOn: period.startsOn,
+              endsOn: period.endsOn,
+              currency: book.currency,
+              currencyScale: book.currencyScale,
+              inventory: inventory.body,
+              members: membersBody,
+              basis: {
+                inventoryId: inventory.id,
+                inventoryDigest,
+                dependencyDigest,
+                memberDigest: yield* digest(membersBody),
+                ledgerSequence: book.committedSequence,
+                checkVersion: "declared_bank_inventory_signoff_v1",
+              } satisfies JsonObject,
+              reviewScope: "whole_declared_bank_inventory",
+              coverage: "declared_inventory_only",
+              companyCompleteness: "not_established",
+              financialCloseReady: false,
+              createdAt: yield* isoNow(transaction),
+              receipt: Shared.receipt(
+                command.idempotencyKey,
+                "prepare_bank_inventory_signoff",
+                principal.actorId,
+              ),
+            },
+          ) satisfies JsonObject;
+
+          const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+          const content = yield* Shared.canonicalText(sealed);
+          const byteLength = Shared.byteLength(content);
+
+          if (byteLength > maximumCaptureBytes) return yield* Shared.unsupported();
+          const plan = yield* Shared.decode(PlanSchema, sealed);
+          yield* SignoffDb.insertInventorySignoffPlan(transaction, {
+            bookId: command.scope.bookId,
+            id: plan.id,
             inventoryId: inventory.id,
-            inventoryDigest,
-            dependencyDigest,
-            memberDigest: yield* digest(membersBody),
-            ledgerSequence: book.committedSequence,
-            checkVersion: "declared_bank_inventory_signoff_v1",
-          } satisfies JsonObject,
-          reviewScope: "whole_declared_bank_inventory",
-          coverage: "declared_inventory_only",
-          companyCompleteness: "not_established",
-          financialCloseReady: false,
-          createdAt: yield* isoNow(transaction),
-          receipt: Shared.receipt(
-            command.idempotencyKey,
-            "prepare_bank_inventory_signoff",
-            principal.actorId,
-          ),
-        },
-      ) satisfies JsonObject;
+            body: sealed,
+            content,
+            sha256: yield* sha256Hex(content),
+            byteLength,
+          });
 
-      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
-      const content = yield* Shared.canonicalText(sealed);
-      const byteLength = Shared.byteLength(content);
-
-      if (byteLength > maximumCaptureBytes) return yield* Shared.unsupported();
-      const plan = yield* Shared.decode(PlanSchema, sealed);
-      yield* SignoffDb.insertInventorySignoffPlan(transaction, {
-        bookId: command.scope.bookId,
-        id: plan.id,
-        inventoryId: inventory.id,
-        body: sealed,
-        content,
-        sha256: yield* sha256Hex(content),
-        byteLength,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_bank_inventory_signoff",
-        principal.actorId,
-        yield* Shared.toJsonObject(plan),
+          return { receipt: yield* Shared.toJsonObject(plan), result: plan };
+        }),
       );
-
-      return plan;
     }),
   );
 });

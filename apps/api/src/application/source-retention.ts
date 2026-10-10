@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import * as Intake from "@open-erp/contracts/source-intake";
 import { Buffer } from "node:buffer";
 import * as Effect from "effect/Effect";
@@ -9,11 +10,13 @@ import {
   sourceDigest,
 } from "../adapters/storage/retained-objects";
 import { failure } from "./failures";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay } from "./command-receipts";
+import { newId } from "./identifiers";
 import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 import * as Retention from "../db/source-retention";
 import * as SupplierInboxDb from "../db/purchases/inbox";
-import { readBook } from "./posting";
+import { readBook } from "./posting-validation";
 import * as Archive from "../db/source-archive";
 import type { Transaction } from "../db/transaction";
 import {
@@ -166,6 +169,7 @@ export const retainSource = Effect.fn("Source.retain")(function* (
   }
 
   const mediaType = command.input.mediaType ?? "text/csv";
+
   const key: OccurrenceKey = command.input;
 
   return yield* withBook(
@@ -227,56 +231,54 @@ function retainInline(
   return Effect.gen(function* () {
     const payload = yield* toJsonObject(command.input);
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "retain_source",
-      actorId,
-      payload,
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "retain_source",
+        actorId: actorId,
+        input: payload,
+      },
       OccurrenceSchema,
+      Effect.gen(function* () {
+        const sha256 = yield* sourceDigest(bytes);
+
+        const content = (yield* Retention.readExternalContent(
+          transaction,
+          command.scope.bookId,
+          sha256,
+        ))[0];
+
+        if (content?.objectKey !== null && content !== undefined) return yield* unsupported();
+
+        const found = (yield* Retention.readOccurrenceByKey(
+          transaction,
+          command.scope.bookId,
+          key,
+        ))[0];
+
+        const body =
+          found === undefined
+            ? yield* insertInlineOccurrence(
+                transaction,
+                command.scope,
+                command.idempotencyKey,
+                actorId,
+                key,
+                command.input.filename,
+                mediaType,
+                sha256,
+                bytes,
+              )
+            : (yield* requireMatchingOccurrence(found, sha256, command.input.filename, mediaType),
+              found.body);
+
+        const occurrence = yield* decode(OccurrenceSchema, body);
+
+        return occurrence;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const sha256 = yield* sourceDigest(bytes);
-
-    const content = (yield* Retention.readExternalContent(
-      transaction,
-      command.scope.bookId,
-      sha256,
-    ))[0];
-
-    if (content?.objectKey !== null && content !== undefined) return yield* unsupported();
-    const found = (yield* Retention.readOccurrenceByKey(transaction, command.scope.bookId, key))[0];
-
-    const body =
-      found === undefined
-        ? yield* insertInlineOccurrence(
-            transaction,
-            command.scope,
-            command.idempotencyKey,
-            actorId,
-            key,
-            command.input.filename,
-            mediaType,
-            sha256,
-            bytes,
-          )
-        : (yield* requireMatchingOccurrence(found, sha256, command.input.filename, mediaType),
-          found.body);
-
-    const occurrence = yield* decode(OccurrenceSchema, body);
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "retain_source",
-      actorId,
-      occurrence,
-    );
-
-    return occurrence;
   });
 }
 
@@ -354,6 +356,7 @@ function retainExternal(
     );
 
     if (reference.completed !== undefined) return reference.completed;
+
     const store = yield* objectStore;
 
     const existing = yield* Effect.tryPromise({
@@ -394,6 +397,7 @@ function beginUpload(
 ) {
   return Effect.gen(function* () {
     const sha256 = textField(metadata, "sha256") ?? "";
+
     const byteLength = numberField(metadata, "byteLength");
 
     if (byteLength === null) return yield* failure("InvalidJournal");
@@ -465,47 +469,40 @@ function completeUpload(
 
     if (saved === undefined || saved.createdBy !== actorId) return yield* failure("NotFound");
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      scope,
-      idempotencyKey,
-      "retain_source_object",
-      actorId,
-      saved.input,
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: "retain_source_object",
+        actorId: actorId,
+        input: saved.input,
+      },
       OccurrenceSchema,
+      Effect.gen(function* () {
+        const found = (yield* Retention.readOccurrenceByKey(transaction, scope.bookId, key))[0];
+
+        const body =
+          found === undefined
+            ? yield* insertExternalOccurrence(
+                transaction,
+                scope,
+                idempotencyKey,
+                actorId,
+                key,
+                filename,
+                mediaType,
+                sha256,
+                byteLength,
+                reference,
+              )
+            : (yield* requireMatchingOccurrence(found, sha256, filename, mediaType), found.body);
+
+        const occurrence = yield* decode(OccurrenceSchema, body);
+
+        return occurrence;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const found = (yield* Retention.readOccurrenceByKey(transaction, scope.bookId, key))[0];
-
-    const body =
-      found === undefined
-        ? yield* insertExternalOccurrence(
-            transaction,
-            scope,
-            idempotencyKey,
-            actorId,
-            key,
-            filename,
-            mediaType,
-            sha256,
-            byteLength,
-            reference,
-          )
-        : (yield* requireMatchingOccurrence(found, sha256, filename, mediaType), found.body);
-
-    const occurrence = yield* decode(OccurrenceSchema, body);
-    yield* saveCommand(
-      transaction,
-      scope,
-      idempotencyKey,
-      request.expected,
-      "retain_source_object",
-      actorId,
-      occurrence,
-    );
-
-    return occurrence;
   });
 }
 
@@ -677,6 +674,7 @@ export const getSourceOccurrenceMetadata = Effect.fn("Source.getOccurrenceMetada
   command: typeof Intake.SourceIntakeCapabilities.source_get_occurrence_metadata.input.Type,
 ) {
   const storage = yield* readOccurrenceView(token, command.scope, command.occurrenceId);
+
   const admission = storage.admission;
 
   return {
@@ -768,12 +766,16 @@ function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
     }
 
     const normalized = normalizedArchiveFilters(filters);
+
     const now = yield* isoNow(transaction);
+
     let cutoff = now;
+
     let after: string | null = null;
 
     if (filters.cursor !== undefined) {
       const encoded = filters.cursor.slice(5);
+
       const content = Buffer.from(encoded, "base64url").toString("utf8");
 
       if (Buffer.from(content).toString("base64url") !== encoded)
@@ -834,6 +836,7 @@ function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
     );
 
     const context = (yield* digest({ scope, filters: normalized, cutoff })).slice(7);
+
     const anchor = page.at(-1);
 
     const nextCursor =
@@ -856,6 +859,7 @@ export const exportSourceArchive = Effect.fn("Source.exportArchive")(function* (
   filters: Filters,
 ) {
   const page = yield* searchSourceArchive(token, scope, filters);
+
   const items = [];
 
   for (const occurrence of page.items) {

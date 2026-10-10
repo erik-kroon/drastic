@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Cash from "@open-erp/domain/cash-method";
@@ -12,12 +13,10 @@ import * as Ledger from "../../db/posting";
 import * as PostingAdmissionDb from "../../db/posting-admission";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
+import { newId } from "../identifiers";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
 import {
-  newId,
-  digest,
-  isoNow,
-  replay,
-  saveCommand,
   sealActionInTransaction,
   approveChangeInTransaction,
   executeChangeInTransaction,
@@ -391,93 +390,85 @@ export const prepareCashCredit = Effect.fn("cashCredit.prepare")(function* (
       const { scope, input, idempotencyKey } = command;
       const operation = "cash_credit_prepare";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         CashMethod.CashCreditPlan,
+        Effect.gen(function* () {
+          const id = newId("cashcreditplan");
+          const eventId = newId("event");
+          const selection = yield* capture(tx, scope, input, eventId);
+          yield* Ledger.insertEvent(
+            tx,
+            scope.bookId,
+            eventId,
+            selection.creditEvidence.evidenceId,
+            `cash_credit_${id}`,
+          );
+          const period = (yield* Ledger.readPeriod(tx, scope.bookId, input.accountingPeriodId))[0];
+
+          if (!period) return yield* failure("NotFound");
+
+          const postingPlan =
+            selection.journal.length === 0
+              ? null
+              : yield* sealActionInTransaction(
+                  tx,
+                  principal,
+                  scope,
+                  yield* decode(Accounting.VoucherPostingAction, {
+                    kind: "post_voucher",
+                    correctsVoucherId: null,
+                    eventId,
+                    postingPurpose: "adjustment",
+                    occurrenceKey: `cash_credit_${id}`,
+                    fiscalYearId: period.fiscalYearId,
+                    accountingPeriodId: period.id,
+                    postingDate: selection.creditDate,
+                    series: input.series,
+                    currency: "SEK",
+                    description: "Owned unpaid cash-method supplier credit",
+                    rationale: input.rationale,
+                    taxAssessment: "not_applicable",
+                    evidenceRefs: [
+                      { ...selection.creditEvidence, locator: selection.input.draftId },
+                      { ...selection.invoiceEvidence, locator: selection.input.invoiceId },
+                    ],
+                    lines: selection.journal.map((line) => ({
+                      lineId: newId("line"),
+                      accountId: line.accountId,
+                      debitMinor: line.debitMinor,
+                      creditMinor: line.creditMinor,
+                      description: line.description,
+                    })),
+                  }),
+                );
+
+          const body = {
+            id,
+            scope,
+            selection,
+            postingPlan,
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const plan = yield* decode(CashMethod.CashCreditPlan, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertPlan(tx, scope.bookId, plan);
+
+          return plan;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const id = newId("cashcreditplan");
-      const eventId = newId("event");
-      const selection = yield* capture(tx, scope, input, eventId);
-      yield* Ledger.insertEvent(
-        tx,
-        scope.bookId,
-        eventId,
-        selection.creditEvidence.evidenceId,
-        `cash_credit_${id}`,
-      );
-      const period = (yield* Ledger.readPeriod(tx, scope.bookId, input.accountingPeriodId))[0];
-
-      if (!period) return yield* failure("NotFound");
-
-      const postingPlan =
-        selection.journal.length === 0
-          ? null
-          : yield* sealActionInTransaction(
-              tx,
-              principal,
-              scope,
-              yield* decode(Accounting.VoucherPostingAction, {
-                kind: "post_voucher",
-                correctsVoucherId: null,
-                eventId,
-                postingPurpose: "adjustment",
-                occurrenceKey: `cash_credit_${id}`,
-                fiscalYearId: period.fiscalYearId,
-                accountingPeriodId: period.id,
-                postingDate: selection.creditDate,
-                series: input.series,
-                currency: "SEK",
-                description: "Owned unpaid cash-method supplier credit",
-                rationale: input.rationale,
-                taxAssessment: "not_applicable",
-                evidenceRefs: [
-                  { ...selection.creditEvidence, locator: selection.input.draftId },
-                  { ...selection.invoiceEvidence, locator: selection.input.invoiceId },
-                ],
-                lines: selection.journal.map((line) => ({
-                  lineId: newId("line"),
-                  accountId: line.accountId,
-                  debitMinor: line.debitMinor,
-                  creditMinor: line.creditMinor,
-                  description: line.description,
-                })),
-              }),
-            );
-
-      const body = {
-        id,
-        scope,
-        selection,
-        postingPlan,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const plan = yield* decode(CashMethod.CashCreditPlan, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertPlan(tx, scope.bookId, plan);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        plan,
-      );
-
-      return plan;
     },
     "update",
   );
@@ -500,59 +491,51 @@ export const approveCashCredit = Effect.fn("cashCredit.approve")(function* (
       const { scope, input, idempotencyKey } = command;
       const operation = "cash_credit_approve";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { id: command.id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id: command.id, input },
+        },
         CashMethod.CashCreditApproval,
+        Effect.gen(function* () {
+          const plan = yield* readPlan(tx, scope, command.id);
+
+          if (plan.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
+
+          yield* recheck(tx, scope, plan);
+
+          const kernel =
+            plan.postingPlan === null
+              ? null
+              : yield* approveChangeInTransaction(tx, principal, {
+                  scope,
+                  changeSetId: plan.postingPlan.id,
+                  idempotencyKey: `creditapprove_${newId("command")}`,
+                  input: { version: 1, planDigest: plan.postingPlan.planDigest },
+                  owner: { kind: "cash_credit", id: plan.id },
+                });
+
+          const approval = yield* decode(CashMethod.CashCreditApproval, {
+            id: newId("cashcreditapproval"),
+            planId: plan.id,
+            planDigest: plan.digest,
+            actorId: principal.actorId,
+            expiresAt: yield* approvalExpiry(tx),
+            cashPostingApprovalId: kernel?.id ?? null,
+            receipt: commandReceipt(idempotencyKey, operation, principal.actorId),
+          });
+
+          yield* Db.insertApproval(tx, scope.bookId, approval);
+
+          return approval;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const plan = yield* readPlan(tx, scope, command.id);
-
-      if (plan.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
-
-      yield* recheck(tx, scope, plan);
-
-      const kernel =
-        plan.postingPlan === null
-          ? null
-          : yield* approveChangeInTransaction(tx, principal, {
-              scope,
-              changeSetId: plan.postingPlan.id,
-              idempotencyKey: `creditapprove_${newId("command")}`,
-              input: { version: 1, planDigest: plan.postingPlan.planDigest },
-              owner: { kind: "cash_credit", id: plan.id },
-            });
-
-      const approval = yield* decode(CashMethod.CashCreditApproval, {
-        id: newId("cashcreditapproval"),
-        planId: plan.id,
-        planDigest: plan.digest,
-        actorId: principal.actorId,
-        expiresAt: yield* approvalExpiry(tx),
-        cashPostingApprovalId: kernel?.id ?? null,
-        receipt: commandReceipt(idempotencyKey, operation, principal.actorId),
-      });
-
-      yield* Db.insertApproval(tx, scope.bookId, approval);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        approval,
-      );
-
-      return approval;
     },
     "update",
   );
@@ -657,103 +640,95 @@ export const executeCashCredit = Effect.fn("cashCredit.execute")(function* (
       const { scope, input, idempotencyKey } = command;
       const operation = "cash_credit_execute";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { id: command.id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id: command.id, input },
+        },
         CashMethod.CashCreditReceipt,
+        Effect.gen(function* () {
+          const plan = yield* readPlan(tx, scope, command.id);
+
+          if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
+
+          yield* recheck(tx, scope, plan);
+          const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
+
+          if (!row || row.consumed) return yield* failure("ApprovalRequired");
+
+          const approval = yield* decode(CashMethod.CashCreditApproval, row.body);
+
+          if (
+            approval.planId !== plan.id ||
+            approval.planDigest !== plan.digest ||
+            approval.actorId === plan.createdBy ||
+            approval.expiresAt <= (yield* isoNow(tx))
+          )
+            return yield* failure("ApprovalRequired");
+
+          if (
+            !(yield* Ledger.readOperatorMembership(tx, scope.bookId, approval.actorId))[0] ||
+            (yield* Ledger.readActorAdmission(tx, approval.actorId))[0]?.enabled === false
+          )
+            return yield* failure("ApprovalRequired");
+
+          const postingReceipt =
+            plan.postingPlan === null
+              ? null
+              : yield* executeChangeInTransaction(tx, principal, {
+                  scope,
+                  changeSetId: plan.postingPlan.id,
+                  idempotencyKey: `creditexecute_${plan.id}`,
+                  input: {
+                    version: 1,
+                    planDigest: plan.postingPlan.planDigest,
+                    approvalId: approval.cashPostingApprovalId ?? "approval_missing",
+                  },
+                  owner: { kind: "cash_credit", id: plan.id },
+                });
+
+          const id = newId("cashcredit");
+          const vatFactIds: string[] = [];
+
+          for (const line of plan.selection.lines)
+            if (BigInt(line.correctionTaxMinor) > 0n)
+              vatFactIds.push(
+                `cashcreditvat_${(yield* digest({ creditId: id, lineId: line.lineId })).slice(7)}`,
+              );
+
+          const total = (field: "creditGrossMinor" | "recognizedCorrectionMinor") =>
+            plan.selection.lines.reduce((sum, line) => sum + BigInt(line[field]), 0n).toString();
+
+          const receipt = yield* decode(CashMethod.CashCreditReceipt, {
+            id,
+            scope,
+            invoiceId: plan.selection.input.invoiceId,
+            planId: plan.id,
+            approvalId: approval.id,
+            creditGrossMinor: total("creditGrossMinor"),
+            recognizedCorrectionMinor: total("recognizedCorrectionMinor"),
+            lines: plan.selection.lines,
+            postingReceipt,
+            vatFactIds,
+            committedAt: yield* isoNow(tx),
+            receipt: commandReceipt(idempotencyKey, operation, principal.actorId),
+          });
+
+          yield* Db.insertCredit(tx, scope.bookId, plan, receipt);
+          yield* applyLines(tx, principal, scope, plan, receipt);
+
+          yield* assertCreditResidual(tx, scope, receipt.invoiceId);
+
+          yield* Db.consumeApproval(tx, scope.bookId, approval.id);
+          yield* YearDb.bumpPopulation(tx, scope.bookId);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const plan = yield* readPlan(tx, scope, command.id);
-
-      if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
-
-      yield* recheck(tx, scope, plan);
-      const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
-
-      if (!row || row.consumed) return yield* failure("ApprovalRequired");
-
-      const approval = yield* decode(CashMethod.CashCreditApproval, row.body);
-
-      if (
-        approval.planId !== plan.id ||
-        approval.planDigest !== plan.digest ||
-        approval.actorId === plan.createdBy ||
-        approval.expiresAt <= (yield* isoNow(tx))
-      )
-        return yield* failure("ApprovalRequired");
-
-      if (
-        !(yield* Ledger.readOperatorMembership(tx, scope.bookId, approval.actorId))[0] ||
-        (yield* Ledger.readActorAdmission(tx, approval.actorId))[0]?.enabled === false
-      )
-        return yield* failure("ApprovalRequired");
-
-      const postingReceipt =
-        plan.postingPlan === null
-          ? null
-          : yield* executeChangeInTransaction(tx, principal, {
-              scope,
-              changeSetId: plan.postingPlan.id,
-              idempotencyKey: `creditexecute_${plan.id}`,
-              input: {
-                version: 1,
-                planDigest: plan.postingPlan.planDigest,
-                approvalId: approval.cashPostingApprovalId ?? "approval_missing",
-              },
-              owner: { kind: "cash_credit", id: plan.id },
-            });
-
-      const id = newId("cashcredit");
-      const vatFactIds: string[] = [];
-
-      for (const line of plan.selection.lines)
-        if (BigInt(line.correctionTaxMinor) > 0n)
-          vatFactIds.push(
-            `cashcreditvat_${(yield* digest({ creditId: id, lineId: line.lineId })).slice(7)}`,
-          );
-
-      const total = (field: "creditGrossMinor" | "recognizedCorrectionMinor") =>
-        plan.selection.lines.reduce((sum, line) => sum + BigInt(line[field]), 0n).toString();
-
-      const receipt = yield* decode(CashMethod.CashCreditReceipt, {
-        id,
-        scope,
-        invoiceId: plan.selection.input.invoiceId,
-        planId: plan.id,
-        approvalId: approval.id,
-        creditGrossMinor: total("creditGrossMinor"),
-        recognizedCorrectionMinor: total("recognizedCorrectionMinor"),
-        lines: plan.selection.lines,
-        postingReceipt,
-        vatFactIds,
-        committedAt: yield* isoNow(tx),
-        receipt: commandReceipt(idempotencyKey, operation, principal.actorId),
-      });
-
-      yield* Db.insertCredit(tx, scope.bookId, plan, receipt);
-      yield* applyLines(tx, principal, scope, plan, receipt);
-
-      yield* assertCreditResidual(tx, scope, receipt.invoiceId);
-
-      yield* Db.consumeApproval(tx, scope.bookId, approval.id);
-      yield* YearDb.bumpPopulation(tx, scope.bookId);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     },
     "update",
   );

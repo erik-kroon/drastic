@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -404,7 +406,11 @@ function DraftConflict(
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(id ?? "")}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(props.book), id: id ?? "" },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );

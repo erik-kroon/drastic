@@ -5,7 +5,7 @@ import * as Schema from "effect/Schema";
 import type { Transaction } from "../../db/transaction";
 import * as Db from "../../db/decision-examples";
 import { projectDecisionExample } from "./decision-examples";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { failure } from "../failures";
 
 const Inventory = Schema.Array(

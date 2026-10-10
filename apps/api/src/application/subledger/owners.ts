@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -13,7 +14,9 @@ import * as Db from "../../db/posting";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import { isoNow, newId, replay, saveCommand, validatePlan } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { validatePlan } from "../posting-validation";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -688,71 +691,69 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_create_owner",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_create_owner",
+            actorId: principal.actorId,
+            input: payload,
+          },
           OwnerSchema,
-        );
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        yield* requireTrimmed(command.input.sourceKey, 200);
-        yield* requireTrimmed(command.input.displayName, 200);
-        yield* requireTrimmed(command.input.reason, 2000);
+            yield* requireTrimmed(command.input.sourceKey, 200);
+            yield* requireTrimmed(command.input.displayName, 200);
+            yield* requireTrimmed(command.input.reason, 2000);
 
-        const evidence = yield* readEvidenceReference(
-          transaction,
-          command.scope,
-          command.input.evidenceId,
-        );
-
-        if (
-          (yield* OwnerDb.readOwnerBySourceKey(
-            transaction,
-            command.scope.bookId,
-            command.input.sourceKey,
-          )).length > 0
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const body = yield* digestBody(
-          merge(
-            yield* toJsonObject(command.input),
-            { id: newId("owner"), scope: command.scope, evidence, legalIdentityVerified: false },
-            yield* recordMetadata(
+            const evidence = yield* readEvidenceReference(
               transaction,
-              command.idempotencyKey,
-              "owners_create_owner",
-              principal.actorId,
-            ),
-          ),
-        );
+              command.scope,
+              command.input.evidenceId,
+            );
 
-        const owner = yield* decode(OwnerSchema, body);
-        yield* OwnerDb.insertOwner(transaction, {
-          bookId: command.scope.bookId,
-          id: owner.id,
-          sourceKey: command.input.sourceKey,
-          evidenceId: command.input.evidenceId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_create_owner",
-          principal.actorId,
-          owner,
-        );
+            if (
+              (yield* OwnerDb.readOwnerBySourceKey(
+                transaction,
+                command.scope.bookId,
+                command.input.sourceKey,
+              )).length > 0
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
 
-        return owner;
+            const body = yield* digestBody(
+              merge(
+                yield* toJsonObject(command.input),
+                {
+                  id: newId("owner"),
+                  scope: command.scope,
+                  evidence,
+                  legalIdentityVerified: false,
+                },
+                yield* recordMetadata(
+                  transaction,
+                  command.idempotencyKey,
+                  "owners_create_owner",
+                  principal.actorId,
+                ),
+              ),
+            );
+
+            const owner = yield* decode(OwnerSchema, body);
+            yield* OwnerDb.insertOwner(transaction, {
+              bookId: command.scope.bookId,
+              id: owner.id,
+              sourceKey: command.input.sourceKey,
+              evidenceId: command.input.evidenceId,
+              body,
+            });
+
+            return owner;
+          }),
+        );
       }),
     "update",
   );
@@ -840,135 +841,128 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_create_record",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_create_record",
+            actorId: principal.actorId,
+            input: payload,
+          },
           RecordViewSchema,
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
+
+            yield* requireTrimmed(command.input.sourceKey, 200);
+            yield* requireTrimmed(command.input.description, 2000);
+            yield* requireTrimmed(command.input.reason, 2000);
+
+            if (
+              !isCalendarDate(command.input.occurredOn) ||
+              !/^[a-zA-Z0-9_-]{1,128}$/.test(command.input.locator)
+            ) {
+              return yield* failure("InvalidJournal");
+            }
+
+            const owner = (yield* OwnerDb.readOwner(
+              transaction,
+              command.scope.bookId,
+              command.input.ownerId,
+            ))[0];
+
+            if (owner === undefined) return yield* failure("NotFound");
+
+            if (textField(owner.body, "dataNature") !== command.input.dataNature) {
+              return yield* failure("InvalidJournal");
+            }
+
+            yield* requireRevisionAssertion({
+              sourceKind: command.input.sourceKind,
+              classification: command.input.classification,
+              origin: command.input.origin,
+            });
+
+            if (
+              (yield* OwnerDb.readRecordIdsByOccurrence(
+                transaction,
+                command.scope.bookId,
+                command.input.sourceKey,
+                command.input.evidenceId,
+                command.input.locator,
+              )).length > 0
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const evidence = yield* readEvidenceReference(
+              transaction,
+              command.scope,
+              command.input.evidenceId,
+            );
+
+            const recordId = newId("owner_record");
+
+            const metadata = yield* recordMetadata(
+              transaction,
+              command.idempotencyKey,
+              "owners_create_record",
+              principal.actorId,
+            );
+
+            const input = yield* toJsonObject(command.input);
+
+            const source = merge(
+              withoutKeys(input, ["description", "classification", "origin", "reason"]),
+              {
+                id: recordId,
+                scope: command.scope,
+                ownerName: textField(owner.body, "displayName") ?? "",
+                evidence,
+              },
+              metadata,
+            );
+
+            const base = merge(
+              {
+                id: recordId,
+                scope: command.scope,
+                revision: "1",
+                description: command.input.description,
+                classification: command.input.classification,
+                origin: command.input.origin,
+                reason: command.input.reason,
+                evidence,
+              },
+              metadata,
+            );
+
+            const revision = merge(base, {
+              digest: yield* digestValue({ source, revision: base }),
+            });
+
+            yield* OwnerDb.insertRecord(transaction, {
+              bookId: command.scope.bookId,
+              id: recordId,
+              ownerId: command.input.ownerId,
+              sourceKey: command.input.sourceKey,
+              evidenceId: command.input.evidenceId,
+              locator: command.input.locator,
+              occurredOn: command.input.occurredOn,
+              amountMinor: command.input.amountMinor,
+              body: source,
+            });
+            yield* OwnerDb.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              recordId,
+              revision: "1",
+              body: revision,
+            });
+            const result = yield* readRecordViewById(transaction, command.scope, recordId);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        yield* requireTrimmed(command.input.sourceKey, 200);
-        yield* requireTrimmed(command.input.description, 2000);
-        yield* requireTrimmed(command.input.reason, 2000);
-
-        if (
-          !isCalendarDate(command.input.occurredOn) ||
-          !/^[a-zA-Z0-9_-]{1,128}$/.test(command.input.locator)
-        ) {
-          return yield* failure("InvalidJournal");
-        }
-
-        const owner = (yield* OwnerDb.readOwner(
-          transaction,
-          command.scope.bookId,
-          command.input.ownerId,
-        ))[0];
-
-        if (owner === undefined) return yield* failure("NotFound");
-
-        if (textField(owner.body, "dataNature") !== command.input.dataNature) {
-          return yield* failure("InvalidJournal");
-        }
-
-        yield* requireRevisionAssertion({
-          sourceKind: command.input.sourceKind,
-          classification: command.input.classification,
-          origin: command.input.origin,
-        });
-
-        if (
-          (yield* OwnerDb.readRecordIdsByOccurrence(
-            transaction,
-            command.scope.bookId,
-            command.input.sourceKey,
-            command.input.evidenceId,
-            command.input.locator,
-          )).length > 0
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const evidence = yield* readEvidenceReference(
-          transaction,
-          command.scope,
-          command.input.evidenceId,
-        );
-
-        const recordId = newId("owner_record");
-
-        const metadata = yield* recordMetadata(
-          transaction,
-          command.idempotencyKey,
-          "owners_create_record",
-          principal.actorId,
-        );
-
-        const input = yield* toJsonObject(command.input);
-
-        const source = merge(
-          withoutKeys(input, ["description", "classification", "origin", "reason"]),
-          {
-            id: recordId,
-            scope: command.scope,
-            ownerName: textField(owner.body, "displayName") ?? "",
-            evidence,
-          },
-          metadata,
-        );
-
-        const base = merge(
-          {
-            id: recordId,
-            scope: command.scope,
-            revision: "1",
-            description: command.input.description,
-            classification: command.input.classification,
-            origin: command.input.origin,
-            reason: command.input.reason,
-            evidence,
-          },
-          metadata,
-        );
-
-        const revision = merge(base, {
-          digest: yield* digestValue({ source, revision: base }),
-        });
-
-        yield* OwnerDb.insertRecord(transaction, {
-          bookId: command.scope.bookId,
-          id: recordId,
-          ownerId: command.input.ownerId,
-          sourceKey: command.input.sourceKey,
-          evidenceId: command.input.evidenceId,
-          locator: command.input.locator,
-          occurredOn: command.input.occurredOn,
-          amountMinor: command.input.amountMinor,
-          body: source,
-        });
-        yield* OwnerDb.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          recordId,
-          revision: "1",
-          body: revision,
-        });
-        const result = yield* readRecordViewById(transaction, command.scope, recordId);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_create_record",
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     "update",
   );
@@ -986,101 +980,94 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_revise_record",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_revise_record",
+            actorId: principal.actorId,
+            input: payload,
+          },
           RecordViewSchema,
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
+
+            const record = yield* readRecord(transaction, command.scope, command.id);
+
+            if (command.input.expectedRevision !== record.currentRevision) {
+              return yield* failure("StaleDependency");
+            }
+
+            const effects = yield* OwnerDb.readEffectByRecord(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            );
+
+            const links = yield* OwnerDb.readProposalLinksByRecord(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            );
+
+            const posted = yield* Effect.forEach(links, (link) =>
+              Db.readVoucherByChangeSet(transaction, command.scope.bookId, link.changeSetId),
+            );
+
+            if (effects.length > 0 || posted.some((rows) => rows.length > 0)) {
+              return yield* failure("StaleDependency");
+            }
+
+            yield* requireTrimmed(command.input.description, 2000);
+            yield* requireTrimmed(command.input.reason, 2000);
+            yield* requireRevisionAssertion({
+              sourceKind: textField(record.body, "sourceKind") ?? "",
+              classification: command.input.classification,
+              origin: command.input.origin,
+            });
+
+            const evidence = yield* readEvidenceReference(
+              transaction,
+              command.scope,
+              command.input.evidenceId,
+            );
+
+            const next = (minor(record.currentRevision) + 1n).toString();
+            const input = yield* toJsonObject(command.input);
+
+            const base = merge(
+              withoutKeys(input, ["expectedRevision", "evidenceId"]),
+              { id: command.id, scope: command.scope, revision: next, evidence },
+              yield* recordMetadata(
+                transaction,
+                command.idempotencyKey,
+                "owners_revise_record",
+                principal.actorId,
+              ),
+            );
+
+            const revision = merge(base, {
+              digest: yield* digestValue({ source: record.body, revision: base }),
+            });
+
+            yield* OwnerDb.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              recordId: command.id,
+              revision: next,
+              body: revision,
+            });
+            yield* OwnerDb.advanceRecordRevision(transaction, {
+              bookId: command.scope.bookId,
+              id: command.id,
+              expectedRevision: record.currentRevision,
+              nextRevision: next,
+            });
+            const result = yield* readRecordViewById(transaction, command.scope, command.id);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const record = yield* readRecord(transaction, command.scope, command.id);
-
-        if (command.input.expectedRevision !== record.currentRevision) {
-          return yield* failure("StaleDependency");
-        }
-
-        const effects = yield* OwnerDb.readEffectByRecord(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        );
-
-        const links = yield* OwnerDb.readProposalLinksByRecord(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        );
-
-        const posted = yield* Effect.forEach(links, (link) =>
-          Db.readVoucherByChangeSet(transaction, command.scope.bookId, link.changeSetId),
-        );
-
-        if (effects.length > 0 || posted.some((rows) => rows.length > 0)) {
-          return yield* failure("StaleDependency");
-        }
-
-        yield* requireTrimmed(command.input.description, 2000);
-        yield* requireTrimmed(command.input.reason, 2000);
-        yield* requireRevisionAssertion({
-          sourceKind: textField(record.body, "sourceKind") ?? "",
-          classification: command.input.classification,
-          origin: command.input.origin,
-        });
-
-        const evidence = yield* readEvidenceReference(
-          transaction,
-          command.scope,
-          command.input.evidenceId,
-        );
-
-        const next = (minor(record.currentRevision) + 1n).toString();
-        const input = yield* toJsonObject(command.input);
-
-        const base = merge(
-          withoutKeys(input, ["expectedRevision", "evidenceId"]),
-          { id: command.id, scope: command.scope, revision: next, evidence },
-          yield* recordMetadata(
-            transaction,
-            command.idempotencyKey,
-            "owners_revise_record",
-            principal.actorId,
-          ),
-        );
-
-        const revision = merge(base, {
-          digest: yield* digestValue({ source: record.body, revision: base }),
-        });
-
-        yield* OwnerDb.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          recordId: command.id,
-          revision: next,
-          body: revision,
-        });
-        yield* OwnerDb.advanceRecordRevision(transaction, {
-          bookId: command.scope.bookId,
-          id: command.id,
-          expectedRevision: record.currentRevision,
-          nextRevision: next,
-        });
-        const result = yield* readRecordViewById(transaction, command.scope, command.id);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_revise_record",
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     "update",
   );
@@ -1185,117 +1172,109 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_attach_proposal",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_attach_proposal",
+            actorId: principal.actorId,
+            input: payload,
+          },
           ProposalLinkSchema,
-        );
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const ready = yield* ownerRequireReady(
-          transaction,
-          command.scope,
-          command.id,
-          command.input.reviewId,
-          false,
-        );
-
-        if (
-          (yield* OwnerDb.readEffectByRecord(transaction, command.scope.bookId, command.id))
-            .length > 0
-        ) {
-          return yield* failure("AlreadyPosted");
-        }
-
-        const planRow = (yield* Db.readPlan(
-          transaction,
-          command.scope.bookId,
-          command.input.changeSetId,
-        ))[0];
-
-        if (planRow === undefined) return yield* failure("NotFound");
-        const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
-
-        if (plan.groups.length !== 1 || plan.groups[0]?.actions.length !== 1) {
-          return yield* unsupported();
-        }
-
-        yield* validatePlan(transaction, command.scope, plan);
-        yield* validateOwnerLine(
-          transaction,
-          command.scope,
-          ready,
-          yield* toJsonObject(plan.groups[0]?.actions[0]),
-          command.input.lineId,
-        );
-
-        const existing = yield* OwnerDb.readProposalLinksByRecord(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        );
-
-        const byChangeSet = yield* OwnerDb.readProposalLinksByChangeSet(
-          transaction,
-          command.scope.bookId,
-          command.input.changeSetId,
-        );
-
-        if (
-          existing.some((link) => link.changeSetId === command.input.changeSetId) ||
-          byChangeSet.some((link) => link.lineId === command.input.lineId)
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const body = yield* digestBody(
-          merge(
-            yield* toJsonObject(command.input),
-            {
-              id: newId("owner_proposal"),
-              scope: command.scope,
-              recordId: command.id,
-              revision: ready.revisionNumber,
-              revisionDigest: ready.digest,
-              planDigest: plan.planDigest,
-            },
-            yield* recordMetadata(
+            const ready = yield* ownerRequireReady(
               transaction,
-              command.idempotencyKey,
-              "owners_attach_proposal",
-              principal.actorId,
-            ),
-          ),
-        );
+              command.scope,
+              command.id,
+              command.input.reviewId,
+              false,
+            );
 
-        const link = yield* decode(ProposalLinkSchema, body);
-        yield* OwnerDb.insertProposalLink(transaction, {
-          bookId: command.scope.bookId,
-          id: link.id,
-          recordId: command.id,
-          reviewId: command.input.reviewId,
-          changeSetId: command.input.changeSetId,
-          lineId: command.input.lineId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_attach_proposal",
-          principal.actorId,
-          link,
-        );
+            if (
+              (yield* OwnerDb.readEffectByRecord(transaction, command.scope.bookId, command.id))
+                .length > 0
+            ) {
+              return yield* failure("AlreadyPosted");
+            }
 
-        return link;
+            const planRow = (yield* Db.readPlan(
+              transaction,
+              command.scope.bookId,
+              command.input.changeSetId,
+            ))[0];
+
+            if (planRow === undefined) return yield* failure("NotFound");
+            const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
+
+            if (plan.groups.length !== 1 || plan.groups[0]?.actions.length !== 1) {
+              return yield* unsupported();
+            }
+
+            yield* validatePlan(transaction, command.scope, plan);
+            yield* validateOwnerLine(
+              transaction,
+              command.scope,
+              ready,
+              yield* toJsonObject(plan.groups[0]?.actions[0]),
+              command.input.lineId,
+            );
+
+            const existing = yield* OwnerDb.readProposalLinksByRecord(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            );
+
+            const byChangeSet = yield* OwnerDb.readProposalLinksByChangeSet(
+              transaction,
+              command.scope.bookId,
+              command.input.changeSetId,
+            );
+
+            if (
+              existing.some((link) => link.changeSetId === command.input.changeSetId) ||
+              byChangeSet.some((link) => link.lineId === command.input.lineId)
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const body = yield* digestBody(
+              merge(
+                yield* toJsonObject(command.input),
+                {
+                  id: newId("owner_proposal"),
+                  scope: command.scope,
+                  recordId: command.id,
+                  revision: ready.revisionNumber,
+                  revisionDigest: ready.digest,
+                  planDigest: plan.planDigest,
+                },
+                yield* recordMetadata(
+                  transaction,
+                  command.idempotencyKey,
+                  "owners_attach_proposal",
+                  principal.actorId,
+                ),
+              ),
+            );
+
+            const link = yield* decode(ProposalLinkSchema, body);
+            yield* OwnerDb.insertProposalLink(transaction, {
+              bookId: command.scope.bookId,
+              id: link.id,
+              recordId: command.id,
+              reviewId: command.input.reviewId,
+              changeSetId: command.input.changeSetId,
+              lineId: command.input.lineId,
+              body,
+            });
+
+            return link;
+          }),
+        );
       }),
     "update",
   );
@@ -1318,170 +1297,162 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_attach_posted_line",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_attach_posted_line",
+            actorId: principal.actorId,
+            input: payload,
+          },
           PostedEffectSchema,
-        );
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
+            const ready = yield* ownerRequireReady(
+              transaction,
+              command.scope,
+              command.id,
+              command.input.reviewId,
+              true,
+            );
 
-        const ready = yield* ownerRequireReady(
-          transaction,
-          command.scope,
-          command.id,
-          command.input.reviewId,
-          true,
-        );
+            const voucher = (yield* Db.readVoucher(
+              transaction,
+              command.scope.bookId,
+              command.input.voucherId,
+            ))[0];
 
-        const voucher = (yield* Db.readVoucher(
-          transaction,
-          command.scope.bookId,
-          command.input.voucherId,
-        ))[0];
+            if (voucher === undefined) return yield* failure("NotFound");
 
-        if (voucher === undefined) return yield* failure("NotFound");
+            if (
+              voucher.correctsVoucherId !== null ||
+              voucher.postingPurpose === "reversal" ||
+              !(yield* readVoucherCurrent(transaction, command.scope, voucher.id))
+            ) {
+              return yield* failure("StaleDependency");
+            }
 
-        if (
-          voucher.correctsVoucherId !== null ||
-          voucher.postingPurpose === "reversal" ||
-          !(yield* readVoucherCurrent(transaction, command.scope, voucher.id))
-        ) {
-          return yield* failure("StaleDependency");
-        }
+            const period = (yield* Db.readPeriod(
+              transaction,
+              command.scope.bookId,
+              textField(voucher.action, "accountingPeriodId") ?? "",
+            ))[0];
 
-        const period = (yield* Db.readPeriod(
-          transaction,
-          command.scope.bookId,
-          textField(voucher.action, "accountingPeriodId") ?? "",
-        ))[0];
+            if (period === undefined || period.locked) return yield* failure("PeriodLocked");
 
-        if (period === undefined || period.locked) return yield* failure("PeriodLocked");
+            const links = yield* OwnerDb.readPostedProposalLink(
+              transaction,
+              command.scope.bookId,
+              command.id,
+              voucher.changeSetId,
+            );
 
-        const links = yield* OwnerDb.readPostedProposalLink(
-          transaction,
-          command.scope.bookId,
-          command.id,
-          voucher.changeSetId,
-        );
+            if (
+              links.some(
+                (link) =>
+                  link.reviewId !== command.input.reviewId ||
+                  link.lineId !== command.input.lineId ||
+                  textField(link.body, "revisionDigest") !== ready.digest,
+              )
+            ) {
+              return yield* failure("StaleDependency");
+            }
 
-        if (
-          links.some(
-            (link) =>
-              link.reviewId !== command.input.reviewId ||
-              link.lineId !== command.input.lineId ||
-              textField(link.body, "revisionDigest") !== ready.digest,
-          )
-        ) {
-          return yield* failure("StaleDependency");
-        }
+            yield* validateOwnerLine(
+              transaction,
+              command.scope,
+              ready,
+              voucher.action,
+              command.input.lineId,
+            );
+            const amountMinor = textField(ready.source, "amountMinor") ?? "0";
 
-        yield* validateOwnerLine(
-          transaction,
-          command.scope,
-          ready,
-          voucher.action,
-          command.input.lineId,
-        );
-        const amountMinor = textField(ready.source, "amountMinor") ?? "0";
+            const line = (yield* OwnerDb.readJournalLine(
+              transaction,
+              command.scope.bookId,
+              voucher.id,
+              command.input.lineId,
+            ))[0];
 
-        const line = (yield* OwnerDb.readJournalLine(
-          transaction,
-          command.scope.bookId,
-          voucher.id,
-          command.input.lineId,
-        ))[0];
+            if (
+              line === undefined ||
+              line.accountId !== textField(ready.review, "controlAccountId") ||
+              minor(line.debitMinor) + minor(line.creditMinor) !== minor(amountMinor)
+            ) {
+              return yield* failure("InvalidJournal");
+            }
 
-        if (
-          line === undefined ||
-          line.accountId !== textField(ready.review, "controlAccountId") ||
-          minor(line.debitMinor) + minor(line.creditMinor) !== minor(amountMinor)
-        ) {
-          return yield* failure("InvalidJournal");
-        }
+            const effects = yield* OwnerDb.readEffectByRecord(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            );
 
-        const effects = yield* OwnerDb.readEffectByRecord(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        );
+            const sameLine = yield* OwnerDb.readEffectByLine(
+              transaction,
+              command.scope.bookId,
+              voucher.id,
+              line.id,
+            );
 
-        const sameLine = yield* OwnerDb.readEffectByLine(
-          transaction,
-          command.scope.bookId,
-          voucher.id,
-          line.id,
-        );
+            if (effects.length > 0 || sameLine.length > 0) return yield* failure("AlreadyPosted");
 
-        if (effects.length > 0 || sameLine.length > 0) return yield* failure("AlreadyPosted");
+            const body = yield* digestBody(
+              merge(
+                yield* toJsonObject(command.input),
+                {
+                  id: newId("owner_effect"),
+                  scope: command.scope,
+                  recordId: command.id,
+                  ownerId: textField(ready.source, "ownerId") ?? "",
+                  revisionDigest: ready.digest,
+                  accountId: line.accountId,
+                  postingDate: voucher.postingDate,
+                  occurredOn: textField(ready.source, "occurredOn") ?? "",
+                  locator: textField(ready.source, "locator") ?? "",
+                  eventId: voucher.eventId,
+                  changeSetId: voucher.changeSetId,
+                  classification: textField(ready.review, "classification") ?? "",
+                  origin: textField(ready.review, "origin") ?? "",
+                  side: minor(line.debitMinor) > 0n ? "debit" : "credit",
+                  amountMinor,
+                  currency: textField(ready.source, "currency") ?? "",
+                  currencyScale: ready.source["currencyScale"] ?? null,
+                  evidence: objectField(ready.source, "evidence"),
+                },
+                yield* recordMetadata(
+                  transaction,
+                  command.idempotencyKey,
+                  "owners_attach_posted_line",
+                  principal.actorId,
+                ),
+              ),
+            );
 
-        const body = yield* digestBody(
-          merge(
-            yield* toJsonObject(command.input),
-            {
-              id: newId("owner_effect"),
-              scope: command.scope,
+            const effect = yield* decode(PostedEffectSchema, body);
+            yield* admitLineOwner(transaction, command.scope.bookId, voucher.id, line.id, "owner");
+            yield* OwnerDb.insertEffect(transaction, {
+              bookId: command.scope.bookId,
+              id: effect.id,
               recordId: command.id,
-              ownerId: textField(ready.source, "ownerId") ?? "",
-              revisionDigest: ready.digest,
+              ownerId: effect.ownerId,
+              reviewId: command.input.reviewId,
+              voucherId: voucher.id,
+              lineId: line.id,
               accountId: line.accountId,
               postingDate: voucher.postingDate,
-              occurredOn: textField(ready.source, "occurredOn") ?? "",
-              locator: textField(ready.source, "locator") ?? "",
-              eventId: voucher.eventId,
-              changeSetId: voucher.changeSetId,
-              classification: textField(ready.review, "classification") ?? "",
-              origin: textField(ready.review, "origin") ?? "",
-              side: minor(line.debitMinor) > 0n ? "debit" : "credit",
-              amountMinor,
-              currency: textField(ready.source, "currency") ?? "",
-              currencyScale: ready.source["currencyScale"] ?? null,
-              evidence: objectField(ready.source, "evidence"),
-            },
-            yield* recordMetadata(
-              transaction,
-              command.idempotencyKey,
-              "owners_attach_posted_line",
-              principal.actorId,
-            ),
-          ),
-        );
+              side: effect.side,
+              classification: effect.classification,
+              origin: effect.origin,
+              amountMinor: effect.amountMinor,
+              body,
+            });
 
-        const effect = yield* decode(PostedEffectSchema, body);
-        yield* admitLineOwner(transaction, command.scope.bookId, voucher.id, line.id, "owner");
-        yield* OwnerDb.insertEffect(transaction, {
-          bookId: command.scope.bookId,
-          id: effect.id,
-          recordId: command.id,
-          ownerId: effect.ownerId,
-          reviewId: command.input.reviewId,
-          voucherId: voucher.id,
-          lineId: line.id,
-          accountId: line.accountId,
-          postingDate: voucher.postingDate,
-          side: effect.side,
-          classification: effect.classification,
-          origin: effect.origin,
-          amountMinor: effect.amountMinor,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_attach_posted_line",
-          principal.actorId,
-          effect,
+            return effect;
+          }),
         );
-
-        return effect;
       }),
     "update",
   );
@@ -1668,51 +1639,48 @@ export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* 
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_prepare_allocation",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_prepare_allocation",
+            actorId: principal.actorId,
+            input: payload,
+          },
           AllocationPlanSchema,
-        );
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const selection = yield* readAllocationSelection(transaction, command.scope, command.input);
-
-        const body = yield* digestBody(
-          merge(
-            yield* toJsonObject(selection),
-            { id: newId("allocation"), scope: command.scope, version: 1 },
-            yield* recordMetadata(
+            const selection = yield* readAllocationSelection(
               transaction,
-              command.idempotencyKey,
-              "owners_prepare_allocation",
-              principal.actorId,
-            ),
-          ),
-        );
+              command.scope,
+              command.input,
+            );
 
-        const plan = yield* decode(AllocationPlanSchema, body);
-        yield* OwnerDb.insertAllocationPlan(transaction, {
-          bookId: command.scope.bookId,
-          id: plan.id,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_prepare_allocation",
-          principal.actorId,
-          plan,
-        );
+            const body = yield* digestBody(
+              merge(
+                yield* toJsonObject(selection),
+                { id: newId("allocation"), scope: command.scope, version: 1 },
+                yield* recordMetadata(
+                  transaction,
+                  command.idempotencyKey,
+                  "owners_prepare_allocation",
+                  principal.actorId,
+                ),
+              ),
+            );
 
-        return plan;
+            const plan = yield* decode(AllocationPlanSchema, body);
+            yield* OwnerDb.insertAllocationPlan(transaction, {
+              bookId: command.scope.bookId,
+              id: plan.id,
+              body,
+            });
+
+            return plan;
+          }),
+        );
       }),
     "update",
   );
@@ -1778,115 +1746,110 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_apply_allocation",
-          principal.actorId,
-          payload,
-          AllocationReceiptSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const retained = (yield* OwnerDb.readAllocationPlan(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        if (retained === undefined) return yield* failure("NotFound");
-
-        if (
-          (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
-            .length > 0
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const plan = yield* decode(AllocationPlanSchema, retained.body);
-
-        if (
-          command.input.planDigest !== plan.digest ||
-          !(yield* readAllocationCurrent(transaction, command.scope, retained.body))
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        const approval = (yield* OwnerDb.readApproval(
-          transaction,
-          command.scope.bookId,
-          command.input.approvalId,
-        ))[0];
-
-        const now = yield* isoNow(transaction);
-
-        if (
-          approval === undefined ||
-          approval.planId !== command.id ||
-          approval.digest !== plan.digest ||
-          approval.consumed === true ||
-          approval.expiresAt <= now
-        ) {
-          return yield* failure("ApprovalRequired");
-        }
-
-        if (
-          (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
-            .length === 0
-        ) {
-          return yield* failure("ApprovalRequired");
-        }
-
-        const body = yield* toJsonObject({
-          id: newId("allocation_receipt"),
-          scope: command.scope,
-          planId: command.id,
-          planDigest: plan.digest,
-          approvalId: approval.id,
-          totalMinor: plan.totalMinor,
-          settlementRemainingMinor: plan.settlementRemainingAfterMinor,
-          committedAt: now,
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "owners_apply_allocation",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          AllocationReceiptSchema,
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        const receipt = yield* decode(AllocationReceiptSchema, body);
-        yield* OwnerDb.insertReceipt(transaction, {
-          bookId: command.scope.bookId,
-          id: receipt.id,
-          planId: command.id,
-          approvalId: approval.id,
-          body,
-        });
-        yield* OwnerDb.insertAllocationLegs(
-          transaction,
-          plan.legs.map((leg, index) => ({
-            bookId: command.scope.bookId,
-            receiptId: receipt.id,
-            ordinal: index + 1,
-            claimId: leg.claim.effect.id,
-            settlementId: plan.settlement.effect.id,
-            amountMinor: leg.amountMinor,
-          })),
-        );
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_apply_allocation",
-          principal.actorId,
-          receipt,
-        );
+            const retained = (yield* OwnerDb.readAllocationPlan(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            ))[0];
 
-        return receipt;
+            if (retained === undefined) return yield* failure("NotFound");
+
+            if (
+              (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
+                .length > 0
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const plan = yield* decode(AllocationPlanSchema, retained.body);
+
+            if (
+              command.input.planDigest !== plan.digest ||
+              !(yield* readAllocationCurrent(transaction, command.scope, retained.body))
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            const approval = (yield* OwnerDb.readApproval(
+              transaction,
+              command.scope.bookId,
+              command.input.approvalId,
+            ))[0];
+
+            const now = yield* isoNow(transaction);
+
+            if (
+              approval === undefined ||
+              approval.planId !== command.id ||
+              approval.digest !== plan.digest ||
+              approval.consumed === true ||
+              approval.expiresAt <= now
+            ) {
+              return yield* failure("ApprovalRequired");
+            }
+
+            if (
+              (yield* Db.readOperatorMembership(
+                transaction,
+                command.scope.bookId,
+                approval.actorId,
+              )).length === 0
+            ) {
+              return yield* failure("ApprovalRequired");
+            }
+
+            const body = yield* toJsonObject({
+              id: newId("allocation_receipt"),
+              scope: command.scope,
+              planId: command.id,
+              planDigest: plan.digest,
+              approvalId: approval.id,
+              totalMinor: plan.totalMinor,
+              settlementRemainingMinor: plan.settlementRemainingAfterMinor,
+              committedAt: now,
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "owners_apply_allocation",
+                actorId: principal.actorId,
+              },
+            });
+
+            const receipt = yield* decode(AllocationReceiptSchema, body);
+            yield* OwnerDb.insertReceipt(transaction, {
+              bookId: command.scope.bookId,
+              id: receipt.id,
+              planId: command.id,
+              approvalId: approval.id,
+              body,
+            });
+            yield* OwnerDb.insertAllocationLegs(
+              transaction,
+              plan.legs.map((leg, index) => ({
+                bookId: command.scope.bookId,
+                receiptId: receipt.id,
+                ordinal: index + 1,
+                claimId: leg.claim.effect.id,
+                settlementId: plan.settlement.effect.id,
+                amountMinor: leg.amountMinor,
+              })),
+            );
+
+            return receipt;
+          }),
+        );
       }),
     "update",
   );
@@ -2176,58 +2139,50 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "owners_prepare_control",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "owners_prepare_control",
+            actorId: principal.actorId,
+            input: payload,
+          },
           ControlSchema,
-        );
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
 
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const body = yield* controlBody(
-          transaction,
-          command.scope,
-          command.input.ownerId,
-          command.input.startsOn,
-          command.input.endsOn,
-        );
-
-        const snapshot = yield* digestBody(
-          merge(
-            yield* toJsonObject(body),
-            { id: newId("owner_control"), scope: command.scope, version: 1 },
-            yield* recordMetadata(
+            const body = yield* controlBody(
               transaction,
-              command.idempotencyKey,
-              "owners_prepare_control",
-              principal.actorId,
-            ),
-          ),
-        );
+              command.scope,
+              command.input.ownerId,
+              command.input.startsOn,
+              command.input.endsOn,
+            );
 
-        const control = yield* decode(ControlSchema, snapshot);
-        yield* OwnerDb.insertControl(transaction, {
-          bookId: command.scope.bookId,
-          id: control.id,
-          body: snapshot,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "owners_prepare_control",
-          principal.actorId,
-          control,
-        );
+            const snapshot = yield* digestBody(
+              merge(
+                yield* toJsonObject(body),
+                { id: newId("owner_control"), scope: command.scope, version: 1 },
+                yield* recordMetadata(
+                  transaction,
+                  command.idempotencyKey,
+                  "owners_prepare_control",
+                  principal.actorId,
+                ),
+              ),
+            );
 
-        return control;
+            const control = yield* decode(ControlSchema, snapshot);
+            yield* OwnerDb.insertControl(transaction, {
+              bookId: command.scope.bookId,
+              id: control.id,
+              body: snapshot,
+            });
+
+            return control;
+          }),
+        );
       }),
     "update",
   );
@@ -2324,110 +2279,108 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
       Effect.gen(function* () {
         const operation = "owners_review_record";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          principal.actorId,
-          yield* toJsonObject({ id: command.id, input: command.input }),
-          Owners.Review,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-        const record = yield* readRecord(transaction, command.scope, command.id);
-
-        const stored = (yield* OwnerDb.readRevision(
-          transaction,
-          command.scope.bookId,
-          record.id,
-          record.currentRevision,
-        ))[0];
-
-        if (!stored) return yield* failure("InternalError");
-        const revision = yield* decode(Owners.Revision, stored.body);
-
-        if (
-          command.input.expectedRevision !== record.currentRevision ||
-          command.input.revisionDigest !== revision.digest
-        )
-          return yield* failure("StaleDependency");
-
-        if (
-          (yield* OwnerDb.readReviewByRevision(
-            transaction,
-            command.scope.bookId,
-            record.id,
-            record.currentRevision,
-          )).length > 0
-        )
-          return yield* failure("IdempotencyConflict");
-        yield* requireTrimmed(command.input.reason, 2000);
-
-        if (
-          command.input.syntheticNoTaxConfirmed &&
-          record.body.dataNature !== "synthetic_example"
-        ) {
-          return yield* unsupported();
-        }
-
-        const book = yield* readBook(transaction, command.scope);
-        const accountId = command.input.controlAccountId;
-
-        const account =
-          accountId === null
-            ? undefined
-            : (yield* Db.readAccounts(transaction, command.scope.bookId, [accountId]))[0];
-
-        if (accountId !== null && !account?.active) return yield* failure("InvalidJournal");
-
-        if (account) {
-          yield* admitAccountRole(transaction, command.scope.bookId, account.id, "owner");
-          yield* OwnerDb.insertControlAccount(transaction, command.scope.bookId, account.id);
-        }
-
-        const body = merge(
-          withoutKeys(yield* toJsonObject(command.input), ["expectedRevision", "evidenceId"]),
           {
-            id: newId("owner_review"),
             scope: command.scope,
-            recordId: record.id,
-            revision: record.currentRevision,
-            classification: revision.classification,
-            origin: revision.origin,
-            accountVersion: account?.version.toString() ?? null,
-            profileVersion: book.profileVersion.toString(),
-            writerEpoch: book.writerEpoch.toString(),
-            evidence: yield* readEvidenceReference(
-              transaction,
-              command.scope,
-              command.input.evidenceId,
-            ),
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: yield* toJsonObject({ id: command.id, input: command.input }),
           },
-          yield* recordMetadata(transaction, command.idempotencyKey, operation, principal.actorId),
-        );
+          Owners.Review,
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
+            const record = yield* readRecord(transaction, command.scope, command.id);
 
-        const result = yield* decode(Owners.Review, body);
-        yield* OwnerDb.insertReview(transaction, {
-          bookId: command.scope.bookId,
-          id: result.id,
-          recordId: record.id,
-          revision: record.currentRevision,
-          actorId: principal.actorId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
+            const stored = (yield* OwnerDb.readRevision(
+              transaction,
+              command.scope.bookId,
+              record.id,
+              record.currentRevision,
+            ))[0];
 
-        return result;
+            if (!stored) return yield* failure("InternalError");
+            const revision = yield* decode(Owners.Revision, stored.body);
+
+            if (
+              command.input.expectedRevision !== record.currentRevision ||
+              command.input.revisionDigest !== revision.digest
+            )
+              return yield* failure("StaleDependency");
+
+            if (
+              (yield* OwnerDb.readReviewByRevision(
+                transaction,
+                command.scope.bookId,
+                record.id,
+                record.currentRevision,
+              )).length > 0
+            )
+              return yield* failure("IdempotencyConflict");
+            yield* requireTrimmed(command.input.reason, 2000);
+
+            if (
+              command.input.syntheticNoTaxConfirmed &&
+              record.body.dataNature !== "synthetic_example"
+            ) {
+              return yield* unsupported();
+            }
+
+            const book = yield* readBook(transaction, command.scope);
+            const accountId = command.input.controlAccountId;
+
+            const account =
+              accountId === null
+                ? undefined
+                : (yield* Db.readAccounts(transaction, command.scope.bookId, [accountId]))[0];
+
+            if (accountId !== null && !account?.active) return yield* failure("InvalidJournal");
+
+            if (account) {
+              yield* admitAccountRole(transaction, command.scope.bookId, account.id, "owner");
+              yield* OwnerDb.insertControlAccount(transaction, command.scope.bookId, account.id);
+            }
+
+            const body = merge(
+              withoutKeys(yield* toJsonObject(command.input), ["expectedRevision", "evidenceId"]),
+              {
+                id: newId("owner_review"),
+                scope: command.scope,
+                recordId: record.id,
+                revision: record.currentRevision,
+                classification: revision.classification,
+                origin: revision.origin,
+                accountVersion: account?.version.toString() ?? null,
+                profileVersion: book.profileVersion.toString(),
+                writerEpoch: book.writerEpoch.toString(),
+                evidence: yield* readEvidenceReference(
+                  transaction,
+                  command.scope,
+                  command.input.evidenceId,
+                ),
+              },
+              yield* recordMetadata(
+                transaction,
+                command.idempotencyKey,
+                operation,
+                principal.actorId,
+              ),
+            );
+
+            const result = yield* decode(Owners.Review, body);
+            yield* OwnerDb.insertReview(transaction, {
+              bookId: command.scope.bookId,
+              id: result.id,
+              recordId: record.id,
+              revision: record.currentRevision,
+              actorId: principal.actorId,
+              body,
+            });
+
+            return result;
+          }),
+        );
       }),
     "update",
   );
@@ -2445,72 +2398,65 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
       Effect.gen(function* () {
         const operation = "owners_approve_allocation";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          principal.actorId,
-          yield* toJsonObject({ id: command.id, input: command.input }),
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: yield* toJsonObject({ id: command.id, input: command.input }),
+          },
           Owners.AllocationApproval,
+          Effect.gen(function* () {
+            yield* requireOwnerAccess(transaction, true);
+
+            const row = (yield* OwnerDb.readAllocationPlan(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            ))[0];
+
+            if (!row) return yield* failure("NotFound");
+            const plan = yield* decode(AllocationPlanSchema, row.body);
+
+            if (
+              command.input.version !== 1 ||
+              command.input.planDigest !== plan.digest ||
+              !(yield* readAllocationCurrent(transaction, command.scope, row.body))
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            if (
+              (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
+                .length > 0
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const result = yield* decode(Owners.AllocationApproval, {
+              id: newId("allocation_approval"),
+              planId: command.id,
+              planDigest: plan.digest,
+              actorId: principal.actorId,
+              expiresAt: new Date(Date.parse(yield* isoNow(transaction)) + 3_600_000).toISOString(),
+              receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+            });
+
+            yield* OwnerDb.insertApproval(transaction, {
+              bookId: command.scope.bookId,
+              id: result.id,
+              planId: result.planId,
+              actorId: principal.actorId,
+              digest: result.planDigest,
+              expiresAt: result.expiresAt,
+              body: result,
+            });
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireOwnerAccess(transaction, true);
-
-        const row = (yield* OwnerDb.readAllocationPlan(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        if (!row) return yield* failure("NotFound");
-        const plan = yield* decode(AllocationPlanSchema, row.body);
-
-        if (
-          command.input.version !== 1 ||
-          command.input.planDigest !== plan.digest ||
-          !(yield* readAllocationCurrent(transaction, command.scope, row.body))
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        if (
-          (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
-            .length > 0
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const result = yield* decode(Owners.AllocationApproval, {
-          id: newId("allocation_approval"),
-          planId: command.id,
-          planDigest: plan.digest,
-          actorId: principal.actorId,
-          expiresAt: new Date(Date.parse(yield* isoNow(transaction)) + 3_600_000).toISOString(),
-          receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-        });
-
-        yield* OwnerDb.insertApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: result.id,
-          planId: result.planId,
-          actorId: principal.actorId,
-          digest: result.planDigest,
-          expiresAt: result.expiresAt,
-          body: result,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     "update",
   );

@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { RegisterDetailLines } from "@open-erp/ui/components/register-workspace";
@@ -7,7 +9,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useBusinessDate } from "@/lib/use-business-date";
-import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, type CommerceProps } from "./shared";
 
 export function CustomerInvoicesPreview(props: CommerceProps & { partyId: string }) {
   const sv = props.locale === "sv";
@@ -17,7 +19,11 @@ export function CustomerInvoicesPreview(props: CommerceProps & { partyId: string
     queryKey: [...commerceKey(props.book), "customer-invoice-preview", props.partyId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoices`,
+        (client) =>
+          client.commerce.commerceListInvoices({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(Api.groups.commerce.endpoints.commerceListInvoices, ``),
+          }),
         Commerce.InvoicePage,
         { signal },
       );

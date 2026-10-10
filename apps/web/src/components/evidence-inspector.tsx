@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,7 +11,7 @@ import { OriginalDocument } from "@/components/original-document";
 import type { PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { enteredExpenseSource } from "@/lib/source-documents";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -35,7 +36,10 @@ export function EvidenceInspector(props: {
     queryKey: [...bookKey(book), "evidence", reference.evidenceId, reference.sha256],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/evidence/${encodeURIComponent(reference.evidenceId)}`,
+        (client) =>
+          client.accounting.getEvidence({
+            params: { ...bookScope(book), id: reference.evidenceId },
+          }),
         Accounting.EvidenceContent,
         { signal },
       );

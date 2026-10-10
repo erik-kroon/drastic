@@ -1,15 +1,11 @@
 import * as Effect from "effect/Effect";
 import type { R2Bucket } from "@cloudflare/workers-types";
-import * as Schema from "effect/Schema";
+import { RetainedObjectReference as RetainedObject } from "@open-erp/contracts/operations";
 import { maxSourceBytes } from "@open-erp/contracts/source-intake";
 import { failure } from "../../application/failures";
 import { RequestEnvironment } from "../../runtime/environment";
 
-export const RetainedObject = Schema.Struct({
-  objectKey: Schema.String.check(Schema.isPattern(/^v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/)),
-  sha256: Schema.String.check(Schema.isPattern(/^sha256:[a-f0-9]{64}$/)),
-  byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: maxSourceBytes })),
-});
+export { RetainedObject };
 
 export interface RetainedObjectStore {
   readonly get: (key: string) => Promise<Uint8Array | null>;

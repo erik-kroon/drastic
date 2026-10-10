@@ -1,4 +1,5 @@
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cash from "@open-erp/contracts/cash-forecast";
@@ -12,13 +13,7 @@ import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount } from "@/lib/workspace-api";
 
 type Scenario = {
@@ -38,7 +33,7 @@ export function CaptureCashForecast({
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [horizonDays, setHorizonDays] = useState<Scenario["horizonDays"]>(30);
   const [buffer, setBuffer] = useState("");
   const [dates, setDates] = useState<Record<string, string>>({});
@@ -55,7 +50,7 @@ export function CaptureCashForecast({
         const evidence = await readAccounting(
           path,
           Accounting.Evidence,
-          mutationOptions(
+          keys.current.options(
             path,
             JSON.stringify({
               title: sv ? "Förväntade betalningsdagar" : "Expected payment dates",
@@ -68,7 +63,6 @@ export function CaptureCashForecast({
               mediaType: "application/json",
               origin: "cash-forecast-reviewed-dates",
             }),
-            keys.current,
           ),
         );
 
@@ -92,7 +86,7 @@ export function CaptureCashForecast({
       return readAccounting(
         path,
         Cash.CashForecastSnapshot,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: async () => {

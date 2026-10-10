@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
@@ -6,7 +7,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
 import { WorkReturnAction } from "@/components/work-return-action";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { useWorkReturn } from "@/lib/work-return";
 import type { Locale } from "@/paraglide/runtime";
@@ -30,7 +31,8 @@ export function BlockedCorrectionImpactReview(props: {
     queryKey: [...bookKey(book), "correction-impact", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/correction-impact-reviews/${encodeURIComponent(id)}`,
+        (client) =>
+          client.corrections.getCorrectionImpact({ params: { ...bookScope(book), id: id } }),
         Corrections.CorrectionImpactView,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
@@ -131,7 +132,10 @@ export function AllocationReleaseStatus(
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/allocation-receipts/${encodeURIComponent(id)}/status`,
+        (client) =>
+          client.commerceAllocationReversals.getCommerceAllocationStatus({
+            params: { ...bookScope(book), id: id },
+          }),
         Reversal.CommerceAllocationStatus,
         { signal },
       );
@@ -227,7 +231,10 @@ export function CommerceRegisterAllocationStatus(props: CommerceProps & { id: st
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/register-reports/${encodeURIComponent(id)}/allocation-status`,
+        (client) =>
+          client.commerceAllocationReversals.getCommerceRegisterAllocationStatus({
+            params: { ...bookScope(book), id: id },
+          }),
         Reversal.CommerceRegisterAllocationStatus,
         { signal },
       );

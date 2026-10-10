@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -15,7 +18,7 @@ import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { VatFactEditor } from "./fact-editor";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { vatCopy } from "./copy";
 
@@ -37,7 +40,11 @@ export function VatFactForm(
   const expenses = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/expense-tax/sources`, Tax.TaxInventory, { signal }),
+      readAccounting(
+        (client) => client.expenseTax.expenseTaxInventory({ params: { ...bookScope(book) } }),
+        Tax.TaxInventory,
+        { signal },
+      ),
     retry: false,
     enabled: !current,
   });
@@ -123,17 +130,13 @@ export function VatDraftForm({
   const sv = locale === "sv";
   const [mode, setMode] = useState<(typeof Vat.PrepareVatDraft.Type)["mode"]>("actual_review");
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const prepare = useMutation({
     mutationFn: (input: typeof Vat.PrepareVatDraft.Type) => {
       const path = `${bookPath(book)}/vat-returns/drafts`;
 
-      return readAccounting(
-        path,
-        Vat.VatDraft,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      );
+      return readAccounting(path, Vat.VatDraft, keys.current.options(path, JSON.stringify(input)));
     },
     onSuccess: (draft, input) => {
       keys.current.delete(`${bookPath(book)}/vat-returns/drafts:${JSON.stringify(input)}`);
@@ -159,9 +162,9 @@ export function VatDraftForm({
           otherBoxes: mode === "actual_review" ? "unknown" : fields.get("otherBoxes"),
         });
 
-        setInvalid(decoded._tag === "None");
+        setInvalid(Option.isNone(decoded));
 
-        if (decoded._tag === "Some") prepare.mutate(decoded.value);
+        if (Option.isSome(decoded)) prepare.mutate(decoded.value);
       }}
     >
       <Box

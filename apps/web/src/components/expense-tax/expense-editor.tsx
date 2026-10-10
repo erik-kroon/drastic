@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -304,7 +305,10 @@ export function ExpenseRevisionEditor(
     queryKey: [...bookKey(props.book), "evidence", props.baseline.facts.evidenceId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(props.book)}/evidence/${encodeURIComponent(props.baseline.facts.evidenceId)}`,
+        (client) =>
+          client.accounting.getEvidence({
+            params: { ...bookScope(props.book), id: props.baseline.facts.evidenceId },
+          }),
         Accounting.EvidenceContent,
         { signal },
       );

@@ -12,7 +12,7 @@ import * as Ledger from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { decode, readEvidenceReference, toJsonObject, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 import { admitAccountRole } from "../resource-admission";
 import { capturePaymentReportingBasis } from "./settlement-payment-basis";
 import { paidItemPopulation } from "./settlement-items";

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -14,7 +15,7 @@ import { Disclosure } from "@open-erp/ui/components/workflow";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { ScheduleEvidence } from "@/components/subledgers/schedule-evidence";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 import { RateForm } from "./forms";
@@ -38,7 +39,7 @@ function Panel({ book, locale }: Props) {
     queryKey: [...bookKey(book), "exchange-rates", "rates"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/exchange-rates`,
+        (client) => client.exchangeRates.listExchangeRates({ params: { ...bookScope(book) } }),
         Rates.ExchangeRateList,
         { signal },
       );
@@ -87,7 +88,7 @@ function Panel({ book, locale }: Props) {
     queryKey: [...bookKey(book), "exchange-rates", "reviews"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/exchange-rates/reviews`,
+        (client) => client.exchangeRates.listConversionReviews({ params: { ...bookScope(book) } }),
         Rates.ConversionReviewList,
         { signal },
       );

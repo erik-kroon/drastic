@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import * as Effect from "effect/Effect";
@@ -9,7 +10,8 @@ import * as SchedulingDb from "../../db/commerce/recurring-draft-scheduling";
 import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+
 import {
   initializeRecurringScheduleInTransaction,
   inspectRecurringCycle,
@@ -175,103 +177,97 @@ export const setRecurringDraftScheduling = Effect.fn("commerce.recurring.setSche
     function* (transaction, principal) {
       const operation = "set_recurring_draft_scheduling";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        yield* toJsonObject({ agreementId: command.agreementId, input: command.input }),
-        Recurring.RecurringScheduling,
-      );
-
-      if (request.previous) return request.previous;
-      const input = yield* decode(Recurring.RecurringSchedulingInput, command.input);
-
-      const previous = (yield* SchedulingDb.readScheduling(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0];
-
-      if (input.expectedGeneration !== (previous?.generation ?? "0"))
-        return yield* failure("StaleDependency");
-
-      if (previous !== undefined && input.firstAutomaticCycle !== previous.firstAutomaticCycle)
-        return yield* failure("StaleDependency");
-
-      yield* initializeRecurringScheduleInTransaction(
-        transaction,
-        command.scope,
-        command.agreementId,
-        { key: command.idempotencyKey, operation, actorId: principal.actorId },
-        input.reason,
-      );
-
-      const current = yield* inspectRecurringCycle(
-        transaction,
-        command.scope,
-        command.agreementId,
-        previous?.nextCycleOrdinal ?? input.firstAutomaticCycle,
-      );
-
-      if (Result.isFailure(current.resolved)) return yield* failure("UnsupportedProfile");
-
-      if (current.template !== undefined && !("kind" in current.template.template))
-        return yield* failure("UnsupportedProfile");
-
-      if (previous === undefined && current.template === undefined)
-        return yield* failure("UnsupportedProfile");
-      const capturedAt = yield* captureInstant(transaction);
-
-      const time = (yield* SchedulingDb.readLocalDate(
-        transaction,
-        current.timeZone,
-        capturedAt,
-      ))[0];
-
-      if (time?.localDate == null && input.enabled) return yield* failure("UnsupportedProfile");
-      const generation = (BigInt(previous?.generation ?? "0") + 1n).toString();
-
-      const row: SchedulingDb.SchedulingRow = {
-        bookId: command.scope.bookId,
-        agreementId: command.agreementId,
-        enabled: input.enabled,
-        generation,
-        firstAutomaticCycle: input.firstAutomaticCycle,
-        nextCycleOrdinal: previous?.nextCycleOrdinal ?? input.firstAutomaticCycle,
-        requestedBy: principal.actorId,
-        timeZone: current.timeZone,
-        duePolicy: input.duePolicy,
-      };
-
-      const changedAt = capturedAt;
-
-      if (previous === undefined) yield* SchedulingDb.insertScheduling(transaction, row, changedAt);
-      else yield* SchedulingDb.changeScheduling(transaction, row, changedAt);
-      yield* SchedulingDb.appendSchedulingEvent(
-        transaction,
-        row,
-        yield* toJsonObject({
-          input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
           actorId: principal.actorId,
-          changedAt,
-          localDate: time?.localDate ?? null,
-          receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          input: yield* toJsonObject({ agreementId: command.agreementId, input: command.input }),
+        },
+        Recurring.RecurringScheduling,
+        Effect.gen(function* () {
+          const input = yield* decode(Recurring.RecurringSchedulingInput, command.input);
+
+          const previous = (yield* SchedulingDb.readScheduling(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0];
+
+          if (input.expectedGeneration !== (previous?.generation ?? "0"))
+            return yield* failure("StaleDependency");
+
+          if (previous !== undefined && input.firstAutomaticCycle !== previous.firstAutomaticCycle)
+            return yield* failure("StaleDependency");
+
+          yield* initializeRecurringScheduleInTransaction(
+            transaction,
+            command.scope,
+            command.agreementId,
+            { key: command.idempotencyKey, operation, actorId: principal.actorId },
+            input.reason,
+          );
+
+          const current = yield* inspectRecurringCycle(
+            transaction,
+            command.scope,
+            command.agreementId,
+            previous?.nextCycleOrdinal ?? input.firstAutomaticCycle,
+          );
+
+          if (Result.isFailure(current.resolved)) return yield* failure("UnsupportedProfile");
+
+          if (current.template !== undefined && !("kind" in current.template.template))
+            return yield* failure("UnsupportedProfile");
+
+          if (previous === undefined && current.template === undefined)
+            return yield* failure("UnsupportedProfile");
+          const capturedAt = yield* captureInstant(transaction);
+
+          const time = (yield* SchedulingDb.readLocalDate(
+            transaction,
+            current.timeZone,
+            capturedAt,
+          ))[0];
+
+          if (time?.localDate == null && input.enabled) return yield* failure("UnsupportedProfile");
+          const generation = (BigInt(previous?.generation ?? "0") + 1n).toString();
+
+          const row: SchedulingDb.SchedulingRow = {
+            bookId: command.scope.bookId,
+            agreementId: command.agreementId,
+            enabled: input.enabled,
+            generation,
+            firstAutomaticCycle: input.firstAutomaticCycle,
+            nextCycleOrdinal: previous?.nextCycleOrdinal ?? input.firstAutomaticCycle,
+            requestedBy: principal.actorId,
+            timeZone: current.timeZone,
+            duePolicy: input.duePolicy,
+          };
+
+          const changedAt = capturedAt;
+
+          if (previous === undefined)
+            yield* SchedulingDb.insertScheduling(transaction, row, changedAt);
+          else yield* SchedulingDb.changeScheduling(transaction, row, changedAt);
+          yield* SchedulingDb.appendSchedulingEvent(
+            transaction,
+            row,
+            yield* toJsonObject({
+              input,
+              actorId: principal.actorId,
+              changedAt,
+              localDate: time?.localDate ?? null,
+              receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+            }),
+          );
+          const result = yield* schedulingView(transaction, command.scope, command.agreementId);
+
+          return result;
         }),
       );
-      const result = yield* schedulingView(transaction, command.scope, command.agreementId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -486,90 +482,82 @@ export const catchUpRecurringDrafts = Effect.fn("commerce.recurring.catchUpDraft
     function* (transaction, principal) {
       const operation = "catch_up_recurring_drafts";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        yield* toJsonObject({ agreementId: command.agreementId, input: command.input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ agreementId: command.agreementId, input: command.input }),
+        },
         Recurring.RecurringScheduling,
+        Effect.gen(function* () {
+          const assigned = (yield* SchedulingDb.readAssignedExecutor(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0];
+
+          if (assigned === undefined) return yield* failure("StaleDependency");
+          const executorId = assigned.executorId;
+
+          const schedule = (yield* SchedulingDb.readScheduling(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0];
+
+          if (schedule === undefined) return yield* failure("NotFound");
+
+          if (
+            !schedule.enabled ||
+            schedule.generation !== command.input.expectedGeneration ||
+            new Set(command.input.cycleOrdinals).size !== command.input.cycleOrdinals.length
+          )
+            return yield* failure("StaleDependency");
+
+          const currentEvents = yield* RecurrenceDb.readEvents(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          );
+
+          if (currentEvents.some((event) => event.kind === "end"))
+            return yield* failure("StaleDependency");
+
+          const capturedAt = yield* captureInstant(transaction);
+
+          for (const cycle of command.input.cycleOrdinals) {
+            const prior = (yield* SchedulingDb.readCycleJobs(
+              transaction,
+              command.scope.bookId,
+              command.agreementId,
+              cycle,
+            ))[0];
+
+            if (
+              BigInt(cycle) > BigInt(schedule.nextCycleOrdinal) ||
+              (cycle === schedule.nextCycleOrdinal && prior?.state !== "failed")
+            )
+              return yield* failure("StaleDependency");
+            yield* admitCycle(
+              transaction,
+              command.scope,
+              { ...schedule, requestedBy: principal.actorId },
+              cycle,
+              executorId,
+              true,
+              null,
+              capturedAt,
+            );
+          }
+
+          const result = yield* schedulingView(transaction, command.scope, command.agreementId);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const assigned = (yield* SchedulingDb.readAssignedExecutor(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0];
-
-      if (assigned === undefined) return yield* failure("StaleDependency");
-      const executorId = assigned.executorId;
-
-      const schedule = (yield* SchedulingDb.readScheduling(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0];
-
-      if (schedule === undefined) return yield* failure("NotFound");
-
-      if (
-        !schedule.enabled ||
-        schedule.generation !== command.input.expectedGeneration ||
-        new Set(command.input.cycleOrdinals).size !== command.input.cycleOrdinals.length
-      )
-        return yield* failure("StaleDependency");
-
-      const currentEvents = yield* RecurrenceDb.readEvents(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      );
-
-      if (currentEvents.some((event) => event.kind === "end"))
-        return yield* failure("StaleDependency");
-
-      const capturedAt = yield* captureInstant(transaction);
-
-      for (const cycle of command.input.cycleOrdinals) {
-        const prior = (yield* SchedulingDb.readCycleJobs(
-          transaction,
-          command.scope.bookId,
-          command.agreementId,
-          cycle,
-        ))[0];
-
-        if (
-          BigInt(cycle) > BigInt(schedule.nextCycleOrdinal) ||
-          (cycle === schedule.nextCycleOrdinal && prior?.state !== "failed")
-        )
-          return yield* failure("StaleDependency");
-        yield* admitCycle(
-          transaction,
-          command.scope,
-          { ...schedule, requestedBy: principal.actorId },
-          cycle,
-          executorId,
-          true,
-          null,
-          capturedAt,
-        );
-      }
-
-      const result = yield* schedulingView(transaction, command.scope, command.agreementId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

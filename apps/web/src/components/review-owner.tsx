@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +10,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { SupplierFocusedReview } from "@/components/commerce/supplier-focused-review";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { reviewPath, reviewTargetPath } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
@@ -19,7 +20,8 @@ export function reviewTargetQueryOptions(book: typeof Accounting.Book.Type, plan
     queryKey: [...bookKey(book), "review-target", planId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/review-targets/${encodeURIComponent(planId)}`,
+        (client) =>
+          client.cases.resolveReviewTarget({ params: { ...bookScope(book), changeSetId: planId } }),
         Cases.ReviewResolution,
         { signal },
       );

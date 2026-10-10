@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Match from "effect/Match";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Closing from "@open-erp/contracts/closing";
@@ -7,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { closingCopy } from "./copy";
 
@@ -85,11 +88,11 @@ export function ClosingFacts({
                   id: check.code,
                   cells: [
                     check.code,
-                    check.status === "unavailable"
-                      ? copy.familyUnavailable
-                      : check.status === "passed"
-                        ? copy.passed
-                        : copy.blocked,
+                    Match.value(check.status).pipe(
+                      Match.when("unavailable", () => copy.familyUnavailable),
+                      Match.when("passed", () => copy.passed),
+                      Match.orElse(() => copy.blocked),
+                    ),
                     check.detail,
                   ],
                 }))}
@@ -177,7 +180,7 @@ export function ClosingReview({
   locale: Locale;
 }) {
   const copy = closingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const queryClient = useQueryClient();
   const path = `${bookPath(book)}/closing-proposals/${encodeURIComponent(id)}`;
 
@@ -207,7 +210,7 @@ export function ClosingReview({
       return readAccounting(
         endpoint,
         Closing.ClosingApproval,
-        mutationOptions(endpoint, JSON.stringify({ digest }), keys.current),
+        keys.current.options(endpoint, JSON.stringify({ digest })),
       );
     },
   });
@@ -219,7 +222,7 @@ export function ClosingReview({
       return readAccounting(
         endpoint,
         Closing.ClosingReceipt,
-        mutationOptions(endpoint, JSON.stringify(input), keys.current),
+        keys.current.options(endpoint, JSON.stringify(input)),
       );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: bookKey(book) }),
@@ -408,7 +411,8 @@ function CertificateView({
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/closing-certificates/${encodeURIComponent(id)}`,
+        (client) =>
+          client.closing.getClosingCertificate({ params: { ...bookScope(book), id: id } }),
         Closing.ClosingCertificateView,
         { signal },
       );

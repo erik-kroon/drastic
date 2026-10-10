@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Mandates from "@open-erp/contracts/posting-mandates";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -6,7 +7,9 @@ import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { authorizePresent, readAuthorityPolicy } from "../authority";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "../posting-authority";
 import { executeAcceptanceInTransaction, readCurrentReview, recordApproval } from "./acceptance";
 import * as Shared from "./shared";
@@ -83,108 +86,103 @@ export const grantPostingMandate = Effect.fn("mandates.grant")(function* (
       });
       yield* Shared.requireTables(transaction, Db.mandateTables, Db.mandateTables);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { input: yield* Shared.toJsonObject(input) },
+        {
+          scope: scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { input: yield* Shared.toJsonObject(input) },
+        },
         Mandates.PostingMandate,
+        Effect.gen(function* () {
+          yield* requireMandatesEnabled(transaction, scope);
+
+          // Decoding through the terms schema keeps exactly the terms, without the
+          // reason or acknowledgement.
+          const terms = yield* Shared.decode(
+            Mandates.MandateTerms,
+            yield* Shared.toJsonObject(input),
+          );
+
+          if (
+            Date.parse(terms.validUntil) <= Date.parse(terms.validFrom) ||
+            BigInt(terms.aggregateLimitMinor) < BigInt(terms.perEventLimitMinor) ||
+            terms.granteeId === principal.actorId ||
+            new Set(terms.profiles).size !== terms.profiles.length ||
+            new Set(terms.counterparties.map((entry) => entry.counterpartyId)).size !==
+              terms.counterparties.length
+          )
+            return yield* failure("InvalidJournal");
+
+          if (
+            (yield* PostingDb.readPostingMembership(transaction, scope.bookId, terms.granteeId))
+              .length === 0
+          )
+            return yield* failure("InvalidJournal");
+
+          for (const entry of terms.counterparties) {
+            const current = (yield* Db.readCurrentCounterparty(
+              transaction,
+              scope.bookId,
+              entry.counterpartyId,
+            ))[0];
+
+            if (
+              current === undefined ||
+              current.currentRevision !== entry.revision ||
+              (current.role !== "supplier" && current.role !== "both")
+            )
+              return yield* failure("StaleDependency");
+          }
+
+          const id = newId("posting_mandate");
+
+          const body = {
+            terms: yield* Shared.toJsonObject(terms),
+            reason: input.reason,
+            grantBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              scope,
+              principal,
+              "approve_change",
+            ),
+          };
+
+          const mandateDigest = yield* digest({
+            version: 1,
+            id,
+            scope,
+            grantorId: principal.actorId,
+            ...body,
+          });
+
+          yield* Db.insertMandate(transaction, {
+            bookId: scope.bookId,
+            id,
+            grantorId: principal.actorId,
+            granteeId: terms.granteeId,
+            validFrom: terms.validFrom,
+            validUntil: terms.validUntil,
+            body,
+            digest: mandateDigest,
+          });
+
+          for (const entry of terms.counterparties) {
+            yield* Db.insertMandateCounterparty(transaction, {
+              bookId: scope.bookId,
+              mandateId: id,
+              counterpartyId: entry.counterpartyId,
+              revision: entry.revision,
+            });
+          }
+
+          const view = yield* mandateView(scope, yield* lockedMandate(transaction, scope, id));
+
+          return { receipt: yield* Shared.toJsonObject(view), result: view };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireMandatesEnabled(transaction, scope);
-
-      // Decoding through the terms schema keeps exactly the terms, without the
-      // reason or acknowledgement.
-      const terms = yield* Shared.decode(Mandates.MandateTerms, yield* Shared.toJsonObject(input));
-
-      if (
-        Date.parse(terms.validUntil) <= Date.parse(terms.validFrom) ||
-        BigInt(terms.aggregateLimitMinor) < BigInt(terms.perEventLimitMinor) ||
-        terms.granteeId === principal.actorId ||
-        new Set(terms.profiles).size !== terms.profiles.length ||
-        new Set(terms.counterparties.map((entry) => entry.counterpartyId)).size !==
-          terms.counterparties.length
-      )
-        return yield* failure("InvalidJournal");
-
-      if (
-        (yield* PostingDb.readPostingMembership(transaction, scope.bookId, terms.granteeId))
-          .length === 0
-      )
-        return yield* failure("InvalidJournal");
-
-      for (const entry of terms.counterparties) {
-        const current = (yield* Db.readCurrentCounterparty(
-          transaction,
-          scope.bookId,
-          entry.counterpartyId,
-        ))[0];
-
-        if (
-          current === undefined ||
-          current.currentRevision !== entry.revision ||
-          (current.role !== "supplier" && current.role !== "both")
-        )
-          return yield* failure("StaleDependency");
-      }
-
-      const id = newId("posting_mandate");
-
-      const body = {
-        terms: yield* Shared.toJsonObject(terms),
-        reason: input.reason,
-        grantBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          scope,
-          principal,
-          "approve_change",
-        ),
-      };
-
-      const mandateDigest = yield* digest({
-        version: 1,
-        id,
-        scope,
-        grantorId: principal.actorId,
-        ...body,
-      });
-
-      yield* Db.insertMandate(transaction, {
-        bookId: scope.bookId,
-        id,
-        grantorId: principal.actorId,
-        granteeId: terms.granteeId,
-        validFrom: terms.validFrom,
-        validUntil: terms.validUntil,
-        body,
-        digest: mandateDigest,
-      });
-
-      for (const entry of terms.counterparties) {
-        yield* Db.insertMandateCounterparty(transaction, {
-          bookId: scope.bookId,
-          mandateId: id,
-          counterpartyId: entry.counterpartyId,
-          revision: entry.revision,
-        });
-      }
-
-      const view = yield* mandateView(scope, yield* lockedMandate(transaction, scope, id));
-
-      yield* saveCommand(
-        transaction,
-        scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* Shared.toJsonObject(view),
-      );
-
-      return view;
     }),
   );
 });
@@ -202,42 +200,37 @@ export const revokePostingMandate = Effect.fn("mandates.revoke")(function* (
 
       yield* Shared.requireTables(transaction, Db.mandateTables, Db.mandateTables);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { id: command.id, input: yield* Shared.toJsonObject(input) },
-        Mandates.PostingMandate,
-      );
-
-      if (request.previous) return request.previous;
-      const mandate = yield* lockedMandate(transaction, scope, command.id);
-
-      if (mandate.digest !== input.digest) return yield* failure("StaleDependency");
-
-      if (mandate.revocation === null)
-        yield* Db.insertRevocation(transaction, {
-          bookId: scope.bookId,
-          mandateId: command.id,
+        {
+          scope: scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
           actorId: principal.actorId,
-          reason: input.reason,
-        });
+          input: { id: command.id, input: yield* Shared.toJsonObject(input) },
+        },
+        Mandates.PostingMandate,
+        Effect.gen(function* () {
+          const mandate = yield* lockedMandate(transaction, scope, command.id);
 
-      const view = yield* mandateView(scope, yield* lockedMandate(transaction, scope, command.id));
+          if (mandate.digest !== input.digest) return yield* failure("StaleDependency");
 
-      yield* saveCommand(
-        transaction,
-        scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* Shared.toJsonObject(view),
+          if (mandate.revocation === null)
+            yield* Db.insertRevocation(transaction, {
+              bookId: scope.bookId,
+              mandateId: command.id,
+              actorId: principal.actorId,
+              reason: input.reason,
+            });
+
+          const view = yield* mandateView(
+            scope,
+            yield* lockedMandate(transaction, scope, command.id),
+          );
+
+          return { receipt: yield* Shared.toJsonObject(view), result: view };
+        }),
       );
-
-      return view;
     }),
   );
 });
@@ -291,146 +284,144 @@ export const executeSupplierAcceptanceUnderMandate = Effect.fn("mandates.execute
 
         yield* Shared.requireTables(transaction, Db.mandateTables, Db.mandateTables);
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           transaction,
-          scope,
-          command.idempotencyKey,
-          operation,
-          principal.actorId,
-          { reviewId: command.reviewId, input: yield* Shared.toJsonObject(input) },
+          {
+            scope: scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: { reviewId: command.reviewId, input: yield* Shared.toJsonObject(input) },
+          },
           Mandates.MandateExecution,
-        );
+          Effect.gen(function* () {
+            yield* requireMandatesEnabled(transaction, scope);
 
-        if (request.previous) return request.previous;
-        yield* requireMandatesEnabled(transaction, scope);
+            const mandate = yield* lockedMandate(transaction, scope, input.mandateId);
 
-        const mandate = yield* lockedMandate(transaction, scope, input.mandateId);
+            if (mandate.granteeId !== principal.actorId) return yield* failure("Forbidden");
 
-        if (mandate.granteeId !== principal.actorId) return yield* failure("Forbidden");
+            if (mandate.digest !== input.mandateDigest) return yield* failure("StaleDependency");
 
-        if (mandate.digest !== input.mandateDigest) return yield* failure("StaleDependency");
+            if (mandate.revocation !== null || !mandate.current)
+              return yield* failure("ApprovalRequired");
 
-        if (mandate.revocation !== null || !mandate.current)
-          return yield* failure("ApprovalRequired");
+            const retained = yield* Shared.decode(MandateBody, mandate.body);
+            const terms = retained.terms;
 
-        const retained = yield* Shared.decode(MandateBody, mandate.body);
-        const terms = retained.terms;
-
-        // The grantor's authority is current, not as it was at grant.
-        const grantorBasis = yield* collectPostingActorBasis(
-          transaction,
-          scope,
-          mandate.grantorId,
-          "approve_change",
-        );
-
-        const review = yield* readCurrentReview(transaction, scope, command.reviewId, input.digest);
-        const draft = review.draftSnapshot;
-        const counterpartyId = draft.content.counterpartyId;
-
-        const named = (yield* Db.readMandateCounterparty(
-          transaction,
-          scope.bookId,
-          mandate.id,
-          counterpartyId,
-        ))[0];
-
-        const current = (yield* Db.readCurrentCounterparty(
-          transaction,
-          scope.bookId,
-          counterpartyId,
-        ))[0];
-
-        const gross = draft.totals.grossMinor;
-        const consumed = sum(mandate.consumedGross);
-
-        if (
-          !terms.profiles.includes(review.profile) ||
-          named === undefined ||
-          named.revision !== draft.content.counterpartyRevision ||
-          current?.currentRevision !== named.revision ||
-          draft.content.currency !== terms.currency ||
-          gross === null ||
-          BigInt(gross) <= 0n ||
-          BigInt(gross) > BigInt(terms.perEventLimitMinor) ||
-          consumed + BigInt(gross) > BigInt(terms.aggregateLimitMinor) ||
-          mandate.consumedEvents + 1 > terms.maxEvents
-        )
-          return yield* failure("ApprovalRequired");
-
-        const approval = yield* recordApproval(transaction, {
-          scope,
-          reviewId: command.reviewId,
-          reviewDigest: review.digest,
-          approverId: mandate.grantorId,
-          // The approval is the grantor's: current membership, admission and
-          // responsibility, with the authentication of the grant gesture. The
-          // mandate and the executing grantee are recorded beside it.
-          authorityBasis: {
-            ...grantorBasis,
-            authentication: retained.grantBasis.authentication ?? null,
-            basis: "mandate",
-            mandate: { id: mandate.id, digest: mandate.digest },
-            executor: yield* collectPostingPrincipalBasis(
+            // The grantor's authority is current, not as it was at grant.
+            const grantorBasis = yield* collectPostingActorBasis(
               transaction,
               scope,
-              principal,
-              "execute_change",
-            ),
-          },
-          receipt: Shared.receipt(command.idempotencyKey, operation, principal.actorId),
-        });
+              mandate.grantorId,
+              "approve_change",
+            );
 
-        const acceptance = yield* executeAcceptanceInTransaction(transaction, principal, {
-          scope,
-          reviewId: command.reviewId,
-          idempotencyKey: command.idempotencyKey,
-          operation,
-          input: {
-            version: 1,
-            digest: review.digest,
-            approvalId: approval.id,
-            acknowledgeSyntheticOnly: true,
-          },
-          approverId: mandate.grantorId,
-        });
+            const review = yield* readCurrentReview(
+              transaction,
+              scope,
+              command.reviewId,
+              input.digest,
+            );
 
-        const ordinal = mandate.consumedEvents + 1;
+            const draft = review.draftSnapshot;
+            const counterpartyId = draft.content.counterpartyId;
 
-        yield* Db.insertConsumption(transaction, {
-          bookId: scope.bookId,
-          mandateId: mandate.id,
-          ordinal,
-          reviewId: command.reviewId,
-          approvalId: approval.id,
-          acceptanceId: acceptance.id,
-          grossMinor: gross,
-        });
+            const named = (yield* Db.readMandateCounterparty(
+              transaction,
+              scope.bookId,
+              mandate.id,
+              counterpartyId,
+            ))[0];
 
-        const result = yield* Shared.decode(Mandates.MandateExecution, {
-          mandateId: mandate.id,
-          ordinal,
-          grossMinor: gross,
-          remainingGrossMinor: (
-            BigInt(terms.aggregateLimitMinor) -
-            consumed -
-            BigInt(gross)
-          ).toString(),
-          remainingEvents: terms.maxEvents - ordinal,
-          acceptance: yield* Shared.toJsonObject(acceptance),
-        });
+            const current = (yield* Db.readCurrentCounterparty(
+              transaction,
+              scope.bookId,
+              counterpartyId,
+            ))[0];
 
-        yield* saveCommand(
-          transaction,
-          scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          yield* Shared.toJsonObject(result),
+            const gross = draft.totals.grossMinor;
+            const consumed = sum(mandate.consumedGross);
+
+            if (
+              !terms.profiles.includes(review.profile) ||
+              named === undefined ||
+              named.revision !== draft.content.counterpartyRevision ||
+              current?.currentRevision !== named.revision ||
+              draft.content.currency !== terms.currency ||
+              gross === null ||
+              BigInt(gross) <= 0n ||
+              BigInt(gross) > BigInt(terms.perEventLimitMinor) ||
+              consumed + BigInt(gross) > BigInt(terms.aggregateLimitMinor) ||
+              mandate.consumedEvents + 1 > terms.maxEvents
+            )
+              return yield* failure("ApprovalRequired");
+
+            const approval = yield* recordApproval(transaction, {
+              scope,
+              reviewId: command.reviewId,
+              reviewDigest: review.digest,
+              approverId: mandate.grantorId,
+              // The approval is the grantor's: current membership, admission and
+              // responsibility, with the authentication of the grant gesture. The
+              // mandate and the executing grantee are recorded beside it.
+              authorityBasis: {
+                ...grantorBasis,
+                authentication: retained.grantBasis.authentication ?? null,
+                basis: "mandate",
+                mandate: { id: mandate.id, digest: mandate.digest },
+                executor: yield* collectPostingPrincipalBasis(
+                  transaction,
+                  scope,
+                  principal,
+                  "execute_change",
+                ),
+              },
+              receipt: Shared.receipt(command.idempotencyKey, operation, principal.actorId),
+            });
+
+            const acceptance = yield* executeAcceptanceInTransaction(transaction, principal, {
+              scope,
+              reviewId: command.reviewId,
+              idempotencyKey: command.idempotencyKey,
+              operation,
+              input: {
+                version: 1,
+                digest: review.digest,
+                approvalId: approval.id,
+                acknowledgeSyntheticOnly: true,
+              },
+              approverId: mandate.grantorId,
+            });
+
+            const ordinal = mandate.consumedEvents + 1;
+
+            yield* Db.insertConsumption(transaction, {
+              bookId: scope.bookId,
+              mandateId: mandate.id,
+              ordinal,
+              reviewId: command.reviewId,
+              approvalId: approval.id,
+              acceptanceId: acceptance.id,
+              grossMinor: gross,
+            });
+
+            const result = yield* Shared.decode(Mandates.MandateExecution, {
+              mandateId: mandate.id,
+              ordinal,
+              grossMinor: gross,
+              remainingGrossMinor: (
+                BigInt(terms.aggregateLimitMinor) -
+                consumed -
+                BigInt(gross)
+              ).toString(),
+              remainingEvents: terms.maxEvents - ordinal,
+              acceptance: yield* Shared.toJsonObject(acceptance),
+            });
+
+            return { receipt: yield* Shared.toJsonObject(result), result: result };
+          }),
         );
-
-        return result;
       }),
     );
   },

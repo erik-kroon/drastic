@@ -1,5 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import { PaymentHistoryEntry, type EntryKind } from "./payment-entry";
-import { useRef } from "react";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -11,12 +12,7 @@ import { SelectField, TextareaField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 const review = Schema.Struct({
   rationale: Historical.AdmitItems.fields.rationale,
@@ -43,7 +39,7 @@ export function AdmitOpenItems({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/sie-plans/${encodeURIComponent(plan.id)}/historical-items`;
 
   const save = useMutation({
@@ -51,7 +47,7 @@ export function AdmitOpenItems({
       const result = await readAccounting(
         path,
         Historical.ItemAdmission,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (result.sourcePlanId !== plan.id || result.planDigest !== plan.digest)

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState, type ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Reports from "@open-erp/contracts/register-reports";
@@ -200,7 +201,8 @@ function SavedRegisterReport(props: CommerceProps & { id: string }) {
     queryKey: [...commerceKey(book), "register-report", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/register-snapshots/${encodeURIComponent(id)}`,
+        (client) =>
+          client.registerReports.getRegisterReport({ params: { ...bookScope(book), id: id } }),
         Reports.RegisterReport,
         { signal },
       );

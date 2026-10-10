@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Assessment from "@open-erp/contracts/vat-assessment";
 import * as Accounting from "@open-erp/contracts/accounting";
 import {
@@ -12,14 +13,12 @@ import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
   approveChangeInTransaction,
-  digest,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as Db from "../../db/vat/assessment";
 import * as TaxDb from "../../db/vat/tax-account";
 import * as Ledger from "../../db/posting";
@@ -312,129 +311,124 @@ export const prepareRoundingBridge = Effect.fn("vat.assessment.prepareBridge")(f
       return yield* unsupported();
     }
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "prepare_rounding_bridge",
-      principal.actorId,
-      yield* toJsonObject(command.input),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "prepare_rounding_bridge",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
       BridgeSchema,
-    );
+      Effect.gen(function* () {
+        const basis = yield* currentBasis(transaction, command.scope, command.input.returnId);
+        const obligationId = yield* bindObligation(transaction, command.scope, basis);
 
-    if (request.previous) return request.previous;
+        const priorBridges = (yield* Db.readBridgesForReturn(
+          transaction,
+          command.scope.bookId,
+          basis.id,
+        )).filter((row) => row.executed);
 
-    const basis = yield* currentBasis(transaction, command.scope, command.input.returnId);
-    const obligationId = yield* bindObligation(transaction, command.scope, basis);
+        const priorMinor = priorBridges
+          .reduce((total, row) => total + BigInt(row.deltaMinor), 0n)
+          .toString();
 
-    const priorBridges = (yield* Db.readBridgesForReturn(
-      transaction,
-      command.scope.bookId,
-      basis.id,
-    )).filter((row) => row.executed);
+        // The reported figure is expressed in book minor units through the
+        // return's own retained residual, so the lineage is exact at any filing
+        // unit with no tolerance and no plug.
+        const reportedScaledMinor = (
+          BigInt(basis.exactNetMinor) - BigInt(basis.residualNetMinor)
+        ).toString();
 
-    const priorMinor = priorBridges
-      .reduce((total, row) => total + BigInt(row.deltaMinor), 0n)
-      .toString();
+        const lineageMinor = (BigInt(basis.residualNetMinor) - BigInt(priorMinor)).toString();
 
-    // The reported figure is expressed in book minor units through the
-    // return's own retained residual, so the lineage is exact at any filing
-    // unit with no tolerance and no plug.
-    const reportedScaledMinor = (
-      BigInt(basis.exactNetMinor) - BigInt(basis.residualNetMinor)
-    ).toString();
+        const bindings = yield* boundAccountIds(basis.body);
+        const settlementBindingId = yield* settlementBinding(basis.body);
 
-    const lineageMinor = (BigInt(basis.residualNetMinor) - BigInt(priorMinor)).toString();
+        yield* verifyBridgeAccounts(
+          transaction,
+          command.scope,
+          bindings,
+          command.input.settlementAccountId,
+          command.input.gainAccountId,
+          command.input.lossAccountId,
+          settlementBindingId,
+        );
 
-    const bindings = yield* boundAccountIds(basis.body);
-    const settlementBindingId = yield* settlementBinding(basis.body);
+        const evidence = yield* readEvidenceReference(
+          transaction,
+          command.scope.bookId,
+          command.input.evidenceId,
+        );
 
-    yield* verifyBridgeAccounts(
-      transaction,
-      command.scope,
-      bindings,
-      command.input.settlementAccountId,
-      command.input.gainAccountId,
-      command.input.lossAccountId,
-      settlementBindingId,
-    );
+        const compiled = compileRoundingBridge({
+          obligationId,
+          returnRevision: basis.digest,
+          exactNetMinor: basis.exactNetMinor,
+          reportedNetMinor: reportedScaledMinor,
+          priorBridgeEffectsMinor: priorBridges.map((row) => row.deltaMinor),
+          lineageExplainedMinor: lineageMinor,
+          roundingReleaseId: basis.ruleReleaseId,
+          settlementControlAccountId: command.input.settlementAccountId,
+          roundingGainAccountId: command.input.gainAccountId,
+          roundingLossAccountId: command.input.lossAccountId,
+        });
 
-    const evidence = yield* readEvidenceReference(
-      transaction,
-      command.scope.bookId,
-      command.input.evidenceId,
-    );
+        if (Result.isFailure(compiled)) return yield* refusalFor(compiled.failure);
 
-    const compiled = compileRoundingBridge({
-      obligationId,
-      returnRevision: basis.digest,
-      exactNetMinor: basis.exactNetMinor,
-      reportedNetMinor: reportedScaledMinor,
-      priorBridgeEffectsMinor: priorBridges.map((row) => row.deltaMinor),
-      lineageExplainedMinor: lineageMinor,
-      roundingReleaseId: basis.ruleReleaseId,
-      settlementControlAccountId: command.input.settlementAccountId,
-      roundingGainAccountId: command.input.gainAccountId,
-      roundingLossAccountId: command.input.lossAccountId,
-    });
+        const bridgeId = newId("vat_bridge");
+        const now = yield* isoNow(transaction);
 
-    if (Result.isFailure(compiled)) return yield* refusalFor(compiled.failure);
+        const body = {
+          id: bridgeId,
+          scope: command.scope,
+          version: 1,
+          returnId: basis.id,
+          obligationId,
+          priorReceiptDigest: yield* digest({
+            effects: priorBridges.map((row) => ({ id: row.id, deltaMinor: row.deltaMinor })),
+          }),
+          exactNetMinor: basis.exactNetMinor,
+          reportedNetMinor: reportedScaledMinor,
+          lineageMinor,
+          priorMinor,
+          roundingReleaseId: basis.ruleReleaseId,
+          plan: compiled.success,
+          postingDate: now.slice(0, 10),
+          settlementAccountId: command.input.settlementAccountId,
+          gainAccountId: command.input.gainAccountId,
+          lossAccountId: command.input.lossAccountId,
+          voucherId: null,
+          approvalId: null,
+          evidence,
+          createdAt: now,
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "prepare_rounding_bridge",
+            principal.actorId,
+          ),
+        };
 
-    const bridgeId = newId("vat_bridge");
-    const now = yield* isoNow(transaction);
+        const bridge = yield* decode(BridgeSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
 
-    const body = {
-      id: bridgeId,
-      scope: command.scope,
-      version: 1,
-      returnId: basis.id,
-      obligationId,
-      priorReceiptDigest: yield* digest({
-        effects: priorBridges.map((row) => ({ id: row.id, deltaMinor: row.deltaMinor })),
+        yield* Db.insertBridge(transaction, {
+          bookId: command.scope.bookId,
+          id: bridgeId,
+          returnId: basis.id,
+          deltaMinor: compiled.success.bridgeDeltaMinor,
+          body: yield* toJsonObject(bridge),
+          digest: bridge.digest,
+          recordedAt: now,
+        });
+
+        return { receipt: yield* toJsonObject(bridge), result: bridge };
       }),
-      exactNetMinor: basis.exactNetMinor,
-      reportedNetMinor: reportedScaledMinor,
-      lineageMinor,
-      priorMinor,
-      roundingReleaseId: basis.ruleReleaseId,
-      plan: compiled.success,
-      postingDate: now.slice(0, 10),
-      settlementAccountId: command.input.settlementAccountId,
-      gainAccountId: command.input.gainAccountId,
-      lossAccountId: command.input.lossAccountId,
-      voucherId: null,
-      approvalId: null,
-      evidence,
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, "prepare_rounding_bridge", principal.actorId),
-    };
-
-    const bridge = yield* decode(BridgeSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertBridge(transaction, {
-      bookId: command.scope.bookId,
-      id: bridgeId,
-      returnId: basis.id,
-      deltaMinor: compiled.success.bridgeDeltaMinor,
-      body: yield* toJsonObject(bridge),
-      digest: bridge.digest,
-      recordedAt: now,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "prepare_rounding_bridge",
-      principal.actorId,
-      yield* toJsonObject(bridge),
     );
-
-    return bridge;
   });
 });
 
@@ -460,82 +454,80 @@ export const approveRoundingBridge = Effect.fn("vat.assessment.approveBridge")(f
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     yield* assessmentAccess(transaction, [...Db.assessmentInserts]);
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "approve_rounding_bridge",
-      principal.actorId,
       {
-        bridgeId: command.bridgeId,
-        input: yield* toJsonObject(command.input),
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "approve_rounding_bridge",
+        actorId: principal.actorId,
+        input: {
+          bridgeId: command.bridgeId,
+          input: yield* toJsonObject(command.input),
+        },
       },
       BridgeApprovalSchema,
+      Effect.gen(function* () {
+        const bridgeRow = yield* readBridgeRow(transaction, command.scope, command.bridgeId);
+
+        if (command.input.digest !== bridgeRow.body["digest"]) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (
+          (yield* Db.readBridgeReceiptByBridge(
+            transaction,
+            command.scope.bookId,
+            command.bridgeId,
+          ))[0] !== undefined
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
+        const ordinal =
+          (yield* Db.readBridgeApprovalCount(
+            transaction,
+            command.scope.bookId,
+            command.bridgeId,
+          ))[0]!.total + 1;
+
+        if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          id: newId("bridge_approval"),
+          scope: command.scope,
+          bridgeId: command.bridgeId,
+          digest: command.input.digest,
+          version: 1,
+          actorId: principal.actorId,
+          ordinal,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          createdAt: now,
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "approve_rounding_bridge",
+            principal.actorId,
+          ),
+        };
+
+        const approval = yield* decode(BridgeApprovalSchema, body);
+
+        yield* Db.insertBridgeApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approval.id,
+          bridgeId: command.bridgeId,
+          ordinal,
+          actorId: principal.actorId,
+          digest: approval.digest,
+          expiresAt: approval.expiresAt,
+          body: yield* toJsonObject(approval),
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const bridgeRow = yield* readBridgeRow(transaction, command.scope, command.bridgeId);
-
-    if (command.input.digest !== bridgeRow.body["digest"]) {
-      return yield* failure("StaleDependency");
-    }
-
-    if (
-      (yield* Db.readBridgeReceiptByBridge(
-        transaction,
-        command.scope.bookId,
-        command.bridgeId,
-      ))[0] !== undefined
-    ) {
-      return yield* failure("StaleDependency");
-    }
-
-    const ordinal =
-      (yield* Db.readBridgeApprovalCount(transaction, command.scope.bookId, command.bridgeId))[0]!
-        .total + 1;
-
-    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      id: newId("bridge_approval"),
-      scope: command.scope,
-      bridgeId: command.bridgeId,
-      digest: command.input.digest,
-      version: 1,
-      actorId: principal.actorId,
-      ordinal,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, "approve_rounding_bridge", principal.actorId),
-    };
-
-    const approval = yield* decode(BridgeApprovalSchema, body);
-
-    yield* Db.insertBridgeApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: approval.id,
-      bridgeId: command.bridgeId,
-      ordinal,
-      actorId: principal.actorId,
-      digest: approval.digest,
-      expiresAt: approval.expiresAt,
-      body: yield* toJsonObject(approval),
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "approve_rounding_bridge",
-      principal.actorId,
-      yield* toJsonObject(approval),
-    );
-
-    return approval;
   });
 });
 
@@ -815,220 +807,229 @@ export const prepareAssessment = Effect.fn("vat.assessment.prepareRecord")(funct
       return yield* unsupported();
     }
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "prepare_vat_assessment",
-      principal.actorId,
-      yield* toJsonObject(command.input),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "prepare_vat_assessment",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
       AssessmentSchema,
+      Effect.gen(function* () {
+        const basis = yield* currentBasis(transaction, command.scope, command.input.returnId);
+        const obligationId = yield* bindObligation(transaction, command.scope, basis);
+        const remaining = yield* remainingAssessment(transaction, command.scope, basis);
+
+        yield* requireUnexecutedAssessment(transaction, command.scope, command.input);
+
+        const source = yield* readAssessmentSourceInTransaction(
+          transaction,
+          command.scope,
+          command.input.taxAccountEventId,
+          command.input.taxAccountControlId,
+          command.input.assessedMinor,
+        );
+
+        const event = (yield* TaxDb.readEvent(
+          transaction,
+          command.scope.bookId,
+          command.input.taxAccountEventId,
+        ))[0];
+
+        if (event === undefined) return yield* failure("NotFound");
+
+        const settlementBindingId = yield* settlementBinding(basis.body);
+
+        if (
+          settlementBindingId === null ||
+          command.input.settlementAccountId !== settlementBindingId
+        ) {
+          return yield* failure("InvalidJournal");
+        }
+
+        yield* admitAccountRole(
+          transaction,
+          command.scope.bookId,
+          command.input.settlementAccountId,
+          "vat",
+        );
+
+        for (const accountId of [
+          command.input.settlementAccountId,
+          command.input.taxAccountControlId,
+        ]) {
+          const account = (yield* Db.readActiveAccount(
+            transaction,
+            command.scope.bookId,
+            accountId,
+          ))[0];
+
+          if (account === undefined || account.id !== accountId) {
+            return yield* failure("InvalidJournal");
+          }
+        }
+
+        if (command.input.settlementAccountId === command.input.taxAccountControlId) {
+          return yield* failure("InvalidJournal");
+        }
+
+        if (
+          (yield* Db.readBankSourceConflict(transaction, command.scope.bookId, [
+            command.input.settlementAccountId,
+            command.input.taxAccountControlId,
+          ]))[0]?.present === true
+        ) {
+          return yield* failure("InvalidJournal");
+        }
+
+        let existingPosting = null;
+
+        if (command.input.adoptedVoucherId !== null || command.input.adoptedMatchId !== null) {
+          if (command.input.adoptedVoucherId === null || command.input.adoptedMatchId === null) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const match = yield* readAssessmentMatchInTransaction(
+            transaction,
+            command.scope,
+            command.input.adoptedMatchId,
+            event.id,
+            command.input.taxAccountControlId,
+            command.input.assessedMinor,
+          );
+
+          if (match.eventId !== event.id || match.voucherId !== command.input.adoptedVoucherId) {
+            return yield* failure("InvalidJournal");
+          }
+
+          // Old manual journals are adopted only through explicit reviewed role
+          // evidence: the voucher's settlement and tax-account vectors must equal
+          // the assessed charge exactly, and the match relationship must be
+          // unused. Equal amounts alone never prove the relationship.
+          const lines = yield* Db.readVoucherLines(
+            transaction,
+            command.scope.bookId,
+            match.voucherId,
+          );
+
+          const signedByAccount = new Map<string, bigint>();
+
+          for (const line of lines) {
+            const signed = BigInt(line.debitMinor) - BigInt(line.creditMinor);
+            signedByAccount.set(
+              line.accountId,
+              (signedByAccount.get(line.accountId) ?? 0n) + signed,
+            );
+          }
+
+          const assessed = BigInt(command.input.assessedMinor);
+
+          if (
+            lines.length !== 2 ||
+            signedByAccount.get(command.input.settlementAccountId) !== assessed ||
+            signedByAccount.get(command.input.taxAccountControlId) !== -assessed
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (
+            (yield* Db.readExecutedAssessmentByMatch(
+              transaction,
+              command.scope.bookId,
+              match.id,
+            ))[0]?.present === true
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          existingPosting = {
+            settlementMinor: assessed.toString(),
+            taxAccountMinor: (-assessed).toString(),
+            matchRef: match.id,
+            relationshipUsed: false,
+          };
+        }
+
+        const knownIdentities = (yield* Db.readEffectiveAssessments(
+          transaction,
+          command.scope.bookId,
+          basis.id,
+        )).map((row) => row.assessmentIdentity);
+
+        const compiled = compileAssessment({
+          assessmentIdentity: command.input.assessmentIdentity,
+          obligationId,
+          authorityPeriod: command.input.authorityPeriod,
+          assessedMinor: command.input.assessedMinor,
+          expectedRemainingMinor: remaining.minor,
+          knownAssessmentIdentities: knownIdentities,
+          existingPosting,
+          settlementControlAccountId: command.input.settlementAccountId,
+          taxAccountControlId: command.input.taxAccountControlId,
+        });
+
+        if (Result.isFailure(compiled)) return yield* refusalFor(compiled.failure);
+
+        const assessmentId = newId("vat_assessment");
+        const now = yield* isoNow(transaction);
+
+        const evidence = yield* readEvidenceReference(
+          transaction,
+          command.scope.bookId,
+          command.input.confirmations.confirmationEvidenceId,
+        );
+
+        const body = {
+          id: assessmentId,
+          scope: command.scope,
+          version: 1,
+          assessmentIdentity: command.input.assessmentIdentity,
+          obligationId,
+          movementMeaning: "signed_statement_movement",
+          sourceDigest: source.sourceDigest,
+          priorReceiptDigest: remaining.digest,
+          returnId: basis.id,
+          authorityPeriod: command.input.authorityPeriod,
+          plan: compiled.success,
+          assessedMinor: command.input.assessedMinor,
+          expectedRemainingMinor: remaining.minor,
+          taxAccountEventId: event.id,
+          settlementAccountId: command.input.settlementAccountId,
+          taxAccountControlId: command.input.taxAccountControlId,
+          voucherId: null,
+          approvalId: null,
+          confirmations: command.input.confirmations,
+          evidence,
+          createdAt: now,
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "prepare_vat_assessment",
+            principal.actorId,
+          ),
+        };
+
+        const assessment = yield* decode(AssessmentSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertAssessment(transaction, {
+          bookId: command.scope.bookId,
+          id: assessmentId,
+          assessmentIdentity: command.input.assessmentIdentity,
+          returnId: basis.id,
+          eventId: event.id,
+          matchRef: compiled.success.adoptedMatchRef,
+          body: yield* toJsonObject(assessment),
+          digest: assessment.digest,
+          recordedAt: now,
+        });
+
+        return { receipt: yield* toJsonObject(assessment), result: assessment };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const basis = yield* currentBasis(transaction, command.scope, command.input.returnId);
-    const obligationId = yield* bindObligation(transaction, command.scope, basis);
-    const remaining = yield* remainingAssessment(transaction, command.scope, basis);
-
-    yield* requireUnexecutedAssessment(transaction, command.scope, command.input);
-
-    const source = yield* readAssessmentSourceInTransaction(
-      transaction,
-      command.scope,
-      command.input.taxAccountEventId,
-      command.input.taxAccountControlId,
-      command.input.assessedMinor,
-    );
-
-    const event = (yield* TaxDb.readEvent(
-      transaction,
-      command.scope.bookId,
-      command.input.taxAccountEventId,
-    ))[0];
-
-    if (event === undefined) return yield* failure("NotFound");
-
-    const settlementBindingId = yield* settlementBinding(basis.body);
-
-    if (settlementBindingId === null || command.input.settlementAccountId !== settlementBindingId) {
-      return yield* failure("InvalidJournal");
-    }
-
-    yield* admitAccountRole(
-      transaction,
-      command.scope.bookId,
-      command.input.settlementAccountId,
-      "vat",
-    );
-
-    for (const accountId of [
-      command.input.settlementAccountId,
-      command.input.taxAccountControlId,
-    ]) {
-      const account = (yield* Db.readActiveAccount(
-        transaction,
-        command.scope.bookId,
-        accountId,
-      ))[0];
-
-      if (account === undefined || account.id !== accountId) {
-        return yield* failure("InvalidJournal");
-      }
-    }
-
-    if (command.input.settlementAccountId === command.input.taxAccountControlId) {
-      return yield* failure("InvalidJournal");
-    }
-
-    if (
-      (yield* Db.readBankSourceConflict(transaction, command.scope.bookId, [
-        command.input.settlementAccountId,
-        command.input.taxAccountControlId,
-      ]))[0]?.present === true
-    ) {
-      return yield* failure("InvalidJournal");
-    }
-
-    let existingPosting = null;
-
-    if (command.input.adoptedVoucherId !== null || command.input.adoptedMatchId !== null) {
-      if (command.input.adoptedVoucherId === null || command.input.adoptedMatchId === null) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const match = yield* readAssessmentMatchInTransaction(
-        transaction,
-        command.scope,
-        command.input.adoptedMatchId,
-        event.id,
-        command.input.taxAccountControlId,
-        command.input.assessedMinor,
-      );
-
-      if (match.eventId !== event.id || match.voucherId !== command.input.adoptedVoucherId) {
-        return yield* failure("InvalidJournal");
-      }
-
-      // Old manual journals are adopted only through explicit reviewed role
-      // evidence: the voucher's settlement and tax-account vectors must equal
-      // the assessed charge exactly, and the match relationship must be
-      // unused. Equal amounts alone never prove the relationship.
-      const lines = yield* Db.readVoucherLines(transaction, command.scope.bookId, match.voucherId);
-      const signedByAccount = new Map<string, bigint>();
-
-      for (const line of lines) {
-        const signed = BigInt(line.debitMinor) - BigInt(line.creditMinor);
-        signedByAccount.set(line.accountId, (signedByAccount.get(line.accountId) ?? 0n) + signed);
-      }
-
-      const assessed = BigInt(command.input.assessedMinor);
-
-      if (
-        lines.length !== 2 ||
-        signedByAccount.get(command.input.settlementAccountId) !== assessed ||
-        signedByAccount.get(command.input.taxAccountControlId) !== -assessed
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* Db.readExecutedAssessmentByMatch(transaction, command.scope.bookId, match.id))[0]
-          ?.present === true
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      existingPosting = {
-        settlementMinor: assessed.toString(),
-        taxAccountMinor: (-assessed).toString(),
-        matchRef: match.id,
-        relationshipUsed: false,
-      };
-    }
-
-    const knownIdentities = (yield* Db.readEffectiveAssessments(
-      transaction,
-      command.scope.bookId,
-      basis.id,
-    )).map((row) => row.assessmentIdentity);
-
-    const compiled = compileAssessment({
-      assessmentIdentity: command.input.assessmentIdentity,
-      obligationId,
-      authorityPeriod: command.input.authorityPeriod,
-      assessedMinor: command.input.assessedMinor,
-      expectedRemainingMinor: remaining.minor,
-      knownAssessmentIdentities: knownIdentities,
-      existingPosting,
-      settlementControlAccountId: command.input.settlementAccountId,
-      taxAccountControlId: command.input.taxAccountControlId,
-    });
-
-    if (Result.isFailure(compiled)) return yield* refusalFor(compiled.failure);
-
-    const assessmentId = newId("vat_assessment");
-    const now = yield* isoNow(transaction);
-
-    const evidence = yield* readEvidenceReference(
-      transaction,
-      command.scope.bookId,
-      command.input.confirmations.confirmationEvidenceId,
-    );
-
-    const body = {
-      id: assessmentId,
-      scope: command.scope,
-      version: 1,
-      assessmentIdentity: command.input.assessmentIdentity,
-      obligationId,
-      movementMeaning: "signed_statement_movement",
-      sourceDigest: source.sourceDigest,
-      priorReceiptDigest: remaining.digest,
-      returnId: basis.id,
-      authorityPeriod: command.input.authorityPeriod,
-      plan: compiled.success,
-      assessedMinor: command.input.assessedMinor,
-      expectedRemainingMinor: remaining.minor,
-      taxAccountEventId: event.id,
-      settlementAccountId: command.input.settlementAccountId,
-      taxAccountControlId: command.input.taxAccountControlId,
-      voucherId: null,
-      approvalId: null,
-      confirmations: command.input.confirmations,
-      evidence,
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, "prepare_vat_assessment", principal.actorId),
-    };
-
-    const assessment = yield* decode(AssessmentSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertAssessment(transaction, {
-      bookId: command.scope.bookId,
-      id: assessmentId,
-      assessmentIdentity: command.input.assessmentIdentity,
-      returnId: basis.id,
-      eventId: event.id,
-      matchRef: compiled.success.adoptedMatchRef,
-      body: yield* toJsonObject(assessment),
-      digest: assessment.digest,
-      recordedAt: now,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "prepare_vat_assessment",
-      principal.actorId,
-      yield* toJsonObject(assessment),
-    );
-
-    return assessment;
   });
 });
 
@@ -1044,116 +1045,112 @@ export const approveAssessment = Effect.fn("vat.assessment.approveRecord")(funct
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     yield* assessmentAccess(transaction, [...Db.assessmentInserts]);
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "approve_vat_assessment",
-      principal.actorId,
       {
-        assessmentId: command.assessmentId,
-        input: yield* toJsonObject(command.input),
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "approve_vat_assessment",
+        actorId: principal.actorId,
+        input: {
+          assessmentId: command.assessmentId,
+          input: yield* toJsonObject(command.input),
+        },
       },
       AssessmentApprovalSchema,
+      Effect.gen(function* () {
+        const assessmentRow = yield* readAssessmentRow(
+          transaction,
+          command.scope,
+          command.assessmentId,
+        );
+
+        if (command.input.digest !== assessmentRow.body["digest"]) {
+          return yield* failure("StaleDependency");
+        }
+
+        const record = yield* decode(AssessmentSchema, assessmentRow.body);
+
+        yield* requireUnexecutedAssessment(transaction, command.scope, record);
+
+        const basis = yield* currentBasis(transaction, command.scope, record.returnId);
+        const remaining = yield* remainingAssessment(transaction, command.scope, basis);
+
+        const source = yield* readAssessmentSourceInTransaction(
+          transaction,
+          command.scope,
+          record.taxAccountEventId,
+          record.taxAccountControlId,
+          record.assessedMinor,
+        );
+
+        if (
+          record.expectedRemainingMinor !== remaining.minor ||
+          (record.sourceDigest !== undefined && record.sourceDigest !== source.sourceDigest) ||
+          (record.priorReceiptDigest !== undefined &&
+            record.priorReceiptDigest !== remaining.digest)
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
+        yield* bindObligation(transaction, command.scope, basis);
+
+        if (
+          (yield* Db.readAssessmentReceiptByAssessment(
+            transaction,
+            command.scope.bookId,
+            command.assessmentId,
+          ))[0] !== undefined
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
+        const ordinal =
+          (yield* Db.readAssessmentApprovalCount(
+            transaction,
+            command.scope.bookId,
+            command.assessmentId,
+          ))[0]!.total + 1;
+
+        if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          id: newId("assessment_approval"),
+          scope: command.scope,
+          assessmentId: command.assessmentId,
+          digest: command.input.digest,
+          version: 1,
+          actorId: principal.actorId,
+          ordinal,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          createdAt: now,
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "approve_vat_assessment",
+            principal.actorId,
+          ),
+          sourceDigest: source.sourceDigest,
+          priorReceiptDigest: remaining.digest,
+        };
+
+        const approval = yield* decode(AssessmentApprovalSchema, body);
+
+        yield* Db.insertAssessmentApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approval.id,
+          assessmentId: command.assessmentId,
+          ordinal,
+          actorId: principal.actorId,
+          digest: approval.digest,
+          expiresAt: approval.expiresAt,
+          body: yield* toJsonObject(approval),
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const assessmentRow = yield* readAssessmentRow(
-      transaction,
-      command.scope,
-      command.assessmentId,
-    );
-
-    if (command.input.digest !== assessmentRow.body["digest"]) {
-      return yield* failure("StaleDependency");
-    }
-
-    const record = yield* decode(AssessmentSchema, assessmentRow.body);
-
-    yield* requireUnexecutedAssessment(transaction, command.scope, record);
-
-    const basis = yield* currentBasis(transaction, command.scope, record.returnId);
-    const remaining = yield* remainingAssessment(transaction, command.scope, basis);
-
-    const source = yield* readAssessmentSourceInTransaction(
-      transaction,
-      command.scope,
-      record.taxAccountEventId,
-      record.taxAccountControlId,
-      record.assessedMinor,
-    );
-
-    if (
-      record.expectedRemainingMinor !== remaining.minor ||
-      (record.sourceDigest !== undefined && record.sourceDigest !== source.sourceDigest) ||
-      (record.priorReceiptDigest !== undefined && record.priorReceiptDigest !== remaining.digest)
-    ) {
-      return yield* failure("StaleDependency");
-    }
-
-    yield* bindObligation(transaction, command.scope, basis);
-
-    if (
-      (yield* Db.readAssessmentReceiptByAssessment(
-        transaction,
-        command.scope.bookId,
-        command.assessmentId,
-      ))[0] !== undefined
-    ) {
-      return yield* failure("StaleDependency");
-    }
-
-    const ordinal =
-      (yield* Db.readAssessmentApprovalCount(
-        transaction,
-        command.scope.bookId,
-        command.assessmentId,
-      ))[0]!.total + 1;
-
-    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      id: newId("assessment_approval"),
-      scope: command.scope,
-      assessmentId: command.assessmentId,
-      digest: command.input.digest,
-      version: 1,
-      actorId: principal.actorId,
-      ordinal,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, "approve_vat_assessment", principal.actorId),
-      sourceDigest: source.sourceDigest,
-      priorReceiptDigest: remaining.digest,
-    };
-
-    const approval = yield* decode(AssessmentApprovalSchema, body);
-
-    yield* Db.insertAssessmentApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: approval.id,
-      assessmentId: command.assessmentId,
-      ordinal,
-      actorId: principal.actorId,
-      digest: approval.digest,
-      expiresAt: approval.expiresAt,
-      body: yield* toJsonObject(approval),
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "approve_vat_assessment",
-      principal.actorId,
-      yield* toJsonObject(approval),
-    );
-
-    return approval;
   });
 });
 
@@ -1290,145 +1287,136 @@ export const executeAssessment = Effect.fn("vat.assessment.executeRecord")(funct
     function* (transaction, principal) {
       const operation = "execute_vat_assessment";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { assessmentId: command.assessmentId, input: yield* toJsonObject(command.input) },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { assessmentId: command.assessmentId, input: yield* toJsonObject(command.input) },
+        },
         AssessmentSchema,
-      );
+        Effect.gen(function* () {
+          yield* assessmentAccess(transaction, [...Db.assessmentInserts]);
 
-      if (request.previous) return request.previous;
+          const assessmentRow = yield* readAssessmentRow(
+            transaction,
+            command.scope,
+            command.assessmentId,
+          );
 
-      yield* assessmentAccess(transaction, [...Db.assessmentInserts]);
+          const assessment = yield* decode(AssessmentSchema, assessmentRow.body);
 
-      const assessmentRow = yield* readAssessmentRow(
-        transaction,
-        command.scope,
-        command.assessmentId,
-      );
+          if (assessment.digest !== command.input.digest) return yield* failure("StaleDependency");
 
-      const assessment = yield* decode(AssessmentSchema, assessmentRow.body);
-
-      if (assessment.digest !== command.input.digest) return yield* failure("StaleDependency");
-
-      if (
-        (yield* Db.readAssessmentReceiptByAssessment(
-          transaction,
-          command.scope.bookId,
-          assessment.id,
-        ))[0] !== undefined
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* requireUnexecutedAssessment(transaction, command.scope, assessment);
-
-      const approval = (yield* Db.readAssessmentApprovalById(
-        transaction,
-        command.scope.bookId,
-        command.input.approvalId,
-        assessment.id,
-      ))[0];
-
-      const now = yield* isoNow(transaction);
-
-      if (
-        approval === undefined ||
-        approval.digest !== assessment.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(now)
-      ) {
-        return yield* failure("ApprovalRequired");
-      }
-
-      if (approval.actorId === principal.actorId) {
-        return yield* failure("ApprovalRequired");
-      }
-
-      yield* requireReviewer(transaction, command.scope, approval.actorId);
-
-      const basis = yield* currentBasis(transaction, command.scope, assessment.returnId);
-      const remaining = yield* remainingAssessment(transaction, command.scope, basis);
-
-      const source = yield* readAssessmentSourceInTransaction(
-        transaction,
-        command.scope,
-        assessment.taxAccountEventId,
-        assessment.taxAccountControlId,
-        assessment.assessedMinor,
-      );
-
-      const approved = yield* decode(AssessmentApprovalSchema, approval.body);
-
-      // A legacy plan can receive a fresh independent approval over its now
-      // validated source and prior receipts, without rewriting its sealed body.
-      if (
-        assessment.expectedRemainingMinor !== remaining.minor ||
-        source.sourceDigest !== (assessment.sourceDigest ?? approved.sourceDigest) ||
-        remaining.digest !== (assessment.priorReceiptDigest ?? approved.priorReceiptDigest)
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const posted =
-        assessment.plan.mode === "adopt_existing_effect"
-          ? yield* adoptExistingMatch(transaction, command.scope, assessment)
-          : yield* postAssessment(
+          if (
+            (yield* Db.readAssessmentReceiptByAssessment(
               transaction,
-              principal,
-              command.scope,
-              assessment,
-              source,
-              commandReceipt(command.idempotencyKey, operation, principal.actorId),
-            );
+              command.scope.bookId,
+              assessment.id,
+            ))[0] !== undefined
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-      const receiptId = newId("assessment_receipt");
+          yield* requireUnexecutedAssessment(transaction, command.scope, assessment);
 
-      const body = {
-        id: receiptId,
-        scope: command.scope,
-        assessmentId: assessment.id,
-        eventId: assessment.taxAccountEventId,
-        assessmentIdentity: assessment.assessmentIdentity,
-        approvalId: approval.id,
-        voucherId: posted.voucherId,
-        matchRef: posted.matchRef,
-        createdAt: now,
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-      };
+          const approval = (yield* Db.readAssessmentApprovalById(
+            transaction,
+            command.scope.bookId,
+            command.input.approvalId,
+            assessment.id,
+          ))[0];
 
-      const receipt = {
-        ...body,
-        digest: yield* digest(body),
-      };
+          const now = yield* isoNow(transaction);
 
-      yield* Db.insertAssessmentReceipt(transaction, {
-        bookId: command.scope.bookId,
-        id: receiptId,
-        assessmentId: assessment.id,
-        eventId: assessment.taxAccountEventId,
-        assessmentIdentity: assessment.assessmentIdentity,
-        approvalId: approval.id,
-        voucherId: posted.voucherId,
-        matchRef: posted.matchRef,
-        body: yield* toJsonObject(receipt),
-        digest: receipt.digest,
-        recordedAt: now,
-      });
+          if (
+            approval === undefined ||
+            approval.digest !== assessment.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(now)
+          ) {
+            return yield* failure("ApprovalRequired");
+          }
 
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(assessment),
+          if (approval.actorId === principal.actorId) {
+            return yield* failure("ApprovalRequired");
+          }
+
+          yield* requireReviewer(transaction, command.scope, approval.actorId);
+
+          const basis = yield* currentBasis(transaction, command.scope, assessment.returnId);
+          const remaining = yield* remainingAssessment(transaction, command.scope, basis);
+
+          const source = yield* readAssessmentSourceInTransaction(
+            transaction,
+            command.scope,
+            assessment.taxAccountEventId,
+            assessment.taxAccountControlId,
+            assessment.assessedMinor,
+          );
+
+          const approved = yield* decode(AssessmentApprovalSchema, approval.body);
+
+          // A legacy plan can receive a fresh independent approval over its now
+          // validated source and prior receipts, without rewriting its sealed body.
+          if (
+            assessment.expectedRemainingMinor !== remaining.minor ||
+            source.sourceDigest !== (assessment.sourceDigest ?? approved.sourceDigest) ||
+            remaining.digest !== (assessment.priorReceiptDigest ?? approved.priorReceiptDigest)
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          const posted =
+            assessment.plan.mode === "adopt_existing_effect"
+              ? yield* adoptExistingMatch(transaction, command.scope, assessment)
+              : yield* postAssessment(
+                  transaction,
+                  principal,
+                  command.scope,
+                  assessment,
+                  source,
+                  commandReceipt(command.idempotencyKey, operation, principal.actorId),
+                );
+
+          const receiptId = newId("assessment_receipt");
+
+          const body = {
+            id: receiptId,
+            scope: command.scope,
+            assessmentId: assessment.id,
+            eventId: assessment.taxAccountEventId,
+            assessmentIdentity: assessment.assessmentIdentity,
+            approvalId: approval.id,
+            voucherId: posted.voucherId,
+            matchRef: posted.matchRef,
+            createdAt: now,
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          };
+
+          const receipt = {
+            ...body,
+            digest: yield* digest(body),
+          };
+
+          yield* Db.insertAssessmentReceipt(transaction, {
+            bookId: command.scope.bookId,
+            id: receiptId,
+            assessmentId: assessment.id,
+            eventId: assessment.taxAccountEventId,
+            assessmentIdentity: assessment.assessmentIdentity,
+            approvalId: approval.id,
+            voucherId: posted.voucherId,
+            matchRef: posted.matchRef,
+            body: yield* toJsonObject(receipt),
+            digest: receipt.digest,
+            recordedAt: now,
+          });
+
+          return { receipt: yield* toJsonObject(assessment), result: assessment };
+        }),
       );
-
-      return assessment;
     },
     command.input.approvalId,
   );

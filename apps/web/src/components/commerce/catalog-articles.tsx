@@ -1,3 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Option from "effect/Option";
@@ -81,7 +84,7 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
   const newArticleButton = useRef<HTMLButtonElement>(null);
   const openerCode = useRef<string | null>(null);
   const [form, setForm] = useState<ArticleForm>(emptyForm);
-  const [keys] = useState(() => new Map<string, string>());
+  const { current: keys } = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
   const [saved, setSaved] = useState(false);
   const metadata = useQuery(workQueryOptions(book, {}));
@@ -89,9 +92,14 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
   const policies = useQuery({
     queryKey: [...commerceKey(book), "commercial-policies"],
     queryFn: ({ signal }) =>
-      readAccounting(`${commercePath(book)}/legal-sales-policies`, Legal.LegalSalesPolicyHistory, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.legalSalesPolicies.legalSalesPolicyHistory({ params: { ...bookScope(book) } }),
+        Legal.LegalSalesPolicyHistory,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 
@@ -100,7 +108,14 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) =>
       readAccounting(
-        `${commercePath(book)}/articles?status=all${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.catalog.catalogArticles({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.catalog.endpoints.catalogArticles,
+              `status=all${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Catalog.ArticlePage,
         { signal },
       ),

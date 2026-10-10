@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "../book-commands";
+import * as Match from "effect/Match";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Source from "@open-erp/contracts/bank-source-revisions";
 import {
@@ -16,7 +18,9 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import * as BankDb from "../../db/banking/shared";
 import * as RevisionDb from "../../db/banking/source-revisions";
 import * as Shared from "./shared";
@@ -344,14 +348,12 @@ function raiseCaseIfNeeded(row: {
   readonly matchedBefore: boolean;
 }) {
   return Effect.gen(function* () {
-    const caseKind =
-      row.applied.kind === "material_impact"
-        ? "material_source_change"
-        : row.applied.kind === "removal_investigation"
-          ? "removed_booked_observation"
-          : row.applied.kind === "overlap_case"
-            ? "unresolved_lookalike"
-            : null;
+    const caseKind = Match.value(row.applied.kind).pipe(
+      Match.when("material_impact", () => "material_source_change" as const),
+      Match.when("removal_investigation", () => "removed_booked_observation" as const),
+      Match.when("overlap_case", () => "unresolved_lookalike" as const),
+      Match.orElse(() => null),
+    );
 
     if (caseKind === null) return null;
 
@@ -700,216 +702,207 @@ export const admitProviderObservation = Effect.fn("banking.source.admitObservati
 
       if (!book) return yield* failure("Forbidden");
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "admit_bank_provider_observation",
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "admit_bank_provider_observation",
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
+        },
         Source.ProviderAdmission,
-      );
+        Effect.gen(function* () {
+          const input = command.input;
 
-      if (request.previous) return request.previous;
+          const revision = (yield* RevisionDb.readRevisionById(
+            transaction,
+            command.scope.bookId,
+            input.revisionId,
+          ))[0];
 
-      const input = command.input;
+          if (!revision) return yield* failure("NotFound");
 
-      const revision = (yield* RevisionDb.readRevisionById(
-        transaction,
-        command.scope.bookId,
-        input.revisionId,
-      ))[0];
+          // The retained evidence a human reviewed must exist and be readable. Two
+          // records are never the same event on name similarity alone.
+          const evidence = (yield* BankDb.readEvidence(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          ))[0];
 
-      if (!revision) return yield* failure("NotFound");
+          if (!evidence) return yield* failure("MissingEvidence");
 
-      // The retained evidence a human reviewed must exist and be readable. Two
-      // records are never the same event on name similarity alone.
-      const evidence = (yield* BankDb.readEvidence(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      ))[0];
+          const observation = (yield* RevisionDb.readObservation(
+            transaction,
+            command.scope.bookId,
+            input.statementId,
+            input.rowOrdinal,
+          ))[0];
 
-      if (!evidence) return yield* failure("MissingEvidence");
+          if (!observation) return yield* failure("NotFound");
 
-      const observation = (yield* RevisionDb.readObservation(
-        transaction,
-        command.scope.bookId,
-        input.statementId,
-        input.rowOrdinal,
-      ))[0];
+          const locked = yield* RevisionDb.lockHead(
+            transaction,
+            command.scope.bookId,
+            revision.consentId,
+            revision.providerTransactionId,
+          );
 
-      if (!observation) return yield* failure("NotFound");
+          const current = locked[0];
 
-      const locked = yield* RevisionDb.lockHead(
-        transaction,
-        command.scope.bookId,
-        revision.consentId,
-        revision.providerTransactionId,
-      );
+          if (!current) return yield* failure("NotFound");
 
-      const current = locked[0];
+          // The retained facts must reconcile with the adopted observation under
+          // the reviewer's decision. A removal carries no amount, so it cannot be
+          // reconciled and is refused rather than admitted on a guess.
+          const plan = yield* checked(
+            compileAdmission({
+              revision: {
+                identity: {
+                  bookId: command.scope.bookId,
+                  provider: "plaid",
+                  streamId: "",
+                  providerTransactionId: revision.providerTransactionId,
+                },
+                publicationVersion: revision.publicationVersion,
+                changeKind: Schema.decodeUnknownSync(
+                  Schema.Literals(["added", "modified", "removed"]),
+                )(revision.changeKind),
+                rawLocator: revision.rawLocator,
+                rawDigest: revision.rawContentSha256,
+                normalizedFacts: null,
+                parserVersion: revision.parserVersion,
+              },
+              revisionCurrent: current.latestRevisionId === revision.id,
+              materialConflictOpen: false,
+              terminalSupported: revision.changeKind !== "removed",
+              // The same-event relation is exactly what this operation records.
+              sameEventRelation: {
+                relation: "same_event",
+                reviewer: principal.actorId,
+                decidedAt: input.decidedOn,
+              },
+              existingObservationId: `${input.statementId}#${String(input.rowOrdinal)}`,
+              existingSemanticsReconcile: true,
+              lookalikeObservationIds: [],
+              observationId: current.latestRevisionId,
+            }),
+          );
 
-      if (!current) return yield* failure("NotFound");
+          if (plan.kind !== "adopt_existing") return yield* failure("ApprovalRequired");
 
-      // The retained facts must reconcile with the adopted observation under
-      // the reviewer's decision. A removal carries no amount, so it cannot be
-      // reconciled and is refused rather than admitted on a guess.
-      const plan = yield* checked(
-        compileAdmission({
-          revision: {
-            identity: {
-              bookId: command.scope.bookId,
-              provider: "plaid",
-              streamId: "",
-              providerTransactionId: revision.providerTransactionId,
-            },
-            publicationVersion: revision.publicationVersion,
-            changeKind: Schema.decodeUnknownSync(Schema.Literals(["added", "modified", "removed"]))(
-              revision.changeKind,
-            ),
-            rawLocator: revision.rawLocator,
-            rawDigest: revision.rawContentSha256,
-            normalizedFacts: null,
-            parserVersion: revision.parserVersion,
-          },
-          revisionCurrent: current.latestRevisionId === revision.id,
-          materialConflictOpen: false,
-          terminalSupported: revision.changeKind !== "removed",
-          // The same-event relation is exactly what this operation records.
-          sameEventRelation: {
+          // One revision is admitted at most once. A revision that already carries
+          // an admission is recovered only by the identical command, and anything
+          // else refuses here rather than colliding with the retained unique key.
+          const existing = (yield* RevisionDb.readAdmissionByRevision(
+            transaction,
+            command.scope.bookId,
+            revision.id,
+          ))[0];
+
+          if (existing) {
+            yield* checked(
+              compileAdmissionReplay({
+                existingCommandKey: existing.commandKey,
+                commandKey: command.idempotencyKey,
+                existingRawDigest: revision.rawContentSha256,
+                rawDigest: revision.rawContentSha256,
+                existingObservationId: existing.id,
+              }),
+            );
+
+            return yield* failure("AlreadyPosted");
+          }
+
+          const reviewDigest = yield* digest({
+            revisionId: revision.id,
+            statementId: input.statementId,
+            rowOrdinal: input.rowOrdinal,
+            evidenceId: input.evidenceId,
+            rationale: input.rationale,
+          } satisfies JsonObject);
+
+          const admissionId = newId("sourceadmit");
+
+          yield* RevisionDb.insertAdmission(transaction, {
+            bookId: command.scope.bookId,
+            id: admissionId,
+            consentId: revision.consentId,
+            providerTransactionId: revision.providerTransactionId,
+            revisionId: revision.id,
+            statementId: input.statementId,
+            rowOrdinal: input.rowOrdinal,
             relation: "same_event",
-            reviewer: principal.actorId,
-            decidedAt: input.decidedOn,
-          },
-          existingObservationId: `${input.statementId}#${String(input.rowOrdinal)}`,
-          existingSemanticsReconcile: true,
-          lookalikeObservationIds: [],
-          observationId: current.latestRevisionId,
-        }),
-      );
-
-      if (plan.kind !== "adopt_existing") return yield* failure("ApprovalRequired");
-
-      // One revision is admitted at most once. A revision that already carries
-      // an admission is recovered only by the identical command, and anything
-      // else refuses here rather than colliding with the retained unique key.
-      const existing = (yield* RevisionDb.readAdmissionByRevision(
-        transaction,
-        command.scope.bookId,
-        revision.id,
-      ))[0];
-
-      if (existing) {
-        yield* checked(
-          compileAdmissionReplay({
-            existingCommandKey: existing.commandKey,
             commandKey: command.idempotencyKey,
-            existingRawDigest: revision.rawContentSha256,
-            rawDigest: revision.rawContentSha256,
-            existingObservationId: existing.id,
-          }),
-        );
+            reviewer: principal.actorId,
+            reviewDigest,
+            evidenceId: input.evidenceId,
+            body: yield* Shared.toJsonObject({
+              admissionId,
+              revisionId: revision.id,
+              providerTransactionId: revision.providerTransactionId,
+              statementId: input.statementId,
+              rowOrdinal: input.rowOrdinal,
+              relation: "same_event",
+              commandKey: command.idempotencyKey,
+              reviewer: principal.actorId,
+              reviewDigest,
+              evidenceId: input.evidenceId,
+              rationale: input.rationale,
+              // The admission adds provenance to an observation that already
+              // exists. It creates no journal and no cash capacity.
+              ledgerEffect: "none_provenance_only",
+            }),
+          });
 
-        return yield* failure("AlreadyPosted");
-      }
+          const admitted = yield* RevisionDb.admitHead(transaction, {
+            bookId: command.scope.bookId,
+            consentId: revision.consentId,
+            providerTransactionId: revision.providerTransactionId,
+            expectedVersion: current.version,
+            version: (BigInt(current.version) + 1n).toString(),
+            statementId: input.statementId,
+            rowOrdinal: input.rowOrdinal,
+          });
 
-      const reviewDigest = yield* digest({
-        revisionId: revision.id,
-        statementId: input.statementId,
-        rowOrdinal: input.rowOrdinal,
-        evidenceId: input.evidenceId,
-        rationale: input.rationale,
-      } satisfies JsonObject);
+          if ((admitted[0]?.moved ?? "0") !== "1") return yield* failure("AlreadyPosted");
 
-      const admissionId = newId("sourceadmit");
+          // The count is read back from the retained admissions rather than
+          // asserted: it is the difference between one observation and a
+          // duplicated cash capacity.
+          const resolved = (yield* RevisionDb.readAdmittedCount(
+            transaction,
+            command.scope.bookId,
+            revision.consentId,
+            revision.providerTransactionId,
+          ))[0]?.count;
 
-      yield* RevisionDb.insertAdmission(transaction, {
-        bookId: command.scope.bookId,
-        id: admissionId,
-        consentId: revision.consentId,
-        providerTransactionId: revision.providerTransactionId,
-        revisionId: revision.id,
-        statementId: input.statementId,
-        rowOrdinal: input.rowOrdinal,
-        relation: "same_event",
-        commandKey: command.idempotencyKey,
-        reviewer: principal.actorId,
-        reviewDigest,
-        evidenceId: input.evidenceId,
-        body: yield* Shared.toJsonObject({
-          admissionId,
-          revisionId: revision.id,
-          providerTransactionId: revision.providerTransactionId,
-          statementId: input.statementId,
-          rowOrdinal: input.rowOrdinal,
-          relation: "same_event",
-          commandKey: command.idempotencyKey,
-          reviewer: principal.actorId,
-          reviewDigest,
-          evidenceId: input.evidenceId,
-          rationale: input.rationale,
-          // The admission adds provenance to an observation that already
-          // exists. It creates no journal and no cash capacity.
-          ledgerEffect: "none_provenance_only",
+          if (resolved === undefined) return yield* failure("InternalError");
+
+          const body = yield* Shared.toJsonObject({
+            admissionId,
+            revisionId: revision.id,
+            providerTransactionId: revision.providerTransactionId,
+            relation: "same_event",
+            statementId: input.statementId,
+            rowOrdinal: input.rowOrdinal,
+            reviewDigest,
+            reviewer: principal.actorId,
+            resolvedObservationCount: Number(resolved),
+            journalIds: [],
+            receipt: Shared.receipt(
+              command.idempotencyKey,
+              "admit_bank_provider_observation",
+              principal.actorId,
+            ),
+          } satisfies JsonObject);
+
+          const result = yield* Shared.decode(Source.ProviderAdmission, body);
+
+          return { receipt: body, result: result };
         }),
-      });
-
-      const admitted = yield* RevisionDb.admitHead(transaction, {
-        bookId: command.scope.bookId,
-        consentId: revision.consentId,
-        providerTransactionId: revision.providerTransactionId,
-        expectedVersion: current.version,
-        version: (BigInt(current.version) + 1n).toString(),
-        statementId: input.statementId,
-        rowOrdinal: input.rowOrdinal,
-      });
-
-      if ((admitted[0]?.moved ?? "0") !== "1") return yield* failure("AlreadyPosted");
-
-      // The count is read back from the retained admissions rather than
-      // asserted: it is the difference between one observation and a
-      // duplicated cash capacity.
-      const resolved = (yield* RevisionDb.readAdmittedCount(
-        transaction,
-        command.scope.bookId,
-        revision.consentId,
-        revision.providerTransactionId,
-      ))[0]?.count;
-
-      if (resolved === undefined) return yield* failure("InternalError");
-
-      const body = yield* Shared.toJsonObject({
-        admissionId,
-        revisionId: revision.id,
-        providerTransactionId: revision.providerTransactionId,
-        relation: "same_event",
-        statementId: input.statementId,
-        rowOrdinal: input.rowOrdinal,
-        reviewDigest,
-        reviewer: principal.actorId,
-        resolvedObservationCount: Number(resolved),
-        journalIds: [],
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "admit_bank_provider_observation",
-          principal.actorId,
-        ),
-      } satisfies JsonObject);
-
-      const result = yield* Shared.decode(Source.ProviderAdmission, body);
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "admit_bank_provider_observation",
-        principal.actorId,
-        body,
       );
-
-      return result;
     }),
   );
 });

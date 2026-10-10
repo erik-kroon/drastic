@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { readOnboardingWorkspace } from "./data";
 import { OnboardingDelta } from "./delta";
 import { useQuery } from "@tanstack/react-query";
@@ -40,9 +41,13 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
     queryKey: [...bookKey(book), "onboarding", "lifecycle"],
     enabled: !!workspace.data && view !== "start",
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/onboarding/lifecycle`, Onboarding.OnboardingLifecycle, {
-        signal,
-      }),
+      readAccounting(
+        (client) => client.onboarding.getOnboardingLifecycle({ params: { ...bookScope(book) } }),
+        Onboarding.OnboardingLifecycle,
+        {
+          signal,
+        },
+      ),
     refetchInterval: (query) =>
       query.state.data?.intents.length && !query.state.data.activation ? 2_000 : false,
     retry: false,

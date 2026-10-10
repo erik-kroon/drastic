@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import type * as Commerce from "@open-erp/contracts/commerce";
@@ -37,7 +38,10 @@ export function InvoicePaymentUndo(props: UndoProps) {
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/allocation-receipts/${encodeURIComponent(receipt.id)}/status`,
+        (client) =>
+          client.commerceAllocationReversals.getCommerceAllocationStatus({
+            params: { ...bookScope(book), id: receipt.id },
+          }),
         Reversal.CommerceAllocationStatus,
         { signal },
       );

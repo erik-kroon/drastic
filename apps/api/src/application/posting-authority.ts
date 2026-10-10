@@ -4,7 +4,7 @@ import type * as Schema from "effect/Schema";
 import { recheckPrincipal, type VerifiedPrincipal } from "../db/identity";
 import * as Db from "../db/posting";
 import type { Transaction } from "../db/transaction";
-import { requireOnboardingResponsibility, readOnboardingResponsibility } from "./onboarding-policy";
+import { requireBookResponsibility, readBookResponsibility } from "./book-responsibility";
 import { failure } from "./failures";
 
 type Scope = typeof Accounting.Scope.Type;
@@ -36,13 +36,8 @@ export function collectPostingActorBasis(
 
     const responsibility =
       responsibilityRequirement === "bookkeeping_approver"
-        ? yield* requireOnboardingResponsibility(
-            transaction,
-            scope,
-            actorId,
-            "bookkeepingApproverId",
-          )
-        : yield* readOnboardingResponsibility(transaction, scope);
+        ? yield* requireBookResponsibility(transaction, scope, actorId, "bookkeepingApproverId")
+        : yield* readBookResponsibility(transaction, scope);
 
     const now = yield* Db.readDatabaseTime(transaction);
 

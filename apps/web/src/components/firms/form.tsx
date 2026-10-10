@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AccountingError } from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
@@ -9,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 export function FirmForm<S extends Schema.Top & { readonly DecodingServices: never }>(props: {
@@ -24,7 +25,7 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
   onSaved?: (result: typeof Firms.CommandResult.Type) => void;
 }) {
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const mutation = useMutation({
@@ -32,7 +33,7 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
       readAccounting(
         props.path,
         Firms.CommandResult,
-        mutationOptions(props.path, JSON.stringify(input), keys.current),
+        keys.current.options(props.path, JSON.stringify(input)),
       ),
     onSuccess: async (result) => {
       keys.current.clear();

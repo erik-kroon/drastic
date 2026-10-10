@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Credits from "@open-erp/contracts/customer-credit-notes";
@@ -14,12 +15,10 @@ import { digest } from "../json";
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
   sealActionInTransaction,
 } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, toJsonObject, withBook, type Scope } from "./support";
 import { liveInvoice } from "./register";
 import {
@@ -95,11 +94,13 @@ const readOriginalBasis = Effect.fn("commerce.customerCredit.original")(function
   request: CapacityRequest,
 ) {
   const rows = yield* ArDb.readArLegalIssueById(tx, scope.bookId, request.originalLegalIssueId);
+
   const row = rows[0];
 
   if (!row) return yield* failure("NotFound");
 
   const original = yield* decode(Ar.ArLegalIssueReceipt, row.body);
+
   const body = { ...(yield* toJsonObject(original)) };
 
   delete body.digest;
@@ -150,6 +151,7 @@ const readOriginalBasis = Effect.fn("commerce.customerCredit.original")(function
   if (profile.input.effectiveFrom > request.creditDate) return yield* failure("UnsupportedProfile");
 
   const accounts = profile.input;
+
   const originalAccounts = original.accountingProfileSnapshot.input;
 
   if (
@@ -162,6 +164,7 @@ const readOriginalBasis = Effect.fn("commerce.customerCredit.original")(function
   const invoice = yield* liveInvoice(tx, scope.bookId, original.registerInvoiceId);
 
   if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
   const outstandingMinor = invoice.outstandingMinor;
 
   if (invoice.direction !== "customer") return yield* failure("UnsupportedProfile");
@@ -191,6 +194,7 @@ const readCreditCapacity = Effect.fn("commerce.customerCredit.readCapacity")(fun
   request: CapacityRequest,
 ) {
   const basis = yield* readOriginalBasis(tx, scope, request);
+
   const original = basis.original;
 
   const creditPeriod = (yield* CreditDb.readTaxPeriod(
@@ -395,202 +399,205 @@ export const prepareCustomerCredit = Effect.fn("commerce.customerCredit.prepare"
       const { scope, input, idempotencyKey } = command,
         operation = "prepare_customer_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        input,
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: input,
+        },
         ReviewSchema,
-      );
+        Effect.gen(function* () {
+          const { basis, creditPeriod, capacity } = yield* readCreditCapacity(tx, scope, input);
 
-      if (request.previous) return request.previous;
+          if (capacity.completelyExhausted) return yield* failure("StaleDependency");
 
-      const { basis, creditPeriod, capacity } = yield* readCreditCapacity(tx, scope, input);
+          const counted = yield* CreditDb.countReviews(
+            tx,
+            scope.bookId,
+            input.originalLegalIssueId,
+          );
 
-      if (capacity.completelyExhausted) return yield* failure("StaleDependency");
+          const ordinal = (counted[0]?.total ?? 0) + 1;
 
-      const counted = yield* CreditDb.countReviews(tx, scope.bookId, input.originalLegalIssueId);
-      const ordinal = (counted[0]?.total ?? 0) + 1;
+          if (ordinal > historyBound) return yield* failure("UnsupportedProfile");
 
-      if (ordinal > historyBound) return yield* failure("UnsupportedProfile");
+          const evidence = (yield* Ledger.readEvidence(
+            tx,
+            scope.bookId,
+            input.creditEvidenceId,
+          ))[0];
 
-      const evidence = (yield* Ledger.readEvidence(tx, scope.bookId, input.creditEvidenceId))[0];
+          if (!evidence) return yield* failure("MissingEvidence");
 
-      if (!evidence) return yield* failure("MissingEvidence");
+          const { original, profile } = basis;
 
-      const { original, profile } = basis;
-      const id = newId("customer_credit_review");
+          const id = newId("customer_credit_review");
 
-      const ordered = [...input.selectedLines].sort((a, b) =>
-        a.originalLineId < b.originalLineId ? -1 : a.originalLineId > b.originalLineId ? 1 : 0,
-      );
+          const ordered = [...input.selectedLines].sort((a, b) =>
+            a.originalLineId < b.originalLineId ? -1 : a.originalLineId > b.originalLineId ? 1 : 0,
+          );
 
-      const lineIds = new Map<string, LineIds>(
-        ordered.map((line) => [
-          line.originalLineId,
-          { revenueLineId: newId("line"), outputVatLineId: newId("line") },
-        ]),
-      );
+          const lineIds = new Map<string, LineIds>(
+            ordered.map((line) => [
+              line.originalLineId,
+              { revenueLineId: newId("line"), outputVatLineId: newId("line") },
+            ]),
+          );
 
-      const selected = yield* compileSelectedCredit(capacity, input.selectedLines, lineIds);
-      const controlLineId = newId("line");
+          const selected = yield* compileSelectedCredit(capacity, input.selectedLines, lineIds);
 
-      const controlLine = {
-        lineId: controlLineId,
-        accountId: profile.input.controlAccountId,
-        debitMinor: "0",
-        creditMinor: selected.grossMinor,
-        description: `Reduce customer receivable ${original.legalDocumentNumber}`,
-      };
+          const controlLineId = newId("line");
 
-      const actionLines = [
-        controlLine,
-        ...selected.lines.flatMap((line) => {
-          const lines = [
-            {
-              lineId: line.revenueLineId,
-              accountId: profile.input.revenueAccountId,
-              debitMinor: line.creditedNetMinor,
-              creditMinor: "0",
-              description: `Return domestic sales ${original.legalDocumentNumber}`,
-            },
+          const controlLine = {
+            lineId: controlLineId,
+            accountId: profile.input.controlAccountId,
+            debitMinor: "0",
+            creditMinor: selected.grossMinor,
+            description: `Reduce customer receivable ${original.legalDocumentNumber}`,
+          };
+
+          const actionLines = [
+            controlLine,
+            ...selected.lines.flatMap((line) => {
+              const lines = [
+                {
+                  lineId: line.revenueLineId,
+                  accountId: profile.input.revenueAccountId,
+                  debitMinor: line.creditedNetMinor,
+                  creditMinor: "0",
+                  description: `Return domestic sales ${original.legalDocumentNumber}`,
+                },
+              ];
+
+              if (line.outputVatLineId !== null) {
+                lines.push({
+                  lineId: line.outputVatLineId,
+                  accountId: profile.input.outputVatAccountId,
+                  debitMinor: line.creditedTaxMinor,
+                  creditMinor: "0",
+                  description: `Return domestic output VAT ${original.legalDocumentNumber}`,
+                });
+              }
+
+              return lines;
+            }),
           ];
 
-          if (line.outputVatLineId !== null) {
-            lines.push({
-              lineId: line.outputVatLineId,
-              accountId: profile.input.outputVatAccountId,
-              debitMinor: line.creditedTaxMinor,
-              creditMinor: "0",
-              description: `Return domestic output VAT ${original.legalDocumentNumber}`,
-            });
-          }
+          for (const line of actionLines)
+            if (BigInt(line.debitMinor) === 0n && BigInt(line.creditMinor) === 0n)
+              return yield* failure("InvalidJournal");
 
-          return lines;
+          const eventKey = `legal_credit_review_${id.slice("customer_credit_review_".length)}`;
+
+          const event =
+            (yield* Ledger.readEvent(tx, scope.bookId, input.creditEvidenceId, eventKey))[0] ??
+            (yield* Ledger.insertEvent(
+              tx,
+              scope.bookId,
+              newId("event"),
+              input.creditEvidenceId,
+              eventKey,
+            ))[0];
+
+          if (!event) return yield* failure("InternalError");
+
+          const action = yield* decode(Accounting.VoucherPostingAction, {
+            kind: "post_voucher",
+            correctsVoucherId: null,
+            eventId: event.id,
+            postingPurpose: "legal_customer_credit_v1",
+            occurrenceKey: eventKey,
+            fiscalYearId: creditPeriod.fiscalYearId,
+            accountingPeriodId: creditPeriod.id,
+            postingDate: input.creditDate,
+            series: input.voucherSeries,
+            currency: "SEK",
+            description: `Legal customer credit note for invoice ${original.legalDocumentNumber}`,
+            rationale: input.reason,
+            taxAssessment: "se-domestic-standard-25-v1",
+            lines: actionLines,
+            evidenceRefs: [
+              { evidenceId: input.creditEvidenceId, sha256: evidence.sha256, locator: eventKey },
+              {
+                evidenceId: original.sourceEvidence.evidenceId,
+                sha256: original.sourceEvidence.sha256,
+                locator: `original_legal_issue_${original.id}`,
+              },
+            ],
+            legalCredit: {
+              profile: profileLiteral,
+              policyId: original.policyId,
+              reviewId: id,
+              originalIssueId: original.id,
+              originalDocumentNumber: original.legalDocumentNumber,
+              creditedLineCount: selected.lines.length,
+              netMinor: selected.netMinor,
+              taxMinor: selected.taxMinor,
+            },
+          });
+
+          const plan = yield* sealActionInTransaction(tx, principal, scope, action, true);
+
+          const body = {
+            id,
+            scope,
+            version: 1 as const,
+            profile: input.profile,
+            ordinal,
+            input,
+            originalSnapshot: original,
+            capacity,
+            controlLineId,
+            lines: selected.lines,
+            totals: {
+              netMinor: selected.netMinor,
+              taxMinor: selected.taxMinor,
+              grossMinor: selected.grossMinor,
+            },
+            creditSeries: original.policySnapshot.input.series,
+            creditEvidence: {
+              basis: "retained_credit_evidence_v1" as const,
+              evidenceId: input.creditEvidenceId,
+              sha256: evidence.sha256,
+            },
+            unpaidBeforeMinor: selected.unpaidBeforeMinor,
+            unpaidAfterMinor: selected.unpaidAfterMinor,
+            taxCorrections: selected.lines.map((line, index) =>
+              negativeTaxEffect(line, {
+                id: newId("customer_credit_tax"),
+                ordinal: index + 1,
+                originalVoucherId: original.postingReceipt.voucherId,
+                originalControlLineId: basis.invoice.recognition.lineId,
+                originalPostingDate: original.issuedOn,
+                originalEvidenceId: original.sourceEvidence.evidenceId,
+                taxPeriod: capacity.taxPeriod,
+                creditVoucherId: null,
+                controlLineId: null,
+              }),
+            ),
+            taxConsequenceObserved: false as const,
+            postingPlan: plan,
+            createdAt: yield* isoNow(tx),
+            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const result = yield* decode(ReviewSchema, { ...body, digest: yield* digest(body) });
+
+          if (new TextEncoder().encode(JSON.stringify(result)).length > 524288)
+            return yield* failure("InvalidJournal");
+
+          yield* CreditDb.insertReview(tx, scope.bookId, result, {
+            changeSetId: plan.id,
+            eventId: event.id,
+            evidenceId: input.creditEvidenceId,
+          });
+
+          return result;
         }),
-      ];
-
-      for (const line of actionLines)
-        if (BigInt(line.debitMinor) === 0n && BigInt(line.creditMinor) === 0n)
-          return yield* failure("InvalidJournal");
-
-      const eventKey = `legal_credit_review_${id.slice("customer_credit_review_".length)}`;
-
-      const event =
-        (yield* Ledger.readEvent(tx, scope.bookId, input.creditEvidenceId, eventKey))[0] ??
-        (yield* Ledger.insertEvent(
-          tx,
-          scope.bookId,
-          newId("event"),
-          input.creditEvidenceId,
-          eventKey,
-        ))[0];
-
-      if (!event) return yield* failure("InternalError");
-
-      const action = yield* decode(Accounting.VoucherPostingAction, {
-        kind: "post_voucher",
-        correctsVoucherId: null,
-        eventId: event.id,
-        postingPurpose: "legal_customer_credit_v1",
-        occurrenceKey: eventKey,
-        fiscalYearId: creditPeriod.fiscalYearId,
-        accountingPeriodId: creditPeriod.id,
-        postingDate: input.creditDate,
-        series: input.voucherSeries,
-        currency: "SEK",
-        description: `Legal customer credit note for invoice ${original.legalDocumentNumber}`,
-        rationale: input.reason,
-        taxAssessment: "se-domestic-standard-25-v1",
-        lines: actionLines,
-        evidenceRefs: [
-          { evidenceId: input.creditEvidenceId, sha256: evidence.sha256, locator: eventKey },
-          {
-            evidenceId: original.sourceEvidence.evidenceId,
-            sha256: original.sourceEvidence.sha256,
-            locator: `original_legal_issue_${original.id}`,
-          },
-        ],
-        legalCredit: {
-          profile: profileLiteral,
-          policyId: original.policyId,
-          reviewId: id,
-          originalIssueId: original.id,
-          originalDocumentNumber: original.legalDocumentNumber,
-          creditedLineCount: selected.lines.length,
-          netMinor: selected.netMinor,
-          taxMinor: selected.taxMinor,
-        },
-      });
-
-      const plan = yield* sealActionInTransaction(tx, principal, scope, action, true);
-
-      const body = {
-        id,
-        scope,
-        version: 1 as const,
-        profile: input.profile,
-        ordinal,
-        input,
-        originalSnapshot: original,
-        capacity,
-        controlLineId,
-        lines: selected.lines,
-        totals: {
-          netMinor: selected.netMinor,
-          taxMinor: selected.taxMinor,
-          grossMinor: selected.grossMinor,
-        },
-        creditSeries: original.policySnapshot.input.series,
-        creditEvidence: {
-          basis: "retained_credit_evidence_v1" as const,
-          evidenceId: input.creditEvidenceId,
-          sha256: evidence.sha256,
-        },
-        unpaidBeforeMinor: selected.unpaidBeforeMinor,
-        unpaidAfterMinor: selected.unpaidAfterMinor,
-        taxCorrections: selected.lines.map((line, index) =>
-          negativeTaxEffect(line, {
-            id: newId("customer_credit_tax"),
-            ordinal: index + 1,
-            originalVoucherId: original.postingReceipt.voucherId,
-            originalControlLineId: basis.invoice.recognition.lineId,
-            originalPostingDate: original.issuedOn,
-            originalEvidenceId: original.sourceEvidence.evidenceId,
-            taxPeriod: capacity.taxPeriod,
-            creditVoucherId: null,
-            controlLineId: null,
-          }),
-        ),
-        taxConsequenceObserved: false as const,
-        postingPlan: plan,
-        createdAt: yield* isoNow(tx),
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const result = yield* decode(ReviewSchema, { ...body, digest: yield* digest(body) });
-
-      if (new TextEncoder().encode(JSON.stringify(result)).length > 524288)
-        return yield* failure("InvalidJournal");
-
-      yield* CreditDb.insertReview(tx, scope.bookId, result, {
-        changeSetId: plan.id,
-        eventId: event.id,
-        evidenceId: input.creditEvidenceId,
-      });
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
       );
-
-      return result;
     },
     "update",
   );
@@ -612,6 +619,7 @@ const checkedCustomerCredit = Effect.fn("commerce.customerCredit.checked")(funct
   if (!row) return yield* failure("NotFound");
 
   const review = yield* decode(ReviewSchema, row.body);
+
   const body = { ...(yield* toJsonObject(review)) };
 
   delete body.digest;
@@ -647,60 +655,54 @@ export const approveCustomerCredit = Effect.fn("commerce.customerCredit.approve"
       const { scope, id, input, idempotencyKey } = command,
         operation = "approve_customer_credit";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id, input },
+        },
         ApprovalSchema,
+        Effect.gen(function* () {
+          const review = yield* checkedCustomerCredit(
+            tx,
+            scope,
+            id,
+            input.digest,
+            (yield* isoNow(tx)).slice(0, 10),
+          );
+
+          if (review.receipt.actorId === principal.actorId)
+            return yield* failure("ApprovalRequired");
+
+          const approvals = yield* CreditDb.readApprovals(tx, scope.bookId, id);
+
+          const ordinal = approvals.length + 1;
+
+          if (ordinal > historyBound) return yield* failure("UnsupportedProfile");
+
+          const now = yield* isoNow(tx);
+
+          const result = yield* decode(ApprovalSchema, {
+            id: newId("customer_credit_approval"),
+            scope,
+            reviewId: id,
+            digest: review.digest,
+            version: 1,
+            actorId: principal.actorId,
+            ordinal,
+            expiresAt: new Date(Date.parse(now) + approvalWindow).toISOString(),
+            createdAt: now,
+            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+          });
+
+          yield* CreditDb.insertApproval(tx, scope.bookId, result);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* checkedCustomerCredit(
-        tx,
-        scope,
-        id,
-        input.digest,
-        (yield* isoNow(tx)).slice(0, 10),
-      );
-
-      if (review.receipt.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const approvals = yield* CreditDb.readApprovals(tx, scope.bookId, id);
-      const ordinal = approvals.length + 1;
-
-      if (ordinal > historyBound) return yield* failure("UnsupportedProfile");
-
-      const now = yield* isoNow(tx);
-
-      const result = yield* decode(ApprovalSchema, {
-        id: newId("customer_credit_approval"),
-        scope,
-        reviewId: id,
-        digest: review.digest,
-        version: 1,
-        actorId: principal.actorId,
-        ordinal,
-        expiresAt: new Date(Date.parse(now) + approvalWindow).toISOString(),
-        createdAt: now,
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      });
-
-      yield* CreditDb.insertApproval(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -802,7 +804,9 @@ export const executeCustomerCredit = Effect.fn("commerce.customerCredit.execute"
       });
 
       const creditId = newId("customer_credit");
+
       const documentId = newId("customer_credit_document");
+
       const creditSeries = review.creditSeries;
 
       const corrections = review.taxCorrections.map((correction) => ({

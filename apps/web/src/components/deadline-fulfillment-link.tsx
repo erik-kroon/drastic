@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Deadlines from "@open-erp/contracts/deadlines";
@@ -6,7 +7,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
-import { mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 type Deadline = typeof Deadlines.Deadline.Type;
@@ -58,7 +59,7 @@ export function DeadlineFulfillmentLink(props: {
 }) {
   const { obligation, path, locale } = props;
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [kind, setKind] = useState<Kind>("artifact");
   const [owner, setOwner] = useState<string>(artifactOwners[0]);
   const [artifactId, setArtifactId] = useState("");
@@ -82,7 +83,7 @@ export function DeadlineFulfillmentLink(props: {
       return readAccounting(
         endpoint,
         Deadlines.FulfillmentResult,
-        mutationOptions(endpoint, body, keys.current),
+        keys.current.options(endpoint, body),
       );
     },
     onSuccess: async () => await props.onLinked(),

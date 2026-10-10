@@ -1,3 +1,5 @@
+import { checkedInput } from "./input-admission";
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Inputs from "@open-erp/contracts/payroll-inputs";
 import * as Payroll from "@open-erp/contracts/payroll-calculations";
 import { equalJson } from "@open-erp/domain/canonicalization";
@@ -22,12 +24,10 @@ import {
   approveChangeInTransaction,
   executeChangeInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { compileInput } from "./input-basis";
 import {
   requireManagedVariableInput,
@@ -55,31 +55,6 @@ const requireInputAccess = Effect.fn("payroll.inputAccess")(function* (
   yield* requireTableAccess(tx, Db.inputTables, write);
 
   if (write) yield* releaseExpiredReservations(tx, scope);
-});
-
-export const checkedInput = Effect.fn("payroll.checkedInput")(function* (
-  tx: Transaction,
-  scope: Scope,
-  id: string,
-  expectedDigest?: string,
-) {
-  const row = (yield* Db.readInput(tx, scope.bookId, id))[0];
-
-  if (!row) return yield* failure("NotFound");
-  const submitted = yield* decode(Inputs.PayrollInput, row.body);
-  const body = Object.fromEntries(Object.entries(row.body).filter(([field]) => field !== "digest"));
-
-  if (
-    submitted.scope.entityId !== scope.entityId ||
-    submitted.scope.bookId !== scope.bookId ||
-    submitted.id !== id ||
-    (expectedDigest !== undefined && submitted.digest !== expectedDigest) ||
-    (yield* digest(body)) !== submitted.digest
-  )
-    return yield* failure("StaleDependency");
-  yield* requireRetainedEvidence(tx, scope.bookId, submitted.input.evidence);
-
-  return submitted;
 });
 
 const requireUnmanagedClaimSource = Effect.fn("payroll.unmanagedClaimSource")(function* (
@@ -111,65 +86,60 @@ export const submitInput = Effect.fn("payroll.submitInput")(function* (
       yield* requireInputAccess(tx, command.scope, principal.actorId, true);
       const operation = "submit_payroll_input";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
+        },
         Inputs.PayrollInput,
+        Effect.gen(function* () {
+          yield* requireUnmanagedClaimSource(tx, command.scope, command.input);
+          yield* requireRetainedEvidence(tx, command.scope.bookId, command.input.evidence);
+          const book = (yield* Ledger.readBook(tx, command.scope))[0];
+
+          if (
+            !book ||
+            book.profile !== "synthetic-core-v1" ||
+            book.currency !== "SEK" ||
+            book.currencyScale !== 2 ||
+            command.input.postingDate.slice(0, 7) !== command.input.month
+          )
+            return yield* failure("UnsupportedProfile");
+
+          if (
+            (yield* Db.readEconomicKey(tx, command.scope.bookId, command.input.economicKey)).length
+          )
+            return yield* failure("AlreadyPosted");
+
+          if (
+            !(yield* Foundation.listRevisions(tx, command.scope.bookId, command.input.employeeId))
+              .length
+          )
+            return yield* failure("NotFound");
+
+          const body = {
+            id: newId("payroll_input"),
+            scope: command.scope,
+            input: command.input,
+            createdAt: yield* isoNow(tx),
+            createdBy: principal.actorId,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const result = yield* decode(
+            Inputs.PayrollInput,
+            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+          );
+
+          yield* Db.insertInput(tx, result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireUnmanagedClaimSource(tx, command.scope, command.input);
-      yield* requireRetainedEvidence(tx, command.scope.bookId, command.input.evidence);
-      const book = (yield* Ledger.readBook(tx, command.scope))[0];
-
-      if (
-        !book ||
-        book.profile !== "synthetic-core-v1" ||
-        book.currency !== "SEK" ||
-        book.currencyScale !== 2 ||
-        command.input.postingDate.slice(0, 7) !== command.input.month
-      )
-        return yield* failure("UnsupportedProfile");
-
-      if ((yield* Db.readEconomicKey(tx, command.scope.bookId, command.input.economicKey)).length)
-        return yield* failure("AlreadyPosted");
-
-      if (
-        !(yield* Foundation.listRevisions(tx, command.scope.bookId, command.input.employeeId))
-          .length
-      )
-        return yield* failure("NotFound");
-
-      const body = {
-        id: newId("payroll_input"),
-        scope: command.scope,
-        input: command.input,
-        createdAt: yield* isoNow(tx),
-        createdBy: principal.actorId,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const result = yield* decode(
-        Inputs.PayrollInput,
-        yield* toJsonObject({ ...body, digest: yield* digest(body) }),
-      );
-
-      yield* Db.insertInput(tx, result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -464,50 +434,41 @@ export const reviewInput = Effect.fn("payroll.reviewInput")(function* (
       yield* requireInputAccess(tx, command.scope, principal.actorId, true);
       const operation = "review_payroll_input";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { inputId: command.inputId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { inputId: command.inputId, input: command.input },
+        },
         Inputs.PayrollInputReview,
+        Effect.gen(function* () {
+          const submitted = yield* checkedInput(
+            tx,
+            command.scope,
+            command.inputId,
+            command.input.inputDigest,
+          );
+
+          yield* requireUnmanagedClaimSource(tx, command.scope, submitted.input);
+
+          if ((yield* ClaimDb.inputControl(tx, command.scope.bookId, submitted.id)).length)
+            return yield* failure("ApprovalRequired");
+
+          const result = yield* prepareInputReviewInTransaction(
+            tx,
+            command.scope,
+            principal,
+            command.idempotencyKey,
+            submitted,
+            null,
+          );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const submitted = yield* checkedInput(
-        tx,
-        command.scope,
-        command.inputId,
-        command.input.inputDigest,
-      );
-
-      yield* requireUnmanagedClaimSource(tx, command.scope, submitted.input);
-
-      if ((yield* ClaimDb.inputControl(tx, command.scope.bookId, submitted.id)).length)
-        return yield* failure("ApprovalRequired");
-
-      const result = yield* prepareInputReviewInTransaction(
-        tx,
-        command.scope,
-        principal,
-        command.idempotencyKey,
-        submitted,
-        null,
-      );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -530,50 +491,41 @@ export const prepareDirectPayment = Effect.fn("payroll.prepareInputPayment")(fun
       yield* requireInputAccess(tx, command.scope, principal.actorId, true);
       const operation = "prepare_payroll_input_payment";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { inputId: command.inputId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { inputId: command.inputId, input: command.input },
+        },
         Inputs.PayrollInputReview,
+        Effect.gen(function* () {
+          const submitted = yield* checkedInput(
+            tx,
+            command.scope,
+            command.inputId,
+            command.input.inputDigest,
+          );
+
+          yield* requireUnmanagedClaimSource(tx, command.scope, submitted.input);
+
+          if ((yield* ClaimDb.inputControl(tx, command.scope.bookId, submitted.id)).length)
+            return yield* failure("ApprovalRequired");
+
+          const result = yield* prepareInputReviewInTransaction(
+            tx,
+            command.scope,
+            principal,
+            command.idempotencyKey,
+            submitted,
+            command.input,
+          );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const submitted = yield* checkedInput(
-        tx,
-        command.scope,
-        command.inputId,
-        command.input.inputDigest,
-      );
-
-      yield* requireUnmanagedClaimSource(tx, command.scope, submitted.input);
-
-      if ((yield* ClaimDb.inputControl(tx, command.scope.bookId, submitted.id)).length)
-        return yield* failure("ApprovalRequired");
-
-      const result = yield* prepareInputReviewInTransaction(
-        tx,
-        command.scope,
-        principal,
-        command.idempotencyKey,
-        submitted,
-        command.input,
-      );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -596,56 +548,47 @@ export const approveInput = Effect.fn("payroll.approveInput")(function* (
       yield* requireInputAccess(tx, command.scope, principal.actorId, true);
       const operation = "approve_payroll_input";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId: command.reviewId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId: command.reviewId, input: command.input },
+        },
         Inputs.PayrollInputApproval,
+        Effect.gen(function* () {
+          const review = yield* checkedReview(
+            tx,
+            command.scope,
+            command.reviewId,
+            command.input.reviewDigest,
+            true,
+          );
+
+          yield* requireManagedVariableApproval(tx, command.scope, principal, review.inputId);
+
+          const approval = yield* approveChangeInTransaction(tx, principal, {
+            scope: command.scope,
+            changeSetId: review.postingPlan.id,
+            idempotencyKey: `payinput_approve_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
+            owner: { kind: "payroll_input", id: review.id },
+            input: { version: 1, planDigest: review.postingPlan.planDigest },
+          });
+
+          const result = yield* decode(Inputs.PayrollInputApproval, {
+            id: approval.id,
+            reviewId: review.id,
+            reviewDigest: review.digest,
+            actorId: approval.actorId,
+            expiresAt: approval.expiresAt,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          });
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* checkedReview(
-        tx,
-        command.scope,
-        command.reviewId,
-        command.input.reviewDigest,
-        true,
-      );
-
-      yield* requireManagedVariableApproval(tx, command.scope, principal, review.inputId);
-
-      const approval = yield* approveChangeInTransaction(tx, principal, {
-        scope: command.scope,
-        changeSetId: review.postingPlan.id,
-        idempotencyKey: `payinput_approve_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
-        owner: { kind: "payroll_input", id: review.id },
-        input: { version: 1, planDigest: review.postingPlan.planDigest },
-      });
-
-      const result = yield* decode(Inputs.PayrollInputApproval, {
-        id: approval.id,
-        reviewId: review.id,
-        reviewDigest: review.digest,
-        actorId: approval.actorId,
-        expiresAt: approval.expiresAt,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      });
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -736,47 +679,38 @@ export const executeInput = Effect.fn("payroll.executeInput")(function* (
       yield* requireInputAccess(tx, command.scope, principal.actorId, true);
       const operation = "execute_payroll_input";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId: command.reviewId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId: command.reviewId, input: command.input },
+        },
         Inputs.PayrollInputExecution,
+        Effect.gen(function* () {
+          const review = yield* checkedReview(
+            tx,
+            command.scope,
+            command.reviewId,
+            command.input.reviewDigest,
+            true,
+          );
+
+          const result = yield* executeInputInTransaction(
+            tx,
+            command.scope,
+            principal,
+            review,
+            command.input.approvalId,
+            command.idempotencyKey,
+            { kind: "payroll_input", id: review.id },
+          );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* checkedReview(
-        tx,
-        command.scope,
-        command.reviewId,
-        command.input.reviewDigest,
-        true,
-      );
-
-      const result = yield* executeInputInTransaction(
-        tx,
-        command.scope,
-        principal,
-        review,
-        command.input.approvalId,
-        command.idempotencyKey,
-        { kind: "payroll_input", id: review.id },
-      );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );

@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { defaultStringifySearch } from "@tanstack/react-router";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
@@ -9,7 +11,7 @@ import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { readAccounting } from "@/lib/accounting-api";
-import { checkScope, commerceKey, commercePath } from "./shared";
+import { checkScope, commerceKey } from "./shared";
 import { SalesNavigation } from "./sales-navigation";
 
 export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?: string }) {
@@ -25,7 +27,14 @@ export function RecurringRegister({ work, returnTo }: { work?: string; returnTo?
       if (pageParam) query.set("after", pageParam);
 
       const result = await readAccounting(
-        `${commercePath(book)}/recurring-invoices?${query}`,
+        (client) =>
+          client.recurringInvoices.listRecurringAgreements({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.recurringInvoices.endpoints.listRecurringAgreements,
+              `${query}`,
+            ),
+          }),
         Recurring.RecurringAgreementPage,
         { signal },
       );

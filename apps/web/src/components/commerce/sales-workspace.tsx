@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useRef, useState } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter, defaultStringifySearch } from "@tanstack/react-router";
@@ -28,7 +30,7 @@ import { formatMinorAmount } from "@/lib/workspace-api";
 import { readAccounting } from "@/lib/accounting-api";
 import { decodeWorkReturn, encodeWorkReturn } from "@/lib/work-return";
 import { WorkReturnAction } from "@/components/work-return-action";
-import { commerceKey, commercePath, checkScope } from "./shared";
+import { commerceKey, checkScope } from "./shared";
 import { InvoiceDraftIssueOverlay } from "./invoice-draft-issue-overlay";
 import { NewInvoiceDraft } from "./invoice-drafts";
 import { InvoiceIssuance } from "./invoice-issuance";
@@ -56,7 +58,11 @@ export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: U
     queryKey: [...commerceKey(book), "sales-register", query.toString()],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/sales-register?${query}`,
+        (client) =>
+          client.invoiceDrafts.salesRegister({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.salesRegister, `${query}`),
+          }),
         Sales.SalesPage,
         { signal },
       );
@@ -513,7 +519,11 @@ function DraftPreviewLines({ id, locale }: { id: string; locale: "en" | "sv" }) 
     queryKey: [...commerceKey(book), "invoice-draft", id, ""],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );

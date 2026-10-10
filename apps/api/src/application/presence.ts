@@ -15,7 +15,7 @@ import { RequestEnvironment } from "../runtime/environment";
 import { authorize, presenceBinding, presenceGesture } from "./authority";
 import { requireTableAccess, toJsonObject, withBook, type Scope } from "./commerce/support";
 import { failure } from "./failures";
-import { newId } from "./posting";
+import { newId } from "./identifiers";
 
 const challengeLifetimeSeconds = 300;
 

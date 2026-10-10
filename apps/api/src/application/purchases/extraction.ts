@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import {
   recordSuggestion,
   citedSuggestions,
@@ -32,7 +33,10 @@ import { databaseFailure, withTransaction, type Transaction } from "../../db/tra
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
 import { RequestEnvironment } from "../../runtime/environment";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import { calculateSupplierDraft } from "./draft-calculation";
 import {
   createSupplierInvoiceDraftInTransaction,
@@ -1359,260 +1363,254 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "commit_supplier_extraction_review",
-        principal.actorId,
         {
-          occurrenceId: command.occurrenceId,
-          requestId: command.requestId,
-          input: yield* Shared.toJsonObject(command.input),
-        } satisfies JsonObject,
-        ReviewSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
-
-      const baseContent =
-        command.input.baseContent === null
-          ? null
-          : yield* Shared.toJsonObject(command.input.baseContent);
-
-      const basis = yield* readReviewBasis(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-        command.requestId,
-        command.input.attemptId,
-        {
-          enforced: true,
-          expectedRevision: command.input.expectedDraftRevision,
-          expectedDigest: command.input.expectedDraftDigest,
-          baseContent,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "commit_supplier_extraction_review",
+          actorId: principal.actorId,
+          input: {
+            occurrenceId: command.occurrenceId,
+            requestId: command.requestId,
+            input: yield* Shared.toJsonObject(command.input),
+          } satisfies JsonObject,
         },
-      );
+        ReviewSchema,
+        Effect.gen(function* () {
+          yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
-      if (basis.base === null) return yield* failure("InvalidJournal");
+          const baseContent =
+            command.input.baseContent === null
+              ? null
+              : yield* Shared.toJsonObject(command.input.baseContent);
 
-      const subject = {
-        kind: "extraction_attempt" as const,
-        occurrenceId: command.occurrenceId,
-        requestId: command.requestId,
-        attemptId: command.input.attemptId,
-        draftId: basis.current?.id ?? null,
-        revision: basis.current?.revision ?? null,
-      };
-
-      const exposure = yield* citedSuggestions(
-        transaction,
-        command.scope.bookId,
-        principal,
-        [subject],
-        command.input.presentedSuggestionIds ?? [],
-      );
-
-      const retained = yield* readRetainedDecisions(
-        transaction,
-        command.scope.bookId,
-        basis.current === null ? null : basis.current.id,
-      );
-
-      const currentContent = basis.current === null ? basis.base : basis.current.content;
-
-      const merge = proposalState(
-        basis.base,
-        currentContent,
-        attemptBody(basis.attempt, command.requestId),
-        command.input.lines.map((line) => ({
-          candidateLineId: line.candidateLineId,
-          targetLineId: line.targetLineId,
-        })),
-        retained,
-      );
-
-      const chosen = applyDecisions(
-        currentContent,
-        merge,
-        command.input.lines,
-        command.input.fields,
-      );
-
-      if (chosen === null) return yield* failure("InvalidJournal");
-
-      if (contentDiscrepancies(chosen.content).length > 0) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const reviewed = yield* Shared.decode(SupplierContentSchema, chosen.content);
-
-      yield* requireOriginalEvidence(
-        transaction,
-        command.scope.bookId,
-        command.occurrenceId,
-        reviewed.sourceEvidenceId,
-      );
-
-      const draft = yield* basis.current === null
-        ? createSupplierInvoiceDraftInTransaction(transaction, principal, {
-            scope: command.scope,
-            idempotencyKey: newId("supplier_draft"),
-            input: {
-              draftKey: `ap_${(yield* sha256Hex(`${command.scope.bookId}:${command.occurrenceId}`)).slice(0, 60)}`,
-              content: reviewed,
-            },
-          })
-        : basis.accepted
-          ? Effect.succeed(null)
-          : reviseSupplierInvoiceDraftInTransaction(transaction, principal, {
-              scope: command.scope,
-              draftId: basis.current.id,
-              idempotencyKey: newId("supplier_revision"),
-              input: {
-                expectedRevision: basis.current.revision,
-                expectedDigest: basis.current.digest,
-                reason: command.input.reason,
-                content: reviewed,
-              },
-            });
-
-      let outcome: "draft_created" | "draft_revised" | "correction_case" = "correction_case";
-      let boundDraftId: string;
-      let boundRevision: string;
-
-      if (draft === null) {
-        const current = basis.current;
-
-        if (current === null) return yield* failure("InternalError");
-        boundDraftId = current.id;
-        boundRevision = current.revision;
-        yield* InboxDb.bindDraft(
-          transaction,
-          command.scope.bookId,
-          command.occurrenceId,
-          current.id,
-          command.input.reason,
-          command.input.attemptId,
-        );
-      } else {
-        const created = yield* Shared.toJsonObject(draft);
-
-        boundDraftId = Shared.textField(created, "id") ?? "";
-        boundRevision = Shared.textField(created, "revision") ?? "";
-
-        if (boundDraftId === "" || boundRevision === "") {
-          return yield* failure("InternalError");
-        }
-
-        outcome = basis.current === null ? "draft_created" : "draft_revised";
-
-        if (basis.current === null) {
-          yield* InboxDb.bindDraft(
+          const basis = yield* readReviewBasis(
             transaction,
             command.scope.bookId,
             command.occurrenceId,
-            boundDraftId,
-            command.input.reason,
+            command.requestId,
             command.input.attemptId,
+            {
+              enforced: true,
+              expectedRevision: command.input.expectedDraftRevision,
+              expectedDigest: command.input.expectedDraftDigest,
+              baseContent,
+            },
           );
-        }
-      }
 
-      const records = yield* appendFieldDecisions(
-        transaction,
-        command.scope,
-        command.occurrenceId,
-        command.requestId,
-        command.input.attemptId,
-        boundDraftId,
-        boundRevision,
-        command.input.reason,
-        merge,
-        chosen.selected,
-        principal.actorId,
-      );
+          if (basis.base === null) return yield* failure("InvalidJournal");
 
-      const fieldRecords = yield* Schema.decodeUnknownEffect(
-        Schema.Array(Extraction.SupplierFieldDecisionRecord),
-      )(records).pipe(Effect.mapError(() => failure("InternalError")));
-
-      for (const record of fieldRecords) {
-        const comparisons: Comparison[] = exposure.records.map((suggestion) => {
-          const option =
-            suggestion.ranked.source === "extraction"
-              ? suggestion.ranked.options.find(
-                  (field) =>
-                    field.lineOrdinal === record.lineOrdinal && field.fieldKey === record.fieldKey,
-                )
-              : undefined;
-
-          return {
-            coverage: "complete",
-            comparison:
-              option === undefined
-                ? "not_comparable"
-                : option.value === record.selectedValue
-                  ? "unchanged"
-                  : "changed",
-            dimensions: { lineOrdinal: record.lineOrdinal, fieldKey: record.fieldKey },
+          const subject = {
+            kind: "extraction_attempt" as const,
+            occurrenceId: command.occurrenceId,
+            requestId: command.requestId,
+            attemptId: command.input.attemptId,
+            draftId: basis.current?.id ?? null,
+            revision: basis.current?.revision ?? null,
           };
-        });
 
-        yield* recordDecision(transaction, {
-          bookId: command.scope.bookId,
-          actorId: principal.actorId,
-          kind: "extraction_field",
-          id: record.id,
-          subject: yield* Shared.toJsonObject(subject),
-          selected: yield* Shared.toJsonObject({
-            ...record,
-            mergedField:
-              merge.fields.find(
-                (field) =>
-                  field.lineOrdinal === record.lineOrdinal && field.fieldKey === record.fieldKey,
-              ) ?? null,
-            bookCommitSequence: book.committedSequence,
-          }),
-          exposure: {
-            ...exposure,
-            uncited:
-              exposure.uncited ||
-              (record.decisionKind === "accepted_suggestion" && exposure.records.length === 0),
-          },
-          comparisons,
-        });
-      }
+          const exposure = yield* citedSuggestions(
+            transaction,
+            command.scope.bookId,
+            principal,
+            [subject],
+            command.input.presentedSuggestionIds ?? [],
+          );
 
-      const result = yield* Shared.decode(ReviewSchema, {
-        occurrenceId: command.occurrenceId,
-        outcome,
-        draft,
-        correctionCase:
-          outcome === "correction_case"
-            ? {
-                draftId: boundDraftId,
-                acceptance: "accepted",
-                requiredOwner: "correction_review",
-                reason: command.input.reason,
-                fields: merge.fields,
-              }
-            : null,
-        fieldDecisions: records,
-      });
+          const retained = yield* readRetainedDecisions(
+            transaction,
+            command.scope.bookId,
+            basis.current === null ? null : basis.current.id,
+          );
 
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "commit_supplier_extraction_review",
-        principal.actorId,
-        yield* Shared.toJsonObject(result),
+          const currentContent = basis.current === null ? basis.base : basis.current.content;
+
+          const merge = proposalState(
+            basis.base,
+            currentContent,
+            attemptBody(basis.attempt, command.requestId),
+            command.input.lines.map((line) => ({
+              candidateLineId: line.candidateLineId,
+              targetLineId: line.targetLineId,
+            })),
+            retained,
+          );
+
+          const chosen = applyDecisions(
+            currentContent,
+            merge,
+            command.input.lines,
+            command.input.fields,
+          );
+
+          if (chosen === null) return yield* failure("InvalidJournal");
+
+          if (contentDiscrepancies(chosen.content).length > 0) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const reviewed = yield* Shared.decode(SupplierContentSchema, chosen.content);
+
+          yield* requireOriginalEvidence(
+            transaction,
+            command.scope.bookId,
+            command.occurrenceId,
+            reviewed.sourceEvidenceId,
+          );
+
+          const draft = yield* basis.current === null
+            ? createSupplierInvoiceDraftInTransaction(transaction, principal, {
+                scope: command.scope,
+                idempotencyKey: newId("supplier_draft"),
+                input: {
+                  draftKey: `ap_${(yield* sha256Hex(`${command.scope.bookId}:${command.occurrenceId}`)).slice(0, 60)}`,
+                  content: reviewed,
+                },
+              })
+            : basis.accepted
+              ? Effect.succeed(null)
+              : reviseSupplierInvoiceDraftInTransaction(transaction, principal, {
+                  scope: command.scope,
+                  draftId: basis.current.id,
+                  idempotencyKey: newId("supplier_revision"),
+                  input: {
+                    expectedRevision: basis.current.revision,
+                    expectedDigest: basis.current.digest,
+                    reason: command.input.reason,
+                    content: reviewed,
+                  },
+                });
+
+          let outcome: "draft_created" | "draft_revised" | "correction_case" = "correction_case";
+          let boundDraftId: string;
+          let boundRevision: string;
+
+          if (draft === null) {
+            const current = basis.current;
+
+            if (current === null) return yield* failure("InternalError");
+            boundDraftId = current.id;
+            boundRevision = current.revision;
+            yield* InboxDb.bindDraft(
+              transaction,
+              command.scope.bookId,
+              command.occurrenceId,
+              current.id,
+              command.input.reason,
+              command.input.attemptId,
+            );
+          } else {
+            const created = yield* Shared.toJsonObject(draft);
+
+            boundDraftId = Shared.textField(created, "id") ?? "";
+            boundRevision = Shared.textField(created, "revision") ?? "";
+
+            if (boundDraftId === "" || boundRevision === "") {
+              return yield* failure("InternalError");
+            }
+
+            outcome = basis.current === null ? "draft_created" : "draft_revised";
+
+            if (basis.current === null) {
+              yield* InboxDb.bindDraft(
+                transaction,
+                command.scope.bookId,
+                command.occurrenceId,
+                boundDraftId,
+                command.input.reason,
+                command.input.attemptId,
+              );
+            }
+          }
+
+          const records = yield* appendFieldDecisions(
+            transaction,
+            command.scope,
+            command.occurrenceId,
+            command.requestId,
+            command.input.attemptId,
+            boundDraftId,
+            boundRevision,
+            command.input.reason,
+            merge,
+            chosen.selected,
+            principal.actorId,
+          );
+
+          const fieldRecords = yield* Schema.decodeUnknownEffect(
+            Schema.Array(Extraction.SupplierFieldDecisionRecord),
+          )(records).pipe(Effect.mapError(() => failure("InternalError")));
+
+          for (const record of fieldRecords) {
+            const comparisons: Comparison[] = exposure.records.map((suggestion) => {
+              const option =
+                suggestion.ranked.source === "extraction"
+                  ? suggestion.ranked.options.find(
+                      (field) =>
+                        field.lineOrdinal === record.lineOrdinal &&
+                        field.fieldKey === record.fieldKey,
+                    )
+                  : undefined;
+
+              return {
+                coverage: "complete",
+                comparison:
+                  option === undefined
+                    ? "not_comparable"
+                    : option.value === record.selectedValue
+                      ? "unchanged"
+                      : "changed",
+                dimensions: { lineOrdinal: record.lineOrdinal, fieldKey: record.fieldKey },
+              };
+            });
+
+            yield* recordDecision(transaction, {
+              bookId: command.scope.bookId,
+              actorId: principal.actorId,
+              kind: "extraction_field",
+              id: record.id,
+              subject: yield* Shared.toJsonObject(subject),
+              selected: yield* Shared.toJsonObject({
+                ...record,
+                mergedField:
+                  merge.fields.find(
+                    (field) =>
+                      field.lineOrdinal === record.lineOrdinal &&
+                      field.fieldKey === record.fieldKey,
+                  ) ?? null,
+                bookCommitSequence: book.committedSequence,
+              }),
+              exposure: {
+                ...exposure,
+                uncited:
+                  exposure.uncited ||
+                  (record.decisionKind === "accepted_suggestion" && exposure.records.length === 0),
+              },
+              comparisons,
+            });
+          }
+
+          const result = yield* Shared.decode(ReviewSchema, {
+            occurrenceId: command.occurrenceId,
+            outcome,
+            draft,
+            correctionCase:
+              outcome === "correction_case"
+                ? {
+                    draftId: boundDraftId,
+                    acceptance: "accepted",
+                    requiredOwner: "correction_review",
+                    reason: command.input.reason,
+                    fields: merge.fields,
+                  }
+                : null,
+            fieldDecisions: records,
+          });
+
+          return { receipt: yield* Shared.toJsonObject(result), result: result };
+        }),
       );
-
-      return result;
     }),
   );
 });

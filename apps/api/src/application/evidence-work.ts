@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "./book-commands";
+import { runBookCommand } from "./book-commands";
 import { importStatementInTransaction } from "./banking/source-statement";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
@@ -10,15 +12,11 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
-import {
-  createEvidenceInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-  sha256Hex,
-} from "./posting";
+import { createEvidenceInTransaction } from "./posting";
+import { digest } from "./json";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
+import { sha256Hex } from "./hashing";
 import * as Db from "../db/posting";
 import * as Work from "../db/evidence-work";
 import { databaseFailure, withTransaction, type Transaction } from "../db/transaction";
@@ -559,202 +557,194 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         "command_receipts",
       ]);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_source_review",
-        principal.actorId,
-        { previewId: command.previewId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_source_review",
+          actorId: principal.actorId,
+          input: { previewId: command.previewId, input: command.input },
+        },
         SourceReviewCaptureSchema,
+        Effect.gen(function* () {
+          const preview = (yield* Work.readPreview(
+            transaction,
+            command.scope.bookId,
+            command.previewId,
+          ))[0];
+
+          if (!preview) return yield* failure("NotFound");
+          const previewDigest = textField(preview.body, "digest");
+
+          if (previewDigest === null || previewDigest !== command.input.digest) {
+            return yield* failure("StaleDependency");
+          }
+
+          const occurrence = (yield* Work.readOccurrence(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          ))[0];
+
+          if (!occurrence) return yield* failure("MissingEvidence");
+
+          const original = (yield* Work.readContentManifest(
+            transaction,
+            command.scope.bookId,
+            occurrence.sha256,
+          ))[0];
+
+          if (!original) return yield* failure("MissingEvidence");
+          const sealedDigest = yield* digest(withoutFields(preview.body, ["digest", "receipt"]));
+
+          if (
+            textField(preview.body, "sourceSha256") !== original.sha256 ||
+            textField(occurrence.body, "sha256") !== original.sha256 ||
+            textField(occurrence.body, "byteLength") !== original.byteLength.toString() ||
+            sealedDigest !== previewDigest
+          ) {
+            return yield* failure("MissingEvidence");
+          }
+
+          const artifacts = (yield* Work.countReviewArtifacts(transaction, command.scope.bookId))[0]
+            ?.total;
+
+          const reviewed = (yield* Work.countPreviewApprovals(
+            transaction,
+            command.scope.bookId,
+            preview.id,
+          ))[0]?.total;
+
+          const interpreted = (yield* Work.countPreviews(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          ))[0]?.total;
+
+          const replaced = (yield* Work.countOccurrenceSupersessions(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          ))[0]?.total;
+
+          if (
+            artifacts === undefined ||
+            reviewed === undefined ||
+            interpreted === undefined ||
+            replaced === undefined ||
+            artifacts >= 200 ||
+            reviewed > 200 ||
+            interpreted > 50 ||
+            replaced > 49
+          ) {
+            return yield* unsupported();
+          }
+
+          const replacement =
+            (yield* Work.readSupersedingPreviewId(
+              transaction,
+              command.scope.bookId,
+              command.previewId,
+            ))[0]?.replacementPreviewId ?? null;
+
+          const approvals = yield* Work.readPreviewApprovalSummaries(
+            transaction,
+            command.scope.bookId,
+            preview.id,
+          );
+
+          const supersessions = yield* Work.readOccurrenceSupersessions(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          );
+
+          const admittedRow = (yield* Work.readAdmission(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          ))[0];
+
+          const admitted = admittedRow ? yield* admissionSummary(admittedRow) : null;
+          const current = yield* previewIsCurrent(transaction, command.scope.bookId, preview);
+          const artifactId = newId("source_review");
+          const capturedAt = yield* isoNow(transaction);
+
+          const body = {
+            id: artifactId,
+            kind: "source_review_artifact_v1",
+            scope: command.scope,
+            previewId: preview.id,
+            previewDigest,
+            occurrenceId: occurrence.id,
+            sourceSha256: original.sha256,
+            capturedBy: principal.actorId,
+            capturedAt,
+            coverage: "not_established",
+            postingAuthority: false,
+            approvalAuthority: false,
+            occurrence: occurrence.body,
+            original: {
+              bookId: command.scope.bookId,
+              sha256: original.sha256,
+              byteLength: original.byteLength,
+              mediaType: textField(occurrence.body, "mediaType"),
+              availability: "not_checked",
+            },
+            preview: preview.body,
+            supersessions: supersessions.map((row) => row.body),
+            stateAtCapture: {
+              dependenciesCurrent: replacement === null && current,
+              supersededByPreviewId: replacement,
+              reviews: approvals.map((row) => ({
+                actorId: row.actorId,
+                rationale: row.rationale,
+                expiresAt: row.expiresAt,
+                expiredAtCapture: row.expiredAtCapture,
+              })),
+              admission: admitted,
+              selectedPreviewAdmitted: admitted !== null && admitted.previewId === preview.id,
+            },
+          } satisfies JsonObject;
+
+          const canonical = yield* canonicalJson(body);
+          const byteLength = canonical.bytes.byteLength;
+
+          if (byteLength > 4194304) return yield* unsupported();
+          const sha256 = yield* sha256Hex(canonical.json);
+
+          const receipt = {
+            key: command.idempotencyKey,
+            operation: "capture_source_review",
+            actorId: principal.actorId,
+          } satisfies JsonObject;
+
+          yield* Work.insertReviewArtifact(transaction, {
+            bookId: command.scope.bookId,
+            id: artifactId,
+            occurrenceId: occurrence.id,
+            previewId: preview.id,
+            body,
+            content: canonical.json,
+            sha256,
+            byteLength,
+            receipt,
+          });
+
+          const summaryValue = {
+            ...withoutFields(body, privateArtifactFields),
+            sha256,
+            byteLength,
+            mediaType: "application/json",
+            receipt,
+          } satisfies JsonObject;
+
+          const result = yield* decode(SourceReviewCaptureSchema, summaryValue);
+
+          return { receipt: summaryValue, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const preview = (yield* Work.readPreview(
-        transaction,
-        command.scope.bookId,
-        command.previewId,
-      ))[0];
-
-      if (!preview) return yield* failure("NotFound");
-      const previewDigest = textField(preview.body, "digest");
-
-      if (previewDigest === null || previewDigest !== command.input.digest) {
-        return yield* failure("StaleDependency");
-      }
-
-      const occurrence = (yield* Work.readOccurrence(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      ))[0];
-
-      if (!occurrence) return yield* failure("MissingEvidence");
-
-      const original = (yield* Work.readContentManifest(
-        transaction,
-        command.scope.bookId,
-        occurrence.sha256,
-      ))[0];
-
-      if (!original) return yield* failure("MissingEvidence");
-      const sealedDigest = yield* digest(withoutFields(preview.body, ["digest", "receipt"]));
-
-      if (
-        textField(preview.body, "sourceSha256") !== original.sha256 ||
-        textField(occurrence.body, "sha256") !== original.sha256 ||
-        textField(occurrence.body, "byteLength") !== original.byteLength.toString() ||
-        sealedDigest !== previewDigest
-      ) {
-        return yield* failure("MissingEvidence");
-      }
-
-      const artifacts = (yield* Work.countReviewArtifacts(transaction, command.scope.bookId))[0]
-        ?.total;
-
-      const reviewed = (yield* Work.countPreviewApprovals(
-        transaction,
-        command.scope.bookId,
-        preview.id,
-      ))[0]?.total;
-
-      const interpreted = (yield* Work.countPreviews(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      ))[0]?.total;
-
-      const replaced = (yield* Work.countOccurrenceSupersessions(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      ))[0]?.total;
-
-      if (
-        artifacts === undefined ||
-        reviewed === undefined ||
-        interpreted === undefined ||
-        replaced === undefined ||
-        artifacts >= 200 ||
-        reviewed > 200 ||
-        interpreted > 50 ||
-        replaced > 49
-      ) {
-        return yield* unsupported();
-      }
-
-      const replacement =
-        (yield* Work.readSupersedingPreviewId(
-          transaction,
-          command.scope.bookId,
-          command.previewId,
-        ))[0]?.replacementPreviewId ?? null;
-
-      const approvals = yield* Work.readPreviewApprovalSummaries(
-        transaction,
-        command.scope.bookId,
-        preview.id,
-      );
-
-      const supersessions = yield* Work.readOccurrenceSupersessions(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      );
-
-      const admittedRow = (yield* Work.readAdmission(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      ))[0];
-
-      const admitted = admittedRow ? yield* admissionSummary(admittedRow) : null;
-      const current = yield* previewIsCurrent(transaction, command.scope.bookId, preview);
-      const artifactId = newId("source_review");
-      const capturedAt = yield* isoNow(transaction);
-
-      const body = {
-        id: artifactId,
-        kind: "source_review_artifact_v1",
-        scope: command.scope,
-        previewId: preview.id,
-        previewDigest,
-        occurrenceId: occurrence.id,
-        sourceSha256: original.sha256,
-        capturedBy: principal.actorId,
-        capturedAt,
-        coverage: "not_established",
-        postingAuthority: false,
-        approvalAuthority: false,
-        occurrence: occurrence.body,
-        original: {
-          bookId: command.scope.bookId,
-          sha256: original.sha256,
-          byteLength: original.byteLength,
-          mediaType: textField(occurrence.body, "mediaType"),
-          availability: "not_checked",
-        },
-        preview: preview.body,
-        supersessions: supersessions.map((row) => row.body),
-        stateAtCapture: {
-          dependenciesCurrent: replacement === null && current,
-          supersededByPreviewId: replacement,
-          reviews: approvals.map((row) => ({
-            actorId: row.actorId,
-            rationale: row.rationale,
-            expiresAt: row.expiresAt,
-            expiredAtCapture: row.expiredAtCapture,
-          })),
-          admission: admitted,
-          selectedPreviewAdmitted: admitted !== null && admitted.previewId === preview.id,
-        },
-      } satisfies JsonObject;
-
-      const canonical = yield* canonicalJson(body);
-      const byteLength = canonical.bytes.byteLength;
-
-      if (byteLength > 4194304) return yield* unsupported();
-      const sha256 = yield* sha256Hex(canonical.json);
-
-      const receipt = {
-        key: command.idempotencyKey,
-        operation: "capture_source_review",
-        actorId: principal.actorId,
-      } satisfies JsonObject;
-
-      yield* Work.insertReviewArtifact(transaction, {
-        bookId: command.scope.bookId,
-        id: artifactId,
-        occurrenceId: occurrence.id,
-        previewId: preview.id,
-        body,
-        content: canonical.json,
-        sha256,
-        byteLength,
-        receipt,
-      });
-
-      const summaryValue = {
-        ...withoutFields(body, privateArtifactFields),
-        sha256,
-        byteLength,
-        mediaType: "application/json",
-        receipt,
-      } satisfies JsonObject;
-
-      const result = yield* decode(SourceReviewCaptureSchema, summaryValue);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_source_review",
-        principal.actorId,
-        summaryValue,
-      );
-
-      return result;
     }),
   );
 });
@@ -772,81 +762,73 @@ export const approveSourcePreview = Effect.fn("evidenceWork.approvePreview")(fun
     Effect.gen(function* () {
       yield* requireTables(transaction, intakeTables, ["intake_approvals", "command_receipts"]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_source_preview",
-        principal.actorId,
-        { previewId: command.previewId, input: command.input },
-        SourceApprovalSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      const preview = (yield* Work.readPreview(
-        transaction,
-        command.scope.bookId,
-        command.previewId,
-      ))[0];
-
-      if (!preview) return yield* failure("NotFound");
-      const digest = textField(preview.body, "digest");
-
-      if (digest === null || command.input.digest !== digest || command.input.version !== 1) {
-        return yield* failure("ApprovalRequired");
-      }
-
-      if (preview.body.ready !== true) return yield* failure("InvalidJournal");
-
-      if (!(yield* previewIsCurrent(transaction, command.scope.bookId, preview))) {
-        return yield* failure("StaleDependency");
-      }
-
-      const admitted = yield* Work.readAdmission(
-        transaction,
-        command.scope.bookId,
-        preview.occurrenceId,
-      );
-
-      if (admitted.length > 0) return yield* failure("IdempotencyConflict");
-      const now = yield* Db.readDatabaseTime(transaction);
-      const approvalId = newId("intakeapproval");
-      const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
-
-      const body = {
-        ...command.input,
-        id: approvalId,
-        previewId: command.previewId,
-        actorId: principal.actorId,
-        expiresAt,
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "approve_source_preview",
           actorId: principal.actorId,
+          input: { previewId: command.previewId, input: command.input },
         },
-      } satisfies JsonObject;
+        SourceApprovalSchema,
+        Effect.gen(function* () {
+          const preview = (yield* Work.readPreview(
+            transaction,
+            command.scope.bookId,
+            command.previewId,
+          ))[0];
 
-      yield* Work.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: approvalId,
-        previewId: command.previewId,
-        actorId: principal.actorId,
-        expiresAt,
-        body,
-      });
-      const result = yield* decode(SourceApprovalSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_source_preview",
-        principal.actorId,
-        result,
+          if (!preview) return yield* failure("NotFound");
+          const digest = textField(preview.body, "digest");
+
+          if (digest === null || command.input.digest !== digest || command.input.version !== 1) {
+            return yield* failure("ApprovalRequired");
+          }
+
+          if (preview.body.ready !== true) return yield* failure("InvalidJournal");
+
+          if (!(yield* previewIsCurrent(transaction, command.scope.bookId, preview))) {
+            return yield* failure("StaleDependency");
+          }
+
+          const admitted = yield* Work.readAdmission(
+            transaction,
+            command.scope.bookId,
+            preview.occurrenceId,
+          );
+
+          if (admitted.length > 0) return yield* failure("IdempotencyConflict");
+          const now = yield* Db.readDatabaseTime(transaction);
+          const approvalId = newId("intakeapproval");
+          const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+
+          const body = {
+            ...command.input,
+            id: approvalId,
+            previewId: command.previewId,
+            actorId: principal.actorId,
+            expiresAt,
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "approve_source_preview",
+              actorId: principal.actorId,
+            },
+          } satisfies JsonObject;
+
+          yield* Work.insertApproval(transaction, {
+            bookId: command.scope.bookId,
+            id: approvalId,
+            previewId: command.previewId,
+            actorId: principal.actorId,
+            expiresAt,
+            body,
+          });
+          const result = yield* decode(SourceApprovalSchema, body);
+
+          return result;
+        }),
       );
-
-      return result;
     }),
   );
 });
@@ -1599,97 +1581,97 @@ function interpretPreview(
   idempotencyKey: string,
 ) {
   return Effect.gen(function* () {
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      scope,
-      idempotencyKey,
-      "preview_source_csv",
-      principal.actorId,
-      yield* toJsonObject({ occurrenceId, mapping: input }),
+      {
+        scope: scope,
+        idempotencyKey: idempotencyKey,
+        operation: "preview_source_csv",
+        actorId: principal.actorId,
+        input: yield* toJsonObject({ occurrenceId, mapping: input }),
+      },
       PreviewSchema,
+      Effect.gen(function* () {
+        yield* requireTables(transaction, previewTables, ["intake_previews", "command_receipts"]);
+        const occurrence = (yield* Work.readOccurrence(transaction, scope.bookId, occurrenceId))[0];
+
+        if (!occurrence) return yield* failure("NotFound");
+        const byteLength = Number(textField(occurrence.body, "byteLength"));
+
+        if (textField(occurrence.body, "mediaType") !== "text/csv" || byteLength > csvByteBound) {
+          return yield* unsupported();
+        }
+
+        if ((yield* Work.readAdmission(transaction, scope.bookId, occurrenceId)).length > 0) {
+          return yield* failure("IdempotencyConflict");
+        }
+
+        const ordinal = (yield* Work.readNextPreviewOrdinal(
+          transaction,
+          scope.bookId,
+          occurrenceId,
+        ))[0]?.ordinal;
+
+        if (ordinal === undefined) return yield* failure("InternalError");
+
+        if (ordinal > previewOrdinalBound) return yield* failure("InvalidJournal");
+
+        const content = (yield* Work.readInlineContent(
+          transaction,
+          scope.bookId,
+          occurrence.sha256,
+        ))[0];
+
+        if (!content || content.bytes === null) return yield* unsupported();
+        const mapping = yield* toJsonObject(input);
+        yield* requireMapping(mapping, input);
+
+        const versions = (yield* Work.readDependencyVersions(
+          transaction,
+          scope.bookId,
+          input.accountId,
+        ))[0];
+
+        if (!versions) return yield* failure("NotFound");
+        const parse = parseCsvRecords(content.bytes, input.delimiter, input.lineEnding);
+        const interpretation = yield* interpretCsv(transaction, scope, occurrence, input, parse);
+        const id = newId("preview");
+
+        const body = yield* toJsonObject({
+          ...interpretation,
+          id,
+          occurrenceId,
+          scope,
+          version: 1,
+          sourceSha256: occurrence.sha256,
+          mapping,
+          dependencies: versions,
+          createdBy: principal.actorId,
+          createdAt: yield* isoNow(transaction),
+        });
+
+        const sealed = yield* toJsonObject({
+          ...body,
+          digest: yield* digest(withoutFields(body, ["digest", "receipt"])),
+          receipt: {
+            key: idempotencyKey,
+            operation: "preview_source_csv",
+            actorId: principal.actorId,
+          },
+        });
+
+        yield* Work.insertPreview(transaction, {
+          bookId: scope.bookId,
+          id,
+          occurrenceId,
+          ordinal,
+          body: sealed,
+        });
+        const result = yield* decode(PreviewSchema, sealed);
+
+        return result;
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* requireTables(transaction, previewTables, ["intake_previews", "command_receipts"]);
-    const occurrence = (yield* Work.readOccurrence(transaction, scope.bookId, occurrenceId))[0];
-
-    if (!occurrence) return yield* failure("NotFound");
-    const byteLength = Number(textField(occurrence.body, "byteLength"));
-
-    if (textField(occurrence.body, "mediaType") !== "text/csv" || byteLength > csvByteBound) {
-      return yield* unsupported();
-    }
-
-    if ((yield* Work.readAdmission(transaction, scope.bookId, occurrenceId)).length > 0) {
-      return yield* failure("IdempotencyConflict");
-    }
-
-    const ordinal = (yield* Work.readNextPreviewOrdinal(transaction, scope.bookId, occurrenceId))[0]
-      ?.ordinal;
-
-    if (ordinal === undefined) return yield* failure("InternalError");
-
-    if (ordinal > previewOrdinalBound) return yield* failure("InvalidJournal");
-
-    const content = (yield* Work.readInlineContent(
-      transaction,
-      scope.bookId,
-      occurrence.sha256,
-    ))[0];
-
-    if (!content || content.bytes === null) return yield* unsupported();
-    const mapping = yield* toJsonObject(input);
-    yield* requireMapping(mapping, input);
-
-    const versions = (yield* Work.readDependencyVersions(
-      transaction,
-      scope.bookId,
-      input.accountId,
-    ))[0];
-
-    if (!versions) return yield* failure("NotFound");
-    const parse = parseCsvRecords(content.bytes, input.delimiter, input.lineEnding);
-    const interpretation = yield* interpretCsv(transaction, scope, occurrence, input, parse);
-    const id = newId("preview");
-
-    const body = yield* toJsonObject({
-      ...interpretation,
-      id,
-      occurrenceId,
-      scope,
-      version: 1,
-      sourceSha256: occurrence.sha256,
-      mapping,
-      dependencies: versions,
-      createdBy: principal.actorId,
-      createdAt: yield* isoNow(transaction),
-    });
-
-    const sealed = yield* toJsonObject({
-      ...body,
-      digest: yield* digest(withoutFields(body, ["digest", "receipt"])),
-      receipt: { key: idempotencyKey, operation: "preview_source_csv", actorId: principal.actorId },
-    });
-
-    yield* Work.insertPreview(transaction, {
-      bookId: scope.bookId,
-      id,
-      occurrenceId,
-      ordinal,
-      body: sealed,
-    });
-    const result = yield* decode(PreviewSchema, sealed);
-    yield* saveCommand(
-      transaction,
-      scope,
-      idempotencyKey,
-      request.expected,
-      "preview_source_csv",
-      principal.actorId,
-      result,
-    );
-
-    return result;
   });
 }
 
@@ -1731,97 +1713,93 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
 ) {
   return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "reparse_source_csv",
-        principal.actorId,
-        yield* toJsonObject({ previewId: command.previewId, input: command.input }),
-        ReparseSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireTables(transaction, previewTables, [
-        "intake_previews",
-        "intake_preview_supersessions",
-        "command_receipts",
-      ]);
-      yield* exactKeys(yield* toJsonObject(command.input), reparseInputKeys);
-
-      const preview = (yield* Work.readPreview(
-        transaction,
-        command.scope.bookId,
-        command.previewId,
-        "update",
-      ))[0];
-
-      if (!preview) return yield* failure("NotFound");
-
-      if (command.input.digest !== textField(preview.body, "digest")) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (
-        (yield* Work.readAdmission(transaction, command.scope.bookId, preview.occurrenceId))
-          .length > 0
-      ) {
-        return yield* failure("IdempotencyConflict");
-      }
-
-      if (
-        (yield* Work.readSupersedingPreviewId(transaction, command.scope.bookId, command.previewId))
-          .length > 0
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const replacement = yield* interpretPreview(
-        transaction,
-        principal,
-        command.scope,
-        preview.occurrenceId,
-        command.input.mapping,
-        newId("intakereparse"),
-      );
-
-      const supersession = yield* decode(
-        SupersessionSchema,
-        yield* toJsonObject({
-          occurrenceId: preview.occurrenceId,
-          previousPreviewId: preview.id,
-          previousDigest: textField(preview.body, "digest"),
-          replacementPreviewId: replacement.id,
-          replacementDigest: replacement.digest,
-          rationale: command.input.rationale,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "reparse_source_csv",
           actorId: principal.actorId,
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
-            operation: "reparse_source_csv",
-            actorId: principal.actorId,
-          },
+          input: yield* toJsonObject({ previewId: command.previewId, input: command.input }),
+        },
+        ReparseSchema,
+        Effect.gen(function* () {
+          yield* requireTables(transaction, previewTables, [
+            "intake_previews",
+            "intake_preview_supersessions",
+            "command_receipts",
+          ]);
+          yield* exactKeys(yield* toJsonObject(command.input), reparseInputKeys);
+
+          const preview = (yield* Work.readPreview(
+            transaction,
+            command.scope.bookId,
+            command.previewId,
+            "update",
+          ))[0];
+
+          if (!preview) return yield* failure("NotFound");
+
+          if (command.input.digest !== textField(preview.body, "digest")) {
+            return yield* failure("StaleDependency");
+          }
+
+          if (
+            (yield* Work.readAdmission(transaction, command.scope.bookId, preview.occurrenceId))
+              .length > 0
+          ) {
+            return yield* failure("IdempotencyConflict");
+          }
+
+          if (
+            (yield* Work.readSupersedingPreviewId(
+              transaction,
+              command.scope.bookId,
+              command.previewId,
+            )).length > 0
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          const replacement = yield* interpretPreview(
+            transaction,
+            principal,
+            command.scope,
+            preview.occurrenceId,
+            command.input.mapping,
+            newId("intakereparse"),
+          );
+
+          const supersession = yield* decode(
+            SupersessionSchema,
+            yield* toJsonObject({
+              occurrenceId: preview.occurrenceId,
+              previousPreviewId: preview.id,
+              previousDigest: textField(preview.body, "digest"),
+              replacementPreviewId: replacement.id,
+              replacementDigest: replacement.digest,
+              rationale: command.input.rationale,
+              actorId: principal.actorId,
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "reparse_source_csv",
+                actorId: principal.actorId,
+              },
+            }),
+          );
+
+          yield* Work.insertSupersession(transaction, {
+            bookId: command.scope.bookId,
+            previousPreviewId: preview.id,
+            replacementPreviewId: replacement.id,
+            body: yield* toJsonObject(supersession),
+          });
+          const result = yield* decode(ReparseSchema, { preview: replacement, supersession });
+
+          return result;
         }),
       );
-
-      yield* Work.insertSupersession(transaction, {
-        bookId: command.scope.bookId,
-        previousPreviewId: preview.id,
-        replacementPreviewId: replacement.id,
-        body: yield* toJsonObject(supersession),
-      });
-      const result = yield* decode(ReparseSchema, { preview: replacement, supersession });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "reparse_source_csv",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });
@@ -1989,102 +1967,98 @@ export const activateRecurringRule = Effect.fn("evidenceWork.activateRule")(func
 ) {
   return yield* withBook(token, command.scope, true, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "activate_recurring_rule",
-        principal.actorId,
-        yield* toJsonObject(command.input),
-        ActivationSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRecurringAccess(transaction, ["recurring_activations", "command_receipts"]);
-
-      const rule = (yield* Work.readRule(
-        transaction,
-        command.scope.bookId,
-        command.input.ruleId,
-      ))[0];
-
-      if (!rule) return yield* failure("NotFound");
-
-      const simulation = (yield* Work.readSimulation(
-        transaction,
-        command.scope.bookId,
-        command.input.simulationId,
-        command.input.ruleId,
-      ))[0];
-
-      if (!simulation) return yield* failure("NotFound");
-
-      if (
-        textField(rule.body, "digest") !== command.input.ruleDigest ||
-        textField(simulation.body, "digest") !== command.input.simulationDigest
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const current = (yield* Work.readCurrentSelection(
-        transaction,
-        command.scope.bookId,
-        rule.body,
-        simulation.body,
-      ))[0];
-
-      if (!current || current.stale) return yield* failure("StaleDependency");
-      const selection = yield* decode(SelectionSchema, current.selection);
-
-      if (selection.blockers.length > 0 || selection.matchingCount === 0) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (selection.matchingCount > maxSelectedObservations) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* Work.readActiveActivation(transaction, command.scope.bookId, command.input.ruleId))
-          .length > 0
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const id = newId("activation");
-
-      const body = yield* toJsonObject({
-        ...command.input,
-        id,
-        actorId: principal.actorId,
-        activatedAt: yield* isoNow(transaction),
-        authority: "prepare_only",
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "activate_recurring_rule",
           actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
         },
-      });
+        ActivationSchema,
+        Effect.gen(function* () {
+          yield* requireRecurringAccess(transaction, ["recurring_activations", "command_receipts"]);
 
-      yield* Work.insertActivation(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        ruleId: command.input.ruleId,
-        simulationId: command.input.simulationId,
-        body,
-      });
-      const result = yield* decode(ActivationSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "activate_recurring_rule",
-        principal.actorId,
-        result,
+          const rule = (yield* Work.readRule(
+            transaction,
+            command.scope.bookId,
+            command.input.ruleId,
+          ))[0];
+
+          if (!rule) return yield* failure("NotFound");
+
+          const simulation = (yield* Work.readSimulation(
+            transaction,
+            command.scope.bookId,
+            command.input.simulationId,
+            command.input.ruleId,
+          ))[0];
+
+          if (!simulation) return yield* failure("NotFound");
+
+          if (
+            textField(rule.body, "digest") !== command.input.ruleDigest ||
+            textField(simulation.body, "digest") !== command.input.simulationDigest
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          const current = (yield* Work.readCurrentSelection(
+            transaction,
+            command.scope.bookId,
+            rule.body,
+            simulation.body,
+          ))[0];
+
+          if (!current || current.stale) return yield* failure("StaleDependency");
+          const selection = yield* decode(SelectionSchema, current.selection);
+
+          if (selection.blockers.length > 0 || selection.matchingCount === 0) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (selection.matchingCount > maxSelectedObservations) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (
+            (yield* Work.readActiveActivation(
+              transaction,
+              command.scope.bookId,
+              command.input.ruleId,
+            )).length > 0
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const id = newId("activation");
+
+          const body = yield* toJsonObject({
+            ...command.input,
+            id,
+            actorId: principal.actorId,
+            activatedAt: yield* isoNow(transaction),
+            authority: "prepare_only",
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "activate_recurring_rule",
+              actorId: principal.actorId,
+            },
+          });
+
+          yield* Work.insertActivation(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            ruleId: command.input.ruleId,
+            simulationId: command.input.simulationId,
+            body,
+          });
+          const result = yield* decode(ActivationSchema, body);
+
+          return result;
+        }),
       );
-
-      return result;
     }),
   );
 });
@@ -2187,65 +2161,57 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
         "command_receipts",
       ]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "deactivate_recurring_rule",
-        principal.actorId,
-        command.input,
-        RuleDeactivationSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      const activation = (yield* Work.readActivation(
-        transaction,
-        command.scope.bookId,
-        command.input.activationId,
-      ))[0];
-
-      if (!activation) return yield* failure("NotFound");
-
-      const existing = (yield* Work.readDeactivation(
-        transaction,
-        command.scope.bookId,
-        command.input.activationId,
-      ))[0];
-
-      const body =
-        existing?.body ??
-        ({
-          ...command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "deactivate_recurring_rule",
           actorId: principal.actorId,
-          deactivatedAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
-            operation: "deactivate_recurring_rule",
-            actorId: principal.actorId,
-          },
-        } satisfies JsonObject);
+          input: command.input,
+        },
+        RuleDeactivationSchema,
+        Effect.gen(function* () {
+          const activation = (yield* Work.readActivation(
+            transaction,
+            command.scope.bookId,
+            command.input.activationId,
+          ))[0];
 
-      if (!existing) {
-        yield* Work.insertDeactivation(transaction, {
-          bookId: command.scope.bookId,
-          activationId: command.input.activationId,
-          body,
-        });
-      }
+          if (!activation) return yield* failure("NotFound");
 
-      const result = yield* decode(RuleDeactivationSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "deactivate_recurring_rule",
-        principal.actorId,
-        result,
+          const existing = (yield* Work.readDeactivation(
+            transaction,
+            command.scope.bookId,
+            command.input.activationId,
+          ))[0];
+
+          const body =
+            existing?.body ??
+            ({
+              ...command.input,
+              actorId: principal.actorId,
+              deactivatedAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "deactivate_recurring_rule",
+                actorId: principal.actorId,
+              },
+            } satisfies JsonObject);
+
+          if (!existing) {
+            yield* Work.insertDeactivation(transaction, {
+              bookId: command.scope.bookId,
+              activationId: command.input.activationId,
+              body,
+            });
+          }
+
+          const result = yield* decode(RuleDeactivationSchema, body);
+
+          return result;
+        }),
       );
-
-      return result;
     }),
   );
 });

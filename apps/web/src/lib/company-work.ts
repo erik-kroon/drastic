@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { useBookWorkspace, workspacePath } from "./book-context";
@@ -5,7 +7,7 @@ import { readAccounting } from "./accounting-api";
 import { bankWorkspaceOptions } from "./bank-workspace";
 import { attentionQueryOptions } from "./attention";
 import { useBusinessDate } from "./use-business-date";
-import { checkScope, commercePath, commerceKey } from "@/components/commerce/shared";
+import { checkScope, commerceKey } from "./commerce-scope";
 
 /** Home combines the existing domain reads; each total retains its own coverage. */
 export function useCompanyWork() {
@@ -48,7 +50,11 @@ export function useCompanyWork() {
     queryKey: [...commerceKey(book), "sales-register", salesQuery.toString()],
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${commercePath(book)}/sales-register?${salesQuery}`,
+        (client) =>
+          client.invoiceDrafts.salesRegister({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.salesRegister, `${salesQuery}`),
+          }),
         Sales.SalesPage,
         { signal },
       );

@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery, skipToken } from "@tanstack/react-query";
 import * as Cash from "@open-erp/contracts/cash-forecast";
@@ -40,7 +41,8 @@ function Workspace({ recordId, onOpen }: { recordId?: string; onOpen: (id: strin
     queryFn: recordId
       ? ({ signal }) =>
           readAccounting(
-            `${bookPath(book)}/cash-forecasts/${encodeURIComponent(recordId)}`,
+            (client) =>
+              client.cashForecast.getCashForecast({ params: { ...bookScope(book), id: recordId } }),
             Cash.CashForecastView,
             { signal },
           )

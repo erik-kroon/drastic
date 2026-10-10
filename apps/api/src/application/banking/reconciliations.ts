@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as CashForecast from "@open-erp/contracts/cash-forecast";
 import * as Coverage from "@open-erp/contracts/bank-source-coverage";
 import * as CoverageDb from "../../db/banking/coverage";
@@ -7,7 +8,8 @@ import * as Settlement from "@open-erp/contracts/settlements";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as BankDb from "../../db/banking/shared";
 import * as ReportDb from "../../db/banking/reports";
 import * as ForeignCashDb from "../../db/banking/foreign-cash";
@@ -472,64 +474,57 @@ function saveReconciliation(
 
       if (!book) return yield* failure("Forbidden");
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        yield* Shared.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: yield* Shared.toJsonObject(command.input),
+        },
         basis === "capacity" ? CapacitySchema : ReconciliationSchema,
+        Effect.gen(function* () {
+          yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
+          const body = yield* buildReport(
+            transaction,
+            book,
+            command.scope,
+            command.input,
+            basis,
+            newId(basis === "capacity" ? "bankcapacity" : "reconciliation"),
+            yield* isoNow(transaction),
+            Shared.receipt(command.idempotencyKey, operation, principal.actorId),
+          );
+
+          const accountId = Shared.textField(body, "accountId");
+          const reportId = Shared.textField(body, "id");
+
+          if (accountId === undefined || reportId === undefined) {
+            return yield* failure("InternalError");
+          }
+
+          // Each basis owns its own report table. The sign-off plan's foreign key
+          // names the capacity table, so a capacity report written to the exact
+          // table would be invisible to every later reader.
+          yield* basis === "capacity"
+            ? ReportDb.insertCapacityReconciliation(transaction, {
+                bookId: command.scope.bookId,
+                id: reportId,
+                accountId,
+                body,
+              })
+            : ReportDb.insertReconciliation(transaction, {
+                bookId: command.scope.bookId,
+                id: reportId,
+                accountId,
+                body,
+              });
+
+          return body;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeBankProfile(book.profile, book.authority);
-
-      const body = yield* buildReport(
-        transaction,
-        book,
-        command.scope,
-        command.input,
-        basis,
-        newId(basis === "capacity" ? "bankcapacity" : "reconciliation"),
-        yield* isoNow(transaction),
-        Shared.receipt(command.idempotencyKey, operation, principal.actorId),
-      );
-
-      const accountId = Shared.textField(body, "accountId");
-      const reportId = Shared.textField(body, "id");
-
-      if (accountId === undefined || reportId === undefined) {
-        return yield* failure("InternalError");
-      }
-
-      // Each basis owns its own report table. The sign-off plan's foreign key
-      // names the capacity table, so a capacity report written to the exact
-      // table would be invisible to every later reader.
-      yield* basis === "capacity"
-        ? ReportDb.insertCapacityReconciliation(transaction, {
-            bookId: command.scope.bookId,
-            id: reportId,
-            accountId,
-            body,
-          })
-        : ReportDb.insertReconciliation(transaction, {
-            bookId: command.scope.bookId,
-            id: reportId,
-            accountId,
-            body,
-          });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        body,
-      );
-
-      return body;
     }),
   );
 }

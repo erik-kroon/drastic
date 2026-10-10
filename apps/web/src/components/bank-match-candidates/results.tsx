@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -155,7 +156,11 @@ export function BankCandidateResults({
     queryKey: [...bookKey(book), "setup"],
     retry: false,
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
   });
 
   const result = comparison.data;

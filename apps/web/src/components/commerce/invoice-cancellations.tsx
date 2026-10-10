@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,7 +11,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { RecordFact, RecordSummary } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { invoiceCancellationCopy } from "./invoice-cancellation-copy";
 import {
@@ -48,7 +49,10 @@ function CancellationPanel(props: CancellationProps) {
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-issues/${encodeURIComponent(issue.id)}/cancellation-status`,
+        (client) =>
+          client.invoiceCancellations.getInvoiceCancellationStatus({
+            params: { ...bookScope(book), id: issue.id },
+          }),
         Cancellation.InvoiceCancellationStatus,
         { signal },
       );
@@ -171,7 +175,11 @@ function useCancellationSetup(book: CommerceProps["book"]) {
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 }
@@ -262,7 +270,10 @@ export function InvoiceCancellationReviewPanel(props: CancellationProps & { id: 
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-cancellation-reviews/${encodeURIComponent(id)}`,
+        (client) =>
+          client.invoiceCancellations.getInvoiceCancellation({
+            params: { ...bookScope(book), id: id },
+          }),
         Cancellation.InvoiceCancellationView,
         { signal },
       );

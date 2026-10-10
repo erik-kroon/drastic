@@ -1,3 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Sales from "@open-erp/contracts/sales-orders";
@@ -101,7 +104,7 @@ export function SalesOrders({
   const [sourceLines, setSourceLines] = useState<EditableInvoiceLine[]>([]);
   const [sourceError, setSourceError] = useState<Error | null>(null);
   const [documentKind, setDocumentKind] = useState<"quote" | "order">("quote");
-  const creationKeys = useRef(new Map<string, string>());
+  const creationKeys = useCommandKeys();
 
   const list = useQuery({
     queryKey: [...commerceKey(book), "sales-documents"],
@@ -178,7 +181,11 @@ export function SalesOrders({
                 setSource(null);
                 setSourceLines([]);
                 void readAccounting(
-                  `${commercePath(book)}/invoice-drafts/${encodeURIComponent(sourceId)}`,
+                  (client) =>
+                    client.invoiceDrafts.getInvoiceDraft({
+                      params: { ...bookScope(book), id: sourceId },
+                      query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+                    }),
                   Drafts.InvoiceDraftView,
                 )
                   .then((result) => {
@@ -323,7 +330,14 @@ function SalesSourceDraft({
     initialPageParam: 1,
     queryFn: async ({ pageParam, signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/sales-register?status=draft&sort=newest&page=${pageParam}`,
+        (client) =>
+          client.invoiceDrafts.salesRegister({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.invoiceDrafts.endpoints.salesRegister,
+              `status=draft&sort=newest&page=${pageParam}`,
+            ),
+          }),
         SalesRegister.SalesPage,
         { signal },
       );
@@ -528,7 +542,7 @@ function OrderConversionForm(
 ) {
   const { book, locale, record, converted } = props;
   const sv = locale === "sv";
-  const conversionKeys = useRef(new Map<string, string>());
+  const conversionKeys = useCommandKeys();
 
   const remaining = record.content.lines.map((line) => {
     const used = converted

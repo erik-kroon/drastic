@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
@@ -11,12 +12,10 @@ import * as Ledger from "../../db/posting";
 import * as ProfileDb from "../../db/company-profiles";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
+import { newId } from "../identifiers";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
 import {
-  newId,
-  digest,
-  isoNow,
-  replay,
-  saveCommand,
   sealActionInTransaction,
   approveChangeInTransaction,
   executeChangeInTransaction,
@@ -51,6 +50,7 @@ const readPlan = Effect.fn("cashYearEnd.readPlan")(function* (
   const row = (yield* Db.readPlan(tx, scope.bookId, id))[0];
 
   if (!row) return yield* failure("NotFound");
+
   const plan = yield* decode(CashMethod.CashYearEndPlan, row.body);
 
   const body = {
@@ -79,7 +79,9 @@ const captureMember = Effect.fn("cashYearEnd.captureMember")(function* (
 
   if (invoice.kind !== "cash_method_supplier_invoice_v1" || invoice.status === "blocked")
     return yield* failure("UnsupportedProfile");
+
   const { basis, lines: coverage } = yield* readCashCoverageInTransaction(tx, scope, id);
+
   const qualified = yield* resolveCashInvoiceProfileInTransaction(tx, scope, cutoff);
 
   if (qualified.methodFactRevisionId !== basis.methodFactRevisionId)
@@ -105,7 +107,9 @@ const captureMember = Effect.fn("cashYearEnd.captureMember")(function* (
     cutoff,
     qualified,
   );
+
   const journal: Array<Cash.CashJournalLine> = [];
+
   const lines: Array<Member["lines"][number]> = [];
 
   for (const original of basis.lines) {
@@ -127,7 +131,9 @@ const captureMember = Effect.fn("cashYearEnd.captureMember")(function* (
     });
 
     if (Result.isFailure(result)) return yield* failure("StaleDependency");
+
     const slice = result.success.slices[0];
+
     let taxJournalIndex: number | null = null;
 
     for (const line of result.success.journal) {
@@ -178,18 +184,24 @@ export const captureCashYearEndPopulationInTransaction = Effect.fn("cashYearEnd.
     if (!year) return yield* failure("NotFound");
 
     if (input.cutoffOn !== year.endsOn) return yield* failure("InvalidJournal");
+
     const periods = yield* Db.readPeriod(tx, scope.bookId, year.endsOn, year.id);
+
     const period = periods[0];
 
     if (periods.length !== 1 || !period) return yield* failure("UnsupportedProfile");
 
     if (period.locked) return yield* failure("PeriodLocked");
+
     const qualified = yield* resolveCashInvoiceProfileInTransaction(tx, scope, year.endsOn);
+
     const reviewEvidence = yield* readEvidenceReference(tx, scope.bookId, input.evidenceId);
+
     const book = (yield* Ledger.readBook(tx, scope))[0];
 
     if (!book || book.profile !== "synthetic-core-v1" || book.authority !== "native")
       return yield* failure("UnsupportedProfile");
+
     const population = yield* Db.readPopulation(tx, scope.bookId, year.endsOn);
 
     if (
@@ -199,7 +211,9 @@ export const captureCashYearEndPopulationInTransaction = Effect.fn("cashYearEnd.
       )
     )
       return yield* failure("UnsupportedProfile");
+
     const invoices: Array<Member> = [];
+
     const journal: Array<Cash.CashJournalLine> = [];
 
     for (const invoice of population) {
@@ -227,6 +241,7 @@ export const captureCashYearEndPopulationInTransaction = Effect.fn("cashYearEnd.
     ].sort();
 
     const accounts = yield* Ledger.readAccounts(tx, scope.bookId, ids);
+
     const epoch = (yield* Db.readEpoch(tx, scope.bookId))[0]?.version ?? "0";
 
     return yield* decode(CashMethod.CashYearEndSelection, {
@@ -324,65 +339,60 @@ export const prepareCashYearEnd = Effect.fn("cashYearEnd.prepare")(function* (
     command.scope,
     true,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "cash_year_end_prepare",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "cash_year_end_prepare",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         CashMethod.CashYearEndPlan,
+        Effect.gen(function* () {
+          if ((yield* Db.readRun(tx, command.scope.bookId, command.input.fiscalYearId))[0])
+            return yield* failure("IdempotencyConflict");
+
+          const id = newId("cashyearplan");
+
+          const eventId = newId("event");
+
+          const selection = yield* captureCashYearEndPopulationInTransaction(
+            tx,
+            command.scope,
+            command.input,
+            eventId,
+          );
+
+          yield* Ledger.insertEvent(
+            tx,
+            command.scope.bookId,
+            eventId,
+            selection.reviewEvidence.evidenceId,
+            `cash_year_end_${id}`,
+          );
+
+          const postingPlan = yield* preparePosting(tx, principal, command.scope, id, selection);
+
+          const body = {
+            id,
+            scope: command.scope,
+            selection,
+            postingPlan,
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const plan = yield* decode(CashMethod.CashYearEndPlan, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertPlan(tx, command.scope.bookId, plan);
+
+          return plan;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      if ((yield* Db.readRun(tx, command.scope.bookId, command.input.fiscalYearId))[0])
-        return yield* failure("IdempotencyConflict");
-      const id = newId("cashyearplan");
-      const eventId = newId("event");
-
-      const selection = yield* captureCashYearEndPopulationInTransaction(
-        tx,
-        command.scope,
-        command.input,
-        eventId,
-      );
-
-      yield* Ledger.insertEvent(
-        tx,
-        command.scope.bookId,
-        eventId,
-        selection.reviewEvidence.evidenceId,
-        `cash_year_end_${id}`,
-      );
-      const postingPlan = yield* preparePosting(tx, principal, command.scope, id, selection);
-
-      const body = {
-        id,
-        scope: command.scope,
-        selection,
-        postingPlan,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const plan = yield* decode(CashMethod.CashYearEndPlan, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertPlan(tx, command.scope.bookId, plan);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "cash_year_end_prepare",
-        principal.actorId,
-        plan,
-      );
-
-      return plan;
     },
     "update",
   );
@@ -402,56 +412,53 @@ export const approveCashYearEnd = Effect.fn("cashYearEnd.approve")(function* (
     command.scope,
     true,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "cash_year_end_approve",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "cash_year_end_approve",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CashMethod.CashYearEndApproval,
+        Effect.gen(function* () {
+          const plan = yield* readPlan(tx, command.scope, command.id);
+
+          if (plan.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          if (plan.digest !== command.input.planDigest) return yield* failure("StaleDependency");
+          yield* recheck(tx, command.scope, plan);
+
+          const kernel =
+            plan.postingPlan === null
+              ? null
+              : yield* approveChangeInTransaction(tx, principal, {
+                  scope: command.scope,
+                  changeSetId: plan.postingPlan.id,
+                  idempotencyKey: `yearapprove_${plan.id}`,
+                  input: { version: 1, planDigest: plan.postingPlan.planDigest },
+                });
+
+          const approval = yield* decode(CashMethod.CashYearEndApproval, {
+            id: newId("cashyearapproval"),
+            planId: plan.id,
+            planDigest: plan.digest,
+            actorId: principal.actorId,
+            expiresAt: yield* approvalExpiry(tx),
+            cashPostingApprovalId: kernel?.id ?? null,
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "cash_year_end_approve",
+              principal.actorId,
+            ),
+          });
+
+          yield* Db.insertApproval(tx, command.scope.bookId, approval);
+
+          return approval;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const plan = yield* readPlan(tx, command.scope, command.id);
-
-      if (plan.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      if (plan.digest !== command.input.planDigest) return yield* failure("StaleDependency");
-      yield* recheck(tx, command.scope, plan);
-
-      const kernel =
-        plan.postingPlan === null
-          ? null
-          : yield* approveChangeInTransaction(tx, principal, {
-              scope: command.scope,
-              changeSetId: plan.postingPlan.id,
-              idempotencyKey: `yearapprove_${plan.id}`,
-              input: { version: 1, planDigest: plan.postingPlan.planDigest },
-            });
-
-      const approval = yield* decode(CashMethod.CashYearEndApproval, {
-        id: newId("cashyearapproval"),
-        planId: plan.id,
-        planDigest: plan.digest,
-        actorId: principal.actorId,
-        expiresAt: yield* approvalExpiry(tx),
-        cashPostingApprovalId: kernel?.id ?? null,
-        receipt: commandReceipt(command.idempotencyKey, "cash_year_end_approve", principal.actorId),
-      });
-
-      yield* Db.insertApproval(tx, command.scope.bookId, approval);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "cash_year_end_approve",
-        principal.actorId,
-        approval,
-      );
-
-      return approval;
     },
     "update",
   );
@@ -467,6 +474,7 @@ const executeMembers = Effect.fn("cashYearEnd.executeMembers")(function* (
   for (const member of plan.selection.invoices) {
     for (const line of member.lines) {
       if (BigInt(line.newGrossMinor) === 0n) continue;
+
       const posting = receipt.postingReceipt;
 
       if (!posting) return yield* failure("InternalError");
@@ -476,8 +484,11 @@ const executeMembers = Effect.fn("cashYearEnd.executeMembers")(function* (
         witness: member.methodFactRevisionId,
         line: line.before,
       });
+
       const suffix = (yield* digest({ runId: receipt.id, lineId: line.lineId })).slice(7);
+
       const recognitionId = `cashrec_${suffix}`;
+
       const factId = BigInt(line.taxMinor) > 0n ? `cashvat_${suffix}` : null;
       yield* Db.insertRecognition(tx, scope.bookId, {
         id: recognitionId,
@@ -542,100 +553,106 @@ export const executeCashYearEnd = Effect.fn("cashYearEnd.execute")(function* (
     command.scope,
     false,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "cash_year_end_execute",
-        principal.actorId,
-        { id: command.id, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "cash_year_end_execute",
+          actorId: principal.actorId,
+          input: { id: command.id, input: command.input },
+        },
         CashMethod.CashYearEndReceipt,
+        Effect.gen(function* () {
+          const plan = yield* readPlan(tx, command.scope, command.id);
+
+          if ((yield* Db.readRun(tx, command.scope.bookId, plan.selection.fiscalYear.id))[0])
+            return yield* failure("IdempotencyConflict");
+
+          if (plan.digest !== command.input.planDigest) return yield* failure("StaleDependency");
+          yield* recheck(tx, command.scope, plan);
+
+          const row = (yield* Db.readApproval(
+            tx,
+            command.scope.bookId,
+            command.input.approvalId,
+          ))[0];
+
+          if (!row || row.consumed) return yield* failure("ApprovalRequired");
+
+          const approval = yield* decode(CashMethod.CashYearEndApproval, row.body);
+
+          if (
+            approval.planId !== plan.id ||
+            approval.planDigest !== plan.digest ||
+            approval.actorId === plan.createdBy ||
+            approval.expiresAt <= (yield* isoNow(tx))
+          )
+            return yield* failure("ApprovalRequired");
+
+          if (
+            !(yield* Ledger.readOperatorMembership(tx, command.scope.bookId, approval.actorId))[0]
+          )
+            return yield* failure("ApprovalRequired");
+
+          const admission = (yield* Ledger.readActorAdmission(tx, approval.actorId))[0];
+
+          if (admission?.enabled === false) return yield* failure("ApprovalRequired");
+
+          const postingReceipt =
+            plan.postingPlan === null
+              ? null
+              : yield* executeChangeInTransaction(tx, principal, {
+                  scope: command.scope,
+                  changeSetId: plan.postingPlan.id,
+                  idempotencyKey: `yearexecute_${plan.id}`,
+                  input: {
+                    version: 1,
+                    planDigest: plan.postingPlan.planDigest,
+                    approvalId: approval.cashPostingApprovalId ?? "approval_missing",
+                  },
+                  owner: { kind: "cash_year_end", id: plan.id },
+                });
+
+          const lines = plan.selection.invoices.flatMap((invoice) => invoice.lines);
+
+          const total = (field: "newGrossMinor" | "netMinor" | "taxMinor") =>
+            lines.reduce((sum, line) => sum + BigInt(line[field]), 0n).toString();
+
+          const receipt = yield* decode(CashMethod.CashYearEndReceipt, {
+            id: newId("cashyearrun"),
+            scope: command.scope,
+            planId: plan.id,
+            approvalId: approval.id,
+            fiscalYearId: plan.selection.fiscalYear.id,
+            cutoffOn: plan.selection.fiscalYear.endsOn,
+            memberCount: plan.selection.invoices.length,
+            recognizedLineCount: lines.filter((line) => BigInt(line.newGrossMinor) > 0n).length,
+            recognizedGrossMinor: total("newGrossMinor"),
+            netMinor: total("netMinor"),
+            taxMinor: total("taxMinor"),
+            populationDigest: yield* digest(plan.selection),
+            members: plan.selection.invoices,
+            postingReceipt,
+            committedAt: yield* isoNow(tx),
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "cash_year_end_execute",
+              principal.actorId,
+            ),
+          });
+
+          yield* Db.insertRun(tx, command.scope.bookId, plan, receipt, principal.actorId);
+          yield* executeMembers(tx, principal, command.scope, plan, receipt);
+
+          if (!(yield* Db.consumeApproval(tx, command.scope.bookId, approval.id))[0])
+            return yield* failure("ApprovalRequired");
+
+          yield* Db.bumpPopulation(tx, command.scope.bookId);
+
+          return receipt;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const plan = yield* readPlan(tx, command.scope, command.id);
-
-      if ((yield* Db.readRun(tx, command.scope.bookId, plan.selection.fiscalYear.id))[0])
-        return yield* failure("IdempotencyConflict");
-
-      if (plan.digest !== command.input.planDigest) return yield* failure("StaleDependency");
-      yield* recheck(tx, command.scope, plan);
-      const row = (yield* Db.readApproval(tx, command.scope.bookId, command.input.approvalId))[0];
-
-      if (!row || row.consumed) return yield* failure("ApprovalRequired");
-      const approval = yield* decode(CashMethod.CashYearEndApproval, row.body);
-
-      if (
-        approval.planId !== plan.id ||
-        approval.planDigest !== plan.digest ||
-        approval.actorId === plan.createdBy ||
-        approval.expiresAt <= (yield* isoNow(tx))
-      )
-        return yield* failure("ApprovalRequired");
-
-      if (!(yield* Ledger.readOperatorMembership(tx, command.scope.bookId, approval.actorId))[0])
-        return yield* failure("ApprovalRequired");
-      const admission = (yield* Ledger.readActorAdmission(tx, approval.actorId))[0];
-
-      if (admission?.enabled === false) return yield* failure("ApprovalRequired");
-
-      const postingReceipt =
-        plan.postingPlan === null
-          ? null
-          : yield* executeChangeInTransaction(tx, principal, {
-              scope: command.scope,
-              changeSetId: plan.postingPlan.id,
-              idempotencyKey: `yearexecute_${plan.id}`,
-              input: {
-                version: 1,
-                planDigest: plan.postingPlan.planDigest,
-                approvalId: approval.cashPostingApprovalId ?? "approval_missing",
-              },
-              owner: { kind: "cash_year_end", id: plan.id },
-            });
-
-      const lines = plan.selection.invoices.flatMap((invoice) => invoice.lines);
-
-      const total = (field: "newGrossMinor" | "netMinor" | "taxMinor") =>
-        lines.reduce((sum, line) => sum + BigInt(line[field]), 0n).toString();
-
-      const receipt = yield* decode(CashMethod.CashYearEndReceipt, {
-        id: newId("cashyearrun"),
-        scope: command.scope,
-        planId: plan.id,
-        approvalId: approval.id,
-        fiscalYearId: plan.selection.fiscalYear.id,
-        cutoffOn: plan.selection.fiscalYear.endsOn,
-        memberCount: plan.selection.invoices.length,
-        recognizedLineCount: lines.filter((line) => BigInt(line.newGrossMinor) > 0n).length,
-        recognizedGrossMinor: total("newGrossMinor"),
-        netMinor: total("netMinor"),
-        taxMinor: total("taxMinor"),
-        populationDigest: yield* digest(plan.selection),
-        members: plan.selection.invoices,
-        postingReceipt,
-        committedAt: yield* isoNow(tx),
-        receipt: commandReceipt(command.idempotencyKey, "cash_year_end_execute", principal.actorId),
-      });
-
-      yield* Db.insertRun(tx, command.scope.bookId, plan, receipt, principal.actorId);
-      yield* executeMembers(tx, principal, command.scope, plan, receipt);
-
-      if (!(yield* Db.consumeApproval(tx, command.scope.bookId, approval.id))[0])
-        return yield* failure("ApprovalRequired");
-
-      yield* Db.bumpPopulation(tx, command.scope.bookId);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "cash_year_end_execute",
-        principal.actorId,
-        receipt,
-      );
-
-      return receipt;
     },
     "update",
   );
@@ -657,6 +674,7 @@ const hasConfirmedCashMethod = Effect.fn("cashYearEnd.hasConfirmedCashMethod")(f
   );
 
   let cash = false;
+
   let confirmed = 0;
 
   for (const row of facts) {
@@ -685,7 +703,9 @@ export const requireCashYearEndForClose = Effect.fn("cashYearEnd.requireForFinan
     const year = (yield* Db.readFiscal(tx, scope.bookId, fiscalYearId))[0];
 
     if (!year) return yield* failure("NotFound");
+
     const population = yield* Db.readPopulation(tx, scope.bookId, year.endsOn);
+
     const cashIds: Array<string> = [];
 
     for (const row of population) {
@@ -705,6 +725,7 @@ export const requireCashYearEndForClose = Effect.fn("cashYearEnd.requireForFinan
     if (cashIds.length !== population.length) return yield* failure("UnsupportedProfile");
 
     if (!run?.body) return yield* failure("ApprovalRequired");
+
     const receipt = yield* decode(CashMethod.CashYearEndReceipt, run.body);
 
     if (
@@ -714,6 +735,7 @@ export const requireCashYearEndForClose = Effect.fn("cashYearEnd.requireForFinan
       )
     )
       return yield* failure("StaleDependency");
+
     const plan = yield* readPlan(tx, scope, receipt.planId);
 
     if (
@@ -745,7 +767,9 @@ export const requireCashYearEndForClose = Effect.fn("cashYearEnd.requireForFinan
 
     for (const id of cashIds) {
       const current = yield* readCashCoverageInTransaction(tx, scope, id);
+
       const member = receipt.members.find((item) => item.invoiceId === id);
+
       const invoice = yield* liveInvoice(tx, scope.bookId, id);
 
       if (

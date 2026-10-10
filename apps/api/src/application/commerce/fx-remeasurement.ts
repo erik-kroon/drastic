@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as Contracts from "@open-erp/contracts/commerce-fx";
 import * as Remeasurement from "@open-erp/domain/fx-remeasurement";
@@ -19,7 +20,9 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 
 // NEXT-18. The application owner of incremental open-item FX remeasurement.
 //
@@ -243,188 +246,184 @@ export const prepareFxRemeasurement = Effect.fn("commerceFx.prepareRemeasurement
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "prepare_fx_remeasurement";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      Contracts.RemeasurementReview,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(
-      transaction,
-      [
-        ...RemeasurementDb.remeasurementTables,
-        "commerce_fx_items",
-        "commerce_fx_settlements",
-        "exchange_rate_revisions",
-        "exchange_rate_withdrawals",
-      ],
-      true,
-    );
-    yield* lockBookForUpdate(transaction, command.scope);
-
-    const book = yield* readBookCurrency(transaction, command.scope);
-
-    if (command.input.bookScale !== book.scale) return yield* failure("InvalidJournal");
-
-    const eligible = yield* readEligibleIds(transaction, command.scope);
-    const named = [...command.input.itemIds].sort();
-    const eligibleSorted = [...eligible].sort();
-
-    if (
-      named.length !== eligibleSorted.length ||
-      named.some((id, index) => id !== eligibleSorted[index])
-    ) {
-      return yield* failure("InvalidJournal");
-    }
-
-    const states = new Map<string, { readonly item: typeof Contracts.MonetaryItem.Type }>();
-
-    for (const itemId of named) {
-      states.set(itemId, yield* readItemState(transaction, command.scope, itemId));
-    }
-
-    const currencies = new Set([...states.values()].map((state) => state.item.original.currency));
-
-    if (currencies.size !== 1) return yield* failure("InvalidJournal");
-
-    const [currency] = currencies;
-
-    if (currency === undefined || currency === book.currency)
-      return yield* failure("InvalidJournal");
-
-    const rate = yield* readRateRevision(
-      transaction,
-      command.scope,
-      command.input.rateObservationId,
-      command.input.rateDigest,
-      currency,
-      book.currency,
-      command.input.accountingCutoff,
-    );
-
-    const period = (yield* Db.readPeriod(
-      transaction,
-      command.scope.bookId,
-      command.input.accountingPeriodId,
-    ))[0];
-
-    if (
-      period === undefined ||
-      period.locked ||
-      period.fiscalYearId !== command.input.fiscalYearId ||
-      command.input.accountingCutoff < period.startsOn ||
-      command.input.accountingCutoff > period.endsOn
-    ) {
-      return yield* Effect.fail(
-        new AccountingError({ code: "InvalidJournal", message: "STEP period" }),
-      );
-    }
-
-    const gainLoss = yield* Db.readAccounts(transaction, command.scope.bookId, [
-      command.input.unrealizedGainAccountId,
-      command.input.unrealizedLossAccountId,
-    ]);
-
-    if (gainLoss.length !== 2)
-      return yield* Effect.fail(
-        new AccountingError({
-          code: "InvalidJournal",
-          message: `STEP accounts got=${gainLoss.length}`,
-        }),
-      );
-
-    const items = yield* buildValuationItems(
-      transaction,
-      command.scope,
-      named,
       {
-        revisionId: `${command.input.rateObservationId}_r${rate.revision}`,
-        numerator: rate.terms.rateNumerator,
-        denominator: rate.terms.rateDenominator,
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
       },
-      command.input.rounding,
-      command.input.accountingCutoff,
-    );
-
-    const compiled = Remeasurement.prepareValuation({
-      currency,
-      accountingCutoff: command.input.accountingCutoff,
-      recordedCutoff: yield* isoNow(transaction),
-      complete: true,
-      expectedItemCount: named.length,
-      bookScale: command.input.bookScale,
-      unrealizedGainAccountId: command.input.unrealizedGainAccountId,
-      unrealizedLossAccountId: command.input.unrealizedLossAccountId,
-      economicDecisionId: command.input.economicDecisionId,
-      supersedesEffectId: null,
-      items,
-    });
-
-    if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
-
-    const reviewId = newId("fx_remeasurement_review");
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      id: reviewId,
-      scope: command.scope,
-      version: 1,
-      actorId: principal.actorId,
-      plan: compiled.success,
-      rateEvidenceId: rate.terms.evidenceId,
-    };
-
-    const reviewDigest = yield* digest(body);
-
-    if (
-      (yield* RemeasurementDb.readReviewByDigest(transaction, command.scope.bookId, reviewDigest))
-        .length > 0
-    ) {
-      return yield* failure("AlreadyPosted");
-    }
-
-    const review = yield* decode(
       Contracts.RemeasurementReview,
-      yield* toJsonObject({
-        ...body,
-        digest: reviewDigest,
-        posting: {
-          fiscalYearId: command.input.fiscalYearId,
-          accountingPeriodId: command.input.accountingPeriodId,
-          series: command.input.series,
-          bookCurrency: book.currency,
-        },
-        createdAt: now,
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      Effect.gen(function* () {
+        yield* requireTableAccess(
+          transaction,
+          [
+            ...RemeasurementDb.remeasurementTables,
+            "commerce_fx_items",
+            "commerce_fx_settlements",
+            "exchange_rate_revisions",
+            "exchange_rate_withdrawals",
+          ],
+          true,
+        );
+        yield* lockBookForUpdate(transaction, command.scope);
+
+        const book = yield* readBookCurrency(transaction, command.scope);
+
+        if (command.input.bookScale !== book.scale) return yield* failure("InvalidJournal");
+
+        const eligible = yield* readEligibleIds(transaction, command.scope);
+        const named = [...command.input.itemIds].sort();
+        const eligibleSorted = [...eligible].sort();
+
+        if (
+          named.length !== eligibleSorted.length ||
+          named.some((id, index) => id !== eligibleSorted[index])
+        ) {
+          return yield* failure("InvalidJournal");
+        }
+
+        const states = new Map<string, { readonly item: typeof Contracts.MonetaryItem.Type }>();
+
+        for (const itemId of named) {
+          states.set(itemId, yield* readItemState(transaction, command.scope, itemId));
+        }
+
+        const currencies = new Set(
+          [...states.values()].map((state) => state.item.original.currency),
+        );
+
+        if (currencies.size !== 1) return yield* failure("InvalidJournal");
+
+        const [currency] = currencies;
+
+        if (currency === undefined || currency === book.currency)
+          return yield* failure("InvalidJournal");
+
+        const rate = yield* readRateRevision(
+          transaction,
+          command.scope,
+          command.input.rateObservationId,
+          command.input.rateDigest,
+          currency,
+          book.currency,
+          command.input.accountingCutoff,
+        );
+
+        const period = (yield* Db.readPeriod(
+          transaction,
+          command.scope.bookId,
+          command.input.accountingPeriodId,
+        ))[0];
+
+        if (
+          period === undefined ||
+          period.locked ||
+          period.fiscalYearId !== command.input.fiscalYearId ||
+          command.input.accountingCutoff < period.startsOn ||
+          command.input.accountingCutoff > period.endsOn
+        ) {
+          return yield* Effect.fail(
+            new AccountingError({ code: "InvalidJournal", message: "STEP period" }),
+          );
+        }
+
+        const gainLoss = yield* Db.readAccounts(transaction, command.scope.bookId, [
+          command.input.unrealizedGainAccountId,
+          command.input.unrealizedLossAccountId,
+        ]);
+
+        if (gainLoss.length !== 2)
+          return yield* Effect.fail(
+            new AccountingError({
+              code: "InvalidJournal",
+              message: `STEP accounts got=${gainLoss.length}`,
+            }),
+          );
+
+        const items = yield* buildValuationItems(
+          transaction,
+          command.scope,
+          named,
+          {
+            revisionId: `${command.input.rateObservationId}_r${rate.revision}`,
+            numerator: rate.terms.rateNumerator,
+            denominator: rate.terms.rateDenominator,
+          },
+          command.input.rounding,
+          command.input.accountingCutoff,
+        );
+
+        const compiled = Remeasurement.prepareValuation({
+          currency,
+          accountingCutoff: command.input.accountingCutoff,
+          recordedCutoff: yield* isoNow(transaction),
+          complete: true,
+          expectedItemCount: named.length,
+          bookScale: command.input.bookScale,
+          unrealizedGainAccountId: command.input.unrealizedGainAccountId,
+          unrealizedLossAccountId: command.input.unrealizedLossAccountId,
+          economicDecisionId: command.input.economicDecisionId,
+          supersedesEffectId: null,
+          items,
+        });
+
+        if (Result.isFailure(compiled)) return yield* refuse(compiled.failure);
+
+        const reviewId = newId("fx_remeasurement_review");
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          id: reviewId,
+          scope: command.scope,
+          version: 1,
+          actorId: principal.actorId,
+          plan: compiled.success,
+          rateEvidenceId: rate.terms.evidenceId,
+        };
+
+        const reviewDigest = yield* digest(body);
+
+        if (
+          (yield* RemeasurementDb.readReviewByDigest(
+            transaction,
+            command.scope.bookId,
+            reviewDigest,
+          )).length > 0
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+
+        const review = yield* decode(
+          Contracts.RemeasurementReview,
+          yield* toJsonObject({
+            ...body,
+            digest: reviewDigest,
+            posting: {
+              fiscalYearId: command.input.fiscalYearId,
+              accountingPeriodId: command.input.accountingPeriodId,
+              series: command.input.series,
+              bookCurrency: book.currency,
+            },
+            createdAt: now,
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          }),
+        );
+
+        // The retained review is the full decoded contract, so a later read
+        // decodes exactly what was sealed rather than a partial body.
+        yield* RemeasurementDb.insertReview(transaction, {
+          bookId: command.scope.bookId,
+          id: reviewId,
+          actorId: principal.actorId,
+          body: yield* toJsonObject(review),
+        });
+
+        return { receipt: yield* toJsonObject(review), result: review };
       }),
     );
-
-    // The retained review is the full decoded contract, so a later read
-    // decodes exactly what was sealed rather than a partial body.
-    yield* RemeasurementDb.insertReview(transaction, {
-      bookId: command.scope.bookId,
-      id: reviewId,
-      actorId: principal.actorId,
-      body: yield* toJsonObject(review),
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(review),
-    );
-
-    return review;
   });
 });
 
@@ -443,84 +442,75 @@ export const approveFxRemeasurement = Effect.fn("commerceFx.approveRemeasurement
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "approve_fx_remeasurement";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject({ reviewId: command.reviewId, input: command.input }),
-      Contracts.RemeasurementApproval,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* requireTableAccess(transaction, [...RemeasurementDb.remeasurementTables], true);
-    yield* lockBookForUpdate(transaction, command.scope);
-
-    const row = (yield* RemeasurementDb.readReview(
-      transaction,
-      command.scope.bookId,
-      command.reviewId,
-    ))[0];
-
-    if (row === undefined) return yield* failure("NotFound");
-
-    const review = yield* decode(Contracts.RemeasurementReview, row.body);
-
-    if (command.input.version !== 1 || command.input.digest !== review.digest) {
-      return yield* failure("StaleDependency");
-    }
-
-    if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-    const now = yield* isoNow(transaction);
-    const approvalId = newId("fx_remeasurement_approval");
-
-    const body = {
-      id: approvalId,
-      scope: command.scope,
-      reviewId: review.id,
-      digest: review.digest,
-      version: 1,
-      actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + 60 * 60 * 1000).toISOString(),
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
-
-    const approval = yield* decode(Contracts.RemeasurementApproval, body);
-
-    yield* RemeasurementDb.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: approvalId,
-      reviewId: review.id,
-      actorId: principal.actorId,
-      digest: review.digest,
-      expiresAt: approval.expiresAt,
-      body: {
-        ...(yield* toJsonObject(approval)),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-          "informational",
-        ),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject({ reviewId: command.reviewId, input: command.input }),
       },
-    });
+      Contracts.RemeasurementApproval,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, [...RemeasurementDb.remeasurementTables], true);
+        yield* lockBookForUpdate(transaction, command.scope);
 
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(approval),
+        const row = (yield* RemeasurementDb.readReview(
+          transaction,
+          command.scope.bookId,
+          command.reviewId,
+        ))[0];
+
+        if (row === undefined) return yield* failure("NotFound");
+
+        const review = yield* decode(Contracts.RemeasurementReview, row.body);
+
+        if (command.input.version !== 1 || command.input.digest !== review.digest) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+
+        const now = yield* isoNow(transaction);
+        const approvalId = newId("fx_remeasurement_approval");
+
+        const body = {
+          id: approvalId,
+          scope: command.scope,
+          reviewId: review.id,
+          digest: review.digest,
+          version: 1,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + 60 * 60 * 1000).toISOString(),
+          createdAt: now,
+          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        };
+
+        const approval = yield* decode(Contracts.RemeasurementApproval, body);
+
+        yield* RemeasurementDb.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approvalId,
+          reviewId: review.id,
+          actorId: principal.actorId,
+          digest: review.digest,
+          expiresAt: approval.expiresAt,
+          body: {
+            ...(yield* toJsonObject(approval)),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
+          },
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
     );
-
-    return approval;
   });
 });
 

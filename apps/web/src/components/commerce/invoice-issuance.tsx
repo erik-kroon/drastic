@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +27,7 @@ import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { InvoiceDraftDocument } from "./invoice-draft-document";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { invoiceIssueCopy } from "./invoice-issue-copy";
@@ -145,7 +147,14 @@ function IssueDraftPicker(props: CommerceProps & { id: string; onSelect: (id: st
       if (normalizedSearch) query.set("search", normalizedSearch);
 
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts?${query.toString()}`,
+        (client) =>
+          client.invoiceDrafts.listInvoiceDrafts({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.invoiceDrafts.endpoints.listInvoiceDrafts,
+              `${query.toString()}`,
+            ),
+          }),
         Drafts.InvoiceDraftList,
         { signal },
       );
@@ -163,7 +172,11 @@ function IssueDraftPicker(props: CommerceProps & { id: string; onSelect: (id: st
     enabled: props.id !== "",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(props.id)}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(props.book), id: props.id },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );
@@ -239,7 +252,11 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}`,
+        (client) =>
+          client.invoiceDrafts.getInvoiceDraft({
+            params: { ...bookScope(book), id: id },
+            query: httpQuery(Api.groups.invoiceDrafts.endpoints.getInvoiceDraft, ``),
+          }),
         Drafts.InvoiceDraftView,
         { signal },
       );
@@ -259,7 +276,8 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}/issue-reviews`,
+        (client) =>
+          client.invoiceIssuance.invoiceIssueHistory({ params: { ...bookScope(book), id: id } }),
         Issuance.InvoiceIssueHistory,
         { signal },
       );
@@ -354,7 +372,8 @@ export function LegalInvoiceInspector(
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy-history"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/legal-sales-policies`,
+        (client) =>
+          client.legalSalesPolicies.legalSalesPolicyHistory({ params: { ...bookScope(book) } }),
         LegalSalesPolicy.LegalSalesPolicyHistory,
         { signal },
       );
@@ -517,7 +536,10 @@ function useLegalIssueRead(
     queryKey: [...commerceKey(props.book), "ar-legal", "issue", props.issueId ?? ""],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/ar-legal-issues/${encodeURIComponent(props.issueId ?? "")}`,
+        (client) =>
+          client.arLegalIssue.getArLegalIssue({
+            params: { ...bookScope(props.book), id: props.issueId ?? "" },
+          }),
         ArLegal.ArLegalIssueReceipt,
         { signal },
       );
@@ -540,7 +562,10 @@ function useLegalIssueRead(
     queryKey: [...commerceKey(props.book), "ar-legal", "issue-history", draftId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(draftId)}/ar-legal-issue-reviews`,
+        (client) =>
+          client.arLegalIssue.arLegalIssueHistory({
+            params: { ...bookScope(props.book), id: draftId },
+          }),
         ArLegal.ArLegalIssueHistory,
         { signal },
       );
@@ -565,7 +590,10 @@ function useLegalIssueRead(
     queryKey: [...commerceKey(props.book), "ar-legal", "issue-review", selectedReviewId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/ar-legal-issue-reviews/${encodeURIComponent(selectedReviewId)}`,
+        (client) =>
+          client.arLegalIssue.getArLegalIssueReview({
+            params: { ...bookScope(props.book), id: selectedReviewId },
+          }),
         ArLegal.ArLegalIssueView,
         { signal },
       );
@@ -628,7 +656,10 @@ function useLegalActivationRead(
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy", policyId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/legal-sales-policies/${encodeURIComponent(policyId)}`,
+        (client) =>
+          client.legalSalesPolicies.getLegalSalesPolicy({
+            params: { ...bookScope(book), id: policyId },
+          }),
         LegalSalesPolicy.LegalSalesPolicy,
         { signal },
       );
@@ -658,7 +689,10 @@ function useLegalActivationRead(
     queryKey: [...commerceKey(book), "ar-legal", "accounting-profile", accountingProfileId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/ar-legal-accounting-profiles/${encodeURIComponent(accountingProfileId)}`,
+        (client) =>
+          client.arLegalIssue.getArLegalAccountingProfile({
+            params: { ...bookScope(book), id: accountingProfileId },
+          }),
         ArLegal.ArLegalAccountingProfile,
         { signal },
       );
@@ -716,7 +750,10 @@ function useLegalArtifactRead(
     queryKey: [...commerceKey(book), "ar-legal", "pdf", captureId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/legal-invoice-pdfs/${encodeURIComponent(captureId)}`,
+        (client) =>
+          client.legalInvoicePdfs.getLegalInvoicePdf({
+            params: { ...bookScope(book), id: captureId },
+          }),
         LegalInvoicePdf.LegalInvoicePdfView,
         { signal },
       );
@@ -748,7 +785,10 @@ function useLegalArtifactRead(
     queryKey: [...commerceKey(book), "ar-legal", "delivery-history", captureId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/legal-invoice-pdfs/${encodeURIComponent(captureId)}/deliveries`,
+        (client) =>
+          client.legalDeliveries.legalDeliveryHistory({
+            params: { ...bookScope(book), id: captureId },
+          }),
         LegalDelivery.LegalDeliveryHistory,
         { signal },
       );
@@ -1297,7 +1337,11 @@ function IssuePreparation(
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(props.book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -1410,7 +1454,8 @@ export function InvoiceIssueReviewPanel(
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(id)}`,
+        (client) =>
+          client.invoiceIssuance.getInvoiceIssueReview({ params: { ...bookScope(book), id: id } }),
         Issuance.InvoiceIssueView,
         { signal },
       );
@@ -1481,7 +1526,11 @@ function IssueContents(
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 

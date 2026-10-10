@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Review from "@open-erp/contracts/accountant-review";
@@ -12,7 +13,8 @@ import { failure } from "../failures";
 import { lockBookForShare, lockBookForUpdate } from "../../db/posting";
 import * as SieDb from "../../db/sie-transactions";
 import type { Transaction } from "../../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import {
   decode,
   exactKeys,
@@ -189,10 +191,12 @@ function requireVoucherIntegrity(lines: ReadonlyArray<JournalLine>) {
     }
 
     if (byVoucher.size > maximumVouchers) return yield* failure("InvalidJournal");
+
     const bySeries = new Map<string, Set<string>>();
 
     for (const line of lines) {
       const identity = `${line.series}\u0000${line.voucherNumber}`;
+
       const vouchers = bySeries.get(identity);
 
       if (vouchers) vouchers.add(line.voucherId);
@@ -210,7 +214,9 @@ function readView(transaction: Transaction, bookId: string, id: string) {
     const row = (yield* SieDb.readCapture(transaction, bookId, id))[0];
 
     if (!row) return yield* failure("NotFound");
+
     const capture = yield* decode(CaptureSchema, row.body);
+
     const artifact = (yield* SieDb.readArtifact(transaction, bookId, id))[0];
 
     return yield* decode(
@@ -269,6 +275,7 @@ function readCursor(value: string, scope: Scope) {
     }
 
     const cutoff = cursor.cutoff;
+
     const after = cursor.after;
 
     if (typeof cutoff !== "string" || typeof after !== "string") {
@@ -293,6 +300,7 @@ export const listSie = Effect.fn("sie.list")(function* (
     yield* requireSieAccess(transaction, false);
     yield* lockBookForShare(transaction, input.scope);
     const highest = (yield* SieDb.readHighestOrdinal(transaction, input.scope.bookId))[0];
+
     const current = BigInt(highest?.ordinal ?? "0");
 
     const cursor =
@@ -301,7 +309,9 @@ export const listSie = Effect.fn("sie.list")(function* (
         : yield* readCursor(input.after, input.scope);
 
     if (cursor.cutoff > current) return yield* failure("InvalidJournal");
+
     const counted = yield* SieDb.countCaptures(transaction, input.scope.bookId, cursor.cutoff);
+
     const total = BigInt(counted[0]?.total ?? 0);
 
     if (total !== cursor.cutoff) return yield* failure("InvalidJournal");
@@ -350,182 +360,190 @@ const captureSie = Effect.fn("sie.capture")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_sie_transaction",
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_sie_transaction",
+          actorId: principal.actorId,
+          input: payload,
+        },
         CaptureSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireSieAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          const input = command.input;
+          yield* exactKeys(payload, captureInputKeys);
 
-      if (request.previous) return request.previous;
-      yield* requireSieAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const input = command.input;
-      yield* exactKeys(payload, captureInputKeys);
+          if (input.legalName.trim() !== input.legalName || input.legalName.length < 1) {
+            return yield* failure("InvalidJournal");
+          }
 
-      if (input.legalName.trim() !== input.legalName || input.legalName.length < 1) {
-        return yield* failure("InvalidJournal");
-      }
+          if (input.selection !== "all_pack_movement_vouchers") return yield* unsupported();
 
-      if (input.selection !== "all_pack_movement_vouchers") return yield* unsupported();
-      const packRow = (yield* SieDb.readPack(transaction, command.scope.bookId, input.packId))[0];
+          const packRow = (yield* SieDb.readPack(
+            transaction,
+            command.scope.bookId,
+            input.packId,
+          ))[0];
 
-      if (!packRow) return yield* failure("NotFound");
-      const pack = yield* decode(PackSchema, packRow.body);
+          if (!packRow) return yield* failure("NotFound");
 
-      if (pack.digest !== input.packDigest) return yield* failure("StaleDependency");
+          const pack = yield* decode(PackSchema, packRow.body);
 
-      if (
-        pack.basis.profile !== "synthetic-core-v1" ||
-        pack.basis.writerAuthority !== "native" ||
-        pack.basis.currencyScale !== 2 ||
-        pack.basis.currency !== "SEK"
-      ) {
-        return yield* unsupported();
-      }
+          if (pack.digest !== input.packDigest) return yield* failure("StaleDependency");
 
-      const evidence = (yield* SieDb.readEvidenceDigest(
-        transaction,
-        command.scope.bookId,
-        input.legalNameEvidenceId,
-      ))[0];
+          if (
+            pack.basis.profile !== "synthetic-core-v1" ||
+            pack.basis.writerAuthority !== "native" ||
+            pack.basis.currencyScale !== 2 ||
+            pack.basis.currency !== "SEK"
+          ) {
+            return yield* unsupported();
+          }
 
-      if (!evidence) return yield* failure("MissingEvidence");
-      const counted = yield* SieDb.countPackRows(transaction, command.scope.bookId, input.packId);
+          const evidence = (yield* SieDb.readEvidenceDigest(
+            transaction,
+            command.scope.bookId,
+            input.legalNameEvidenceId,
+          ))[0];
 
-      if (BigInt(counted[0]?.total ?? 0) !== BigInt(pack.counts.journal)) {
-        return yield* failure("InvalidJournal");
-      }
+          if (!evidence) return yield* failure("MissingEvidence");
 
-      const stored = yield* SieDb.readPackRows(
-        transaction,
-        command.scope.bookId,
-        input.packId,
-        "journal",
-      );
-
-      const lines = yield* Effect.forEach(
-        stored.filter((row) => textField(row.body, "part") === "movement"),
-        (row) => decode(JournalLineSchema, row.body),
-      );
-
-      const ordered = [...lines].sort((left, right) =>
-        BigInt(left.sequence) === BigInt(right.sequence)
-          ? left.ordinal - right.ordinal
-          : Number(BigInt(left.sequence) - BigInt(right.sequence)),
-      );
-
-      if (ordered.length < 2 || ordered.length > maximumLines) return yield* unsupported();
-
-      if (
-        ordered.some(
-          (line) =>
-            line.postingDate < pack.report.startsOn || line.postingDate > pack.report.endsOn,
-        )
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const movementVouchers = new Set(ordered.map((line) => line.voucherId));
-
-      if (
-        stored.some((row) => {
-          const voucherId = textField(row.body, "voucherId");
-
-          return (
-            textField(row.body, "part") !== "movement" &&
-            voucherId !== null &&
-            movementVouchers.has(voucherId)
+          const counted = yield* SieDb.countPackRows(
+            transaction,
+            command.scope.bookId,
+            input.packId,
           );
-        })
-      ) {
-        return yield* failure("InvalidJournal");
-      }
 
-      yield* requireVoucherIntegrity(ordered);
+          if (BigInt(counted[0]?.total ?? 0) !== BigInt(pack.counts.journal)) {
+            return yield* failure("InvalidJournal");
+          }
 
-      const balances = yield* Effect.forEach(
-        yield* SieDb.readPackRows(transaction, command.scope.bookId, input.packId, "balances"),
-        (row) => decode(BalanceLineSchema, row.body),
+          const stored = yield* SieDb.readPackRows(
+            transaction,
+            command.scope.bookId,
+            input.packId,
+            "journal",
+          );
+
+          const lines = yield* Effect.forEach(
+            stored.filter((row) => textField(row.body, "part") === "movement"),
+            (row) => decode(JournalLineSchema, row.body),
+          );
+
+          const ordered = [...lines].sort((left, right) =>
+            BigInt(left.sequence) === BigInt(right.sequence)
+              ? left.ordinal - right.ordinal
+              : Number(BigInt(left.sequence) - BigInt(right.sequence)),
+          );
+
+          if (ordered.length < 2 || ordered.length > maximumLines) return yield* unsupported();
+
+          if (
+            ordered.some(
+              (line) =>
+                line.postingDate < pack.report.startsOn || line.postingDate > pack.report.endsOn,
+            )
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const movementVouchers = new Set(ordered.map((line) => line.voucherId));
+
+          if (
+            stored.some((row) => {
+              const voucherId = textField(row.body, "voucherId");
+
+              return (
+                textField(row.body, "part") !== "movement" &&
+                voucherId !== null &&
+                movementVouchers.has(voucherId)
+              );
+            })
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          yield* requireVoucherIntegrity(ordered);
+
+          const balances = yield* Effect.forEach(
+            yield* SieDb.readPackRows(transaction, command.scope.bookId, input.packId, "balances"),
+            (row) => decode(BalanceLineSchema, row.body),
+          );
+
+          const used = new Set(ordered.map((line) => line.accountId));
+
+          const accounts = balances
+            .filter((row) => used.has(row.accountId))
+            .map((row) => ({ accountId: row.accountId, code: row.code, name: row.name }))
+            .sort((left, right) =>
+              left.accountId < right.accountId ? -1 : left.accountId > right.accountId ? 1 : 0,
+            );
+
+          if (
+            accounts.length > maximumAccounts ||
+            new Set(accounts.map((row) => row.accountId)).size !== accounts.length ||
+            new Set(accounts.map((row) => row.code)).size !== accounts.length
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const declared = new Set(accounts.map((row) => `${row.accountId} ${row.code}`));
+
+          if (ordered.some((line) => !declared.has(`${line.accountId} ${line.accountCode}`))) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const highest = (yield* SieDb.readHighestOrdinal(transaction, command.scope.bookId))[0];
+
+          const ordinal = BigInt(highest?.ordinal ?? "0") + 1n;
+
+          if (ordinal > 9223372036854775807n) return yield* unsupported();
+
+          const now = yield* isoNow(transaction);
+
+          const source: JsonObject = { accounts, lines: ordered };
+
+          const body = yield* digestBody({
+            id: newId("sie_capture"),
+            scope: command.scope,
+            input,
+            legalNameEvidenceSha256: evidence.sha256,
+            generatorVersion,
+            specificationSha256,
+            format: "SIE4I",
+            generatedOn: now.slice(0, 10),
+            startsOn: pack.report.startsOn,
+            endsOn: pack.report.endsOn,
+            currency: pack.basis.currency,
+            currencyScale: 2,
+            sequence: pack.basis.sequence,
+            source,
+            sourceDigest: yield* digestNative(source),
+            createdBy: principal.actorId,
+            createdAt: now,
+            syntheticOnly: true,
+            externalAcceptance: "not_established",
+          });
+
+          if (JSON.stringify(body).length > maximumCaptureBytes) return yield* unsupported();
+
+          const capture = yield* decode(CaptureSchema, body);
+          yield* SieDb.insertCapture(transaction, {
+            bookId: command.scope.bookId,
+            id: capture.id,
+            ordinal: Number(ordinal),
+            packId: input.packId,
+            evidenceId: input.legalNameEvidenceId,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return capture;
+        }),
       );
-
-      const used = new Set(ordered.map((line) => line.accountId));
-
-      const accounts = balances
-        .filter((row) => used.has(row.accountId))
-        .map((row) => ({ accountId: row.accountId, code: row.code, name: row.name }))
-        .sort((left, right) =>
-          left.accountId < right.accountId ? -1 : left.accountId > right.accountId ? 1 : 0,
-        );
-
-      if (
-        accounts.length > maximumAccounts ||
-        new Set(accounts.map((row) => row.accountId)).size !== accounts.length ||
-        new Set(accounts.map((row) => row.code)).size !== accounts.length
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const declared = new Set(accounts.map((row) => `${row.accountId} ${row.code}`));
-
-      if (ordered.some((line) => !declared.has(`${line.accountId} ${line.accountCode}`))) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const highest = (yield* SieDb.readHighestOrdinal(transaction, command.scope.bookId))[0];
-      const ordinal = BigInt(highest?.ordinal ?? "0") + 1n;
-
-      if (ordinal > 9223372036854775807n) return yield* unsupported();
-      const now = yield* isoNow(transaction);
-      const source: JsonObject = { accounts, lines: ordered };
-
-      const body = yield* digestBody({
-        id: newId("sie_capture"),
-        scope: command.scope,
-        input,
-        legalNameEvidenceSha256: evidence.sha256,
-        generatorVersion,
-        specificationSha256,
-        format: "SIE4I",
-        generatedOn: now.slice(0, 10),
-        startsOn: pack.report.startsOn,
-        endsOn: pack.report.endsOn,
-        currency: pack.basis.currency,
-        currencyScale: 2,
-        sequence: pack.basis.sequence,
-        source,
-        sourceDigest: yield* digestNative(source),
-        createdBy: principal.actorId,
-        createdAt: now,
-        syntheticOnly: true,
-        externalAcceptance: "not_established",
-      });
-
-      if (JSON.stringify(body).length > maximumCaptureBytes) return yield* unsupported();
-      const capture = yield* decode(CaptureSchema, body);
-      yield* SieDb.insertCapture(transaction, {
-        bookId: command.scope.bookId,
-        id: capture.id,
-        ordinal: Number(ordinal),
-        packId: input.packId,
-        evidenceId: input.legalNameEvidenceId,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_sie_transaction",
-        principal.actorId,
-        capture,
-      );
-
-      return capture;
     },
     "update",
   );
@@ -583,11 +601,13 @@ const sealSie = Effect.fn("sie.seal")(function* (
       yield* lockBookForUpdate(transaction, command.scope);
 
       if (!sha256Hex.test(command.sealed.sha256)) return yield* failure("InvalidJournal");
+
       const row = (yield* SieDb.readCapture(transaction, command.scope.bookId, command.id))[0];
 
       if (!row) return yield* failure("NotFound");
 
       if (row.actorId !== principal.actorId) return yield* failure("Forbidden");
+
       const capture = yield* decode(CaptureSchema, row.body);
 
       if (
@@ -624,6 +644,7 @@ const sealSie = Effect.fn("sie.seal")(function* (
       }
 
       const head = new TextDecoder("latin1").decode(bytes.subarray(0, 11));
+
       const tail = bytes.subarray(bytes.length - 2);
 
       if (head !== "#FLAGGA 0\r\n" || tail[0] !== 0x0d || tail[1] !== 0x0a) {

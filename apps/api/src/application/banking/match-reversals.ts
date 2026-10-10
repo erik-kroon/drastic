@@ -1,10 +1,13 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as SupplierSettlementDb from "../../db/purchases/supplier-settlements";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Reversal from "@open-erp/contracts/bank-match-reversals";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as AllocationDb from "../../db/banking/allocations";
 import * as ReversalDb from "../../db/banking/match-reversals";
 import * as BankDb from "../../db/banking/shared";
@@ -312,77 +315,69 @@ export const prepareBankMatchReversalInTransaction = Effect.fn(
   yield* Shared.requireColumns(transaction, Shared.accountColumns);
   const book = yield* lockBook(transaction, command.scope.bookId);
 
-  const request = yield* replay(
+  return yield* runBookCommandWithReceipt(
     transaction,
-    command.scope,
-    command.idempotencyKey,
-    "prepare_bank_match_reversal",
-    principal.actorId,
-    yield* Shared.toJsonObject(command.input),
+    {
+      scope: command.scope,
+      idempotencyKey: command.idempotencyKey,
+      operation: "prepare_bank_match_reversal",
+      actorId: principal.actorId,
+      input: yield* Shared.toJsonObject(command.input),
+    },
     PlanSchema,
+    Effect.gen(function* () {
+      if (command.input.reason.trim().length === 0) return yield* failure("InvalidJournal");
+
+      const target = yield* Shared.toJsonObject(command.input.target);
+      const found = yield* readReversalTarget(transaction, command.scope.bookId, target);
+      const targetKey = yield* digest(target);
+
+      if (
+        (yield* ReversalDb.readReversedTarget(transaction, command.scope.bookId, targetKey))[0]
+          ?.present === true
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
+      const snapshot = yield* reversalSnapshot(
+        transaction,
+        command.scope.bookId,
+        found.accountId,
+        found.original,
+        found.legs,
+      );
+
+      const body = Object.assign({}, {
+        id: newId("bankunmatch"),
+        version: 1,
+        scope: command.scope,
+        input: yield* Shared.toJsonObject(command.input),
+        snapshot: yield* Shared.toJsonObject(snapshot),
+        currency: book.currency,
+        currencyScale: book.currencyScale,
+        createdBy: principal.actorId,
+        createdAt: yield* isoNow(transaction),
+        receipt: Shared.receipt(
+          command.idempotencyKey,
+          "prepare_bank_match_reversal",
+          principal.actorId,
+        ),
+      } satisfies JsonObject);
+
+      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+      const plan = yield* Shared.decode(PlanSchema, sealed);
+      yield* ReversalDb.insertReversalPlan(transaction, {
+        bookId: command.scope.bookId,
+        id: plan.id,
+        targetKey,
+        body: sealed,
+      });
+
+      return { receipt: yield* Shared.toJsonObject(plan), result: plan };
+    }),
   );
-
-  if (request.previous) return request.previous;
-
-  if (command.input.reason.trim().length === 0) return yield* failure("InvalidJournal");
-
-  const target = yield* Shared.toJsonObject(command.input.target);
-  const found = yield* readReversalTarget(transaction, command.scope.bookId, target);
-  const targetKey = yield* digest(target);
-
-  if (
-    (yield* ReversalDb.readReversedTarget(transaction, command.scope.bookId, targetKey))[0]
-      ?.present === true
-  ) {
-    return yield* failure("StaleDependency");
-  }
-
-  yield* Shared.requireNativeBankProfile(book.profile, book.authority);
-
-  const snapshot = yield* reversalSnapshot(
-    transaction,
-    command.scope.bookId,
-    found.accountId,
-    found.original,
-    found.legs,
-  );
-
-  const body = Object.assign({}, {
-    id: newId("bankunmatch"),
-    version: 1,
-    scope: command.scope,
-    input: yield* Shared.toJsonObject(command.input),
-    snapshot: yield* Shared.toJsonObject(snapshot),
-    currency: book.currency,
-    currencyScale: book.currencyScale,
-    createdBy: principal.actorId,
-    createdAt: yield* isoNow(transaction),
-    receipt: Shared.receipt(
-      command.idempotencyKey,
-      "prepare_bank_match_reversal",
-      principal.actorId,
-    ),
-  } satisfies JsonObject);
-
-  const sealed = Object.assign({}, body, { digest: yield* digest(body) });
-  const plan = yield* Shared.decode(PlanSchema, sealed);
-  yield* ReversalDb.insertReversalPlan(transaction, {
-    bookId: command.scope.bookId,
-    id: plan.id,
-    targetKey,
-    body: sealed,
-  });
-  yield* saveCommand(
-    transaction,
-    command.scope,
-    command.idempotencyKey,
-    request.expected,
-    "prepare_bank_match_reversal",
-    principal.actorId,
-    yield* Shared.toJsonObject(plan),
-  );
-
-  return plan;
 });
 
 export const approveBankMatchReversal = Effect.fn("banking.reversal.approve")(function* (
@@ -429,80 +424,72 @@ export const approveBankMatchReversalInTransaction = Effect.fn(
   yield* Shared.requireColumns(transaction, Shared.accountColumns);
   const book = yield* lockBook(transaction, command.scope.bookId);
 
-  const request = yield* replay(
+  return yield* runBookCommandWithReceipt(
     transaction,
-    command.scope,
-    command.idempotencyKey,
-    "approve_bank_match_reversal",
-    principal.actorId,
     {
-      planId: command.planId,
-      input: yield* Shared.toJsonObject(command.input),
-    } satisfies JsonObject,
-    ApprovalSchema,
-  );
-
-  if (request.previous) return request.previous;
-
-  const plan = yield* readPlan(transaction, command.scope.bookId, command.planId);
-
-  if (command.input.digest !== Shared.textField(plan.body, "digest")) {
-    return yield* failure("StaleDependency");
-  }
-
-  yield* Shared.requireNativeBankProfile(book.profile, book.authority);
-
-  const snapshot = yield* currentReversalSnapshot(transaction, command.scope.bookId, plan.body);
-
-  if (!(yield* Shared.sameCanonical(snapshot, Shared.objectField(plan.body, "snapshot")))) {
-    return yield* failure("StaleDependency");
-  }
-
-  const now = (yield* ReversalDb.readDatabaseTime(transaction))[0]?.now;
-
-  if (now === undefined) return yield* failure("InternalError");
-
-  const body = yield* Shared.toJsonObject(
-    Object.assign({}, command.input, {
-      id: newId("unmatchapproval"),
-      planId: command.planId,
+      scope: command.scope,
+      idempotencyKey: command.idempotencyKey,
+      operation: "approve_bank_match_reversal",
       actorId: principal.actorId,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      receipt: Shared.receipt(
-        command.idempotencyKey,
-        "approve_bank_match_reversal",
-        principal.actorId,
-      ),
+      input: {
+        planId: command.planId,
+        input: yield* Shared.toJsonObject(command.input),
+      } satisfies JsonObject,
+    },
+    ApprovalSchema,
+    Effect.gen(function* () {
+      const plan = yield* readPlan(transaction, command.scope.bookId, command.planId);
+
+      if (command.input.digest !== Shared.textField(plan.body, "digest")) {
+        return yield* failure("StaleDependency");
+      }
+
+      yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
+      const snapshot = yield* currentReversalSnapshot(transaction, command.scope.bookId, plan.body);
+
+      if (!(yield* Shared.sameCanonical(snapshot, Shared.objectField(plan.body, "snapshot")))) {
+        return yield* failure("StaleDependency");
+      }
+
+      const now = (yield* ReversalDb.readDatabaseTime(transaction))[0]?.now;
+
+      if (now === undefined) return yield* failure("InternalError");
+
+      const body = yield* Shared.toJsonObject(
+        Object.assign({}, command.input, {
+          id: newId("unmatchapproval"),
+          planId: command.planId,
+          actorId: principal.actorId,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          receipt: Shared.receipt(
+            command.idempotencyKey,
+            "approve_bank_match_reversal",
+            principal.actorId,
+          ),
+        }),
+      );
+
+      const approvalId = Shared.textField(body, "id");
+      const expiresAt = Shared.textField(body, "expiresAt");
+
+      if (approvalId === undefined || expiresAt === undefined) {
+        return yield* failure("InternalError");
+      }
+
+      yield* ReversalDb.insertReversalApproval(transaction, {
+        bookId: command.scope.bookId,
+        id: approvalId,
+        planId: command.planId,
+        actorId: principal.actorId,
+        expiresAt,
+        body,
+      });
+      const approval = yield* Shared.decode(ApprovalSchema, body);
+
+      return { receipt: yield* Shared.toJsonObject(approval), result: approval };
     }),
   );
-
-  const approvalId = Shared.textField(body, "id");
-  const expiresAt = Shared.textField(body, "expiresAt");
-
-  if (approvalId === undefined || expiresAt === undefined) {
-    return yield* failure("InternalError");
-  }
-
-  yield* ReversalDb.insertReversalApproval(transaction, {
-    bookId: command.scope.bookId,
-    id: approvalId,
-    planId: command.planId,
-    actorId: principal.actorId,
-    expiresAt,
-    body,
-  });
-  const approval = yield* Shared.decode(ApprovalSchema, body);
-  yield* saveCommand(
-    transaction,
-    command.scope,
-    command.idempotencyKey,
-    request.expected,
-    "approve_bank_match_reversal",
-    principal.actorId,
-    yield* Shared.toJsonObject(approval),
-  );
-
-  return approval;
 });
 
 export const revokeBankMatchReversalApproval = Effect.fn("banking.reversal.revokeApproval")(
@@ -523,71 +510,63 @@ export const revokeBankMatchReversalApproval = Effect.fn("banking.reversal.revok
         ]);
         yield* lockBook(transaction, command.scope.bookId);
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "revoke_bank_match_reversal_approval",
-          principal.actorId,
           {
-            approvalId: command.approvalId,
-            input: yield* Shared.toJsonObject(command.input),
-          } satisfies JsonObject,
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "revoke_bank_match_reversal_approval",
+            actorId: principal.actorId,
+            input: {
+              approvalId: command.approvalId,
+              input: yield* Shared.toJsonObject(command.input),
+            } satisfies JsonObject,
+          },
           RevocationSchema,
+          Effect.gen(function* () {
+            if (command.input.reason.trim().length === 0) return yield* failure("InvalidJournal");
+
+            if (
+              (yield* ReversalDb.readReversalApproval(
+                transaction,
+                command.scope.bookId,
+                command.approvalId,
+              )).length === 0
+            ) {
+              return yield* failure("NotFound");
+            }
+
+            const state = (yield* ReversalDb.readApprovalState(
+              transaction,
+              command.scope.bookId,
+              command.approvalId,
+            ))[0]?.state;
+
+            if (state !== null && state !== undefined) return yield* failure("ApprovalRequired");
+
+            const body = yield* Shared.toJsonObject({
+              approvalId: command.approvalId,
+              reason: command.input.reason,
+              actorId: principal.actorId,
+              revokedAt: yield* isoNow(transaction),
+              receipt: Shared.receipt(
+                command.idempotencyKey,
+                "revoke_bank_match_reversal_approval",
+                principal.actorId,
+              ),
+            });
+
+            yield* ReversalDb.insertReversalRevocation(
+              transaction,
+              command.scope.bookId,
+              command.approvalId,
+              body,
+            );
+            const revocation = yield* Shared.decode(RevocationSchema, body);
+
+            return { receipt: yield* Shared.toJsonObject(revocation), result: revocation };
+          }),
         );
-
-        if (request.previous) return request.previous;
-
-        if (command.input.reason.trim().length === 0) return yield* failure("InvalidJournal");
-
-        if (
-          (yield* ReversalDb.readReversalApproval(
-            transaction,
-            command.scope.bookId,
-            command.approvalId,
-          )).length === 0
-        ) {
-          return yield* failure("NotFound");
-        }
-
-        const state = (yield* ReversalDb.readApprovalState(
-          transaction,
-          command.scope.bookId,
-          command.approvalId,
-        ))[0]?.state;
-
-        if (state !== null && state !== undefined) return yield* failure("ApprovalRequired");
-
-        const body = yield* Shared.toJsonObject({
-          approvalId: command.approvalId,
-          reason: command.input.reason,
-          actorId: principal.actorId,
-          revokedAt: yield* isoNow(transaction),
-          receipt: Shared.receipt(
-            command.idempotencyKey,
-            "revoke_bank_match_reversal_approval",
-            principal.actorId,
-          ),
-        });
-
-        yield* ReversalDb.insertReversalRevocation(
-          transaction,
-          command.scope.bookId,
-          command.approvalId,
-          body,
-        );
-        const revocation = yield* Shared.decode(RevocationSchema, body);
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "revoke_bank_match_reversal_approval",
-          principal.actorId,
-          yield* Shared.toJsonObject(revocation),
-        );
-
-        return revocation;
       }),
     );
   },

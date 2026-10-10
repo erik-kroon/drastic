@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -19,7 +20,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { BankReport } from "@/components/bank-report";
 import { BankStatementReview } from "@/components/bank-statement";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 
 export function BankingWorkspace({
   recordId,
@@ -32,7 +33,7 @@ export function BankingWorkspace({
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const statement = recordId?.startsWith("statement:") ? recordId.slice(10) : null;
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const period = setup.periods.at(-1);
 
   const sources = useInfiniteQuery({
@@ -55,7 +56,7 @@ export function BankingWorkspace({
       return readAccounting(
         path,
         Bank.BankReconciliation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (report) => onOpen(report.id),

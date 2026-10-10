@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -13,7 +15,7 @@ import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-lay
 import { PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { BasisForm } from "./basis-form";
 import { ControlInspector, BasisDetails } from "./views";
@@ -209,7 +211,7 @@ function CaptureControl({
 }: Props & { onSaved: (id: string) => void }) {
   const copy = controlCopy(locale);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const client = useQueryClient();
 
   const save = useMutation({
@@ -219,7 +221,7 @@ function CaptureControl({
       const result = await readAccounting(
         path,
         Controls.SubledgerControl,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
@@ -250,7 +252,7 @@ function CaptureControl({
           rationale: fields.get("rationale"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;

@@ -1,41 +1,8 @@
-import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
-import { authenticate } from "../auth";
-import * as CompanySetup from "../../../application/company-setup";
+import { CompanySetupOperations } from "../../../application/operations/company-setup";
+import { operationHandlers } from "../operation-handlers";
 
 export const CompanySetupHandlers = HttpApiBuilder.group(Api, "companySetup", (handlers) =>
-  handlers
-    .handle("createCompany", ({ headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        CompanySetup.createCompany(token, {
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("getCompanySetup", ({ params }) =>
-      Effect.flatMap(authenticate, (token) =>
-        CompanySetup.getCompanySetup(token, { scope: scopeFromPath(params) }),
-      ),
-    )
-    .handle("saveCompanySetup", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        CompanySetup.saveCompanySetup(token, {
-          scope: scopeFromPath(params),
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    )
-    .handle("initializeNativeLedger", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        CompanySetup.initializeNativeLedger(token, {
-          scope: scopeFromPath(params),
-          idempotencyKey: headers["idempotency-key"],
-          input: payload,
-        }),
-      ),
-    ),
+  handlers.handleAll(operationHandlers(CompanySetupOperations)),
 );

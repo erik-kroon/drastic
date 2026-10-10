@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -25,7 +26,7 @@ import {
 } from "@/lib/attention";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { formatMinorAmount } from "@/lib/workspace-api";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
 import {
   workQueueHref,
@@ -431,7 +432,7 @@ function JournalPreview({
     queryKey: [...bookKey(book), "change-set", item.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/change-sets/${encodeURIComponent(item.id)}`,
+        (client) => client.accounting.getChange({ params: { ...bookScope(book), id: item.id } }),
         Accounting.ChangeSet,
         { signal },
       );

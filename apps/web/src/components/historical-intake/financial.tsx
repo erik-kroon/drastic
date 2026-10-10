@@ -1,5 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import { ClosingComparison } from "./closing-comparison";
-import { useRef } from "react";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -8,13 +9,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  readAccounting,
-  mutationOptions,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 import { PrepareSourceVoucher, ReviewSourceVoucher } from "./financial-review";
 
 export function FinancialImport({
@@ -28,7 +23,7 @@ export function FinancialImport({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const cache = useQueryClient();
   const base = bookPath(book);
   const queryKey = [...bookKey(book), "sie-financial-workspace", sourceRunId];
@@ -63,10 +58,9 @@ export function FinancialImport({
       readAccounting(
         startPath,
         Historical.RunStart,
-        mutationOptions(
+        keys.current.options(
           startPath,
           JSON.stringify({ fiscalYearId: yearId, planDigest: plan.digest }),
-          keys.current,
         ),
       ),
     onSuccess: refresh,
@@ -180,7 +174,7 @@ function FinancialLease({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run.id)}/lease`;
 
   const lease = useMutation({
@@ -188,7 +182,7 @@ function FinancialLease({
       readAccounting(
         path,
         Historical.Fence,
-        mutationOptions(path, JSON.stringify({ action }), keys.current),
+        keys.current.options(path, JSON.stringify({ action })),
       ),
     onSuccess: async () => {
       keys.current.clear();

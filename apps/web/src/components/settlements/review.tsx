@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Settlement from "@open-erp/contracts/settlements";
@@ -10,7 +11,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/notice";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { settlementCopy } from "./copy";
 
@@ -26,8 +27,8 @@ export function AllocationReview({
   const copy = settlementCopy(locale);
   const client = useQueryClient();
   const [reviewed, setReviewed] = useState(false);
-  const approvalKeys = useRef(new Map<string, string>());
-  const executionKeys = useRef(new Map<string, string>());
+  const approvalKeys = useCommandKeys();
+  const executionKeys = useCommandKeys();
   const base = `${bookPath(book)}/bank-allocation-plans/${encodeURIComponent(id)}`;
 
   const plan = useQuery({
@@ -54,7 +55,7 @@ export function AllocationReview({
       readAccounting(
         `${base}/approve`,
         Settlement.BankAllocationApproval,
-        mutationOptions(`${base}/approve`, JSON.stringify(input), approvalKeys.current),
+        approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
     onSuccess: () => {
       approvalKeys.current.clear();
@@ -70,7 +71,7 @@ export function AllocationReview({
       readAccounting(
         `${base}/execute`,
         Settlement.BankAllocationExecution,
-        mutationOptions(`${base}/execute`, JSON.stringify(input), executionKeys.current),
+        executionKeys.current.options(`${base}/execute`, JSON.stringify(input)),
       ),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: bookKey(book) });

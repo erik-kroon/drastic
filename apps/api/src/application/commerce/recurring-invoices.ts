@@ -1,10 +1,12 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import * as Recurrence from "@open-erp/domain/recurrence";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { digest } from "../json";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { calculateCommercialContent } from "./draft-calculation";
 import { createInvoiceDraftInTransaction } from "./invoice-lifecycle";
@@ -326,89 +328,85 @@ export const proposeRecurringAgreement = Effect.fn("commerce.recurring.proposeAg
       function* (transaction, principal) {
         const operation = "propose_recurring_agreement";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          principal.actorId,
-          yield* toJsonObject(command.input),
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: yield* toJsonObject(command.input),
+          },
           AgreementSchema,
+          Effect.gen(function* () {
+            yield* requireRecurrenceAccess(transaction, true);
+            yield* exactKeys(yield* toJsonObject(command.input), proposeFields);
+
+            const input = yield* decode(Recurring.ProposeRecurringAgreement, command.input);
+
+            const firstCycle = Recurrence.cycleDate(
+              scheduleOf(input.schedule),
+              input.schedule.firstCycleOrdinal,
+            );
+
+            if (Result.isFailure(firstCycle)) return yield* refuseCycle(firstCycle);
+
+            const counterparty = (yield* DraftDb.readCustomerCounterparty(
+              transaction,
+              command.scope.bookId,
+              input.customerId,
+            ))[0];
+
+            if (
+              !counterparty ||
+              (counterparty.role !== "customer" && counterparty.role !== "both")
+            ) {
+              return yield* failure("InvalidJournal");
+            }
+
+            const id = newId("recurring_agreement");
+            const createdAt = yield* isoNow(transaction);
+
+            const withoutDigest: JsonObject = {
+              id,
+              scope: command.scope,
+              revision: "1",
+              customerId: input.customerId,
+              title: input.title,
+              schedule: yield* toJsonObject(input.schedule),
+              reason: input.reason,
+              createdAt,
+              receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+            };
+
+            const body = yield* toJsonObject(
+              Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
+            );
+
+            const result = yield* decode(AgreementSchema, body);
+            const agreementDigest = textField(body, "digest");
+
+            if (agreementDigest === undefined) return yield* failure("InternalError");
+
+            yield* RecurrenceDb.insertAgreement(transaction, {
+              bookId: command.scope.bookId,
+              id,
+              customerId: input.customerId,
+              body,
+              digest: agreementDigest,
+              createdAt,
+            });
+            yield* initializeRecurringScheduleInTransaction(
+              transaction,
+              command.scope,
+              id,
+              commandReceipt(command.idempotencyKey, operation, principal.actorId),
+              input.reason,
+            );
+
+            return { receipt: body, result: result };
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireRecurrenceAccess(transaction, true);
-        yield* exactKeys(yield* toJsonObject(command.input), proposeFields);
-
-        const input = yield* decode(Recurring.ProposeRecurringAgreement, command.input);
-
-        const firstCycle = Recurrence.cycleDate(
-          scheduleOf(input.schedule),
-          input.schedule.firstCycleOrdinal,
-        );
-
-        if (Result.isFailure(firstCycle)) return yield* refuseCycle(firstCycle);
-
-        const counterparty = (yield* DraftDb.readCustomerCounterparty(
-          transaction,
-          command.scope.bookId,
-          input.customerId,
-        ))[0];
-
-        if (!counterparty || (counterparty.role !== "customer" && counterparty.role !== "both")) {
-          return yield* failure("InvalidJournal");
-        }
-
-        const id = newId("recurring_agreement");
-        const createdAt = yield* isoNow(transaction);
-
-        const withoutDigest: JsonObject = {
-          id,
-          scope: command.scope,
-          revision: "1",
-          customerId: input.customerId,
-          title: input.title,
-          schedule: yield* toJsonObject(input.schedule),
-          reason: input.reason,
-          createdAt,
-          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-        };
-
-        const body = yield* toJsonObject(
-          Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
-        );
-
-        const result = yield* decode(AgreementSchema, body);
-        const agreementDigest = textField(body, "digest");
-
-        if (agreementDigest === undefined) return yield* failure("InternalError");
-
-        yield* RecurrenceDb.insertAgreement(transaction, {
-          bookId: command.scope.bookId,
-          id,
-          customerId: input.customerId,
-          body,
-          digest: agreementDigest,
-          createdAt,
-        });
-        yield* initializeRecurringScheduleInTransaction(
-          transaction,
-          command.scope,
-          id,
-          commandReceipt(command.idempotencyKey, operation, principal.actorId),
-          input.reason,
-        );
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          body,
-        );
-
-        return result;
       },
       "update",
     );
@@ -669,175 +667,179 @@ export const proposeRecurringTemplateRevision = Effect.fn(
         input: command.input,
       } satisfies JsonObject;
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        replayInput,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: replayInput,
+        },
         TemplateSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireRecurrenceAccess(transaction, true);
+          yield* exactKeys(yield* toJsonObject(command.input), templateFields);
 
-      if (request.previous) return request.previous;
-      yield* requireRecurrenceAccess(transaction, true);
-      yield* exactKeys(yield* toJsonObject(command.input), templateFields);
+          const input = yield* decode(Recurring.ProposeRecurringTemplateRevision, command.input);
 
-      const input = yield* decode(Recurring.ProposeRecurringTemplateRevision, command.input);
-
-      const current = yield* readAgreementRow(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      );
-
-      if (
-        input.expectedAgreementRevision !== current.agreement.revision ||
-        input.expectedAgreementDigest !== current.digest
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* initializeRecurringScheduleInTransaction(
-        transaction,
-        command.scope,
-        command.agreementId,
-        commandReceipt(command.idempotencyKey, operation, principal.actorId),
-        input.reason,
-      );
-
-      const components = Recurrence.assertUniqueChargeComponents(input.chargeComponentKeys);
-
-      if (Result.isFailure(components)) return yield* refuseCycle(components);
-
-      // An amendment names the first affected cycle, and that cycle must still be
-      // unissued. A boundary at or behind the last materialised cycle would
-      // re-identify a cycle that already owns an occurrence, which is exactly
-      // what occurrence identity exists to prevent. The materialised boundary is
-      // the agreement's billing boundary: past it, a correction is a draft
-      // revision and a new human review, not a new template.
-      const materialised = (yield* RecurrenceDb.readMaterialisedThrough(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0]?.cycleOrdinal;
-
-      if (materialised !== undefined && BigInt(input.effectiveFromCycle) <= BigInt(materialised)) {
-        return yield* failure("StaleDependency");
-      }
-
-      const existing = yield* RecurrenceDb.readTemplateRevisions(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      );
-
-      if (
-        existing.some((row) => BigInt(row.effectiveFromCycle) === BigInt(input.effectiveFromCycle))
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const book = (yield* DraftDb.readBookCurrency(transaction, command.scope.bookId))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      if (
-        input.template.currency !== book.currency ||
-        input.template.currencyScale !== book.currencyScale
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if ("kind" in input.template) {
-        if (input.template.counterpartyId !== current.agreement.customerId)
-          return yield* failure("InvalidJournal");
-
-        const customer = (yield* DraftDb.readCustomerCounterparty(
-          transaction,
-          command.scope.bookId,
-          current.agreement.customerId,
-        ))[0];
-
-        if (!customer) return yield* failure("StaleDependency");
-
-        const schedules = yield* scheduleBoundariesOf(
-          yield* RecurrenceDb.readScheduleRevisions(
+          const current = yield* readAgreementRow(
             transaction,
             command.scope.bookId,
             command.agreementId,
-          ),
-        );
+          );
 
-        const selected = Recurrence.selectScheduleRevision(schedules, input.effectiveFromCycle);
+          if (
+            input.expectedAgreementRevision !== current.agreement.revision ||
+            input.expectedAgreementDigest !== current.digest
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-        if (Result.isFailure(selected)) return yield* refuseCycle(selected);
-        const schedule = schedules.find((row) => row.revision === selected.success);
+          yield* initializeRecurringScheduleInTransaction(
+            transaction,
+            command.scope,
+            command.agreementId,
+            commandReceipt(command.idempotencyKey, operation, principal.actorId),
+            input.reason,
+          );
 
-        if (!schedule) return yield* failure("StaleDependency");
-        const date = Recurrence.cycleDate(schedule.schedule, input.effectiveFromCycle);
+          const components = Recurrence.assertUniqueChargeComponents(input.chargeComponentKeys);
 
-        if (Result.isFailure(date)) return yield* refuseCycle(date);
-        const commercial = yield* commercialTemplateContent(input.template, date.success, customer);
-        yield* calculateCommercialContent(transaction, command.scope, book, commercial);
-      }
+          if (Result.isFailure(components)) return yield* refuseCycle(components);
 
-      const counted = (yield* RecurrenceDb.readRevisionNumber(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0];
+          // An amendment names the first affected cycle, and that cycle must still be
+          // unissued. A boundary at or behind the last materialised cycle would
+          // re-identify a cycle that already owns an occurrence, which is exactly
+          // what occurrence identity exists to prevent. The materialised boundary is
+          // the agreement's billing boundary: past it, a correction is a draft
+          // revision and a new human review, not a new template.
+          const materialised = (yield* RecurrenceDb.readMaterialisedThrough(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0]?.cycleOrdinal;
 
-      if (counted === undefined) return yield* failure("InternalError");
+          if (
+            materialised !== undefined &&
+            BigInt(input.effectiveFromCycle) <= BigInt(materialised)
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-      const revision = (BigInt(counted.revision) + 1n).toString();
-      const id = newId("recurring_template");
-      const createdAt = yield* isoNow(transaction);
+          const existing = yield* RecurrenceDb.readTemplateRevisions(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          );
 
-      const withoutDigest: JsonObject = {
-        id,
-        scope: command.scope,
-        agreementId: command.agreementId,
-        agreementDigest: current.digest,
-        revision,
-        effectiveFromCycle: input.effectiveFromCycle,
-        chargeComponentKeys: input.chargeComponentKeys,
-        template: yield* toJsonObject(input.template),
-        reason: input.reason,
-        createdAt,
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-      };
+          if (
+            existing.some(
+              (row) => BigInt(row.effectiveFromCycle) === BigInt(input.effectiveFromCycle),
+            )
+          ) {
+            return yield* failure("StaleDependency");
+          }
 
-      const body = yield* toJsonObject(
-        Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
+          const book = (yield* DraftDb.readBookCurrency(transaction, command.scope.bookId))[0];
+
+          if (!book) return yield* failure("Forbidden");
+
+          if (
+            input.template.currency !== book.currency ||
+            input.template.currencyScale !== book.currencyScale
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if ("kind" in input.template) {
+            if (input.template.counterpartyId !== current.agreement.customerId)
+              return yield* failure("InvalidJournal");
+
+            const customer = (yield* DraftDb.readCustomerCounterparty(
+              transaction,
+              command.scope.bookId,
+              current.agreement.customerId,
+            ))[0];
+
+            if (!customer) return yield* failure("StaleDependency");
+
+            const schedules = yield* scheduleBoundariesOf(
+              yield* RecurrenceDb.readScheduleRevisions(
+                transaction,
+                command.scope.bookId,
+                command.agreementId,
+              ),
+            );
+
+            const selected = Recurrence.selectScheduleRevision(schedules, input.effectiveFromCycle);
+
+            if (Result.isFailure(selected)) return yield* refuseCycle(selected);
+            const schedule = schedules.find((row) => row.revision === selected.success);
+
+            if (!schedule) return yield* failure("StaleDependency");
+            const date = Recurrence.cycleDate(schedule.schedule, input.effectiveFromCycle);
+
+            if (Result.isFailure(date)) return yield* refuseCycle(date);
+
+            const commercial = yield* commercialTemplateContent(
+              input.template,
+              date.success,
+              customer,
+            );
+
+            yield* calculateCommercialContent(transaction, command.scope, book, commercial);
+          }
+
+          const counted = (yield* RecurrenceDb.readRevisionNumber(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0];
+
+          if (counted === undefined) return yield* failure("InternalError");
+
+          const revision = (BigInt(counted.revision) + 1n).toString();
+          const id = newId("recurring_template");
+          const createdAt = yield* isoNow(transaction);
+
+          const withoutDigest: JsonObject = {
+            id,
+            scope: command.scope,
+            agreementId: command.agreementId,
+            agreementDigest: current.digest,
+            revision,
+            effectiveFromCycle: input.effectiveFromCycle,
+            chargeComponentKeys: input.chargeComponentKeys,
+            template: yield* toJsonObject(input.template),
+            reason: input.reason,
+            createdAt,
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          };
+
+          const body = yield* toJsonObject(
+            Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
+          );
+
+          const result = yield* decode(TemplateSchema, body);
+          const templateDigest = textField(body, "digest");
+
+          if (templateDigest === undefined) return yield* failure("InternalError");
+
+          yield* RecurrenceDb.insertTemplateRevision(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            agreementId: command.agreementId,
+            revision,
+            effectiveFromCycle: input.effectiveFromCycle,
+            body,
+            digest: templateDigest,
+            createdAt,
+          });
+
+          return { receipt: body, result: result };
+        }),
       );
-
-      const result = yield* decode(TemplateSchema, body);
-      const templateDigest = textField(body, "digest");
-
-      if (templateDigest === undefined) return yield* failure("InternalError");
-
-      yield* RecurrenceDb.insertTemplateRevision(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        agreementId: command.agreementId,
-        revision,
-        effectiveFromCycle: input.effectiveFromCycle,
-        body,
-        digest: templateDigest,
-        createdAt,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        body,
-      );
-
-      return result;
     },
     "update",
   );
@@ -864,93 +866,86 @@ export const recordRecurringAgreementEvent = Effect.fn("commerce.recurring.recor
         input: command.input,
       } satisfies JsonObject;
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        replayInput,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: replayInput,
+        },
         EventSchema,
+        Effect.gen(function* () {
+          yield* requireRecurrenceAccess(transaction, true);
+          yield* exactKeys(yield* toJsonObject(command.input), eventFields);
+
+          const input = yield* decode(Recurring.RecordRecurringAgreementEvent, command.input);
+
+          const current = yield* readAgreementRow(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          );
+
+          if (
+            input.expectedAgreementRevision !== current.agreement.revision ||
+            input.expectedAgreementDigest !== current.digest
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          const counted = (yield* RecurrenceDb.readEventCount(
+            transaction,
+            command.scope.bookId,
+            command.agreementId,
+          ))[0];
+
+          if (counted === undefined) return yield* failure("InternalError");
+
+          if (counted.count >= maximumEvents) return yield* failure("InvalidJournal");
+
+          const ordinal = counted.count + 1;
+          const id = newId("recurring_event");
+          const createdAt = yield* isoNow(transaction);
+
+          const withoutDigest: JsonObject = {
+            id,
+            scope: command.scope,
+            agreementId: command.agreementId,
+            agreementDigest: current.digest,
+            ordinal,
+            kind: input.kind,
+            effectiveCycle: input.effectiveCycle,
+            reason: input.reason,
+            createdAt,
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          };
+
+          const body = yield* toJsonObject(
+            Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
+          );
+
+          const result = yield* decode(EventSchema, body);
+          const eventDigest = textField(body, "digest");
+
+          if (eventDigest === undefined) return yield* failure("InternalError");
+
+          yield* RecurrenceDb.insertEvent(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            agreementId: command.agreementId,
+            ordinal,
+            kind: input.kind,
+            effectiveCycle: input.effectiveCycle,
+            body,
+            digest: eventDigest,
+            createdAt,
+          });
+
+          return { receipt: body, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireRecurrenceAccess(transaction, true);
-      yield* exactKeys(yield* toJsonObject(command.input), eventFields);
-
-      const input = yield* decode(Recurring.RecordRecurringAgreementEvent, command.input);
-
-      const current = yield* readAgreementRow(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      );
-
-      if (
-        input.expectedAgreementRevision !== current.agreement.revision ||
-        input.expectedAgreementDigest !== current.digest
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const counted = (yield* RecurrenceDb.readEventCount(
-        transaction,
-        command.scope.bookId,
-        command.agreementId,
-      ))[0];
-
-      if (counted === undefined) return yield* failure("InternalError");
-
-      if (counted.count >= maximumEvents) return yield* failure("InvalidJournal");
-
-      const ordinal = counted.count + 1;
-      const id = newId("recurring_event");
-      const createdAt = yield* isoNow(transaction);
-
-      const withoutDigest: JsonObject = {
-        id,
-        scope: command.scope,
-        agreementId: command.agreementId,
-        agreementDigest: current.digest,
-        ordinal,
-        kind: input.kind,
-        effectiveCycle: input.effectiveCycle,
-        reason: input.reason,
-        createdAt,
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-      };
-
-      const body = yield* toJsonObject(
-        Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
-      );
-
-      const result = yield* decode(EventSchema, body);
-      const eventDigest = textField(body, "digest");
-
-      if (eventDigest === undefined) return yield* failure("InternalError");
-
-      yield* RecurrenceDb.insertEvent(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        agreementId: command.agreementId,
-        ordinal,
-        kind: input.kind,
-        effectiveCycle: input.effectiveCycle,
-        body,
-        digest: eventDigest,
-        createdAt,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        body,
-      );
-
-      return result;
     },
     "update",
   );
@@ -1046,263 +1041,260 @@ export const materializeRecurringOccurrenceInTransaction = Effect.fn(
     input: command.input,
   } satisfies JsonObject;
 
-  const request = yield* replay(
+  return yield* runBookCommandWithReceipt(
     transaction,
-    command.scope,
-    command.idempotencyKey,
-    operation,
-    principal.actorId,
-    replayInput,
+    {
+      scope: command.scope,
+      idempotencyKey: command.idempotencyKey,
+      operation: operation,
+      actorId: principal.actorId,
+      input: replayInput,
+    },
     OccurrenceSchema,
-  );
+    Effect.gen(function* () {
+      yield* requireRecurrenceAccess(transaction, true);
+      yield* exactKeys(yield* toJsonObject(command.input), materializeFields);
 
-  if (request.previous) return request.previous;
-  yield* requireRecurrenceAccess(transaction, true);
-  yield* exactKeys(yield* toJsonObject(command.input), materializeFields);
+      const input = yield* decode(Recurring.MaterializeRecurringOccurrence, command.input);
 
-  const input = yield* decode(Recurring.MaterializeRecurringOccurrence, command.input);
+      const current = yield* readAgreementRow(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
 
-  const current = yield* readAgreementRow(transaction, command.scope.bookId, command.agreementId);
+      const agreement = current.agreement;
 
-  const agreement = current.agreement;
+      yield* initializeRecurringScheduleInTransaction(
+        transaction,
+        command.scope,
+        command.agreementId,
+        commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        input.reason,
+        input.cycleOrdinal,
+      );
 
-  yield* initializeRecurringScheduleInTransaction(
-    transaction,
-    command.scope,
-    command.agreementId,
-    commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    input.reason,
-    input.cycleOrdinal,
-  );
+      const existing = (yield* RecurrenceDb.readOccurrence(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+        input.cycleOrdinal,
+      ))[0];
 
-  const existing = (yield* RecurrenceDb.readOccurrence(
-    transaction,
-    command.scope.bookId,
-    command.agreementId,
-    input.cycleOrdinal,
-  ))[0];
-
-  if (existing) {
-    const issued = (yield* RecurrenceDb.readOccurrenceIssue(
-      transaction,
-      command.scope.bookId,
-      command.agreementId,
-      input.cycleOrdinal,
-    ))[0];
-
-    return yield* failure(issued === undefined ? "IdempotencyConflict" : "AlreadyPosted");
-  }
-
-  const scheduleRows = yield* RecurrenceDb.readScheduleRevisions(
-    transaction,
-    command.scope.bookId,
-    command.agreementId,
-  );
-
-  const schedules = yield* scheduleBoundariesOf(scheduleRows);
-
-  const revisions = yield* RecurrenceDb.readTemplateRevisions(
-    transaction,
-    command.scope.bookId,
-    command.agreementId,
-  );
-
-  const events = yield* RecurrenceDb.readEvents(
-    transaction,
-    command.scope.bookId,
-    command.agreementId,
-  );
-
-  const billed = yield* RecurrenceDb.readBilledCoverage(
-    transaction,
-    command.scope.bookId,
-    command.agreementId,
-  );
-
-  if (
-    expected !== undefined &&
-    (expected.eventDigest !==
-      (yield* digest(yield* toJsonObject({ events: events.map((row) => row.body) }))) ||
-      expected.eventOrdinal !== (events.at(-1)?.ordinal ?? 0))
-  )
-    return yield* failure("StaleDependency");
-
-  if (
-    expected !== undefined &&
-    (expected.agreementRevision !== agreement.revision ||
-      expected.agreementDigest !== agreement.digest ||
-      expected.configurationDigest !==
-        (yield* recurringConfigurationDigest(
+      if (existing) {
+        const issued = (yield* RecurrenceDb.readOccurrenceIssue(
           transaction,
           command.scope.bookId,
           command.agreementId,
-        )))
-  )
-    return yield* failure("StaleDependency");
+          input.cycleOrdinal,
+        ))[0];
 
-  const resolved = resolveMaterializationCycle(
-    {
-      schedules,
-      events: eventsOf(events),
-      revisions: boundariesOf(revisions),
-      billedCoverage: coverageOf(billed),
-      cycleOrdinal: input.cycleOrdinal,
-    },
-    events,
-    expected?.explicitCatchUp === true,
+        return yield* failure(issued === undefined ? "IdempotencyConflict" : "AlreadyPosted");
+      }
+
+      const scheduleRows = yield* RecurrenceDb.readScheduleRevisions(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      const schedules = yield* scheduleBoundariesOf(scheduleRows);
+
+      const revisions = yield* RecurrenceDb.readTemplateRevisions(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      const events = yield* RecurrenceDb.readEvents(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      const billed = yield* RecurrenceDb.readBilledCoverage(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      if (
+        expected !== undefined &&
+        (expected.eventDigest !==
+          (yield* digest(yield* toJsonObject({ events: events.map((row) => row.body) }))) ||
+          expected.eventOrdinal !== (events.at(-1)?.ordinal ?? 0))
+      )
+        return yield* failure("StaleDependency");
+
+      if (
+        expected !== undefined &&
+        (expected.agreementRevision !== agreement.revision ||
+          expected.agreementDigest !== agreement.digest ||
+          expected.configurationDigest !==
+            (yield* recurringConfigurationDigest(
+              transaction,
+              command.scope.bookId,
+              command.agreementId,
+            )))
+      )
+        return yield* failure("StaleDependency");
+
+      const resolved = resolveMaterializationCycle(
+        {
+          schedules,
+          events: eventsOf(events),
+          revisions: boundariesOf(revisions),
+          billedCoverage: coverageOf(billed),
+          cycleOrdinal: input.cycleOrdinal,
+        },
+        events,
+        expected?.explicitCatchUp === true,
+      );
+
+      if (Result.isFailure(resolved)) return yield* refuseCycle(resolved);
+
+      if (resolved.success.disposition === "skipped" || resolved.success.planned === null) {
+        return yield* failure("InvalidJournal");
+      }
+
+      const planned = resolved.success.planned;
+      const scheduleRevision = Recurrence.selectScheduleRevision(schedules, input.cycleOrdinal);
+
+      if (Result.isFailure(scheduleRevision)) return yield* refuseCycle(scheduleRevision);
+
+      const selected = revisions.find((row) => row.revision === planned.selectedTemplateRevision);
+
+      if (selected === undefined) return yield* failure("StaleDependency");
+
+      const selectedTemplate = yield* decode(TemplateSchema, selected.body);
+      const selectedDigest = selectedTemplate.digest;
+
+      if (
+        expected !== undefined &&
+        (expected.templateDigest !== selectedDigest ||
+          expected.scheduleRevision !== scheduleRevision.success)
+      )
+        return yield* failure("StaleDependency");
+
+      const counterparty = (yield* DraftDb.readCustomerCounterparty(
+        transaction,
+        command.scope.bookId,
+        agreement.customerId,
+      ))[0];
+
+      if (!counterparty || (counterparty.role !== "customer" && counterparty.role !== "both")) {
+        return yield* failure("InvalidJournal");
+      }
+
+      const occurrence = { agreementId: agreement.id, cycleOrdinal: input.cycleOrdinal };
+
+      const draftInput =
+        "kind" in selectedTemplate.template
+          ? {
+              draftKey: occurrenceDraftKey(agreement.id, input.cycleOrdinal),
+              commercial: yield* commercialTemplateContent(
+                selectedTemplate.template,
+                planned.cycleDate,
+                counterparty,
+              ),
+              occurrence,
+            }
+          : {
+              draftKey: occurrenceDraftKey(agreement.id, input.cycleOrdinal),
+              content: yield* Effect.gen(function* () {
+                const content = templateContent(
+                  objectField(selected.body, "template"),
+                  planned.cycleDate,
+                  counterparty.currentRevision,
+                );
+
+                if (Result.isFailure(content)) return yield* refuseCycle(content);
+
+                return yield* decode(DraftContentSchema, content.success);
+              }),
+              occurrence,
+            };
+
+      const draft = yield* createInvoiceDraftInTransaction(
+        transaction,
+        principal,
+        {
+          scope: command.scope,
+          idempotencyKey: newId("recurring_occurrence"),
+          input: draftInput,
+        },
+        undefined,
+        "kind" in selectedTemplate.template
+          ? {
+              agreementId: agreement.id,
+              revision: selectedTemplate.revision,
+              digest: selectedTemplate.digest,
+            }
+          : undefined,
+      );
+
+      const createdAt = yield* isoNow(transaction);
+      const occurrenceId = newId("recurring_occurrence_record");
+
+      const withoutDigest: JsonObject = {
+        id: occurrenceId,
+        scope: command.scope,
+        agreementId: agreement.id,
+        cycleOrdinal: input.cycleOrdinal,
+        cycleDate: planned.cycleDate,
+        serviceInterval: yield* toJsonObject(planned.serviceInterval),
+        chargeComponentKeys: selectedTemplate.chargeComponentKeys,
+        selectedTemplateRevision: planned.selectedTemplateRevision,
+        selectedTemplateDigest: selectedDigest,
+        selectedScheduleRevision: scheduleRevision.success,
+        status: "drafted",
+        draftId: draft.id,
+        createdAt,
+        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      };
+
+      const withCatchUp =
+        expected?.explicitCatchUp === true
+          ? Object.assign({}, withoutDigest, {
+              catchUpWitness: {
+                agreementRevision: expected.agreementRevision,
+                agreementDigest: expected.agreementDigest,
+                configurationDigest: expected.configurationDigest,
+                eventDigest: expected.eventDigest,
+                eventOrdinal: expected.eventOrdinal,
+              },
+            })
+          : withoutDigest;
+
+      const body = yield* toJsonObject(
+        Object.assign({}, withCatchUp, { digest: yield* digest(withCatchUp) }),
+      );
+
+      const result = yield* decode(OccurrenceSchema, body);
+      const occurrenceDigest = textField(body, "digest");
+
+      if (occurrenceDigest === undefined) return yield* failure("InternalError");
+
+      yield* RecurrenceDb.insertOccurrence(transaction, {
+        bookId: command.scope.bookId,
+        id: occurrenceId,
+        agreementId: agreement.id,
+        cycleOrdinal: input.cycleOrdinal,
+        cycleDate: planned.cycleDate,
+        serviceStartsOn: planned.serviceInterval.serviceStartsOn,
+        serviceEndsOn: planned.serviceInterval.serviceEndsOn,
+        selectedTemplateRevision: planned.selectedTemplateRevision,
+        selectedTemplateDigest: selectedDigest,
+        selectedScheduleRevision: scheduleRevision.success,
+        draftId: draft.id,
+        body,
+        digest: occurrenceDigest,
+        createdAt,
+      });
+
+      return { receipt: body, result: result };
+    }),
   );
-
-  if (Result.isFailure(resolved)) return yield* refuseCycle(resolved);
-
-  if (resolved.success.disposition === "skipped" || resolved.success.planned === null) {
-    return yield* failure("InvalidJournal");
-  }
-
-  const planned = resolved.success.planned;
-  const scheduleRevision = Recurrence.selectScheduleRevision(schedules, input.cycleOrdinal);
-
-  if (Result.isFailure(scheduleRevision)) return yield* refuseCycle(scheduleRevision);
-
-  const selected = revisions.find((row) => row.revision === planned.selectedTemplateRevision);
-
-  if (selected === undefined) return yield* failure("StaleDependency");
-
-  const selectedTemplate = yield* decode(TemplateSchema, selected.body);
-  const selectedDigest = selectedTemplate.digest;
-
-  if (
-    expected !== undefined &&
-    (expected.templateDigest !== selectedDigest ||
-      expected.scheduleRevision !== scheduleRevision.success)
-  )
-    return yield* failure("StaleDependency");
-
-  const counterparty = (yield* DraftDb.readCustomerCounterparty(
-    transaction,
-    command.scope.bookId,
-    agreement.customerId,
-  ))[0];
-
-  if (!counterparty || (counterparty.role !== "customer" && counterparty.role !== "both")) {
-    return yield* failure("InvalidJournal");
-  }
-
-  const occurrence = { agreementId: agreement.id, cycleOrdinal: input.cycleOrdinal };
-
-  const draftInput =
-    "kind" in selectedTemplate.template
-      ? {
-          draftKey: occurrenceDraftKey(agreement.id, input.cycleOrdinal),
-          commercial: yield* commercialTemplateContent(
-            selectedTemplate.template,
-            planned.cycleDate,
-            counterparty,
-          ),
-          occurrence,
-        }
-      : {
-          draftKey: occurrenceDraftKey(agreement.id, input.cycleOrdinal),
-          content: yield* Effect.gen(function* () {
-            const content = templateContent(
-              objectField(selected.body, "template"),
-              planned.cycleDate,
-              counterparty.currentRevision,
-            );
-
-            if (Result.isFailure(content)) return yield* refuseCycle(content);
-
-            return yield* decode(DraftContentSchema, content.success);
-          }),
-          occurrence,
-        };
-
-  const draft = yield* createInvoiceDraftInTransaction(
-    transaction,
-    principal,
-    {
-      scope: command.scope,
-      idempotencyKey: newId("recurring_occurrence"),
-      input: draftInput,
-    },
-    undefined,
-    "kind" in selectedTemplate.template
-      ? {
-          agreementId: agreement.id,
-          revision: selectedTemplate.revision,
-          digest: selectedTemplate.digest,
-        }
-      : undefined,
-  );
-
-  const createdAt = yield* isoNow(transaction);
-  const occurrenceId = newId("recurring_occurrence_record");
-
-  const withoutDigest: JsonObject = {
-    id: occurrenceId,
-    scope: command.scope,
-    agreementId: agreement.id,
-    cycleOrdinal: input.cycleOrdinal,
-    cycleDate: planned.cycleDate,
-    serviceInterval: yield* toJsonObject(planned.serviceInterval),
-    chargeComponentKeys: selectedTemplate.chargeComponentKeys,
-    selectedTemplateRevision: planned.selectedTemplateRevision,
-    selectedTemplateDigest: selectedDigest,
-    selectedScheduleRevision: scheduleRevision.success,
-    status: "drafted",
-    draftId: draft.id,
-    createdAt,
-    receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-  };
-
-  const withCatchUp =
-    expected?.explicitCatchUp === true
-      ? Object.assign({}, withoutDigest, {
-          catchUpWitness: {
-            agreementRevision: expected.agreementRevision,
-            agreementDigest: expected.agreementDigest,
-            configurationDigest: expected.configurationDigest,
-            eventDigest: expected.eventDigest,
-            eventOrdinal: expected.eventOrdinal,
-          },
-        })
-      : withoutDigest;
-
-  const body = yield* toJsonObject(
-    Object.assign({}, withCatchUp, { digest: yield* digest(withCatchUp) }),
-  );
-
-  const result = yield* decode(OccurrenceSchema, body);
-  const occurrenceDigest = textField(body, "digest");
-
-  if (occurrenceDigest === undefined) return yield* failure("InternalError");
-
-  yield* RecurrenceDb.insertOccurrence(transaction, {
-    bookId: command.scope.bookId,
-    id: occurrenceId,
-    agreementId: agreement.id,
-    cycleOrdinal: input.cycleOrdinal,
-    cycleDate: planned.cycleDate,
-    serviceStartsOn: planned.serviceInterval.serviceStartsOn,
-    serviceEndsOn: planned.serviceInterval.serviceEndsOn,
-    selectedTemplateRevision: planned.selectedTemplateRevision,
-    selectedTemplateDigest: selectedDigest,
-    selectedScheduleRevision: scheduleRevision.success,
-    draftId: draft.id,
-    body,
-    digest: occurrenceDigest,
-    createdAt,
-  });
-  yield* saveCommand(
-    transaction,
-    command.scope,
-    command.idempotencyKey,
-    request.expected,
-    operation,
-    principal.actorId,
-    body,
-  );
-
-  return result;
 });
 
 export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.materializeOccurrence")(

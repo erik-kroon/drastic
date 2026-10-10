@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -15,7 +16,7 @@ import {
   RecordColumns,
 } from "@open-erp/ui/components/record-layout";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { EvidenceInspector } from "@/components/evidence-inspector";
@@ -38,7 +39,11 @@ export function VatFactSummary({
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.vatReturnBasis({ params: { ...bookScope(book) } }),
+        Vat.VatBasis,
+        { signal },
+      ),
     retry: false,
   });
 

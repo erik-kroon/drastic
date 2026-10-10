@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Processor from "@open-erp/contracts/processor-clearing";
@@ -37,7 +38,10 @@ export function ProcessorWorkspace(props: { accountId?: string; reviewId?: strin
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/banking/processors/reviews/${encodeURIComponent(props.reviewId ?? "")}/payout`,
+        (client) =>
+          client.processorClearing.getProcessorPayoutReview({
+            params: { ...bookScope(book), id: props.reviewId ?? "" },
+          }),
         Processor.PayoutReviewView,
         { signal },
       );
@@ -53,17 +57,27 @@ export function ProcessorWorkspace(props: { accountId?: string; reviewId?: strin
       )
         throw new Error("Processor payout identity mismatch");
 
-      if (!view.postedPayout.execution.voucherId) throw new Error("Missing posted payout voucher");
+      const postedVoucherId = view.postedPayout.execution.voucherId;
+
+      if (!postedVoucherId) throw new Error("Missing posted payout voucher");
 
       const first = await readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(view.postedPayout.execution.voucherId)}`,
+        (client) =>
+          client.accounting.getVoucher({
+            params: { ...bookScope(book), id: postedVoucherId },
+          }),
         Accounting.Voucher,
         { signal },
       );
 
-      const second = view.execution?.voucherId
+      const voucherId = view.execution?.voucherId;
+
+      const second = voucherId
         ? await readAccounting(
-            `${bookPath(book)}/vouchers/${encodeURIComponent(view.execution.voucherId)}`,
+            (client) =>
+              client.accounting.getVoucher({
+                params: { ...bookScope(book), id: voucherId },
+              }),
             Accounting.Voucher,
             { signal },
           )

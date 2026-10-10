@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Collections from "@open-erp/contracts/collections";
@@ -8,7 +10,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { checkScope, commerceKey, commercePath } from "./shared";
+import { checkScope, commerceKey } from "./shared";
 
 export function ReminderHistoryWorkspace({ invoiceId }: { invoiceId: string }) {
   const { book, locale } = useBookWorkspace();
@@ -23,7 +25,14 @@ export function ReminderHistoryWorkspace({ invoiceId }: { invoiceId: string }) {
       if (after) query.set("after", after);
 
       const page = await readAccounting(
-        `${commercePath(book)}/collections/reminders?${query.toString()}`,
+        (client) =>
+          client.collections.reminderHistory({
+            params: { ...bookScope(book) },
+            query: httpQuery(
+              Api.groups.collections.endpoints.reminderHistory,
+              `${query.toString()}`,
+            ),
+          }),
         Collections.ReminderHistoryPage,
         { signal },
       );

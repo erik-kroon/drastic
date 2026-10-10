@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/processor-clearing";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
@@ -20,7 +21,9 @@ import {
   consumeProcessorReceivableInTransaction,
   consumeProcessorRefundInTransaction,
 } from "../commerce/processor-settlements";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import { compileProcessorReview, type Compilation } from "./processor-effects";
@@ -49,107 +52,111 @@ export const registerProcessorAccount = Effect.fn("processor.registerAccount")(f
     command.scope,
     true,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "processor_register_account",
-        principal.actorId,
-        yield* toJsonObject(command),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "processor_register_account",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command),
+        },
         Contracts.Account,
+        Effect.gen(function* () {
+          yield* requireTableAccess(tx, Db.tables, true);
+
+          const book = (yield* PostingDb.readBook(tx, command.scope))[0];
+
+          const evidence = (yield* PostingDb.readEvidence(
+            tx,
+            command.scope.bookId,
+            command.input.evidenceId,
+          ))[0];
+
+          if (
+            !book ||
+            book.authority !== "native" ||
+            book.profile !== "synthetic-core-v1" ||
+            !evidence
+          )
+            return yield* failure("UnsupportedProfile");
+
+          const ids = [
+            command.input.processorControlAccountId,
+            command.input.payoutTransitAccountId,
+            command.input.feeCostAccountId,
+            command.input.disputeReceivableAccountId,
+            command.input.disputeLossAccountId,
+            command.input.bankAccountId,
+            command.input.gainAccountId,
+            command.input.lossAccountId,
+          ];
+
+          if (new Set(ids).size !== ids.length) return yield* failure("InvalidJournal");
+
+          const accounts = yield* PostingDb.readAccounts(tx, command.scope.bookId, ids);
+
+          if (
+            accounts.length !== ids.length ||
+            accounts.some((row) => !row.active) ||
+            (yield* FxDb.readBankAccount(tx, command.scope.bookId, command.input.bankAccountId))
+              .length === 0
+          )
+            return yield* failure("InvalidJournal");
+
+          for (const id of ids) {
+            const roles = yield* readAccountRoles(tx, command.scope.bookId, id);
+
+            if (roles.some((row) => id !== command.input.bankAccountId || row.role !== "bank"))
+              return yield* failure("InvalidJournal");
+          }
+
+          if (
+            command.input.currency === book.currency &&
+            command.input.currencyScale !== book.currencyScale
+          )
+            return yield* failure("InvalidJournal");
+
+          for (const id of [
+            command.input.processorControlAccountId,
+            command.input.payoutTransitAccountId,
+          ]) {
+            if ((yield* Db.readAccountForControl(tx, command.scope.bookId, id)).length > 0)
+              return yield* failure("IdempotencyConflict");
+          }
+
+          if (command.input.currency === book.currency) {
+            const opening = (yield* CashDb.readLedger(
+              tx,
+              command.scope.bookId,
+              command.input.processorControlAccountId,
+              "9999-12-31",
+            ))[0];
+
+            if (opening?.carryingMinor !== "0") return yield* failure("UnsupportedProfile");
+          }
+
+          const body = {
+            ...command.input,
+            id: newId("processor_account"),
+            scope: command.scope,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const account = yield* decode(Contracts.Account, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertAccount(tx, {
+            bookId: command.scope.bookId,
+            ...account,
+            body: yield* toJsonObject(account),
+          });
+
+          return { receipt: yield* toJsonObject(account), result: account };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(tx, Db.tables, true);
-      const book = (yield* PostingDb.readBook(tx, command.scope))[0];
-
-      const evidence = (yield* PostingDb.readEvidence(
-        tx,
-        command.scope.bookId,
-        command.input.evidenceId,
-      ))[0];
-
-      if (!book || book.authority !== "native" || book.profile !== "synthetic-core-v1" || !evidence)
-        return yield* failure("UnsupportedProfile");
-
-      const ids = [
-        command.input.processorControlAccountId,
-        command.input.payoutTransitAccountId,
-        command.input.feeCostAccountId,
-        command.input.disputeReceivableAccountId,
-        command.input.disputeLossAccountId,
-        command.input.bankAccountId,
-        command.input.gainAccountId,
-        command.input.lossAccountId,
-      ];
-
-      if (new Set(ids).size !== ids.length) return yield* failure("InvalidJournal");
-      const accounts = yield* PostingDb.readAccounts(tx, command.scope.bookId, ids);
-
-      if (
-        accounts.length !== ids.length ||
-        accounts.some((row) => !row.active) ||
-        (yield* FxDb.readBankAccount(tx, command.scope.bookId, command.input.bankAccountId))
-          .length === 0
-      )
-        return yield* failure("InvalidJournal");
-
-      for (const id of ids) {
-        const roles = yield* readAccountRoles(tx, command.scope.bookId, id);
-
-        if (roles.some((row) => id !== command.input.bankAccountId || row.role !== "bank"))
-          return yield* failure("InvalidJournal");
-      }
-
-      if (
-        command.input.currency === book.currency &&
-        command.input.currencyScale !== book.currencyScale
-      )
-        return yield* failure("InvalidJournal");
-
-      for (const id of [
-        command.input.processorControlAccountId,
-        command.input.payoutTransitAccountId,
-      ]) {
-        if ((yield* Db.readAccountForControl(tx, command.scope.bookId, id)).length > 0)
-          return yield* failure("IdempotencyConflict");
-      }
-
-      if (command.input.currency === book.currency) {
-        const opening = (yield* CashDb.readLedger(
-          tx,
-          command.scope.bookId,
-          command.input.processorControlAccountId,
-          "9999-12-31",
-        ))[0];
-
-        if (opening?.carryingMinor !== "0") return yield* failure("UnsupportedProfile");
-      }
-
-      const body = {
-        ...command.input,
-        id: newId("processor_account"),
-        scope: command.scope,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const account = yield* decode(Contracts.Account, { ...body, digest: yield* digest(body) });
-      yield* Db.insertAccount(tx, {
-        bookId: command.scope.bookId,
-        ...account,
-        body: yield* toJsonObject(account),
-      });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "processor_register_account",
-        principal.actorId,
-        yield* toJsonObject(account),
-      );
-
-      return account;
     },
     "update",
   );
@@ -207,96 +214,92 @@ export const prepareProcessorClearing = Effect.fn("processor.prepare")(function*
     command.scope,
     false,
     function* (tx, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "processor_prepare",
-        principal.actorId,
-        yield* toJsonObject(command),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "processor_prepare",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command),
+        },
         Contracts.Review,
+        Effect.gen(function* () {
+          yield* requireTableAccess(tx, Db.tables, true);
+
+          const compiled = yield* compileProcessorReview(tx, command.scope, command.input);
+
+          const id = newId("processor_review");
+
+          let postingAction: typeof Accounting.VoucherPostingAction.Type | null = null;
+
+          if (compiled.journal.length > 0) {
+            const eventId = yield* ensureEvent(
+              tx,
+              command.scope,
+              command.input.evidenceId,
+              `processor_${id}`,
+            );
+
+            postingAction = yield* decode(
+              Accounting.VoucherPostingAction,
+              yield* toJsonObject({
+                kind: "post_voucher",
+                correctsVoucherId: null,
+                fiscalYearId: compiled.fiscalYearId,
+                accountingPeriodId: command.input.accountingPeriodId,
+                series: command.input.series,
+                postingDate: command.input.date,
+                eventId,
+                postingPurpose: "adjustment",
+                occurrenceKey: id,
+                description: command.input.reason,
+                currency: compiled.bookCurrency,
+                rationale: command.input.reason,
+                taxAssessment: "not_applicable",
+                evidenceRefs: [
+                  {
+                    evidenceId: compiled.snapshot.evidence.id,
+                    sha256: compiled.snapshot.evidence.sha256,
+                    locator: compiled.sourceIdentity,
+                  },
+                ],
+                lines: compiled.journal.map((line) => ({
+                  ...line,
+                  lineId: newId("line"),
+                  sourceLineId: null,
+                })),
+              }),
+            );
+          }
+
+          const body = {
+            id,
+            scope: command.scope,
+            actorId: principal.actorId,
+            version: 1,
+            input: command.input,
+            ...compiledFacts(compiled),
+            postingAction,
+            createdAt: yield* isoNow(tx),
+          };
+
+          const review = yield* decode(
+            Contracts.Review,
+            yield* toJsonObject({ ...body, digest: yield* digest(yield* toJsonObject(body)) }),
+          );
+
+          yield* Db.insertReview(tx, {
+            bookId: command.scope.bookId,
+            id,
+            actorId: principal.actorId,
+            sourceIdentity: compiled.sourceIdentity,
+            body: yield* toJsonObject(review),
+          });
+
+          return { receipt: yield* toJsonObject(review), result: review };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(tx, Db.tables, true);
-      const compiled = yield* compileProcessorReview(tx, command.scope, command.input);
-      const id = newId("processor_review");
-      let postingAction: typeof Accounting.VoucherPostingAction.Type | null = null;
-
-      if (compiled.journal.length > 0) {
-        const eventId = yield* ensureEvent(
-          tx,
-          command.scope,
-          command.input.evidenceId,
-          `processor_${id}`,
-        );
-
-        postingAction = yield* decode(
-          Accounting.VoucherPostingAction,
-          yield* toJsonObject({
-            kind: "post_voucher",
-            correctsVoucherId: null,
-            fiscalYearId: compiled.fiscalYearId,
-            accountingPeriodId: command.input.accountingPeriodId,
-            series: command.input.series,
-            postingDate: command.input.date,
-            eventId,
-            postingPurpose: "adjustment",
-            occurrenceKey: id,
-            description: command.input.reason,
-            currency: compiled.bookCurrency,
-            rationale: command.input.reason,
-            taxAssessment: "not_applicable",
-            evidenceRefs: [
-              {
-                evidenceId: compiled.snapshot.evidence.id,
-                sha256: compiled.snapshot.evidence.sha256,
-                locator: compiled.sourceIdentity,
-              },
-            ],
-            lines: compiled.journal.map((line) => ({
-              ...line,
-              lineId: newId("line"),
-              sourceLineId: null,
-            })),
-          }),
-        );
-      }
-
-      const body = {
-        id,
-        scope: command.scope,
-        actorId: principal.actorId,
-        version: 1,
-        input: command.input,
-        ...compiledFacts(compiled),
-        postingAction,
-        createdAt: yield* isoNow(tx),
-      };
-
-      const review = yield* decode(
-        Contracts.Review,
-        yield* toJsonObject({ ...body, digest: yield* digest(yield* toJsonObject(body)) }),
-      );
-
-      yield* Db.insertReview(tx, {
-        bookId: command.scope.bookId,
-        id,
-        actorId: principal.actorId,
-        sourceIdentity: compiled.sourceIdentity,
-        body: yield* toJsonObject(review),
-      });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "processor_prepare",
-        principal.actorId,
-        yield* toJsonObject(review),
-      );
-
-      return review;
     },
     "update",
   );
@@ -316,57 +319,50 @@ export const approveProcessorClearing = Effect.fn("processor.approve")(function*
       if ((yield* Db.readReturn(tx, command.scope.bookId, command.reviewId)).length > 0)
         return yield* failure("StaleDependency");
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "processor_approve",
-        principal.actorId,
-        yield* toJsonObject(command),
-        Contracts.Approval,
-      );
-
-      if (request.previous) return request.previous;
-      const review = yield* readReview(tx, command.scope, command.reviewId);
-
-      if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
-
-      if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-      yield* currentReview(tx, command.scope, review);
-
-      const approval = yield* decode(Contracts.Approval, {
-        id: newId("processor_approval"),
-        reviewId: review.id,
-        actorId: principal.actorId,
-        digest: review.digest,
-        expiresAt: new Date(Date.parse(yield* isoNow(tx)) + 3600000).toISOString(),
-      });
-
-      yield* Db.insertApproval(tx, {
-        bookId: command.scope.bookId,
-        ...approval,
-        body: {
-          ...(yield* toJsonObject(approval)),
-          authorityBasis: yield* collectPostingPrincipalBasis(
-            tx,
-            command.scope,
-            principal,
-            "approve_change",
-            "informational",
-          ),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "processor_approve",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command),
         },
-      });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "processor_approve",
-        principal.actorId,
-        yield* toJsonObject(approval),
-      );
+        Contracts.Approval,
+        Effect.gen(function* () {
+          const review = yield* readReview(tx, command.scope, command.reviewId);
 
-      return approval;
+          if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
+
+          if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+          yield* currentReview(tx, command.scope, review);
+
+          const approval = yield* decode(Contracts.Approval, {
+            id: newId("processor_approval"),
+            reviewId: review.id,
+            actorId: principal.actorId,
+            digest: review.digest,
+            expiresAt: new Date(Date.parse(yield* isoNow(tx)) + 3600000).toISOString(),
+          });
+
+          yield* Db.insertApproval(tx, {
+            bookId: command.scope.bookId,
+            ...approval,
+            body: {
+              ...(yield* toJsonObject(approval)),
+              authorityBasis: yield* collectPostingPrincipalBasis(
+                tx,
+                command.scope,
+                principal,
+                "approve_change",
+                "informational",
+              ),
+            },
+          });
+
+          return { receipt: yield* toJsonObject(approval), result: approval };
+        }),
+      );
     },
     "update",
   );
@@ -399,7 +395,9 @@ function consumeObligation(
     }
 
     if (!review.postingAction) return yield* failure("InternalError");
+
     const action = yield* decode(Accounting.VoucherPostingAction, review.postingAction);
+
     const line = action.lines.find((candidate) => candidate.accountId === obligation.accountId);
 
     if (!line) return yield* failure("InternalError");
@@ -467,6 +465,7 @@ function persistEffects(
       });
 
     if (!compiled.bankClaim) return;
+
     let lineId = compiled.bankClaim.adoptedLineId;
 
     if (!lineId && review.postingAction) {
@@ -526,9 +525,11 @@ export const executeProcessorClearing = Effect.fn("processor.execute")(function*
       );
 
       if (request.previous) return request.previous;
+
       const review = yield* readReview(tx, command.scope, command.reviewId);
 
       if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
+
       const prior = (yield* Db.readExecution(tx, command.scope.bookId, review.id))[0];
 
       if (prior) {
@@ -554,6 +555,7 @@ export const executeProcessorClearing = Effect.fn("processor.execute")(function*
       ))[0];
 
       if (!row) return yield* failure("ApprovalRequired");
+
       const approval = yield* decode(Contracts.Approval, row.body);
 
       if (
@@ -564,7 +566,9 @@ export const executeProcessorClearing = Effect.fn("processor.execute")(function*
         (yield* PostingDb.readActorAdmission(tx, approval.actorId))[0]?.enabled === false
       )
         return yield* failure("ApprovalRequired");
+
       const compiled = yield* currentReview(tx, command.scope, review);
+
       let voucherId: string | null = compiled.bankClaim?.adoptedVoucherId ?? null;
 
       if (review.postingAction) {
@@ -662,6 +666,7 @@ export const returnProcessorReview = Effect.fn("processor.returnReview")(functio
     true,
     function* (tx, principal) {
       yield* authorize(principal, "approve_processor_clearing");
+
       const review = yield* readReview(tx, command.scope, command.reviewId);
 
       if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
@@ -673,45 +678,38 @@ export const returnProcessorReview = Effect.fn("processor.returnReview")(functio
       if ((yield* Db.readExecution(tx, command.scope.bookId, review.id)).length > 0)
         return yield* failure("AlreadyPosted");
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "processor_return",
-        principal.actorId,
-        yield* toJsonObject(command),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "processor_return",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command),
+        },
         Contracts.ReviewReturn,
+        Effect.gen(function* () {
+          const prior = (yield* Db.readReturn(tx, command.scope.bookId, review.id))[0];
+
+          const returned = prior
+            ? yield* decode(Contracts.ReviewReturn, prior.body)
+            : yield* decode(Contracts.ReviewReturn, {
+                id: newId("processor_return"),
+                reviewId: review.id,
+                digest: review.digest,
+                actorId: principal.actorId,
+                createdAt: yield* isoNow(tx),
+              });
+
+          if (!prior)
+            yield* Db.insertReturn(tx, command.scope.bookId, {
+              ...returned,
+              body: yield* toJsonObject(returned),
+            });
+
+          return { receipt: yield* toJsonObject(returned), result: returned };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const prior = (yield* Db.readReturn(tx, command.scope.bookId, review.id))[0];
-
-      const returned = prior
-        ? yield* decode(Contracts.ReviewReturn, prior.body)
-        : yield* decode(Contracts.ReviewReturn, {
-            id: newId("processor_return"),
-            reviewId: review.id,
-            digest: review.digest,
-            actorId: principal.actorId,
-            createdAt: yield* isoNow(tx),
-          });
-
-      if (!prior)
-        yield* Db.insertReturn(tx, command.scope.bookId, {
-          ...returned,
-          body: yield* toJsonObject(returned),
-        });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "processor_return",
-        principal.actorId,
-        yield* toJsonObject(returned),
-      );
-
-      return returned;
     },
     "update",
   );

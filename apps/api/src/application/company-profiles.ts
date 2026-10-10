@@ -1,15 +1,11 @@
+import { runBookCommandWithReceipt } from "./book-commands";
 import { collectPostingActorBasis, collectPostingPrincipalBasis } from "./posting-authority";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Effect from "effect/Effect";
-import {
-  readExecutionApprovalInTransaction,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
-  versionedDigest,
-  digest,
-} from "./posting";
+import { readExecutionApprovalInTransaction } from "./posting-approval";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
+import { versionedDigest, digest } from "./json";
 import { failure } from "./failures";
 import { readTableAccess } from "../db/commerce/access";
 import {
@@ -253,87 +249,83 @@ export const recordCompanyFact = Effect.fn("companyProfiles.recordFact")(functio
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "record_company_fact",
-        principal.actorId,
-        input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "record_company_fact",
+          actorId: principal.actorId,
+          input: input,
+        },
         Profiles.FactRevision,
+        Effect.gen(function* () {
+          yield* requireProfileTables(transaction, true);
+
+          const decoded = yield* decode(Profiles.RecordFactRevision, input);
+          const book = (yield* Ledger.readBook(transaction, command.scope))[0];
+
+          if (!book) return yield* failure("Forbidden");
+
+          for (const reference of decoded.evidence) {
+            yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
+          }
+
+          const priorId = decoded.supersedesId;
+
+          const superseded =
+            priorId === null
+              ? null
+              : ((yield* entityRevisions(transaction, book.entityId)).find(
+                  (row) => row.id === priorId,
+                ) ?? null);
+
+          if (priorId !== null && superseded === null) return yield* failure("NotFound");
+
+          if (superseded !== null && superseded.factKind !== decoded.factKind) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const body = yield* toJsonObject({
+            id: newId("fact"),
+            entityId: book.entityId,
+            ...decoded,
+            recordedBy: principal.actorId,
+            recordedAt: yield* isoNow(transaction),
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "record_company_fact",
+              principal.actorId,
+            ),
+          });
+
+          const sealed = yield* digest(body);
+          const result = yield* decode(Profiles.FactRevision, { ...body, digest: sealed });
+          const row = yield* toJsonObject(result);
+
+          yield* Db.insertFactRevision(transaction, {
+            entityId: book.entityId,
+            id: result.id,
+            factKind: result.factKind,
+            effectiveFrom: result.effectiveFrom,
+            effectiveTo: result.effectiveTo,
+            supersedesId: result.supersedesId,
+            recordedBy: principal.actorId,
+            recordedAt: result.recordedAt,
+            digest: sealed,
+            body: row,
+          });
+
+          if (superseded !== null) {
+            yield* recordImpacts(transaction, command.scope, {
+              factRevisionId: result.id,
+              supersededRevisionId: superseded.id,
+            });
+          }
+
+          return { receipt: row, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireProfileTables(transaction, true);
-
-      const decoded = yield* decode(Profiles.RecordFactRevision, input);
-      const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      for (const reference of decoded.evidence) {
-        yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
-      }
-
-      const priorId = decoded.supersedesId;
-
-      const superseded =
-        priorId === null
-          ? null
-          : ((yield* entityRevisions(transaction, book.entityId)).find(
-              (row) => row.id === priorId,
-            ) ?? null);
-
-      if (priorId !== null && superseded === null) return yield* failure("NotFound");
-
-      if (superseded !== null && superseded.factKind !== decoded.factKind) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const body = yield* toJsonObject({
-        id: newId("fact"),
-        entityId: book.entityId,
-        ...decoded,
-        recordedBy: principal.actorId,
-        recordedAt: yield* isoNow(transaction),
-        receipt: commandReceipt(command.idempotencyKey, "record_company_fact", principal.actorId),
-      });
-
-      const sealed = yield* digest(body);
-      const result = yield* decode(Profiles.FactRevision, { ...body, digest: sealed });
-      const row = yield* toJsonObject(result);
-
-      yield* Db.insertFactRevision(transaction, {
-        entityId: book.entityId,
-        id: result.id,
-        factKind: result.factKind,
-        effectiveFrom: result.effectiveFrom,
-        effectiveTo: result.effectiveTo,
-        supersedesId: result.supersedesId,
-        recordedBy: principal.actorId,
-        recordedAt: result.recordedAt,
-        digest: sealed,
-        body: row,
-      });
-
-      if (superseded !== null) {
-        yield* recordImpacts(transaction, command.scope, {
-          factRevisionId: result.id,
-          supersededRevisionId: superseded.id,
-        });
-      }
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "record_company_fact",
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );
@@ -406,72 +398,69 @@ export const reviewCompanyFact = Effect.fn("companyProfiles.reviewFact")(functio
       const input = yield* toJsonObject(command.input);
       const decoded = yield* decode(Profiles.ReviewFactRevision, input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "review_company_fact",
-        principal.actorId,
-        { factRevisionId: decoded.factRevisionId, input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "review_company_fact",
+          actorId: principal.actorId,
+          input: { factRevisionId: decoded.factRevisionId, input },
+        },
         Profiles.FactReview,
+        Effect.gen(function* () {
+          yield* requireProfileTables(transaction, true);
+          const book = (yield* Ledger.readBook(transaction, command.scope))[0];
+
+          if (!book) return yield* failure("Forbidden");
+
+          const revision = (yield* entityRevisions(transaction, book.entityId)).find(
+            (row) => row.id === decoded.factRevisionId,
+          );
+
+          if (!revision) return yield* failure("NotFound");
+
+          if (revision.digest !== decoded.expectedDigest) return yield* failure("StaleDependency");
+
+          if (revision.recordedBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          // One immutable review per revision. A changed view needs a new revision.
+          if ((yield* Db.readFactReview(transaction, book.entityId, revision.id)).length > 0) {
+            return yield* failure("IdempotencyConflict");
+          }
+
+          const body = yield* toJsonObject({
+            factRevisionId: revision.id,
+            entityId: book.entityId,
+            revisionDigest: revision.digest,
+            reviewer: principal.actorId,
+            result: decoded.result,
+            rationale: decoded.rationale,
+            reviewedAt: yield* isoNow(transaction),
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "review_company_fact",
+              principal.actorId,
+            ),
+          });
+
+          const sealed = yield* digest(body);
+          const result = yield* decode(Profiles.FactReview, { ...body, digest: sealed });
+          const row = yield* toJsonObject(result);
+
+          yield* Db.insertFactReview(transaction, {
+            entityId: book.entityId,
+            factRevisionId: revision.id,
+            reviewer: principal.actorId,
+            result: result.result,
+            reviewedAt: result.reviewedAt,
+            digest: sealed,
+            body: row,
+          });
+
+          return { receipt: row, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireProfileTables(transaction, true);
-      const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
-      const revision = (yield* entityRevisions(transaction, book.entityId)).find(
-        (row) => row.id === decoded.factRevisionId,
-      );
-
-      if (!revision) return yield* failure("NotFound");
-
-      if (revision.digest !== decoded.expectedDigest) return yield* failure("StaleDependency");
-
-      if (revision.recordedBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      // One immutable review per revision. A changed view needs a new revision.
-      if ((yield* Db.readFactReview(transaction, book.entityId, revision.id)).length > 0) {
-        return yield* failure("IdempotencyConflict");
-      }
-
-      const body = yield* toJsonObject({
-        factRevisionId: revision.id,
-        entityId: book.entityId,
-        revisionDigest: revision.digest,
-        reviewer: principal.actorId,
-        result: decoded.result,
-        rationale: decoded.rationale,
-        reviewedAt: yield* isoNow(transaction),
-        receipt: commandReceipt(command.idempotencyKey, "review_company_fact", principal.actorId),
-      });
-
-      const sealed = yield* digest(body);
-      const result = yield* decode(Profiles.FactReview, { ...body, digest: sealed });
-      const row = yield* toJsonObject(result);
-
-      yield* Db.insertFactReview(transaction, {
-        entityId: book.entityId,
-        factRevisionId: revision.id,
-        reviewer: principal.actorId,
-        result: result.result,
-        reviewedAt: result.reviewedAt,
-        digest: sealed,
-        body: row,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "review_company_fact",
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );
@@ -492,85 +481,78 @@ export const recordCompanyRoleBinding = Effect.fn("companyProfiles.recordRoleBin
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "record_company_role_binding",
-        principal.actorId,
-        input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "record_company_role_binding",
+          actorId: principal.actorId,
+          input: input,
+        },
         Profiles.RoleBinding,
+        Effect.gen(function* () {
+          yield* requireProfileTables(transaction, true);
+
+          const decoded = yield* decode(Profiles.RecordRoleBinding, input);
+
+          const accounts = yield* Ledger.readAccounts(transaction, command.scope.bookId, [
+            decoded.accountId,
+          ]);
+
+          if (accounts.length !== 1) return yield* failure("NotFound");
+
+          if (decoded.reviewer === principal.actorId) return yield* failure("ApprovalRequired");
+
+          for (const reference of decoded.evidence) {
+            yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
+          }
+
+          if (
+            decoded.supersedesId !== null &&
+            (yield* Db.readRoleBinding(transaction, command.scope.bookId, decoded.supersedesId))
+              .length === 0
+          ) {
+            return yield* failure("NotFound");
+          }
+
+          const body = yield* toJsonObject({
+            id: newId("role"),
+            scope: command.scope,
+            ...decoded,
+            accountVersion: (accounts[0]?.version ?? 0n).toString(),
+            recordedBy: principal.actorId,
+            recordedAt: yield* isoNow(transaction),
+            receipt: commandReceipt(
+              command.idempotencyKey,
+              "record_company_role_binding",
+              principal.actorId,
+            ),
+          });
+
+          const sealed = yield* digest(body);
+          const result = yield* decode(Profiles.RoleBinding, { ...body, digest: sealed });
+          const row = yield* toJsonObject(result);
+
+          yield* Db.insertRoleBinding(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            roleKind: result.roleKind,
+            accountId: result.accountId,
+            accountVersion: BigInt(result.accountVersion),
+            effectiveFrom: result.effectiveFrom,
+            effectiveTo: result.effectiveTo,
+            supersedesId: result.supersedesId,
+            reviewer: result.reviewer,
+            recordedBy: principal.actorId,
+            recordedAt: result.recordedAt,
+            digest: sealed,
+            body: row,
+          });
+
+          return { receipt: row, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireProfileTables(transaction, true);
-
-      const decoded = yield* decode(Profiles.RecordRoleBinding, input);
-
-      const accounts = yield* Ledger.readAccounts(transaction, command.scope.bookId, [
-        decoded.accountId,
-      ]);
-
-      if (accounts.length !== 1) return yield* failure("NotFound");
-
-      if (decoded.reviewer === principal.actorId) return yield* failure("ApprovalRequired");
-
-      for (const reference of decoded.evidence) {
-        yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
-      }
-
-      if (
-        decoded.supersedesId !== null &&
-        (yield* Db.readRoleBinding(transaction, command.scope.bookId, decoded.supersedesId))
-          .length === 0
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const body = yield* toJsonObject({
-        id: newId("role"),
-        scope: command.scope,
-        ...decoded,
-        accountVersion: (accounts[0]?.version ?? 0n).toString(),
-        recordedBy: principal.actorId,
-        recordedAt: yield* isoNow(transaction),
-        receipt: commandReceipt(
-          command.idempotencyKey,
-          "record_company_role_binding",
-          principal.actorId,
-        ),
-      });
-
-      const sealed = yield* digest(body);
-      const result = yield* decode(Profiles.RoleBinding, { ...body, digest: sealed });
-      const row = yield* toJsonObject(result);
-
-      yield* Db.insertRoleBinding(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        roleKind: result.roleKind,
-        accountId: result.accountId,
-        accountVersion: BigInt(result.accountVersion),
-        effectiveFrom: result.effectiveFrom,
-        effectiveTo: result.effectiveTo,
-        supersedesId: result.supersedesId,
-        reviewer: result.reviewer,
-        recordedBy: principal.actorId,
-        recordedAt: result.recordedAt,
-        digest: sealed,
-        body: row,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "record_company_role_binding",
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );
@@ -620,87 +602,82 @@ export const prepareCompanyActivation = Effect.fn("companyProfiles.prepareActiva
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_company_activation",
-        principal.actorId,
-        input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_company_activation",
+          actorId: principal.actorId,
+          input: input,
+        },
         Profiles.CompanyActivationPlan,
+        Effect.gen(function* () {
+          yield* requireProfileTables(transaction, true);
+
+          const prepared = yield* decode(Profiles.PrepareCompanyActivation, input);
+          const date = selectorDate(prepared.family, prepared.dates);
+
+          if (date === null) return yield* failure("InvalidJournal");
+
+          if (prepared.effectiveTo !== null && prepared.effectiveTo < prepared.effectiveFrom) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const resolved = yield* resolveCompanyProfileInTransaction(
+            transaction,
+            command.scope,
+            prepared.recordClass,
+            prepared.dates,
+          );
+
+          const resolution = resolved.families.find((entry) => entry.family === prepared.family);
+
+          if (!resolution || resolution.witness === null)
+            return yield* failure("UnsupportedProfile");
+
+          if (resolution.witness.activationId !== null)
+            return yield* failure("IdempotencyConflict");
+
+          yield* Db.insertFamilyMembership(transaction, command.scope.bookId, prepared.family);
+
+          const epoch =
+            (yield* Db.readFamilyMembership(
+              transaction,
+              command.scope.bookId,
+              prepared.family,
+              "share",
+            ))[0]?.membershipEpoch ?? 1n;
+
+          const body = yield* toJsonObject({
+            schemaVersion: 1,
+            canonicalization: "openerp-c14n-v1",
+            owner: "company_activation",
+            id: newId("activation_plan"),
+            scope: command.scope,
+            version: 1,
+            input: prepared,
+            witness: resolution.witness,
+            dependencies: activationDependencies(resolution.witness, epoch),
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(transaction),
+          });
+
+          const sealed = yield* versionedDigest(body);
+          const result = yield* decode(Profiles.CompanyActivationPlan, { ...body, digest: sealed });
+          const row = yield* toJsonObject(result);
+
+          yield* Ledger.insertPlan(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            plan: row,
+            digest: sealed,
+            createdBy: principal.actorId,
+          });
+
+          return { receipt: row, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireProfileTables(transaction, true);
-
-      const prepared = yield* decode(Profiles.PrepareCompanyActivation, input);
-      const date = selectorDate(prepared.family, prepared.dates);
-
-      if (date === null) return yield* failure("InvalidJournal");
-
-      if (prepared.effectiveTo !== null && prepared.effectiveTo < prepared.effectiveFrom) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const resolved = yield* resolveCompanyProfileInTransaction(
-        transaction,
-        command.scope,
-        prepared.recordClass,
-        prepared.dates,
-      );
-
-      const resolution = resolved.families.find((entry) => entry.family === prepared.family);
-
-      if (!resolution || resolution.witness === null) return yield* failure("UnsupportedProfile");
-
-      if (resolution.witness.activationId !== null) return yield* failure("IdempotencyConflict");
-
-      yield* Db.insertFamilyMembership(transaction, command.scope.bookId, prepared.family);
-
-      const epoch =
-        (yield* Db.readFamilyMembership(
-          transaction,
-          command.scope.bookId,
-          prepared.family,
-          "share",
-        ))[0]?.membershipEpoch ?? 1n;
-
-      const body = yield* toJsonObject({
-        schemaVersion: 1,
-        canonicalization: "openerp-c14n-v1",
-        owner: "company_activation",
-        id: newId("activation_plan"),
-        scope: command.scope,
-        version: 1,
-        input: prepared,
-        witness: resolution.witness,
-        dependencies: activationDependencies(resolution.witness, epoch),
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-      });
-
-      const sealed = yield* versionedDigest(body);
-      const result = yield* decode(Profiles.CompanyActivationPlan, { ...body, digest: sealed });
-      const row = yield* toJsonObject(result);
-
-      yield* Ledger.insertPlan(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        plan: row,
-        digest: sealed,
-        createdBy: principal.actorId,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_company_activation",
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );
@@ -732,66 +709,63 @@ export const approveCompanyActivation = Effect.fn("companyProfiles.approveActiva
     function* (transaction, principal) {
       const { scope, planId, idempotencyKey, input } = command;
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        scope,
-        idempotencyKey,
-        "approve_company_activation",
-        principal.actorId,
-        { id: planId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: "approve_company_activation",
+          actorId: principal.actorId,
+          input: { id: planId, input },
+        },
         Profiles.CompanyActivationApproval,
+        Effect.gen(function* () {
+          const plan = yield* readActivationPlan(transaction, scope, planId);
+
+          if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
+
+          const now = yield* isoNow(transaction);
+
+          const approval = yield* Ledger.insertApproval(transaction, {
+            bookId: scope.bookId,
+            id: newId("activation_approval"),
+            changeSetId: plan.id,
+            digest: plan.digest,
+            actorId: principal.actorId,
+            expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
+          }).pipe(
+            Effect.flatMap((rows) =>
+              rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"),
+            ),
+          );
+
+          const result = yield* decode(Profiles.CompanyActivationApproval, {
+            id: approval.id,
+            planId: plan.id,
+            planDigest: approval.digest,
+            scope,
+            actorId: approval.actorId,
+            expiresAt: approval.expiresAt,
+            createdAt: now,
+            receipt: commandReceipt(
+              idempotencyKey,
+              "approve_company_activation",
+              principal.actorId,
+            ),
+          });
+
+          const row = yield* toJsonObject(result);
+
+          return { receipt: row, result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const plan = yield* readActivationPlan(transaction, scope, planId);
-
-      if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
-
-      const now = yield* isoNow(transaction);
-
-      const approval = yield* Ledger.insertApproval(transaction, {
-        bookId: scope.bookId,
-        id: newId("activation_approval"),
-        changeSetId: plan.id,
-        digest: plan.digest,
-        actorId: principal.actorId,
-        expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          scope,
-          principal,
-          "approve_change",
-          "informational",
-        ),
-      }).pipe(
-        Effect.flatMap((rows) => (rows[0] ? Effect.succeed(rows[0]) : failure("InternalError"))),
-      );
-
-      const result = yield* decode(Profiles.CompanyActivationApproval, {
-        id: approval.id,
-        planId: plan.id,
-        planDigest: approval.digest,
-        scope,
-        actorId: approval.actorId,
-        expiresAt: approval.expiresAt,
-        createdAt: now,
-        receipt: commandReceipt(idempotencyKey, "approve_company_activation", principal.actorId),
-      });
-
-      const row = yield* toJsonObject(result);
-
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        "approve_company_activation",
-        principal.actorId,
-        row,
-      );
-
-      return result;
     },
     "update",
   );
@@ -824,187 +798,189 @@ export const executeCompanyActivation = Effect.fn("companyProfiles.executeActiva
     function* (transaction, principal) {
       const { scope, planId, idempotencyKey, input } = command;
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        scope,
-        idempotencyKey,
-        "execute_company_activation",
-        principal.actorId,
-        { id: planId, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: "execute_company_activation",
+          actorId: principal.actorId,
+          input: { id: planId, input },
+        },
         Profiles.CompanyActivationReceipt,
+        Effect.gen(function* () {
+          const plan = yield* readActivationPlan(transaction, scope, planId);
+
+          if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
+
+          const resolved = yield* resolveCompanyProfileInTransaction(
+            transaction,
+            scope,
+            plan.witness.recordClass,
+            plan.witness.dates,
+          );
+
+          const current = resolved.families.find((entry) => entry.family === plan.witness.family);
+
+          if (
+            current?.witness === null ||
+            current?.witness === undefined ||
+            current.witness.ruleReleaseId !== plan.witness.ruleReleaseId ||
+            !equalLists(current.witness.factRevisionIds, plan.witness.factRevisionIds) ||
+            !equalLists(current.witness.factReviewIds, plan.witness.factReviewIds) ||
+            !equalLists(current.witness.roleBindingIds, plan.witness.roleBindingIds) ||
+            current.witness.activationId !== null
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          if (
+            (yield* Db.readActivationByChangeSet(transaction, scope.bookId, plan.id)).length > 0
+          ) {
+            return yield* failure("IdempotencyConflict");
+          }
+
+          yield* Db.insertFamilyMembership(transaction, scope.bookId, plan.witness.family);
+
+          const membership = yield* Db.readFamilyMembership(
+            transaction,
+            scope.bookId,
+            plan.witness.family,
+            "update",
+          );
+
+          const epoch = membership[0]?.membershipEpoch;
+
+          if (epoch === undefined || epoch.toString() !== plannedEpoch(plan)) {
+            return yield* failure("StaleDependency");
+          }
+
+          const approval = yield* readExecutionApprovalInTransaction(
+            transaction,
+            scope,
+            { id: plan.id, planDigest: plan.digest },
+            input.approvalId,
+          );
+
+          if (approval.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const committedAt = yield* isoNow(transaction);
+          const activationId = newId("activation");
+          const groupId = newId("activation_group");
+
+          const body = yield* toJsonObject({
+            id: activationId,
+            scope,
+            family: plan.witness.family,
+            ruleReleaseId: plan.witness.ruleReleaseId,
+            factRevisionIds: plan.witness.factRevisionIds,
+            factReviewIds: plan.witness.factReviewIds,
+            roleBindingIds: plan.witness.roleBindingIds,
+            applicabilityScope: scope,
+            effectiveFrom: plan.input.effectiveFrom,
+            effectiveTo: plan.input.effectiveTo,
+            changeSetId: plan.id,
+            approvedDigest: plan.digest,
+            activatedBy: principal.actorId,
+            activatedAt: committedAt,
+          });
+
+          const sealed = yield* digest(body);
+          const activation = yield* decode(Profiles.CompanyActivation, { ...body, digest: sealed });
+
+          const receipt = yield* decode(Profiles.CompanyActivationReceipt, {
+            id: newId("activation_receipt"),
+            scope,
+            changeSetId: plan.id,
+            groupId,
+            planDigest: plan.digest,
+            activationId,
+            approvalId: approval.id,
+            journalIds: [],
+            noFinancialEffect: true,
+            committedAt,
+            receipt: commandReceipt(
+              idempotencyKey,
+              "execute_company_activation",
+              principal.actorId,
+            ),
+          });
+
+          const groupReceipt = yield* toJsonObject({
+            id: receipt.id,
+            changeSetId: plan.id,
+            groupId,
+            planDigest: plan.digest,
+            noFinancialEffect: true,
+            activationId,
+            approvalId: approval.id,
+            journalIds: [],
+            committedAt,
+          });
+
+          yield* Db.insertActivation(transaction, {
+            bookId: scope.bookId,
+            id: activationId,
+            family: activation.family,
+            ruleReleaseId: activation.ruleReleaseId,
+            changeSetId: plan.id,
+            effectiveFrom: activation.effectiveFrom,
+            effectiveTo: activation.effectiveTo,
+            activatedBy: principal.actorId,
+            activatedAt: committedAt,
+            digest: sealed,
+            body: yield* toJsonObject(activation),
+          });
+          yield* Db.bumpFamilyMembership(
+            transaction,
+            scope.bookId,
+            plan.witness.family,
+            committedAt,
+          );
+          yield* Ledger.insertGroupReceipt(transaction, {
+            bookId: scope.bookId,
+            id: receipt.id,
+            changeSetId: plan.id,
+            groupId,
+            planDigest: plan.digest,
+            body: groupReceipt,
+            committedAt,
+          });
+          yield* Ledger.insertApprovalConsumption(transaction, {
+            bookId: scope.bookId,
+            approvalId: approval.id,
+            changeSetId: plan.id,
+            groupId,
+            planDigest: plan.digest,
+            receiptId: receipt.id,
+            approverId: approval.actorId,
+            consumedById: principal.actorId,
+            consumedAt: committedAt,
+            approverBasis: yield* collectPostingActorBasis(
+              transaction,
+              scope,
+              approval.actorId,
+              "approve_change",
+              "informational",
+            ),
+            executorBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              scope,
+              principal,
+              "execute_change",
+            ),
+          });
+
+          if (
+            (yield* Ledger.consumeApproval(transaction, scope.bookId, approval.id, committedAt))
+              .length !== 1
+          ) {
+            return yield* failure("InternalError");
+          }
+
+          return { receipt: yield* toJsonObject(receipt), result: receipt };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const plan = yield* readActivationPlan(transaction, scope, planId);
-
-      if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
-
-      const resolved = yield* resolveCompanyProfileInTransaction(
-        transaction,
-        scope,
-        plan.witness.recordClass,
-        plan.witness.dates,
-      );
-
-      const current = resolved.families.find((entry) => entry.family === plan.witness.family);
-
-      if (
-        current?.witness === null ||
-        current?.witness === undefined ||
-        current.witness.ruleReleaseId !== plan.witness.ruleReleaseId ||
-        !equalLists(current.witness.factRevisionIds, plan.witness.factRevisionIds) ||
-        !equalLists(current.witness.factReviewIds, plan.witness.factReviewIds) ||
-        !equalLists(current.witness.roleBindingIds, plan.witness.roleBindingIds) ||
-        current.witness.activationId !== null
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      if ((yield* Db.readActivationByChangeSet(transaction, scope.bookId, plan.id)).length > 0) {
-        return yield* failure("IdempotencyConflict");
-      }
-
-      yield* Db.insertFamilyMembership(transaction, scope.bookId, plan.witness.family);
-
-      const membership = yield* Db.readFamilyMembership(
-        transaction,
-        scope.bookId,
-        plan.witness.family,
-        "update",
-      );
-
-      const epoch = membership[0]?.membershipEpoch;
-
-      if (epoch === undefined || epoch.toString() !== plannedEpoch(plan)) {
-        return yield* failure("StaleDependency");
-      }
-
-      const approval = yield* readExecutionApprovalInTransaction(
-        transaction,
-        scope,
-        { id: plan.id, planDigest: plan.digest },
-        input.approvalId,
-      );
-
-      if (approval.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const committedAt = yield* isoNow(transaction);
-      const activationId = newId("activation");
-      const groupId = newId("activation_group");
-
-      const body = yield* toJsonObject({
-        id: activationId,
-        scope,
-        family: plan.witness.family,
-        ruleReleaseId: plan.witness.ruleReleaseId,
-        factRevisionIds: plan.witness.factRevisionIds,
-        factReviewIds: plan.witness.factReviewIds,
-        roleBindingIds: plan.witness.roleBindingIds,
-        applicabilityScope: scope,
-        effectiveFrom: plan.input.effectiveFrom,
-        effectiveTo: plan.input.effectiveTo,
-        changeSetId: plan.id,
-        approvedDigest: plan.digest,
-        activatedBy: principal.actorId,
-        activatedAt: committedAt,
-      });
-
-      const sealed = yield* digest(body);
-      const activation = yield* decode(Profiles.CompanyActivation, { ...body, digest: sealed });
-
-      const receipt = yield* decode(Profiles.CompanyActivationReceipt, {
-        id: newId("activation_receipt"),
-        scope,
-        changeSetId: plan.id,
-        groupId,
-        planDigest: plan.digest,
-        activationId,
-        approvalId: approval.id,
-        journalIds: [],
-        noFinancialEffect: true,
-        committedAt,
-        receipt: commandReceipt(idempotencyKey, "execute_company_activation", principal.actorId),
-      });
-
-      const groupReceipt = yield* toJsonObject({
-        id: receipt.id,
-        changeSetId: plan.id,
-        groupId,
-        planDigest: plan.digest,
-        noFinancialEffect: true,
-        activationId,
-        approvalId: approval.id,
-        journalIds: [],
-        committedAt,
-      });
-
-      yield* Db.insertActivation(transaction, {
-        bookId: scope.bookId,
-        id: activationId,
-        family: activation.family,
-        ruleReleaseId: activation.ruleReleaseId,
-        changeSetId: plan.id,
-        effectiveFrom: activation.effectiveFrom,
-        effectiveTo: activation.effectiveTo,
-        activatedBy: principal.actorId,
-        activatedAt: committedAt,
-        digest: sealed,
-        body: yield* toJsonObject(activation),
-      });
-      yield* Db.bumpFamilyMembership(transaction, scope.bookId, plan.witness.family, committedAt);
-      yield* Ledger.insertGroupReceipt(transaction, {
-        bookId: scope.bookId,
-        id: receipt.id,
-        changeSetId: plan.id,
-        groupId,
-        planDigest: plan.digest,
-        body: groupReceipt,
-        committedAt,
-      });
-      yield* Ledger.insertApprovalConsumption(transaction, {
-        bookId: scope.bookId,
-        approvalId: approval.id,
-        changeSetId: plan.id,
-        groupId,
-        planDigest: plan.digest,
-        receiptId: receipt.id,
-        approverId: approval.actorId,
-        consumedById: principal.actorId,
-        consumedAt: committedAt,
-        approverBasis: yield* collectPostingActorBasis(
-          transaction,
-          scope,
-          approval.actorId,
-          "approve_change",
-          "informational",
-        ),
-        executorBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          scope,
-          principal,
-          "execute_change",
-        ),
-      });
-
-      if (
-        (yield* Ledger.consumeApproval(transaction, scope.bookId, approval.id, committedAt))
-          .length !== 1
-      ) {
-        return yield* failure("InternalError");
-      }
-
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        "execute_company_activation",
-        principal.actorId,
-        yield* toJsonObject(receipt),
-      );
-
-      return receipt;
     },
     "update",
   );

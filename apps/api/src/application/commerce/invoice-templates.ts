@@ -7,7 +7,9 @@ import { readInstant } from "../../db/commerce/access";
 import * as TemplateDb from "../../db/commerce/invoice-templates";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+import { replay, saveCommand } from "../command-receipts";
 import { failure } from "../failures";
 import {
   createInvoiceDraftInTransaction,

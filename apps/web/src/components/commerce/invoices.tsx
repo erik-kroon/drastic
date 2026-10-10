@@ -1,3 +1,5 @@
+import * as Match from "effect/Match";
+import { bookScope } from "@/lib/contract-client";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Badge } from "@open-erp/ui/components/badge";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
@@ -248,7 +250,7 @@ export function InvoiceDetail(
     queryKey: [...commerceKey(book), "invoice", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoices/${encodeURIComponent(id)}`,
+        (client) => client.commerce.commerceGetInvoice({ params: { ...bookScope(book), id: id } }),
         Commerce.Invoice,
         { signal },
       );
@@ -315,11 +317,11 @@ export function InvoiceDetail(
               status={invoice.data.status}
               label={
                 (locale === "sv" ? swedish : english)[
-                  invoice.data.status === "partially_allocated"
-                    ? "partlyAllocated"
-                    : invoice.data.status === "blocked"
-                      ? "needsReview"
-                      : invoice.data.status
+                  Match.value(invoice.data.status).pipe(
+                    Match.when("partially_allocated", () => "partlyAllocated" as const),
+                    Match.when("blocked", () => "needsReview" as const),
+                    Match.orElse((status) => status),
+                  )
                 ]
               }
             />

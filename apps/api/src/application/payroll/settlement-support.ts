@@ -12,7 +12,8 @@ import {
   type Scope,
   type Principal,
 } from "../commerce/support";
-import { digest, isoNow } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
 import { failure } from "../failures";
 
 export const recordMetadata = {

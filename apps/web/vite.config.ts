@@ -27,6 +27,23 @@ export default defineConfig({
       strategy: ["localStorage", "preferredLanguage", "baseLocale"],
     }),
     tanstackStart({
+      router: {
+        virtualRouteConfig:
+          process.env.OPENERP_KANON_SHOWCASE === "1"
+            ? {
+                type: "root",
+                file: "__root.tsx",
+                children: [
+                  { type: "physical", directory: ".", pathPrefix: "/" },
+                  {
+                    type: "route",
+                    path: "/kanon/$screen",
+                    file: "../../verification/kanon/showcase.tsx",
+                  },
+                ],
+              }
+            : undefined,
+      },
       vite: { installDevServerMiddleware: true },
       spa: { enabled: true },
       prerender: {

@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Runs from "@open-erp/contracts/payroll-runs";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
@@ -11,12 +12,10 @@ import {
   approveChangeInTransaction,
   executeChangeInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { compileRun, currentCalculation, requirePayrollAccess } from "./run-basis";
 import { reserveInputs, consumeInputs, reserveMonth } from "./inputs";
 import { reserveClaimInstructions, consumeClaimInstructions } from "./employee-claim-instructions";
@@ -73,94 +72,90 @@ export const prepareRun = Effect.fn("payroll.prepareRun")(function* (
       yield* requirePayrollAccess(tx, command.scope, principal.actorId, true);
       const operation = "prepare_payroll_run";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
-        Runs.PayrollRun,
-      );
-
-      if (request.previous) return request.previous;
-
-      if (new Set(command.input.calculationIds).size !== command.input.calculationIds.length)
-        return yield* failure("InvalidJournal");
-      const employees = [];
-
-      for (const id of command.input.calculationIds)
-        employees.push(yield* currentCalculation(tx, command.scope, id));
-      const id = newId("payroll_run");
-      const journal = yield* compileRun(id, command.input, employees);
-
-      const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
-        scope: command.scope,
-        idempotencyKey: `${id}_prepare`,
-        input: {
-          kind: "manual_journal",
-          evidenceId: command.input.evidenceId,
-          eventKey: id,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: command.input.postingDate,
-          series: command.input.series,
-          description: "Regular payroll accrual",
-          rationale: command.input.reason,
-          taxAssessment: "not_applicable",
-          lines: journal.journal.map(({ accountId, debitMinor, creditMinor, description }) => ({
-            accountId,
-            debitMinor,
-            creditMinor,
-            description,
-          })),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
         },
-      });
-
-      const obligations = employees.map(({ calculation: source }) => ({
-        employeeId: source.employeeId,
-        calculationId: source.id,
-        payableMinor: source.calculation.payableMinor,
-        grossMinor: source.calculation.grossMinor,
-        withholdingMinor: source.calculation.withholdingMinor,
-        netDeductionMinor: source.calculation.netDeductionMinor,
-        employerContributionMinor: source.calculation.employerContributionMinor,
-        contributionBaseMinor: source.calculation.contributionBaseMinor,
-      }));
-
-      const body = {
-        id,
-        scope: command.scope,
-        input: command.input,
-        employees,
-        employeeObligations: obligations,
-        postingPlan,
-        state: "prepared",
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(tx),
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const run = yield* decode(
         Runs.PayrollRun,
-        yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+        Effect.gen(function* () {
+          if (new Set(command.input.calculationIds).size !== command.input.calculationIds.length)
+            return yield* failure("InvalidJournal");
+          const employees = [];
+
+          for (const id of command.input.calculationIds)
+            employees.push(yield* currentCalculation(tx, command.scope, id));
+          const id = newId("payroll_run");
+          const journal = yield* compileRun(id, command.input, employees);
+
+          const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
+            scope: command.scope,
+            idempotencyKey: `${id}_prepare`,
+            input: {
+              kind: "manual_journal",
+              evidenceId: command.input.evidenceId,
+              eventKey: id,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: command.input.postingDate,
+              series: command.input.series,
+              description: "Regular payroll accrual",
+              rationale: command.input.reason,
+              taxAssessment: "not_applicable",
+              lines: journal.journal.map(({ accountId, debitMinor, creditMinor, description }) => ({
+                accountId,
+                debitMinor,
+                creditMinor,
+                description,
+              })),
+            },
+          });
+
+          const obligations = employees.map(({ calculation: source }) => ({
+            employeeId: source.employeeId,
+            calculationId: source.id,
+            payableMinor: source.calculation.payableMinor,
+            grossMinor: source.calculation.grossMinor,
+            withholdingMinor: source.calculation.withholdingMinor,
+            netDeductionMinor: source.calculation.netDeductionMinor,
+            employerContributionMinor: source.calculation.employerContributionMinor,
+            contributionBaseMinor: source.calculation.contributionBaseMinor,
+          }));
+
+          const body = {
+            id,
+            scope: command.scope,
+            input: command.input,
+            employees,
+            employeeObligations: obligations,
+            postingPlan,
+            state: "prepared",
+            createdBy: principal.actorId,
+            createdAt: yield* isoNow(tx),
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const run = yield* decode(
+            Runs.PayrollRun,
+            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+          );
+
+          const action = postingPlan.groups[0]?.actions[0];
+
+          if (
+            !action ||
+            postingPlan.groups.length !== 1 ||
+            postingPlan.groups[0]?.actions.length !== 1
+          )
+            return yield* failure("InternalError");
+          yield* Db.insertRun(tx, run, action.eventId);
+
+          return { receipt: yield* toJsonObject(run), result: run };
+        }),
       );
-
-      const action = postingPlan.groups[0]?.actions[0];
-
-      if (!action || postingPlan.groups.length !== 1 || postingPlan.groups[0]?.actions.length !== 1)
-        return yield* failure("InternalError");
-      yield* Db.insertRun(tx, run, action.eventId);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(run),
-      );
-
-      return run;
     },
     "update",
   );
@@ -183,90 +178,81 @@ export const approveRun = Effect.fn("payroll.approveRun")(function* (
       yield* requirePayrollAccess(tx, command.scope, principal.actorId, true);
       const operation = "approve_payroll_run";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { runId: command.runId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { runId: command.runId, input: command.input },
+        },
         Runs.PayrollRunApproval,
+        Effect.gen(function* () {
+          const run = yield* checkedRun(
+            tx,
+            command.scope,
+            command.runId,
+            command.input.runDigest,
+            true,
+          );
+
+          const approval = yield* approveChangeInTransaction(tx, principal, {
+            scope: command.scope,
+            changeSetId: run.postingPlan.id,
+            idempotencyKey: `payroll_approve_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
+            owner: { kind: "payroll_run", id: run.id },
+            input: { version: 1, planDigest: run.postingPlan.planDigest },
+          });
+
+          const result = yield* decode(Runs.PayrollRunApproval, {
+            runId: run.id,
+            runDigest: run.digest,
+            id: approval.id,
+            actorId: approval.actorId,
+            expiresAt: approval.expiresAt,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          });
+
+          yield* reserveInputs(
+            tx,
+            command.scope,
+            run.id,
+            run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+            approval.id,
+          );
+
+          yield* reserveClaimInstructions(
+            tx,
+            command.scope,
+            run.id,
+            approval.id,
+            run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
+          );
+
+          yield* reserveAdjustmentInstructions(
+            tx,
+            command.scope,
+            run.id,
+            approval.id,
+            run.employees.flatMap(
+              (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
+            ),
+          );
+
+          for (const employee of run.employees)
+            yield* reserveMonth(
+              tx,
+              command.scope,
+              run.id,
+              approval.id,
+              employee.calculation.employeeId,
+              employee.calculation.calculation.earningsPeriod.startsOn.slice(0, 7),
+            );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const run = yield* checkedRun(
-        tx,
-        command.scope,
-        command.runId,
-        command.input.runDigest,
-        true,
-      );
-
-      const approval = yield* approveChangeInTransaction(tx, principal, {
-        scope: command.scope,
-        changeSetId: run.postingPlan.id,
-        idempotencyKey: `payroll_approve_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
-        owner: { kind: "payroll_run", id: run.id },
-        input: { version: 1, planDigest: run.postingPlan.planDigest },
-      });
-
-      const result = yield* decode(Runs.PayrollRunApproval, {
-        runId: run.id,
-        runDigest: run.digest,
-        id: approval.id,
-        actorId: approval.actorId,
-        expiresAt: approval.expiresAt,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      });
-
-      yield* reserveInputs(
-        tx,
-        command.scope,
-        run.id,
-        run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
-        approval.id,
-      );
-
-      yield* reserveClaimInstructions(
-        tx,
-        command.scope,
-        run.id,
-        approval.id,
-        run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
-      );
-
-      yield* reserveAdjustmentInstructions(
-        tx,
-        command.scope,
-        run.id,
-        approval.id,
-        run.employees.flatMap(
-          (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
-        ),
-      );
-
-      for (const employee of run.employees)
-        yield* reserveMonth(
-          tx,
-          command.scope,
-          run.id,
-          approval.id,
-          employee.calculation.employeeId,
-          employee.calculation.calculation.earningsPeriod.startsOn.slice(0, 7),
-        );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -289,165 +275,156 @@ export const executeRun = Effect.fn("payroll.executeRun")(function* (
       yield* requirePayrollAccess(tx, command.scope, principal.actorId, true);
       const operation = "execute_payroll_run";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { runId: command.runId, input: command.input },
-        Runs.PayrollRunExecution,
-      );
-
-      if (request.previous) return request.previous;
-
-      const run = yield* checkedRun(
-        tx,
-        command.scope,
-        command.runId,
-        command.input.runDigest,
-        true,
-      );
-
-      const approval = (yield* Ledger.readApproval(
-        tx,
-        command.scope.bookId,
-        command.input.approvalId,
-      ))[0];
-
-      if (
-        !approval ||
-        (yield* Foundation.readPayrollAccess(tx, command.scope.bookId, approval.actorId)).length !==
-          1
-      )
-        return yield* failure("ApprovalRequired");
-
-      const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
-        scope: command.scope,
-        changeSetId: run.postingPlan.id,
-        idempotencyKey: `payroll_post_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
-        owner: { kind: "payroll_run", id: run.id },
-        input: {
-          version: 1,
-          planDigest: run.postingPlan.planDigest,
-          approvalId: command.input.approvalId,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { runId: command.runId, input: command.input },
         },
-      });
-
-      const payslips = [];
-
-      for (const employee of run.employees) {
-        const calculated = employee.calculation.calculation;
-
-        const body = {
-          id: newId("payslip"),
-          scope: command.scope,
-          runId: run.id,
-          runDigest: run.digest,
-          calculationId: employee.calculation.id,
-          employeeId: employee.calculation.employeeId,
-          personRef: employee.personRef,
-          earningsPeriod: calculated.earningsPeriod,
-          expectedPaymentOn: calculated.expectedPaymentOn,
-          currency: calculated.currency,
-          currencyScale: calculated.currencyScale,
-          grossMinor: calculated.grossMinor,
-          cashReimbursementMinor: calculated.cashReimbursementMinor,
-          withholdingMinor: calculated.withholdingMinor,
-          netDeductionMinor: calculated.netDeductionMinor,
-          payableMinor: calculated.payableMinor,
-          employerContributionMinor: calculated.employerContributionMinor,
-          withholdingBaseMinor: calculated.withholdingBaseMinor,
-          contributionBaseMinor: calculated.contributionBaseMinor,
-          benefitBases: calculated.benefitBases,
-          extraAccruals: calculated.extraAccruals,
-          deductions: employee.calculation.basis.reviewedInput.employment.deductionComponents,
-          status: "posted_unpaid",
-        };
-
-        payslips.push(
-          yield* decode(
-            Runs.PayrollPayslipDocument,
-            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
-          ),
-        );
-      }
-
-      const result = yield* decode(
         Runs.PayrollRunExecution,
-        yield* toJsonObject({
-          id: newId("payroll_execution"),
-          scope: command.scope,
-          runId: run.id,
-          runDigest: run.digest,
-          approvalId: command.input.approvalId,
-          postingReceipt,
-          employeeObligations: run.employeeObligations,
-          payslips,
-          status: "posted_unpaid",
-          createdAt: yield* isoNow(tx),
-          receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+        Effect.gen(function* () {
+          const run = yield* checkedRun(
+            tx,
+            command.scope,
+            command.runId,
+            command.input.runDigest,
+            true,
+          );
+
+          const approval = (yield* Ledger.readApproval(
+            tx,
+            command.scope.bookId,
+            command.input.approvalId,
+          ))[0];
+
+          if (
+            !approval ||
+            (yield* Foundation.readPayrollAccess(tx, command.scope.bookId, approval.actorId))
+              .length !== 1
+          )
+            return yield* failure("ApprovalRequired");
+
+          const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
+            scope: command.scope,
+            changeSetId: run.postingPlan.id,
+            idempotencyKey: `payroll_post_${(yield* digest({ key: command.idempotencyKey })).slice(7)}`,
+            owner: { kind: "payroll_run", id: run.id },
+            input: {
+              version: 1,
+              planDigest: run.postingPlan.planDigest,
+              approvalId: command.input.approvalId,
+            },
+          });
+
+          const payslips = [];
+
+          for (const employee of run.employees) {
+            const calculated = employee.calculation.calculation;
+
+            const body = {
+              id: newId("payslip"),
+              scope: command.scope,
+              runId: run.id,
+              runDigest: run.digest,
+              calculationId: employee.calculation.id,
+              employeeId: employee.calculation.employeeId,
+              personRef: employee.personRef,
+              earningsPeriod: calculated.earningsPeriod,
+              expectedPaymentOn: calculated.expectedPaymentOn,
+              currency: calculated.currency,
+              currencyScale: calculated.currencyScale,
+              grossMinor: calculated.grossMinor,
+              cashReimbursementMinor: calculated.cashReimbursementMinor,
+              withholdingMinor: calculated.withholdingMinor,
+              netDeductionMinor: calculated.netDeductionMinor,
+              payableMinor: calculated.payableMinor,
+              employerContributionMinor: calculated.employerContributionMinor,
+              withholdingBaseMinor: calculated.withholdingBaseMinor,
+              contributionBaseMinor: calculated.contributionBaseMinor,
+              benefitBases: calculated.benefitBases,
+              extraAccruals: calculated.extraAccruals,
+              deductions: employee.calculation.basis.reviewedInput.employment.deductionComponents,
+              status: "posted_unpaid",
+            };
+
+            payslips.push(
+              yield* decode(
+                Runs.PayrollPayslipDocument,
+                yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+              ),
+            );
+          }
+
+          const result = yield* decode(
+            Runs.PayrollRunExecution,
+            yield* toJsonObject({
+              id: newId("payroll_execution"),
+              scope: command.scope,
+              runId: run.id,
+              runDigest: run.digest,
+              approvalId: command.input.approvalId,
+              postingReceipt,
+              employeeObligations: run.employeeObligations,
+              payslips,
+              status: "posted_unpaid",
+              createdAt: yield* isoNow(tx),
+              receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+            }),
+          );
+
+          yield* Db.insertExecution(tx, result);
+
+          for (const obligation of run.employeeObligations)
+            yield* Db.insertObligation(tx, command.scope.bookId, run.id, obligation);
+
+          for (const employee of run.employees)
+            yield* Db.insertReservations(tx, command.scope.bookId, run.id, employee);
+
+          yield* consumeInputs(
+            tx,
+            command.scope,
+            run.id,
+            run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+          );
+
+          yield* consumeClaimInstructions(
+            tx,
+            command.scope,
+            run.id,
+            run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
+          );
+
+          yield* consumeAdjustmentInstructions(
+            tx,
+            command.scope,
+            run.id,
+            run.employees.flatMap(
+              (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
+            ),
+            principal,
+          );
+
+          for (const document of payslips) {
+            yield* Db.insertDocument(tx, document);
+            yield* Ledger.insertOutbox(tx, {
+              bookId: command.scope.bookId,
+              id: newId("payslip_render"),
+              receiptId: postingReceipt.id,
+              kind: Runs.payslipRenderEvent,
+              payload: {
+                documentId: document.id,
+                documentDigest: document.digest,
+                requiredRendererVersion: Runs.payslipRendererVersion,
+              },
+            });
+          }
+
+          return { receipt: yield* toJsonObject(result), result: result };
         }),
       );
-
-      yield* Db.insertExecution(tx, result);
-
-      for (const obligation of run.employeeObligations)
-        yield* Db.insertObligation(tx, command.scope.bookId, run.id, obligation);
-
-      for (const employee of run.employees)
-        yield* Db.insertReservations(tx, command.scope.bookId, run.id, employee);
-
-      yield* consumeInputs(
-        tx,
-        command.scope,
-        run.id,
-        run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
-      );
-
-      yield* consumeClaimInstructions(
-        tx,
-        command.scope,
-        run.id,
-        run.employees.flatMap((employee) => employee.calculation.basis.claimInstructions ?? []),
-      );
-
-      yield* consumeAdjustmentInstructions(
-        tx,
-        command.scope,
-        run.id,
-        run.employees.flatMap(
-          (employee) => employee.calculation.basis.adjustmentInstructions ?? [],
-        ),
-        principal,
-      );
-
-      for (const document of payslips) {
-        yield* Db.insertDocument(tx, document);
-        yield* Ledger.insertOutbox(tx, {
-          bookId: command.scope.bookId,
-          id: newId("payslip_render"),
-          receiptId: postingReceipt.id,
-          kind: Runs.payslipRenderEvent,
-          payload: {
-            documentId: document.id,
-            documentDigest: document.digest,
-            requiredRendererVersion: Runs.payslipRendererVersion,
-          },
-        });
-      }
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );

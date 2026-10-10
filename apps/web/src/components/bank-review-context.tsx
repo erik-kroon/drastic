@@ -1,8 +1,9 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { BankStatementView } from "@open-erp/contracts/reconciliation";
 import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { CommerceProps } from "@/components/commerce/shared";
 
 export function BankReviewContext({
@@ -18,7 +19,10 @@ export function BankReviewContext({
       if (!statementId) throw new Error("Bank review statement is missing");
 
       const view = await readAccounting(
-        `${bookPath(book)}/bank-statements/${encodeURIComponent(statementId)}`,
+        (client) =>
+          client.reconciliation.getBankStatement({
+            params: { ...bookScope(book), id: statementId },
+          }),
         BankStatementView,
         { signal },
       );

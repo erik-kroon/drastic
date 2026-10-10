@@ -1,7 +1,10 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Sales from "@open-erp/contracts/sales-orders";
 import * as Effect from "effect/Effect";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import { calculateDraft } from "./draft-calculation";
 import { createInvoiceDraftInTransaction } from "./invoice-lifecycle";
@@ -155,70 +158,67 @@ const writeDocument = Effect.fn("commerce.salesOrders.write")(function* (
       const id = "id" in command ? command.id : null;
       const operation = "sales_document_command";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { action, id, input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { action, id, input },
+        },
         Sales.SalesDocument,
+        Effect.gen(function* () {
+          const context = yield* readWriteContext(tx, command.scope, input, id, action);
+
+          yield* requireAllowedTransition(tx, command.scope, action, context.head, context.create);
+
+          const head = context.head;
+          const create = context.create;
+          const content = "content" in input ? input.content : head?.content;
+
+          if (!content) return yield* failure("InvalidJournal");
+
+          const calculation =
+            "content" in input
+              ? yield* calculateDraft(tx, command.scope, context.book, content)
+              : head?.calculation;
+
+          const body = {
+            id: create ? newId("sales_document") : id,
+            scope: command.scope,
+            kind:
+              "kind" in input ? input.kind : action === "order_from_quote" ? "order" : head?.kind,
+            state:
+              action === "accept" || action === "order_from_quote"
+                ? "accepted"
+                : action === "cancel"
+                  ? "cancelled"
+                  : "draft",
+            revision: create ? "1" : (BigInt(head?.revision ?? "0") + 1n).toString(),
+            content,
+            calculation,
+            sourceQuoteId: action === "order_from_quote" ? id : (head?.sourceQuoteId ?? null),
+            sourceQuoteRevision:
+              action === "order_from_quote" ? head?.revision : (head?.sourceQuoteRevision ?? null),
+            createdAt: yield* isoNow(tx),
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const json = yield* toJsonObject(body);
+
+          const result = yield* decode(Sales.SalesDocument, {
+            ...json,
+            digest: yield* digest(json),
+          });
+
+          if (create) yield* SalesDb.insertDocument(tx, command.scope.bookId, result);
+          else yield* SalesDb.updateRevision(tx, command.scope.bookId, result.id, result.revision);
+          yield* SalesDb.insertRevision(tx, command.scope.bookId, result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const context = yield* readWriteContext(tx, command.scope, input, id, action);
-
-      yield* requireAllowedTransition(tx, command.scope, action, context.head, context.create);
-
-      const head = context.head;
-      const create = context.create;
-      const content = "content" in input ? input.content : head?.content;
-
-      if (!content) return yield* failure("InvalidJournal");
-
-      const calculation =
-        "content" in input
-          ? yield* calculateDraft(tx, command.scope, context.book, content)
-          : head?.calculation;
-
-      const body = {
-        id: create ? newId("sales_document") : id,
-        scope: command.scope,
-        kind: "kind" in input ? input.kind : action === "order_from_quote" ? "order" : head?.kind,
-        state:
-          action === "accept" || action === "order_from_quote"
-            ? "accepted"
-            : action === "cancel"
-              ? "cancelled"
-              : "draft",
-        revision: create ? "1" : (BigInt(head?.revision ?? "0") + 1n).toString(),
-        content,
-        calculation,
-        sourceQuoteId: action === "order_from_quote" ? id : (head?.sourceQuoteId ?? null),
-        sourceQuoteRevision:
-          action === "order_from_quote" ? head?.revision : (head?.sourceQuoteRevision ?? null),
-        createdAt: yield* isoNow(tx),
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const json = yield* toJsonObject(body);
-      const result = yield* decode(Sales.SalesDocument, { ...json, digest: yield* digest(json) });
-
-      if (create) yield* SalesDb.insertDocument(tx, command.scope.bookId, result);
-      else yield* SalesDb.updateRevision(tx, command.scope.bookId, result.id, result.revision);
-      yield* SalesDb.insertRevision(tx, command.scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -256,113 +256,112 @@ export const convertSalesOrder = Effect.fn("commerce.salesOrders.convert")(funct
       const { scope, id, input, idempotencyKey } = command,
         operation = "convert_sales_order";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id, input },
+        },
         Sales.OrderConversion,
-      );
+        Effect.gen(function* () {
+          const row = (yield* SalesDb.readSalesDocument(tx, scope.bookId, id, "update"))[0];
 
-      if (request.previous) return request.previous;
-      const row = (yield* SalesDb.readSalesDocument(tx, scope.bookId, id, "update"))[0];
+          if (!row || row.kind !== "order") return yield* failure("NotFound");
+          const head = yield* decode(Sales.SalesDocument, row.body);
 
-      if (!row || row.kind !== "order") return yield* failure("NotFound");
-      const head = yield* decode(Sales.SalesDocument, row.body);
+          if (
+            head.state !== "accepted" ||
+            head.revision !== input.expectedRevision ||
+            head.digest !== input.expectedDigest
+          )
+            return yield* failure("StaleDependency");
 
-      if (
-        head.state !== "accepted" ||
-        head.revision !== input.expectedRevision ||
-        head.digest !== input.expectedDigest
-      )
-        return yield* failure("StaleDependency");
+          if (new Set(input.lines.map((line) => line.id)).size !== input.lines.length)
+            return yield* failure("InvalidJournal");
+          const conversions = yield* SalesDb.readSalesConversions(tx, scope.bookId, id);
+          const lines: Array<typeof Drafts.DraftLine.Type> = [];
+          const portions: Array<typeof Sales.ConvertedPortion.Type> = [];
 
-      if (new Set(input.lines.map((line) => line.id)).size !== input.lines.length)
-        return yield* failure("InvalidJournal");
-      const conversions = yield* SalesDb.readSalesConversions(tx, scope.bookId, id);
-      const lines: Array<typeof Drafts.DraftLine.Type> = [];
-      const portions: Array<typeof Sales.ConvertedPortion.Type> = [];
+          for (const selected of input.lines) {
+            const original = head.content.lines.find((line) => line.id === selected.id);
 
-      for (const selected of input.lines) {
-        const original = head.content.lines.find((line) => line.id === selected.id);
+            if (!original) return yield* failure("InvalidJournal");
 
-        if (!original) return yield* failure("InvalidJournal");
+            const prior = conversions.flatMap((entry) =>
+              entry.portions.filter((portion) => portion.id === selected.id),
+            );
 
-        const prior = conversions.flatMap((entry) =>
-          entry.portions.filter((portion) => portion.id === selected.id),
-        );
+            const consumed = prior.reduce((sum, portion) => sum + quantity(portion.quantity), 0n);
 
-        const consumed = prior.reduce((sum, portion) => sum + quantity(portion.quantity), 0n);
+            const requested = quantity(selected.quantity),
+              available = quantity(original.quantity);
 
-        const requested = quantity(selected.quantity),
-          available = quantity(original.quantity);
+            if (requested + consumed > available) return yield* failure("StaleDependency");
+            const amounts: Record<string, string | null> = {};
 
-        if (requested + consumed > available) return yield* failure("StaleDependency");
-        const amounts: Record<string, string | null> = {};
+            for (const field of [
+              "baseMinor",
+              "discountMinor",
+              "chargeMinor",
+              "taxMinor",
+              "sourceGrossMinor",
+            ] as const) {
+              if (original[field] === null) {
+                amounts[field] = null;
+                continue;
+              }
 
-        for (const field of [
-          "baseMinor",
-          "discountMinor",
-          "chargeMinor",
-          "taxMinor",
-          "sourceGrossMinor",
-        ] as const) {
-          if (original[field] === null) {
-            amounts[field] = null;
-            continue;
+              const total = BigInt(original[field]);
+              const used = prior.reduce((sum, portion) => sum + BigInt(portion[field] ?? "0"), 0n);
+
+              if (requested + consumed !== available && (total * requested) % available !== 0n)
+                return yield* failure("InvalidJournal");
+              amounts[field] = (
+                requested + consumed === available ? total - used : (total * requested) / available
+              ).toString();
+            }
+
+            lines.push(
+              yield* decode(Drafts.DraftLine, {
+                ...original,
+                quantity: selected.quantity,
+                ...amounts,
+              }),
+            );
+            portions.push(yield* decode(Sales.ConvertedPortion, { ...selected, ...amounts }));
           }
 
-          const total = BigInt(original[field]);
-          const used = prior.reduce((sum, portion) => sum + BigInt(portion[field] ?? "0"), 0n);
+          const content = {
+            ...head.content,
+            lines,
+            sourceTotalMinor: lines.some((line) => line.sourceGrossMinor === null)
+              ? null
+              : lines
+                  .reduce((sum, line) => sum + BigInt(line.sourceGrossMinor ?? "0"), 0n)
+                  .toString(),
+          };
 
-          if (requested + consumed !== available && (total * requested) % available !== 0n)
-            return yield* failure("InvalidJournal");
-          amounts[field] = (
-            requested + consumed === available ? total - used : (total * requested) / available
-          ).toString();
-        }
+          const draft = yield* createInvoiceDraftInTransaction(tx, principal, {
+            scope,
+            idempotencyKey: newId("sales_conversion"),
+            input: { draftKey: input.draftKey, content },
+          });
 
-        lines.push(
-          yield* decode(Drafts.DraftLine, { ...original, quantity: selected.quantity, ...amounts }),
-        );
-        portions.push(yield* decode(Sales.ConvertedPortion, { ...selected, ...amounts }));
-      }
+          const result = yield* decode(Sales.OrderConversion, {
+            orderId: id,
+            orderRevision: head.revision,
+            portions,
+            draft,
+          });
 
-      const content = {
-        ...head.content,
-        lines,
-        sourceTotalMinor: lines.some((line) => line.sourceGrossMinor === null)
-          ? null
-          : lines.reduce((sum, line) => sum + BigInt(line.sourceGrossMinor ?? "0"), 0n).toString(),
-      };
+          yield* SalesDb.insertConversion(tx, scope.bookId, result);
 
-      const draft = yield* createInvoiceDraftInTransaction(tx, principal, {
-        scope,
-        idempotencyKey: newId("sales_conversion"),
-        input: { draftKey: input.draftKey, content },
-      });
-
-      const result = yield* decode(Sales.OrderConversion, {
-        orderId: id,
-        orderRevision: head.revision,
-        portions,
-        draft,
-      });
-
-      yield* SalesDb.insertConversion(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      return result;
     },
     "update",
   );

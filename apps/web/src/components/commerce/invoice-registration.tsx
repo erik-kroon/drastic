@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { RecordFact, RecordSummary } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, commerceKey, commercePath, checkScope, type CommerceProps } from "./shared";
 
@@ -49,7 +51,11 @@ export function InvoiceRegistration(
     initialPageParam: "0",
     queryFn: ({ pageParam, signal }) =>
       readAccounting(
-        `${bookPath(props.book)}/vouchers?after=${encodeURIComponent(pageParam)}`,
+        (client) =>
+          client.accounting.listVouchers({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(Api.groups.accounting.endpoints.listVouchers, `after=${pageParam}`),
+          }),
         Accounting.VoucherPage,
         { signal },
       ),

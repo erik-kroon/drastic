@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cash from "@open-erp/contracts/cash-forecast";
 import * as Effect from "effect/Effect";
@@ -14,7 +15,10 @@ import { readForecastInvoicesInTransaction } from "../commerce/register";
 import { readEvidenceReference, requireTableAccess } from "../commerce/support";
 import { readSettlementOpeningSourceInTransaction } from "../purchases/supplier-settlements";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -332,114 +336,108 @@ export const captureCashBasis = Effect.fn("cash.basis.capture")(function* (
 
       if (!book) return yield* failure("Forbidden");
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_cash_basis",
-        principal.actorId,
-        yield* Bank.toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_cash_basis",
+          actorId: principal.actorId,
+          input: yield* Bank.toJsonObject(command.input),
+        },
         Cash.CashBasis,
+        Effect.gen(function* () {
+          yield* Bank.requireNativeBankProfile(book.profile, book.authority);
+          const recordedCutoff = yield* isoNow(transaction);
+
+          if (
+            book.currency !== "SEK" ||
+            book.currencyScale !== 2 ||
+            command.input.asOf !== Accounting.swedishBusinessDate(new Date(recordedCutoff))
+          )
+            return yield* failure("UnsupportedProfile");
+
+          if (
+            new Set(command.input.accounts.map((entry) => entry.accountId)).size !==
+              command.input.accounts.length ||
+            new Set(command.input.expectedDates.map((entry) => entry.invoiceId)).size !==
+              command.input.expectedDates.length
+          )
+            return yield* failure("InvalidJournal");
+
+          const sources = yield* readSources(transaction, command.scope, book, command.input);
+
+          for (const selection of [...command.input.accounts, ...command.input.expectedDates]) {
+            const reference = yield* readEvidenceReference(
+              transaction,
+              command.scope.bookId,
+              selection.review.evidenceId,
+            );
+
+            if (reference.sha256 !== selection.review.sha256)
+              return yield* failure("StaleDependency");
+          }
+
+          const invoiceIds = new Set(sources.contributions.map((entry) => entry.invoiceId));
+
+          if (command.input.expectedDates.some((entry) => !invoiceIds.has(entry.invoiceId)))
+            return yield* failure("NotFound");
+
+          const captured = yield* Bank.toJsonObject({
+            id: newId("cash_basis"),
+            scope: command.scope,
+            asOf: command.input.asOf,
+            recordedCutoff,
+            captureMode: "current_knowledge",
+            currency: "SEK",
+            currencyScale: 2,
+            actorId: principal.actorId,
+            input: command.input,
+            opening: sources.opening,
+            contributions: sources.contributions,
+            foreignObligations: sources.foreignObligations,
+            coverage: [
+              {
+                family: "bank",
+                owner: "banking/reconciliations+coverage",
+                status: sources.opening.status === "qualified" ? "selected_scope" : "unavailable",
+                reason:
+                  "Selected current statement closings only. Native full-period coverage remains not_established and observation time is unavailable.",
+              },
+              {
+                family: "commerce",
+                owner: "commerce/register+fx",
+                status:
+                  sources.contributions.some((entry) => entry.inclusion === "blocked") ||
+                  sources.foreignObligations.length > 0
+                    ? "incomplete"
+                    : "selected_scope",
+                reason:
+                  "Current canonical registered invoices only. Unregistered obligations and foreign forecast conversions remain unqualified.",
+              },
+              ...familyGaps,
+            ],
+            companyCoverage: "incomplete",
+            label: "known_items",
+            dependencyDigest: sources.sourceDigest,
+          });
+
+          const body = yield* Bank.toJsonObject({ ...captured, digest: yield* digest(captured) });
+          const basis = yield* Bank.decode(Cash.CashBasis, body);
+          const content = yield* Bank.canonicalText(body);
+          const byteLength = Bank.byteLength(content);
+
+          if (byteLength > 8388608) return yield* failure("UnsupportedProfile");
+          yield* BasisDb.insertBasis(transaction, command.scope.bookId, basis.id, {
+            body,
+            content,
+            sha256: yield* sha256Hex(content),
+            byteLength,
+          });
+
+          return { receipt: body, result: basis };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* Bank.requireNativeBankProfile(book.profile, book.authority);
-      const recordedCutoff = yield* isoNow(transaction);
-
-      if (
-        book.currency !== "SEK" ||
-        book.currencyScale !== 2 ||
-        command.input.asOf !== Accounting.swedishBusinessDate(new Date(recordedCutoff))
-      )
-        return yield* failure("UnsupportedProfile");
-
-      if (
-        new Set(command.input.accounts.map((entry) => entry.accountId)).size !==
-          command.input.accounts.length ||
-        new Set(command.input.expectedDates.map((entry) => entry.invoiceId)).size !==
-          command.input.expectedDates.length
-      )
-        return yield* failure("InvalidJournal");
-
-      const sources = yield* readSources(transaction, command.scope, book, command.input);
-
-      for (const selection of [...command.input.accounts, ...command.input.expectedDates]) {
-        const reference = yield* readEvidenceReference(
-          transaction,
-          command.scope.bookId,
-          selection.review.evidenceId,
-        );
-
-        if (reference.sha256 !== selection.review.sha256) return yield* failure("StaleDependency");
-      }
-
-      const invoiceIds = new Set(sources.contributions.map((entry) => entry.invoiceId));
-
-      if (command.input.expectedDates.some((entry) => !invoiceIds.has(entry.invoiceId)))
-        return yield* failure("NotFound");
-
-      const captured = yield* Bank.toJsonObject({
-        id: newId("cash_basis"),
-        scope: command.scope,
-        asOf: command.input.asOf,
-        recordedCutoff,
-        captureMode: "current_knowledge",
-        currency: "SEK",
-        currencyScale: 2,
-        actorId: principal.actorId,
-        input: command.input,
-        opening: sources.opening,
-        contributions: sources.contributions,
-        foreignObligations: sources.foreignObligations,
-        coverage: [
-          {
-            family: "bank",
-            owner: "banking/reconciliations+coverage",
-            status: sources.opening.status === "qualified" ? "selected_scope" : "unavailable",
-            reason:
-              "Selected current statement closings only. Native full-period coverage remains not_established and observation time is unavailable.",
-          },
-          {
-            family: "commerce",
-            owner: "commerce/register+fx",
-            status:
-              sources.contributions.some((entry) => entry.inclusion === "blocked") ||
-              sources.foreignObligations.length > 0
-                ? "incomplete"
-                : "selected_scope",
-            reason:
-              "Current canonical registered invoices only. Unregistered obligations and foreign forecast conversions remain unqualified.",
-          },
-          ...familyGaps,
-        ],
-        companyCoverage: "incomplete",
-        label: "known_items",
-        dependencyDigest: sources.sourceDigest,
-      });
-
-      const body = yield* Bank.toJsonObject({ ...captured, digest: yield* digest(captured) });
-      const basis = yield* Bank.decode(Cash.CashBasis, body);
-      const content = yield* Bank.canonicalText(body);
-      const byteLength = Bank.byteLength(content);
-
-      if (byteLength > 8388608) return yield* failure("UnsupportedProfile");
-      yield* BasisDb.insertBasis(transaction, command.scope.bookId, basis.id, {
-        body,
-        content,
-        sha256: yield* sha256Hex(content),
-        byteLength,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_cash_basis",
-        principal.actorId,
-        body,
-      );
-
-      return basis;
     }),
   );
 });

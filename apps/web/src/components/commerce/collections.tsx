@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Collections from "@open-erp/contracts/collections";
 import { Box } from "@open-erp/ui/components/box";
@@ -295,7 +296,7 @@ function CollectionHistory(
 ) {
   const { book, locale, base, data } = props;
   const sv = locale === "sv";
-  const statementKeys = useRef(new Map<string, string>());
+  const statementKeys = useCommandKeys();
   const [downloadError, setDownloadError] = useState<Error | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -470,8 +471,8 @@ function CollectionActions(
 ) {
   const { book, locale, base, data } = props;
   const sv = locale === "sv";
-  const disputeKeys = useRef(new Map<string, string>());
-  const actionKeys = useRef(new Map<string, string>());
+  const disputeKeys = useCommandKeys();
+  const actionKeys = useCommandKeys();
 
   const invoices = data.statements
     .flatMap((statement) => statement.items)

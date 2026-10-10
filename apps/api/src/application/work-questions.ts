@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +9,9 @@ import * as WorkspaceDb from "../db/workspace";
 import { readCandidateSource } from "../db/banking/candidates";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "./failures";
-import { digest, isoNow, newId, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   requireInsertAccess,
@@ -82,6 +85,7 @@ function supplierOwner(tx: Transaction, scope: Scope, draftId: string) {
     if (!row) return yield* failure("NotFound");
 
     if (row.occurrenceIds.length > 1) return yield* failure("InternalError");
+
     const occurrenceId = row.occurrenceIds[0];
 
     const taskRoot = occurrenceId
@@ -170,6 +174,7 @@ export function resolveQuestionOwner(tx: Transaction, scope: Scope, target: Targ
     if (target.kind === "supplier") return yield* supplierOwner(tx, scope, target.recordId);
 
     if (target.kind === "bank") return yield* bankOwner(tx, scope, target);
+
     const review = (yield* Db.readNativeReviewDraft(tx, scope.bookId, target.recordId))[0];
 
     if (!review) return yield* failure("NotFound");
@@ -189,7 +194,9 @@ function requireQuestionAccess(tx: Transaction, write: boolean) {
 export function questionSummary(tx: Transaction, scope: Scope, target: Target) {
   return Effect.gen(function* () {
     yield* requireQuestionAccess(tx, false);
+
     const resolved = yield* resolveQuestionOwner(tx, scope, target);
+
     const counts = (yield* Db.readQuestionSummary(tx, scope.bookId, resolved.root.key))[0];
 
     if (!counts) return yield* failure("InternalError");
@@ -289,10 +296,12 @@ function readQuestion(tx: Transaction, scope: Scope, questionId: string) {
     const row = (yield* Db.readQuestionAnchor(tx, scope.bookId, questionId))[0];
 
     if (!row) return yield* failure("NotFound");
+
     const anchor = yield* decode(Anchor, row.body);
 
     if (anchor.scope.entityId !== scope.entityId || anchor.scope.bookId !== scope.bookId)
       return yield* failure("InternalError");
+
     const revisions = yield* Db.readQuestionRevisions(tx, scope.bookId, questionId);
 
     if (revisions.length < 1 || revisions.length > maximumRevisions)
@@ -304,7 +313,9 @@ function readQuestion(tx: Transaction, scope: Scope, questionId: string) {
 
     if (events.some((event, index) => event.revision !== index + 1))
       return yield* failure("InternalError");
+
     const latest = revisions.at(-1);
+
     const lastEvent = events.at(-1);
 
     if (!latest || !lastEvent) return yield* failure("InternalError");
@@ -334,6 +345,7 @@ function cachedAttachment(
 ) {
   return Effect.gen(function* () {
     const key = `${attachment.occurrenceId}/${attachment.sha256}`;
+
     const existing = cache.get(key);
 
     if (existing) return existing;
@@ -356,6 +368,7 @@ function requireAttachmentBudget(
 ) {
   return Effect.gen(function* () {
     const retained = yield* Db.readRootAttachments(tx, scope.bookId, taskRoot.key);
+
     const sizes = new Map(retained.map((item) => [item.occurrenceId, item.byteLength]));
 
     for (const attachment of attachments) sizes.set(attachment.occurrenceId, attachment.byteLength);
@@ -458,16 +471,20 @@ export const readWorkQuestions = Effect.fn("workspace.questions.read")(function*
 ) {
   return yield* withBook(token, command.scope, false, function* (tx, principal) {
     yield* requireQuestionAccess(tx, false);
+
     const resolved = yield* resolveQuestionOwner(tx, command.scope, command.target);
+
     const rows = yield* Db.readQuestionAnchors(tx, command.scope.bookId, resolved.root.key);
 
     if (rows.length > maximumQuestions) return yield* failure("Unavailable");
     yield* requireAttachmentBudget(tx, command.scope, resolved.root, []);
+
     const cache = new Map<string, Attachment>();
 
     const questions = yield* Effect.forEach(rows, (row) =>
       Effect.gen(function* () {
         const anchor = yield* decode(Anchor, row.body);
+
         const question = yield* readQuestion(tx, command.scope, anchor.id);
 
         return yield* availableQuestion(tx, command.scope, question, cache);
@@ -494,101 +511,93 @@ export const askWorkQuestion = Effect.fn("workspace.questions.ask")(function* (
     function* (tx, principal) {
       yield* requireQuestionAccess(tx, true);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "workspace_ask_question",
-        principal.actorId,
-        yield* toJsonObject(command.input),
-        Workspace.WorkQuestionResult,
-      );
-
-      if (request.previous) return request.previous;
-
-      const resolved = yield* checkedOwner(
-        tx,
-        command.scope,
-        command.input.target,
-        command.input.expectedTargetRevision,
-      );
-
-      if (resolved.owner.completed && resolved.root.kind !== "bank")
-        return yield* failure("AlreadyPosted");
-
-      const member = (yield* WorkspaceDb.readBookMembershipRole(
-        tx,
-        command.scope.bookId,
-        command.input.requestedFrom,
-      ))[0];
-
-      if (!member || member.role !== "operator") return yield* failure("InvalidJournal");
-      const rows = yield* Db.readQuestionAnchors(tx, command.scope.bookId, resolved.root.key);
-
-      if (rows.length >= maximumQuestions) return yield* failure("Unavailable");
-
-      const anchor = yield* decode(Anchor, {
-        id: newId("work_question"),
-        scope: command.scope,
-        root: resolved.root,
-        kind: command.input.kind,
-        question: yield* questionText(command.input.question),
-        askedBy: principal.actorId,
-        requestedFrom: command.input.requestedFrom,
-        createdAt: yield* isoNow(tx),
-      });
-
-      yield* Db.insertQuestion(tx, {
-        bookId: command.scope.bookId,
-        id: anchor.id,
-        rootKey: anchor.root.key,
-        occurrenceId: anchor.root.kind === "document" ? anchor.root.recordId : null,
-        supplierDraftId: anchor.root.kind === "supplier" ? anchor.root.recordId : null,
-        statementId: anchor.root.kind === "bank" ? anchor.root.recordId : null,
-        rowOrdinal: anchor.root.rowOrdinal,
-        body: yield* toJsonObject(anchor),
-      });
-
-      const event = yield* decode(Workspace.QuestionEvent, {
-        revision: 1,
-        action: "asked",
-        actorId: principal.actorId,
-        createdAt: anchor.createdAt,
-        text: anchor.question,
-        attachments: [],
-      });
-
-      yield* Db.insertQuestionRevision(tx, {
-        bookId: command.scope.bookId,
-        questionId: anchor.id,
-        revision: 1,
-        state: "open",
-        waitingOn: anchor.requestedFrom,
-        body: yield* toJsonObject(event),
-      });
-
-      const result = yield* decode(Workspace.WorkQuestionResult, {
-        scope: command.scope,
-        question: {
-          ...anchor,
-          state: "open",
-          revision: 1,
-          waitingOn: anchor.requestedFrom,
-          events: [event],
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "workspace_ask_question",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
         },
-      });
+        Workspace.WorkQuestionResult,
+        Effect.gen(function* () {
+          const resolved = yield* checkedOwner(
+            tx,
+            command.scope,
+            command.input.target,
+            command.input.expectedTargetRevision,
+          );
 
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "workspace_ask_question",
-        principal.actorId,
-        result,
+          if (resolved.owner.completed && resolved.root.kind !== "bank")
+            return yield* failure("AlreadyPosted");
+
+          const member = (yield* WorkspaceDb.readBookMembershipRole(
+            tx,
+            command.scope.bookId,
+            command.input.requestedFrom,
+          ))[0];
+
+          if (!member || member.role !== "operator") return yield* failure("InvalidJournal");
+
+          const rows = yield* Db.readQuestionAnchors(tx, command.scope.bookId, resolved.root.key);
+
+          if (rows.length >= maximumQuestions) return yield* failure("Unavailable");
+
+          const anchor = yield* decode(Anchor, {
+            id: newId("work_question"),
+            scope: command.scope,
+            root: resolved.root,
+            kind: command.input.kind,
+            question: yield* questionText(command.input.question),
+            askedBy: principal.actorId,
+            requestedFrom: command.input.requestedFrom,
+            createdAt: yield* isoNow(tx),
+          });
+
+          yield* Db.insertQuestion(tx, {
+            bookId: command.scope.bookId,
+            id: anchor.id,
+            rootKey: anchor.root.key,
+            occurrenceId: anchor.root.kind === "document" ? anchor.root.recordId : null,
+            supplierDraftId: anchor.root.kind === "supplier" ? anchor.root.recordId : null,
+            statementId: anchor.root.kind === "bank" ? anchor.root.recordId : null,
+            rowOrdinal: anchor.root.rowOrdinal,
+            body: yield* toJsonObject(anchor),
+          });
+
+          const event = yield* decode(Workspace.QuestionEvent, {
+            revision: 1,
+            action: "asked",
+            actorId: principal.actorId,
+            createdAt: anchor.createdAt,
+            text: anchor.question,
+            attachments: [],
+          });
+
+          yield* Db.insertQuestionRevision(tx, {
+            bookId: command.scope.bookId,
+            questionId: anchor.id,
+            revision: 1,
+            state: "open",
+            waitingOn: anchor.requestedFrom,
+            body: yield* toJsonObject(event),
+          });
+
+          const result = yield* decode(Workspace.WorkQuestionResult, {
+            scope: command.scope,
+            question: {
+              ...anchor,
+              state: "open",
+              revision: 1,
+              waitingOn: anchor.requestedFrom,
+              events: [event],
+            },
+          });
+
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );
@@ -610,78 +619,74 @@ export const answerWorkQuestion = Effect.fn("workspace.questions.answer")(functi
     function* (tx, principal) {
       yield* requireQuestionAccess(tx, true);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "workspace_answer_question",
-        principal.actorId,
-        yield* toJsonObject({ questionId: command.questionId, input: command.input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "workspace_answer_question",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ questionId: command.questionId, input: command.input }),
+        },
         Workspace.WorkQuestionResult,
+        Effect.gen(function* () {
+          const resolved = yield* checkedOwner(
+            tx,
+            command.scope,
+            command.input.target,
+            command.input.expectedTargetRevision,
+          );
+
+          const question = yield* readQuestion(tx, command.scope, command.questionId);
+          yield* checkedQuestion(question, resolved.root, command.input.expectedRevision);
+
+          if (resolved.owner.completed && resolved.root.kind !== "bank")
+            return yield* failure("AlreadyPosted");
+
+          if (
+            principal.actorId !== question.requestedFrom &&
+            principal.actorId !== question.askedBy
+          )
+            return yield* failure("Forbidden");
+
+          const attachments = yield* Effect.forEach(command.input.attachments, (reference) =>
+            inspectAttachment(tx, command.scope, reference),
+          );
+
+          yield* requireAttachmentBudget(tx, command.scope, resolved.root, attachments);
+
+          const current =
+            attachments.length > 0 ? attachments : currentQuestionAttachments(question);
+
+          const checked = yield* Effect.forEach(current, (reference) =>
+            inspectAttachment(tx, command.scope, reference),
+          );
+
+          const answered =
+            question.kind !== "missing_evidence" ||
+            (checked.length > 0 && checked.every((item) => item.availability === "readable"));
+
+          const event = yield* decode(Workspace.QuestionEvent, {
+            revision: question.revision + 1,
+            action: "answered",
+            actorId: principal.actorId,
+            createdAt: yield* isoNow(tx),
+            text: yield* questionText(command.input.text),
+            attachments,
+          });
+
+          const result = yield* appendEvent(
+            tx,
+            command.scope,
+            question,
+            event,
+            answered ? "answered" : "open",
+            question.askedBy,
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const resolved = yield* checkedOwner(
-        tx,
-        command.scope,
-        command.input.target,
-        command.input.expectedTargetRevision,
-      );
-
-      const question = yield* readQuestion(tx, command.scope, command.questionId);
-      yield* checkedQuestion(question, resolved.root, command.input.expectedRevision);
-
-      if (resolved.owner.completed && resolved.root.kind !== "bank")
-        return yield* failure("AlreadyPosted");
-
-      if (principal.actorId !== question.requestedFrom && principal.actorId !== question.askedBy)
-        return yield* failure("Forbidden");
-
-      const attachments = yield* Effect.forEach(command.input.attachments, (reference) =>
-        inspectAttachment(tx, command.scope, reference),
-      );
-
-      yield* requireAttachmentBudget(tx, command.scope, resolved.root, attachments);
-      const current = attachments.length > 0 ? attachments : currentQuestionAttachments(question);
-
-      const checked = yield* Effect.forEach(current, (reference) =>
-        inspectAttachment(tx, command.scope, reference),
-      );
-
-      const answered =
-        question.kind !== "missing_evidence" ||
-        (checked.length > 0 && checked.every((item) => item.availability === "readable"));
-
-      const event = yield* decode(Workspace.QuestionEvent, {
-        revision: question.revision + 1,
-        action: "answered",
-        actorId: principal.actorId,
-        createdAt: yield* isoNow(tx),
-        text: yield* questionText(command.input.text),
-        attachments,
-      });
-
-      const result = yield* appendEvent(
-        tx,
-        command.scope,
-        question,
-        event,
-        answered ? "answered" : "open",
-        question.askedBy,
-      );
-
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "workspace_answer_question",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -703,66 +708,59 @@ export const closeWorkQuestion = Effect.fn("workspace.questions.close")(function
     function* (tx, principal) {
       yield* requireQuestionAccess(tx, true);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        "workspace_close_question",
-        principal.actorId,
-        yield* toJsonObject({ questionId: command.questionId, input: command.input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "workspace_close_question",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ questionId: command.questionId, input: command.input }),
+        },
         Workspace.WorkQuestionResult,
+        Effect.gen(function* () {
+          const resolved = yield* checkedOwner(
+            tx,
+            command.scope,
+            command.input.target,
+            command.input.expectedTargetRevision,
+          );
+
+          if (resolved.owner.completed && resolved.root.kind !== "bank")
+            return yield* failure("AlreadyPosted");
+
+          const question = yield* readQuestion(tx, command.scope, command.questionId);
+          yield* checkedQuestion(question, resolved.root, command.input.expectedRevision);
+
+          if (principal.actorId !== question.askedBy) return yield* failure("Forbidden");
+
+          if (question.state !== "answered") return yield* failure("MissingEvidence");
+
+          const attachments = yield* Effect.forEach(
+            currentQuestionAttachments(question),
+            (reference) => inspectAttachment(tx, command.scope, reference),
+          );
+
+          if (
+            attachments.some((item) => item.availability !== "readable") ||
+            (question.kind === "missing_evidence" && attachments.length < 1)
+          )
+            return yield* failure("MissingEvidence");
+
+          const event = yield* decode(Workspace.QuestionEvent, {
+            revision: question.revision + 1,
+            action: "closed",
+            actorId: principal.actorId,
+            createdAt: yield* isoNow(tx),
+            text: yield* questionText(command.input.reason),
+            attachments: [],
+          });
+
+          const result = yield* appendEvent(tx, command.scope, question, event, "closed", null);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const resolved = yield* checkedOwner(
-        tx,
-        command.scope,
-        command.input.target,
-        command.input.expectedTargetRevision,
-      );
-
-      if (resolved.owner.completed && resolved.root.kind !== "bank")
-        return yield* failure("AlreadyPosted");
-
-      const question = yield* readQuestion(tx, command.scope, command.questionId);
-      yield* checkedQuestion(question, resolved.root, command.input.expectedRevision);
-
-      if (principal.actorId !== question.askedBy) return yield* failure("Forbidden");
-
-      if (question.state !== "answered") return yield* failure("MissingEvidence");
-
-      const attachments = yield* Effect.forEach(currentQuestionAttachments(question), (reference) =>
-        inspectAttachment(tx, command.scope, reference),
-      );
-
-      if (
-        attachments.some((item) => item.availability !== "readable") ||
-        (question.kind === "missing_evidence" && attachments.length < 1)
-      )
-        return yield* failure("MissingEvidence");
-
-      const event = yield* decode(Workspace.QuestionEvent, {
-        revision: question.revision + 1,
-        action: "closed",
-        actorId: principal.actorId,
-        createdAt: yield* isoNow(tx),
-        text: yield* questionText(command.input.reason),
-        attachments: [],
-      });
-
-      const result = yield* appendEvent(tx, command.scope, question, event, "closed", null);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "workspace_close_question",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

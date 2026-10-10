@@ -1,6 +1,8 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { HistoricalBases } from "./basis";
 import { AdmitOpenItems } from "./admission";
-import { useRef } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -9,19 +11,13 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePlan.Type }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/sie-runs/${encodeURIComponent(id)}`;
   const queryKey = [...bookKey(book), "sie-run", id];
   const refresh = () => cache.invalidateQueries({ queryKey });
@@ -44,7 +40,10 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/sie-plans/${encodeURIComponent(plan.id)}/historical-items`,
+        (client) =>
+          client.historicalMigration.getPlanHistoricalItems({
+            params: { ...bookScope(book), id: plan.id },
+          }),
         Historical.PlanItemAdmission,
         { signal },
       );
@@ -61,7 +60,7 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
       readAccounting(
         `${path}/chunks`,
         Sie.SieChunk,
-        mutationOptions(`${path}/chunks`, JSON.stringify(input), keys.current),
+        keys.current.options(`${path}/chunks`, JSON.stringify(input)),
       ),
     onSuccess: refresh,
   });
@@ -71,7 +70,7 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
       readAccounting(
         `${path}/lease`,
         Sie.SieFence,
-        mutationOptions(`${path}/lease`, JSON.stringify({ action }), keys.current),
+        keys.current.options(`${path}/lease`, JSON.stringify({ action })),
       ),
     onSuccess: async () => {
       keys.current.clear();

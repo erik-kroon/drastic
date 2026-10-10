@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { defaultStringifySearch, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   useWorkReturn,
@@ -20,7 +22,7 @@ import { PageAction, PageCaption, RecordOpen } from "@open-erp/ui/components/acc
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { reviewPath, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
@@ -168,7 +170,10 @@ export function useSupplierAcceptanceHistory(book: CommerceProps["book"], draftI
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/supplier-invoice-drafts/${encodeURIComponent(draftId)}/acceptance-reviews`,
+        (client) =>
+          client.supplierAcceptance.supplierAcceptanceHistory({
+            params: { ...bookScope(book), id: draftId },
+          }),
         Acceptance.SupplierAcceptanceHistory,
         { signal },
       );
@@ -318,7 +323,11 @@ function SupplierAcceptancePreparation(
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(props.book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -332,7 +341,17 @@ function SupplierAcceptancePreparation(
     ],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-account-suggestions/${encodeURIComponent(props.draft.content.counterpartyId)}?draftId=${encodeURIComponent(props.draft.id)}&draftRevision=${encodeURIComponent(props.draft.revision)}`,
+        (client) =>
+          client.supplierInvoiceDrafts.supplierAccountSuggestions({
+            params: {
+              ...bookScope(props.book),
+              counterpartyId: props.draft.content.counterpartyId,
+            },
+            query: httpQuery(
+              Api.groups.supplierInvoiceDrafts.endpoints.supplierAccountSuggestions,
+              `draftId=${props.draft.id}&draftRevision=${props.draft.revision}`,
+            ),
+          }),
         Drafts.SupplierAccountSuggestions,
         { signal },
       );
@@ -541,7 +560,10 @@ export function useSupplierAcceptanceReview(
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/supplier-acceptance-reviews/${encodeURIComponent(reviewId)}`,
+        (client) =>
+          client.supplierAcceptance.getSupplierAcceptanceReview({
+            params: { ...bookScope(book), id: reviewId },
+          }),
         Acceptance.SupplierAcceptanceView,
         { signal },
       );

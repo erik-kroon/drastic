@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useId, useState } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -11,7 +13,7 @@ import { Label } from "@open-erp/ui/components/label";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { ReviewTarget } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
@@ -32,7 +34,14 @@ export function CaseContextPanel(props: {
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/case-snapshots/${encodeURIComponent(snapshotId)}/cases/${encodeURIComponent(caseId)}/context?maxItems=50&detail=${detail}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        (client) =>
+          client.cases.getCaseContext({
+            params: { ...bookScope(book), snapshotId: snapshotId, caseId: caseId },
+            query: httpQuery(
+              Api.groups.cases.endpoints.getCaseContext,
+              `maxItems=50&detail=${detail}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+            ),
+          }),
         Cases.CaseContext,
         { signal },
       );
@@ -56,7 +65,10 @@ export function CaseContextPanel(props: {
   const resolve = useMutation({
     mutationFn: (changeSetId: string) =>
       readAccounting(
-        `${bookPath(book)}/review-targets/${encodeURIComponent(changeSetId)}`,
+        (client) =>
+          client.cases.resolveReviewTarget({
+            params: { ...bookScope(book), changeSetId: changeSetId },
+          }),
         Cases.ReviewResolution,
       ),
     onSuccess: (resolution, changeSetId) => {

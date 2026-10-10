@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import * as Schema from "effect/Schema";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +10,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { DeadlineFulfillmentLink } from "./deadline-fulfillment-link";
 
@@ -85,7 +86,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
   const sv = locale === "sv";
   const path = `${bookPath(book)}/deadlines`;
   const key = [...bookKey(book), "deadlines"];
-  const mutationKeys = useRef(new Map<string, string>());
+  const mutationKeys = useCommandKeys();
   const client = useQueryClient();
   const [id, setId] = useState("");
   const [input, setInput] = useState(emptyInput);
@@ -109,11 +110,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
         input,
       });
 
-      return readAccounting(
-        target,
-        Deadlines.Deadline,
-        mutationOptions(target, body, mutationKeys.current),
-      );
+      return readAccounting(target, Deadlines.Deadline, mutationKeys.current.options(target, body));
     },
     onSuccess: async () => {
       setError(null);
@@ -128,11 +125,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
 
       const body = JSON.stringify({ action: "dismiss_reminder" });
 
-      return readAccounting(
-        target,
-        Deadlines.Deadline,
-        mutationOptions(target, body, mutationKeys.current),
-      );
+      return readAccounting(target, Deadlines.Deadline, mutationKeys.current.options(target, body));
     },
     onSuccess: async () => {
       setError(null);
@@ -166,7 +159,7 @@ export function DeadlineObligations(props: { book: typeof Accounting.Book.Type; 
       return readAccounting(
         target,
         Deadlines.RevokedDeadlineFeed,
-        mutationOptions(target, "{}", mutationKeys.current),
+        mutationKeys.current.options(target, "{}"),
       );
     },
     onSuccess: () => {

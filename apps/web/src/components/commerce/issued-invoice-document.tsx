@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import type * as Commerce from "@open-erp/contracts/commerce";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
@@ -9,7 +10,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { InvoiceDraftDocument } from "./invoice-draft-document";
 import { InvoiceDocumentPanel } from "./invoice-documents";
 import { InvoiceCancellationPanel } from "./invoice-cancellations";
-import { checkScope, commercePath, commerceKey, Details, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, Details, type CommerceProps } from "./shared";
 
 export function IssuedInvoiceDocument(
   props: CommerceProps & { invoice: typeof Commerce.Invoice.Type; reviewId: string },
@@ -20,7 +21,10 @@ export function IssuedInvoiceDocument(
     queryKey: [...commerceKey(book), "issued-invoice-document", invoice.id, reviewId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(reviewId)}`,
+        (client) =>
+          client.invoiceIssuance.getInvoiceIssueReview({
+            params: { ...bookScope(book), id: reviewId },
+          }),
         Issuance.InvoiceIssueView,
         { signal },
       );

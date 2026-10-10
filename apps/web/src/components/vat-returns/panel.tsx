@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -7,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { ArrowLeft, Plus } from "lucide-react";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
@@ -44,14 +45,22 @@ export function VatReturnsPanel(props: Props) {
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.vatReturnBasis({ params: { ...bookScope(book) } }),
+        Vat.VatBasis,
+        { signal },
+      ),
     retry: false,
   });
 
   const drafts = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "drafts"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.listVatDrafts({ params: { ...bookScope(book) } }),
+        Vat.VatDraftList,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -201,7 +210,11 @@ function FactDetail({
   const result = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "fact", id],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/facts/${id}`, Vat.VatFactView, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.getVatFact({ params: { ...bookScope(book), id: id } }),
+        Vat.VatFactView,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -271,7 +284,11 @@ function DraftDetail({ book, locale, id }: Props & { id: string }) {
   const result = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "draft", id],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/drafts/${id}`, Vat.VatDraftView, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.getVatDraft({ params: { ...bookScope(book), id: id } }),
+        Vat.VatDraftView,
+        { signal },
+      ),
     retry: false,
   });
 

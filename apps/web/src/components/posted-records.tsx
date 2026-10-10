@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -27,7 +29,7 @@ import { JournalCorrection } from "@/components/journal-correction";
 import { CorrectionChainView } from "@/components/corrections/impact-review";
 import { CorrectionReview } from "@/components/corrections/correction-review";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { frontendCopy } from "@/lib/frontend-copy";
@@ -62,7 +64,11 @@ export function PostedRecords(props: PostedRecordsProps) {
     initialPageParam: "0",
     queryFn: ({ signal, pageParam }) =>
       readAccounting(
-        `${bookPath(book)}/vouchers?after=${encodeURIComponent(pageParam)}`,
+        (client) =>
+          client.accounting.listVouchers({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.accounting.endpoints.listVouchers, `after=${pageParam}`),
+          }),
         VoucherPage,
         { signal },
       ),
@@ -238,7 +244,7 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
     queryKey: [...bookKey(book), "voucher", id],
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(id)}`,
+        (client) => client.accounting.getVoucher({ params: { ...bookScope(book), id: id } }),
         Voucher,
         { signal },
       );
@@ -397,7 +403,10 @@ function VoucherCorrectionRecovery(
   const recovery = useMutation({
     mutationFn: () =>
       readAccounting(
-        `${bookPath(props.book)}/vouchers/${encodeURIComponent(props.voucher.id)}/correction-bundle`,
+        (client) =>
+          client.corrections.getCorrectionBundleForVoucher({
+            params: { ...bookScope(props.book), id: props.voucher.id },
+          }),
         Corrections.CorrectionBundleView,
       ),
     onSuccess: (view) => setBundleId(view.bundle.id),

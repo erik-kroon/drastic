@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { newId } from "./posting";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/firms";
 import * as Requests from "../db/firm-access-requests";

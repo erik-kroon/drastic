@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -11,7 +13,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { BankImport } from "@/components/bank-import";
 import { BankStatementReview } from "@/components/bank-statement";
 import { BankReport } from "@/components/bank-report";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -125,7 +127,7 @@ function ReconciliationForm({
   onCreated: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const reconciliation = useMutation({
@@ -135,7 +137,7 @@ function ReconciliationForm({
       return readAccounting(
         path,
         Bank.BankReconciliation,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (report) => onCreated(report.id),
@@ -156,7 +158,7 @@ function ReconciliationForm({
           endsOn: fields.get("endsOn"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.bank_invalid);
 
           return;

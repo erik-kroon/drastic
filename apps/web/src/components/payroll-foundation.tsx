@@ -1,3 +1,4 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import { useState } from "react";
 import * as Schema from "effect/Schema";
 import {
@@ -70,7 +71,7 @@ export function PayrollFoundation({
   const [allowed, setAllowed] = useState(true);
   const [notice, setNotice] = useState("");
   const [inputError, setInputError] = useState("");
-  const [keys] = useState(() => new Map<string, string>());
+  const { current: keys } = useCommandKeys();
   const root = `${bookPath(book)}/payroll`;
   const payrollKey = [...bookKey(book), "payroll"];
 

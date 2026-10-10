@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -10,12 +11,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import {
-  booksKey,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { booksKey, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 const validator = Schema.toStandardSchemaV1(Setup.CreateCompany);
@@ -24,14 +20,14 @@ export function CreateCompany({ locale, onClose }: { locale: Locale; onClose: ()
   const sv = locale === "sv";
   const cache = useQueryClient();
   const navigate = useNavigate();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.CreateCompany.Type) =>
       readAccounting(
         "/api/v1/companies",
         Setup.CompanySetup,
-        mutationOptions("/api/v1/companies", JSON.stringify(input), keys.current),
+        keys.current.options("/api/v1/companies", JSON.stringify(input)),
       ),
     onSuccess: async (result) => {
       await cache.invalidateQueries({ queryKey: booksKey });

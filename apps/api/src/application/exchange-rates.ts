@@ -1,3 +1,5 @@
+import { runBookCommandWithReceipt } from "./book-commands";
+import { runBookCommand } from "./book-commands";
 import { digest as digestNative } from "./json";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import { convertMinor } from "@open-erp/domain/exchange-rates";
@@ -9,7 +11,8 @@ import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 
 import * as RateDb from "../db/exchange-rates";
 import type { Transaction } from "../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import {
   decode,
   exactKeys,
@@ -276,76 +279,69 @@ export const createExchangeRate = Effect.fn("exchangeRates.create")(function* (
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "create_exchange_rate",
-        principal.actorId,
-        payload,
-        RevisionSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRateAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(payload, ["sourceKey", "terms"]);
-      const book = yield* readNativeBook(transaction, command.scope.bookId);
-
-      const existing = yield* RateDb.readObservationBySourceKey(
-        transaction,
-        command.scope.bookId,
-        command.input.sourceKey,
-      );
-
-      if (existing.length > 0) return yield* failure("IdempotencyConflict");
-      const bound = yield* RateDb.countObservations(transaction, command.scope.bookId);
-
-      if ((bound[0]?.total ?? 0) >= maximumObservations) return yield* unsupported();
-      const observationId = newId("rate");
-
-      const body = yield* buildRevision(
-        transaction,
-        command.scope,
-        book.currency,
         {
-          observationId,
-          sourceKey: command.input.sourceKey,
-          revision: 1,
-          previousDigest: null,
-          terms: command.input.terms,
-        },
-        {
-          key: command.idempotencyKey,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "create_exchange_rate",
           actorId: principal.actorId,
+          input: payload,
         },
-      );
+        RevisionSchema,
+        Effect.gen(function* () {
+          yield* requireRateAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(payload, ["sourceKey", "terms"]);
+          const book = yield* readNativeBook(transaction, command.scope.bookId);
 
-      yield* RateDb.insertObservation(transaction, {
-        bookId: command.scope.bookId,
-        id: observationId,
-        sourceKey: command.input.sourceKey,
-      });
-      yield* RateDb.insertRevision(transaction, {
-        bookId: command.scope.bookId,
-        observationId,
-        revision: 1,
-        evidenceId: command.input.terms.evidenceId,
-        reviewEvidenceId: command.input.terms.reviewEvidenceId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "create_exchange_rate",
-        principal.actorId,
-        body,
-      );
+          const existing = yield* RateDb.readObservationBySourceKey(
+            transaction,
+            command.scope.bookId,
+            command.input.sourceKey,
+          );
 
-      return body;
+          if (existing.length > 0) return yield* failure("IdempotencyConflict");
+          const bound = yield* RateDb.countObservations(transaction, command.scope.bookId);
+
+          if ((bound[0]?.total ?? 0) >= maximumObservations) return yield* unsupported();
+          const observationId = newId("rate");
+
+          const body = yield* buildRevision(
+            transaction,
+            command.scope,
+            book.currency,
+            {
+              observationId,
+              sourceKey: command.input.sourceKey,
+              revision: 1,
+              previousDigest: null,
+              terms: command.input.terms,
+            },
+            {
+              key: command.idempotencyKey,
+              operation: "create_exchange_rate",
+              actorId: principal.actorId,
+            },
+          );
+
+          yield* RateDb.insertObservation(transaction, {
+            bookId: command.scope.bookId,
+            id: observationId,
+            sourceKey: command.input.sourceKey,
+          });
+          yield* RateDb.insertRevision(transaction, {
+            bookId: command.scope.bookId,
+            observationId,
+            revision: 1,
+            evidenceId: command.input.terms.evidenceId,
+            reviewEvidenceId: command.input.terms.reviewEvidenceId,
+            body,
+          });
+
+          return body;
+        }),
+      );
     },
     "update",
   );
@@ -362,66 +358,60 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "revise_exchange_rate",
-        principal.actorId,
-        payload,
-        RevisionSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRateAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), ["expectedDigest", "terms"]);
-      const book = yield* readNativeBook(transaction, command.scope.bookId);
-      const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
-      yield* requireActive(transaction, command.scope.bookId, command.id);
-
-      if (current.digest !== command.input.expectedDigest) return yield* failure("StaleDependency");
-      const revision = current.revision + 1;
-
-      if (revision > maximumRevision) return yield* unsupported();
-
-      const body = yield* buildRevision(
-        transaction,
-        command.scope,
-        book.currency,
         {
-          observationId: command.id,
-          sourceKey: current.sourceKey,
-          revision,
-          previousDigest: current.digest,
-          terms: command.input.terms,
-        },
-        {
-          key: command.idempotencyKey,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "revise_exchange_rate",
           actorId: principal.actorId,
+          input: payload,
         },
-      );
+        RevisionSchema,
+        Effect.gen(function* () {
+          yield* requireRateAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), ["expectedDigest", "terms"]);
+          const book = yield* readNativeBook(transaction, command.scope.bookId);
+          const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
+          yield* requireActive(transaction, command.scope.bookId, command.id);
 
-      yield* RateDb.insertRevision(transaction, {
-        bookId: command.scope.bookId,
-        observationId: command.id,
-        revision,
-        evidenceId: command.input.terms.evidenceId,
-        reviewEvidenceId: command.input.terms.reviewEvidenceId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "revise_exchange_rate",
-        principal.actorId,
-        payload,
-      );
+          if (current.digest !== command.input.expectedDigest)
+            return yield* failure("StaleDependency");
+          const revision = current.revision + 1;
 
-      return body;
+          if (revision > maximumRevision) return yield* unsupported();
+
+          const body = yield* buildRevision(
+            transaction,
+            command.scope,
+            book.currency,
+            {
+              observationId: command.id,
+              sourceKey: current.sourceKey,
+              revision,
+              previousDigest: current.digest,
+              terms: command.input.terms,
+            },
+            {
+              key: command.idempotencyKey,
+              operation: "revise_exchange_rate",
+              actorId: principal.actorId,
+            },
+          );
+
+          yield* RateDb.insertRevision(transaction, {
+            bookId: command.scope.bookId,
+            observationId: command.id,
+            revision,
+            evidenceId: command.input.terms.evidenceId,
+            reviewEvidenceId: command.input.terms.reviewEvidenceId,
+            body,
+          });
+
+          return { receipt: payload, result: body };
+        }),
+      );
     },
     "update",
   );
@@ -438,73 +428,67 @@ export const withdrawExchangeRate = Effect.fn("exchangeRates.withdraw")(function
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "withdraw_exchange_rate",
-        principal.actorId,
-        payload,
-        WithdrawalSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRateAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), withdrawalInputKeys);
-      const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
-
-      if (current.digest !== command.input.expectedDigest) return yield* failure("StaleDependency");
-      yield* requireActive(transaction, command.scope.bookId, command.id);
-      yield* requireTrimmable(command.input.rationale);
-
-      const evidenceSha256 = yield* readEvidenceSha(
-        transaction,
-        command.scope.bookId,
-        command.input.evidenceId,
-      );
-
-      const now = yield* isoNow(transaction);
-
-      const body = yield* decode(
-        WithdrawalSchema,
-        yield* digestBody({
-          id: newId("rate_withdrawal"),
+        {
           scope: command.scope,
-          observationId: command.id,
-          revision: current.revision,
-          revisionDigest: current.digest,
-          input: command.input,
-          evidenceSha256,
-          permanent: true,
-          ...recordMetadata(
-            principal.actorId,
-            command.idempotencyKey,
-            "withdraw_exchange_rate",
-            now,
-          ),
+          idempotencyKey: command.idempotencyKey,
+          operation: "withdraw_exchange_rate",
+          actorId: principal.actorId,
+          input: payload,
+        },
+        WithdrawalSchema,
+        Effect.gen(function* () {
+          yield* requireRateAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), withdrawalInputKeys);
+          const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
+
+          if (current.digest !== command.input.expectedDigest)
+            return yield* failure("StaleDependency");
+          yield* requireActive(transaction, command.scope.bookId, command.id);
+          yield* requireTrimmable(command.input.rationale);
+
+          const evidenceSha256 = yield* readEvidenceSha(
+            transaction,
+            command.scope.bookId,
+            command.input.evidenceId,
+          );
+
+          const now = yield* isoNow(transaction);
+
+          const body = yield* decode(
+            WithdrawalSchema,
+            yield* digestBody({
+              id: newId("rate_withdrawal"),
+              scope: command.scope,
+              observationId: command.id,
+              revision: current.revision,
+              revisionDigest: current.digest,
+              input: command.input,
+              evidenceSha256,
+              permanent: true,
+              ...recordMetadata(
+                principal.actorId,
+                command.idempotencyKey,
+                "withdraw_exchange_rate",
+                now,
+              ),
+            }),
+          );
+
+          yield* RateDb.insertWithdrawal(transaction, {
+            bookId: command.scope.bookId,
+            observationId: command.id,
+            id: body.id,
+            revision: body.revision,
+            evidenceId: command.input.evidenceId,
+            body,
+          });
+
+          return { receipt: payload, result: body };
         }),
       );
-
-      yield* RateDb.insertWithdrawal(transaction, {
-        bookId: command.scope.bookId,
-        observationId: command.id,
-        id: body.id,
-        revision: body.revision,
-        evidenceId: command.input.evidenceId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "withdraw_exchange_rate",
-        principal.actorId,
-        payload,
-      );
-
-      return body;
     },
     "update",
   );
@@ -580,105 +564,99 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_conversion_review",
-        principal.actorId,
-        payload,
-        ReviewSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireRateAccess(transaction, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(payload, conversionInputKeys);
-      const book = yield* readNativeBook(transaction, command.scope.bookId);
-      yield* requireTrimmable(command.input.sourceLocator);
-      yield* requireTrimmable(command.input.rationale);
-
-      const rate = yield* readCurrent(
-        transaction,
-        command.scope.bookId,
-        command.input.observationId,
-      );
-
-      yield* requireActive(transaction, command.scope.bookId, command.input.observationId);
-
-      if (rate.digest !== command.input.revisionDigest) return yield* failure("StaleDependency");
-
-      if (
-        command.input.conversionDate !== rate.terms.effectiveOn ||
-        command.input.fromCurrency !== rate.terms.fromCurrency ||
-        book.currency !== rate.terms.toCurrency
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const sourceSha256 = yield* readEvidenceSha(
-        transaction,
-        command.scope.bookId,
-        command.input.evidenceId,
-      );
-
-      const bound = yield* RateDb.countConversions(transaction, command.scope.bookId);
-
-      if ((bound[0]?.total ?? 0) >= maximumConversions) return yield* unsupported();
-      const calculation = yield* convert(command.input, book.currencyScale, rate);
-      const now = yield* isoNow(transaction);
-
-      const body = yield* decode(
-        ReviewSchema,
-        yield* digestBody({
-          id: newId("conversion"),
+        {
           scope: command.scope,
-          kind: "synthetic_exchange_conversion_v1",
-          input: command.input,
-          sourceSha256,
-          rate,
-          bookBasis: book,
-          calculation,
-          formula: conversionFormula,
-          legalPolicyApproved: false,
-          postingSupported: false,
-          financialCloseReady: false,
-          ...recordMetadata(
-            principal.actorId,
-            command.idempotencyKey,
-            "capture_conversion_review",
-            now,
-          ),
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_conversion_review",
+          actorId: principal.actorId,
+          input: payload,
+        },
+        ReviewSchema,
+        Effect.gen(function* () {
+          yield* requireRateAccess(transaction, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(payload, conversionInputKeys);
+          const book = yield* readNativeBook(transaction, command.scope.bookId);
+          yield* requireTrimmable(command.input.sourceLocator);
+          yield* requireTrimmable(command.input.rationale);
+
+          const rate = yield* readCurrent(
+            transaction,
+            command.scope.bookId,
+            command.input.observationId,
+          );
+
+          yield* requireActive(transaction, command.scope.bookId, command.input.observationId);
+
+          if (rate.digest !== command.input.revisionDigest)
+            return yield* failure("StaleDependency");
+
+          if (
+            command.input.conversionDate !== rate.terms.effectiveOn ||
+            command.input.fromCurrency !== rate.terms.fromCurrency ||
+            book.currency !== rate.terms.toCurrency
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          const sourceSha256 = yield* readEvidenceSha(
+            transaction,
+            command.scope.bookId,
+            command.input.evidenceId,
+          );
+
+          const bound = yield* RateDb.countConversions(transaction, command.scope.bookId);
+
+          if ((bound[0]?.total ?? 0) >= maximumConversions) return yield* unsupported();
+          const calculation = yield* convert(command.input, book.currencyScale, rate);
+          const now = yield* isoNow(transaction);
+
+          const body = yield* decode(
+            ReviewSchema,
+            yield* digestBody({
+              id: newId("conversion"),
+              scope: command.scope,
+              kind: "synthetic_exchange_conversion_v1",
+              input: command.input,
+              sourceSha256,
+              rate,
+              bookBasis: book,
+              calculation,
+              formula: conversionFormula,
+              legalPolicyApproved: false,
+              postingSupported: false,
+              financialCloseReady: false,
+              ...recordMetadata(
+                principal.actorId,
+                command.idempotencyKey,
+                "capture_conversion_review",
+                now,
+              ),
+            }),
+          );
+
+          const content = yield* canonicalContent(yield* toJsonObject(body));
+          const byteLength = new TextEncoder().encode(content).byteLength;
+
+          if (byteLength > maximumArtifactBytes) return yield* unsupported();
+          const sha256 = yield* sha256Hex(content);
+          yield* RateDb.insertConversion(transaction, {
+            bookId: command.scope.bookId,
+            id: body.id,
+            observationId: body.rate.observationId,
+            revision: body.rate.revision,
+            evidenceId: command.input.evidenceId,
+            body,
+            content,
+            sha256,
+            byteLength,
+          });
+
+          return { receipt: payload, result: body };
         }),
       );
-
-      const content = yield* canonicalContent(yield* toJsonObject(body));
-      const byteLength = new TextEncoder().encode(content).byteLength;
-
-      if (byteLength > maximumArtifactBytes) return yield* unsupported();
-      const sha256 = yield* sha256Hex(content);
-      yield* RateDb.insertConversion(transaction, {
-        bookId: command.scope.bookId,
-        id: body.id,
-        observationId: body.rate.observationId,
-        revision: body.rate.revision,
-        evidenceId: command.input.evidenceId,
-        body,
-        content,
-        sha256,
-        byteLength,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_conversion_review",
-        principal.actorId,
-        payload,
-      );
-
-      return body;
     },
     "update",
   );

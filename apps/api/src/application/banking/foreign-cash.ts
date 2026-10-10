@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import { collectPostingPrincipalBasis } from "../posting-authority";
 import * as ProcessorDb from "../../db/banking/processor-clearing";
 import * as Contracts from "@open-erp/contracts/foreign-cash";
@@ -21,7 +22,9 @@ import {
   type Scope,
 } from "../commerce/support";
 import { ensureEvent, postOwnedJournal, readItemState } from "../commerce/fx";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { addMatch } from "./matches";
 import { arrayField, booleanField, isJsonObject, objectField, textField } from "./shared";
@@ -826,92 +829,85 @@ export const prepareForeignCash = Effect.fn("foreignCash.prepare")(function* (
   return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     const operation = "prepare_foreign_cash";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command.input),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
       Contracts.Review,
+      Effect.gen(function* () {
+        yield* requireTableAccess(transaction, CashDb.tables, true);
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const compiled = yield* build(transaction, command.scope, command.input);
+        const reviewId = newId("cash_review");
+        let postingAction: Schema.JsonObject | null = null;
+
+        if (compiled.journal.length > 0) {
+          const eventId = yield* ensureEvent(
+            transaction,
+            command.scope,
+            command.input.evidenceId,
+            `cash_${reviewId}`,
+          );
+
+          const evidence = (yield* Db.readEvidence(
+            transaction,
+            command.scope.bookId,
+            command.input.evidenceId,
+          ))[0];
+
+          if (!evidence) return yield* failure("NotFound");
+          postingAction = yield* toJsonObject({
+            kind: "post_voucher",
+            correctsVoucherId: null,
+            fiscalYearId: compiled.fiscalYearId,
+            accountingPeriodId: command.input.accountingPeriodId,
+            series: command.input.series,
+            postingDate: command.input.date,
+            eventId,
+            postingPurpose: "adjustment",
+            occurrenceKey: reviewId,
+            description: command.input.reason,
+            currency: compiled.bookCurrency,
+            rationale: command.input.reason,
+            taxAssessment: "not_applicable",
+            evidenceRefs: [
+              {
+                evidenceId: evidence.id,
+                sha256: evidence.sha256,
+                locator: command.input.sourceIdentity,
+              },
+            ],
+            lines: compiled.journal.map((line) => ({ ...line, lineId: newId("line") })),
+          });
+        }
+
+        const body = {
+          id: reviewId,
+          postingAction,
+          scope: command.scope,
+          actorId: principal.actorId,
+          version: 1 as const,
+          input: command.input,
+          ...compiled,
+          createdAt: yield* isoNow(transaction),
+        };
+
+        const review = yield* decode(Contracts.Review, { ...body, digest: yield* digest(body) });
+        yield* CashDb.insertReview(transaction, {
+          bookId: command.scope.bookId,
+          id: review.id,
+          actorId: principal.actorId,
+          body: yield* toJsonObject(review),
+        });
+
+        return { receipt: yield* toJsonObject(review), result: review };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* requireTableAccess(transaction, CashDb.tables, true);
-    yield* Db.lockBookForUpdate(transaction, command.scope);
-    const compiled = yield* build(transaction, command.scope, command.input);
-    const reviewId = newId("cash_review");
-    let postingAction: Schema.JsonObject | null = null;
-
-    if (compiled.journal.length > 0) {
-      const eventId = yield* ensureEvent(
-        transaction,
-        command.scope,
-        command.input.evidenceId,
-        `cash_${reviewId}`,
-      );
-
-      const evidence = (yield* Db.readEvidence(
-        transaction,
-        command.scope.bookId,
-        command.input.evidenceId,
-      ))[0];
-
-      if (!evidence) return yield* failure("NotFound");
-      postingAction = yield* toJsonObject({
-        kind: "post_voucher",
-        correctsVoucherId: null,
-        fiscalYearId: compiled.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        series: command.input.series,
-        postingDate: command.input.date,
-        eventId,
-        postingPurpose: "adjustment",
-        occurrenceKey: reviewId,
-        description: command.input.reason,
-        currency: compiled.bookCurrency,
-        rationale: command.input.reason,
-        taxAssessment: "not_applicable",
-        evidenceRefs: [
-          {
-            evidenceId: evidence.id,
-            sha256: evidence.sha256,
-            locator: command.input.sourceIdentity,
-          },
-        ],
-        lines: compiled.journal.map((line) => ({ ...line, lineId: newId("line") })),
-      });
-    }
-
-    const body = {
-      id: reviewId,
-      postingAction,
-      scope: command.scope,
-      actorId: principal.actorId,
-      version: 1 as const,
-      input: command.input,
-      ...compiled,
-      createdAt: yield* isoNow(transaction),
-    };
-
-    const review = yield* decode(Contracts.Review, { ...body, digest: yield* digest(body) });
-    yield* CashDb.insertReview(transaction, {
-      bookId: command.scope.bookId,
-      id: review.id,
-      actorId: principal.actorId,
-      body: yield* toJsonObject(review),
-    });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(review),
-    );
-
-    return review;
   });
 });
 
@@ -927,60 +923,53 @@ export const approveForeignCash = Effect.fn("foreignCash.approve")(function* (
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "approve_foreign_cash";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command),
-      Contracts.Approval,
-    );
-
-    if (request.previous) return request.previous;
-    yield* Db.lockBookForUpdate(transaction, command.scope);
-    const review = yield* getReview(transaction, command.scope, command.reviewId);
-
-    if (command.input.digest !== review.digest) return yield* failure("StaleDependency");
-
-    yield* authorize(principal, "approve_foreign_cash");
-
-    if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-    yield* requireCurrentReview(transaction, command.scope, review);
-
-    const approval = yield* decode(Contracts.Approval, {
-      id: newId("cash_approval"),
-      reviewId: review.id,
-      actorId: principal.actorId,
-      digest: review.digest,
-      expiresAt: new Date(Date.parse(yield* isoNow(transaction)) + 3_600_000).toISOString(),
-    });
-
-    yield* CashDb.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      ...approval,
-      body: {
-        ...(yield* toJsonObject(approval)),
-        authorityBasis: yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-          "informational",
-        ),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
       },
-    });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(approval),
-    );
+      Contracts.Approval,
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const review = yield* getReview(transaction, command.scope, command.reviewId);
 
-    return approval;
+        if (command.input.digest !== review.digest) return yield* failure("StaleDependency");
+
+        yield* authorize(principal, "approve_foreign_cash");
+
+        if (review.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+        yield* requireCurrentReview(transaction, command.scope, review);
+
+        const approval = yield* decode(Contracts.Approval, {
+          id: newId("cash_approval"),
+          reviewId: review.id,
+          actorId: principal.actorId,
+          digest: review.digest,
+          expiresAt: new Date(Date.parse(yield* isoNow(transaction)) + 3_600_000).toISOString(),
+        });
+
+        yield* CashDb.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          ...approval,
+          body: {
+            ...(yield* toJsonObject(approval)),
+            authorityBasis: yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+              "informational",
+            ),
+          },
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
+    );
   });
 });
 
@@ -1114,159 +1103,151 @@ export const executeForeignCash = Effect.fn("foreignCash.execute")(function* (
   return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     const operation = "execute_foreign_cash";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Execution,
-    );
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const review = yield* getReview(transaction, command.scope, command.reviewId);
 
-    if (request.previous) return request.previous;
-    yield* Db.lockBookForUpdate(transaction, command.scope);
-    const review = yield* getReview(transaction, command.scope, command.reviewId);
+        if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
 
-    if (review.digest !== command.input.digest) return yield* failure("StaleDependency");
+        if ((yield* CashDb.readExecution(transaction, command.scope.bookId, review.id)).length > 0)
+          return yield* failure("AlreadyPosted");
 
-    if ((yield* CashDb.readExecution(transaction, command.scope.bookId, review.id)).length > 0)
-      return yield* failure("AlreadyPosted");
+        const row = (yield* CashDb.readApproval(
+          transaction,
+          command.scope.bookId,
+          review.id,
+          command.input.approvalId,
+        ))[0];
 
-    const row = (yield* CashDb.readApproval(
-      transaction,
-      command.scope.bookId,
-      review.id,
-      command.input.approvalId,
-    ))[0];
+        if (!row) return yield* failure("ApprovalRequired");
+        const approval = yield* decode(Contracts.Approval, row.body);
 
-    if (!row) return yield* failure("ApprovalRequired");
-    const approval = yield* decode(Contracts.Approval, row.body);
+        if (
+          approval.digest !== review.digest ||
+          approval.actorId === review.actorId ||
+          Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
+          (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
+            .length === 0 ||
+          (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled === false
+        )
+          return yield* failure("ApprovalRequired");
+        yield* requireCurrentReview(transaction, command.scope, review);
+        let voucherId: string | null = null;
 
-    if (
-      approval.digest !== review.digest ||
-      approval.actorId === review.actorId ||
-      Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
-      (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
-        .length === 0 ||
-      (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled === false
-    )
-      return yield* failure("ApprovalRequired");
-    yield* requireCurrentReview(transaction, command.scope, review);
-    let voucherId: string | null = null;
+        if (review.journal.length > 0) {
+          if (review.postingAction === null) return yield* failure("InternalError");
 
-    if (review.journal.length > 0) {
-      if (review.postingAction === null) return yield* failure("InternalError");
+          const posted = yield* postOwnedJournal(
+            transaction,
+            command.scope,
+            principal,
+            { ...approval, bookId: command.scope.bookId, body: row.body },
+            review.postingAction,
+            { kind: "foreign_cash", id: review.id },
+          );
 
-      const posted = yield* postOwnedJournal(
-        transaction,
-        command.scope,
-        principal,
-        { ...approval, bookId: command.scope.bookId, body: row.body },
-        review.postingAction,
-        { kind: "foreign_cash", id: review.id },
-      );
+          voucherId = posted.voucherId;
+        }
 
-      voucherId = posted.voucherId;
-    }
+        if (review.input.kind === "open") {
+          const opening = review.snapshot.opening;
 
-    if (review.input.kind === "open") {
-      const opening = review.snapshot.opening;
+          if (!isJsonObject(opening)) return yield* failure("InternalError");
+          const holding = yield* decode(Contracts.Holding, opening);
+          yield* CashDb.insertAccount(transaction, {
+            bookId: command.scope.bookId,
+            accountId: holding.accountId,
+            nativeCurrency: holding.nativeCurrency,
+            nativeScale: holding.nativeScale,
+            openedOn: holding.openedOn,
+            body: yield* toJsonObject(holding),
+          });
 
-      if (!isJsonObject(opening)) return yield* failure("InternalError");
-      const holding = yield* decode(Contracts.Holding, opening);
-      yield* CashDb.insertAccount(transaction, {
-        bookId: command.scope.bookId,
-        accountId: holding.accountId,
-        nativeCurrency: holding.nativeCurrency,
-        nativeScale: holding.nativeScale,
-        openedOn: holding.openedOn,
-        body: yield* toJsonObject(holding),
-      });
+          for (const line of arrayField(review.snapshot, "openingLines")) {
+            const openingVoucherId = textField(line, "voucherId");
+            const openingLineId = textField(line, "lineId");
 
-      for (const line of arrayField(review.snapshot, "openingLines")) {
-        const openingVoucherId = textField(line, "voucherId");
-        const openingLineId = textField(line, "lineId");
+            if (!openingVoucherId || !openingLineId || !isJsonObject(line))
+              return yield* failure("InternalError");
+            yield* CashDb.insertOpeningLine(transaction, {
+              bookId: command.scope.bookId,
+              accountId: holding.accountId,
+              voucherId: openingVoucherId,
+              lineId: openingLineId,
+              body: line,
+            });
+          }
 
-        if (!openingVoucherId || !openingLineId || !isJsonObject(line))
-          return yield* failure("InternalError");
-        yield* CashDb.insertOpeningLine(transaction, {
-          bookId: command.scope.bookId,
-          accountId: holding.accountId,
-          voucherId: openingVoucherId,
-          lineId: openingLineId,
-          body: line,
+          yield* CashDb.insertEffect(transaction, {
+            bookId: command.scope.bookId,
+            id: newId("cash_effect"),
+            reviewId: review.id,
+            accountId: holding.accountId,
+            sourceIdentity: sourceIdentity(review.input),
+            nativeDeltaMinor: "0",
+            carryingDeltaMinor: "0",
+            actualOn: review.input.date,
+            voucherId,
+            body: yield* toJsonObject(holding),
+          });
+        }
+
+        for (const effect of review.effects)
+          yield* CashDb.insertEffect(transaction, {
+            bookId: command.scope.bookId,
+            id: newId("cash_effect"),
+            reviewId: review.id,
+            sourceIdentity: sourceIdentity(review.input, effect.accountId),
+            actualOn: review.input.date,
+            voucherId,
+            ...effect,
+            body: yield* toJsonObject(effect),
+          });
+
+        const execution = yield* decode(Contracts.Execution, {
+          reviewId: review.id,
+          digest: review.digest,
+          voucherId,
+          effects: review.effects,
+          obligation: review.obligation,
         });
-      }
 
-      yield* CashDb.insertEffect(transaction, {
-        bookId: command.scope.bookId,
-        id: newId("cash_effect"),
-        reviewId: review.id,
-        accountId: holding.accountId,
-        sourceIdentity: sourceIdentity(review.input),
-        nativeDeltaMinor: "0",
-        carryingDeltaMinor: "0",
-        actualOn: review.input.date,
-        voucherId,
-        body: yield* toJsonObject(holding),
-      });
-    }
+        yield* CashDb.insertExecution(
+          transaction,
+          command.scope.bookId,
+          review.id,
+          yield* toJsonObject(execution),
+        );
 
-    for (const effect of review.effects)
-      yield* CashDb.insertEffect(transaction, {
-        bookId: command.scope.bookId,
-        id: newId("cash_effect"),
-        reviewId: review.id,
-        sourceIdentity: sourceIdentity(review.input, effect.accountId),
-        actualOn: review.input.date,
-        voucherId,
-        ...effect,
-        body: yield* toJsonObject(effect),
-      });
+        if (review.obligation)
+          yield* CashDb.insertObligationConsumption(transaction, {
+            bookId: command.scope.bookId,
+            id: review.id,
+            ...review.obligation,
+            body: yield* toJsonObject({ ...review.obligation, date: review.input.date, voucherId }),
+          });
 
-    const execution = yield* decode(Contracts.Execution, {
-      reviewId: review.id,
-      digest: review.digest,
-      voucherId,
-      effects: review.effects,
-      obligation: review.obligation,
-    });
+        yield* retainCashSourceConsumptions(
+          transaction,
+          command.scope,
+          review,
+          voucherId,
+          principal.actorId,
+        );
 
-    yield* CashDb.insertExecution(
-      transaction,
-      command.scope.bookId,
-      review.id,
-      yield* toJsonObject(execution),
+        return { receipt: yield* toJsonObject(execution), result: execution };
+      }),
     );
-
-    if (review.obligation)
-      yield* CashDb.insertObligationConsumption(transaction, {
-        bookId: command.scope.bookId,
-        id: review.id,
-        ...review.obligation,
-        body: yield* toJsonObject({ ...review.obligation, date: review.input.date, voucherId }),
-      });
-
-    yield* retainCashSourceConsumptions(
-      transaction,
-      command.scope,
-      review,
-      voucherId,
-      principal.actorId,
-    );
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(execution),
-    );
-
-    return execution;
   });
 });
 

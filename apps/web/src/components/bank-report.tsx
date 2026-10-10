@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -9,7 +10,7 @@ import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { BankMatches, BankStatementDetails } from "@/components/bank-statement";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -30,7 +31,8 @@ export function BankReport({
     queryKey: [...bookKey(book), "bank-reconciliation", id, expected],
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/bank-reconciliations/${encodeURIComponent(id)}`,
+        (client) =>
+          client.reconciliation.getBankReconciliation({ params: { ...bookScope(book), id: id } }),
         Bank.BankReconciliationView,
         { signal },
       );
@@ -119,7 +121,11 @@ function ReportDetails({
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 

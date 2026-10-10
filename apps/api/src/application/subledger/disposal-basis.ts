@@ -17,7 +17,8 @@ import * as Vat from "../../db/vat/returns";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope, textField } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, readBook, readPeriod, validatePlan } from "../posting";
+import { digest } from "../json";
+import { readBook, readPeriod, validatePlan } from "../posting-validation";
 import { disposalBasis } from "./asset-basis";
 
 export function assetInput(input: typeof Contracts.PrepareDisposal.Type) {

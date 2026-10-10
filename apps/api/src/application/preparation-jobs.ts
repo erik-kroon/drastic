@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
 import { sql } from "drizzle-orm";
@@ -12,15 +13,11 @@ import * as RecurringDb from "../db/recurring-rules";
 import * as WorkDb from "../db/evidence-work";
 import { databaseFailure, withTransaction, type Transaction } from "../db/transaction";
 import { RequestEnvironment } from "../runtime/environment";
-import {
-  digest,
-  isoNow,
-  newId,
-  prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "./posting";
+import { digest } from "./json";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
+import { prepareJournalInTransaction } from "./posting";
+import { validatePlan } from "./posting-validation";
 import { calendarDate } from "./recurring-rules";
 import {
   decode,
@@ -370,59 +367,51 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         executorId: executor.actorId,
       });
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        input.scope,
-        input.idempotencyKey,
-        "admit_preparation_job",
-        requester.actorId,
-        payload,
+        {
+          scope: input.scope,
+          idempotencyKey: input.idempotencyKey,
+          operation: "admit_preparation_job",
+          actorId: requester.actorId,
+          input: payload,
+        },
         Automation.PreparationJob,
+        Effect.gen(function* () {
+          yield* lockBookForUpdate(transaction, input.scope);
+          const run = (yield* JobDb.readRun(transaction, input.scope.bookId, input.runId))[0];
+
+          if (!run) return yield* failure("NotFound");
+
+          if (run.state !== "ready") return yield* failure("InvalidJournal");
+          const audit = yield* countAudit(transaction, input.scope.bookId, run.id);
+          const existing = (yield* JobDb.lockReadyJob(transaction, input.scope.bookId, run.id))[0];
+
+          if (existing) {
+            const reason = yield* replacementReason(
+              transaction,
+              input.scope.bookId,
+              existing,
+              executor.actorId,
+              audit,
+            );
+
+            if (reason === null) return yield* failure("InvalidJournal");
+            yield* JobDb.stopJob(transaction, input.scope.bookId, existing.id, reason);
+          }
+
+          const job = yield* insertJob(
+            transaction,
+            input.scope,
+            run.id,
+            requester,
+            executor.actorId,
+            audit,
+          );
+
+          return job;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* lockBookForUpdate(transaction, input.scope);
-      const run = (yield* JobDb.readRun(transaction, input.scope.bookId, input.runId))[0];
-
-      if (!run) return yield* failure("NotFound");
-
-      if (run.state !== "ready") return yield* failure("InvalidJournal");
-      const audit = yield* countAudit(transaction, input.scope.bookId, run.id);
-      const existing = (yield* JobDb.lockReadyJob(transaction, input.scope.bookId, run.id))[0];
-
-      if (existing) {
-        const reason = yield* replacementReason(
-          transaction,
-          input.scope.bookId,
-          existing,
-          executor.actorId,
-          audit,
-        );
-
-        if (reason === null) return yield* failure("InvalidJournal");
-        yield* JobDb.stopJob(transaction, input.scope.bookId, existing.id, reason);
-      }
-
-      const job = yield* insertJob(
-        transaction,
-        input.scope,
-        run.id,
-        requester,
-        executor.actorId,
-        audit,
-      );
-
-      yield* saveCommand(
-        transaction,
-        input.scope,
-        input.idempotencyKey,
-        request.expected,
-        "admit_preparation_job",
-        requester.actorId,
-        job,
-      );
-
-      return job;
     }).pipe(Effect.mapError(databaseFailure)),
   );
 });
@@ -812,115 +801,107 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, ["activationId", "startsOn", "endsOn"]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "create_preparation_run",
-        principal.actorId,
-        input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "create_preparation_run",
+          actorId: principal.actorId,
+          input: input,
+        },
         Automation.PreparationRun,
+        Effect.gen(function* () {
+          yield* requireRunAccess(transaction, true);
+          const bookId = command.scope.bookId;
+
+          const activation = (yield* WorkDb.readActivation(
+            transaction,
+            bookId,
+            command.input.activationId,
+          ))[0];
+
+          if (!activation) return yield* failure("NotFound");
+
+          const active = yield* JobDb.readActiveOperatorActivation(
+            transaction,
+            bookId,
+            activation.id,
+            activation.ruleId,
+          );
+
+          if (active.length === 0) return yield* failure("ApprovalRequired");
+          const rule = (yield* JobDb.readRule(transaction, bookId, activation.ruleId))[0];
+
+          if (!rule) return yield* failure("NotFound");
+          const policy = yield* decode(RulePolicy, rule.body);
+          const startsOn = calendarDate(command.input.startsOn);
+          const endsOn = calendarDate(command.input.endsOn);
+
+          if (startsOn === null || endsOn === null || startsOn > endsOn) {
+            return yield* failure("InvalidJournal");
+          }
+
+          yield* RecurringDb.lockSelectionAccounts(transaction, bookId, [
+            policy.input.accountId,
+            policy.input.counterpartAccountId,
+          ]);
+          yield* RecurringDb.lockSelectionPeriods(transaction, bookId, startsOn, endsOn);
+
+          const selected = (yield* RecurringDb.readSelection(
+            transaction,
+            bookId,
+            rule.body,
+            startsOn,
+            endsOn,
+          ))[0];
+
+          if (!selected?.current || selected.selection === null) {
+            return yield* failure("StaleDependency");
+          }
+
+          const selection = yield* decode(Automation.SimulationSelection, selected.selection);
+
+          if (selection.matchingCount > maximumSelectedObservations) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const firstBlocker = selection.blockers[0];
+
+          const state =
+            firstBlocker !== undefined
+              ? "blocked"
+              : selection.rows.length === 0
+                ? "completed"
+                : "ready";
+
+          const blocker =
+            firstBlocker === undefined ? null : { code: "InvalidJournal", message: firstBlocker };
+
+          const id = newId("run");
+          yield* JobDb.insertRun(transaction, {
+            bookId,
+            id,
+            ruleId: activation.ruleId,
+            activationId: activation.id,
+            selection: selected.selection,
+            state,
+            blocker,
+          });
+
+          const result = yield* auditRun(
+            transaction,
+            bookId,
+            id,
+            principal.actorId,
+            command.idempotencyKey,
+            "create_preparation_run",
+            "create",
+          );
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireRunAccess(transaction, true);
-      const bookId = command.scope.bookId;
-
-      const activation = (yield* WorkDb.readActivation(
-        transaction,
-        bookId,
-        command.input.activationId,
-      ))[0];
-
-      if (!activation) return yield* failure("NotFound");
-
-      const active = yield* JobDb.readActiveOperatorActivation(
-        transaction,
-        bookId,
-        activation.id,
-        activation.ruleId,
-      );
-
-      if (active.length === 0) return yield* failure("ApprovalRequired");
-      const rule = (yield* JobDb.readRule(transaction, bookId, activation.ruleId))[0];
-
-      if (!rule) return yield* failure("NotFound");
-      const policy = yield* decode(RulePolicy, rule.body);
-      const startsOn = calendarDate(command.input.startsOn);
-      const endsOn = calendarDate(command.input.endsOn);
-
-      if (startsOn === null || endsOn === null || startsOn > endsOn) {
-        return yield* failure("InvalidJournal");
-      }
-
-      yield* RecurringDb.lockSelectionAccounts(transaction, bookId, [
-        policy.input.accountId,
-        policy.input.counterpartAccountId,
-      ]);
-      yield* RecurringDb.lockSelectionPeriods(transaction, bookId, startsOn, endsOn);
-
-      const selected = (yield* RecurringDb.readSelection(
-        transaction,
-        bookId,
-        rule.body,
-        startsOn,
-        endsOn,
-      ))[0];
-
-      if (!selected?.current || selected.selection === null) {
-        return yield* failure("StaleDependency");
-      }
-
-      const selection = yield* decode(Automation.SimulationSelection, selected.selection);
-
-      if (selection.matchingCount > maximumSelectedObservations) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const firstBlocker = selection.blockers[0];
-
-      const state =
-        firstBlocker !== undefined
-          ? "blocked"
-          : selection.rows.length === 0
-            ? "completed"
-            : "ready";
-
-      const blocker =
-        firstBlocker === undefined ? null : { code: "InvalidJournal", message: firstBlocker };
-
-      const id = newId("run");
-      yield* JobDb.insertRun(transaction, {
-        bookId,
-        id,
-        ruleId: activation.ruleId,
-        activationId: activation.id,
-        selection: selected.selection,
-        state,
-        blocker,
-      });
-
-      const result = yield* auditRun(
-        transaction,
-        bookId,
-        id,
-        principal.actorId,
-        command.idempotencyKey,
-        "create_preparation_run",
-        "create",
-      );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "create_preparation_run",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -943,78 +924,70 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, ["action", "maxItems"]);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "advance_preparation_run",
-        principal.actorId,
-        yield* toJsonObject({ id: command.runId, input }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "advance_preparation_run",
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ id: command.runId, input }),
+        },
         Automation.PreparationRun,
-      );
+        Effect.gen(function* () {
+          yield* requireRunAccess(transaction, true);
 
-      if (request.previous) return request.previous;
-      yield* requireRunAccess(transaction, true);
-
-      if (!advanceActions.some((choice) => choice === command.input.action)) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const limit = command.input.maxItems;
-
-      if (!Number.isInteger(limit) || limit < 1 || limit > maximumChunk) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const bookId = command.scope.bookId;
-      const run = (yield* JobDb.lockRun(transaction, bookId, command.runId))[0];
-
-      if (!run) return yield* failure("NotFound");
-
-      if (run.state !== "completed") {
-        if (command.input.action === "cancel") {
-          yield* JobDb.writeRunProgress(transaction, {
-            bookId,
-            runId: run.id,
-            state: "cancelled",
-            cursor: run.cursor,
-            results: run.results,
-            blocker: null,
-          });
-        } else {
-          if (
-            command.input.action === "continue" &&
-            (run.state === "cancelled" || run.state === "blocked")
-          ) {
+          if (!advanceActions.some((choice) => choice === command.input.action)) {
             return yield* failure("InvalidJournal");
           }
 
-          yield* requireAdvanceAccess(transaction);
-          yield* advancePreparationRun(transaction, command.scope, principal, run, limit);
-        }
-      }
+          const limit = command.input.maxItems;
 
-      const result = yield* auditRun(
-        transaction,
-        bookId,
-        run.id,
-        principal.actorId,
-        command.idempotencyKey,
-        "advance_preparation_run",
-        command.input.action,
+          if (!Number.isInteger(limit) || limit < 1 || limit > maximumChunk) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const bookId = command.scope.bookId;
+          const run = (yield* JobDb.lockRun(transaction, bookId, command.runId))[0];
+
+          if (!run) return yield* failure("NotFound");
+
+          if (run.state !== "completed") {
+            if (command.input.action === "cancel") {
+              yield* JobDb.writeRunProgress(transaction, {
+                bookId,
+                runId: run.id,
+                state: "cancelled",
+                cursor: run.cursor,
+                results: run.results,
+                blocker: null,
+              });
+            } else {
+              if (
+                command.input.action === "continue" &&
+                (run.state === "cancelled" || run.state === "blocked")
+              ) {
+                return yield* failure("InvalidJournal");
+              }
+
+              yield* requireAdvanceAccess(transaction);
+              yield* advancePreparationRun(transaction, command.scope, principal, run, limit);
+            }
+          }
+
+          const result = yield* auditRun(
+            transaction,
+            bookId,
+            run.id,
+            principal.actorId,
+            command.idempotencyKey,
+            "advance_preparation_run",
+            command.input.action,
+          );
+
+          return result;
+        }),
       );
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "advance_preparation_run",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -1036,59 +1009,55 @@ export const stopPreparationJob = Effect.fn("Preparation.stopJob")(function* (
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "stop_preparation_job",
-        principal.actorId,
-        yield* toJsonObject({ jobId: command.jobId, input }),
-        Automation.PreparationJobStop,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireJobAccess(transaction, true);
-      yield* exactKeys(input, ["reason"]);
-      const reason = input.reason;
-
-      if (typeof reason !== "string" || reason.trim().length < 1 || reason.length > reasonLimit) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const bookId = command.scope.bookId;
-      const job = (yield* JobDb.lockJob(transaction, bookId, command.jobId))[0];
-
-      if (!job) return yield* failure("NotFound");
-      const outcome = job.state === "ready" ? "stopped" : "already_terminal";
-
-      if (outcome === "stopped") yield* JobDb.stopJob(transaction, bookId, job.id, reason);
-
-      const current =
-        outcome === "stopped" ? (yield* JobDb.readJob(transaction, bookId, job.id))[0] : job;
-
-      if (!current) return yield* failure("InternalError");
-
-      const result = yield* decode(Automation.PreparationJobStop, {
-        job: yield* jobBody(current),
-        outcome,
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "stop_preparation_job",
           actorId: principal.actorId,
+          input: yield* toJsonObject({ jobId: command.jobId, input }),
         },
-      });
+        Automation.PreparationJobStop,
+        Effect.gen(function* () {
+          yield* requireJobAccess(transaction, true);
+          yield* exactKeys(input, ["reason"]);
+          const reason = input.reason;
 
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "stop_preparation_job",
-        principal.actorId,
-        result,
+          if (
+            typeof reason !== "string" ||
+            reason.trim().length < 1 ||
+            reason.length > reasonLimit
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const bookId = command.scope.bookId;
+          const job = (yield* JobDb.lockJob(transaction, bookId, command.jobId))[0];
+
+          if (!job) return yield* failure("NotFound");
+          const outcome = job.state === "ready" ? "stopped" : "already_terminal";
+
+          if (outcome === "stopped") yield* JobDb.stopJob(transaction, bookId, job.id, reason);
+
+          const current =
+            outcome === "stopped" ? (yield* JobDb.readJob(transaction, bookId, job.id))[0] : job;
+
+          if (!current) return yield* failure("InternalError");
+
+          const result = yield* decode(Automation.PreparationJobStop, {
+            job: yield* jobBody(current),
+            outcome,
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "stop_preparation_job",
+              actorId: principal.actorId,
+            },
+          });
+
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );

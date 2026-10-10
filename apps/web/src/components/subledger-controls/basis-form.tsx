@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +12,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { controlCopy } from "./copy";
 
@@ -36,7 +39,7 @@ export function BasisForm({ book, locale }: Props) {
     queryKey: [...bookKey(book), "control-schedule", selected],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/schedules/${encodeURIComponent(selected)}`,
+        (client) => client.subledgers.getSchedule({ params: { ...bookScope(book), id: selected } }),
         Schedules.ScheduleView,
         { signal },
       );
@@ -121,7 +124,7 @@ function SelectVoucher({
     queryKey: [...bookKey(book), "control-basis-voucher", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(id)}`,
+        (client) => client.accounting.getVoucher({ params: { ...bookScope(book), id: id } }),
         Accounting.Voucher,
         { signal },
       );
@@ -188,7 +191,7 @@ function RecordBasis({
   voucher: typeof Accounting.Voucher.Type;
 }) {
   const copy = controlCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
   const client = useQueryClient();
 
@@ -199,7 +202,7 @@ function RecordBasis({
       const result = await readAccounting(
         path,
         Controls.SubledgerBasis,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (
@@ -241,7 +244,7 @@ function RecordBasis({
           lineIds: fields.getAll("lineIds"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInvalid(true);
 
           return;

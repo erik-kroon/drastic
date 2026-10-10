@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -71,7 +72,10 @@ export function supplierGroupEligible(
 
 export async function readGroupReview(book: typeof Accounting.Book.Type, reviewId: string) {
   const view = await readAccounting(
-    `${commercePath(book)}/supplier-acceptance-reviews/${encodeURIComponent(reviewId)}`,
+    (client) =>
+      client.supplierAcceptance.getSupplierAcceptanceReview({
+        params: { ...bookScope(book), id: reviewId },
+      }),
     Acceptance.SupplierAcceptanceView,
   );
 

@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 
@@ -22,7 +24,7 @@ export function WithdrawalForm(props: {
   const { book, locale, rate, onSaved } = props;
   const onDiscard = props.onDiscard;
   const copy = exchangeRateCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [invalid, setInvalid] = useState(false);
 
   const save = useMutation({
@@ -32,7 +34,7 @@ export function WithdrawalForm(props: {
       const result = await readAccounting(
         path,
         Rates.ExchangeRateWithdrawal,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (
@@ -69,7 +71,7 @@ export function WithdrawalForm(props: {
           rationale: fields.get("rationale"),
         });
 
-        if (decoded._tag === "None" || fields.get("acknowledge") !== "permanent") {
+        if (Option.isNone(decoded) || fields.get("acknowledge") !== "permanent") {
           setInvalid(true);
 
           return;

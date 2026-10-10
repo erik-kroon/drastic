@@ -1,4 +1,6 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+
 import { HistoricalAdoptionDirectory } from "./adoption-workspace";
 import { useForm } from "@tanstack/react-form";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,13 +22,7 @@ import { statementImportsOptions } from "@/components/statement-imports";
 import { checkScope } from "@/components/commerce/shared";
 import { SiePlanReview, SavedSiePlan } from "./plan";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 const Encoding = Sie.SiePreview.fields.encoding;
 
@@ -117,7 +113,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
   const sv = locale === "sv";
   const navigate = useNavigate();
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const base = `${workspacePath(book)}/history`;
   const sourcePath = `${bookPath(book)}/source-occurrences/${encodeURIComponent(source)}`;
 
@@ -160,7 +156,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
       readAccounting(
         `${sourcePath}/sie-previews`,
         Sie.SiePreview,
-        mutationOptions(`${sourcePath}/sie-previews`, JSON.stringify({ encoding }), keys.current),
+        keys.current.options(`${sourcePath}/sie-previews`, JSON.stringify({ encoding })),
       ),
     onSuccess: (result) => {
       checkScope(book, result.scope);
@@ -191,7 +187,8 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/sie-previews/${encodeURIComponent(preview ?? "")}`,
+        (client) =>
+          client.sieImport.getSieSource({ params: { ...bookScope(book), id: preview ?? "" } }),
         Sie.SiePreview,
         { signal },
       );

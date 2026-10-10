@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import { addMatch } from "../banking/matches";
 import {
   prepareBankMatchReversalInTransaction,
@@ -10,11 +11,8 @@ import {
   approveAllocationReversalInTransaction,
   executeAllocationReversalInTransaction,
 } from "../commerce/allocation-reversals";
-import {
-  executeChangeInTransaction,
-  prepareCorrectionInTransaction,
-  validatePlan,
-} from "../posting";
+import { executeChangeInTransaction, prepareCorrectionInTransaction } from "../posting";
+import { validatePlan } from "../posting-validation";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -39,17 +37,10 @@ import {
   sealProspectiveSupplierAllocationInTransaction,
   approveProspectiveSupplierAllocationInTransaction,
 } from "../commerce/allocation-reversals";
-import {
-  readBook,
-  readVoucher,
-  readPeriod,
-  newId,
-  isoNow,
-  replay,
-  saveCommand,
-  sealActionInTransaction,
-  approveChangeInTransaction,
-} from "../posting";
+import { sealActionInTransaction, approveChangeInTransaction } from "../posting";
+import { readBook, readVoucher, readPeriod } from "../posting-validation";
+import { newId } from "../identifiers";
+import { isoNow } from "../command-receipts";
 
 const profile = "synthetic-supplier-settlement-accrual-v1";
 
@@ -352,173 +343,169 @@ export const prepareSupplierSettlement = Effect.fn("purchases.supplierSettlement
       Effect.gen(function* () {
         const operation = "prepare_supplier_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           tx,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          actor.actorId,
-          command.input,
-          Settlement.SupplierSettlementPlan,
-        );
-
-        if (request.previous) return request.previous;
-        const basis = yield* captureBasis(tx, command.scope, command.input);
-        const amountMinor = (-BigInt(basis.observation.amountMinor)).toString();
-        const id = newId("supplier_settlement");
-        const reservedVoucherId = newId("voucher");
-        const controlLineId = newId("line");
-        const bankLineId = newId("line");
-
-        const eventKey = `supplier_settlement_${basis.statementId}_${basis.observation.rowOrdinal}`;
-
-        const events = yield* LedgerDb.readEvent(
-          tx,
-          command.scope.bookId,
-          basis.sourceEvidence.evidenceId,
-          eventKey,
-        );
-
-        const eventId = events[0]?.id ?? newId("event");
-
-        if (events.length === 0) {
-          yield* LedgerDb.insertEvent(
-            tx,
-            command.scope.bookId,
-            eventId,
-            basis.sourceEvidence.evidenceId,
-            eventKey,
-          );
-        }
-
-        const paymentPlan = yield* sealActionInTransaction(tx, actor, command.scope, {
-          kind: "post_voucher",
-          postingPurpose: "adjustment",
-          correctsVoucherId: null,
-          eventId,
-          occurrenceKey: `${basis.statementId}_${basis.observation.rowOrdinal}`,
-          fiscalYearId: basis.fiscalYearId,
-          accountingPeriodId: basis.periodId,
-          postingDate: basis.observation.date,
-          series: basis.series,
-          currency: "SEK",
-          description: command.input.rationale,
-          rationale: command.input.rationale,
-          taxAssessment: "not_applicable",
-          evidenceRefs: [
-            {
-              ...basis.sourceEvidence,
-              locator: `statement:${basis.statementId}:row:${basis.observation.rowOrdinal}`,
-            },
-          ],
-          lines: [
-            {
-              lineId: controlLineId,
-              accountId: basis.invoice.controlAccountId,
-              debitMinor: amountMinor,
-              creditMinor: "0",
-              description: "Observed supplier payment",
-            },
-            {
-              lineId: bankLineId,
-              accountId: basis.source.accountId,
-              debitMinor: "0",
-              creditMinor: amountMinor,
-              description: "Original bank debit",
-            },
-          ],
-        });
-
-        const account = basis.accounts.find((entry) => entry.id === basis.invoice.controlAccountId);
-        const invoice = basis.invoice;
-
-        if (!account || invoice.outstandingMinor === null || invoice.recognition === null)
-          return yield* failure("StaleDependency");
-
-        const pendingAllocation = yield* sealProspectiveSupplierAllocationInTransaction(
-          tx,
-          actor,
-          command.scope,
-          command.idempotencyKey,
           {
-            profileVersion: basis.profileVersion,
-            writerEpoch: basis.writerEpoch,
-            accountVersion: account.version,
-            paymentPeriodVersion: basis.periodVersion,
-            payment: {
-              voucherId: reservedVoucherId,
-              lineId: controlLineId,
-              scope: command.scope,
-              direction: "supplier",
-              accountId: invoice.controlAccountId,
-              postingDate: basis.observation.date,
-              currency: "SEK",
-              currencyScale: 2,
-              amountMinor,
-              allocatedMinor: "0",
-              remainingMinor: amountMinor,
-              capacityVersion: "0",
-            },
-            evidence: basis.sourceEvidence,
-            rationale: command.input.rationale,
-            totalMinor: amountMinor,
-            paymentRemainingAfterMinor: "0",
-            legs: [
-              {
-                invoiceId: invoice.id,
-                revision: invoice.currentRevision.revision,
-                allocationVersion: invoice.allocationVersion,
-                documentNumber: invoice.documentNumber,
-                counterpartyId: invoice.counterpartyId,
-                counterpartyName: invoice.counterpartyName,
-                recognition: invoice.recognition,
-                evidence: invoice.evidence,
-                outstandingBeforeMinor: invoice.outstandingMinor,
-                amountMinor,
-                outstandingAfterMinor: (
-                  BigInt(invoice.outstandingMinor) - BigInt(amountMinor)
-                ).toString(),
-              },
-            ],
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: actor.actorId,
+            input: command.input,
           },
+          Settlement.SupplierSettlementPlan,
+          Effect.gen(function* () {
+            const basis = yield* captureBasis(tx, command.scope, command.input);
+            const amountMinor = (-BigInt(basis.observation.amountMinor)).toString();
+            const id = newId("supplier_settlement");
+            const reservedVoucherId = newId("voucher");
+            const controlLineId = newId("line");
+            const bankLineId = newId("line");
+
+            const eventKey = `supplier_settlement_${basis.statementId}_${basis.observation.rowOrdinal}`;
+
+            const events = yield* LedgerDb.readEvent(
+              tx,
+              command.scope.bookId,
+              basis.sourceEvidence.evidenceId,
+              eventKey,
+            );
+
+            const eventId = events[0]?.id ?? newId("event");
+
+            if (events.length === 0) {
+              yield* LedgerDb.insertEvent(
+                tx,
+                command.scope.bookId,
+                eventId,
+                basis.sourceEvidence.evidenceId,
+                eventKey,
+              );
+            }
+
+            const paymentPlan = yield* sealActionInTransaction(tx, actor, command.scope, {
+              kind: "post_voucher",
+              postingPurpose: "adjustment",
+              correctsVoucherId: null,
+              eventId,
+              occurrenceKey: `${basis.statementId}_${basis.observation.rowOrdinal}`,
+              fiscalYearId: basis.fiscalYearId,
+              accountingPeriodId: basis.periodId,
+              postingDate: basis.observation.date,
+              series: basis.series,
+              currency: "SEK",
+              description: command.input.rationale,
+              rationale: command.input.rationale,
+              taxAssessment: "not_applicable",
+              evidenceRefs: [
+                {
+                  ...basis.sourceEvidence,
+                  locator: `statement:${basis.statementId}:row:${basis.observation.rowOrdinal}`,
+                },
+              ],
+              lines: [
+                {
+                  lineId: controlLineId,
+                  accountId: basis.invoice.controlAccountId,
+                  debitMinor: amountMinor,
+                  creditMinor: "0",
+                  description: "Observed supplier payment",
+                },
+                {
+                  lineId: bankLineId,
+                  accountId: basis.source.accountId,
+                  debitMinor: "0",
+                  creditMinor: amountMinor,
+                  description: "Original bank debit",
+                },
+              ],
+            });
+
+            const account = basis.accounts.find(
+              (entry) => entry.id === basis.invoice.controlAccountId,
+            );
+
+            const invoice = basis.invoice;
+
+            if (!account || invoice.outstandingMinor === null || invoice.recognition === null)
+              return yield* failure("StaleDependency");
+
+            const pendingAllocation = yield* sealProspectiveSupplierAllocationInTransaction(
+              tx,
+              actor,
+              command.scope,
+              command.idempotencyKey,
+              {
+                profileVersion: basis.profileVersion,
+                writerEpoch: basis.writerEpoch,
+                accountVersion: account.version,
+                paymentPeriodVersion: basis.periodVersion,
+                payment: {
+                  voucherId: reservedVoucherId,
+                  lineId: controlLineId,
+                  scope: command.scope,
+                  direction: "supplier",
+                  accountId: invoice.controlAccountId,
+                  postingDate: basis.observation.date,
+                  currency: "SEK",
+                  currencyScale: 2,
+                  amountMinor,
+                  allocatedMinor: "0",
+                  remainingMinor: amountMinor,
+                  capacityVersion: "0",
+                },
+                evidence: basis.sourceEvidence,
+                rationale: command.input.rationale,
+                totalMinor: amountMinor,
+                paymentRemainingAfterMinor: "0",
+                legs: [
+                  {
+                    invoiceId: invoice.id,
+                    revision: invoice.currentRevision.revision,
+                    allocationVersion: invoice.allocationVersion,
+                    documentNumber: invoice.documentNumber,
+                    counterpartyId: invoice.counterpartyId,
+                    counterpartyName: invoice.counterpartyName,
+                    recognition: invoice.recognition,
+                    evidence: invoice.evidence,
+                    outstandingBeforeMinor: invoice.outstandingMinor,
+                    amountMinor,
+                    outstandingAfterMinor: (
+                      BigInt(invoice.outstandingMinor) - BigInt(amountMinor)
+                    ).toString(),
+                  },
+                ],
+              },
+            );
+
+            const body = yield* toJsonObject({
+              id,
+              scope: command.scope,
+              version: 1,
+              profile,
+              input: command.input,
+              basis,
+              amountMinor,
+              paymentPlan,
+              actionDigest: yield* digest(yield* toJsonObject(paymentPlan.groups[0]?.actions[0])),
+              reservedVoucherId,
+              controlLineId,
+              bankLineId,
+              pendingAllocation,
+              createdBy: actor.actorId,
+              createdAt: yield* isoNow(tx),
+              receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+            });
+
+            const plan = yield* decode(Settlement.SupplierSettlementPlan, {
+              ...body,
+              digest: yield* digest(body),
+            });
+
+            yield* Db.insertPlan(tx, plan);
+
+            return { receipt: yield* toJsonObject(plan), result: plan };
+          }),
         );
-
-        const body = yield* toJsonObject({
-          id,
-          scope: command.scope,
-          version: 1,
-          profile,
-          input: command.input,
-          basis,
-          amountMinor,
-          paymentPlan,
-          actionDigest: yield* digest(yield* toJsonObject(paymentPlan.groups[0]?.actions[0])),
-          reservedVoucherId,
-          controlLineId,
-          bankLineId,
-          pendingAllocation,
-          createdBy: actor.actorId,
-          createdAt: yield* isoNow(tx),
-          receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-        });
-
-        const plan = yield* decode(Settlement.SupplierSettlementPlan, {
-          ...body,
-          digest: yield* digest(body),
-        });
-
-        yield* Db.insertPlan(tx, plan);
-        yield* saveCommand(
-          tx,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          actor.actorId,
-          yield* toJsonObject(plan),
-        );
-
-        return plan;
       }),
     );
   },
@@ -538,70 +525,63 @@ export const approveSupplierSettlement = Effect.fn("purchases.supplierSettlement
       Effect.gen(function* () {
         const operation = "approve_supplier_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           tx,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          actor.actorId,
-          { id: command.planId, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: actor.actorId,
+            input: { id: command.planId, input: command.input },
+          },
           Settlement.SupplierSettlementApproval,
+          Effect.gen(function* () {
+            const plan = yield* readPlan(tx, command.scope, command.planId);
+
+            if (plan.createdBy === actor.actorId) return yield* failure("Forbidden");
+
+            if (plan.digest !== command.input.digest || !(yield* basisCurrent(tx, plan)))
+              return yield* failure("StaleDependency");
+            const id = newId("supplier_approval");
+
+            const payment = yield* approveChangeInTransaction(tx, actor, {
+              scope: command.scope,
+              changeSetId: plan.paymentPlan.id,
+              idempotencyKey: `${id}_posting`,
+              input: { version: 1, planDigest: plan.paymentPlan.planDigest },
+              owner: { kind: "supplier_settlement", id: plan.id },
+            });
+
+            const allocation = yield* approveProspectiveSupplierAllocationInTransaction(
+              tx,
+              actor,
+              command.scope,
+              plan.id,
+              plan.pendingAllocation,
+              `${id}_allocation`,
+            );
+
+            const approval = yield* decode(Settlement.SupplierSettlementApproval, {
+              id,
+              scope: command.scope,
+              planId: plan.id,
+              version: 1,
+              digest: plan.digest,
+              actorId: actor.actorId,
+              expiresAt:
+                Date.parse(payment.expiresAt) < Date.parse(allocation.expiresAt)
+                  ? payment.expiresAt
+                  : allocation.expiresAt,
+              paymentApprovalId: payment.id,
+              allocationApprovalId: allocation.id,
+              receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+            });
+
+            yield* Db.insertApproval(tx, approval);
+
+            return { receipt: yield* toJsonObject(approval), result: approval };
+          }),
         );
-
-        if (request.previous) return request.previous;
-        const plan = yield* readPlan(tx, command.scope, command.planId);
-
-        if (plan.createdBy === actor.actorId) return yield* failure("Forbidden");
-
-        if (plan.digest !== command.input.digest || !(yield* basisCurrent(tx, plan)))
-          return yield* failure("StaleDependency");
-        const id = newId("supplier_approval");
-
-        const payment = yield* approveChangeInTransaction(tx, actor, {
-          scope: command.scope,
-          changeSetId: plan.paymentPlan.id,
-          idempotencyKey: `${id}_posting`,
-          input: { version: 1, planDigest: plan.paymentPlan.planDigest },
-          owner: { kind: "supplier_settlement", id: plan.id },
-        });
-
-        const allocation = yield* approveProspectiveSupplierAllocationInTransaction(
-          tx,
-          actor,
-          command.scope,
-          plan.id,
-          plan.pendingAllocation,
-          `${id}_allocation`,
-        );
-
-        const approval = yield* decode(Settlement.SupplierSettlementApproval, {
-          id,
-          scope: command.scope,
-          planId: plan.id,
-          version: 1,
-          digest: plan.digest,
-          actorId: actor.actorId,
-          expiresAt:
-            Date.parse(payment.expiresAt) < Date.parse(allocation.expiresAt)
-              ? payment.expiresAt
-              : allocation.expiresAt,
-          paymentApprovalId: payment.id,
-          allocationApprovalId: allocation.id,
-          receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-        });
-
-        yield* Db.insertApproval(tx, approval);
-        yield* saveCommand(
-          tx,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          actor.actorId,
-          yield* toJsonObject(approval),
-        );
-
-        return approval;
       }),
     );
   },
@@ -708,49 +688,46 @@ export const revokeSupplierSettlementApproval = Effect.fn("purchases.supplierSet
       Effect.gen(function* () {
         const operation = "revoke_supplier_settlement_approval";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           tx,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          actor.actorId,
-          { id: command.approvalId, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: actor.actorId,
+            input: { id: command.approvalId, input: command.input },
+          },
           Settlement.SupplierSettlementApprovalRevocation,
+          Effect.gen(function* () {
+            const stored = (yield* Db.readApproval(
+              tx,
+              command.scope.bookId,
+              command.approvalId,
+            ))[0];
+
+            if (!stored) return yield* failure("NotFound");
+
+            const existing = (yield* Db.readRevocation(
+              tx,
+              command.scope.bookId,
+              command.approvalId,
+            ))[0];
+
+            const result = existing
+              ? yield* decode(Settlement.SupplierSettlementApprovalRevocation, existing.body)
+              : {
+                  approvalId: command.approvalId,
+                  actorId: actor.actorId,
+                  reason: command.input.reason,
+                  revokedAt: yield* isoNow(tx),
+                  receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+                };
+
+            if (!existing) yield* Db.insertRevocation(tx, command.scope.bookId, result);
+
+            return { receipt: yield* toJsonObject(result), result: result };
+          }),
         );
-
-        if (request.previous) return request.previous;
-        const stored = (yield* Db.readApproval(tx, command.scope.bookId, command.approvalId))[0];
-
-        if (!stored) return yield* failure("NotFound");
-
-        const existing = (yield* Db.readRevocation(
-          tx,
-          command.scope.bookId,
-          command.approvalId,
-        ))[0];
-
-        const result = existing
-          ? yield* decode(Settlement.SupplierSettlementApprovalRevocation, existing.body)
-          : {
-              approvalId: command.approvalId,
-              actorId: actor.actorId,
-              reason: command.input.reason,
-              revokedAt: yield* isoNow(tx),
-              receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-            };
-
-        if (!existing) yield* Db.insertRevocation(tx, command.scope.bookId, result);
-        yield* saveCommand(
-          tx,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          actor.actorId,
-          yield* toJsonObject(result),
-        );
-
-        return result;
       }),
     );
   },
@@ -785,124 +762,123 @@ export const executeSupplierSettlement = Effect.fn("purchases.supplierSettlement
       Effect.gen(function* () {
         const operation = "execute_supplier_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           tx,
-          command.scope,
-          command.idempotencyKey,
-          operation,
-          actor.actorId,
-          { id: command.planId, input: command.input },
-          Settlement.SupplierSettlementReceipt,
-        );
-
-        if (request.previous) return request.previous;
-        const plan = yield* readPlan(tx, command.scope, command.planId);
-
-        if ((yield* Db.readReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0)
-          return yield* failure("AlreadyPosted");
-
-        if (command.input.digest !== plan.digest || !(yield* basisCurrent(tx, plan)))
-          return yield* failure("StaleDependency");
-        const row = (yield* Db.readApproval(tx, command.scope.bookId, command.input.approvalId))[0];
-
-        if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
-        const approval = yield* decode(Settlement.SupplierSettlementApproval, row.body);
-
-        if (!(yield* approvalUsable(tx, plan, approval))) return yield* failure("ApprovalRequired");
-        const id = newId("supplier_receipt");
-        yield* Db.insertClaim(tx, command.scope.bookId, plan, id);
-
-        const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
-          scope: command.scope,
-          changeSetId: plan.paymentPlan.id,
-          idempotencyKey: `${id}_posting`,
-          input: {
-            version: 1,
-            planDigest: plan.paymentPlan.planDigest,
-            approvalId: approval.paymentApprovalId,
-          },
-          owner: { kind: "supplier_settlement", id: plan.id },
-        });
-
-        if (postingReceipt.voucherId !== plan.reservedVoucherId)
-          return yield* failure("InternalError");
-
-        const match = yield* decode(
-          Bank.BankMatch,
-          yield* addMatch(
-            tx,
-            command.scope.bookId,
-            actor.actorId,
-            {
-              statementId: plan.input.statementId,
-              rowOrdinal: plan.input.rowOrdinal,
-              voucherId: postingReceipt.voucherId,
-              lineId: plan.bankLineId,
-            },
-            "explicit",
-            plan.id,
-          ),
-        );
-
-        const allocationReceipt = yield* applyAllocationInTransaction(
-          tx,
-          actor,
           {
             scope: command.scope,
-            id: plan.pendingAllocation.id,
-            idempotencyKey: `${id}_allocation`,
-            input: {
-              version: 1,
-              planDigest: plan.pendingAllocation.digest,
-              approvalId: approval.allocationApprovalId,
-            },
+            idempotencyKey: command.idempotencyKey,
+            operation: operation,
+            actorId: actor.actorId,
+            input: { id: command.planId, input: command.input },
           },
-          plan.id,
+          Settlement.SupplierSettlementReceipt,
+          Effect.gen(function* () {
+            const plan = yield* readPlan(tx, command.scope, command.planId);
+
+            if ((yield* Db.readReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0)
+              return yield* failure("AlreadyPosted");
+
+            if (command.input.digest !== plan.digest || !(yield* basisCurrent(tx, plan)))
+              return yield* failure("StaleDependency");
+
+            const row = (yield* Db.readApproval(
+              tx,
+              command.scope.bookId,
+              command.input.approvalId,
+            ))[0];
+
+            if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
+            const approval = yield* decode(Settlement.SupplierSettlementApproval, row.body);
+
+            if (!(yield* approvalUsable(tx, plan, approval)))
+              return yield* failure("ApprovalRequired");
+            const id = newId("supplier_receipt");
+            yield* Db.insertClaim(tx, command.scope.bookId, plan, id);
+
+            const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
+              scope: command.scope,
+              changeSetId: plan.paymentPlan.id,
+              idempotencyKey: `${id}_posting`,
+              input: {
+                version: 1,
+                planDigest: plan.paymentPlan.planDigest,
+                approvalId: approval.paymentApprovalId,
+              },
+              owner: { kind: "supplier_settlement", id: plan.id },
+            });
+
+            if (postingReceipt.voucherId !== plan.reservedVoucherId)
+              return yield* failure("InternalError");
+
+            const match = yield* decode(
+              Bank.BankMatch,
+              yield* addMatch(
+                tx,
+                command.scope.bookId,
+                actor.actorId,
+                {
+                  statementId: plan.input.statementId,
+                  rowOrdinal: plan.input.rowOrdinal,
+                  voucherId: postingReceipt.voucherId,
+                  lineId: plan.bankLineId,
+                },
+                "explicit",
+                plan.id,
+              ),
+            );
+
+            const allocationReceipt = yield* applyAllocationInTransaction(
+              tx,
+              actor,
+              {
+                scope: command.scope,
+                id: plan.pendingAllocation.id,
+                idempotencyKey: `${id}_allocation`,
+                input: {
+                  version: 1,
+                  planDigest: plan.pendingAllocation.digest,
+                  approvalId: approval.allocationApprovalId,
+                },
+              },
+              plan.id,
+            );
+
+            const live = (yield* InvoiceDb.readLiveInvoice(
+              tx,
+              command.scope.bookId,
+              plan.input.invoiceId,
+            ))[0];
+
+            if (
+              !live ||
+              live.outstandingMinor !== plan.pendingAllocation.legs[0]?.outstandingAfterMinor
+            )
+              return yield* failure("InternalError");
+
+            const body = yield* toJsonObject({
+              id,
+              scope: command.scope,
+              planId: plan.id,
+              approvalId: approval.id,
+              amountMinor: plan.amountMinor,
+              outstandingAfterMinor: live.outstandingMinor,
+              postingReceipt,
+              allocationReceipt,
+              match,
+              committedAt: yield* isoNow(tx),
+              receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+            });
+
+            const receipt = yield* decode(Settlement.SupplierSettlementReceipt, {
+              ...body,
+              digest: yield* digest(body),
+            });
+
+            yield* Db.insertReceipt(tx, plan, receipt);
+
+            return { receipt: yield* toJsonObject(receipt), result: receipt };
+          }),
         );
-
-        const live = (yield* InvoiceDb.readLiveInvoice(
-          tx,
-          command.scope.bookId,
-          plan.input.invoiceId,
-        ))[0];
-
-        if (
-          !live ||
-          live.outstandingMinor !== plan.pendingAllocation.legs[0]?.outstandingAfterMinor
-        )
-          return yield* failure("InternalError");
-
-        const body = yield* toJsonObject({
-          id,
-          scope: command.scope,
-          planId: plan.id,
-          approvalId: approval.id,
-          amountMinor: plan.amountMinor,
-          outstandingAfterMinor: live.outstandingMinor,
-          postingReceipt,
-          allocationReceipt,
-          match,
-          committedAt: yield* isoNow(tx),
-          receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-        });
-
-        const receipt = yield* decode(Settlement.SupplierSettlementReceipt, {
-          ...body,
-          digest: yield* digest(body),
-        });
-
-        yield* Db.insertReceipt(tx, plan, receipt);
-        yield* saveCommand(
-          tx,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          operation,
-          actor.actorId,
-          yield* toJsonObject(receipt),
-        );
-
-        return receipt;
       }),
     );
   },
@@ -1161,117 +1137,110 @@ export const prepareSupplierSettlementCancellation = Effect.fn(
     Effect.gen(function* () {
       const operation = "prepare_supplier_settlement_cancellation";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        actor.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: actor.actorId,
+          input: command.input,
+        },
         Settlement.SupplierSettlementCancellationPlan,
-      );
+        Effect.gen(function* () {
+          const original = yield* readSettlementReceipt(
+            tx,
+            command.scope,
+            command.input.settlementReceiptId,
+          );
 
-      if (request.previous) return request.previous;
+          const originalPlan = yield* readPlan(tx, command.scope, original.planId);
 
-      const original = yield* readSettlementReceipt(
-        tx,
-        command.scope,
-        command.input.settlementReceiptId,
-      );
+          if (
+            (yield* canonicalText(command.input.evidence)) !==
+            (yield* canonicalText(originalPlan.basis.sourceEvidence))
+          )
+            return yield* failure("StaleDependency");
 
-      const originalPlan = yield* readPlan(tx, command.scope, original.planId);
+          const basis = yield* cancellationBasis(
+            tx,
+            command.scope,
+            original,
+            originalPlan,
+            command.input.correction,
+          );
 
-      if (
-        (yield* canonicalText(command.input.evidence)) !==
-        (yield* canonicalText(originalPlan.basis.sourceEvidence))
-      )
-        return yield* failure("StaleDependency");
+          const id = newId("supplier_cancellation");
 
-      const basis = yield* cancellationBasis(
-        tx,
-        command.scope,
-        original,
-        originalPlan,
-        command.input.correction,
-      );
-
-      const id = newId("supplier_cancellation");
-
-      const paymentPlan = yield* prepareCorrectionInTransaction(tx, actor, {
-        scope: command.scope,
-        voucherId: original.postingReceipt.voucherId,
-        idempotencyKey: `${id}_posting`,
-        input: {
-          accountingPeriodId:
-            command.input.correction?.accountingPeriodId ?? originalPlan.basis.periodId,
-          postingDate: command.input.correction?.postingDate ?? originalPlan.basis.observation.date,
-          rationale: command.input.reason,
-        },
-        owner: { kind: "supplier_settlement_cancellation", id: original.id },
-      });
-
-      const allocationReversal = yield* prepareAllocationReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          idempotencyKey: `${id}_allocation`,
-          input: { receiptId: original.allocationReceipt.id, reason: command.input.reason },
-        },
-        original.id,
-      );
-
-      const matchReversal = yield* prepareBankMatchReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          idempotencyKey: `${id}_match`,
-          input: {
-            target: {
-              kind: "exact_match",
-              statementId: originalPlan.input.statementId,
-              rowOrdinal: originalPlan.input.rowOrdinal,
+          const paymentPlan = yield* prepareCorrectionInTransaction(tx, actor, {
+            scope: command.scope,
+            voucherId: original.postingReceipt.voucherId,
+            idempotencyKey: `${id}_posting`,
+            input: {
+              accountingPeriodId:
+                command.input.correction?.accountingPeriodId ?? originalPlan.basis.periodId,
+              postingDate:
+                command.input.correction?.postingDate ?? originalPlan.basis.observation.date,
+              rationale: command.input.reason,
             },
-            reason: command.input.reason,
-          },
-        },
-        original.id,
+            owner: { kind: "supplier_settlement_cancellation", id: original.id },
+          });
+
+          const allocationReversal = yield* prepareAllocationReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              idempotencyKey: `${id}_allocation`,
+              input: { receiptId: original.allocationReceipt.id, reason: command.input.reason },
+            },
+            original.id,
+          );
+
+          const matchReversal = yield* prepareBankMatchReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              idempotencyKey: `${id}_match`,
+              input: {
+                target: {
+                  kind: "exact_match",
+                  statementId: originalPlan.input.statementId,
+                  rowOrdinal: originalPlan.input.rowOrdinal,
+                },
+                reason: command.input.reason,
+              },
+            },
+            original.id,
+          );
+
+          const body = yield* toJsonObject({
+            id,
+            scope: command.scope,
+            version: 1,
+            input: command.input,
+            original,
+            originalPlan,
+            ...basis,
+            paymentPlan,
+            allocationReversal,
+            matchReversal,
+            createdBy: actor.actorId,
+            createdAt: yield* isoNow(tx),
+            receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+          });
+
+          const plan = yield* decode(Settlement.SupplierSettlementCancellationPlan, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertCancellationPlan(tx, plan);
+
+          return { receipt: yield* toJsonObject(plan), result: plan };
+        }),
       );
-
-      const body = yield* toJsonObject({
-        id,
-        scope: command.scope,
-        version: 1,
-        input: command.input,
-        original,
-        originalPlan,
-        ...basis,
-        paymentPlan,
-        allocationReversal,
-        matchReversal,
-        createdBy: actor.actorId,
-        createdAt: yield* isoNow(tx),
-        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-      });
-
-      const plan = yield* decode(Settlement.SupplierSettlementCancellationPlan, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertCancellationPlan(tx, plan);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        actor.actorId,
-        yield* toJsonObject(plan),
-      );
-
-      return plan;
     }),
   );
 });
@@ -1291,89 +1260,82 @@ export const approveSupplierSettlementCancellation = Effect.fn(
     Effect.gen(function* () {
       const operation = "approve_supplier_settlement_cancellation";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        actor.actorId,
-        { id: command.planId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: actor.actorId,
+          input: { id: command.planId, input: command.input },
+        },
         Settlement.SupplierSettlementCancellationApproval,
+        Effect.gen(function* () {
+          const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
+
+          if (plan.createdBy === actor.actorId) return yield* failure("Forbidden");
+
+          if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
+          yield* currentCancellation(tx, plan);
+          const id = newId("supplier_cancel_approval");
+
+          const payment = yield* approveChangeInTransaction(tx, actor, {
+            scope: command.scope,
+            changeSetId: plan.paymentPlan.id,
+            idempotencyKey: `${id}_posting`,
+            input: { version: 1, planDigest: plan.paymentPlan.planDigest },
+            owner: { kind: "supplier_settlement_cancellation", id: plan.id },
+          });
+
+          const allocation = yield* approveAllocationReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              id: plan.allocationReversal.id,
+              idempotencyKey: `${id}_allocation`,
+              input: { version: 1, digest: plan.allocationReversal.digest },
+            },
+            plan.id,
+          );
+
+          const match = yield* approveBankMatchReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              planId: plan.matchReversal.id,
+              idempotencyKey: `${id}_match`,
+              input: { version: 1, digest: plan.matchReversal.digest },
+            },
+            plan.id,
+          );
+
+          const expiresAt = [payment.expiresAt, allocation.expiresAt, match.expiresAt].sort(
+            (a, b) => Date.parse(a) - Date.parse(b),
+          )[0];
+
+          if (!expiresAt) return yield* failure("InternalError");
+
+          const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, {
+            id,
+            scope: command.scope,
+            planId: plan.id,
+            version: 1,
+            digest: plan.digest,
+            actorId: actor.actorId,
+            expiresAt,
+            paymentApprovalId: payment.id,
+            allocationApprovalId: allocation.id,
+            matchApprovalId: match.id,
+            receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+          });
+
+          yield* Db.insertCancellationApproval(tx, approval);
+
+          return { receipt: yield* toJsonObject(approval), result: approval };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
-
-      if (plan.createdBy === actor.actorId) return yield* failure("Forbidden");
-
-      if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
-      yield* currentCancellation(tx, plan);
-      const id = newId("supplier_cancel_approval");
-
-      const payment = yield* approveChangeInTransaction(tx, actor, {
-        scope: command.scope,
-        changeSetId: plan.paymentPlan.id,
-        idempotencyKey: `${id}_posting`,
-        input: { version: 1, planDigest: plan.paymentPlan.planDigest },
-        owner: { kind: "supplier_settlement_cancellation", id: plan.id },
-      });
-
-      const allocation = yield* approveAllocationReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          id: plan.allocationReversal.id,
-          idempotencyKey: `${id}_allocation`,
-          input: { version: 1, digest: plan.allocationReversal.digest },
-        },
-        plan.id,
-      );
-
-      const match = yield* approveBankMatchReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          planId: plan.matchReversal.id,
-          idempotencyKey: `${id}_match`,
-          input: { version: 1, digest: plan.matchReversal.digest },
-        },
-        plan.id,
-      );
-
-      const expiresAt = [payment.expiresAt, allocation.expiresAt, match.expiresAt].sort(
-        (a, b) => Date.parse(a) - Date.parse(b),
-      )[0];
-
-      if (!expiresAt) return yield* failure("InternalError");
-
-      const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, {
-        id,
-        scope: command.scope,
-        planId: plan.id,
-        version: 1,
-        digest: plan.digest,
-        actorId: actor.actorId,
-        expiresAt,
-        paymentApprovalId: payment.id,
-        allocationApprovalId: allocation.id,
-        matchApprovalId: match.id,
-        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-      });
-
-      yield* Db.insertCancellationApproval(tx, approval);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        actor.actorId,
-        yield* toJsonObject(approval),
-      );
-
-      return approval;
     }),
   );
 });
@@ -1393,54 +1355,46 @@ export const revokeSupplierSettlementCancellationApproval = Effect.fn(
     Effect.gen(function* () {
       const operation = "revoke_supplier_settlement_cancellation_approval";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        actor.actorId,
-        { id: command.approvalId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: actor.actorId,
+          input: { id: command.approvalId, input: command.input },
+        },
         Settlement.SupplierSettlementApprovalRevocation,
+        Effect.gen(function* () {
+          const approval = (yield* Db.readCancellationApproval(
+            tx,
+            command.scope.bookId,
+            command.approvalId,
+          ))[0];
+
+          if (!approval) return yield* failure("NotFound");
+
+          const existing = (yield* Db.readCancellationRevocation(
+            tx,
+            command.scope.bookId,
+            command.approvalId,
+          ))[0];
+
+          const result = existing
+            ? yield* decode(Settlement.SupplierSettlementApprovalRevocation, existing.body)
+            : {
+                approvalId: command.approvalId,
+                actorId: actor.actorId,
+                reason: command.input.reason,
+                revokedAt: yield* isoNow(tx),
+                receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+              };
+
+          if (!existing) yield* Db.insertCancellationRevocation(tx, command.scope.bookId, result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const approval = (yield* Db.readCancellationApproval(
-        tx,
-        command.scope.bookId,
-        command.approvalId,
-      ))[0];
-
-      if (!approval) return yield* failure("NotFound");
-
-      const existing = (yield* Db.readCancellationRevocation(
-        tx,
-        command.scope.bookId,
-        command.approvalId,
-      ))[0];
-
-      const result = existing
-        ? yield* decode(Settlement.SupplierSettlementApprovalRevocation, existing.body)
-        : {
-            approvalId: command.approvalId,
-            actorId: actor.actorId,
-            reason: command.input.reason,
-            revokedAt: yield* isoNow(tx),
-            receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-          };
-
-      if (!existing) yield* Db.insertCancellationRevocation(tx, command.scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        actor.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     }),
   );
 });
@@ -1460,176 +1414,175 @@ export const executeSupplierSettlementCancellation = Effect.fn(
     Effect.gen(function* () {
       const operation = "execute_supplier_settlement_cancellation";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        actor.actorId,
-        { id: command.planId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: actor.actorId,
+          input: { id: command.planId, input: command.input },
+        },
         Settlement.SupplierSettlementCancellationReceipt,
+        Effect.gen(function* () {
+          const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
+
+          if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
+
+          if (
+            (yield* Db.readCancellationReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0
+          )
+            return yield* failure("AlreadyPosted");
+
+          yield* currentCancellation(tx, plan);
+
+          const row = (yield* Db.readCancellationApproval(
+            tx,
+            command.scope.bookId,
+            command.input.approvalId,
+          ))[0];
+
+          if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
+
+          if ((yield* Db.readCancellationRevocation(tx, command.scope.bookId, row.id)).length > 0)
+            return yield* failure("ApprovalRequired");
+
+          const approval = yield* decode(
+            Settlement.SupplierSettlementCancellationApproval,
+            row.body,
+          );
+
+          const bindings = (yield* Db.readCancellationApprovalBindings(
+            tx,
+            command.scope.bookId,
+            approval.id,
+          ))[0];
+
+          if (
+            !bindings ||
+            approval.actorId === plan.createdBy ||
+            bindings.paymentActorId !== approval.actorId ||
+            bindings.allocationActorId !== approval.actorId ||
+            bindings.matchActorId !== approval.actorId ||
+            bindings.paymentPlanId !== plan.paymentPlan.id ||
+            bindings.allocationPlanId !== plan.allocationReversal.id ||
+            bindings.matchPlanId !== plan.matchReversal.id ||
+            bindings.paymentDigest !== plan.paymentPlan.planDigest ||
+            bindings.allocationDigest !== plan.allocationReversal.digest ||
+            bindings.matchDigest !== plan.matchReversal.digest
+          )
+            return yield* failure("ApprovalRequired");
+
+          const membership = yield* LedgerDb.readOperatorMembership(
+            tx,
+            command.scope.bookId,
+            approval.actorId,
+          );
+
+          const admission = (yield* LedgerDb.readActorAdmission(tx, approval.actorId))[0];
+
+          const now = Date.parse(yield* isoNow(tx));
+
+          const expired = [
+            approval.expiresAt,
+            bindings.paymentExpiresAt,
+            bindings.allocationExpiresAt,
+            bindings.matchExpiresAt,
+          ].some((expiry) => !(Date.parse(expiry) > now));
+
+          if (
+            approval.digest !== plan.digest ||
+            bindings.paymentConsumed ||
+            bindings.paymentRevoked ||
+            bindings.allocationRevoked ||
+            bindings.matchRevoked ||
+            expired ||
+            membership.length !== 1 ||
+            admission?.enabled !== true
+          )
+            return yield* failure("ApprovalRequired");
+          const id = newId("supplier_cancel_receipt");
+
+          const allocationReversal = yield* executeAllocationReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              id: plan.allocationReversal.id,
+              idempotencyKey: `${id}_allocation`,
+              input: {
+                version: 1,
+                digest: plan.allocationReversal.digest,
+                approvalId: approval.allocationApprovalId,
+              },
+            },
+            plan.id,
+          );
+
+          const matchReversal = yield* executeBankMatchReversalInTransaction(
+            tx,
+            actor,
+            {
+              scope: command.scope,
+              planId: plan.matchReversal.id,
+              idempotencyKey: `${id}_match`,
+              input: {
+                version: 1,
+                digest: plan.matchReversal.digest,
+                approvalId: approval.matchApprovalId,
+              },
+            },
+            plan.id,
+          );
+
+          const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
+            scope: command.scope,
+            changeSetId: plan.paymentPlan.id,
+            idempotencyKey: `${id}_posting`,
+            input: {
+              version: 1,
+              planDigest: plan.paymentPlan.planDigest,
+              approvalId: approval.paymentApprovalId,
+            },
+            owner: { kind: "supplier_settlement_cancellation", id: plan.id },
+          });
+
+          const live = (yield* InvoiceDb.readLiveInvoice(
+            tx,
+            command.scope.bookId,
+            plan.originalPlan.input.invoiceId,
+          ))[0];
+
+          const expected = (
+            BigInt(plan.invoice.outstandingMinor ?? "0") + BigInt(plan.original.amountMinor)
+          ).toString();
+
+          if (!live || live.outstandingMinor !== expected) return yield* failure("InternalError");
+
+          const body = yield* toJsonObject({
+            id,
+            scope: command.scope,
+            planId: plan.id,
+            approvalId: approval.id,
+            settlementReceiptId: plan.original.id,
+            postingReceipt,
+            allocationReversal,
+            matchReversal,
+            outstandingAfterMinor: expected,
+            committedAt: yield* isoNow(tx),
+            receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+          });
+
+          const result = yield* decode(Settlement.SupplierSettlementCancellationReceipt, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertCancellationReceipt(tx, result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
-
-      if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
-
-      if ((yield* Db.readCancellationReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0)
-        return yield* failure("AlreadyPosted");
-
-      yield* currentCancellation(tx, plan);
-
-      const row = (yield* Db.readCancellationApproval(
-        tx,
-        command.scope.bookId,
-        command.input.approvalId,
-      ))[0];
-
-      if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
-
-      if ((yield* Db.readCancellationRevocation(tx, command.scope.bookId, row.id)).length > 0)
-        return yield* failure("ApprovalRequired");
-      const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, row.body);
-
-      const bindings = (yield* Db.readCancellationApprovalBindings(
-        tx,
-        command.scope.bookId,
-        approval.id,
-      ))[0];
-
-      if (
-        !bindings ||
-        approval.actorId === plan.createdBy ||
-        bindings.paymentActorId !== approval.actorId ||
-        bindings.allocationActorId !== approval.actorId ||
-        bindings.matchActorId !== approval.actorId ||
-        bindings.paymentPlanId !== plan.paymentPlan.id ||
-        bindings.allocationPlanId !== plan.allocationReversal.id ||
-        bindings.matchPlanId !== plan.matchReversal.id ||
-        bindings.paymentDigest !== plan.paymentPlan.planDigest ||
-        bindings.allocationDigest !== plan.allocationReversal.digest ||
-        bindings.matchDigest !== plan.matchReversal.digest
-      )
-        return yield* failure("ApprovalRequired");
-
-      const membership = yield* LedgerDb.readOperatorMembership(
-        tx,
-        command.scope.bookId,
-        approval.actorId,
-      );
-
-      const admission = (yield* LedgerDb.readActorAdmission(tx, approval.actorId))[0];
-
-      const now = Date.parse(yield* isoNow(tx));
-
-      const expired = [
-        approval.expiresAt,
-        bindings.paymentExpiresAt,
-        bindings.allocationExpiresAt,
-        bindings.matchExpiresAt,
-      ].some((expiry) => !(Date.parse(expiry) > now));
-
-      if (
-        approval.digest !== plan.digest ||
-        bindings.paymentConsumed ||
-        bindings.paymentRevoked ||
-        bindings.allocationRevoked ||
-        bindings.matchRevoked ||
-        expired ||
-        membership.length !== 1 ||
-        admission?.enabled !== true
-      )
-        return yield* failure("ApprovalRequired");
-      const id = newId("supplier_cancel_receipt");
-
-      const allocationReversal = yield* executeAllocationReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          id: plan.allocationReversal.id,
-          idempotencyKey: `${id}_allocation`,
-          input: {
-            version: 1,
-            digest: plan.allocationReversal.digest,
-            approvalId: approval.allocationApprovalId,
-          },
-        },
-        plan.id,
-      );
-
-      const matchReversal = yield* executeBankMatchReversalInTransaction(
-        tx,
-        actor,
-        {
-          scope: command.scope,
-          planId: plan.matchReversal.id,
-          idempotencyKey: `${id}_match`,
-          input: {
-            version: 1,
-            digest: plan.matchReversal.digest,
-            approvalId: approval.matchApprovalId,
-          },
-        },
-        plan.id,
-      );
-
-      const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
-        scope: command.scope,
-        changeSetId: plan.paymentPlan.id,
-        idempotencyKey: `${id}_posting`,
-        input: {
-          version: 1,
-          planDigest: plan.paymentPlan.planDigest,
-          approvalId: approval.paymentApprovalId,
-        },
-        owner: { kind: "supplier_settlement_cancellation", id: plan.id },
-      });
-
-      const live = (yield* InvoiceDb.readLiveInvoice(
-        tx,
-        command.scope.bookId,
-        plan.originalPlan.input.invoiceId,
-      ))[0];
-
-      const expected = (
-        BigInt(plan.invoice.outstandingMinor ?? "0") + BigInt(plan.original.amountMinor)
-      ).toString();
-
-      if (!live || live.outstandingMinor !== expected) return yield* failure("InternalError");
-
-      const body = yield* toJsonObject({
-        id,
-        scope: command.scope,
-        planId: plan.id,
-        approvalId: approval.id,
-        settlementReceiptId: plan.original.id,
-        postingReceipt,
-        allocationReversal,
-        matchReversal,
-        outstandingAfterMinor: expected,
-        committedAt: yield* isoNow(tx),
-        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
-      });
-
-      const result = yield* decode(Settlement.SupplierSettlementCancellationReceipt, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertCancellationReceipt(tx, result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        actor.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     }),
   );
 });

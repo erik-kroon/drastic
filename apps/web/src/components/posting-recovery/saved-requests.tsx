@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,7 +12,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { SealedAction } from "@/components/journal-review";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
 import { readSavedPostingRequest, runSavedPostingRequest, savedPostingPath } from "./request";
@@ -266,7 +268,11 @@ function SavedRequestActions(
     queryKey: [...bookKey(book), "posting-recovery", "saved-review", proposalId],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/posting-recovery/${encodeURIComponent(proposalId ?? "")}`,
+        (client) =>
+          client.postingRecovery.getPostingRecovery({
+            params: { ...bookScope(book), id: proposalId ?? "" },
+            query: httpQuery(Api.groups.postingRecovery.endpoints.getPostingRecovery, ``),
+          }),
         Recovery.PostingRecovery,
         { signal },
       ),

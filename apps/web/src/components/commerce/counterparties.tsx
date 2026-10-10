@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { CustomerInvoiceDefaults } from "./customer-invoice-defaults";
 import { CustomerPreview } from "./customer-preview";
 import { useRef, useState } from "react";
@@ -69,7 +71,11 @@ export function counterpartyRegisterOptions(book: CommerceProps["book"], search 
       if (pageParam) params.set("after", pageParam);
 
       const result = await readAccounting(
-        `${commercePath(book)}/directory?${params}`,
+        (client) =>
+          client.crmMaster.crmDirectory({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.crmMaster.endpoints.crmDirectory, `${params}`),
+          }),
         Crm.DirectoryPage,
         { signal },
       );
@@ -94,7 +100,11 @@ export function counterpartyExportOptions(book: CommerceProps["book"], search = 
       if (role) params.set("role", role);
 
       const result = await readAccounting(
-        `${commercePath(book)}/directory/export?${params}`,
+        (client) =>
+          client.crmMaster.crmDirectoryExport({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.crmMaster.endpoints.crmDirectoryExport, `${params}`),
+          }),
         Crm.DirectoryExport,
         { signal },
       );
@@ -291,7 +301,11 @@ export function ContactDetail(props: CommerceProps & { id: string; compact?: boo
     queryKey: [...commerceKey(props.book), "counterparty", props.id, ""],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/counterparties/${encodeURIComponent(props.id)}`,
+        (client) =>
+          client.commerce.commerceGetCounterparty({
+            params: { ...bookScope(props.book), id: props.id },
+            query: httpQuery(Api.groups.commerce.endpoints.commerceGetCounterparty, ``),
+          }),
         Commerce.CounterpartyRevision,
         { signal },
       );
@@ -408,7 +422,11 @@ function Annotations({
         if (after) params.set("after", after);
 
         const result = await readAccounting(
-          `${commercePath(book)}/directory?${params}`,
+          (client) =>
+            client.crmMaster.crmDirectory({
+              params: { ...bookScope(book) },
+              query: httpQuery(Api.groups.crmMaster.endpoints.crmDirectory, `${params}`),
+            }),
           Crm.DirectoryPage,
           { signal },
         );

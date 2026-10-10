@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import { collectPostingPrincipalBasis } from "./posting-authority";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
@@ -7,19 +8,11 @@ import * as Schema from "effect/Schema";
 import { failure } from "./failures";
 import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
 import { resolveAssignmentsInTransaction } from "./dimensions/assignments";
-import {
-  digest,
-  executeChangeInTransaction,
-  isoNow,
-  newId,
-  readBook,
-  readPeriod,
-  readVoucher,
-  replay,
-  saveCommand,
-  validateAction,
-  validatePlan,
-} from "./posting";
+import { digest } from "./json";
+import { executeChangeInTransaction, validateAction } from "./posting";
+import { readBook, readPeriod, readVoucher, validatePlan } from "./posting-validation";
+import { isoNow, replay, saveCommand } from "./command-receipts";
+import { newId } from "./identifiers";
 import * as Db from "../db/posting";
 import * as CorrectionDb from "../db/posting-corrections";
 import { databaseFailure, type Transaction } from "../db/transaction";
@@ -104,7 +97,9 @@ function validateBundle(bundle: typeof Corrections.CorrectionBundle.Type) {
 function makePlan(transaction: Transaction, scope: Scope, principal: Principal, action: Action) {
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
+
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
+
     const assigned = yield* resolveAssignmentsInTransaction(transaction, scope, action);
 
     const accountRows = yield* Db.readAccounts(
@@ -158,6 +153,7 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
     };
 
     const planDigest = yield* digest(withoutDigest);
+
     const plan = yield* decode(Accounting.ChangeSet, { ...withoutDigest, planDigest });
     yield* Db.insertPlan(transaction, {
       bookId: scope.bookId,
@@ -178,7 +174,9 @@ function correctionChain(transaction: Transaction, scope: Scope, voucherId: stri
     if (idRows.length === 0) return yield* failure("NotFound");
 
     if (idRows.length > 200) return yield* failure("UnsupportedProfile");
+
     const ids = idRows.map((row) => row.id);
+
     const voucherRows = yield* CorrectionDb.readVouchersByIds(transaction, scope.bookId, ids);
 
     if (voucherRows.length === 0) return yield* failure("NotFound");
@@ -194,6 +192,7 @@ function correctionChain(transaction: Transaction, scope: Scope, voucherId: stri
     );
 
     const lineRows = yield* CorrectionDb.readChainLines(transaction, scope.bookId, ids);
+
     const totals = new Map<string, { debit: bigint; credit: bigint }>();
 
     for (const line of lineRows) {
@@ -237,6 +236,7 @@ function correctionChain(transaction: Transaction, scope: Scope, voucherId: stri
 function netChange(transaction: Transaction, scope: Scope, voucherId: string, input: Intent) {
   return Effect.gen(function* () {
     const original = yield* readVoucher(transaction, scope, voucherId);
+
     const deltas = new Map<string, bigint>();
 
     for (const line of original.action.lines) {
@@ -298,6 +298,7 @@ function representRegisterResource(
 function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, input: Intent) {
   return Effect.gen(function* () {
     const original = yield* readVoucher(transaction, scope, voucherId);
+
     const chain = yield* correctionChain(transaction, scope, voucherId);
 
     const invoiceContribution = yield* invoiceRecognitionContribution(
@@ -371,11 +372,17 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
     }
 
     const book = yield* readBook(transaction, scope);
+
     const periodRows = yield* Db.readPeriod(transaction, scope.bookId, input.accountingPeriodId);
+
     const period = periodRows[0];
+
     const accountRows = yield* Db.readAllAccounts(transaction, scope.bookId);
+
     const periodList = yield* Db.readAllPeriods(transaction, scope.bookId);
+
     const yearList = yield* Db.readAllFiscalYears(transaction, scope.bookId);
+
     const changes = yield* netChange(transaction, scope, voucherId, input);
 
     if (period) {
@@ -492,61 +499,54 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "prepare_correction_impact",
-          principal.actorId,
-          { id: command.voucherId, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "prepare_correction_impact",
+            actorId: principal.actorId,
+            input: { id: command.voucherId, input: command.input },
+          },
           Corrections.CorrectionImpact,
+          Effect.gen(function* () {
+            yield* Db.readAllPeriods(transaction, command.scope.bookId);
+            yield* Db.readAllFiscalYears(transaction, command.scope.bookId);
+            yield* Db.readAllAccounts(transaction, command.scope.bookId);
+
+            const basis = yield* impactBasis(
+              transaction,
+              command.scope,
+              command.voucherId,
+              command.input,
+            );
+
+            const bodyWithoutDigest = {
+              id: newId("impact"),
+              scope: command.scope,
+              voucherId: command.voucherId,
+              createdBy: principal.actorId,
+              createdAt: yield* isoNow(transaction),
+              basis,
+            };
+
+            const bodyDigest = yield* digest(bodyWithoutDigest);
+
+            const impact = yield* decode(Corrections.CorrectionImpact, {
+              ...bodyWithoutDigest,
+              digest: bodyDigest,
+            });
+
+            yield* CorrectionDb.insertImpactReview(transaction, {
+              bookId: command.scope.bookId,
+              id: impact.id,
+              voucherId: command.voucherId,
+              body: impact,
+            });
+
+            return impact;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* Db.readAllPeriods(transaction, command.scope.bookId);
-        yield* Db.readAllFiscalYears(transaction, command.scope.bookId);
-        yield* Db.readAllAccounts(transaction, command.scope.bookId);
-
-        const basis = yield* impactBasis(
-          transaction,
-          command.scope,
-          command.voucherId,
-          command.input,
-        );
-
-        const bodyWithoutDigest = {
-          id: newId("impact"),
-          scope: command.scope,
-          voucherId: command.voucherId,
-          createdBy: principal.actorId,
-          createdAt: yield* isoNow(transaction),
-          basis,
-        };
-
-        const bodyDigest = yield* digest(bodyWithoutDigest);
-
-        const impact = yield* decode(Corrections.CorrectionImpact, {
-          ...bodyWithoutDigest,
-          digest: bodyDigest,
-        });
-
-        yield* CorrectionDb.insertImpactReview(transaction, {
-          bookId: command.scope.bookId,
-          id: impact.id,
-          voucherId: command.voucherId,
-          body: impact,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "prepare_correction_impact",
-          principal.actorId,
-          impact,
-        );
-
-        return impact;
       }),
     "update",
   );
@@ -567,6 +567,7 @@ export const getCorrectionImpact = Effect.fn("posting.getCorrectionImpact")(func
       ))[0];
 
       if (!row) return yield* failure("NotFound");
+
       const impact = yield* decode(Corrections.CorrectionImpact, row.body);
 
       const withoutDigest = Object.fromEntries(
@@ -587,6 +588,7 @@ export const getCorrectionImpact = Effect.fn("posting.getCorrectionImpact")(func
       );
 
       const currentDigest = yield* digest(current);
+
       const storedBasisDigest = yield* digest(impact.basis);
 
       return {
@@ -622,6 +624,7 @@ export const listCorrectionBundles = Effect.fn("posting.listCorrectionBundles")(
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const rows = yield* CorrectionDb.listBundles(transaction, command.scope, command.after);
+
       const page = rows.slice(0, 25);
 
       const result = {
@@ -710,6 +713,7 @@ function readBundleState(
       ))[0];
 
       if (!impactRow) return yield* failure("StaleDependency");
+
       const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
 
       const impactWithoutDigest = Object.fromEntries(
@@ -749,12 +753,17 @@ function readBundleState(
     }
 
     const reversalRows = yield* Db.readPlan(transaction, scope.bookId, bundle.reversal.id);
+
     const replacementRows = yield* Db.readPlan(transaction, scope.bookId, bundle.replacement.id);
+
     const reversalRow = reversalRows[0];
+
     const replacementRow = replacementRows[0];
 
     if (!reversalRow || !replacementRow) return yield* failure("NotFound");
+
     const reversal = yield* decode(Accounting.ChangeSet, reversalRow.plan);
+
     const replacement = yield* decode(Accounting.ChangeSet, replacementRow.plan);
     yield* validatePlan(transaction, scope, reversal);
     yield* validatePlan(transaction, scope, replacement);
@@ -778,211 +787,223 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "prepare_correction_bundle",
-          principal.actorId,
-          { id: command.voucherId, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "prepare_correction_bundle",
+            actorId: principal.actorId,
+            input: { id: command.voucherId, input: command.input },
+          },
           Corrections.CorrectionBundle,
+          Effect.gen(function* () {
+            if (!command.input.impactReview) return yield* failure("UnsupportedProfile");
+
+            const original = yield* readVoucher(transaction, command.scope, command.voucherId);
+
+            if (original.action.postingPurpose === "reversal")
+              return yield* failure("InvalidJournal");
+
+            if (original.action.postingPurpose !== "adjustment") {
+              return yield* failure("UnsupportedProfile");
+            }
+
+            if (command.input.postingDate < original.action.postingDate) {
+              return yield* failure("InvalidJournal");
+            }
+
+            if (
+              (yield* Db.readVoucherByReversal(
+                transaction,
+                command.scope.bookId,
+                command.voucherId,
+              )).length > 0
+            ) {
+              return yield* failure("AlreadyPosted");
+            }
+
+            const impactRow = (yield* CorrectionDb.readImpactReview(
+              transaction,
+              command.scope,
+              command.input.impactReview.id,
+            ))[0];
+
+            if (!impactRow) return yield* failure("StaleDependency");
+
+            const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
+
+            const impactWithoutDigest = Object.fromEntries(
+              Object.entries(impact).filter(([key]) => key !== "digest"),
+            );
+
+            const storedImpactDigest = impact.digest;
+
+            const intent = {
+              datePolicy: command.input.datePolicy,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: command.input.postingDate,
+              rationale: command.input.rationale,
+              replacement: command.input.replacement,
+            } satisfies Intent;
+
+            if (command.input.scheduleDecision)
+              Object.assign(intent, { scheduleDecision: command.input.scheduleDecision });
+
+            const current = yield* impactBasis(
+              transaction,
+              command.scope,
+              command.voucherId,
+              intent,
+            );
+
+            if (
+              impact.voucherId !== command.voucherId ||
+              impact.digest !== command.input.impactReview.digest ||
+              (yield* digest(impactWithoutDigest, "StaleDependency")) !== storedImpactDigest ||
+              (yield* digest(current)) !== (yield* digest(impact.basis))
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            const blocker = current.blockers[0];
+
+            if (blocker) return yield* failure(blocker.code);
+
+            const period = yield* readPeriod(
+              transaction,
+              command.scope,
+              command.input.accountingPeriodId,
+            );
+
+            const book = yield* readBook(transaction, command.scope);
+
+            const reversalValue = {
+              ...original.action,
+              correctsVoucherId: command.voucherId,
+              postingPurpose: "reversal" as const,
+              occurrenceKey: command.voucherId,
+              fiscalYearId: period.fiscalYearId,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: command.input.postingDate,
+              description: `Reversal: ${original.action.description.slice(0, 1990)}`,
+              rationale: command.input.rationale,
+              lines: reversedLines(original.action.lines, () => newId("line")),
+            };
+
+            const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
+
+            if (!sourceEvidenceId) return yield* failure("MissingEvidence");
+
+            const eventRows = yield* Db.readEvent(
+              transaction,
+              command.scope.bookId,
+              sourceEvidenceId,
+              `correction:${command.voucherId}`,
+            );
+
+            const replacementEventId = eventRows[0]?.id ?? newId("event");
+
+            if (eventRows.length === 0) {
+              yield* Db.insertEvent(
+                transaction,
+                command.scope.bookId,
+                replacementEventId,
+                sourceEvidenceId,
+                `correction:${command.voucherId}`,
+              );
+            }
+
+            const replacementValue = {
+              ...original.action,
+              eventId: replacementEventId,
+              correctsVoucherId: null,
+              postingPurpose: "adjustment" as const,
+              occurrenceKey: "manual_journal",
+              fiscalYearId: period.fiscalYearId,
+              accountingPeriodId: command.input.accountingPeriodId,
+              postingDate: command.input.postingDate,
+              description: command.input.replacement.description,
+              rationale: command.input.rationale,
+              lines: command.input.replacement.lines.map((line) => ({
+                ...line,
+                lineId: newId("line"),
+              })),
+            };
+
+            const reversal = yield* decode(Accounting.VoucherPostingAction, reversalValue);
+
+            const replacement = yield* decode(Accounting.VoucherPostingAction, replacementValue);
+            yield* validateAction(transaction, command.scope, book, reversal);
+            yield* validateAction(transaction, command.scope, book, replacement);
+            const reversalPlan = yield* makePlan(transaction, command.scope, principal, reversal);
+
+            const replacementPlan = yield* makePlan(
+              transaction,
+              command.scope,
+              principal,
+              replacement,
+            );
+
+            const bodyWithoutDigest = {
+              id: newId("correction"),
+              version: 1 as const,
+              scope: command.scope,
+              impactReview: command.input.impactReview,
+              originalVoucher: original,
+              datePolicy: command.input.datePolicy,
+              rationale: command.input.rationale,
+              reversal: reversalPlan,
+              replacement: replacementPlan,
+              createdBy: principal.actorId,
+              createdAt: yield* isoNow(transaction),
+            };
+
+            if (current.registerContribution)
+              Object.assign(bodyWithoutDigest, {
+                registerContribution: current.registerContribution,
+              });
+
+            const bundleDigest = yield* digest(bodyWithoutDigest);
+
+            const bundle = yield* decode(Corrections.CorrectionBundle, {
+              ...bodyWithoutDigest,
+              bundleDigest,
+            });
+
+            yield* CorrectionDb.insertBundle(transaction, {
+              bookId: command.scope.bookId,
+              id: bundle.id,
+              originalVoucherId: command.voucherId,
+              reversalChangeSetId: reversalPlan.id,
+              replacementChangeSetId: replacementPlan.id,
+              body: bundle,
+              digest: bundleDigest,
+            });
+
+            if (bundle.registerContribution?.kind === "invoice_recognition_replacement_v1")
+              yield* RecognitionDb.insertOwner(
+                transaction,
+                command.scope.bookId,
+                bundle.id,
+                bundle.registerContribution.invoiceId,
+                bundle.registerContribution.predecessorVoucherId,
+                bundle.registerContribution,
+              );
+
+            if (bundle.registerContribution?.kind === "schedule_occurrence_replacement_v1")
+              yield* ScheduleCorrectionDb.insertOwner(transaction, {
+                bookId: command.scope.bookId,
+                bundleId: bundle.id,
+                scheduleId: bundle.registerContribution.scheduleId,
+                ordinal: bundle.registerContribution.ordinal,
+                predecessor: bundle.registerContribution.predecessorVoucherId,
+                body: bundle.registerContribution,
+              });
+
+            return bundle;
+          }),
         );
-
-        if (request.previous) return request.previous;
-
-        if (!command.input.impactReview) return yield* failure("UnsupportedProfile");
-        const original = yield* readVoucher(transaction, command.scope, command.voucherId);
-
-        if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
-
-        if (original.action.postingPurpose !== "adjustment") {
-          return yield* failure("UnsupportedProfile");
-        }
-
-        if (command.input.postingDate < original.action.postingDate) {
-          return yield* failure("InvalidJournal");
-        }
-
-        if (
-          (yield* Db.readVoucherByReversal(transaction, command.scope.bookId, command.voucherId))
-            .length > 0
-        ) {
-          return yield* failure("AlreadyPosted");
-        }
-
-        const impactRow = (yield* CorrectionDb.readImpactReview(
-          transaction,
-          command.scope,
-          command.input.impactReview.id,
-        ))[0];
-
-        if (!impactRow) return yield* failure("StaleDependency");
-        const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
-
-        const impactWithoutDigest = Object.fromEntries(
-          Object.entries(impact).filter(([key]) => key !== "digest"),
-        );
-
-        const storedImpactDigest = impact.digest;
-
-        const intent = {
-          datePolicy: command.input.datePolicy,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: command.input.postingDate,
-          rationale: command.input.rationale,
-          replacement: command.input.replacement,
-        } satisfies Intent;
-
-        if (command.input.scheduleDecision)
-          Object.assign(intent, { scheduleDecision: command.input.scheduleDecision });
-
-        const current = yield* impactBasis(transaction, command.scope, command.voucherId, intent);
-
-        if (
-          impact.voucherId !== command.voucherId ||
-          impact.digest !== command.input.impactReview.digest ||
-          (yield* digest(impactWithoutDigest, "StaleDependency")) !== storedImpactDigest ||
-          (yield* digest(current)) !== (yield* digest(impact.basis))
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        const blocker = current.blockers[0];
-
-        if (blocker) return yield* failure(blocker.code);
-
-        const period = yield* readPeriod(
-          transaction,
-          command.scope,
-          command.input.accountingPeriodId,
-        );
-
-        const book = yield* readBook(transaction, command.scope);
-
-        const reversalValue = {
-          ...original.action,
-          correctsVoucherId: command.voucherId,
-          postingPurpose: "reversal" as const,
-          occurrenceKey: command.voucherId,
-          fiscalYearId: period.fiscalYearId,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: command.input.postingDate,
-          description: `Reversal: ${original.action.description.slice(0, 1990)}`,
-          rationale: command.input.rationale,
-          lines: reversedLines(original.action.lines, () => newId("line")),
-        };
-
-        const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
-
-        if (!sourceEvidenceId) return yield* failure("MissingEvidence");
-
-        const eventRows = yield* Db.readEvent(
-          transaction,
-          command.scope.bookId,
-          sourceEvidenceId,
-          `correction:${command.voucherId}`,
-        );
-
-        const replacementEventId = eventRows[0]?.id ?? newId("event");
-
-        if (eventRows.length === 0) {
-          yield* Db.insertEvent(
-            transaction,
-            command.scope.bookId,
-            replacementEventId,
-            sourceEvidenceId,
-            `correction:${command.voucherId}`,
-          );
-        }
-
-        const replacementValue = {
-          ...original.action,
-          eventId: replacementEventId,
-          correctsVoucherId: null,
-          postingPurpose: "adjustment" as const,
-          occurrenceKey: "manual_journal",
-          fiscalYearId: period.fiscalYearId,
-          accountingPeriodId: command.input.accountingPeriodId,
-          postingDate: command.input.postingDate,
-          description: command.input.replacement.description,
-          rationale: command.input.rationale,
-          lines: command.input.replacement.lines.map((line) => ({
-            ...line,
-            lineId: newId("line"),
-          })),
-        };
-
-        const reversal = yield* decode(Accounting.VoucherPostingAction, reversalValue);
-        const replacement = yield* decode(Accounting.VoucherPostingAction, replacementValue);
-        yield* validateAction(transaction, command.scope, book, reversal);
-        yield* validateAction(transaction, command.scope, book, replacement);
-        const reversalPlan = yield* makePlan(transaction, command.scope, principal, reversal);
-        const replacementPlan = yield* makePlan(transaction, command.scope, principal, replacement);
-
-        const bodyWithoutDigest = {
-          id: newId("correction"),
-          version: 1 as const,
-          scope: command.scope,
-          impactReview: command.input.impactReview,
-          originalVoucher: original,
-          datePolicy: command.input.datePolicy,
-          rationale: command.input.rationale,
-          reversal: reversalPlan,
-          replacement: replacementPlan,
-          createdBy: principal.actorId,
-          createdAt: yield* isoNow(transaction),
-        };
-
-        if (current.registerContribution)
-          Object.assign(bodyWithoutDigest, { registerContribution: current.registerContribution });
-
-        const bundleDigest = yield* digest(bodyWithoutDigest);
-
-        const bundle = yield* decode(Corrections.CorrectionBundle, {
-          ...bodyWithoutDigest,
-          bundleDigest,
-        });
-
-        yield* CorrectionDb.insertBundle(transaction, {
-          bookId: command.scope.bookId,
-          id: bundle.id,
-          originalVoucherId: command.voucherId,
-          reversalChangeSetId: reversalPlan.id,
-          replacementChangeSetId: replacementPlan.id,
-          body: bundle,
-          digest: bundleDigest,
-        });
-
-        if (bundle.registerContribution?.kind === "invoice_recognition_replacement_v1")
-          yield* RecognitionDb.insertOwner(
-            transaction,
-            command.scope.bookId,
-            bundle.id,
-            bundle.registerContribution.invoiceId,
-            bundle.registerContribution.predecessorVoucherId,
-            bundle.registerContribution,
-          );
-
-        if (bundle.registerContribution?.kind === "schedule_occurrence_replacement_v1")
-          yield* ScheduleCorrectionDb.insertOwner(transaction, {
-            bookId: command.scope.bookId,
-            bundleId: bundle.id,
-            scheduleId: bundle.registerContribution.scheduleId,
-            ordinal: bundle.registerContribution.ordinal,
-            predecessor: bundle.registerContribution.predecessorVoucherId,
-            body: bundle.registerContribution,
-          });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "prepare_correction_bundle",
-          principal.actorId,
-          bundle,
-        );
-
-        return bundle;
       }),
     "update",
   );
@@ -995,6 +1016,7 @@ function bundleView(
 ) {
   return Effect.gen(function* () {
     const receiptRow = (yield* CorrectionDb.readBundleReceipt(transaction, scope, bundle.id))[0];
+
     const receipt = receiptRow ? yield* decode(BundleReceipt, receiptRow.body) : null;
 
     const approvalRow = (yield* CorrectionDb.readLatestBundleApproval(
@@ -1064,6 +1086,7 @@ function readBundleView(transaction: Transaction, scope: Scope, bundleId: string
     const row = (yield* CorrectionDb.readBundle(transaction, scope, bundleId))[0];
 
     if (!row) return yield* failure("NotFound");
+
     const bundle = yield* bundleFromRow(row);
     yield* validateBundle(bundle);
     yield* validateBundleRow(row, bundle);
@@ -1099,6 +1122,7 @@ export const getCorrectionBundleForVoucher = Effect.fn("posting.getCorrectionBun
         ))[0];
 
         if (!row) return yield* failure("NotFound");
+
         const bundle = yield* bundleFromRow(row);
         yield* validateBundle(bundle);
         yield* validateBundleRow(row, bundle);
@@ -1126,110 +1150,106 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "approve_correction_bundle",
-          principal.actorId,
-          { id: command.bundleId, input: command.input },
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "approve_correction_bundle",
+            actorId: principal.actorId,
+            input: { id: command.bundleId, input: command.input },
+          },
           BundleApproval,
+          Effect.gen(function* () {
+            const row = (yield* CorrectionDb.readBundle(
+              transaction,
+              command.scope,
+              command.bundleId,
+              "update",
+            ))[0];
+
+            if (!row) return yield* failure("NotFound");
+
+            const bundle = yield* bundleFromRow(row);
+            yield* validateBundle(bundle);
+            yield* validateBundleRow(row, bundle);
+
+            if (
+              command.input.bundleDigest !== bundle.bundleDigest ||
+              command.input.version !== bundle.version
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            yield* readBundleState(transaction, command.scope, bundle);
+
+            if (
+              (yield* CorrectionDb.readBundleReceipt(transaction, command.scope, bundle.id))
+                .length > 0
+            ) {
+              return yield* failure("AlreadyPosted");
+            }
+
+            const now = yield* Db.readDatabaseTime(transaction);
+
+            const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+
+            const approval = yield* decode(BundleApproval, {
+              id: newId("bundleapproval"),
+              bundleId: bundle.id,
+              bundleDigest: bundle.bundleDigest,
+              actorId: principal.actorId,
+              expiresAt,
+            });
+
+            const authorityBasis = yield* collectPostingPrincipalBasis(
+              transaction,
+              command.scope,
+              principal,
+              "approve_change",
+            );
+
+            const reversalApproval = yield* Db.insertApproval(transaction, {
+              bookId: command.scope.bookId,
+              id: newId("approval"),
+              changeSetId: bundle.reversal.id,
+              digest: bundle.reversal.planDigest,
+              actorId: principal.actorId,
+              expiresAt,
+              authorityBasis,
+            });
+
+            const replacementApproval = yield* Db.insertApproval(transaction, {
+              bookId: command.scope.bookId,
+              id: newId("approval"),
+              changeSetId: bundle.replacement.id,
+              digest: bundle.replacement.planDigest,
+              actorId: principal.actorId,
+              expiresAt,
+              authorityBasis,
+            });
+
+            const reversalApprovalId = reversalApproval[0]?.id;
+
+            const replacementApprovalId = replacementApproval[0]?.id;
+
+            if (!reversalApprovalId || !replacementApprovalId) {
+              return yield* failure("InternalError");
+            }
+
+            yield* CorrectionDb.insertBundleApproval(transaction, {
+              bookId: command.scope.bookId,
+              id: approval.id,
+              bundleId: bundle.id,
+              reversalApprovalId,
+              replacementApprovalId,
+              expiresAt,
+              body: approval,
+            });
+
+            return approval;
+          }),
         );
-
-        if (request.previous) return request.previous;
-
-        const row = (yield* CorrectionDb.readBundle(
-          transaction,
-          command.scope,
-          command.bundleId,
-          "update",
-        ))[0];
-
-        if (!row) return yield* failure("NotFound");
-        const bundle = yield* bundleFromRow(row);
-        yield* validateBundle(bundle);
-        yield* validateBundleRow(row, bundle);
-
-        if (
-          command.input.bundleDigest !== bundle.bundleDigest ||
-          command.input.version !== bundle.version
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        yield* readBundleState(transaction, command.scope, bundle);
-
-        if (
-          (yield* CorrectionDb.readBundleReceipt(transaction, command.scope, bundle.id)).length > 0
-        ) {
-          return yield* failure("AlreadyPosted");
-        }
-
-        const now = yield* Db.readDatabaseTime(transaction);
-        const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
-
-        const approval = yield* decode(BundleApproval, {
-          id: newId("bundleapproval"),
-          bundleId: bundle.id,
-          bundleDigest: bundle.bundleDigest,
-          actorId: principal.actorId,
-          expiresAt,
-        });
-
-        const authorityBasis = yield* collectPostingPrincipalBasis(
-          transaction,
-          command.scope,
-          principal,
-          "approve_change",
-        );
-
-        const reversalApproval = yield* Db.insertApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: newId("approval"),
-          changeSetId: bundle.reversal.id,
-          digest: bundle.reversal.planDigest,
-          actorId: principal.actorId,
-          expiresAt,
-          authorityBasis,
-        });
-
-        const replacementApproval = yield* Db.insertApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: newId("approval"),
-          changeSetId: bundle.replacement.id,
-          digest: bundle.replacement.planDigest,
-          actorId: principal.actorId,
-          expiresAt,
-          authorityBasis,
-        });
-
-        const reversalApprovalId = reversalApproval[0]?.id;
-        const replacementApprovalId = replacementApproval[0]?.id;
-
-        if (!reversalApprovalId || !replacementApprovalId) {
-          return yield* failure("InternalError");
-        }
-
-        yield* CorrectionDb.insertBundleApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: approval.id,
-          bundleId: bundle.id,
-          reversalApprovalId,
-          replacementApprovalId,
-          expiresAt,
-          body: approval,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "approve_correction_bundle",
-          principal.actorId,
-          approval,
-        );
-
-        return approval;
       }),
     "update",
   );
@@ -1271,6 +1291,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
         ))[0];
 
         if (!bundleRow) return yield* failure("NotFound");
+
         const bundle = yield* bundleFromRow(bundleRow);
         yield* validateBundle(bundle);
         yield* validateBundleRow(bundleRow, bundle);
@@ -1318,6 +1339,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
         ))[0];
 
         if (!approvalRow) return yield* failure("ApprovalRequired");
+
         const approval = yield* decode(BundleApproval, approvalRow.body);
 
         if (

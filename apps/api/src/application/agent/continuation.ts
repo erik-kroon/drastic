@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Workspace from "@open-erp/contracts/workspace";
 import * as Effect from "effect/Effect";
 import * as Context from "@open-erp/domain/agent-context";
@@ -7,7 +8,8 @@ import * as Db from "../../db/agent-context";
 import type { Transaction } from "../../db/transaction";
 import { decode, toJsonObject, withBook, type Principal, type Scope } from "../commerce/support";
 import { digest } from "../json";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { captureBookContextInTransaction } from "./context";
 
@@ -147,51 +149,43 @@ export const captureAgentContext = Effect.fn("agent.context.capture")(function* 
     function* (tx, principal) {
       const operation = "capture_agent_context";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
-        Workspace.ContextCapture,
-      );
-
-      if (request.previous) return request.previous;
-
-      const inventory = yield* captureBookContextInTransaction(tx, principal, command);
-
-      const capture = yield* decode(
-        Workspace.ContextCapture,
-        yield* toJsonObject({
-          id: newId("context_capture"),
+        {
           scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
           actorId: principal.actorId,
-          query: command.input,
-          digest: yield* digest(inventoryBasis(inventory)),
-          createdAt: yield* isoNow(tx),
-          total: String(inventory.snapshot.work.length),
+          input: command.input,
+        },
+        Workspace.ContextCapture,
+        Effect.gen(function* () {
+          const inventory = yield* captureBookContextInTransaction(tx, principal, command);
+
+          const capture = yield* decode(
+            Workspace.ContextCapture,
+            yield* toJsonObject({
+              id: newId("context_capture"),
+              scope: command.scope,
+              actorId: principal.actorId,
+              query: command.input,
+              digest: yield* digest(inventoryBasis(inventory)),
+              createdAt: yield* isoNow(tx),
+              total: String(inventory.snapshot.work.length),
+            }),
+          );
+
+          yield* Db.insertCapture(tx, {
+            bookId: command.scope.bookId,
+            id: capture.id,
+            actorId: principal.actorId,
+            body: yield* toJsonObject(capture),
+            inventory: yield* toJsonObject(inventory),
+          });
+
+          return { receipt: yield* toJsonObject(capture), result: capture };
         }),
       );
-
-      yield* Db.insertCapture(tx, {
-        bookId: command.scope.bookId,
-        id: capture.id,
-        actorId: principal.actorId,
-        body: yield* toJsonObject(capture),
-        inventory: yield* toJsonObject(inventory),
-      });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(capture),
-      );
-
-      return capture;
     },
     "update",
   );
@@ -311,60 +305,53 @@ export const advanceAgentContext = Effect.fn("agent.context.advance")(function* 
     function* (tx, principal) {
       const operation = "advance_agent_context";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { id: command.captureId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id: command.captureId, input: command.input },
+        },
         Workspace.ContextProgress,
-      );
+        Effect.gen(function* () {
+          const stored = yield* retained(tx, principal, command.scope, command.captureId);
 
-      if (request.previous) return request.previous;
-      const stored = yield* retained(tx, principal, command.scope, command.captureId);
+          if (stored.progress.revision !== command.input.expectedRevision)
+            return yield* failure("StaleDependency");
 
-      if (stored.progress.revision !== command.input.expectedRevision)
-        return yield* failure("StaleDependency");
+          const next = yield* page(tx, principal, command.scope, stored);
 
-      const next = yield* page(tx, principal, command.scope, stored);
+          if (!next.current || next.pageDigest !== command.input.pageDigest)
+            return yield* failure("StaleDependency");
 
-      if (!next.current || next.pageDigest !== command.input.pageDigest)
-        return yield* failure("StaleDependency");
+          const position = BigInt(next.offset) + BigInt(next.items.length);
 
-      const position = BigInt(next.offset) + BigInt(next.items.length);
+          if (position === BigInt(stored.progress.position)) return yield* failure("AlreadyPosted");
 
-      if (position === BigInt(stored.progress.position)) return yield* failure("AlreadyPosted");
+          const progress = yield* decode(
+            Workspace.ContextProgress,
+            yield* toJsonObject({
+              captureId: command.captureId,
+              revision: (BigInt(stored.progress.revision) + 1n).toString(),
+              position: position.toString(),
+              recordedAt: yield* isoNow(tx),
+            }),
+          );
 
-      const progress = yield* decode(
-        Workspace.ContextProgress,
-        yield* toJsonObject({
-          captureId: command.captureId,
-          revision: (BigInt(stored.progress.revision) + 1n).toString(),
-          position: position.toString(),
-          recordedAt: yield* isoNow(tx),
+          yield* Db.insertProgress(tx, {
+            bookId: command.scope.bookId,
+            captureId: command.captureId,
+            actorId: principal.actorId,
+            revision: BigInt(progress.revision),
+            position,
+            body: yield* toJsonObject(progress),
+          });
+
+          return { receipt: yield* toJsonObject(progress), result: progress };
         }),
       );
-
-      yield* Db.insertProgress(tx, {
-        bookId: command.scope.bookId,
-        captureId: command.captureId,
-        actorId: principal.actorId,
-        revision: BigInt(progress.revision),
-        position,
-        body: yield* toJsonObject(progress),
-      });
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(progress),
-      );
-
-      return progress;
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "./book-commands";
 import { recordDecision } from "./decision-provenance";
 // NEXT-16: the period-work application owner.
 //
@@ -47,7 +48,8 @@ import { sha256HexOf } from "./bytes";
 import { orderPostingGroups } from "@open-erp/domain/posting";
 import { PeriodWorkExecutionFence } from "./period-work-fence";
 import { admitRunnerActor } from "./preparation-jobs";
-import { digest, replay, saveCommand } from "./posting";
+import { digest } from "./json";
+import { replay, saveCommand } from "./command-receipts";
 import {
   approveInvoiceIssueInTransaction,
   executeInvoiceIssue,
@@ -1253,156 +1255,155 @@ export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(funct
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operationFor.approve,
-        principal.actorId,
-        yield* toJsonObject({ batchId: command.batchId, digest: command.expectedDigest }),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operationFor.approve,
+          actorId: principal.actorId,
+          input: yield* toJsonObject({ batchId: command.batchId, digest: command.expectedDigest }),
+        },
         PeriodWork.ApprovalBatch,
-      );
+        Effect.gen(function* () {
+          yield* requireAccess(transaction, true);
 
-      if (request.previous) return request.previous;
+          const batch = (yield* Db.readBatch(
+            transaction,
+            command.scope.bookId,
+            command.batchId,
+          ))[0];
 
-      yield* requireAccess(transaction, true);
+          if (batch === undefined) return yield* failure("NotFound");
 
-      const batch = (yield* Db.readBatch(transaction, command.scope.bookId, command.batchId))[0];
+          if (batch.digest !== command.expectedDigest) return yield* failure("StaleDependency");
 
-      if (batch === undefined) return yield* failure("NotFound");
+          if (
+            (yield* Db.readBatchApproval(transaction, command.scope.bookId, command.batchId))
+              .length > 0
+          ) {
+            return yield* failure("AlreadyPosted");
+          }
 
-      if (batch.digest !== command.expectedDigest) return yield* failure("StaleDependency");
+          const members = yield* Db.readBatchMembers(
+            transaction,
+            command.scope.bookId,
+            command.batchId,
+          );
 
-      if (
-        (yield* Db.readBatchApproval(transaction, command.scope.bookId, command.batchId)).length > 0
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
+          if (members.length === 0) return yield* failure("NotFound");
 
-      const members = yield* Db.readBatchMembers(
-        transaction,
-        command.scope.bookId,
-        command.batchId,
-      );
+          const plans = yield* Db.readPlans(
+            transaction,
+            command.scope.bookId,
+            members.map((member) => member.planId),
+          );
 
-      if (members.length === 0) return yield* failure("NotFound");
+          if (plans.length !== members.length) return yield* failure("StaleDependency");
 
-      const plans = yield* Db.readPlans(
-        transaction,
-        command.scope.bookId,
-        members.map((member) => member.planId),
-      );
+          for (const member of members) {
+            const child = (yield* Db.readChild(
+              transaction,
+              command.scope.bookId,
+              member.workIdentity,
+            ))[0];
 
-      if (plans.length !== members.length) return yield* failure("StaleDependency");
+            if (
+              !child ||
+              child.state !== "prepared" ||
+              child.planId !== member.planId ||
+              child.planDigest !== member.planDigest ||
+              child.ownerReviewId !== member.ownerReviewId ||
+              (child.batchId !== null && child.batchId !== command.batchId)
+            ) {
+              return yield* failure("StaleDependency");
+            }
 
-      for (const member of members) {
-        const child = (yield* Db.readChild(
-          transaction,
-          command.scope.bookId,
-          member.workIdentity,
-        ))[0];
+            const plan = plans.find((row) => row.id === member.planId);
 
-        if (
-          !child ||
-          child.state !== "prepared" ||
-          child.planId !== member.planId ||
-          child.planDigest !== member.planDigest ||
-          child.ownerReviewId !== member.ownerReviewId ||
-          (child.batchId !== null && child.batchId !== command.batchId)
-        ) {
-          return yield* failure("StaleDependency");
-        }
+            if (plan === undefined || plan.digest !== member.planDigest) {
+              return yield* failure("StaleDependency");
+            }
 
-        const plan = plans.find((row) => row.id === member.planId);
+            const approvalId = yield* approveMemberInTransaction(
+              transaction,
+              principal,
+              command.scope,
+              `pw_ap_${command.batchId}_${member.ordinal}`,
+              {
+                owner: member.owner,
+                ownerReviewId: member.ownerReviewId,
+                ownerReviewDigest: member.ownerReviewDigest,
+                batchId: command.batchId,
+                ordinal: Number(member.ordinal),
+              },
+            );
 
-        if (plan === undefined || plan.digest !== member.planDigest) {
-          return yield* failure("StaleDependency");
-        }
+            if (member.owner !== "purchases.recognition") {
+              yield* recordDecision(transaction, {
+                bookId: command.scope.bookId,
+                actorId: principal.actorId,
+                kind: "batch_member",
+                id: `${command.batchId}:${member.ordinal}`,
+                subject: {
+                  kind: "batch_member",
+                  batchId: command.batchId,
+                  ordinal: Number(member.ordinal),
+                  owner: member.owner,
+                  ownerReviewId: member.ownerReviewId,
+                },
+                selected: {
+                  ownerApprovalId: approvalId,
+                  ownerReviewDigest: member.ownerReviewDigest,
+                  planId: member.planId,
+                  planDigest: member.planDigest,
+                },
+                forced: "batch_approved",
+              });
+            }
 
-        const approvalId = yield* approveMemberInTransaction(
-          transaction,
-          principal,
-          command.scope,
-          `pw_ap_${command.batchId}_${member.ordinal}`,
-          {
-            owner: member.owner,
-            ownerReviewId: member.ownerReviewId,
-            ownerReviewDigest: member.ownerReviewDigest,
-            batchId: command.batchId,
-            ordinal: Number(member.ordinal),
-          },
-        );
-
-        if (member.owner !== "purchases.recognition") {
-          yield* recordDecision(transaction, {
-            bookId: command.scope.bookId,
-            actorId: principal.actorId,
-            kind: "batch_member",
-            id: `${command.batchId}:${member.ordinal}`,
-            subject: {
-              kind: "batch_member",
+            yield* Db.insertBatchApproval(transaction, {
+              bookId: command.scope.bookId,
               batchId: command.batchId,
-              ordinal: Number(member.ordinal),
+              memberOrdinal: Number(member.ordinal),
               owner: member.owner,
-              ownerReviewId: member.ownerReviewId,
-            },
-            selected: {
               ownerApprovalId: approvalId,
-              ownerReviewDigest: member.ownerReviewDigest,
-              planId: member.planId,
               planDigest: member.planDigest,
-            },
-            forced: "batch_approved",
-          });
-        }
+              approverId: principal.actorId,
+            });
 
-        yield* Db.insertBatchApproval(transaction, {
-          bookId: command.scope.bookId,
-          batchId: command.batchId,
-          memberOrdinal: Number(member.ordinal),
-          owner: member.owner,
-          ownerApprovalId: approvalId,
-          planDigest: member.planDigest,
-          approverId: principal.actorId,
-        });
+            // The child records the batch that covered it, so a later read can prove
+            // which gesture covered which child.
+            const applied = yield* Db.advanceChild(
+              transaction,
+              {
+                bookId: command.scope.bookId,
+                workIdentity: child.workIdentity,
+                state: child.state,
+                revision: yield* nextRevision(child.revision),
+                cancelVersion: child.cancelVersion,
+                planId: child.planId,
+                planDigest: child.planDigest,
+                receiptId: child.receiptId,
+                missingFacts: child.missingFacts,
+                refusalReason: child.refusalReason,
+                batchId: command.batchId,
+                routedOwner: child.routedOwner,
+                ownerReviewId: child.ownerReviewId,
+                ownerReviewDigest: child.ownerReviewDigest,
+              },
+              { revision: child.revision, cancelVersion: child.cancelVersion },
+            );
 
-        // The child records the batch that covered it, so a later read can prove
-        // which gesture covered which child.
-        const applied = yield* Db.advanceChild(
-          transaction,
-          {
-            bookId: command.scope.bookId,
-            workIdentity: child.workIdentity,
-            state: child.state,
-            revision: yield* nextRevision(child.revision),
-            cancelVersion: child.cancelVersion,
-            planId: child.planId,
-            planDigest: child.planDigest,
-            receiptId: child.receiptId,
-            missingFacts: child.missingFacts,
-            refusalReason: child.refusalReason,
-            batchId: command.batchId,
-            routedOwner: child.routedOwner,
-            ownerReviewId: child.ownerReviewId,
-            ownerReviewDigest: child.ownerReviewDigest,
-          },
-          { revision: child.revision, cancelVersion: child.cancelVersion },
-        );
+            if (applied.length === 0) return yield* failure("StaleDependency");
+          }
 
-        if (applied.length === 0) return yield* failure("StaleDependency");
-      }
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operationFor.approve,
-        principal.actorId,
-        batch.body,
+          return {
+            receipt: batch.body,
+            result: yield* decode(PeriodWork.ApprovalBatch, batch.body),
+          };
+        }),
       );
-
-      return yield* decode(PeriodWork.ApprovalBatch, batch.body);
     },
     "update",
   );

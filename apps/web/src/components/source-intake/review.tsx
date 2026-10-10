@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Intake from "@open-erp/contracts/source-intake";
@@ -13,7 +15,7 @@ import { PageAction, PageCaption } from "@open-erp/ui/components/accounting-page
 import { workspacePath } from "@/lib/book-context";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { IntakeProps } from "./index";
 import { intakeCopy } from "./copy";
 import { downloadIntake } from "./download";
@@ -29,8 +31,8 @@ export function PreviewReview(
   const { book, locale, id, occurrenceId } = props;
   const copy = intakeCopy(locale);
   const client = useQueryClient();
-  const approvalKeys = useRef(new Map<string, string>());
-  const admissionKeys = useRef(new Map<string, string>());
+  const approvalKeys = useCommandKeys();
+  const admissionKeys = useCommandKeys();
   const [reviewed, setReviewed] = useState(false);
   const [page, setPage] = useState(0);
   const [inputError, setInputError] = useState("");
@@ -62,7 +64,7 @@ export function PreviewReview(
       readAccounting(
         `${base}/approve`,
         Intake.SourceApproval,
-        mutationOptions(`${base}/approve`, JSON.stringify(input), approvalKeys.current),
+        approvalKeys.current.options(`${base}/approve`, JSON.stringify(input)),
       ),
     onSuccess: () => {
       approvalKeys.current.clear();
@@ -78,7 +80,7 @@ export function PreviewReview(
       readAccounting(
         `${base}/admit`,
         Intake.SourceAdmission,
-        mutationOptions(`${base}/admit`, JSON.stringify(input), admissionKeys.current),
+        admissionKeys.current.options(`${base}/admit`, JSON.stringify(input)),
       ),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: bookKey(book) });
@@ -225,7 +227,7 @@ export function PreviewReview(
                     rationale: data.get("rationale"),
                   });
 
-                  if (input._tag === "None" || !reviewed) {
+                  if (Option.isNone(input) || !reviewed) {
                     setInputError(copy.invalid);
 
                     return;

@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Report from "@open-erp/contracts/annual-report";
 import * as Statements from "@open-erp/contracts/report-statements";
 import * as CloseContract from "@open-erp/contracts/financial-close";
@@ -19,7 +20,10 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import * as Db from "../../db/reports/annual-report";
 import * as StatementDb from "../../db/report-statements";
 import * as CloseDb from "../../db/closing/financial-close";
@@ -200,196 +204,195 @@ export const prepareAnnualReport = Effect.fn("reports.annual-report.prepare")(fu
 
     if (book.currency !== "SEK") return yield* unsupported();
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "prepare_annual_report",
-      principal.actorId,
-      yield* toJsonObject(command.input),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "prepare_annual_report",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command.input),
+      },
       DraftSchema,
+      Effect.gen(function* () {
+        const year = yield* readYear(transaction, command.scope.bookId, command.input.fiscalYearId);
+
+        const certificate = yield* readActiveCertificate(
+          transaction,
+          command.scope,
+          command.input.closeCertificateId,
+        );
+
+        if (certificate.fiscalYearId !== year.id) return yield* failure("StaleDependency");
+
+        for (const snapshotId of command.input.statementSnapshotIds) {
+          yield* readSnapshot(transaction, command.scope, snapshotId, year.id);
+        }
+
+        for (const snapshotId of command.input.comparativeSnapshotIds) {
+          yield* readSnapshot(transaction, command.scope, snapshotId, null);
+        }
+
+        if (
+          command.input.comparativeSnapshotIds.length === 0 &&
+          command.input.missingHistoryNote === null
+        ) {
+          return yield* failure("InvalidJournal");
+        }
+
+        const evidence = yield* readEvidenceReference(
+          transaction,
+          command.scope.bookId,
+          command.input.eligibilityEvidenceId,
+        );
+
+        const seenRequirements = new Set<string>();
+
+        for (const requirement of command.input.disclosures) {
+          if (seenRequirements.has(requirement.requirementId)) {
+            return yield* failure("InvalidJournal");
+          }
+
+          seenRequirements.add(requirement.requirementId);
+
+          if (
+            requirement.applicability === "applicable" &&
+            requirement.derivedMinor === null &&
+            !requirement.reviewedExplicitFact
+          ) {
+            continue;
+          }
+
+          if (
+            requirement.applicability === "inapplicable" &&
+            requirement.inapplicableReason === null
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (requirement.evidenceId !== null) {
+            yield* readEvidenceReference(transaction, command.scope.bookId, requirement.evidenceId);
+          }
+        }
+
+        const seenFacts = new Set<string>();
+
+        for (const fact of command.input.facts) {
+          if (seenFacts.has(fact.semanticId)) return yield* failure("InvalidJournal");
+
+          seenFacts.add(fact.semanticId);
+
+          for (const evidenceId of fact.evidenceRefs) {
+            yield* readEvidenceReference(transaction, command.scope.bookId, evidenceId);
+          }
+        }
+
+        // A financial fact is sealed from the retained statement rows it names,
+        // so a client can name a row and cite evidence but never state the amount.
+        const currentRows = yield* collectRowAmounts(
+          transaction,
+          command.scope,
+          command.input.facts,
+          command.input.statementSnapshotIds,
+        );
+
+        const comparativeRows = yield* collectRowAmounts(
+          transaction,
+          command.scope,
+          command.input.comparativeFacts,
+          command.input.comparativeSnapshotIds,
+        );
+
+        const sealed = bindStatementFacts({ facts: command.input.facts, rows: currentRows });
+
+        if (Result.isFailure(sealed)) return yield* refusalFor(sealed.failure);
+
+        const sealedComparatives = bindStatementFacts({
+          facts: command.input.comparativeFacts,
+          rows: comparativeRows,
+        });
+
+        if (Result.isFailure(sealedComparatives))
+          return yield* refusalFor(sealedComparatives.failure);
+
+        const basis: Array<ComparativeBasis> = [];
+
+        for (const snapshotId of command.input.comparativeSnapshotIds) {
+          const snapshot = yield* readSnapshot(transaction, command.scope, snapshotId, null);
+
+          basis.push({ snapshotId, fiscalYear: snapshot.fiscalYear.id.slice(-4) });
+        }
+
+        const comparativeSupport = deriveComparativeSupport({
+          currentFiscalYear: year.endsOn.slice(0, 4),
+          currentSnapshotIds: command.input.statementSnapshotIds,
+          currentFacts: sealed.success,
+          comparatives: basis,
+          comparativeFacts: sealedComparatives.success,
+        });
+
+        if (Result.isFailure(comparativeSupport)) {
+          return yield* refusalFor(comparativeSupport.failure);
+        }
+
+        if (!SupportedK2Releases.includes(command.input.frameworkRelease)) {
+          return yield* unsupported();
+        }
+
+        const draftId = newId("annual_draft");
+        const fiscalYear = year.endsOn.slice(0, 4);
+
+        const body = {
+          id: draftId,
+          scope: command.scope,
+          version: 1,
+          profile: command.input.profile,
+          fiscalYearId: year.id,
+          fiscalYear,
+          input: yield* toJsonObject(command.input),
+          closeCertificateId: certificate.id,
+          frameworkRelease: command.input.frameworkRelease,
+          requirements: command.input.disclosures.map((requirement) => ({
+            requirementId: requirement.requirementId,
+            applicability: requirement.applicability,
+            inapplicableReason: requirement.inapplicableReason,
+            derivedMinor: requirement.derivedMinor,
+            reviewedExplicitFact: requirement.reviewedExplicitFact,
+          })),
+          facts: sealed.success,
+          comparativeFacts: sealedComparatives.success,
+          comparativeSupported: true,
+          narratives: command.input.narratives.map((section) => ({ ...section })),
+          narrativeApprovalRef: null,
+          evidence,
+          createdAt: yield* isoNow(transaction),
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "prepare_annual_report",
+            principal.actorId,
+          ),
+        };
+
+        if (!/^\d{4}$/.test(fiscalYear)) return yield* failure("InvalidJournal");
+
+        const draft = yield* decode(DraftSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertDraft(transaction, {
+          bookId: command.scope.bookId,
+          id: draftId,
+          fiscalYearId: year.id,
+          closeCertificateId: certificate.id,
+          body: yield* toJsonObject(draft),
+          digest: draft.digest,
+          recordedAt: draft.createdAt,
+        });
+
+        return { receipt: yield* toJsonObject(draft), result: draft };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const year = yield* readYear(transaction, command.scope.bookId, command.input.fiscalYearId);
-
-    const certificate = yield* readActiveCertificate(
-      transaction,
-      command.scope,
-      command.input.closeCertificateId,
-    );
-
-    if (certificate.fiscalYearId !== year.id) return yield* failure("StaleDependency");
-
-    for (const snapshotId of command.input.statementSnapshotIds) {
-      yield* readSnapshot(transaction, command.scope, snapshotId, year.id);
-    }
-
-    for (const snapshotId of command.input.comparativeSnapshotIds) {
-      yield* readSnapshot(transaction, command.scope, snapshotId, null);
-    }
-
-    if (
-      command.input.comparativeSnapshotIds.length === 0 &&
-      command.input.missingHistoryNote === null
-    ) {
-      return yield* failure("InvalidJournal");
-    }
-
-    const evidence = yield* readEvidenceReference(
-      transaction,
-      command.scope.bookId,
-      command.input.eligibilityEvidenceId,
-    );
-
-    const seenRequirements = new Set<string>();
-
-    for (const requirement of command.input.disclosures) {
-      if (seenRequirements.has(requirement.requirementId)) {
-        return yield* failure("InvalidJournal");
-      }
-
-      seenRequirements.add(requirement.requirementId);
-
-      if (
-        requirement.applicability === "applicable" &&
-        requirement.derivedMinor === null &&
-        !requirement.reviewedExplicitFact
-      ) {
-        continue;
-      }
-
-      if (requirement.applicability === "inapplicable" && requirement.inapplicableReason === null) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (requirement.evidenceId !== null) {
-        yield* readEvidenceReference(transaction, command.scope.bookId, requirement.evidenceId);
-      }
-    }
-
-    const seenFacts = new Set<string>();
-
-    for (const fact of command.input.facts) {
-      if (seenFacts.has(fact.semanticId)) return yield* failure("InvalidJournal");
-
-      seenFacts.add(fact.semanticId);
-
-      for (const evidenceId of fact.evidenceRefs) {
-        yield* readEvidenceReference(transaction, command.scope.bookId, evidenceId);
-      }
-    }
-
-    // A financial fact is sealed from the retained statement rows it names,
-    // so a client can name a row and cite evidence but never state the amount.
-    const currentRows = yield* collectRowAmounts(
-      transaction,
-      command.scope,
-      command.input.facts,
-      command.input.statementSnapshotIds,
-    );
-
-    const comparativeRows = yield* collectRowAmounts(
-      transaction,
-      command.scope,
-      command.input.comparativeFacts,
-      command.input.comparativeSnapshotIds,
-    );
-
-    const sealed = bindStatementFacts({ facts: command.input.facts, rows: currentRows });
-
-    if (Result.isFailure(sealed)) return yield* refusalFor(sealed.failure);
-
-    const sealedComparatives = bindStatementFacts({
-      facts: command.input.comparativeFacts,
-      rows: comparativeRows,
-    });
-
-    if (Result.isFailure(sealedComparatives)) return yield* refusalFor(sealedComparatives.failure);
-
-    const basis: Array<ComparativeBasis> = [];
-
-    for (const snapshotId of command.input.comparativeSnapshotIds) {
-      const snapshot = yield* readSnapshot(transaction, command.scope, snapshotId, null);
-
-      basis.push({ snapshotId, fiscalYear: snapshot.fiscalYear.id.slice(-4) });
-    }
-
-    const comparativeSupport = deriveComparativeSupport({
-      currentFiscalYear: year.endsOn.slice(0, 4),
-      currentSnapshotIds: command.input.statementSnapshotIds,
-      currentFacts: sealed.success,
-      comparatives: basis,
-      comparativeFacts: sealedComparatives.success,
-    });
-
-    if (Result.isFailure(comparativeSupport)) {
-      return yield* refusalFor(comparativeSupport.failure);
-    }
-
-    if (!SupportedK2Releases.includes(command.input.frameworkRelease)) {
-      return yield* unsupported();
-    }
-
-    const draftId = newId("annual_draft");
-    const fiscalYear = year.endsOn.slice(0, 4);
-
-    const body = {
-      id: draftId,
-      scope: command.scope,
-      version: 1,
-      profile: command.input.profile,
-      fiscalYearId: year.id,
-      fiscalYear,
-      input: yield* toJsonObject(command.input),
-      closeCertificateId: certificate.id,
-      frameworkRelease: command.input.frameworkRelease,
-      requirements: command.input.disclosures.map((requirement) => ({
-        requirementId: requirement.requirementId,
-        applicability: requirement.applicability,
-        inapplicableReason: requirement.inapplicableReason,
-        derivedMinor: requirement.derivedMinor,
-        reviewedExplicitFact: requirement.reviewedExplicitFact,
-      })),
-      facts: sealed.success,
-      comparativeFacts: sealedComparatives.success,
-      comparativeSupported: true,
-      narratives: command.input.narratives.map((section) => ({ ...section })),
-      narrativeApprovalRef: null,
-      evidence,
-      createdAt: yield* isoNow(transaction),
-      receipt: commandReceipt(command.idempotencyKey, "prepare_annual_report", principal.actorId),
-    };
-
-    if (!/^\d{4}$/.test(fiscalYear)) return yield* failure("InvalidJournal");
-
-    const draft = yield* decode(DraftSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertDraft(transaction, {
-      bookId: command.scope.bookId,
-      id: draftId,
-      fiscalYearId: year.id,
-      closeCertificateId: certificate.id,
-      body: yield* toJsonObject(draft),
-      digest: draft.digest,
-      recordedAt: draft.createdAt,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "prepare_annual_report",
-      principal.actorId,
-      yield* toJsonObject(draft),
-    );
-
-    return draft;
   });
 });
 
@@ -470,77 +473,72 @@ export const approveAnnualReport = Effect.fn("reports.annual-report.approve")(fu
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     yield* reportAccess(transaction, [...Db.annualReportInserts]);
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      "approve_annual_report",
-      principal.actorId,
       {
-        draftId: command.draftId,
-        input: yield* toJsonObject(command.input),
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "approve_annual_report",
+        actorId: principal.actorId,
+        input: {
+          draftId: command.draftId,
+          input: yield* toJsonObject(command.input),
+        },
       },
       ApprovalSchema,
+      Effect.gen(function* () {
+        const draftRow = yield* readDraftRow(transaction, command.scope, command.draftId);
+
+        if (command.input.digest !== draftRow.body["digest"]) {
+          return yield* failure("StaleDependency");
+        }
+
+        const draft = yield* decode(DraftSchema, draftRow.body);
+        const blockers = yield* draftBlockers(transaction, command.scope, draft);
+
+        if (blockers.length > 0) return yield* failure("StaleDependency");
+
+        const ordinal =
+          (yield* Db.readApprovalCount(transaction, command.scope.bookId, command.draftId))[0]!
+            .total + 1;
+
+        if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          id: newId("annual_approval"),
+          scope: command.scope,
+          draftId: command.draftId,
+          digest: command.input.digest,
+          version: 1,
+          actorId: principal.actorId,
+          ordinal,
+          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+          createdAt: now,
+          receipt: commandReceipt(
+            command.idempotencyKey,
+            "approve_annual_report",
+            principal.actorId,
+          ),
+        };
+
+        const approval = yield* decode(ApprovalSchema, body);
+
+        yield* Db.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approval.id,
+          draftId: command.draftId,
+          ordinal,
+          actorId: principal.actorId,
+          digest: approval.digest,
+          expiresAt: approval.expiresAt,
+          body: yield* toJsonObject(approval),
+        });
+
+        return { receipt: yield* toJsonObject(approval), result: approval };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    const draftRow = yield* readDraftRow(transaction, command.scope, command.draftId);
-
-    if (command.input.digest !== draftRow.body["digest"]) {
-      return yield* failure("StaleDependency");
-    }
-
-    const draft = yield* decode(DraftSchema, draftRow.body);
-    const blockers = yield* draftBlockers(transaction, command.scope, draft);
-
-    if (blockers.length > 0) return yield* failure("StaleDependency");
-
-    const ordinal =
-      (yield* Db.readApprovalCount(transaction, command.scope.bookId, command.draftId))[0]!.total +
-      1;
-
-    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      id: newId("annual_approval"),
-      scope: command.scope,
-      draftId: command.draftId,
-      digest: command.input.digest,
-      version: 1,
-      actorId: principal.actorId,
-      ordinal,
-      expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, "approve_annual_report", principal.actorId),
-    };
-
-    const approval = yield* decode(ApprovalSchema, body);
-
-    yield* Db.insertApproval(transaction, {
-      bookId: command.scope.bookId,
-      id: approval.id,
-      draftId: command.draftId,
-      ordinal,
-      actorId: principal.actorId,
-      digest: approval.digest,
-      expiresAt: approval.expiresAt,
-      body: yield* toJsonObject(approval),
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "approve_annual_report",
-      principal.actorId,
-      yield* toJsonObject(approval),
-    );
-
-    return approval;
   });
 });
 
@@ -556,114 +554,105 @@ export const finalizeAnnualReport = Effect.fn("reports.annual-report.finalize")(
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "finalize_annual_report";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      { draftId: command.draftId, input: yield* toJsonObject(command.input) },
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { draftId: command.draftId, input: yield* toJsonObject(command.input) },
+      },
       FinalSchema,
+      Effect.gen(function* () {
+        yield* reportAccess(transaction, [...Db.annualReportInserts]);
+
+        const draftRow = yield* readDraftRow(transaction, command.scope, command.draftId);
+        const draft = yield* decode(DraftSchema, draftRow.body);
+
+        if (draft.digest !== command.input.digest) return yield* failure("StaleDependency");
+
+        if (
+          (yield* Db.readFinalByDraft(transaction, command.scope.bookId, draft.id))[0] !== undefined
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+
+        const blockers = yield* draftBlockers(transaction, command.scope, draft);
+
+        if (blockers.some((blocker) => blocker.includes("certificate"))) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (blockers.length > 0) return yield* failure("InvalidJournal");
+
+        const approval = (yield* Db.readApprovalById(
+          transaction,
+          command.scope.bookId,
+          command.input.approvalId,
+          draft.id,
+        ))[0];
+
+        const now = yield* isoNow(transaction);
+
+        if (
+          approval === undefined ||
+          approval.digest !== draft.digest ||
+          Date.parse(approval.expiresAt) <= Date.parse(now)
+        ) {
+          return yield* failure("ApprovalRequired");
+        }
+
+        // Four-eyes separation: the operator who approved the draft may not be
+        // the operator who finalizes it.
+        if (approval.actorId === principal.actorId) {
+          return yield* failure("ApprovalRequired");
+        }
+
+        const reportId = newId("annual_report");
+
+        // The retained four-eyes approval is what approves the narrative content,
+        // because the approval digest covers the exact sealed draft body.
+        const finalized = finalizeSemanticReport(
+          { ...draftModel(draft), narrativeApprovalRef: approval.id },
+          reportId,
+          draft.digest,
+        );
+
+        if (Result.isFailure(finalized)) return yield* refusalFor(finalized.failure);
+
+        const body = {
+          id: reportId,
+          scope: command.scope,
+          version: 1,
+          draftId: draft.id,
+          draftDigest: draft.digest,
+          approvalId: approval.id,
+          fiscalYearId: draft.fiscalYearId,
+          summary: finalized.success,
+          createdAt: now,
+          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        };
+
+        const final = yield* decode(FinalSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertFinal(transaction, {
+          bookId: command.scope.bookId,
+          id: reportId,
+          draftId: draft.id,
+          approvalId: approval.id,
+          fiscalYearId: draft.fiscalYearId,
+          body: yield* toJsonObject(final),
+          digest: final.digest,
+          recordedAt: now,
+        });
+
+        return { receipt: yield* toJsonObject(final), result: final };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    yield* reportAccess(transaction, [...Db.annualReportInserts]);
-
-    const draftRow = yield* readDraftRow(transaction, command.scope, command.draftId);
-    const draft = yield* decode(DraftSchema, draftRow.body);
-
-    if (draft.digest !== command.input.digest) return yield* failure("StaleDependency");
-
-    if (
-      (yield* Db.readFinalByDraft(transaction, command.scope.bookId, draft.id))[0] !== undefined
-    ) {
-      return yield* failure("AlreadyPosted");
-    }
-
-    const blockers = yield* draftBlockers(transaction, command.scope, draft);
-
-    if (blockers.some((blocker) => blocker.includes("certificate"))) {
-      return yield* failure("StaleDependency");
-    }
-
-    if (blockers.length > 0) return yield* failure("InvalidJournal");
-
-    const approval = (yield* Db.readApprovalById(
-      transaction,
-      command.scope.bookId,
-      command.input.approvalId,
-      draft.id,
-    ))[0];
-
-    const now = yield* isoNow(transaction);
-
-    if (
-      approval === undefined ||
-      approval.digest !== draft.digest ||
-      Date.parse(approval.expiresAt) <= Date.parse(now)
-    ) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    // Four-eyes separation: the operator who approved the draft may not be
-    // the operator who finalizes it.
-    if (approval.actorId === principal.actorId) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    const reportId = newId("annual_report");
-
-    // The retained four-eyes approval is what approves the narrative content,
-    // because the approval digest covers the exact sealed draft body.
-    const finalized = finalizeSemanticReport(
-      { ...draftModel(draft), narrativeApprovalRef: approval.id },
-      reportId,
-      draft.digest,
-    );
-
-    if (Result.isFailure(finalized)) return yield* refusalFor(finalized.failure);
-
-    const body = {
-      id: reportId,
-      scope: command.scope,
-      version: 1,
-      draftId: draft.id,
-      draftDigest: draft.digest,
-      approvalId: approval.id,
-      fiscalYearId: draft.fiscalYearId,
-      summary: finalized.success,
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
-
-    const final = yield* decode(FinalSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertFinal(transaction, {
-      bookId: command.scope.bookId,
-      id: reportId,
-      draftId: draft.id,
-      approvalId: approval.id,
-      fiscalYearId: draft.fiscalYearId,
-      body: yield* toJsonObject(final),
-      digest: final.digest,
-      recordedAt: now,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(final),
-    );
-
-    return final;
   });
 });
 
@@ -679,96 +668,91 @@ export const prepareReportPresentation = Effect.fn("reports.annual-report.presen
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "prepare_report_presentation";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      { finalId: command.finalId, input: yield* toJsonObject(command.input) },
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: { finalId: command.finalId, input: yield* toJsonObject(command.input) },
+      },
       PresentationSchema,
-    );
+      Effect.gen(function* () {
+        yield* reportAccess(transaction, [...Db.annualReportInserts]);
 
-    if (request.previous) return request.previous;
+        const finalRow = (yield* Db.readFinal(
+          transaction,
+          command.scope.bookId,
+          command.finalId,
+        ))[0];
 
-    yield* reportAccess(transaction, [...Db.annualReportInserts]);
+        if (finalRow === undefined) return yield* failure("NotFound");
 
-    const finalRow = (yield* Db.readFinal(transaction, command.scope.bookId, command.finalId))[0];
+        const final = yield* decode(FinalSchema, finalRow.body);
 
-    if (finalRow === undefined) return yield* failure("NotFound");
+        if (
+          (yield* Db.readPresentationByFinal(transaction, command.scope.bookId, final.id))[0] !==
+          undefined
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
 
-    const final = yield* decode(FinalSchema, finalRow.body);
+        const draftRow = yield* readDraftRow(transaction, command.scope, final.draftId);
+        const draft = yield* decode(DraftSchema, draftRow.body);
+        const sealedFacts = new Map(draft.facts.map((fact) => [fact.semanticId, fact]));
 
-    if (
-      (yield* Db.readPresentationByFinal(transaction, command.scope.bookId, final.id))[0] !==
-      undefined
-    ) {
-      return yield* failure("AlreadyPosted");
-    }
+        if (sealedFacts.size === 0) return yield* failure("InvalidJournal");
 
-    const draftRow = yield* readDraftRow(transaction, command.scope, final.draftId);
-    const draft = yield* decode(DraftSchema, draftRow.body);
-    const sealedFacts = new Map(draft.facts.map((fact) => [fact.semanticId, fact]));
+        const presentationId = newId("annual_presentation");
 
-    if (sealedFacts.size === 0) return yield* failure("InvalidJournal");
+        // Displayed values are derived here from the sealed facts, so a client
+        // cannot restate a financial fact in a presentation.
+        const revision = preparePresentation({
+          presentationId,
+          report: final.summary,
+          sealedFacts: draft.facts,
+          displayRule: command.input.displayRule,
+          totals: command.input.totals,
+          presentationDigest: yield* digest({
+            presentationId,
+            finalId: final.id,
+            displayRule: command.input.displayRule,
+            totals: command.input.totals,
+          }),
+        });
 
-    const presentationId = newId("annual_presentation");
+        if (Result.isFailure(revision)) return yield* refusalFor(revision.failure);
 
-    // Displayed values are derived here from the sealed facts, so a client
-    // cannot restate a financial fact in a presentation.
-    const revision = preparePresentation({
-      presentationId,
-      report: final.summary,
-      sealedFacts: draft.facts,
-      displayRule: command.input.displayRule,
-      totals: command.input.totals,
-      presentationDigest: yield* digest({
-        presentationId,
-        finalId: final.id,
-        displayRule: command.input.displayRule,
-        totals: command.input.totals,
+        const now = yield* isoNow(transaction);
+
+        const body = {
+          id: presentationId,
+          scope: command.scope,
+          version: 1,
+          finalId: final.id,
+          revision: revision.success,
+          createdAt: now,
+          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        };
+
+        const presentation = yield* decode(PresentationSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertPresentation(transaction, {
+          bookId: command.scope.bookId,
+          id: presentationId,
+          finalId: final.id,
+          body: yield* toJsonObject(presentation),
+          digest: presentation.digest,
+          recordedAt: now,
+        });
+
+        return { receipt: yield* toJsonObject(presentation), result: presentation };
       }),
-    });
-
-    if (Result.isFailure(revision)) return yield* refusalFor(revision.failure);
-
-    const now = yield* isoNow(transaction);
-
-    const body = {
-      id: presentationId,
-      scope: command.scope,
-      version: 1,
-      finalId: final.id,
-      revision: revision.success,
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
-
-    const presentation = yield* decode(PresentationSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertPresentation(transaction, {
-      bookId: command.scope.bookId,
-      id: presentationId,
-      finalId: final.id,
-      body: yield* toJsonObject(presentation),
-      digest: presentation.digest,
-      recordedAt: now,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(presentation),
     );
-
-    return presentation;
   });
 });
 
@@ -784,145 +768,139 @@ export const renderReportArtifact = Effect.fn("reports.annual-report.render")(fu
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const operation = "render_report_artifact";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      { presentationId: command.presentationId, input: yield* toJsonObject(command.input) },
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: {
+          presentationId: command.presentationId,
+          input: yield* toJsonObject(command.input),
+        },
+      },
       ArtifactSchema,
+      Effect.gen(function* () {
+        yield* reportAccess(transaction, [...Db.annualReportInserts]);
+
+        const presentationRow = (yield* Db.readPresentation(
+          transaction,
+          command.scope.bookId,
+          command.presentationId,
+        ))[0];
+
+        if (presentationRow === undefined) return yield* failure("NotFound");
+
+        const presentation = yield* decode(PresentationSchema, presentationRow.body);
+
+        if (
+          (yield* Db.readArtifactByPresentation(
+            transaction,
+            command.scope.bookId,
+            presentation.id,
+          ))[0] !== undefined
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+
+        const finalRow = (yield* Db.readFinal(
+          transaction,
+          command.scope.bookId,
+          presentation.finalId,
+        ))[0];
+
+        if (finalRow === undefined) return yield* failure("StaleDependency");
+
+        const final = yield* decode(FinalSchema, finalRow.body);
+
+        const mappings = new Map(
+          command.input.conceptMappings.map((mapping) => [mapping.semanticId, mapping]),
+        );
+
+        const mappedFacts: Array<typeof Report.IxbrlFact.Type> = [];
+        const unmappedConcepts: Array<string> = [];
+
+        for (const presented of presentation.revision.facts) {
+          const mapping = mappings.get(presented.semanticId);
+
+          if (mapping === undefined) {
+            unmappedConcepts.push(presented.semanticId);
+            continue;
+          }
+
+          // The encoded value is the exact sealed source amount. Precision comes
+          // from the presentation's display rule, so the rendered number can never
+          // be a second, differently rounded value than the one displayed.
+          mappedFacts.push({
+            concept: mapping.concept,
+            contextRef: mapping.contextRef,
+            unitRef: mapping.unitRef,
+            valueMinor: presented.sourceMinor,
+            decimals: displayDecimals(presentation.revision.displayRule),
+          });
+        }
+
+        const assembled = assembleIxbrl({
+          report: final.summary,
+          presentation: presentation.revision,
+          mappedFacts,
+          contexts: command.input.contexts.map((context) => ({
+            contextRef: context.contextRef,
+            entityIdentifier: command.input.entityIdentifier,
+            period: context.period,
+            dimensions: [...context.dimensions],
+          })),
+          units: [...command.input.units],
+          taxonomyRelease: command.input.taxonomyRelease,
+          unmappedConcepts,
+        });
+
+        if (Result.isFailure(assembled)) return yield* refusalFor(assembled.failure);
+
+        const contentHash = `sha256:${yield* sha256Hex(assembled.success.xhtml)}`;
+        const sizeBytes = new TextEncoder().encode(assembled.success.xhtml).length;
+        const now = yield* isoNow(transaction);
+        const artifactId = newId("annual_artifact");
+
+        const body = {
+          id: artifactId,
+          scope: command.scope,
+          version: 1,
+          presentationId: presentation.id,
+          finalId: final.id,
+          xhtml: assembled.success.xhtml,
+          contentHash,
+          mediaType: "application/xhtml+xml",
+          sizeBytes,
+          taxonomyRelease: assembled.success.taxonomyRelease,
+          factCount: assembled.success.factCount,
+          contextCount: assembled.success.contextCount,
+          unitCount: assembled.success.unitCount,
+          validationState: "pending_qualified_validator",
+          signatureScopeDigest: null,
+          createdAt: now,
+          receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+        };
+
+        const artifact = yield* decode(ArtifactSchema, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertArtifact(transaction, {
+          bookId: command.scope.bookId,
+          id: artifactId,
+          presentationId: presentation.id,
+          finalId: final.id,
+          body: yield* toJsonObject(artifact),
+          digest: artifact.digest,
+          recordedAt: now,
+        });
+
+        return { receipt: yield* toJsonObject(artifact), result: artifact };
+      }),
     );
-
-    if (request.previous) return request.previous;
-
-    yield* reportAccess(transaction, [...Db.annualReportInserts]);
-
-    const presentationRow = (yield* Db.readPresentation(
-      transaction,
-      command.scope.bookId,
-      command.presentationId,
-    ))[0];
-
-    if (presentationRow === undefined) return yield* failure("NotFound");
-
-    const presentation = yield* decode(PresentationSchema, presentationRow.body);
-
-    if (
-      (yield* Db.readArtifactByPresentation(
-        transaction,
-        command.scope.bookId,
-        presentation.id,
-      ))[0] !== undefined
-    ) {
-      return yield* failure("AlreadyPosted");
-    }
-
-    const finalRow = (yield* Db.readFinal(
-      transaction,
-      command.scope.bookId,
-      presentation.finalId,
-    ))[0];
-
-    if (finalRow === undefined) return yield* failure("StaleDependency");
-
-    const final = yield* decode(FinalSchema, finalRow.body);
-
-    const mappings = new Map(
-      command.input.conceptMappings.map((mapping) => [mapping.semanticId, mapping]),
-    );
-
-    const mappedFacts: Array<typeof Report.IxbrlFact.Type> = [];
-    const unmappedConcepts: Array<string> = [];
-
-    for (const presented of presentation.revision.facts) {
-      const mapping = mappings.get(presented.semanticId);
-
-      if (mapping === undefined) {
-        unmappedConcepts.push(presented.semanticId);
-        continue;
-      }
-
-      // The encoded value is the exact sealed source amount. Precision comes
-      // from the presentation's display rule, so the rendered number can never
-      // be a second, differently rounded value than the one displayed.
-      mappedFacts.push({
-        concept: mapping.concept,
-        contextRef: mapping.contextRef,
-        unitRef: mapping.unitRef,
-        valueMinor: presented.sourceMinor,
-        decimals: displayDecimals(presentation.revision.displayRule),
-      });
-    }
-
-    const assembled = assembleIxbrl({
-      report: final.summary,
-      presentation: presentation.revision,
-      mappedFacts,
-      contexts: command.input.contexts.map((context) => ({
-        contextRef: context.contextRef,
-        entityIdentifier: command.input.entityIdentifier,
-        period: context.period,
-        dimensions: [...context.dimensions],
-      })),
-      units: [...command.input.units],
-      taxonomyRelease: command.input.taxonomyRelease,
-      unmappedConcepts,
-    });
-
-    if (Result.isFailure(assembled)) return yield* refusalFor(assembled.failure);
-
-    const contentHash = `sha256:${yield* sha256Hex(assembled.success.xhtml)}`;
-    const sizeBytes = new TextEncoder().encode(assembled.success.xhtml).length;
-    const now = yield* isoNow(transaction);
-    const artifactId = newId("annual_artifact");
-
-    const body = {
-      id: artifactId,
-      scope: command.scope,
-      version: 1,
-      presentationId: presentation.id,
-      finalId: final.id,
-      xhtml: assembled.success.xhtml,
-      contentHash,
-      mediaType: "application/xhtml+xml",
-      sizeBytes,
-      taxonomyRelease: assembled.success.taxonomyRelease,
-      factCount: assembled.success.factCount,
-      contextCount: assembled.success.contextCount,
-      unitCount: assembled.success.unitCount,
-      validationState: "pending_qualified_validator",
-      signatureScopeDigest: null,
-      createdAt: now,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
-
-    const artifact = yield* decode(ArtifactSchema, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* Db.insertArtifact(transaction, {
-      bookId: command.scope.bookId,
-      id: artifactId,
-      presentationId: presentation.id,
-      finalId: final.id,
-      body: yield* toJsonObject(artifact),
-      digest: artifact.digest,
-      recordedAt: now,
-    });
-
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(artifact),
-    );
-
-    return artifact;
   });
 });
 

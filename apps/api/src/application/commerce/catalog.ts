@@ -1,10 +1,11 @@
+import { runBookCommand } from "../book-commands";
 import * as Catalog from "@open-erp/contracts/catalog";
 import * as Policy from "@open-erp/contracts/legal-sales-policy";
 import * as Policies from "../../db/commerce/legal-policies";
 import { digest } from "../json";
 import * as Effect from "effect/Effect";
 import * as CatalogDb from "../../db/commerce/catalog";
-import { replay, saveCommand } from "../posting";
+
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {
@@ -101,117 +102,110 @@ export const saveArticle = Effect.fn("commerce.catalog.saveArticle")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "catalog_save_article",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "catalog_save_article",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         ArticleSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, CatalogDb.catalogTables, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          const input = yield* decode(SaveArticleSchema, command.input);
 
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, CatalogDb.catalogTables, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const input = yield* decode(SaveArticleSchema, command.input);
+          if (
+            input.description.length > 500 ||
+            input.unit.length > 32 ||
+            (input.unitPriceMinor !== null && !minorPattern(input.unitPriceMinor)) ||
+            (input.taxDescription !== null && input.taxDescription.length > 200)
+          ) {
+            return yield* failure("InvalidJournal");
+          }
 
-      if (
-        input.description.length > 500 ||
-        input.unit.length > 32 ||
-        (input.unitPriceMinor !== null && !minorPattern(input.unitPriceMinor)) ||
-        (input.taxDescription !== null && input.taxDescription.length > 200)
-      ) {
-        return yield* failure("InvalidJournal");
-      }
+          const pointers = yield* CatalogDb.readArticlePointer(
+            transaction,
+            command.scope.bookId,
+            input.code,
+            "update",
+          );
 
-      const pointers = yield* CatalogDb.readArticlePointer(
-        transaction,
-        command.scope.bookId,
-        input.code,
-        "update",
-      );
+          const current = BigInt(pointers[0]?.currentRevision ?? "0");
 
-      const current = BigInt(pointers[0]?.currentRevision ?? "0");
+          if (current !== BigInt(input.expectedRevision)) return yield* failure("StaleDependency");
+          const next = current + 1n;
 
-      if (current !== BigInt(input.expectedRevision)) return yield* failure("StaleDependency");
-      const next = current + 1n;
+          if (next > 100000n) return yield* failure("InvalidJournal");
 
-      if (next > 100000n) return yield* failure("InvalidJournal");
+          const previous =
+            current === 0n
+              ? undefined
+              : (yield* CatalogDb.readArticleRevision(
+                  transaction,
+                  command.scope.bookId,
+                  input.code,
+                  current.toString(),
+                ))[0];
 
-      const previous =
-        current === 0n
-          ? undefined
-          : (yield* CatalogDb.readArticleRevision(
+          const treatment = input.treatment ?? previous?.body.treatment ?? { kind: "unresolved" };
+
+          if (input.treatment?.kind === "legal_sales_policy") {
+            const row = (yield* Policies.readPolicy(
               transaction,
               command.scope.bookId,
-              input.code,
-              current.toString(),
+              input.treatment.id,
             ))[0];
 
-      const treatment = input.treatment ?? previous?.body.treatment ?? { kind: "unresolved" };
+            if (!row) return yield* failure("StaleDependency");
+            const policy = yield* decode(Policy.LegalSalesPolicy, row.body);
 
-      if (input.treatment?.kind === "legal_sales_policy") {
-        const row = (yield* Policies.readPolicy(
-          transaction,
-          command.scope.bookId,
-          input.treatment.id,
-        ))[0];
+            if (policy.digest !== input.treatment.digest || policy.status !== "active")
+              return yield* failure("StaleDependency");
+            yield* requireRetainedEvidence(
+              transaction,
+              command.scope.bookId,
+              policy.candidate.input.vatEvidence,
+            );
+          }
 
-        if (!row) return yield* failure("StaleDependency");
-        const policy = yield* decode(Policy.LegalSalesPolicy, row.body);
+          const body: JsonObject = {
+            status: input.status ?? previous?.body.status ?? "active",
+            treatment,
+            code: input.code,
+            revision: Number(next),
+            description: input.description,
+            unit: input.unit,
+            unitPriceMinor: input.unitPriceMinor,
+            taxDescription: input.taxDescription,
+          };
 
-        if (policy.digest !== input.treatment.digest || policy.status !== "active")
-          return yield* failure("StaleDependency");
-        yield* requireRetainedEvidence(
-          transaction,
-          command.scope.bookId,
-          policy.candidate.input.vatEvidence,
-        );
-      }
+          const pointer = {
+            bookId: command.scope.bookId,
+            code: input.code,
+            currentRevision: next.toString(),
+          };
 
-      const body: JsonObject = {
-        status: input.status ?? previous?.body.status ?? "active",
-        treatment,
-        code: input.code,
-        revision: Number(next),
-        description: input.description,
-        unit: input.unit,
-        unitPriceMinor: input.unitPriceMinor,
-        taxDescription: input.taxDescription,
-      };
+          if (input.expectedRevision === 0) {
+            yield* CatalogDb.insertArticlePointer(transaction, pointer);
+          } else {
+            yield* CatalogDb.advanceArticlePointer(transaction, pointer);
+          }
 
-      const pointer = {
-        bookId: command.scope.bookId,
-        code: input.code,
-        currentRevision: next.toString(),
-      };
+          yield* CatalogDb.insertArticleRevision(transaction, {
+            bookId: command.scope.bookId,
+            code: input.code,
+            revision: next.toString(),
+            body,
+            recordedBy: principal.actorId,
+          });
+          const result = yield* retainedArticle(command.scope, body);
 
-      if (input.expectedRevision === 0) {
-        yield* CatalogDb.insertArticlePointer(transaction, pointer);
-      } else {
-        yield* CatalogDb.advanceArticlePointer(transaction, pointer);
-      }
-
-      yield* CatalogDb.insertArticleRevision(transaction, {
-        bookId: command.scope.bookId,
-        code: input.code,
-        revision: next.toString(),
-        body,
-        recordedBy: principal.actorId,
-      });
-      const result = yield* retainedArticle(command.scope, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "catalog_save_article",
-        principal.actorId,
-        result,
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );

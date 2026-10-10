@@ -1,5 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import { BankReviewContext } from "@/components/bank-review-context";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -39,7 +40,7 @@ import { StatementImports, statementImportsOptions } from "@/components/statemen
 import { BankTransactionMatch } from "@/components/bank-transaction-match";
 import { BankReport } from "@/components/bank-report";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import { bankWorkspaceOptions } from "@/lib/bank-workspace";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { encodeOwnerReturn } from "@/lib/work-return";
@@ -695,7 +696,7 @@ function AccountReport(props: {
 }) {
   const { book, locale } = props;
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const create = useMutation({
     mutationFn: () => {
@@ -705,7 +706,7 @@ function AccountReport(props: {
       return readAccounting(
         path,
         Reconciliation.BankReconciliation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (report) => {

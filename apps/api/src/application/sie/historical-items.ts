@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
 import { isCalendarDate } from "@open-erp/domain/values";
@@ -5,7 +6,9 @@ import * as Effect from "effect/Effect";
 import * as Db from "../../db/historical";
 import { decode, withBook } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { readPlan, requireStaged, type Command, type Identified } from "./historical-shared";
 
 type Input = typeof Historical.AdmitItems.Type;
@@ -145,83 +148,77 @@ export const admitItems = Effect.fn("historical.admitItems")(function* (
       const { scope, id, idempotencyKey, input } = command;
       const operation = "admit_historical_items";
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { planId: id, input },
+        {
+          scope: scope,
+          idempotencyKey: idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { planId: id, input },
+        },
         Historical.ItemAdmission,
+        Effect.gen(function* () {
+          const plan = yield* readPlan(tx, scope, id);
+
+          if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
+          yield* requireStaged(tx, scope, id);
+
+          if ((yield* Db.readPlanItems(tx, scope.bookId, id)).length)
+            return yield* failure("IdempotencyConflict");
+          const items = new Map(plan.input.openItems.map((row) => [row.sourceIdentity, row]));
+          const payments = new Map(input.payments.map((row) => [row.sourceIdentity, row]));
+
+          if (
+            items.size !== plan.input.openItems.length ||
+            payments.size !== input.payments.length ||
+            new Set(input.matches.map((row) => row.sourceIdentity)).size !== input.matches.length
+          )
+            return yield* failure("InvalidJournal");
+
+          yield* requireConsistentItems(items);
+
+          const dated = input.chronology === "dated_source";
+
+          yield* requireConsistentPayments(payments, plan.input.openItems, dated);
+
+          const matched = yield* matchPayments(input.matches, items, payments, dated);
+
+          if (
+            [...payments.values()].some(
+              (p) => (matched.matchedPayments.get(p.sourceIdentity) ?? 0n) > BigInt(p.amountMinor),
+            ) ||
+            [...items.values()].some(
+              (i) =>
+                (matched.matchedItems.get(i.sourceIdentity) ?? 0n) >
+                absolute(BigInt(i.originalMinor)),
+            )
+          )
+            return yield* failure("InvalidJournal");
+          yield* compareControls(input.payments, input.paymentControls);
+          yield* compareControls(matched.matchRows, input.matchControls);
+
+          const body = {
+            id: newId("historical"),
+            sourcePlanId: id,
+            openItems: plan.input.openItems,
+            openItemControls: plan.input.openItemControls,
+            ...input,
+            financialEffect: "none",
+            admittedBy: principal.actorId,
+            admittedAt: yield* isoNow(tx),
+          };
+
+          const result = yield* decode(Historical.ItemAdmission, {
+            ...body,
+            digest: yield* digest(body),
+          });
+
+          yield* Db.insertItems(tx, scope.bookId, result);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const plan = yield* readPlan(tx, scope, id);
-
-      if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
-      yield* requireStaged(tx, scope, id);
-
-      if ((yield* Db.readPlanItems(tx, scope.bookId, id)).length)
-        return yield* failure("IdempotencyConflict");
-      const items = new Map(plan.input.openItems.map((row) => [row.sourceIdentity, row]));
-      const payments = new Map(input.payments.map((row) => [row.sourceIdentity, row]));
-
-      if (
-        items.size !== plan.input.openItems.length ||
-        payments.size !== input.payments.length ||
-        new Set(input.matches.map((row) => row.sourceIdentity)).size !== input.matches.length
-      )
-        return yield* failure("InvalidJournal");
-
-      yield* requireConsistentItems(items);
-
-      const dated = input.chronology === "dated_source";
-
-      yield* requireConsistentPayments(payments, plan.input.openItems, dated);
-
-      const matched = yield* matchPayments(input.matches, items, payments, dated);
-
-      if (
-        [...payments.values()].some(
-          (p) => (matched.matchedPayments.get(p.sourceIdentity) ?? 0n) > BigInt(p.amountMinor),
-        ) ||
-        [...items.values()].some(
-          (i) =>
-            (matched.matchedItems.get(i.sourceIdentity) ?? 0n) > absolute(BigInt(i.originalMinor)),
-        )
-      )
-        return yield* failure("InvalidJournal");
-      yield* compareControls(input.payments, input.paymentControls);
-      yield* compareControls(matched.matchRows, input.matchControls);
-
-      const body = {
-        id: newId("historical"),
-        sourcePlanId: id,
-        openItems: plan.input.openItems,
-        openItemControls: plan.input.openItemControls,
-        ...input,
-        financialEffect: "none",
-        admittedBy: principal.actorId,
-        admittedAt: yield* isoNow(tx),
-      };
-
-      const result = yield* decode(Historical.ItemAdmission, {
-        ...body,
-        digest: yield* digest(body),
-      });
-
-      yield* Db.insertItems(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

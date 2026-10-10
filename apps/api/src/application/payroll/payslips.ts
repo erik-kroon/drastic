@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Runs from "@open-erp/contracts/payroll-runs";
 import * as Effect from "effect/Effect";
@@ -7,7 +8,9 @@ import { withTransaction, databaseFailure, type Transaction } from "../../db/tra
 import { decode, toJsonObject, withBook, type Scope } from "../commerce/support";
 import { base64, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { admitRunnerActor } from "../preparation-jobs";
 import { requirePayrollAccess } from "./run-basis";
 import { renderPayslipPdf } from "./payslip-renderer";
@@ -205,53 +208,46 @@ export const renderPayslip = Effect.fn("payroll.renderPayslip")(function* (
     function* (tx, principal) {
       yield* requirePayrollAccess(tx, command.scope, principal.actorId, true);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { documentId: command.documentId, input: command.input },
-        Runs.PayrollPayslipArtifact,
-      );
-
-      if (request.previous) return request.previous;
-      const current = yield* checkedDocument(tx, command.scope, command.documentId);
-
-      if (
-        current.document.digest !== source.document.digest ||
-        current.outboxId !== source.outboxId
-      )
-        return yield* failure("StaleDependency");
-      const retained = yield* existingArtifact(tx, command.scope, command.documentId);
-
-      const artifact =
-        retained ??
-        (yield* decode(Runs.PayrollPayslipArtifact, {
-          id: newId("payslip_artifact"),
+        {
           scope: command.scope,
-          documentId: command.documentId,
-          documentDigest: source.document.digest,
-          rendererVersion: Runs.payslipRendererVersion,
-          mediaType: "application/pdf",
-          sha256,
-          byteLength: rendered.success.length,
-          createdAt: yield* isoNow(tx),
-        }));
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { documentId: command.documentId, input: command.input },
+        },
+        Runs.PayrollPayslipArtifact,
+        Effect.gen(function* () {
+          const current = yield* checkedDocument(tx, command.scope, command.documentId);
 
-      if (!retained) yield* Db.insertArtifact(tx, artifact, contentBase64);
-      yield* Db.acknowledge(tx, command.scope.bookId, source.outboxId);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(artifact),
+          if (
+            current.document.digest !== source.document.digest ||
+            current.outboxId !== source.outboxId
+          )
+            return yield* failure("StaleDependency");
+          const retained = yield* existingArtifact(tx, command.scope, command.documentId);
+
+          const artifact =
+            retained ??
+            (yield* decode(Runs.PayrollPayslipArtifact, {
+              id: newId("payslip_artifact"),
+              scope: command.scope,
+              documentId: command.documentId,
+              documentDigest: source.document.digest,
+              rendererVersion: Runs.payslipRendererVersion,
+              mediaType: "application/pdf",
+              sha256,
+              byteLength: rendered.success.length,
+              createdAt: yield* isoNow(tx),
+            }));
+
+          if (!retained) yield* Db.insertArtifact(tx, artifact, contentBase64);
+          yield* Db.acknowledge(tx, command.scope.bookId, source.outboxId);
+
+          return { receipt: yield* toJsonObject(artifact), result: artifact };
+        }),
       );
-
-      return artifact;
     },
     "update",
   );

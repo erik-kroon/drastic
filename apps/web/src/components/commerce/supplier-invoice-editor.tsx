@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
@@ -300,7 +301,10 @@ function useSupplierInboxReview(book: CommerceProps["book"], inboxId?: string) {
     enabled: !!inboxId,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/supplier-inbox/${encodeURIComponent(inboxId ?? "")}`,
+        (client) =>
+          client.supplierInbox.getSupplierInbox({
+            params: { ...bookScope(book), id: inboxId ?? "" },
+          }),
         Inbox.SupplierInboxView,
         { signal },
       );
@@ -453,7 +457,10 @@ function ReadingSuggestions(
     queryKey: [...commerceKey(props.book), "supplier-inbox", props.inboxId, "extraction"],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${commercePath(props.book)}/supplier-inbox/${encodeURIComponent(props.inboxId)}/extraction`,
+        (client) =>
+          client.supplierExtraction.getSupplierExtractionState({
+            params: { ...bookScope(props.book), id: props.inboxId },
+          }),
         Extraction.SupplierExtractionState,
         { signal },
       ),

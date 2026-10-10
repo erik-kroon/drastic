@@ -1,5 +1,6 @@
+import { useCommandKeys } from "@/lib/command-keys";
 import * as Option from "effect/Option";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -9,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { settlementCopy } from "./copy";
 import { AllocationReview } from "./review";
@@ -88,7 +89,7 @@ function AllocationForm(props: {
   const [draftVersion, setDraftVersion] = useState(0);
   const [legs, setLegs] = useState(["first"]);
   const [error, setError] = useState("");
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const mutation = useMutation({
     mutationFn: (input: typeof Settlement.PrepareBankAllocation.Type) => {
@@ -97,7 +98,7 @@ function AllocationForm(props: {
       return readAccounting(
         path,
         Settlement.BankAllocationPlan,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (plan) => props.onCreated(plan.id),

@@ -8,13 +8,13 @@ import * as Schedules from "../../db/subledger/schedules";
 import * as Bases from "../../db/subledger/controls";
 import { decode, type Scope } from "../commerce/support";
 import { failure } from "../failures";
-import { readBook } from "../posting";
+import { readBook } from "../posting-validation";
 import {
   basisMatchesRevision,
   readOccurrenceStates,
   readPostingBasis,
   type OccurrenceState,
-} from "./schedules";
+} from "./schedule-basis";
 
 type ImpairmentInput = typeof Controls.PrepareAssetImpairment.Type;
 

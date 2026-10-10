@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as PeriodWork from "@open-erp/contracts/period-work";
 import { Box } from "@open-erp/ui/components/box";
@@ -62,9 +63,9 @@ export function PeriodWorkBatch(props: {
   const copy = periodWorkCopy(props.locale);
   const manifestId = props.manifestId;
   const client = useQueryClient();
-  const sealKeys = useRef(new Map<string, string>());
-  const approveKeys = useRef(new Map<string, string>());
-  const executeKeys = useRef(new Map<string, string>());
+  const sealKeys = useCommandKeys();
+  const approveKeys = useCommandKeys();
+  const executeKeys = useCommandKeys();
   const [selected, setSelected] = useState<ReadonlyArray<string>>([]);
   const [batch, setBatch] = useState<Batch | null>(null);
   const [execution, setExecution] = useState<Execution | null>(null);

@@ -14,7 +14,8 @@ import {
 import * as EgressDb from "../db/ai-egress";
 import { Database } from "../db/connection";
 import { databaseFailure, type Transaction } from "../db/transaction";
-import { digest, newId } from "./posting";
+import { digest } from "./json";
+import { newId } from "./identifiers";
 import { failure } from "./failures";
 import * as Shared from "./purchases/shared";
 

@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import { Box } from "@open-erp/ui/components/box";
@@ -612,7 +613,7 @@ export function SupplierExtraction(
 ) {
   const { book, locale, occurrenceId } = props;
   const text = copy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [review, setReview] = useState<Preparation | null>(null);
 
   const base = `${commercePath(book)}/supplier-inbox/${encodeURIComponent(occurrenceId)}/extraction`;

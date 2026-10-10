@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Delta from "@open-erp/contracts/onboarding-deltas";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -122,7 +123,10 @@ function PreparedDeltaEffect({
     enabled: true,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/onboarding/source-delta-proposals/${encodeURIComponent(proposal?.id ?? "")}`,
+        (client) =>
+          client.onboardingDeltas.getOnboardingDeltaProposal({
+            params: { ...bookScope(book), id: proposal?.id ?? "" },
+          }),
         Delta.OnboardingDeltaProposalView,
         { signal },
       ),

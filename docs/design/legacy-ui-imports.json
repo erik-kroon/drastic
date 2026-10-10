@@ -1268,9 +1268,7 @@
     "apps/web/src/routes/intake.tsx:@open-erp/ui/components/box",
     "apps/web/src/routes/intake.tsx:@open-erp/ui/components/button",
     "apps/web/src/routes/intake.tsx:@open-erp/ui/components/link",
-    "apps/web/src/routes/intake.tsx:@open-erp/ui/components/typography",
-    "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/box",
-    "apps/web/src/routes/kanon.$screen.tsx:@open-erp/ui/components/typography"
+    "apps/web/src/routes/intake.tsx:@open-erp/ui/components/typography"
   ],
   "infrastructureModules": ["@open-erp/ui/components/workspace"]
 }

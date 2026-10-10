@@ -1047,5 +1047,822 @@
       "adoptionNote": "Explicitly adopted in session on 10 October 2026. Candidates derive from K-99; example identities are synthetic fixtures, not product policy. Current accepted nodes were captured after adoption; earlier candidate snapshots predate acceptance and remain historical.",
       "notes": "Current committed source passes real-route deterministic TesterArmy behavior and adopted light-state comparison. O-02 starts without selected scope; O-01 retains consent on reload. Keyboard consent, denial without code and revoked-grant refusal pass. Loading and error render truthfully. No Luna browser-agent step, dark/native-zoom or production qualification claim."
     }
-  ]
+  ],
+  "transportOnlyChanges": {
+    "authorization": "Allow transport-only edits; preserve visual status and baselines",
+    "authorizedOn": "2026-10-10",
+    "baseRevision": "73db4a25b4e054ecf2fa4b6a5c36f72ceea3e54c",
+    "files": [
+      {
+        "path": "apps/web/src/components/accountant-review/inspector.tsx",
+        "beforeSha256": "cba00148b88d0a0d185ef545fc6899c241d039db7f9226c9039697a23a025534",
+        "afterSha256": "bc7c036d7d3890bc1c3d054fbe5e084b1e28f269eabce7f6db9c95fa6b819557"
+      },
+      {
+        "path": "apps/web/src/components/accountant-review/panel.tsx",
+        "beforeSha256": "e9a2c1e3d735ffb190e2c933e278f3023eb16e19bf2cb7ffcd5841f66a3dc687",
+        "afterSha256": "542420e34ab9ec9e247b75d6c27be35e7f1fc66bf8dbf24a8cd2aca5842fdb35"
+      },
+      {
+        "path": "apps/web/src/components/accountant-review/sie-panel.tsx",
+        "beforeSha256": "28aa85823781c20e2f96984b5fa3e4d88f1fceb81d22dcf5435f54c87ca4a492",
+        "afterSha256": "8b01eaded8f8a8515df6a15d383adf0d1aadedc5656591b9d3987f34bdc6aa6f"
+      },
+      {
+        "path": "apps/web/src/components/accounting-workspace.tsx",
+        "beforeSha256": "577d94781cc861a00d5fbb3f0a7d6e9a8af529b18c2b169883e861994021311d",
+        "afterSha256": "9785a024f357c76a035b7e0fc1a0da184e82670a7d984011d96598e5641c80d6"
+      },
+      {
+        "path": "apps/web/src/components/bank-account-workspace.tsx",
+        "beforeSha256": "a9406b34d159259fe4b71250fbc9cd6b4b2f9780e0263ae807c96b5cd7049ba9",
+        "afterSha256": "f661a5477a16d44379bf8598dc00636bfaa9d3496585f58c31b8dd481c773ba1"
+      },
+      {
+        "path": "apps/web/src/components/bank-import.tsx",
+        "beforeSha256": "9411d90144a568ac948436cca425e1667d240ad9299e4a65d1566dfda0de2840",
+        "afterSha256": "bc4ce2d9f7ecc7a2dd8cfbdce387034ad886f2a1b14d4258786816332ec8148b"
+      },
+      {
+        "path": "apps/web/src/components/bank-match-candidates/results.tsx",
+        "beforeSha256": "aaf2a1b46e47902fe20c579d215dc5dd5753d78f219be30fd239e9b0b4b3d932",
+        "afterSha256": "be7b5178cca0298c2057d9630ec43f7ccdd753766dd1a05867567ff272bbe053"
+      },
+      {
+        "path": "apps/web/src/components/bank-match-original.tsx",
+        "beforeSha256": "ff9bd8716c2d64fda7fde28a16922a1b4fcf354c6ddeba8b914b8c750465a465",
+        "afterSha256": "9b7c99bb2fa5d4cf0956ad1beb5905c386dc9b335b7228da0bfd055f0a8dbdfa"
+      },
+      {
+        "path": "apps/web/src/components/bank-match-reversals/panel.tsx",
+        "beforeSha256": "2f199cc4948ace16eef5c1e8ca89acf98db6ea0bfde4292c9955c6381c2013eb",
+        "afterSha256": "cb83b4cbe5113db9ad9fc13fbf20730321d5fbe1f2783a63935d3c5b671ec903"
+      },
+      {
+        "path": "apps/web/src/components/bank-match-reversals/review.tsx",
+        "beforeSha256": "b1d2905e2b9a87431755367eb587c1b9a05579e4d3966625db6d9b1ea2af2723",
+        "afterSha256": "e0350d71262f670b6f002087ac0f94c06f1775e02b40dff611ae7a90c3d2d423"
+      },
+      {
+        "path": "apps/web/src/components/bank-reconciliation.tsx",
+        "beforeSha256": "86c6875c7e1f677154f1070999cc52e29de39b7766925ade455309560e1eef9c",
+        "afterSha256": "48fd9029ad880f8ab16a4003d0c6c384b25aca8869e77b238205aa218572d6d3"
+      },
+      {
+        "path": "apps/web/src/components/bank-report.tsx",
+        "beforeSha256": "ea807909eb03f31e1e84f70310c515e6e4ddcb0a3fafa3042411cf0b8b68a8b9",
+        "afterSha256": "8dbfff37c7b53dd33e57edc93041b3975d637f453b114703922b2e928de5a163"
+      },
+      {
+        "path": "apps/web/src/components/bank-review-context.tsx",
+        "beforeSha256": "10695566f4efad82d1ea515e8e62b463b75270ac616924883402ffa8e4b82b87",
+        "afterSha256": "a8230dc99d22c6742929b4d0f46406bd04436c9be0bf4764a3f7854cacd949e2"
+      },
+      {
+        "path": "apps/web/src/components/bank-source-coverage/panel.tsx",
+        "beforeSha256": "3c95560088e96a68c98c3f2e824174ff5b2d3e3381671f69183ac1aeb9afda1d",
+        "afterSha256": "17b3c9684a7057412b09e1a31815df6fc80ccc84ac62b070a8288fb0b0b241c6"
+      },
+      {
+        "path": "apps/web/src/components/bank-source-coverage/review.tsx",
+        "beforeSha256": "17564e4a8ac309cc62c6e93e5d0f5fca51d7b53080f9198ae061d0379a33341b",
+        "afterSha256": "d10b67c8361fc61a7b610565450a1c25a843e321eb1a99436227f17325556844"
+      },
+      {
+        "path": "apps/web/src/components/bank-statement.tsx",
+        "beforeSha256": "d6a9ef01040d801033057314aaaff559e8f451c753ff38ef452e01f080c9980b",
+        "afterSha256": "708524df28a66ed9b323b24a0515150156144068c024e5f7794d924617e339d3"
+      },
+      {
+        "path": "apps/web/src/components/bank-transaction-match.tsx",
+        "beforeSha256": "bae0e5cd2366a075026e0fed05e384f85277a2d4bc671ef063885e17f5ad0d13",
+        "afterSha256": "f1ce66694553d832bc7af20750b6a201a7dcc7edf79303e4ff939baea637ba98"
+      },
+      {
+        "path": "apps/web/src/components/banking-setup/consent-detail.tsx",
+        "beforeSha256": "d1aa7690640ce399d7bd811b51778cc1c65d70ba430efd9386974a98cc47b323",
+        "afterSha256": "5d266dfb9b22bf0ea73e20e92614099e83106bcf9e9c6950ca4dbd9c2a0a4b64"
+      },
+      {
+        "path": "apps/web/src/components/banking-setup/consent-form.tsx",
+        "beforeSha256": "2c14b24302fc37e6e91d8701af93aa83596b24f934d2809d5bae8c5d546e5f68",
+        "afterSha256": "5c29523fd816252d4247d25ed362be56658ee96f1a715c97d8903a629f0bb279"
+      },
+      {
+        "path": "apps/web/src/components/banking-workspace.tsx",
+        "beforeSha256": "ac13fc0ae9f3a43348f8a58bcd87fc983d1d2abb78db08603b801c0a56239416",
+        "afterSha256": "7dbdb0f802410747cda3c9ca1bed96d12612eaec67647ab697eee1b67ca3923e"
+      },
+      {
+        "path": "apps/web/src/components/book-readiness.tsx",
+        "beforeSha256": "3e3e62cf4a6c05358519ff7979fe686fa41fd118b65afdcd21d7cafd3f0ce500",
+        "afterSha256": "e5a42fa694ddb66e77918e2c8320707629ab5587f8b62ddc6d02ac2affe7debb"
+      },
+      {
+        "path": "apps/web/src/components/book-search.tsx",
+        "beforeSha256": "f798f33d6a3bc8997eecf6875198f7c088162d785d212efaad5fd5cb007e8a1f",
+        "afterSha256": "d24a9ec2f5d353b947fc21969e809ecc0b55094b23f6dd95d8f2aabd3c1b74ee"
+      },
+      {
+        "path": "apps/web/src/components/book-workspace.tsx",
+        "beforeSha256": "90b3bbed13259c0971b0f9f87dadace9ecda8a7e131a0a948fa40899db4fa751",
+        "afterSha256": "a764ec63a5b1624187ec12190d7549f71aced22baa3a572872c8d5d436ff945e"
+      },
+      {
+        "path": "apps/web/src/components/case-context.tsx",
+        "beforeSha256": "a2da4b223e10fd18a7140ea35439501cd1ba316dc657d1c27014ed9fb2f374fd",
+        "afterSha256": "f151f24e6282c0b0e0f3a1acc8edf019530e9e967532d66edb7638d7b37165d7"
+      },
+      {
+        "path": "apps/web/src/components/case-snapshots.tsx",
+        "beforeSha256": "c653e7e94ddbaac137df611520efe961c28ba788098491e14f6739a4817a4cf6",
+        "afterSha256": "1b83cb5c478d073ac3573e9278fad0e63bbb27d1194bd80fada2dc75d9d16a67"
+      },
+      {
+        "path": "apps/web/src/components/cash-forecast/basis-workspace.tsx",
+        "beforeSha256": "85089b22777333f3c0f5b5e4fa287b5307a208acd69860efc746193de970aae5",
+        "afterSha256": "05e154970de57f50167dc31990065b96fc25865c733df10aae9b323ac901e40d"
+      },
+      {
+        "path": "apps/web/src/components/cash-forecast/capture-basis.tsx",
+        "beforeSha256": "98f14d9d1e8bf658e3cfe4b9186219ea95587f4401fc50ec471fd098f66ec750",
+        "afterSha256": "66df550c4d435b621d9ea30d8224d3fce9162f569c4d89960dd5d986f1999a48"
+      },
+      {
+        "path": "apps/web/src/components/cash-forecast/capture-forecast.tsx",
+        "beforeSha256": "a98912f7a820637fd5f628dd0e6544d51c0ed6e571a7576625dd8d7d884fdc4c",
+        "afterSha256": "71dbd77bfcdebb80f2cab5dc6065e5545315b82508c7e5d617512b3a2d9cd09e"
+      },
+      {
+        "path": "apps/web/src/components/cash-forecast/workspace.tsx",
+        "beforeSha256": "64edb4528417c6c8d2b163fe8a4644484c097d854e1e99e56c4880079e129f4e",
+        "afterSha256": "81ec61b18d660632fb0d71d6097b13d0e97f55128903d4232577781f601e8d3c"
+      },
+      {
+        "path": "apps/web/src/components/closing/panel.tsx",
+        "beforeSha256": "1e232ac52d0b03e6d7e4da154b3337f9ac630eafb80e692cabe7fbacabfffc1a",
+        "afterSha256": "1f043d84458c2e442bcc1b24693a64a8885a596fa21bf2b320bbfed9aa9a2654"
+      },
+      {
+        "path": "apps/web/src/components/closing/review.tsx",
+        "beforeSha256": "19c56c110d84623efa6f1c323a12d6ff8294f26e8d33c1926102441c35d85bea",
+        "afterSha256": "6167be2abc58cca9b75a69a17539d0faf32e639f80b1ae795724193d23325895"
+      },
+      {
+        "path": "apps/web/src/components/closing/workspace.tsx",
+        "beforeSha256": "d1fcc06b15b5bad32434e1913036cba2f1a452b4ecd93492d147dbf00227b12a",
+        "afterSha256": "3db278bdd1f6742f66fe322b6c394e8a9ab4223ff1b47474b42a59b76d43a757"
+      },
+      {
+        "path": "apps/web/src/components/commerce/allocation-reversal-review.tsx",
+        "beforeSha256": "bbca9ee947dd6648a8d99526a2cbfdf50ae5d5d71f0f66ab9da9d42ecab8b3e6",
+        "afterSha256": "5d69b32e912644270eda176cf1a02ae6dee9bdf5f23c4f6d296cfa1fac7e747c"
+      },
+      {
+        "path": "apps/web/src/components/commerce/allocation-reversals.tsx",
+        "beforeSha256": "89fba75170a163b83aa39b720f06950a5076df978ffe473c5523c00426b78349",
+        "afterSha256": "b8ffd284ae15009236c218d0ebe35369548159f1ec08b9176cd34b6ea3b46968"
+      },
+      {
+        "path": "apps/web/src/components/commerce/allocations.tsx",
+        "beforeSha256": "866658036039b5109d2129cb1e99633bae0d73324f81e7998fbec2c678ce97bc",
+        "afterSha256": "f2f23ff0fd8bafb60bb19a67ea00e50177598bc63a70c222f95f4b392b2dbc38"
+      },
+      {
+        "path": "apps/web/src/components/commerce/catalog-articles.tsx",
+        "beforeSha256": "b88a6b8ef3726d50a7324a31446ca6961f6152fa0f6eb74fc74a170a26e3d3e3",
+        "afterSha256": "54ed7a77ed23c9dd7584801e2a653f0d6a3cd629bba7b0f2e9aa3b62b8f29d76"
+      },
+      {
+        "path": "apps/web/src/components/commerce/collections.tsx",
+        "beforeSha256": "6d8e83b9b9875767ae00e52dfe7d91459dab6723c88a292febf3b184b12c4627",
+        "afterSha256": "852cb329816dcbe9d3ee7ef9bd8cb14eb04cc8e00f376b2f3a7cbf0a78155438"
+      },
+      {
+        "path": "apps/web/src/components/commerce/counterparties.tsx",
+        "beforeSha256": "96b8e277750ed8375754d8c36404dc10bb46f4fe7a6c33279d62c8c1f5df114a",
+        "afterSha256": "ac27450a5e8e5d9239eade28064a520c6f0790ca42087fd529c1a92a4c0159cb"
+      },
+      {
+        "path": "apps/web/src/components/commerce/customer-invoice-defaults.tsx",
+        "beforeSha256": "26074172affdab324cf95d1f0c530b3d5a3fd211dcbf305c4830a0c65b2bb9a5",
+        "afterSha256": "8ffd50c533c0598fce6da83b6f68234e40d6ac0e3f5e6400ef4b98d66adfd83e"
+      },
+      {
+        "path": "apps/web/src/components/commerce/customer-invoices-preview.tsx",
+        "beforeSha256": "106afce7d6d5e9782e6dbe20fc19d7e5a52acecd553a8868697963dced0a0cbc",
+        "afterSha256": "c7cc41e46b4801ec4e7322d51be64bc44af9380f38ab79b5e3b60756bda1e3c9"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-cancellations.tsx",
+        "beforeSha256": "cb6471259b42effc8f424f15738f3536c041a1133ec51bee911d90cf44eefeb5",
+        "afterSha256": "2aaeec5bd434cce2b6140bfdfd2dcb6b47e52b589a7651df508dd5470a649e70"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-documents.tsx",
+        "beforeSha256": "48c90b63aa0ebe899641ef48f01ee8d3207ab4d082fa077331e3651755a7d3fd",
+        "afterSha256": "a1ffdc436f09904fec8a0ab90675284916b957ba7af5bec2521e7020eb9469a8"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-draft-issue-overlay.tsx",
+        "beforeSha256": "1638f39e6ec22bafdb92cc6c19f4dfbe778169bce99dc58fb34d9401c4f03fc5",
+        "afterSha256": "7045e5162cde7e9a5243024ccf46c072fc01ec21794d895644b8f3f2c09f09f3"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-draft-save.tsx",
+        "beforeSha256": "7d2ea2e6edce314e5a8d971bbb6bd70a53a968cf6ba88b0d619954e882d20c69",
+        "afterSha256": "e51bb6e67710fad8c6cee057d20ab70122c9ccb93ffb9c96280eace6433fc061"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-drafts.tsx",
+        "beforeSha256": "b4ba26f4e91ada0853f479f5782cb51221188e296ee881dbeb232de1cf8757b7",
+        "afterSha256": "dd338928316d054fb3b3a9e5113c6785e6c641a819529a92998c2b27a606bbc7"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-issuance.tsx",
+        "beforeSha256": "550ff9d9637cdd762e9309eb1a7bac7f6bc245a071d44de0b80e6759db90b466",
+        "afterSha256": "7a544c1a1ae3ea78736944927ffac1b3f753a3e744180c7634027c603c9092c0"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-payment-review.tsx",
+        "beforeSha256": "030769ef1fb95ca98bcc959886ad05246c38dc807c12cc7b9284abda92f15c5d",
+        "afterSha256": "1737f832d3e129a2d7c33fde3bf17ae6151d1e10b429d12a831b59be3f71302f"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-payment-undo.tsx",
+        "beforeSha256": "b52d4300f7ede5a52773a39fb37a3beb9a6de9d332336267e9f56304f6efd0f2",
+        "afterSha256": "155ba234f61d68af4790f6881b7358cad07c1149f48917dea610570d5fff1694"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-payments.tsx",
+        "beforeSha256": "6beda995303b23bcc5d7ea0d14633fdf77379f84508ceb297ba5a4d4811c1d6a",
+        "afterSha256": "a4211d1b5c43b351f14a97c4eee1ed91a9218c7d3158647b6e707b69d73f2e4f"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-registration.tsx",
+        "beforeSha256": "ddb182e1c9913fa34aae753491620d4eac3e7bfa802e5b5c0236fcb37a438ea1",
+        "afterSha256": "0083eb8624fc9caa0ae4813a241a22bbcf6300992ca3808289642483cbe72b6b"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoice-templates.tsx",
+        "beforeSha256": "d0608dd8f70ee2ded757113dc20342d8c0d36456b6789b29b0ef5d3e1fdaba76",
+        "afterSha256": "c72a678bcb032d64b4e752bfc3f5b43032321bab218a5a08741283f917655dd5"
+      },
+      {
+        "path": "apps/web/src/components/commerce/invoices.tsx",
+        "beforeSha256": "86b11e9548fa5ee5ea39fe9d694c4880419fcda018b821c1f5c6869545a274e5",
+        "afterSha256": "0079c8c39795fbb419f01c707c02580b3182a8242f424c027a9f99f511942d8e"
+      },
+      {
+        "path": "apps/web/src/components/commerce/issued-invoice-document.tsx",
+        "beforeSha256": "b094ab4b6b71579bf45bf928f273b994e7342e70580fcb9140780cd6e58ae891",
+        "afterSha256": "a2f1948235ad0e436e0c8d92434ad34bae6035fbe92afc3a7ef4137c2cbd0e74"
+      },
+      {
+        "path": "apps/web/src/components/commerce/purchase-register.tsx",
+        "beforeSha256": "29e2375cfa71217c1a6d0948e576ec8c9a9985bcc3f5efa044cbd85bb46dd639",
+        "afterSha256": "2dcf82a0ac201895b7609b358a7d9977a0a71c29cf5b7de4a1c9846723efe60e"
+      },
+      {
+        "path": "apps/web/src/components/commerce/recurring-register.tsx",
+        "beforeSha256": "53d3373b674c273484455089702f52f6fc9db717833162f6ea631eb18c4b6a54",
+        "afterSha256": "ba091f97d0b540880c042d5c0f4a20b426b3e917f36d324dbdf93227bb7a83fd"
+      },
+      {
+        "path": "apps/web/src/components/commerce/register-reports.tsx",
+        "beforeSha256": "2cc8f8d2edf861b39855b2258feb23c5336abac318c15a252ecc4f4d08cf29a9",
+        "afterSha256": "39a7f1aef80097a33aa04ab072914a96d52cdb421b5d7336f4f21550236ac46e"
+      },
+      {
+        "path": "apps/web/src/components/commerce/reminder-history.tsx",
+        "beforeSha256": "2285d20226b70e8b7774f3799b90ce996f1a59c4406561b8c548bbc459daa6ac",
+        "afterSha256": "e725159740d666283527b119c4506e58113ef6f8cb93080847aea210a9326759"
+      },
+      {
+        "path": "apps/web/src/components/commerce/reminder-message-workspace.tsx",
+        "beforeSha256": "e9e3ab50c0a95e1107c1611bc2e9be57a02b6067f6a23fc29507df11b40b6def",
+        "afterSha256": "00951f9972cc5186a8b22335eda22096e8f158d57c03409c740da6a678735459"
+      },
+      {
+        "path": "apps/web/src/components/commerce/reminder-review.tsx",
+        "beforeSha256": "dd2ef68422a5b686efb121c3ca9cbd035b7711234bd85bd8514ef626437f69ad",
+        "afterSha256": "2af1b450744e34bd1026c22bbef8bf72aa599c05655787968790395bf69db40d"
+      },
+      {
+        "path": "apps/web/src/components/commerce/sales-orders.tsx",
+        "beforeSha256": "f9e5471b395d6e6fe6d583ed94cfac00091ba9a674c5afefd5cf8614f9065678",
+        "afterSha256": "ca8be0e2f39c2ff380c2b5d39c5249813f914cf71f6d432cd26d3518a4c69fb8"
+      },
+      {
+        "path": "apps/web/src/components/commerce/sales-workspace.tsx",
+        "beforeSha256": "e3fc795be36679137dc7fce4a2b54ad96485012202d16d791e76a532e9e8db8b",
+        "afterSha256": "71edf9e765b8e283c77aaebf0166674a7b80b2c83bf750022b45f8adc6ecb2b0"
+      },
+      {
+        "path": "apps/web/src/components/commerce/shared.tsx",
+        "beforeSha256": "1c51db6087a8d6790a115bd24eeceda05bed955538a794478c5231da2016aa11",
+        "afterSha256": "34f8fe24ab50102f03fcb6e07eda0c08b7254fedd853cc72c3931ee359a97643"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-acceptance.tsx",
+        "beforeSha256": "8a5c8d4e9048d81d818d3398054db90fc97659b85f4495874ab3cd054b2eaa40",
+        "afterSha256": "6ab6b86749bc8d528d11dc59305e4c5595fbef1c03ba6aa55a0d0e5b88961ff1"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-credit-panel.tsx",
+        "beforeSha256": "2a76a2313125b1c4e360cc216354b96c98a82618ede4f6f5295a27cf7c806d06",
+        "afterSha256": "ea641f3f3f3920c423d562217c2958e624581d1f0100cbad0ffa72dd383015c9"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-extraction.tsx",
+        "beforeSha256": "fb1b64e15778b848ecfff3f88adf9aee7fbc8e4eb2b4862a69a81b2823f01823",
+        "afterSha256": "699b9686214470d25362a9a2d0299d5aa5cf595a59c03f5d0d19568fc8a96f96"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-inbox.tsx",
+        "beforeSha256": "ac10c5f737e0e3026234ca3e075df47ab6ae8a43c16efae203cedca83776f5a0",
+        "afterSha256": "fbc56cd7a06583be0f2769d5626039c0383bd56a92a07f9ca01e5a170dca0f9b"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-invoice-drafts.tsx",
+        "beforeSha256": "4da382bc48f786a3756c1473c0895fc879f5c9e55c3d283b801fa36a47a8b16b",
+        "afterSha256": "18e25dc060e5f093d6d5999a413401c4ef17ffea9cf397cde1147eddca6642bd"
+      },
+      {
+        "path": "apps/web/src/components/commerce/supplier-invoice-editor.tsx",
+        "beforeSha256": "9844a152c3b5cc6ea5c8f0a42c22cbd4d373b4c8669b7327b31eee91ee898d6c",
+        "afterSha256": "52d74c8b5dd38b9a4e639ab711737ab129487a291c6e1488e10aa4fcd15b6255"
+      },
+      {
+        "path": "apps/web/src/components/company-admission/panel.tsx",
+        "beforeSha256": "2d5f490ed62c588e3b5efda48ca658a9e53565ddc41f8c91014391d1df8fdb79",
+        "afterSha256": "3e87d0400716bbd1250f1a6f1783c967358c70fb945a913e4b47afbcf00a0402"
+      },
+      {
+        "path": "apps/web/src/components/company-setup/create-company.tsx",
+        "beforeSha256": "b13d44a973309c588f18f143227451e08c35abb647d3c01ece4ee0218b84f90a",
+        "afterSha256": "2ae2960edf69e49920aa91e4491f7efce985059444bccbc1a6ec9cc3042ced2c"
+      },
+      {
+        "path": "apps/web/src/components/company-setup/native-ledger.tsx",
+        "beforeSha256": "a2f0dbcfc8ec3bd14e1d90a3dbe82d3b759df650109a9686406e036d77ebf3e9",
+        "afterSha256": "104316c4e12ae644badc65d95dadca6679181205cb82e64e9b167fab064f6bc0"
+      },
+      {
+        "path": "apps/web/src/components/company-setup/panel.tsx",
+        "beforeSha256": "d45deea922a6d1f18fa44ab3f2b4dca7ed3f8adf83e2068c0b7f69f4533f6398",
+        "afterSha256": "73d2f4912633ec47c8d0b7a4d1cce4b7cb5550e68866ad818ec2ef1eda96d486"
+      },
+      {
+        "path": "apps/web/src/components/corrections/blocked-impact-review.tsx",
+        "beforeSha256": "518b518821499aa24a7952a76ebe98dc253a81e8fd45f7ae47d96e592a0b45c5",
+        "afterSha256": "63887c49e6ca9acb7e6f55980e3ab0448d348269b1268eee4fd09fc58390c984"
+      },
+      {
+        "path": "apps/web/src/components/corrections/correction-review.tsx",
+        "beforeSha256": "244da89125264346a03b9b1b91540904bc4384999a609be7747741ea90720c82",
+        "afterSha256": "a41766582a259b0e03421883be12b2fbd99f23f508826cc32610a8dcf58845af"
+      },
+      {
+        "path": "apps/web/src/components/corrections/corrections-panel.tsx",
+        "beforeSha256": "231e273ca415b1d970275201c0abbe3db3144a4849f319f7fe5038c4ac5fee80",
+        "afterSha256": "67708569500b05565a37f4b545c7af8ad3175e188054342c301d400d1b8cfaed"
+      },
+      {
+        "path": "apps/web/src/components/corrections/discovery.tsx",
+        "beforeSha256": "bc2d460d9db0fad0902e5f94840f2b86a1c2fe7b719e6e768ccdc6a6b48c7fd7",
+        "afterSha256": "c1db039580d267b425d796a453ba29962a4c984cd80ada43eea4b9606c8e5d64"
+      },
+      {
+        "path": "apps/web/src/components/corrections/impact-review.tsx",
+        "beforeSha256": "747554694f0e38482047eba2eb008a31a193e9bb766d1e9cfee61a3526dd8f6e",
+        "afterSha256": "fd5a18b08200e6bf6f4b62ca00bf95e548a9e4337a8bc0b1e91b0b8a0b0e0d6e"
+      },
+      {
+        "path": "apps/web/src/components/deadline-fulfillment-link.tsx",
+        "beforeSha256": "31c1b9ac3f0f133cc19415bfdd92f22f1a2eec64226f7fb65e1658b1782f5f28",
+        "afterSha256": "5a90ddf85050f286edbc242391ca728b9513e1662a2718a22f9625320bee3df9"
+      },
+      {
+        "path": "apps/web/src/components/deadline-obligations.tsx",
+        "beforeSha256": "0954ec589cd917fb95fe217c9e50032e32a89e714c0fc880570d464fce8127ab",
+        "afterSha256": "7163f63fe4b45f813c82dd3131d855442472d33e8c707bde09e2774a2ae8fa7f"
+      },
+      {
+        "path": "apps/web/src/components/dimension-settings.tsx",
+        "beforeSha256": "01ff9a239f5e2f5a61ef6105aebdef056476bef5d35595f605bb9cde0b2f22af",
+        "afterSha256": "7138a297780679e2b80146e44f182a370088159766bbcfd78821b72fe77806fb"
+      },
+      {
+        "path": "apps/web/src/components/document-inbox.tsx",
+        "beforeSha256": "71b10eead4577628b0be74ea1ee071b67793974372c33ccc53db1c5b4591adf8",
+        "afterSha256": "e22a65979ba4270f12a3e3f7a9815fad0c83a533fb111a9738c8ebe1164e3d22"
+      },
+      {
+        "path": "apps/web/src/components/evidence-inspector.tsx",
+        "beforeSha256": "594fcb3be6a37473492287333867ea2f215b53b5e22942150ea874d7ca04368e",
+        "afterSha256": "ba63e943b5ba621e543c496f9c812a61a29febfd9bc920c151d860d19a12bbe1"
+      },
+      {
+        "path": "apps/web/src/components/exchange-rates/forms.tsx",
+        "beforeSha256": "61724cc16d30feef8d2a951c8f56674ff91588156ee64b22c5744b988d5d8a82",
+        "afterSha256": "ad245e28befd413c6893709fccb8b66f91fa372fc014bcdb1b74259db29c32f8"
+      },
+      {
+        "path": "apps/web/src/components/exchange-rates/panel.tsx",
+        "beforeSha256": "525f03d34d7e55b07a3ffc13a39cb76bda81f5f99a17eb83f8dd26b7f8ef1bd0",
+        "afterSha256": "53f31b57edd3ad47822d1f8ece8647dedae8029f06fb490b6f0c8af9c29554ae"
+      },
+      {
+        "path": "apps/web/src/components/exchange-rates/views.tsx",
+        "beforeSha256": "4531fb85128f58424e6a36420301b194a762daf284f5a76ef07c7f751cfd57ca",
+        "afterSha256": "9c6b95c5df012618ccccca4281f4835e434d3497d9e9c858c04f968c52268c07"
+      },
+      {
+        "path": "apps/web/src/components/exchange-rates/withdrawal-form.tsx",
+        "beforeSha256": "c242a024d8498d38ce96f3fdbdec2ec8e65610a8b0c89b1abaaf83276d40b946",
+        "afterSha256": "7ae81e7a27bececdf90e2ea49ba45c86512c05891f773a8dacada38645a84aea"
+      },
+      {
+        "path": "apps/web/src/components/expense-tax/expense-editor.tsx",
+        "beforeSha256": "e80bd23db0ac4de0abd32ac42ba511f22f66c09eb7f6018b0a27f3966b614d95",
+        "afterSha256": "bda5291f22cc5195bd9e844dfd30a051dae1720bf507a79b537c5a5ab07bee58"
+      },
+      {
+        "path": "apps/web/src/components/expense-tax/forms.tsx",
+        "beforeSha256": "bcf4950f4502af5f43239e9335ca7014dd0c85474c6b18b3382d6f82241b9efd",
+        "afterSha256": "89e80b3a5762a8a2bd33e8152746963e007e3fcb5871de0be0dc0e92c232c965"
+      },
+      {
+        "path": "apps/web/src/components/expense-tax/panel.tsx",
+        "beforeSha256": "1767a3191a845cb015dbf26889d26c8964b8bf47db6a577e9588cf51554e659a",
+        "afterSha256": "a8f2200bc922760ee1095f4f675d2e06707ab7f247ac601eaf2fb3657861cfd9"
+      },
+      {
+        "path": "apps/web/src/components/firms/form.tsx",
+        "beforeSha256": "dcc8d1d86bd8062e7073a6d1222aa4ada26d978f2eb2262b030136195e2633d1",
+        "afterSha256": "d0266428719bac9e43d842420f480ca81e70d7b9831c2dea915dcd5f5e5c0aea"
+      },
+      {
+        "path": "apps/web/src/components/foreign-cash-workspace.tsx",
+        "beforeSha256": "d476fa0f6806c053d8cbd9f1789161b187e808ce37cf3b3a0c80dc4cc1f58013",
+        "afterSha256": "12531fd916df78f7ebe57ff554ee2c5808683d356552085aa709b231a1cbfe97"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/admission.tsx",
+        "beforeSha256": "f6ffd754566200ad6f16d0ae998b5971ee9a9e59d3f44ee528207dca887380f7",
+        "afterSha256": "970616e5db2f4a87a15074452709070287ac031ab051dded4f08b4564ad312e5"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/adoption-workspace.tsx",
+        "beforeSha256": "ec6cb4731de9ec34b2cb801abceac3cd14765d815d546951a8f5af2e8c49d240",
+        "afterSha256": "c645c47dad0bc185ed57b5f4dda9b0f045dd3da7e33570796db882dab68a944f"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/basis.tsx",
+        "beforeSha256": "84cd96d501511024eb7a4bd9d14e24018d37aed27058d02446f51e0a26b8f4c3",
+        "afterSha256": "c5f97904941cca73d738cca42f36d9e6684405035ccda68db5070980155b8409"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/closing-comparison.tsx",
+        "beforeSha256": "7125e1b6c0efe286640903ca7bbed07649f0ace58580fe92938336a5524740b0",
+        "afterSha256": "eaa5a3df424f5d1cea7ece8862efeb24a683ca789af262418aa9639a67caf58c"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/financial-review.tsx",
+        "beforeSha256": "4b95418a922c106a6f5d53b4f9c740aef893555e9ee5bd6e6b0dddc53a3d0183",
+        "afterSha256": "98fae03989bf45757eeb518bff6a1ed0763436c50796a0cde632796af729d42d"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/financial.tsx",
+        "beforeSha256": "edda7a0ce68753334161f373b52ea5e63736172557c5b9dacf86d1032f8daded",
+        "afterSha256": "23f3ad0bfaa77a8fa737045f51bcd11e53ccf1967363ed9dc40731b14697dc4b"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/panel.tsx",
+        "beforeSha256": "cd0098772d055a97fc3fb88f328f91dce8392e0860a7455199662942be82dbe2",
+        "afterSha256": "30a68d08551b5c6d94f67d1badf70718f87a04dc2db31ea96c0d378ed44e2479"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/plan.tsx",
+        "beforeSha256": "3365437f6e8c6f1e3360ebba39853ce51f194d8a1b038e5f44998f1bfa96ab21",
+        "afterSha256": "8117da86d6696a2a48c48f4b9410dd7208e13ed2a0d8ae6682fdd6c34ee9e5e1"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/refresh-opening.tsx",
+        "beforeSha256": "5677d91ef172e99964d5d205df32829a3d457f99937b1c6466a56fb05ebd59bb",
+        "afterSha256": "6b6a132e988b1952b0ff15478f7443c2b951363e9cdd56f63063fb50dbef4556"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/run.tsx",
+        "beforeSha256": "aaf50d63efb0076a036bd7d761d9f6e8668e1fbc5b7129718f50edca20d6a028",
+        "afterSha256": "5943325890e5356c57c6f8b122c62e723aca9a81649b0802024a874278a39abb"
+      },
+      {
+        "path": "apps/web/src/components/historical-intake/select-basis.tsx",
+        "beforeSha256": "31ef394f3f48b95da5a390c02226529eff7675bc0f41fa48707760dab189cac1",
+        "afterSha256": "d81c09d1273768910a274db70655e392ad77ce4df42e1023d4dff38da261002c"
+      },
+      {
+        "path": "apps/web/src/components/internal-reports.tsx",
+        "beforeSha256": "f438504f7b213f3c80f5e5b2bf63b21d6e767d37d59f8995f5809986664593ab",
+        "afterSha256": "2c30828ea0f44c5df63c9579424455d10ada80f9d35b9b019836a16284d11707"
+      },
+      {
+        "path": "apps/web/src/components/journal-correction.tsx",
+        "beforeSha256": "a98052f45ab72c87042bcb38af90ea6f2ec76093c927d64a684d54a8b9c16ede",
+        "afterSha256": "0665fcdf452f3f52bc393a351efd4152d11aa217c4a513b418d79eda25213b4e"
+      },
+      {
+        "path": "apps/web/src/components/journal-draft.tsx",
+        "beforeSha256": "037631d4804f3fe08754db053172008194ff20de094668e3ab56284ea558b989",
+        "afterSha256": "5fea3769ea6d310b3f94d0bf0e0a4719918a1ecffd8f255886a3bf66b59d9277"
+      },
+      {
+        "path": "apps/web/src/components/journal-review.tsx",
+        "beforeSha256": "bce46f22d87e28aad5d2085a3982f7666739eebf537637506cad0143fa45927e",
+        "afterSha256": "36b7108495af72e82c0cc3c96cbf504c454a1a726f6013be9ae5bc99fccbda00"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/data.ts",
+        "beforeSha256": "467effad2f0bfb189c669cc8e4d13cceef7153aa30e8aa42df8411031ca190ca",
+        "afterSha256": "2547872f03f801315c19e76f173fce549ab0a6f33abc2d3fd0de4e46b141ed21"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/delta-effects.tsx",
+        "beforeSha256": "ce35d04f03cde4907552d09a8aa2683d1bccc1962de9e2a52ce4bb295ee30527",
+        "afterSha256": "5bd95f2beb7bbea667426d933fe6ae1cbf2969474716a6729329f79aad758b17"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/delta.tsx",
+        "beforeSha256": "b21408b62c1d8fefb9cab85d433c07f2289f26d58675a6c41aae77823ddf207d",
+        "afterSha256": "cb49dd9faa44c2bc34366055a210aa389e55cc7b338e6fd862b98a466a20aaf2"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/import-actions.tsx",
+        "beforeSha256": "641b2a4d7a3cbe34a9fb414a343afdb7502d4120dea06433ae4aa48e302b7ddd",
+        "afterSha256": "14e133d2b99b0e6b190a9a929ef05801ac965ec5b49ab4934a1e79710edf6664"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/panel.tsx",
+        "beforeSha256": "16b0c6be72455fb0f31b853e551f70c3cf3f531949d816d8634f29e1d9966365",
+        "afterSha256": "d870a037557b3243e0d2e29f3bd737836d03a35e705f3caeed862d85e8483e04"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/profile.tsx",
+        "beforeSha256": "73e5ca25bec1a3f726816ffb55e6a4a769b968223f98787c5ef0bd4c09110690",
+        "afterSha256": "ee18ebb87db90bd27b0ab678f4b22cf485c39644fa909cf12ae9fc09a0de106a"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/sources.tsx",
+        "beforeSha256": "863bd1228eedaf647750c9677a09199ca62a48a38c4827bbe36301521bbef00c",
+        "afterSha256": "46fa43fefe9810275a5b7511ebe0aab9b4c14559736321580891dc14655e18cb"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/start.tsx",
+        "beforeSha256": "328f22026103518ef6f5fb148548b127d03db0e52aa307a9e74b1cf7b3e8de26",
+        "afterSha256": "0f93a0bce3e36f02ded0276449ef28f75c8943fed3cdadd33f02c4c8b5e504ea"
+      },
+      {
+        "path": "apps/web/src/components/onboarding/transition.tsx",
+        "beforeSha256": "536f385b993b5772e23dc685cf984ad70472c5d7f3f9065a7a77163e4554d6af",
+        "afterSha256": "e1507603928cf1b9b5623b6e46d2f7e8158454106f4657b42d14e2bb29734841"
+      },
+      {
+        "path": "apps/web/src/components/payroll-foundation.tsx",
+        "beforeSha256": "ca671946ae3a1ea20df10e3cfb9cbca7eb2645167e9952151e803c956d084b5d",
+        "afterSha256": "b57c1c3b194bc34c87c3a05a133ad5c5b1b2799782c3bfa19273ee9a644dc9ef"
+      },
+      {
+        "path": "apps/web/src/components/payroll/run-review.tsx",
+        "beforeSha256": "05c061ea858bb6e65b5571d98e9a05fb2bffba9d50c1e8b156696f3af7480d7c",
+        "afterSha256": "47f93eb6d4e20fda4f285e5303b8ad6503ebf8fe6444f94e74a2b809a991ff79"
+      },
+      {
+        "path": "apps/web/src/components/period-work/batch.tsx",
+        "beforeSha256": "b3a1a22ca4a28eccbdfba44446bb5ae0f2f5049aa20116eae9f96b84fe5b9b23",
+        "afterSha256": "4200ad32358a7d6e7fd1cc02ea17b6b319f12516d385636f5c55cbb28ef2b03c"
+      },
+      {
+        "path": "apps/web/src/components/period-work/panel.tsx",
+        "beforeSha256": "d34a7715620b619ed78e9695b3a3fc366254876e398ab6f6aa82166d49532441",
+        "afterSha256": "7c7e2ac7c0c8de84f33920ecfe2ca97662f6b6d9395a0927860b165e5c7badd6"
+      },
+      {
+        "path": "apps/web/src/components/posted-records.tsx",
+        "beforeSha256": "c5da4357cb92e6bda7eb1d811d9983444f9f51e991f2621cbfd1f4ecd2817f22",
+        "afterSha256": "223f601d16d7c193736e71693c68dc81d1b69b3732b0f33119318866be635093"
+      },
+      {
+        "path": "apps/web/src/components/posting-recovery/panel.tsx",
+        "beforeSha256": "71e1e457f29279bc8dadae7ac13eb05e24f7e12232b62143861f23c7323b86c1",
+        "afterSha256": "41f5ce6f7104323565ab301379c58aac407791781dda1db6299a29ce14403a68"
+      },
+      {
+        "path": "apps/web/src/components/posting-recovery/saved-requests.tsx",
+        "beforeSha256": "bc1d9b4add038c94b17b4ffb8647a5411370674ae195d746daa506c53db42d8a",
+        "afterSha256": "804965edb564f7034a7d66e64d9e81f6efde98b0bd8c1caf4819d1e6117d6f86"
+      },
+      {
+        "path": "apps/web/src/components/preparation-run.tsx",
+        "beforeSha256": "3a08e9f3630464319afeffa0ddd630222bb56a66fde82f29e0d60d8c7b3c0722",
+        "afterSha256": "85d0838b15e1004ad27b7572a8803052508f7dcc2a6e95ba1df78a7385cbcdc1"
+      },
+      {
+        "path": "apps/web/src/components/processor-workspace.tsx",
+        "beforeSha256": "65170d04ac45d49f274c6c0ea1cc8e49f920d981a4f1cbf0302b69917d8bff4a",
+        "afterSha256": "78ddab4d3dfc50172f7f528fd4a7d71455ab583a28d6e20010f7e5ef69981332"
+      },
+      {
+        "path": "apps/web/src/components/recurring-rule-form.tsx",
+        "beforeSha256": "5685e65630b4d18c043936c5f28e3e483fc1a8271dd09c2b2c2667cbe06e6e61",
+        "afterSha256": "a07250f3726738ada000b2b45849b0203e87754956ee6326ec732e6effb3b4a7"
+      },
+      {
+        "path": "apps/web/src/components/recurring-rule.tsx",
+        "beforeSha256": "654480d8a16b182b62ebfdad642d4b94a9a9fa098535919f8782165ae15a8984",
+        "afterSha256": "46313bb636ea729bc1f3a7ce439652a7124d7fc89588a5c3f711fc2ba01ee568"
+      },
+      {
+        "path": "apps/web/src/components/report-workspace.tsx",
+        "beforeSha256": "316e18311780338963b1be71b9705801939b3aeb43cde661a5467a8c35ce21f9",
+        "afterSha256": "5372904e90bb7366b33259da0b8e46b7f4d12e2d68c67d85bb499358a4d317ce"
+      },
+      {
+        "path": "apps/web/src/components/review-owner.tsx",
+        "beforeSha256": "169edd40b3d51ea97b477e450864677e72357ee9cc72cb0b15960c980b529c39",
+        "afterSha256": "542647229bdc45b73141932a230aeb1006b9375a005d7b54a9fdaeb4fdb92469"
+      },
+      {
+        "path": "apps/web/src/components/settlements/index.tsx",
+        "beforeSha256": "087bbe59fc94cb765e1d3dc1d176b994464bc7c9b1042da0da074c07db6b4a55",
+        "afterSha256": "96b88ae65bdb9ec230d0c233b80beaadc2d161fd1568e87cb731c36e6da5d83a"
+      },
+      {
+        "path": "apps/web/src/components/settlements/report.tsx",
+        "beforeSha256": "e76d8cb46d56a708c8c85ce1651217b130f368c64ebcca3633fa17ae6b5c9089",
+        "afterSha256": "ba1cc2846159c4f9b1508bdc1950de2a34cc33f4e5154ac783c6fdd01dab158b"
+      },
+      {
+        "path": "apps/web/src/components/settlements/review.tsx",
+        "beforeSha256": "c2fc15110bac7dbfdf408f19c2b62cc36f33000e5f3c146f67295dbd37b6caf8",
+        "afterSha256": "18ed01a901a1296369845a101db6237fc6a24be1a23e27ddff3f26e094b8e7a2"
+      },
+      {
+        "path": "apps/web/src/components/source-intake/index.tsx",
+        "beforeSha256": "98e03a8ed95e20a94c689c3904ed06accd6f956240122a10e23b77d4bc4c4ce5",
+        "afterSha256": "1917259c616914ed0a5798586d1b5c3fc3b7cffa22fd76d3e624a121abcfd26f"
+      },
+      {
+        "path": "apps/web/src/components/source-intake/review.tsx",
+        "beforeSha256": "15bf88a585c4af95dd5fa9f1cd1ab9bf18240f11d1d35be97093bea15c0fb431",
+        "afterSha256": "11b2649e732c5732a9ae293569516273717f94788f61078a40b6455482770691"
+      },
+      {
+        "path": "apps/web/src/components/source-intake/workspace.tsx",
+        "beforeSha256": "998c63bcb35c54b443ee0e6caf2756e98af02e274c8a2e851b3f7974e1dbc9b8",
+        "afterSha256": "9fb6908db48ed908cb01eefb0c533130d84d6977c1506f4f4a0246258a6e1901"
+      },
+      {
+        "path": "apps/web/src/components/subledger-controls/basis-form.tsx",
+        "beforeSha256": "8029e14b969fa5b6a4bad102fee8d106acafa18bc96120b0b8c310c880434990",
+        "afterSha256": "bdcf127d3eab1598262061e38941421280d54db51a44262114a822f345838eda"
+      },
+      {
+        "path": "apps/web/src/components/subledger-controls/panel.tsx",
+        "beforeSha256": "a4510698d0edc8f34c3bbb60acb42c870d96397ac6f2d38732d39e2074bcb60f",
+        "afterSha256": "8486f964a4293861814e0613d3519689fae57d68355c768186675d524f56a4ad"
+      },
+      {
+        "path": "apps/web/src/components/subledger-controls/views.tsx",
+        "beforeSha256": "e63a11cddb52feac967201ea5e7b55ea167246b85d304f53c6070ce35118a78f",
+        "afterSha256": "3e49690df86c2138ae132f161fbb168b2cd4e093b274e2891ab12f814b2a2524"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/action-workspace.tsx",
+        "beforeSha256": "5f9d32f4ae54575f52907e2221fa7cf227c1440232665dc7dfd82d976ad40c1d",
+        "afterSha256": "4569fb980d54f390b6f5f56e73db34f7d60a62558861d389a2bde2bc023bb3bc"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/proceeds-review.tsx",
+        "beforeSha256": "135660d105a0d85198b5bf80481dc69871b4b779ea209f6b6faea8137c90aed1",
+        "afterSha256": "be1a50686cb35a55eb48b8751b9fa5190ceff8e1593d253c1e4afc09aa51127a"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/schedule-evidence.tsx",
+        "beforeSha256": "1ded4b1dbf3f6cc7858613524f175cd8b5113b7e1789e8eb8f514df6518e5bcf",
+        "afterSha256": "e7e55d1a5140ed42384c225e8bc64a0370fa62524155f20b69a4952668dd03ef"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/schedules.tsx",
+        "beforeSha256": "718a7735c7f8e86c5fd2bc3655808c40edbf1874a5db27e89eea50ff590aeebe",
+        "afterSha256": "49ce975af576b99a6be9d8063ad51867c307408c06ac6900a06e0304071563b0"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/valuation-directory.tsx",
+        "beforeSha256": "e13fab1f7acf69346b1c4c08cd86aa241be810d3369021cbc48be88ab2372cd3",
+        "afterSha256": "1dd409ce5602eefdd74a02708f9d87efe09aa968b0fe78bfa930ead5fb8b2961"
+      },
+      {
+        "path": "apps/web/src/components/subledgers/valuation-workspace.tsx",
+        "beforeSha256": "a07ddc84b58c1f87861dd8fbb83b1c4cdd89ee4ec60db1e1b25da294ba9ac834",
+        "afterSha256": "626f443c44ab6fb3b28e94fde35b7df496f66ef846b3b09778685a0d8e643f52"
+      },
+      {
+        "path": "apps/web/src/components/treasury-loan-workspace.tsx",
+        "beforeSha256": "6dc5d398989434e991838ef934a4634953c4bbf54a0bf4a4d8b4a106fde0de3d",
+        "afterSha256": "31c35b86e5b1eb879b64ae3623c2d8eb70f5e5d982cea00ce280068ee80f8665"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/actual-panel.tsx",
+        "beforeSha256": "d415e5125c2dca6fb0a9be6410222681cd56d29a52e23ca43f590461e08baa6a",
+        "afterSha256": "99e63305ebbb6d5b52697403e735eaa7a75f3d1753e85edc5e0471b96b54f22f"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/fact-editor.tsx",
+        "beforeSha256": "43b250e42ca5d32560419e8612475a24c718aba9aceac7c8db2146fe2cd16a7c",
+        "afterSha256": "fc8b207513e1f715a380fca01a3fc48d9ccde8448bbac0deff01c9a03d8140a8"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/forms.tsx",
+        "beforeSha256": "4292e9a79c1336bd6435bc519657cdc59e3667473d4021e1cf154e677e05b5e4",
+        "afterSha256": "6acd2f58baa6c0991b157ec166974b3cf23e246b6bbb40b4054074a508dc9229"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/panel.tsx",
+        "beforeSha256": "5b7fea2bc88f59bc9fee8153ae33a7a5f5bc92b2a4ce9b0148eb6c0038d91fab",
+        "afterSha256": "a5dd67d422fbe149569ce79f67d24a2c88ca0f9837a30f93e8f84fec143aaedd"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/reclassification-panel.tsx",
+        "beforeSha256": "9de94235af54a88b1612ffa1412163676f73a67ad4040b6bd1b93379a94540aa",
+        "afterSha256": "e9e0722cfcb9a98ddf196fd3ae06044a26bfabff88e85267bcc98a71269014dd"
+      },
+      {
+        "path": "apps/web/src/components/vat-returns/views.tsx",
+        "beforeSha256": "b14da7e7f7d0cd08b9c9391cd0c45dbbdd901127cbc711470d1b240072b066d2",
+        "afterSha256": "25b44ea80b6368139804b8c45179e5904961845477263a43fee38c611d574179"
+      },
+      {
+        "path": "apps/web/src/components/voucher-workspace.tsx",
+        "beforeSha256": "2b8d4b2188ea572b904253e309f90551868543c9cb97d0b5e1ba2ff112fb9a37",
+        "afterSha256": "59b12f4e31ed659cf24a41f97fb91bd6fb9fd613615f48ec96189cef6bf052d2"
+      },
+      {
+        "path": "apps/web/src/components/work-home.tsx",
+        "beforeSha256": "ea49cf242ac30f46f8b314636e8570d9c644dfcf6a196f78af6075170385501d",
+        "afterSha256": "1d9a7056a707328ee230eeb99fc12364c883081ff22219e5c10c8b428aabe846"
+      },
+      {
+        "path": "apps/web/src/components/work-supplier-preview.tsx",
+        "beforeSha256": "538e35b3ef495464443de17c31d05d6b7a5734b80a10aa66ec8462a7a4b899ba",
+        "afterSha256": "ffb915fbb390ce0ed8ce4de6a88c8f9ac27919574231b85c74a01186fafea5d8"
+      },
+      {
+        "path": "apps/web/src/lib/accounting-api.ts",
+        "beforeSha256": "70c68c34efa2b8467e274d28ece9a82748c761969ca7d79873f13be1d529fc1f",
+        "afterSha256": "8f07239b66b4da46dff37fb0e88d861b8f7100980784c7cdd2d3c793ef2aad01"
+      },
+      {
+        "path": "apps/web/src/lib/attention.ts",
+        "beforeSha256": "f0935ea9050c343e0b7e6beb563a3ed7ec71d7b99584de1c0a6bb5f2f9437491",
+        "afterSha256": "c7d2c1a6c88b2666be5d3507481262d477b429bb532ca6109e2b5ee68ecc3e13"
+      },
+      {
+        "path": "apps/web/src/lib/bank-workspace.ts",
+        "beforeSha256": "73f2942f4db080018e39d5a4ba2216dd0b1438a068bb28fd54bcc07c1caa1776",
+        "afterSha256": "661cb41ef769906fc47027bc1242f0b3ae482463b79725f98ad35350c845856c"
+      },
+      {
+        "path": "apps/web/src/lib/company-work.ts",
+        "beforeSha256": "7ffbac678fa30f88436452bd0fe7a0d286f17eebb246ceb3c11813a079865b41",
+        "afterSha256": "38b76183a332d3a17b080175baaeb9565f72470e2e6f32589f3da69182c37476"
+      },
+      {
+        "path": "apps/web/src/lib/period-work.ts",
+        "beforeSha256": "95405e6db4c7203f8b04cdcf52503fbbae2efc275fb328372ab6523c5491bddb",
+        "afterSha256": "4e039ed13e1ab2eb31b85117fd0f3333da995c87e18d675e975231fdf57469d8"
+      },
+      {
+        "path": "apps/web/src/lib/source-documents.ts",
+        "beforeSha256": "836fd1a9fd61274e402fd209d801682b4d59ec7420051ad7040eb6d7311c4aff",
+        "afterSha256": "ccb979b3d0989a00bf6fa0302f7d55e2a82eeb5e21dcbff1e494d4b5f7826f3b"
+      },
+      {
+        "path": "apps/web/src/lib/work-group.ts",
+        "beforeSha256": "e92942aed49b9f11ec49525ab50d1fe2950104e7c7ffa5d8a5112b9a79712486",
+        "afterSha256": "136778bb39ad87660a6e7778e6f2a5ff8dfc5aa672900ecadaf6d447ff8c226d"
+      },
+      {
+        "path": "apps/web/src/lib/workspace-api.ts",
+        "beforeSha256": "9068674d411078fee5af8cab6ab6eafc8a567c6a1110cec6c42c4e94fb29e2a1",
+        "afterSha256": "e23edc32e226710853623ca8c45ceefa1cddea60380a3c77266f08228f960242"
+      },
+      {
+        "path": "apps/web/src/lib/workspace-coordination.ts",
+        "beforeSha256": "f69ac328238b29a2ed3de1f983981a308c43b6ae2ba110ffeeab14d831850a13",
+        "afterSha256": "5ecb8a44e5f36a7f6d7c42e4934cae97ce46d356bf0de07c32f93f488e368664"
+      }
+    ]
+  }
 }

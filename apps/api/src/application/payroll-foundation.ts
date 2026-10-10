@@ -1,10 +1,12 @@
+import { runBookCommand } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Payroll from "@open-erp/contracts/payroll-foundation";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
 import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
-import { newId, replay, saveCommand } from "./posting";
+import { newId } from "./identifiers";
+
 import * as Db from "../db/posting";
 import * as PayrollDb from "../db/payroll-foundation";
 import { databaseFailure, type Transaction } from "../db/transaction";
@@ -192,87 +194,80 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
       yield* Db.lockBookForUpdate(transaction, command.scope);
       yield* requirePayrollGrant(transaction, command.scope, principal);
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "capture_payroll_revision",
-        principal.actorId,
-        fingerprint,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "capture_payroll_revision",
+          actorId: principal.actorId,
+          input: fingerprint,
+        },
         RevisionReceipt,
+        Effect.gen(function* () {
+          const effectiveOn = yield* dateValue(input.effectiveOn);
+          yield* revisionFacts(input);
+          const body = yield* payrollFacts(input.body);
+          yield* boundedFacts(body);
+
+          if (
+            (yield* Db.readEvidence(transaction, command.scope.bookId, input.evidenceId)).length ===
+            0
+          ) {
+            return yield* failure("MissingEvidence");
+          }
+
+          const head = yield* PayrollDb.readCurrentRevision(
+            transaction,
+            command.scope.bookId,
+            input.employeeId,
+            input.kind,
+            effectiveOn,
+          );
+
+          if (input.supersedes !== (head[0]?.revisionId ?? null)) {
+            return yield* failure("StaleDependency");
+          }
+
+          yield* PayrollDb.insertEmployee(transaction, command.scope.bookId, input.employeeId);
+
+          const current = {
+            bookId: command.scope.bookId,
+            employeeId: input.employeeId,
+            kind: input.kind,
+            effectiveOn,
+            revisionId: newId("payrev"),
+          };
+
+          yield* PayrollDb.insertRevision(transaction, {
+            ...current,
+            id: current.revisionId,
+            commandKey: command.idempotencyKey,
+            supersedes: input.supersedes,
+            evidenceId: input.evidenceId,
+            body,
+            createdBy: principal.actorId,
+          });
+
+          if (head[0]) {
+            yield* PayrollDb.replaceCurrentRevision(transaction, current);
+          } else {
+            yield* PayrollDb.insertCurrentRevision(transaction, current);
+          }
+
+          const result = yield* decode(RevisionReceipt, {
+            ...current,
+            id: current.revisionId,
+            scope: command.scope,
+            supersedes: input.supersedes,
+            evidenceId: input.evidenceId,
+            body,
+            createdBy: principal.actorId,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      const effectiveOn = yield* dateValue(input.effectiveOn);
-      yield* revisionFacts(input);
-      const body = yield* payrollFacts(input.body);
-      yield* boundedFacts(body);
-
-      if (
-        (yield* Db.readEvidence(transaction, command.scope.bookId, input.evidenceId)).length === 0
-      ) {
-        return yield* failure("MissingEvidence");
-      }
-
-      const head = yield* PayrollDb.readCurrentRevision(
-        transaction,
-        command.scope.bookId,
-        input.employeeId,
-        input.kind,
-        effectiveOn,
-      );
-
-      if (input.supersedes !== (head[0]?.revisionId ?? null)) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* PayrollDb.insertEmployee(transaction, command.scope.bookId, input.employeeId);
-
-      const current = {
-        bookId: command.scope.bookId,
-        employeeId: input.employeeId,
-        kind: input.kind,
-        effectiveOn,
-        revisionId: newId("payrev"),
-      };
-
-      yield* PayrollDb.insertRevision(transaction, {
-        ...current,
-        id: current.revisionId,
-        commandKey: command.idempotencyKey,
-        supersedes: input.supersedes,
-        evidenceId: input.evidenceId,
-        body,
-        createdBy: principal.actorId,
-      });
-
-      if (head[0]) {
-        yield* PayrollDb.replaceCurrentRevision(transaction, current);
-      } else {
-        yield* PayrollDb.insertCurrentRevision(transaction, current);
-      }
-
-      const result = yield* decode(RevisionReceipt, {
-        ...current,
-        id: current.revisionId,
-        scope: command.scope,
-        supersedes: input.supersedes,
-        evidenceId: input.evidenceId,
-        body,
-        createdBy: principal.actorId,
-      });
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "capture_payroll_revision",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     }),
   );
 });

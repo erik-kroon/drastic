@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -9,19 +11,13 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 
 export function NativeLedgerSetup() {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const form = useRef<HTMLFormElement>(null);
   const [startsOn, setStartsOn] = useState("");
   const [endsOn, setEndsOn] = useState("");
@@ -37,7 +33,11 @@ export function NativeLedgerSetup() {
   const setup = useQuery({
     queryKey: [...bookKey(book), "company-setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/company-setup`, Setup.CompanySetup, { signal }),
+      readAccounting(
+        (client) => client.companySetup.getCompanySetup({ params: { ...bookScope(book) } }),
+        Setup.CompanySetup,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -46,7 +46,7 @@ export function NativeLedgerSetup() {
       readAccounting(
         path,
         Setup.NativeLedgerSetup,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       ),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: bookKey(book) });

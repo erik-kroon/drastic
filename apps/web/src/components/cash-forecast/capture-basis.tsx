@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import type { CommandKeys } from "@/lib/command-keys";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient, skipToken } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cash from "@open-erp/contracts/cash-forecast";
@@ -13,13 +16,7 @@ import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 
 type Review = typeof Cash.CashAccountSelection.Type.review;
 
@@ -36,7 +33,7 @@ export function CaptureCashBasis({ onSaved }: { onSaved: (id: string) => void })
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [reportId, setReportId] = useState("");
   const [accountIds, setAccountIds] = useState<string[]>([]);
   const [eligibility, setEligibility] = useState<Review["eligibility"]>("unknown");
@@ -46,9 +43,14 @@ export function CaptureCashBasis({ onSaved }: { onSaved: (id: string) => void })
   const reports = useQuery({
     queryKey: [...bookKey(book), "bank-source-coverage", "list"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/bank-source-coverage`, Coverage.BankSourceCoverageList, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.bankSourceCoverage.listBankSourceCoverage({ params: { ...bookScope(book) } }),
+        Coverage.BankSourceCoverageList,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 
@@ -57,7 +59,10 @@ export function CaptureCashBasis({ onSaved }: { onSaved: (id: string) => void })
     queryFn: reportId
       ? ({ signal }) =>
           readAccounting(
-            `${bookPath(book)}/bank-source-coverage/${encodeURIComponent(reportId)}`,
+            (client) =>
+              client.bankSourceCoverage.getBankSourceCoverage({
+                params: { ...bookScope(book), id: reportId },
+              }),
             Coverage.BankSourceCoverageView,
             { signal },
           )
@@ -291,18 +296,13 @@ function BasisReview(props: {
   );
 }
 
-async function saveBasis(
-  base: string,
-  selection: Selection,
-  keys: Map<string, string>,
-  sv: boolean,
-) {
+async function saveBasis(base: string, selection: Selection, keys: CommandKeys, sv: boolean) {
   const evidencePath = `${base}/evidence`;
 
   const evidence = await readAccounting(
     evidencePath,
     Accounting.Evidence,
-    mutationOptions(
+    keys.options(
       evidencePath,
       JSON.stringify({
         title: sv ? "Granskning av prognosunderlag" : "Forecast basis review",
@@ -317,7 +317,6 @@ async function saveBasis(
         mediaType: "application/json",
         origin: "cash-basis-review",
       }),
-      keys,
     ),
   );
 
@@ -329,14 +328,13 @@ async function saveBasis(
     const reconciliation = await readAccounting(
       path,
       Settlement.BankCapacityReconciliation,
-      mutationOptions(
+      keys.options(
         path,
         JSON.stringify({
           accountId,
           startsOn: selection.report.input.startsOn,
           endsOn: selection.asOf,
         }),
-        keys,
       ),
     );
 
@@ -362,5 +360,5 @@ async function saveBasis(
     expectedDates: [],
   });
 
-  return readAccounting(path, Cash.CashBasis, mutationOptions(path, JSON.stringify(input), keys));
+  return readAccounting(path, Cash.CashBasis, keys.options(path, JSON.stringify(input)));
 }

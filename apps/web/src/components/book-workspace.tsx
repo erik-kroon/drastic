@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useMatch } from "@tanstack/react-router";
@@ -24,7 +25,7 @@ import { themes, useTheme } from "@/lib/theme";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
 import { portfolioReturn } from "@/components/firms/portfolio-return";
-import { bookKey, bookPath, readAccounting, type Books } from "@/lib/accounting-api";
+import { bookKey, readAccounting, type Books } from "@/lib/accounting-api";
 import { authClient } from "@/lib/auth-client";
 import { SetupWorkspace } from "@open-erp/ui/components/setup-workspace";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -246,7 +247,11 @@ export function BookWorkspace({
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",

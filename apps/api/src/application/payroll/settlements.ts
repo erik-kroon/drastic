@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Settlement from "@open-erp/contracts/payroll-settlements";
 import * as Calculations from "@open-erp/contracts/payroll-calculations";
 import * as Domain from "@open-erp/domain/payroll-runs";
@@ -21,12 +22,10 @@ import {
   approveChangeInTransaction,
   executeChangeInTransaction,
   prepareJournalInTransaction,
-  digest,
-  isoNow,
-  newId,
-  replay,
-  saveCommand,
 } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { addMatch } from "../banking/matches";
 import { captureCalculationBasis } from "./calculations";
@@ -160,95 +159,87 @@ export const prepareComparison = Effect.fn("payroll.preparePaidComparison")(func
       yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
       const operation = "payroll_prepare_comparison";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { paidEventId: command.paidEventId, input: command.input },
-        Settlement.CorrectionComparison,
-      );
-
-      if (request.previous) return request.previous;
-
-      const paid = yield* readRetained(
-        tx,
-        command.scope,
-        "payroll_paid_events",
-        command.paidEventId,
-        Settlement.PaidPayrollEvent,
-      );
-
-      const original = paid.originalEmployee.calculation;
-
-      if (
-        command.input.recordClass !== "synthetic" ||
-        command.input.employment.employeeId !== paid.employeeId ||
-        !equalJson(command.input.work.earningsPeriod, original.basis.earningsPeriod) ||
-        command.input.work.expectedPaymentOn !== original.basis.expectedPaymentOn ||
-        !equalJson(
-          (command.input.adjustmentIds ?? []).slice().sort(),
-          (original.basis.adjustmentInstructions ?? []).map((row) => row.id).sort(),
-        )
-      )
-        return yield* failure("UnsupportedProfile");
-
-      const population = yield* correctionPopulation(tx, command.scope, paid);
-
-      const captured = yield* captureCalculationBasis(tx, command.scope, command.input, {
-        kind: "paid_comparison",
-        originalBasis: original.basis,
-        mileageInputs: correctedMileageSnapshots(paid, population.mileageCorrections),
-      });
-
-      if (
-        captured.basis.ruleReleaseId !== original.basis.ruleReleaseId ||
-        captured.basis.ruleReleaseChecksum !== original.basis.ruleReleaseChecksum ||
-        captured.basis.openingBaseMinor !== original.basis.openingBaseMinor
-      )
-        return yield* failure("StaleDependency");
-
-      const result = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Settlement.CorrectionComparison,
         {
-          id: newId("payroll_comparison"),
-          kind: "paid_correction_comparison",
-          input: command.input,
-          paidEventId: paid.id,
-          originalPaidDigest: paid.digest,
-          basis: captured.basis,
-          calculation: captured.calculated,
-          grossDeltaMinor: (
-            BigInt(captured.calculated.grossMinor) - BigInt(paid.grossCashMinor)
-          ).toString(),
-          contributionDeltaMinor: (
-            BigInt(captured.calculated.employerContributionMinor) -
-            BigInt(paid.employerContributionMinor)
-          ).toString(),
-          noFinancialEffect: true,
-          correctionPopulationDigest: population.digest,
-          mileageCorrections: population.mileageCorrections,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { paidEventId: command.paidEventId, input: command.input },
         },
-      );
+        Settlement.CorrectionComparison,
+        Effect.gen(function* () {
+          const paid = yield* readRetained(
+            tx,
+            command.scope,
+            "payroll_paid_events",
+            command.paidEventId,
+            Settlement.PaidPayrollEvent,
+          );
 
-      yield* persist(tx, "payroll_correction_comparisons", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
+          const original = paid.originalEmployee.calculation;
 
-      return result;
+          if (
+            command.input.recordClass !== "synthetic" ||
+            command.input.employment.employeeId !== paid.employeeId ||
+            !equalJson(command.input.work.earningsPeriod, original.basis.earningsPeriod) ||
+            command.input.work.expectedPaymentOn !== original.basis.expectedPaymentOn ||
+            !equalJson(
+              (command.input.adjustmentIds ?? []).slice().sort(),
+              (original.basis.adjustmentInstructions ?? []).map((row) => row.id).sort(),
+            )
+          )
+            return yield* failure("UnsupportedProfile");
+
+          const population = yield* correctionPopulation(tx, command.scope, paid);
+
+          const captured = yield* captureCalculationBasis(tx, command.scope, command.input, {
+            kind: "paid_comparison",
+            originalBasis: original.basis,
+            mileageInputs: correctedMileageSnapshots(paid, population.mileageCorrections),
+          });
+
+          if (
+            captured.basis.ruleReleaseId !== original.basis.ruleReleaseId ||
+            captured.basis.ruleReleaseChecksum !== original.basis.ruleReleaseChecksum ||
+            captured.basis.openingBaseMinor !== original.basis.openingBaseMinor
+          )
+            return yield* failure("StaleDependency");
+
+          const result = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Settlement.CorrectionComparison,
+            {
+              id: newId("payroll_comparison"),
+              kind: "paid_correction_comparison",
+              input: command.input,
+              paidEventId: paid.id,
+              originalPaidDigest: paid.digest,
+              basis: captured.basis,
+              calculation: captured.calculated,
+              grossDeltaMinor: (
+                BigInt(captured.calculated.grossMinor) - BigInt(paid.grossCashMinor)
+              ).toString(),
+              contributionDeltaMinor: (
+                BigInt(captured.calculated.employerContributionMinor) -
+                BigInt(paid.employerContributionMinor)
+              ).toString(),
+              noFinancialEffect: true,
+              correctionPopulationDigest: population.digest,
+              mileageCorrections: population.mileageCorrections,
+            },
+          );
+
+          yield* persist(tx, "payroll_correction_comparisons", result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
+      );
     },
     "update",
   );
@@ -266,66 +257,58 @@ export const recordAdjustmentBasis = Effect.fn("payroll.recordAdjustmentBasis")(
       yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
       const operation = "payroll_record_adjustment_basis";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: command.input,
+        },
         Settlement.AdjustmentBasis,
-      );
+        Effect.gen(function* () {
+          const { comparison } = command.input.recoveryClaimId
+            ? yield* claimOffsetComparison(
+                tx,
+                command.scope,
+                command.input.recoveryClaimId,
+                command.input.comparisonId,
+              )
+            : yield* validateComparison(tx, command.scope, command.input.comparisonId);
 
-      if (request.previous) return request.previous;
+          if (command.input.recoveryClaimId && command.input.kind !== "future_pay")
+            return yield* failure("UnsupportedProfile");
 
-      const { comparison } = command.input.recoveryClaimId
-        ? yield* claimOffsetComparison(
+          if (comparison.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+          const evidence = yield* readEvidenceReference(
+            tx,
+            command.scope.bookId,
+            command.input.evidenceId,
+          );
+
+          const result = yield* seal(
             tx,
             command.scope,
-            command.input.recoveryClaimId,
-            command.input.comparisonId,
-          )
-        : yield* validateComparison(tx, command.scope, command.input.comparisonId);
+            principal,
+            operation,
+            command.idempotencyKey,
+            Settlement.AdjustmentBasis,
+            {
+              id: newId("payroll_adjustment_basis"),
+              input: command.input,
+              comparisonDigest: comparison.digest,
+              evidence,
+              qualification: "synthetic_only",
+            },
+          );
 
-      if (command.input.recoveryClaimId && command.input.kind !== "future_pay")
-        return yield* failure("UnsupportedProfile");
+          yield* persist(tx, "payroll_adjustment_bases", result);
 
-      if (comparison.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
-
-      const evidence = yield* readEvidenceReference(
-        tx,
-        command.scope.bookId,
-        command.input.evidenceId,
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      const result = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Settlement.AdjustmentBasis,
-        {
-          id: newId("payroll_adjustment_basis"),
-          input: command.input,
-          comparisonDigest: comparison.digest,
-          evidence,
-          qualification: "synthetic_only",
-        },
-      );
-
-      yield* persist(tx, "payroll_adjustment_bases", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -340,74 +323,67 @@ export const prepareSettlementInTransaction = Effect.fn("payroll.prepareSettleme
     yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
     const operation = "payroll_prepare_settlement";
 
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      command.input,
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: command.input,
+      },
       Settlement.SettlementReview,
+      Effect.gen(function* () {
+        const compiled = yield* compileSettlement(tx, command.scope, command.input);
+        const id = newId("payroll_settlement_review");
+
+        const postingPlan = compiled.lines.length
+          ? yield* prepareJournalInTransaction(tx, principal, {
+              scope: command.scope,
+              idempotencyKey: `${id}_plan`,
+              input: {
+                kind: "manual_journal",
+                evidenceId: command.input.evidenceId,
+                eventKey: id,
+                accountingPeriodId: command.input.accountingPeriodId,
+                postingDate: command.input.postingDate,
+                series: command.input.series,
+                description: "Reviewed synthetic payroll settlement or adjustment",
+                rationale: command.input.reason,
+                taxAssessment: "not_applicable",
+                lines: compiled.lines,
+              },
+            })
+          : null;
+
+        const basis = {
+          reportingReplacement: compiled.reportingReplacement,
+          originalRun: compiled.originalRun,
+          paidEvent: compiled.paidEvent,
+          comparison: compiled.comparison,
+          lawfulBasis: compiled.lawfulBasis,
+          claim: compiled.claim,
+          cash: compiled.cash,
+          capacityDigest: compiled.capacityDigest,
+          economicKey: compiled.economicKey,
+          outputs: compiled.outputs,
+        };
+
+        const result = yield* seal(
+          tx,
+          command.scope,
+          principal,
+          operation,
+          command.idempotencyKey,
+          Settlement.SettlementReview,
+          { ...basis, id, input: command.input, postingPlan },
+        );
+
+        yield* Db.insertReview(tx, result, postingPlan?.groups[0]?.actions[0]?.eventId ?? null);
+
+        return { receipt: yield* toJsonObject(result), result: result };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    const compiled = yield* compileSettlement(tx, command.scope, command.input);
-    const id = newId("payroll_settlement_review");
-
-    const postingPlan = compiled.lines.length
-      ? yield* prepareJournalInTransaction(tx, principal, {
-          scope: command.scope,
-          idempotencyKey: `${id}_plan`,
-          input: {
-            kind: "manual_journal",
-            evidenceId: command.input.evidenceId,
-            eventKey: id,
-            accountingPeriodId: command.input.accountingPeriodId,
-            postingDate: command.input.postingDate,
-            series: command.input.series,
-            description: "Reviewed synthetic payroll settlement or adjustment",
-            rationale: command.input.reason,
-            taxAssessment: "not_applicable",
-            lines: compiled.lines,
-          },
-        })
-      : null;
-
-    const basis = {
-      reportingReplacement: compiled.reportingReplacement,
-      originalRun: compiled.originalRun,
-      paidEvent: compiled.paidEvent,
-      comparison: compiled.comparison,
-      lawfulBasis: compiled.lawfulBasis,
-      claim: compiled.claim,
-      cash: compiled.cash,
-      capacityDigest: compiled.capacityDigest,
-      economicKey: compiled.economicKey,
-      outputs: compiled.outputs,
-    };
-
-    const result = yield* seal(
-      tx,
-      command.scope,
-      principal,
-      operation,
-      command.idempotencyKey,
-      Settlement.SettlementReview,
-      { ...basis, id, input: command.input, postingPlan },
-    );
-
-    yield* Db.insertReview(tx, result, postingPlan?.groups[0]?.actions[0]?.eventId ?? null);
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(result),
-    );
-
-    return result;
   },
 );
 
@@ -438,88 +414,86 @@ export const approveSettlement = Effect.fn("payroll.approveSettlement")(function
       yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
       const operation = "payroll_approve_settlement";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId: command.reviewId, input: command.input },
-        Settlement.SettlementApproval,
-      );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* currentReview(
-        tx,
-        command.scope,
-        command.reviewId,
-        command.input.reviewDigest,
-      );
-
-      yield* requireCapacity(tx, review);
-
-      yield* requireMileageSubmission(tx, command.scope, review, principal.actorId);
-
-      if (!review.postingPlan && review.input.kind !== "reporting_only") {
-        yield* authorizePresent(
-          tx,
-          principal,
-          command.scope,
-          "approve_payroll_settlement_instruction",
-          {
-            idempotencyKey: command.idempotencyKey,
-            id: command.reviewId,
-            input: yield* toJsonObject(command.input),
-          },
-        );
-        yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
-      }
-
-      const kernel = review.postingPlan
-        ? yield* approveChangeInTransaction(tx, principal, {
-            scope: command.scope,
-            changeSetId: review.postingPlan.id,
-            idempotencyKey: `${command.idempotencyKey}_approval`,
-            owner: owner(review),
-            input: { version: 1, planDigest: review.postingPlan.planDigest },
-          })
-        : null;
-
-      const now = yield* isoNow(tx);
-
-      const result = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Settlement.SettlementApproval,
         {
-          id: newId("payroll_settlement_approval"),
-          reviewId: review.id,
-          reviewDigest: review.digest,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
           actorId: principal.actorId,
-          kernelApprovalId: kernel?.id ?? null,
-          expiresAt: kernel?.expiresAt ?? new Date(Date.parse(now) + 3600000).toISOString(),
+          input: { reviewId: command.reviewId, input: command.input },
         },
+        Settlement.SettlementApproval,
+        Effect.gen(function* () {
+          const review = yield* currentReview(
+            tx,
+            command.scope,
+            command.reviewId,
+            command.input.reviewDigest,
+          );
+
+          yield* requireCapacity(tx, review);
+
+          yield* requireMileageSubmission(tx, command.scope, review, principal.actorId);
+
+          if (!review.postingPlan && review.input.kind !== "reporting_only") {
+            yield* authorizePresent(
+              tx,
+              principal,
+              command.scope,
+              "approve_payroll_settlement_instruction",
+              {
+                idempotencyKey: command.idempotencyKey,
+                id: command.reviewId,
+                input: yield* toJsonObject(command.input),
+              },
+            );
+            yield* requireInstructionAuthority(tx, command.scope, review, principal.actorId);
+          }
+
+          const kernel = review.postingPlan
+            ? yield* approveChangeInTransaction(tx, principal, {
+                scope: command.scope,
+                changeSetId: review.postingPlan.id,
+                idempotencyKey: `${command.idempotencyKey}_approval`,
+                owner: owner(review),
+                input: { version: 1, planDigest: review.postingPlan.planDigest },
+              })
+            : null;
+
+          const now = yield* isoNow(tx);
+
+          const result = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Settlement.SettlementApproval,
+            {
+              id: newId("payroll_settlement_approval"),
+              reviewId: review.id,
+              reviewDigest: review.digest,
+              actorId: principal.actorId,
+              kernelApprovalId: kernel?.id ?? null,
+              expiresAt: kernel?.expiresAt ?? new Date(Date.parse(now) + 3600000).toISOString(),
+            },
+          );
+
+          yield* persist(tx, "payroll_settlement_approvals", result);
+
+          for (const key of capacityKeys(review))
+            yield* Db.insertCapacityReservation(
+              tx,
+              command.scope.bookId,
+              key,
+              review.id,
+              result.id,
+            );
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      yield* persist(tx, "payroll_settlement_approvals", result);
-
-      for (const key of capacityKeys(review))
-        yield* Db.insertCapacityReservation(tx, command.scope.bookId, key, review.id, result.id);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -718,131 +692,130 @@ export const executeSettlement = Effect.fn("payroll.executeSettlement")(function
       yield* requireSettlementAccess(tx, command.scope, principal.actorId, true);
       const operation = "payroll_execute_settlement";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId: command.reviewId, input: command.input },
-        Settlement.SettlementExecution,
-      );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* currentReview(
-        tx,
-        command.scope,
-        command.reviewId,
-        command.input.reviewDigest,
-      );
-
-      yield* requireCapacity(tx, review);
-
-      const approval = yield* readRetained(
-        tx,
-        command.scope,
-        "payroll_settlement_approvals",
-        command.input.approvalId,
-        Settlement.SettlementApproval,
-      );
-
-      if (
-        approval.reviewId !== review.id ||
-        approval.reviewDigest !== review.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
-        (yield* Ledger.readOperatorMembership(tx, command.scope.bookId, approval.actorId))
-          .length !== 1 ||
-        (yield* Foundation.readPayrollAccess(tx, command.scope.bookId, approval.actorId)).length !==
-          1 ||
-        (yield* Ledger.readActorAdmission(tx, approval.actorId))[0]?.enabled === false
-      )
-        return yield* failure("ApprovalRequired");
-      yield* requireSettlementAccess(tx, command.scope, approval.actorId, false);
-
-      yield* requireMileageSubmission(tx, command.scope, review, approval.actorId);
-
-      if (!review.postingPlan && review.input.kind !== "reporting_only")
-        yield* requireInstructionAuthority(tx, command.scope, review, approval.actorId);
-
-      const postingReceipt =
-        review.postingPlan && approval.kernelApprovalId
-          ? yield* executeChangeInTransaction(tx, principal, {
-              scope: command.scope,
-              changeSetId: review.postingPlan.id,
-              idempotencyKey: `${review.id}_post`,
-              owner: owner(review),
-              input: {
-                version: 1,
-                planDigest: review.postingPlan.planDigest,
-                approvalId: approval.kernelApprovalId,
-              },
-            })
-          : null;
-
-      if (review.postingPlan !== null && postingReceipt === null)
-        return yield* failure("ApprovalRequired");
-
-      if (review.cash) {
-        const bankLine = review.postingPlan?.groups[0]?.actions[0]?.lines.find(
-          (line) => line.accountId === review.cash?.accountId,
-        );
-
-        if (!postingReceipt || !bankLine) return yield* failure("InternalError");
-
-        const leg = {
-          statementId: review.cash.statementId,
-          rowOrdinal: review.cash.rowOrdinal,
-          voucherId: postingReceipt.voucherId,
-          lineId: bankLine.lineId,
-        };
-
-        yield* addMatch(tx, command.scope.bookId, principal.actorId, leg, "explicit", review.id);
-      }
-
-      const id = newId("payroll_settlement_execution");
-
-      const consequences = yield* commitConsequences(
-        tx,
-        command.scope,
-        principal,
-        review,
-        id,
-        command.idempotencyKey,
-      );
-
-      yield* recordMileageSuccessor(tx, command.scope, review, id);
-
-      const result = yield* seal(
-        tx,
-        command.scope,
-        principal,
-        operation,
-        command.idempotencyKey,
-        Settlement.SettlementExecution,
         {
-          id,
-          reviewId: review.id,
-          approvalId: approval.id,
-          kind: review.input.kind,
-          ...consequences,
-          remainingReceivableMinor: review.outputs.remainingReceivableMinor,
-          postingReceipt,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { reviewId: command.reviewId, input: command.input },
         },
-      );
+        Settlement.SettlementExecution,
+        Effect.gen(function* () {
+          const review = yield* currentReview(
+            tx,
+            command.scope,
+            command.reviewId,
+            command.input.reviewDigest,
+          );
 
-      yield* persist(tx, "payroll_settlement_executions", result);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
+          yield* requireCapacity(tx, review);
 
-      return result;
+          const approval = yield* readRetained(
+            tx,
+            command.scope,
+            "payroll_settlement_approvals",
+            command.input.approvalId,
+            Settlement.SettlementApproval,
+          );
+
+          if (
+            approval.reviewId !== review.id ||
+            approval.reviewDigest !== review.digest ||
+            Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
+            (yield* Ledger.readOperatorMembership(tx, command.scope.bookId, approval.actorId))
+              .length !== 1 ||
+            (yield* Foundation.readPayrollAccess(tx, command.scope.bookId, approval.actorId))
+              .length !== 1 ||
+            (yield* Ledger.readActorAdmission(tx, approval.actorId))[0]?.enabled === false
+          )
+            return yield* failure("ApprovalRequired");
+          yield* requireSettlementAccess(tx, command.scope, approval.actorId, false);
+
+          yield* requireMileageSubmission(tx, command.scope, review, approval.actorId);
+
+          if (!review.postingPlan && review.input.kind !== "reporting_only")
+            yield* requireInstructionAuthority(tx, command.scope, review, approval.actorId);
+
+          const postingReceipt =
+            review.postingPlan && approval.kernelApprovalId
+              ? yield* executeChangeInTransaction(tx, principal, {
+                  scope: command.scope,
+                  changeSetId: review.postingPlan.id,
+                  idempotencyKey: `${review.id}_post`,
+                  owner: owner(review),
+                  input: {
+                    version: 1,
+                    planDigest: review.postingPlan.planDigest,
+                    approvalId: approval.kernelApprovalId,
+                  },
+                })
+              : null;
+
+          if (review.postingPlan !== null && postingReceipt === null)
+            return yield* failure("ApprovalRequired");
+
+          if (review.cash) {
+            const bankLine = review.postingPlan?.groups[0]?.actions[0]?.lines.find(
+              (line) => line.accountId === review.cash?.accountId,
+            );
+
+            if (!postingReceipt || !bankLine) return yield* failure("InternalError");
+
+            const leg = {
+              statementId: review.cash.statementId,
+              rowOrdinal: review.cash.rowOrdinal,
+              voucherId: postingReceipt.voucherId,
+              lineId: bankLine.lineId,
+            };
+
+            yield* addMatch(
+              tx,
+              command.scope.bookId,
+              principal.actorId,
+              leg,
+              "explicit",
+              review.id,
+            );
+          }
+
+          const id = newId("payroll_settlement_execution");
+
+          const consequences = yield* commitConsequences(
+            tx,
+            command.scope,
+            principal,
+            review,
+            id,
+            command.idempotencyKey,
+          );
+
+          yield* recordMileageSuccessor(tx, command.scope, review, id);
+
+          const result = yield* seal(
+            tx,
+            command.scope,
+            principal,
+            operation,
+            command.idempotencyKey,
+            Settlement.SettlementExecution,
+            {
+              id,
+              reviewId: review.id,
+              approvalId: approval.id,
+              kind: review.input.kind,
+              ...consequences,
+              remainingReceivableMinor: review.outputs.remainingReceivableMinor,
+              postingReceipt,
+            },
+          );
+
+          yield* persist(tx, "payroll_settlement_executions", result);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
+      );
     },
     "update",
   );

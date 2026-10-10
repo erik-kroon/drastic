@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -8,7 +10,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { sourceCoverageCopy } from "./copy";
 import { BankSourceCoverageInspector } from "./review";
@@ -22,7 +24,7 @@ export function BankSourceCoveragePanel(props: Props) {
 function Panel({ book, locale }: Props) {
   const copy = sourceCoverageCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [id, setId] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const base = `${bookPath(book)}/bank-source-coverage`;
@@ -45,7 +47,7 @@ function Panel({ book, locale }: Props) {
       const report = await readAccounting(
         base,
         Coverage.BankSourceCoverageReport,
-        mutationOptions(base, JSON.stringify(input), keys.current),
+        keys.current.options(base, JSON.stringify(input)),
       );
 
       if (
@@ -87,7 +89,7 @@ function Panel({ book, locale }: Props) {
               endsOn: fields.get("endsOn"),
             });
 
-            if (decoded._tag === "None" || decoded.value.startsOn > decoded.value.endsOn) {
+            if (Option.isNone(decoded) || decoded.value.startsOn > decoded.value.endsOn) {
               setInvalid(true);
 
               return;

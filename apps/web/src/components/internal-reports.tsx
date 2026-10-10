@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { formatMinorAmount } from "@/lib/workspace-api";
@@ -11,7 +13,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { TrialBalance } from "@/components/trial-balance";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -86,7 +88,7 @@ function PrepareSnapshot({
 }) {
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const snapshot = useMutation({
@@ -96,7 +98,7 @@ function PrepareSnapshot({
       return readAccounting(
         path,
         Reports.ReportSnapshot,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (report) => {
@@ -120,7 +122,7 @@ function PrepareSnapshot({
           endsOn: fields.get("endsOn"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;

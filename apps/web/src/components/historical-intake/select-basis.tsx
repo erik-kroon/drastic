@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -10,12 +11,7 @@ import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 const review = Schema.Struct({
   cutoverOn: Historical.SelectBasis.fields.cutoverOn,
@@ -36,7 +32,7 @@ export function SelectHistoricalBasis({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const opening = mode === "opening_set";
   const path = `${bookPath(book)}/${opening ? "historical-openings" : "historical-bases"}`;
 
@@ -54,7 +50,7 @@ export function SelectHistoricalBasis({
     mutationFn: async (
       input: typeof Historical.SelectBasis.Type | typeof Historical.PrepareOpening.Type,
     ) => {
-      const options = mutationOptions(path, JSON.stringify(input), keys.current);
+      const options = keys.current.options(path, JSON.stringify(input));
 
       const result = opening
         ? (await readAccounting(path, Historical.OpeningPreparation, options)).basis

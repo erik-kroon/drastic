@@ -1,8 +1,10 @@
+import { runBookCommand } from "../book-commands";
 import * as Crm from "@open-erp/contracts/crm-master";
 import * as Effect from "effect/Effect";
 import * as CrmDb from "../../db/commerce/crm-master";
 import { customerDirectoryFinancials } from "./customer-directory";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
 import {
@@ -112,86 +114,78 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "crm_add_annotation",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "crm_add_annotation",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         AnnotationSchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, CrmDb.crmMasterTables, true);
+          yield* lockBookForUpdate(transaction, command.scope);
+          const input = yield* decode(AddAnnotationSchema, command.input);
+          yield* exactKeys(input, ["partyId", "kind", "label", "detail", "evidenceId"]);
+
+          if (!annotationKinds.includes(input.kind)) return yield* failure("InvalidJournal");
+
+          if (
+            input.partyId.length > 200 ||
+            input.label.length > 200 ||
+            input.detail.length > 2000 ||
+            input.evidenceId.length > 200
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          const evidence = yield* CrmDb.readEvidenceIdentity(
+            transaction,
+            command.scope.bookId,
+            input.evidenceId,
+          );
+
+          if (evidence.length === 0) return yield* failure("MissingEvidence");
+
+          const parties = yield* CrmDb.readPartyExists(
+            transaction,
+            command.scope.bookId,
+            input.partyId,
+          );
+
+          if (parties[0]?.present !== true) return yield* failure("NotFound");
+          const id = newId("crm");
+          yield* CrmDb.insertAnnotation(transaction, {
+            bookId: command.scope.bookId,
+            partyId: input.partyId,
+            id,
+            kind: input.kind,
+            label: input.label,
+            detail: input.detail,
+            evidenceId: input.evidenceId,
+            recordedBy: principal.actorId,
+          });
+          const recorded = yield* CrmDb.readAnnotation(transaction, command.scope.bookId, id);
+          const row = recorded[0];
+
+          if (!row) return yield* failure("InternalError");
+
+          const result = yield* decode(AnnotationSchema, {
+            id: row.id,
+            partyId: row.partyId,
+            kind: row.kind,
+            label: row.label,
+            detail: row.detail,
+            evidenceId: row.evidenceId,
+            recordedBy: row.recordedBy,
+            recordedAt: row.recordedAt,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, CrmDb.crmMasterTables, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const input = yield* decode(AddAnnotationSchema, command.input);
-      yield* exactKeys(input, ["partyId", "kind", "label", "detail", "evidenceId"]);
-
-      if (!annotationKinds.includes(input.kind)) return yield* failure("InvalidJournal");
-
-      if (
-        input.partyId.length > 200 ||
-        input.label.length > 200 ||
-        input.detail.length > 2000 ||
-        input.evidenceId.length > 200
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const evidence = yield* CrmDb.readEvidenceIdentity(
-        transaction,
-        command.scope.bookId,
-        input.evidenceId,
-      );
-
-      if (evidence.length === 0) return yield* failure("MissingEvidence");
-
-      const parties = yield* CrmDb.readPartyExists(
-        transaction,
-        command.scope.bookId,
-        input.partyId,
-      );
-
-      if (parties[0]?.present !== true) return yield* failure("NotFound");
-      const id = newId("crm");
-      yield* CrmDb.insertAnnotation(transaction, {
-        bookId: command.scope.bookId,
-        partyId: input.partyId,
-        id,
-        kind: input.kind,
-        label: input.label,
-        detail: input.detail,
-        evidenceId: input.evidenceId,
-        recordedBy: principal.actorId,
-      });
-      const recorded = yield* CrmDb.readAnnotation(transaction, command.scope.bookId, id);
-      const row = recorded[0];
-
-      if (!row) return yield* failure("InternalError");
-
-      const result = yield* decode(AnnotationSchema, {
-        id: row.id,
-        partyId: row.partyId,
-        kind: row.kind,
-        label: row.label,
-        detail: row.detail,
-        evidenceId: row.evidenceId,
-        recordedBy: row.recordedBy,
-        recordedAt: row.recordedAt,
-      });
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "crm_add_annotation",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { requireResolvedSupplierQuestions } from "../work-questions";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -17,7 +18,8 @@ import { compilePurchasePlan } from "../purchases/recognition";
 import { evidenceHasPostedHistory } from "../purchases/shared";
 import { admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { liveInvoice } from "./register";
 import {
   commandReceipt,
@@ -59,6 +61,7 @@ export const resolveCashInvoiceProfileInTransaction = Effect.fn(
   const vatWitness = resolved.families.find((family) => family.family === "vat")?.witness;
 
   if (!postingWitness || !vatWitness) return yield* failure("UnsupportedProfile");
+
   const facts = yield* ProfileDb.readFactRevisions(transaction, scope.entityId, date, date);
 
   const methods = facts.filter(
@@ -71,6 +74,7 @@ export const resolveCashInvoiceProfileInTransaction = Effect.fn(
   const method = methods[0];
 
   if (methods.length !== 1 || !method) return yield* failure("UnsupportedProfile");
+
   const fact = yield* decode(Profiles.FactRevision, method.body);
 
   if (
@@ -86,6 +90,7 @@ export const resolveCashInvoiceProfileInTransaction = Effect.fn(
     );
 
     if (!row) return yield* failure("UnsupportedProfile");
+
     const release = yield* decode(Profiles.RuleRelease, row.body);
 
     if (
@@ -206,234 +211,256 @@ export const admitCashInvoiceInTransaction = Effect.fn("commerce.invoices.admitC
   ) {
     const operation = "commerce_admit_cash_invoice";
 
-    const request = yield* replay(
+    return yield* runBookCommand(
       transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      command.input,
-      Commerce.Invoice,
-    );
-
-    if (request.previous) return request.previous;
-    const input = yield* decode(CashMethod.AdmitCashInvoice, command.input);
-    const head = (yield* DraftDb.readDraft(transaction, command.scope.bookId, input.draftId))[0];
-
-    if (!head) return yield* failure("NotFound");
-
-    if (head.currentRevision !== input.expectedRevision) return yield* failure("StaleDependency");
-
-    const retained = (yield* DraftDb.readHeadRevision(
-      transaction,
-      command.scope.bookId,
-      head.id,
-      head.currentRevision,
-    ))[0];
-
-    if (!retained) return yield* failure("NotFound");
-    const draft = yield* decode(Drafts.SupplierInvoiceDraftRevision, retained.body);
-
-    if (draft.digest !== input.expectedDigest) return yield* failure("StaleDependency");
-
-    yield* requireResolvedSupplierQuestions(transaction, command.scope, input.draftId);
-
-    if (
-      (yield* Db.readDraftAdoption(transaction, command.scope.bookId, head.id)).length ||
-      (yield* readSealedDraft(transaction, command.scope.bookId, head.id, "supplier")).length
-    )
-      return yield* failure("IdempotencyConflict");
-    const content = draft.content;
-
-    if (
-      !content.documentDate ||
-      !content.dueDate ||
-      !content.supplierDocumentNumber ||
-      content.dueDate < content.documentDate ||
-      content.currency !== "SEK" ||
-      content.currencyScale !== 2 ||
-      content.supplier.countryCode !== "SE" ||
-      content.buyer.countryCode !== "SE" ||
-      draft.totals.sourceTotalMatches !== true ||
-      draft.totals.grossMinor === null ||
-      BigInt(draft.totals.grossMinor) <= 0n
-    )
-      return yield* failure("UnsupportedProfile");
-    const book = yield* readCashBook(transaction, command.scope);
-
-    const qualified = yield* resolveCashInvoiceProfileInTransaction(
-      transaction,
-      command.scope,
-      content.documentDate,
-    );
-
-    if (
-      (yield* YearEndDb.readBlockingRun(transaction, command.scope.bookId, content.documentDate))[0]
-    )
-      return yield* failure("StaleDependency");
-
-    yield* requireCashAccounts(transaction, command.scope, input, content.documentDate, qualified);
-
-    const party = (yield* RegisterDb.readCounterpartyHead(
-      transaction,
-      command.scope.bookId,
-      content.counterpartyId,
-    ))[0];
-
-    if (!party) return yield* failure("NotFound");
-
-    if (party.currentRevision !== content.counterpartyRevision)
-      return yield* failure("StaleDependency");
-
-    if (party.role !== "supplier" && party.role !== "both") return yield* failure("InvalidJournal");
-
-    if (
-      (yield* Db.readInvoiceIdentity(
-        transaction,
-        command.scope.bookId,
-        party.id,
-        content.supplierDocumentNumber,
-      )).length
-    )
-      return yield* failure("IdempotencyConflict");
-
-    const evidence = yield* readEvidenceReference(
-      transaction,
-      command.scope.bookId,
-      content.sourceEvidenceId,
-    );
-
-    if (evidence.sha256 !== draft.sourceEvidence.sha256) return yield* failure("MissingEvidence");
-
-    if (
-      (yield* Db.readSourceAdoption(transaction, command.scope.bookId, content.sourceEvidenceId))
-        .length
-    )
-      return yield* failure("IdempotencyConflict");
-
-    if (
-      yield* evidenceHasPostedHistory(transaction, command.scope.bookId, content.sourceEvidenceId)
-    )
-      return yield* failure("AlreadyPosted");
-    const id = newId("invoice");
-
-    // This existing pure source compiler validates retained original facts and
-    // reviewed treatment. Its prospective journal/tax facts are NOT persisted.
-    const compiled = yield* compilePurchasePlan(transaction, command.scope, {
-      recognitionId: id,
-      book,
-      content: yield* toJsonObject(content),
-      draftLines: content.lines,
-      assignments: input.lineAssignments,
-      controlAccountId: input.controlAccountId,
-      inputVatAccountId: input.inputVatAccountId,
-      taxPoint: { taxPointOn: content.documentDate, basis: "document_date" },
-      recognitionDate: content.documentDate,
-    });
-
-    if (compiled.plan.payableMinor !== draft.totals.grossMinor)
-      return yield* failure("InvalidJournal");
-
-    const basis = yield* decode(CashMethod.CashInvoiceBasis, {
-      profile: input.profile,
-      direction: "purchase",
-      draftId: draft.id,
-      draftRevision: draft.revision,
-      draftDigest: draft.digest,
-      ...qualified,
-      vatMethod: "cash",
-      controlAccountId: input.controlAccountId,
-      inputVatAccountId: input.inputVatAccountId,
-      componentPolicy: "tax_first_cumulative_v1",
-      rounding: "half_up",
-      lines: compiled.selections.map((line) => ({
-        sourceLineId: line.lineId,
-        expenseAccountId: line.expenseAccountId,
-        netMinor: line.netMinor,
-        taxMinor: line.sourceTaxMinor,
-        grossMinor: line.sourceGrossMinor,
-        deductibleMinor: line.sourceTaxMinor,
-        treatment: line.treatment,
-      })),
-    });
-
-    yield* requireInsertAccess(transaction, [
-      "commerce_invoices",
-      "commerce_invoice_revisions",
-      "commerce_control_accounts",
-    ]);
-    yield* RegisterDb.claimControlAccount(
-      transaction,
-      command.scope.bookId,
-      input.controlAccountId,
-      "supplier",
-    );
-    const counterpartyName = party.revision.displayName;
-
-    if (typeof counterpartyName !== "string") return yield* failure("InternalError");
-
-    const body = yield* toJsonObject({
-      id,
-      scope: command.scope,
-      kind: "cash_method_supplier_invoice_v1",
-      direction: "supplier",
-      counterpartyId: party.id,
-      counterpartyRevision: party.currentRevision,
-      counterpartyName,
-      documentNumber: content.supplierDocumentNumber,
-      issuedOn: content.documentDate,
-      currency: book.currency,
-      currencyScale: book.currencyScale,
-      amountMinor: compiled.plan.payableMinor,
-      controlAccountId: input.controlAccountId,
-      evidence,
-      recognition: null,
-      cashMethod: basis,
-    });
-
-    yield* Db.insertCashInvoice(transaction, {
-      bookId: command.scope.bookId,
-      id,
-      draftId: draft.id,
-      counterpartyId: party.id,
-      counterpartyRevision: party.currentRevision,
-      documentNumber: content.supplierDocumentNumber,
-      issuedOn: content.documentDate,
-      amountMinor: compiled.plan.payableMinor,
-      controlAccountId: input.controlAccountId,
-      evidenceId: content.sourceEvidenceId,
-      body,
-    });
-    yield* RegisterDb.insertInvoiceRevision(transaction, {
-      bookId: command.scope.bookId,
-      invoiceId: id,
-      revision: "1",
-      evidenceId: content.sourceEvidenceId,
-      body: yield* toJsonObject({
-        id,
+      {
         scope: command.scope,
-        revision: "1",
-        dueOn: content.dueDate,
-        description: content.title,
-        evidence,
-        reason: input.reason,
-        createdAt: yield* isoNow(transaction),
-        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-      }),
-    });
-    const result = yield* liveInvoice(transaction, command.scope.bookId, id);
-    yield* YearEndDb.bumpPopulation(transaction, command.scope.bookId);
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      result,
-    );
+        idempotencyKey: command.idempotencyKey,
+        operation: operation,
+        actorId: principal.actorId,
+        input: command.input,
+      },
+      Commerce.Invoice,
+      Effect.gen(function* () {
+        const input = yield* decode(CashMethod.AdmitCashInvoice, command.input);
 
-    return result;
+        const head = (yield* DraftDb.readDraft(
+          transaction,
+          command.scope.bookId,
+          input.draftId,
+        ))[0];
+
+        if (!head) return yield* failure("NotFound");
+
+        if (head.currentRevision !== input.expectedRevision)
+          return yield* failure("StaleDependency");
+
+        const retained = (yield* DraftDb.readHeadRevision(
+          transaction,
+          command.scope.bookId,
+          head.id,
+          head.currentRevision,
+        ))[0];
+
+        if (!retained) return yield* failure("NotFound");
+
+        const draft = yield* decode(Drafts.SupplierInvoiceDraftRevision, retained.body);
+
+        if (draft.digest !== input.expectedDigest) return yield* failure("StaleDependency");
+
+        yield* requireResolvedSupplierQuestions(transaction, command.scope, input.draftId);
+
+        if (
+          (yield* Db.readDraftAdoption(transaction, command.scope.bookId, head.id)).length ||
+          (yield* readSealedDraft(transaction, command.scope.bookId, head.id, "supplier")).length
+        )
+          return yield* failure("IdempotencyConflict");
+
+        const content = draft.content;
+
+        if (
+          !content.documentDate ||
+          !content.dueDate ||
+          !content.supplierDocumentNumber ||
+          content.dueDate < content.documentDate ||
+          content.currency !== "SEK" ||
+          content.currencyScale !== 2 ||
+          content.supplier.countryCode !== "SE" ||
+          content.buyer.countryCode !== "SE" ||
+          draft.totals.sourceTotalMatches !== true ||
+          draft.totals.grossMinor === null ||
+          BigInt(draft.totals.grossMinor) <= 0n
+        )
+          return yield* failure("UnsupportedProfile");
+
+        const book = yield* readCashBook(transaction, command.scope);
+
+        const qualified = yield* resolveCashInvoiceProfileInTransaction(
+          transaction,
+          command.scope,
+          content.documentDate,
+        );
+
+        if (
+          (yield* YearEndDb.readBlockingRun(
+            transaction,
+            command.scope.bookId,
+            content.documentDate,
+          ))[0]
+        )
+          return yield* failure("StaleDependency");
+
+        yield* requireCashAccounts(
+          transaction,
+          command.scope,
+          input,
+          content.documentDate,
+          qualified,
+        );
+
+        const party = (yield* RegisterDb.readCounterpartyHead(
+          transaction,
+          command.scope.bookId,
+          content.counterpartyId,
+        ))[0];
+
+        if (!party) return yield* failure("NotFound");
+
+        if (party.currentRevision !== content.counterpartyRevision)
+          return yield* failure("StaleDependency");
+
+        if (party.role !== "supplier" && party.role !== "both")
+          return yield* failure("InvalidJournal");
+
+        if (
+          (yield* Db.readInvoiceIdentity(
+            transaction,
+            command.scope.bookId,
+            party.id,
+            content.supplierDocumentNumber,
+          )).length
+        )
+          return yield* failure("IdempotencyConflict");
+
+        const evidence = yield* readEvidenceReference(
+          transaction,
+          command.scope.bookId,
+          content.sourceEvidenceId,
+        );
+
+        if (evidence.sha256 !== draft.sourceEvidence.sha256)
+          return yield* failure("MissingEvidence");
+
+        if (
+          (yield* Db.readSourceAdoption(
+            transaction,
+            command.scope.bookId,
+            content.sourceEvidenceId,
+          )).length
+        )
+          return yield* failure("IdempotencyConflict");
+
+        if (
+          yield* evidenceHasPostedHistory(
+            transaction,
+            command.scope.bookId,
+            content.sourceEvidenceId,
+          )
+        )
+          return yield* failure("AlreadyPosted");
+
+        const id = newId("invoice");
+
+        // This existing pure source compiler validates retained original facts and
+        // reviewed treatment. Its prospective journal/tax facts are NOT persisted.
+        const compiled = yield* compilePurchasePlan(transaction, command.scope, {
+          recognitionId: id,
+          book,
+          content: yield* toJsonObject(content),
+          draftLines: content.lines,
+          assignments: input.lineAssignments,
+          controlAccountId: input.controlAccountId,
+          inputVatAccountId: input.inputVatAccountId,
+          taxPoint: { taxPointOn: content.documentDate, basis: "document_date" },
+          recognitionDate: content.documentDate,
+        });
+
+        if (compiled.plan.payableMinor !== draft.totals.grossMinor)
+          return yield* failure("InvalidJournal");
+
+        const basis = yield* decode(CashMethod.CashInvoiceBasis, {
+          profile: input.profile,
+          direction: "purchase",
+          draftId: draft.id,
+          draftRevision: draft.revision,
+          draftDigest: draft.digest,
+          ...qualified,
+          vatMethod: "cash",
+          controlAccountId: input.controlAccountId,
+          inputVatAccountId: input.inputVatAccountId,
+          componentPolicy: "tax_first_cumulative_v1",
+          rounding: "half_up",
+          lines: compiled.selections.map((line) => ({
+            sourceLineId: line.lineId,
+            expenseAccountId: line.expenseAccountId,
+            netMinor: line.netMinor,
+            taxMinor: line.sourceTaxMinor,
+            grossMinor: line.sourceGrossMinor,
+            deductibleMinor: line.sourceTaxMinor,
+            treatment: line.treatment,
+          })),
+        });
+
+        yield* requireInsertAccess(transaction, [
+          "commerce_invoices",
+          "commerce_invoice_revisions",
+          "commerce_control_accounts",
+        ]);
+        yield* RegisterDb.claimControlAccount(
+          transaction,
+          command.scope.bookId,
+          input.controlAccountId,
+          "supplier",
+        );
+        const counterpartyName = party.revision.displayName;
+
+        if (typeof counterpartyName !== "string") return yield* failure("InternalError");
+
+        const body = yield* toJsonObject({
+          id,
+          scope: command.scope,
+          kind: "cash_method_supplier_invoice_v1",
+          direction: "supplier",
+          counterpartyId: party.id,
+          counterpartyRevision: party.currentRevision,
+          counterpartyName,
+          documentNumber: content.supplierDocumentNumber,
+          issuedOn: content.documentDate,
+          currency: book.currency,
+          currencyScale: book.currencyScale,
+          amountMinor: compiled.plan.payableMinor,
+          controlAccountId: input.controlAccountId,
+          evidence,
+          recognition: null,
+          cashMethod: basis,
+        });
+
+        yield* Db.insertCashInvoice(transaction, {
+          bookId: command.scope.bookId,
+          id,
+          draftId: draft.id,
+          counterpartyId: party.id,
+          counterpartyRevision: party.currentRevision,
+          documentNumber: content.supplierDocumentNumber,
+          issuedOn: content.documentDate,
+          amountMinor: compiled.plan.payableMinor,
+          controlAccountId: input.controlAccountId,
+          evidenceId: content.sourceEvidenceId,
+          body,
+        });
+        yield* RegisterDb.insertInvoiceRevision(transaction, {
+          bookId: command.scope.bookId,
+          invoiceId: id,
+          revision: "1",
+          evidenceId: content.sourceEvidenceId,
+          body: yield* toJsonObject({
+            id,
+            scope: command.scope,
+            revision: "1",
+            dueOn: content.dueDate,
+            description: content.title,
+            evidence,
+            reason: input.reason,
+            createdAt: yield* isoNow(transaction),
+            receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+          }),
+        });
+        const result = yield* liveInvoice(transaction, command.scope.bookId, id);
+        yield* YearEndDb.bumpPopulation(transaction, command.scope.bookId);
+
+        return result;
+      }),
+    );
   },
 );
 

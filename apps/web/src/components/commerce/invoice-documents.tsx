@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Documents from "@open-erp/contracts/invoice-documents";
@@ -39,7 +40,10 @@ function DocumentPanel(props: IssuedDocumentProps) {
       checkScope(book, issue.scope);
 
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-issues/${encodeURIComponent(issue.id)}/documents`,
+        (client) =>
+          client.invoiceDocuments.invoiceDocumentHistory({
+            params: { ...bookScope(book), id: issue.id },
+          }),
         Documents.InvoiceDocumentHistory,
         { signal },
       );

@@ -1,8 +1,10 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { personName, type Lifecycle } from "./lifecycle";
 import * as Predicate from "effect/Predicate";
 import * as Match from "effect/Match";
 import { SetupBlock, SetupText, setupLayoutStyles } from "@open-erp/ui/components/setup-parts";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -22,13 +24,7 @@ import { SetupTable } from "@open-erp/ui/components/setup-table";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 import { formatDate, formatMoment, useOnboardingCommand, useOnboardingFacts } from "./data";
 import { PendingRead, type OpenOnboardingView } from "./shared";
 
@@ -140,7 +136,7 @@ export function OnboardingProfile({
       queryKey: [...bookKey(book), "evidence", id],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         readAccounting(
-          `${bookPath(book)}/evidence/${encodeURIComponent(id)}`,
+          (client) => client.accounting.getEvidence({ params: { ...bookScope(book), id: id } }),
           Accounting.EvidenceContent,
           { signal },
         ),
@@ -401,7 +397,7 @@ function FactEditor({
 
   const [endsOn, setEndsOn] = useState(Predicate.hasProperty(known, "endsOn") ? known.endsOn : "");
   const cache = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const save = useMutation({
     mutationFn: async (input: {
@@ -417,7 +413,7 @@ function FactEditor({
       const evidence = await readAccounting(
         path,
         Accounting.Evidence,
-        mutationOptions(
+        keys.current.options(
           path,
           JSON.stringify({
             title: "Du angav",
@@ -425,7 +421,6 @@ function FactEditor({
             mediaType: "application/json",
             origin: "company-profile",
           }),
-          keys.current,
         ),
       );
 
@@ -439,7 +434,7 @@ function FactEditor({
       return readAccounting(
         factPath,
         Profiles.FactRevision,
-        mutationOptions(factPath, JSON.stringify(command), keys.current),
+        keys.current.options(factPath, JSON.stringify(command)),
       );
     },
     onSuccess: async () => {

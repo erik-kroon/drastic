@@ -12,8 +12,8 @@ import {
   fenceOnboardingTarget,
   retainProofAndActivate,
   retainOperationalProof,
-} from "../../src/db/onboarding-operations";
-import { readOnboardingRecovery } from "../../src/application/onboarding-recovery-read";
+} from "../../src/application/onboarding/index";
+import { readOnboardingRecovery } from "../../src/application/onboarding/index";
 import { captureRelease } from "./artifacts";
 import { backup, restore } from "./workflows";
 import {

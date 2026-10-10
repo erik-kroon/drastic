@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -9,7 +10,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { sourceCoverageCopy } from "./copy";
 
@@ -28,7 +29,10 @@ export function BankSourceCoverageInspector({
     queryKey: [...bookKey(book), "bank-source-coverage", id],
     queryFn: async ({ signal }) => {
       const value = await readAccounting(
-        `${bookPath(book)}/bank-source-coverage/${encodeURIComponent(id)}`,
+        (client) =>
+          client.bankSourceCoverage.getBankSourceCoverage({
+            params: { ...bookScope(book), id: id },
+          }),
         Coverage.BankSourceCoverageView,
         { signal },
       );

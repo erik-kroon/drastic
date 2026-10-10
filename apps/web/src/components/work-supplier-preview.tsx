@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -10,10 +11,10 @@ import { EvidenceFile } from "@open-erp/ui/kanon/record";
 import { CheckRow } from "@open-erp/ui/kanon/feedback";
 import { InlineAction } from "@open-erp/ui/kanon/action";
 import { useBookWorkspace, reviewPath } from "@/lib/book-context";
-import { readAccounting, bookKey, bookPath } from "@/lib/accounting-api";
+import { readAccounting, bookKey } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { enteredExpenseSource } from "@/lib/source-documents";
-import { commerceKey, commercePath, checkScope } from "@/components/commerce/shared";
+import { commerceKey, checkScope } from "@/components/commerce/shared";
 import { AccountingStatus } from "@/components/accounting-status";
 import { supplierPostingSummary } from "./commerce/supplier-acceptance";
 import {
@@ -44,7 +45,10 @@ export function WorkSupplierPreview({
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/supplier-acceptance-reviews/${encodeURIComponent(reviewId)}`,
+        (client) =>
+          client.supplierAcceptance.getSupplierAcceptanceReview({
+            params: { ...bookScope(book), id: reviewId },
+          }),
         Acceptance.SupplierAcceptanceView,
         { signal },
       );
@@ -78,7 +82,10 @@ export function WorkSupplierPreview({
       if (!evidenceRef) throw new Error("Supplier evidence is required");
 
       const result = await readAccounting(
-        `${bookPath(book)}/evidence/${encodeURIComponent(evidenceRef.evidenceId)}`,
+        (client) =>
+          client.accounting.getEvidence({
+            params: { ...bookScope(book), id: evidenceRef.evidenceId },
+          }),
         Accounting.EvidenceContent,
         { signal },
       );

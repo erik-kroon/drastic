@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Disposals from "@open-erp/contracts/asset-disposals";
@@ -6,7 +7,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Box } from "@open-erp/ui/components/box";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { AssetActionLayout } from "@open-erp/ui/components/asset-action";
 import { AssetDisposalReview } from "./proceeds-review";
@@ -31,12 +32,16 @@ export function AssetActionWorkspace(props: {
 
       const [schedule, view] = await Promise.all([
         readAccounting(
-          `${bookPath(book)}/schedules/${encodeURIComponent(scheduleId)}`,
+          (client) =>
+            client.subledgers.getSchedule({ params: { ...bookScope(book), id: scheduleId } }),
           Subledgers.ScheduleView,
           { signal },
         ),
         readAccounting(
-          `${bookPath(book)}/asset-disposals/${encodeURIComponent(reviewId)}`,
+          (client) =>
+            client.assetDisposals.getAssetProceedsDisposal({
+              params: { ...bookScope(book), id: reviewId },
+            }),
           Disposals.View,
           { signal },
         ),

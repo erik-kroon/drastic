@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { FinancialImport } from "./financial";
 import { RefreshOpening } from "./refresh-opening";
 import { SelectHistoricalBasis } from "./select-basis";
@@ -9,7 +10,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { Button } from "@open-erp/ui/components/button";
 import { AccountingStatus } from "@/components/accounting-status";
 import { reviewPath, useBookWorkspace } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { checkScope } from "@/components/commerce/shared";
 
 export function HistoricalBases({
@@ -29,7 +30,8 @@ export function HistoricalBases({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/historical-bases`,
+        (client) =>
+          client.historicalMigration.listHistoricalBases({ params: { ...bookScope(book) } }),
         Historical.BasisInventory,
         { signal },
       );

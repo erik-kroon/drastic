@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/peppol-exchange";
 import * as Domain from "@open-erp/domain/peppol-exchange";
 import * as Effect from "effect/Effect";
@@ -6,7 +7,9 @@ import * as Db from "../../db/commerce/peppol-exchange";
 import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { decode, requireTableAccess, toJsonObject, withBook, type Scope } from "./support";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { failure } from "../failures";
 import { bindingSubject, partyDigest, readPeppolDocument } from "./peppol-document";
 import { accessPoint, readBinding, capturePeppol } from "./peppol-context";
@@ -25,68 +28,61 @@ export const registerPeppolBinding = Effect.fn("peppol.registerBinding")(functio
   command: Command<typeof Contracts.RegisterBinding.Type>,
 ) {
   return yield* withBook(token, command.scope, true, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_register_binding",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "peppol_register_binding",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Binding,
+      Effect.gen(function* () {
+        yield* PostingDb.lockBookForUpdate(tx, command.scope);
+        yield* requireTableAccess(tx, Db.tables, true);
+        const source = yield* readPeppolDocument(tx, command.scope, command.input.document);
+        const party = command.input.role === "sender" ? source.seller : source.buyer;
+
+        if (
+          party.countryCode !== "SE" ||
+          party.registrationId?.replaceAll("-", "") !== command.input.participantId ||
+          (command.input.role === "sender" && command.input.paymentAccountReference === null) ||
+          (yield* PostingDb.readEvidence(tx, command.scope.bookId, command.input.evidenceId))
+            .length === 0
+        )
+          return yield* failure("InvalidJournal");
+        const subjectKey = yield* bindingSubject(source, command.input.role);
+
+        const prior = (yield* Db.readCurrentBinding(
+          tx,
+          command.scope.bookId,
+          command.input.role,
+          subjectKey,
+        ))[0];
+
+        const previous = prior ? yield* decode(Contracts.Binding, prior.body) : null;
+
+        const body = {
+          ...command.input,
+          id: newId("peppol_binding"),
+          scope: command.scope,
+          subjectKey,
+          partyDigest: yield* partyDigest(party),
+          revision: (BigInt(previous?.revision ?? "0") + 1n).toString(),
+          createdBy: principal.actorId,
+          createdAt: yield* isoNow(tx),
+        };
+
+        const binding = yield* decode(Contracts.Binding, { ...body, digest: yield* digest(body) });
+        yield* Db.insertBinding(tx, command.scope.bookId, {
+          ...binding,
+          body: yield* toJsonObject(binding),
+        });
+
+        return { receipt: yield* toJsonObject(binding), result: binding };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* PostingDb.lockBookForUpdate(tx, command.scope);
-    yield* requireTableAccess(tx, Db.tables, true);
-    const source = yield* readPeppolDocument(tx, command.scope, command.input.document);
-    const party = command.input.role === "sender" ? source.seller : source.buyer;
-
-    if (
-      party.countryCode !== "SE" ||
-      party.registrationId?.replaceAll("-", "") !== command.input.participantId ||
-      (command.input.role === "sender" && command.input.paymentAccountReference === null) ||
-      (yield* PostingDb.readEvidence(tx, command.scope.bookId, command.input.evidenceId)).length ===
-        0
-    )
-      return yield* failure("InvalidJournal");
-    const subjectKey = yield* bindingSubject(source, command.input.role);
-
-    const prior = (yield* Db.readCurrentBinding(
-      tx,
-      command.scope.bookId,
-      command.input.role,
-      subjectKey,
-    ))[0];
-
-    const previous = prior ? yield* decode(Contracts.Binding, prior.body) : null;
-
-    const body = {
-      ...command.input,
-      id: newId("peppol_binding"),
-      scope: command.scope,
-      subjectKey,
-      partyDigest: yield* partyDigest(party),
-      revision: (BigInt(previous?.revision ?? "0") + 1n).toString(),
-      createdBy: principal.actorId,
-      createdAt: yield* isoNow(tx),
-    };
-
-    const binding = yield* decode(Contracts.Binding, { ...body, digest: yield* digest(body) });
-    yield* Db.insertBinding(tx, command.scope.bookId, {
-      ...binding,
-      body: yield* toJsonObject(binding),
-    });
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "peppol_register_binding",
-      principal.actorId,
-      yield* toJsonObject(binding),
-    );
-
-    return binding;
   });
 });
 
@@ -121,29 +117,22 @@ export const preparePeppolArtifact = Effect.fn("peppol.prepareArtifact")(functio
     );
 
   return yield* withBook(token, command.scope, false, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_prepare_artifact",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "peppol_prepare_artifact",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Artifact,
-    );
+      Effect.gen(function* () {
+        const artifact = yield* readArtifact(tx, command.scope, review.artifact.id);
 
-    if (request.previous) return request.previous;
-    const artifact = yield* readArtifact(tx, command.scope, review.artifact.id);
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "peppol_prepare_artifact",
-      principal.actorId,
-      yield* toJsonObject(artifact),
+        return { receipt: yield* toJsonObject(artifact), result: artifact };
+      }),
     );
-
-    return artifact;
   });
 });
 
@@ -595,28 +584,20 @@ export const collectPeppolOutcome = Effect.fn("peppol.collect")(function* (
   const projected = yield* recordOutcome(token, command.scope, captured.attempt, outcome);
 
   return yield* withBook(token, command.scope, false, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "peppol_collect",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "peppol_collect",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.Attempt,
+      Effect.gen(function* () {
+        return { receipt: yield* toJsonObject(projected), result: projected };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "peppol_collect",
-      principal.actorId,
-      yield* toJsonObject(projected),
-    );
-
-    return projected;
   });
 });
 

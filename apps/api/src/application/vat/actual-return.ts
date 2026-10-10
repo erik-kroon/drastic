@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { SupportedCalculatorVersion } from "@open-erp/contracts/vat-filing-release";
@@ -18,7 +19,8 @@ import type { Transaction } from "../../db/transaction";
 import { decodeRelease } from "../company-profile-basis";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow, replay } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, toJsonObject, unsupported, withBook, type Scope } from "../commerce/support";
 import { digestBody } from "./basis";
 
@@ -1271,186 +1273,180 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_actual_vat_return",
-        principal.actorId,
-        payload,
-        ReturnSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireAccess(transaction, true);
-      yield* Ledger.lockBookForUpdate(transaction, command.scope);
-      const current = yield* captureBasis(transaction, command.scope, command.input);
-
-      if ((yield* captureDependencies(current)) !== dependencies) {
-        return yield* failure("StaleDependency");
-      }
-
-      const counted = yield* Db.countActualReturns(transaction, command.scope.bookId);
-
-      if ((counted[0]?.total ?? 0) >= returnInventoryBound) return yield* unsupported();
-      const ordinal = (yield* Db.readNextOrdinal(transaction, command.scope.bookId))[0]?.ordinal;
-
-      if (ordinal === undefined) return yield* failure("InternalError");
-      const id = newId("vatactual");
-      const recordedAt = yield* isoNow(transaction);
-
-      const body = yield* digestBody(
-        yield* toJsonObject({
-          id,
+        {
           scope: command.scope,
-          version: 1,
-          input: command.input,
-          basis,
-          calculation,
-          recordedAt,
-          receipt: {
-            key: command.idempotencyKey,
-            operation: "prepare_actual_vat_return",
-            actorId: principal.actorId,
-          },
-          externalState: "not_submitted",
-          assessedMinor: null,
-          paymentState: "not_paid",
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_actual_vat_return",
+          actorId: principal.actorId,
+          input: payload,
+        },
+        ReturnSchema,
+        Effect.gen(function* () {
+          yield* requireAccess(transaction, true);
+          yield* Ledger.lockBookForUpdate(transaction, command.scope);
+          const current = yield* captureBasis(transaction, command.scope, command.input);
+
+          if ((yield* captureDependencies(current)) !== dependencies) {
+            return yield* failure("StaleDependency");
+          }
+
+          const counted = yield* Db.countActualReturns(transaction, command.scope.bookId);
+
+          if ((counted[0]?.total ?? 0) >= returnInventoryBound) return yield* unsupported();
+
+          const ordinal = (yield* Db.readNextOrdinal(transaction, command.scope.bookId))[0]
+            ?.ordinal;
+
+          if (ordinal === undefined) return yield* failure("InternalError");
+          const id = newId("vatactual");
+          const recordedAt = yield* isoNow(transaction);
+
+          const body = yield* digestBody(
+            yield* toJsonObject({
+              id,
+              scope: command.scope,
+              version: 1,
+              input: command.input,
+              basis,
+              calculation,
+              recordedAt,
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "prepare_actual_vat_return",
+                actorId: principal.actorId,
+              },
+              externalState: "not_submitted",
+              assessedMinor: null,
+              paymentState: "not_paid",
+            }),
+          );
+
+          const result = yield* decode(ReturnSchema, body);
+          const net = calculation.boxes.find((row) => row.box === "49");
+
+          yield* Db.insertReturn(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            ordinal,
+            startsOn: result.input.startsOn,
+            endsOn: result.input.endsOn,
+            basisDigest: basis.digest,
+            basisEngine: basis.engine,
+            ruleReleaseId: basis.mappingRelease.releaseId,
+            ruleReleaseChecksum: basis.mappingRelease.checksum,
+            periodFactRevisionId: basis.registeredPeriod.factRevisionId,
+            filingReady: calculation.filingReady,
+            controlsReconciled: calculation.controlsReconciled,
+            coverageComplete: calculation.coverageComplete,
+            calculationSupported: calculation.calculationSupported,
+            exactNetMinor: net?.exactMinor ?? "0",
+            reportedNetMinor: net?.reportedMinor ?? "0",
+            residualNetMinor: net?.residualMinor ?? "0",
+            ledgerBoundary: basis.ledgerBoundary,
+            digest: result.digest,
+            body: yield* toJsonObject(result),
+            recordedAt,
+          });
+
+          yield* Db.insertBoxes(
+            transaction,
+            calculation.boxes.map((row) => ({
+              bookId: command.scope.bookId,
+              returnId: id,
+              box: row.box,
+              kind: row.kind,
+              exactMinor: row.exactMinor,
+              reportedMinor: row.reportedMinor,
+              residualMinor: row.residualMinor,
+            })),
+          );
+
+          yield* Db.insertContributions(
+            transaction,
+            calculation.contributions.map((row) => ({
+              bookId: command.scope.bookId,
+              returnId: id,
+              ordinal: row.ordinal,
+              factId: row.factId,
+              origin: row.origin,
+              mappingRuleId: row.mappingRuleId,
+              rateId: row.rateId,
+              box: row.box,
+              signedMinor: row.signedMinor,
+              basisMinor: row.basisMinor,
+              taxMinor: row.taxMinor,
+              revisionId: row.revisionId,
+              factDigest: row.digest,
+            })),
+          );
+
+          yield* Db.insertExclusions(
+            transaction,
+            calculation.exclusions.map((row) => ({
+              bookId: command.scope.bookId,
+              returnId: id,
+              ordinal: row.ordinal,
+              factId: row.factId,
+              origin: row.origin,
+              revisionId: row.revisionId,
+              reason: row.reason,
+              detail: row.detail,
+            })),
+          );
+
+          yield* Db.insertControls(
+            transaction,
+            calculation.controls.map((row) => ({
+              bookId: command.scope.bookId,
+              returnId: id,
+              accountId: row.accountId,
+              role: row.role,
+              reviewedOpeningMinor: row.reviewedOpeningMinor,
+              expectedClosingMinor: row.expectedClosingMinor,
+              frozenGlClosingMinor: row.frozenGlClosingMinor,
+              differenceMinor: row.differenceMinor,
+              reconciled: row.reconciled,
+            })),
+          );
+
+          const unresolved: Array<Db.ControlRowWrite> = [];
+
+          for (const control of calculation.controls) {
+            [...control.unexplainedRows, ...control.missingRows].forEach((row, index) => {
+              unresolved.push({
+                bookId: command.scope.bookId,
+                returnId: id,
+                accountId: control.accountId,
+                ordinal: index + 1,
+                state: row.state,
+                voucherId: row.voucherId,
+                lineId: row.lineId,
+                postingDate: row.postingDate,
+                signedMinor: row.signedMinor,
+              });
+            });
+          }
+
+          yield* Db.insertControlRows(transaction, unresolved);
+          yield* Db.insertCoverage(
+            transaction,
+            calculation.sourceCoverage.map((row) => ({
+              bookId: command.scope.bookId,
+              returnId: id,
+              family: row.family,
+              state: row.state,
+              evidenceId: row.evidenceId,
+              evidenceSha256: row.evidenceSha256,
+            })),
+          );
+
+          const saved = yield* toJsonObject(result);
+
+          return { receipt: saved, result: result };
         }),
       );
-
-      const result = yield* decode(ReturnSchema, body);
-      const net = calculation.boxes.find((row) => row.box === "49");
-
-      yield* Db.insertReturn(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        ordinal,
-        startsOn: result.input.startsOn,
-        endsOn: result.input.endsOn,
-        basisDigest: basis.digest,
-        basisEngine: basis.engine,
-        ruleReleaseId: basis.mappingRelease.releaseId,
-        ruleReleaseChecksum: basis.mappingRelease.checksum,
-        periodFactRevisionId: basis.registeredPeriod.factRevisionId,
-        filingReady: calculation.filingReady,
-        controlsReconciled: calculation.controlsReconciled,
-        coverageComplete: calculation.coverageComplete,
-        calculationSupported: calculation.calculationSupported,
-        exactNetMinor: net?.exactMinor ?? "0",
-        reportedNetMinor: net?.reportedMinor ?? "0",
-        residualNetMinor: net?.residualMinor ?? "0",
-        ledgerBoundary: basis.ledgerBoundary,
-        digest: result.digest,
-        body: yield* toJsonObject(result),
-        recordedAt,
-      });
-
-      yield* Db.insertBoxes(
-        transaction,
-        calculation.boxes.map((row) => ({
-          bookId: command.scope.bookId,
-          returnId: id,
-          box: row.box,
-          kind: row.kind,
-          exactMinor: row.exactMinor,
-          reportedMinor: row.reportedMinor,
-          residualMinor: row.residualMinor,
-        })),
-      );
-
-      yield* Db.insertContributions(
-        transaction,
-        calculation.contributions.map((row) => ({
-          bookId: command.scope.bookId,
-          returnId: id,
-          ordinal: row.ordinal,
-          factId: row.factId,
-          origin: row.origin,
-          mappingRuleId: row.mappingRuleId,
-          rateId: row.rateId,
-          box: row.box,
-          signedMinor: row.signedMinor,
-          basisMinor: row.basisMinor,
-          taxMinor: row.taxMinor,
-          revisionId: row.revisionId,
-          factDigest: row.digest,
-        })),
-      );
-
-      yield* Db.insertExclusions(
-        transaction,
-        calculation.exclusions.map((row) => ({
-          bookId: command.scope.bookId,
-          returnId: id,
-          ordinal: row.ordinal,
-          factId: row.factId,
-          origin: row.origin,
-          revisionId: row.revisionId,
-          reason: row.reason,
-          detail: row.detail,
-        })),
-      );
-
-      yield* Db.insertControls(
-        transaction,
-        calculation.controls.map((row) => ({
-          bookId: command.scope.bookId,
-          returnId: id,
-          accountId: row.accountId,
-          role: row.role,
-          reviewedOpeningMinor: row.reviewedOpeningMinor,
-          expectedClosingMinor: row.expectedClosingMinor,
-          frozenGlClosingMinor: row.frozenGlClosingMinor,
-          differenceMinor: row.differenceMinor,
-          reconciled: row.reconciled,
-        })),
-      );
-
-      const unresolved: Array<Db.ControlRowWrite> = [];
-
-      for (const control of calculation.controls) {
-        [...control.unexplainedRows, ...control.missingRows].forEach((row, index) => {
-          unresolved.push({
-            bookId: command.scope.bookId,
-            returnId: id,
-            accountId: control.accountId,
-            ordinal: index + 1,
-            state: row.state,
-            voucherId: row.voucherId,
-            lineId: row.lineId,
-            postingDate: row.postingDate,
-            signedMinor: row.signedMinor,
-          });
-        });
-      }
-
-      yield* Db.insertControlRows(transaction, unresolved);
-      yield* Db.insertCoverage(
-        transaction,
-        calculation.sourceCoverage.map((row) => ({
-          bookId: command.scope.bookId,
-          returnId: id,
-          family: row.family,
-          state: row.state,
-          evidenceId: row.evidenceId,
-          evidenceSha256: row.evidenceSha256,
-        })),
-      );
-
-      const saved = yield* toJsonObject(result);
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_actual_vat_return",
-        principal.actorId,
-        saved,
-      );
-
-      return result;
     },
     "update",
   );

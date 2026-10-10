@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as StatementContract from "@open-erp/contracts/report-statements";
 import { calculateStatementModel } from "@open-erp/domain/statements";
@@ -7,7 +8,9 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand, digest } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
+import { digest } from "./json";
 import { decode, toJsonObject, unsupported, withBook, type JsonObject } from "./commerce/support";
 import { readTableAccess } from "../db/commerce/access";
 import * as Db from "../db/report-statements";
@@ -333,131 +336,123 @@ export const prepareStatementSnapshot = Effect.fn("statements.prepare")(function
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_statement_snapshot",
-        principal.actorId,
-        yield* toJsonObject(command.input),
-        SnapshotSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireStatementAccess(transaction, true);
-      yield* exactInputKeys(yield* toJsonObject(command.input));
-      const book = (yield* Db.readStatementBook(transaction, command.scope.bookId))[0];
-
-      yield* requireNativeProfile(book);
-
-      if (book === undefined) return yield* failure("NotFound");
-
-      const boundary = book.committedSequence;
-      const cutoff = yield* isoNow(transaction);
-      const captured = yield* capture(transaction, command.scope, command.input, boundary);
-
-      const basis = statementBasis(
-        command.scope,
-        command.input,
-        captured,
-        boundary,
-        cutoff,
-        book.profileVersion,
-      );
-
-      const calculated = calculateStatementModel(command.input.mapping, basis);
-
-      if (Result.isFailure(calculated)) return yield* refusalFor(calculated.failure.code);
-
-      if (calculated.success.rows.length > Db.maximumStatementRows) {
-        return yield* unsupported();
-      }
-
-      const mapping = yield* toJsonObject(command.input.mapping);
-      const checksum = yield* digest(mapping);
-      const id = newId("statement");
-
-      const body = yield* toJsonObject({
-        kind: "semantic_statement_v1",
-        id,
-        scope: command.scope,
-        fiscalYear: captured.fiscalYear,
-        asOf: command.input.asOf,
-        plInterval: { startsOn: command.input.plStartsOn, endsOn: command.input.plEndsOn },
-        ledgerBoundary: boundary,
-        recordedCutoff: cutoff,
-        currency: book.currency,
-        currencyScale: book.currencyScale,
-        openingBasis: captured.openingBasis,
-        factRevisions: basis.factRevisions,
-        mappingRelease: { ...mapping, checksum },
-        balance: calculated.success.balance,
-        fiscalYtdProfitMinor: calculated.success.outcome.fiscalYtdProfitMinor,
-        coverage: calculated.success.coverage,
-        diagnostics: calculated.success.diagnostics,
-        calculationNodes: calculated.success.calculationNodes,
-        rowCount: calculated.success.rows.length,
-        contributionCount: calculated.success.contributions.length,
-        noFinancialEffect: calculated.success.outcome.noFinancialEffect,
-        createdAt: cutoff,
-        receipt: {
-          key: command.idempotencyKey,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
           operation: "prepare_statement_snapshot",
           actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
         },
-      });
+        SnapshotSchema,
+        Effect.gen(function* () {
+          yield* requireStatementAccess(transaction, true);
+          yield* exactInputKeys(yield* toJsonObject(command.input));
+          const book = (yield* Db.readStatementBook(transaction, command.scope.bookId))[0];
 
-      yield* Db.insertStatementSnapshot(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        fiscalYearId: captured.fiscalYear.id,
-        asOf: command.input.asOf,
-        sequence: BigInt(boundary),
-        body,
-      });
+          yield* requireNativeProfile(book);
 
-      yield* Db.insertStatementRows(
-        transaction,
-        yield* Effect.forEach(calculated.success.rows, (row) =>
-          Effect.map(toJsonObject(row), (encoded) => ({
+          if (book === undefined) return yield* failure("NotFound");
+
+          const boundary = book.committedSequence;
+          const cutoff = yield* isoNow(transaction);
+          const captured = yield* capture(transaction, command.scope, command.input, boundary);
+
+          const basis = statementBasis(
+            command.scope,
+            command.input,
+            captured,
+            boundary,
+            cutoff,
+            book.profileVersion,
+          );
+
+          const calculated = calculateStatementModel(command.input.mapping, basis);
+
+          if (Result.isFailure(calculated)) return yield* refusalFor(calculated.failure.code);
+
+          if (calculated.success.rows.length > Db.maximumStatementRows) {
+            return yield* unsupported();
+          }
+
+          const mapping = yield* toJsonObject(command.input.mapping);
+          const checksum = yield* digest(mapping);
+          const id = newId("statement");
+
+          const body = yield* toJsonObject({
+            kind: "semantic_statement_v1",
+            id,
+            scope: command.scope,
+            fiscalYear: captured.fiscalYear,
+            asOf: command.input.asOf,
+            plInterval: { startsOn: command.input.plStartsOn, endsOn: command.input.plEndsOn },
+            ledgerBoundary: boundary,
+            recordedCutoff: cutoff,
+            currency: book.currency,
+            currencyScale: book.currencyScale,
+            openingBasis: captured.openingBasis,
+            factRevisions: basis.factRevisions,
+            mappingRelease: { ...mapping, checksum },
+            balance: calculated.success.balance,
+            fiscalYtdProfitMinor: calculated.success.outcome.fiscalYtdProfitMinor,
+            coverage: calculated.success.coverage,
+            diagnostics: calculated.success.diagnostics,
+            calculationNodes: calculated.success.calculationNodes,
+            rowCount: calculated.success.rows.length,
+            contributionCount: calculated.success.contributions.length,
+            noFinancialEffect: calculated.success.outcome.noFinancialEffect,
+            createdAt: cutoff,
+            receipt: {
+              key: command.idempotencyKey,
+              operation: "prepare_statement_snapshot",
+              actorId: principal.actorId,
+            },
+          });
+
+          yield* Db.insertStatementSnapshot(transaction, {
             bookId: command.scope.bookId,
-            snapshotId: id,
-            ordinal: row.ordinal,
-            rowId: row.rowId,
-            body: encoded,
-          })),
-        ),
+            id,
+            fiscalYearId: captured.fiscalYear.id,
+            asOf: command.input.asOf,
+            sequence: BigInt(boundary),
+            body,
+          });
+
+          yield* Db.insertStatementRows(
+            transaction,
+            yield* Effect.forEach(calculated.success.rows, (row) =>
+              Effect.map(toJsonObject(row), (encoded) => ({
+                bookId: command.scope.bookId,
+                snapshotId: id,
+                ordinal: row.ordinal,
+                rowId: row.rowId,
+                body: encoded,
+              })),
+            ),
+          );
+
+          if (calculated.success.contributions.length > 0) {
+            yield* Db.insertStatementContributions(
+              transaction,
+              yield* Effect.forEach(calculated.success.contributions, (contribution) =>
+                Effect.map(toJsonObject(contribution), (encoded) => ({
+                  bookId: command.scope.bookId,
+                  snapshotId: id,
+                  ordinal: contribution.ordinal,
+                  rowId: contribution.rowId,
+                  componentId: contribution.componentId,
+                  body: encoded,
+                })),
+              ),
+            );
+          }
+
+          const result = yield* decode(SnapshotSchema, body);
+
+          return result;
+        }),
       );
-
-      if (calculated.success.contributions.length > 0) {
-        yield* Db.insertStatementContributions(
-          transaction,
-          yield* Effect.forEach(calculated.success.contributions, (contribution) =>
-            Effect.map(toJsonObject(contribution), (encoded) => ({
-              bookId: command.scope.bookId,
-              snapshotId: id,
-              ordinal: contribution.ordinal,
-              rowId: contribution.rowId,
-              componentId: contribution.componentId,
-              body: encoded,
-            })),
-          ),
-        );
-      }
-
-      const result = yield* decode(SnapshotSchema, body);
-
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_statement_snapshot",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

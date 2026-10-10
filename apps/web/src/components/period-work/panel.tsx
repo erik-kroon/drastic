@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PeriodWork from "@open-erp/contracts/period-work";
 import { Box } from "@open-erp/ui/components/box";
@@ -36,8 +37,8 @@ export function PeriodWorkPanel({
   const { book } = useBookWorkspace();
   const copy = periodWorkCopy(locale);
   const client = useQueryClient();
-  const advanceKeys = useRef(new Map<string, string>());
-  const cancelKeys = useRef(new Map<string, string>());
+  const advanceKeys = useCommandKeys();
+  const cancelKeys = useCommandKeys();
   const [bounded, setBounded] = useState("10");
   const [manifestInput, setManifestInput] = useState("");
 

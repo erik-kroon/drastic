@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -11,13 +14,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PreparationSelection } from "@/components/preparation-selection";
 import { PreparationBackground } from "@/components/preparation-background";
-import {
-  bookKey,
-  bookPath,
-  isUncertainWriteError,
-  mutationOptions,
-  readAccounting,
-} from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -38,7 +35,7 @@ export function PreparationRunPanel({
     queryKey: [...bookKey(book), "preparation-run", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/preparation-runs/${encodeURIComponent(id)}`,
+        (client) => client.automation.getPreparationRun({ params: { ...bookScope(book), id: id } }),
         Automation.PreparationRun,
         { signal },
       );
@@ -177,7 +174,7 @@ function RunCommands({
 }) {
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [batch, setBatch] = useState("20");
   const [inputError, setInputError] = useState("");
 
@@ -188,7 +185,7 @@ function RunCommands({
       return readAccounting(
         path,
         Automation.PreparationRun,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: async () => {
@@ -211,7 +208,7 @@ function RunCommands({
       maxItems: action === "cancel" ? 1 : Number(batch),
     });
 
-    if (decoded._tag === "None") {
+    if (Option.isNone(decoded)) {
       setInputError(copy.journal_invalid);
 
       return;

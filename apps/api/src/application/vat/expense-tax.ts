@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { readExpenseSourceConflicts } from "../../db/posting-admission";
 import * as ExpenseTax from "@open-erp/contracts/expense-tax";
 import * as Effect from "effect/Effect";
@@ -15,7 +16,8 @@ import {
 } from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
-import { isoNow, newId, replay, saveCommand } from "../posting";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { digestBody, digestValue } from "./basis";
 
 type SourceRevision = typeof ExpenseTax.TaxSourceRevision.Type;
@@ -166,169 +168,164 @@ export const recordSource = Effect.fn("expenseTax.recordSource")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "record_expense_tax_source",
-          principal.actorId,
-          payload,
-          SourceRevisionSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireExpenseAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const facts = yield* toJsonObject(command.input.facts);
-
-        const evidence = (yield* Db.readEvidence(
-          transaction,
-          command.scope.bookId,
-          command.input.facts.evidenceId,
-        ))[0];
-
-        const evidenceSha256 = evidence?.sha256;
-
-        if (evidenceSha256 === undefined) return yield* failure("MissingEvidence");
-
-        if (command.input.facts.changeSetId !== null) {
-          const plan = (yield* ExpenseDb.readPlan(
-            transaction,
-            command.scope.bookId,
-            command.input.facts.changeSetId,
-          ))[0];
-
-          if (plan === undefined || !citesEvidence(plan.plan, command.input.facts.evidenceId)) {
-            return yield* failure("MissingEvidence");
-          }
-        }
-
-        if (command.input.facts.voucherId !== null) {
-          const posted = (yield* Db.readVoucher(
-            transaction,
-            command.scope.bookId,
-            command.input.facts.voucherId,
-          ))[0];
-
-          if (posted?.postingPurpose === "vat_control_reclassification_v1")
-            return yield* failure("StaleDependency");
-
-          const voucher = (yield* ExpenseDb.readVoucherAction(
-            transaction,
-            command.scope.bookId,
-            command.input.facts.voucherId,
-            command.input.facts.changeSetId,
-          ))[0];
-
-          if (
-            voucher === undefined ||
-            !citesEvidence(voucher.action, command.input.facts.evidenceId)
-          ) {
-            return yield* failure("MissingEvidence");
-          }
-        }
-
-        const existing = (yield* ExpenseDb.readSourceByKey(
-          transaction,
-          command.scope.bookId,
-          command.input.sourceKey,
-        ))[0];
-
-        let sourceId: string;
-        let revision = 1;
-        let previousDigest: string | null = null;
-
-        if (existing !== undefined) {
-          const current = (yield* ExpenseDb.readCurrentRevision(
-            transaction,
-            command.scope.bookId,
-            existing.id,
-          ))[0];
-
-          if (current === undefined) return yield* failure("NotFound");
-
-          if (current.body.digest !== command.input.expectedSourceDigest) {
-            return yield* failure("StaleDependency");
-          }
-
-          if (existing.recordClass !== command.input.facts.recordClass) {
-            return yield* failure("InvalidJournal");
-          }
-
-          sourceId = existing.id;
-          revision = current.revision + 1;
-          previousDigest = current.body.digest;
-
-          if (revision > sourceRevisionBound) return yield* unsupported();
-        } else {
-          if (command.input.expectedSourceDigest !== null) {
-            return yield* failure("StaleDependency");
-          }
-
-          const count = yield* ExpenseDb.readSourceCount(transaction, command.scope.bookId);
-
-          if ((count[0]?.total ?? 0) >= sourceBound) return yield* unsupported();
-          sourceId = newId("taxsource");
-          yield* ExpenseDb.insertSource(transaction, {
-            bookId: command.scope.bookId,
-            id: sourceId,
-            sourceKey: command.input.sourceKey,
-            recordClass: command.input.facts.recordClass,
-          });
-        }
-
-        const body = yield* digestBody({
-          id: newId("taxsourceversion"),
-          sourceId,
-          sourceKey: command.input.sourceKey,
-          revision,
-          previousDigest,
-          scope: command.scope,
-          facts,
-          evidenceSha256,
-          recordedAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "record_expense_tax_source",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          SourceRevisionSchema,
+          Effect.gen(function* () {
+            yield* requireExpenseAccess(transaction, true);
 
-        if ((yield* ExpenseDb.readWithdrawal(transaction, command.scope.bookId, sourceId)).length)
-          return yield* failure("StaleDependency");
+            const facts = yield* toJsonObject(command.input.facts);
 
-        if (
-          (yield* readExpenseSourceConflicts(
-            transaction,
-            command.scope.bookId,
-            sourceId,
-            evidenceSha256,
-            command.input.facts.sourceLocator,
-          )).length
-        )
-          return yield* failure("IdempotencyConflict");
-        const result = yield* decode(SourceRevisionSchema, body);
-        yield* ExpenseDb.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          sourceId,
-          revision,
-          id: result.id,
-          evidenceId: command.input.facts.evidenceId,
-          changeSetId: command.input.facts.changeSetId,
-          voucherId: command.input.facts.voucherId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "record_expense_tax_source",
-          principal.actorId,
-          result,
+            const evidence = (yield* Db.readEvidence(
+              transaction,
+              command.scope.bookId,
+              command.input.facts.evidenceId,
+            ))[0];
+
+            const evidenceSha256 = evidence?.sha256;
+
+            if (evidenceSha256 === undefined) return yield* failure("MissingEvidence");
+
+            if (command.input.facts.changeSetId !== null) {
+              const plan = (yield* ExpenseDb.readPlan(
+                transaction,
+                command.scope.bookId,
+                command.input.facts.changeSetId,
+              ))[0];
+
+              if (plan === undefined || !citesEvidence(plan.plan, command.input.facts.evidenceId)) {
+                return yield* failure("MissingEvidence");
+              }
+            }
+
+            if (command.input.facts.voucherId !== null) {
+              const posted = (yield* Db.readVoucher(
+                transaction,
+                command.scope.bookId,
+                command.input.facts.voucherId,
+              ))[0];
+
+              if (posted?.postingPurpose === "vat_control_reclassification_v1")
+                return yield* failure("StaleDependency");
+
+              const voucher = (yield* ExpenseDb.readVoucherAction(
+                transaction,
+                command.scope.bookId,
+                command.input.facts.voucherId,
+                command.input.facts.changeSetId,
+              ))[0];
+
+              if (
+                voucher === undefined ||
+                !citesEvidence(voucher.action, command.input.facts.evidenceId)
+              ) {
+                return yield* failure("MissingEvidence");
+              }
+            }
+
+            const existing = (yield* ExpenseDb.readSourceByKey(
+              transaction,
+              command.scope.bookId,
+              command.input.sourceKey,
+            ))[0];
+
+            let sourceId: string;
+            let revision = 1;
+            let previousDigest: string | null = null;
+
+            if (existing !== undefined) {
+              const current = (yield* ExpenseDb.readCurrentRevision(
+                transaction,
+                command.scope.bookId,
+                existing.id,
+              ))[0];
+
+              if (current === undefined) return yield* failure("NotFound");
+
+              if (current.body.digest !== command.input.expectedSourceDigest) {
+                return yield* failure("StaleDependency");
+              }
+
+              if (existing.recordClass !== command.input.facts.recordClass) {
+                return yield* failure("InvalidJournal");
+              }
+
+              sourceId = existing.id;
+              revision = current.revision + 1;
+              previousDigest = current.body.digest;
+
+              if (revision > sourceRevisionBound) return yield* unsupported();
+            } else {
+              if (command.input.expectedSourceDigest !== null) {
+                return yield* failure("StaleDependency");
+              }
+
+              const count = yield* ExpenseDb.readSourceCount(transaction, command.scope.bookId);
+
+              if ((count[0]?.total ?? 0) >= sourceBound) return yield* unsupported();
+              sourceId = newId("taxsource");
+              yield* ExpenseDb.insertSource(transaction, {
+                bookId: command.scope.bookId,
+                id: sourceId,
+                sourceKey: command.input.sourceKey,
+                recordClass: command.input.facts.recordClass,
+              });
+            }
+
+            const body = yield* digestBody({
+              id: newId("taxsourceversion"),
+              sourceId,
+              sourceKey: command.input.sourceKey,
+              revision,
+              previousDigest,
+              scope: command.scope,
+              facts,
+              evidenceSha256,
+              recordedAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "record_expense_tax_source",
+                actorId: principal.actorId,
+              },
+            });
+
+            if (
+              (yield* ExpenseDb.readWithdrawal(transaction, command.scope.bookId, sourceId)).length
+            )
+              return yield* failure("StaleDependency");
+
+            if (
+              (yield* readExpenseSourceConflicts(
+                transaction,
+                command.scope.bookId,
+                sourceId,
+                evidenceSha256,
+                command.input.facts.sourceLocator,
+              )).length
+            )
+              return yield* failure("IdempotencyConflict");
+            const result = yield* decode(SourceRevisionSchema, body);
+            yield* ExpenseDb.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              sourceId,
+              revision,
+              id: result.id,
+              evidenceId: command.input.facts.evidenceId,
+              changeSetId: command.input.facts.changeSetId,
+              voucherId: command.input.facts.voucherId,
+              body,
+            });
+
+            return result;
+          }),
         );
-
-        return result;
       }),
     "update",
   );
@@ -376,87 +373,82 @@ export const withdrawSource = Effect.fn("expenseTax.withdrawSource")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "withdraw_expense_tax_source",
-          principal.actorId,
-          payload,
-          WithdrawalSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireExpenseAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const current = (yield* ExpenseDb.readCurrentRevision(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        if (current === undefined) return yield* failure("NotFound");
-
-        if (current.body.digest !== command.input.expectedSourceDigest) {
-          return yield* failure("StaleDependency");
-        }
-
-        if (
-          (yield* ExpenseDb.readWithdrawal(transaction, command.scope.bookId, command.id))[0] !==
-          undefined
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        const evidence = (yield* Db.readEvidence(
-          transaction,
-          command.scope.bookId,
-          command.input.evidenceId,
-        ))[0];
-
-        const evidenceSha256 = evidence?.sha256;
-
-        if (evidenceSha256 === undefined) return yield* failure("MissingEvidence");
-
-        const body = yield* digestBody({
-          id: newId("expensewithdrawal"),
-          scope: command.scope,
-          sourceId: command.id,
-          revisionId: current.id,
-          revision: current.revision,
-          revisionDigest: current.body.digest,
-          input: command.input,
-          evidenceSha256,
-          permanent: true,
-          recordedAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "withdraw_expense_tax_source",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          WithdrawalSchema,
+          Effect.gen(function* () {
+            yield* requireExpenseAccess(transaction, true);
 
-        const withdrawal = yield* decode(WithdrawalSchema, body);
-        yield* ExpenseDb.insertWithdrawal(transaction, {
-          bookId: command.scope.bookId,
-          sourceId: command.id,
-          revision: current.revision,
-          id: withdrawal.id,
-          evidenceId: command.input.evidenceId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "withdraw_expense_tax_source",
-          principal.actorId,
-          withdrawal,
+            const current = (yield* ExpenseDb.readCurrentRevision(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            ))[0];
+
+            if (current === undefined) return yield* failure("NotFound");
+
+            if (current.body.digest !== command.input.expectedSourceDigest) {
+              return yield* failure("StaleDependency");
+            }
+
+            if (
+              (yield* ExpenseDb.readWithdrawal(
+                transaction,
+                command.scope.bookId,
+                command.id,
+              ))[0] !== undefined
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            const evidence = (yield* Db.readEvidence(
+              transaction,
+              command.scope.bookId,
+              command.input.evidenceId,
+            ))[0];
+
+            const evidenceSha256 = evidence?.sha256;
+
+            if (evidenceSha256 === undefined) return yield* failure("MissingEvidence");
+
+            const body = yield* digestBody({
+              id: newId("expensewithdrawal"),
+              scope: command.scope,
+              sourceId: command.id,
+              revisionId: current.id,
+              revision: current.revision,
+              revisionDigest: current.body.digest,
+              input: command.input,
+              evidenceSha256,
+              permanent: true,
+              recordedAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "withdraw_expense_tax_source",
+                actorId: principal.actorId,
+              },
+            });
+
+            const withdrawal = yield* decode(WithdrawalSchema, body);
+            yield* ExpenseDb.insertWithdrawal(transaction, {
+              bookId: command.scope.bookId,
+              sourceId: command.id,
+              revision: current.revision,
+              id: withdrawal.id,
+              evidenceId: command.input.evidenceId,
+              body,
+            });
+
+            return withdrawal;
+          }),
         );
-
-        return withdrawal;
       }),
     "update",
   );
@@ -474,108 +466,103 @@ export const reviewSource = Effect.fn("expenseTax.reviewSource")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "review_expense_tax_source",
-          principal.actorId,
-          payload,
-          SourceReviewSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireExpenseAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const current = (yield* ExpenseDb.readCurrentRevision(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        if (current === undefined) return yield* failure("NotFound");
-
-        if ((yield* ExpenseDb.readWithdrawal(transaction, command.scope.bookId, command.id)).length)
-          return yield* failure("StaleDependency");
-        const source = yield* decode(SourceRevisionSchema, current.body);
-
-        const retained = (yield* ExpenseDb.readLatestReview(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        const review =
-          retained === undefined ? null : yield* decode(SourceReviewSchema, retained.body);
-
-        if (
-          source.digest !== command.input.sourceDigest ||
-          (review?.digest ?? null) !== command.input.expectedReviewDigest
-        ) {
-          return yield* failure("StaleDependency");
-        }
-
-        const cited = [
-          command.input.facts.evidenceId,
-          command.input.facts.registrationEvidenceId,
-          command.input.facts.methodEvidenceId,
-          command.input.facts.dateEvidenceId,
-          command.input.facts.deductionEvidenceId,
-        ].filter((value): value is string => value !== null);
-
-        const digests = new Map(
-          (yield* ExpenseDb.readEvidenceDigests(transaction, command.scope.bookId, cited)).map(
-            (row) => [row.id, row.sha256],
-          ),
-        );
-
-        if (cited.some((id) => !digests.has(id))) return yield* failure("MissingEvidence");
-        const revision = (review?.revision ?? 0) + 1;
-
-        if (revision > reviewRevisionBound) return yield* unsupported();
-
-        const body = yield* digestBody({
-          id: newId("taxreview"),
-          sourceId: command.id,
-          revision,
-          sourceDigest: source.digest,
-          previousDigest: review?.digest ?? null,
-          scope: command.scope,
-          facts: yield* toJsonObject(command.input.facts),
-          evidenceRefs: cited
-            .map((id) => ({ evidenceId: id, sha256: digests.get(id) ?? "" }))
-            .sort((left, right) => (left.evidenceId < right.evidenceId ? -1 : 1)),
-          authority: "operator_fact_review_only",
-          recordedAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "review_expense_tax_source",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          SourceReviewSchema,
+          Effect.gen(function* () {
+            yield* requireExpenseAccess(transaction, true);
 
-        const result = yield* decode(SourceReviewSchema, body);
-        yield* ExpenseDb.insertReview(transaction, {
-          bookId: command.scope.bookId,
-          sourceId: command.id,
-          revision,
-          sourceRevision: source.revision,
-          id: result.id,
-          evidenceId: command.input.facts.evidenceId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "review_expense_tax_source",
-          principal.actorId,
-          result,
+            const current = (yield* ExpenseDb.readCurrentRevision(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            ))[0];
+
+            if (current === undefined) return yield* failure("NotFound");
+
+            if (
+              (yield* ExpenseDb.readWithdrawal(transaction, command.scope.bookId, command.id))
+                .length
+            )
+              return yield* failure("StaleDependency");
+            const source = yield* decode(SourceRevisionSchema, current.body);
+
+            const retained = (yield* ExpenseDb.readLatestReview(
+              transaction,
+              command.scope.bookId,
+              command.id,
+            ))[0];
+
+            const review =
+              retained === undefined ? null : yield* decode(SourceReviewSchema, retained.body);
+
+            if (
+              source.digest !== command.input.sourceDigest ||
+              (review?.digest ?? null) !== command.input.expectedReviewDigest
+            ) {
+              return yield* failure("StaleDependency");
+            }
+
+            const cited = [
+              command.input.facts.evidenceId,
+              command.input.facts.registrationEvidenceId,
+              command.input.facts.methodEvidenceId,
+              command.input.facts.dateEvidenceId,
+              command.input.facts.deductionEvidenceId,
+            ].filter((value): value is string => value !== null);
+
+            const digests = new Map(
+              (yield* ExpenseDb.readEvidenceDigests(transaction, command.scope.bookId, cited)).map(
+                (row) => [row.id, row.sha256],
+              ),
+            );
+
+            if (cited.some((id) => !digests.has(id))) return yield* failure("MissingEvidence");
+            const revision = (review?.revision ?? 0) + 1;
+
+            if (revision > reviewRevisionBound) return yield* unsupported();
+
+            const body = yield* digestBody({
+              id: newId("taxreview"),
+              sourceId: command.id,
+              revision,
+              sourceDigest: source.digest,
+              previousDigest: review?.digest ?? null,
+              scope: command.scope,
+              facts: yield* toJsonObject(command.input.facts),
+              evidenceRefs: cited
+                .map((id) => ({ evidenceId: id, sha256: digests.get(id) ?? "" }))
+                .sort((left, right) => (left.evidenceId < right.evidenceId ? -1 : 1)),
+              authority: "operator_fact_review_only",
+              recordedAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "review_expense_tax_source",
+                actorId: principal.actorId,
+              },
+            });
+
+            const result = yield* decode(SourceReviewSchema, body);
+            yield* ExpenseDb.insertReview(transaction, {
+              bookId: command.scope.bookId,
+              sourceId: command.id,
+              revision,
+              sourceRevision: source.revision,
+              id: result.id,
+              evidenceId: command.input.facts.evidenceId,
+              body,
+            });
+
+            return result;
+          }),
         );
-
-        return result;
       }),
     "update",
   );
@@ -1274,164 +1261,158 @@ export const prepareSnapshot = Effect.fn("expenseTax.prepareSnapshot")(function*
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "prepare_expense_tax_snapshot",
-          principal.actorId,
-          payload,
-          SnapshotSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireExpenseAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        if (
-          !/^\d{4}-\d{2}-\d{2}$/.test(command.input.startsOn) ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(command.input.endsOn) ||
-          command.input.startsOn > command.input.endsOn
-        ) {
-          return yield* failure("InvalidJournal");
-        }
-
-        const book = (yield* ExpenseDb.readBookState(transaction, command.scope.bookId))[0];
-
-        if (book === undefined) return yield* failure("Forbidden");
-        const count = yield* ExpenseDb.readSourceCount(transaction, command.scope.bookId);
-
-        if ((count[0]?.total ?? 0) > sourceBound) return yield* unsupported();
-        const rows = yield* ExpenseDb.readCurrentInventory(transaction, command.scope.bookId);
-        const entries: Array<JsonObject> = [];
-
-        const totals = {
-          grossMinor: 0n,
-          netMinor: 0n,
-          vatMinor: 0n,
-          deductibleMinor: 0n,
-          nonDeductibleMinor: 0n,
-          expenseMinor: 0n,
-        };
-
-        let included = 0;
-        let excluded = 0;
-
-        for (const row of rows) {
-          const item = row.item;
-          const sourceId = item.sourceId;
-
-          if (typeof sourceId !== "string") return yield* failure("InternalError");
-
-          if (
-            typeof item.current !== "object" ||
-            item.current === null ||
-            Array.isArray(item.current)
-          ) {
-            return yield* failure("InternalError");
-          }
-
-          const current = yield* toJsonObject(item.current);
-          const source = yield* decode(SourceRevisionSchema, current);
-
-          const review =
-            item.latestReview === null || item.latestReview === undefined
-              ? null
-              : yield* decode(SourceReviewSchema, yield* toJsonObject(item.latestReview));
-
-          const assessment = yield* assess(book, command.input, source, review, {
-            withdrawn: item.withdrawal !== null && item.withdrawal !== undefined,
-            duplicate: yield* hasDuplicate(transaction, command.scope.bookId, source),
-            ambiguous: yield* hasAmbiguousVoucher(transaction, command.scope.bookId, source),
-          });
-
-          if (assessment.state === "included_synthetic") {
-            included += 1;
-            const contribution = assessment.contribution;
-
-            if (contribution === null) return yield* failure("InternalError");
-            totals.grossMinor += BigInt(contribution.grossMinor);
-            totals.netMinor += BigInt(contribution.netMinor);
-            totals.vatMinor += BigInt(contribution.vatMinor);
-            totals.deductibleMinor += BigInt(contribution.deductibleMinor);
-            totals.nonDeductibleMinor += BigInt(contribution.nonDeductibleMinor);
-            totals.expenseMinor += BigInt(contribution.expenseMinor);
-          } else {
-            excluded += 1;
-          }
-
-          entries.push(
-            yield* toJsonObject({
-              source,
-              review,
-              withdrawal: item.withdrawal ?? null,
-              assessment,
-            }),
-          );
-        }
-
-        const ceiling = (yield* ExpenseDb.readSnapshotCeiling(transaction, command.scope.bookId))[0]
-          ?.ordinal;
-
-        if (ceiling === undefined) return yield* failure("InternalError");
-        const ordinal = BigInt(ceiling) + 1n;
-
-        if (ordinal > 999999999999999999n) return yield* unsupported();
-
-        const body = yield* digestBody({
-          schemaVersion: "2",
-          calculationEngine: "expense-tax-controls-v2",
-          bookProfile: book.profile,
-          bookProfileVersion: book.profileVersion,
-          id: newId("taxsnapshot"),
-          scope: command.scope,
-          input: command.input,
-          basisDigest: yield* readBasis(transaction, command.scope.bookId),
-          bookSequence: book.committedSequence,
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          entries,
-          includedCount: included,
-          excludedCount: excluded,
-          syntheticTotals: {
-            grossMinor: totals.grossMinor.toString(),
-            netMinor: totals.netMinor.toString(),
-            vatMinor: totals.vatMinor.toString(),
-            deductibleMinor: totals.deductibleMinor.toString(),
-            nonDeductibleMinor: totals.nonDeductibleMinor.toString(),
-            expenseMinor: totals.expenseMinor.toString(),
-          },
-          coverageEstablished: false,
-          ledgerReconciled: false,
-          vatReturnReady: false,
-          productionProfileApproved: false,
-          postingEnabled: false,
-          recordedAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "prepare_expense_tax_snapshot",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          SnapshotSchema,
+          Effect.gen(function* () {
+            yield* requireExpenseAccess(transaction, true);
 
-        const snapshot = yield* decode(SnapshotSchema, body);
-        yield* ExpenseDb.insertSnapshot(transaction, {
-          bookId: command.scope.bookId,
-          id: snapshot.id,
-          ordinal: ordinal.toString(),
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "prepare_expense_tax_snapshot",
-          principal.actorId,
-          snapshot,
+            if (
+              !/^\d{4}-\d{2}-\d{2}$/.test(command.input.startsOn) ||
+              !/^\d{4}-\d{2}-\d{2}$/.test(command.input.endsOn) ||
+              command.input.startsOn > command.input.endsOn
+            ) {
+              return yield* failure("InvalidJournal");
+            }
+
+            const book = (yield* ExpenseDb.readBookState(transaction, command.scope.bookId))[0];
+
+            if (book === undefined) return yield* failure("Forbidden");
+            const count = yield* ExpenseDb.readSourceCount(transaction, command.scope.bookId);
+
+            if ((count[0]?.total ?? 0) > sourceBound) return yield* unsupported();
+            const rows = yield* ExpenseDb.readCurrentInventory(transaction, command.scope.bookId);
+            const entries: Array<JsonObject> = [];
+
+            const totals = {
+              grossMinor: 0n,
+              netMinor: 0n,
+              vatMinor: 0n,
+              deductibleMinor: 0n,
+              nonDeductibleMinor: 0n,
+              expenseMinor: 0n,
+            };
+
+            let included = 0;
+            let excluded = 0;
+
+            for (const row of rows) {
+              const item = row.item;
+              const sourceId = item.sourceId;
+
+              if (typeof sourceId !== "string") return yield* failure("InternalError");
+
+              if (
+                typeof item.current !== "object" ||
+                item.current === null ||
+                Array.isArray(item.current)
+              ) {
+                return yield* failure("InternalError");
+              }
+
+              const current = yield* toJsonObject(item.current);
+              const source = yield* decode(SourceRevisionSchema, current);
+
+              const review =
+                item.latestReview === null || item.latestReview === undefined
+                  ? null
+                  : yield* decode(SourceReviewSchema, yield* toJsonObject(item.latestReview));
+
+              const assessment = yield* assess(book, command.input, source, review, {
+                withdrawn: item.withdrawal !== null && item.withdrawal !== undefined,
+                duplicate: yield* hasDuplicate(transaction, command.scope.bookId, source),
+                ambiguous: yield* hasAmbiguousVoucher(transaction, command.scope.bookId, source),
+              });
+
+              if (assessment.state === "included_synthetic") {
+                included += 1;
+                const contribution = assessment.contribution;
+
+                if (contribution === null) return yield* failure("InternalError");
+                totals.grossMinor += BigInt(contribution.grossMinor);
+                totals.netMinor += BigInt(contribution.netMinor);
+                totals.vatMinor += BigInt(contribution.vatMinor);
+                totals.deductibleMinor += BigInt(contribution.deductibleMinor);
+                totals.nonDeductibleMinor += BigInt(contribution.nonDeductibleMinor);
+                totals.expenseMinor += BigInt(contribution.expenseMinor);
+              } else {
+                excluded += 1;
+              }
+
+              entries.push(
+                yield* toJsonObject({
+                  source,
+                  review,
+                  withdrawal: item.withdrawal ?? null,
+                  assessment,
+                }),
+              );
+            }
+
+            const ceiling = (yield* ExpenseDb.readSnapshotCeiling(
+              transaction,
+              command.scope.bookId,
+            ))[0]?.ordinal;
+
+            if (ceiling === undefined) return yield* failure("InternalError");
+            const ordinal = BigInt(ceiling) + 1n;
+
+            if (ordinal > 999999999999999999n) return yield* unsupported();
+
+            const body = yield* digestBody({
+              schemaVersion: "2",
+              calculationEngine: "expense-tax-controls-v2",
+              bookProfile: book.profile,
+              bookProfileVersion: book.profileVersion,
+              id: newId("taxsnapshot"),
+              scope: command.scope,
+              input: command.input,
+              basisDigest: yield* readBasis(transaction, command.scope.bookId),
+              bookSequence: book.committedSequence,
+              currency: book.currency,
+              currencyScale: book.currencyScale,
+              entries,
+              includedCount: included,
+              excludedCount: excluded,
+              syntheticTotals: {
+                grossMinor: totals.grossMinor.toString(),
+                netMinor: totals.netMinor.toString(),
+                vatMinor: totals.vatMinor.toString(),
+                deductibleMinor: totals.deductibleMinor.toString(),
+                nonDeductibleMinor: totals.nonDeductibleMinor.toString(),
+                expenseMinor: totals.expenseMinor.toString(),
+              },
+              coverageEstablished: false,
+              ledgerReconciled: false,
+              vatReturnReady: false,
+              productionProfileApproved: false,
+              postingEnabled: false,
+              recordedAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "prepare_expense_tax_snapshot",
+                actorId: principal.actorId,
+              },
+            });
+
+            const snapshot = yield* decode(SnapshotSchema, body);
+            yield* ExpenseDb.insertSnapshot(transaction, {
+              bookId: command.scope.bookId,
+              id: snapshot.id,
+              ordinal: ordinal.toString(),
+              body,
+            });
+
+            return snapshot;
+          }),
         );
-
-        return snapshot;
       }),
     "update",
   );

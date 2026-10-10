@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -10,12 +11,7 @@ import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  readAccounting,
-  mutationOptions,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 const inputSchema = Schema.Struct({
   accountingPeriodId: Historical.PrepareSourceVoucher.fields.accountingPeriodId,
@@ -34,16 +30,12 @@ export function PrepareSourceVoucher({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run.id)}/proposals`;
 
   const prepare = useMutation({
     mutationFn: (input: typeof Historical.PrepareSourceVoucher.Type) =>
-      readAccounting(
-        path,
-        Accounting.ChangeSet,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      ),
+      readAccounting(path, Accounting.ChangeSet, keys.current.options(path, JSON.stringify(input))),
     onSuccess: async () => {
       keys.current.clear();
       await onPrepared();
@@ -181,7 +173,7 @@ export function ReviewSourceVoucher({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const approvalPath = `${bookPath(book)}/change-sets/${encodeURIComponent(proposal.id)}/approvals`;
 
   const approval = useMutation({
@@ -189,10 +181,9 @@ export function ReviewSourceVoucher({
       readAccounting(
         approvalPath,
         Accounting.Approval,
-        mutationOptions(
+        keys.current.options(
           approvalPath,
           JSON.stringify({ planDigest: proposal.planDigest, version: proposal.version }),
-          keys.current,
         ),
       ),
   });
@@ -209,7 +200,7 @@ export function ReviewSourceVoucher({
       readAccounting(
         postPath,
         Historical.Chunk,
-        mutationOptions(postPath, JSON.stringify(input), keys.current),
+        keys.current.options(postPath, JSON.stringify(input)),
       ),
     onSuccess: async () => {
       await onPosted();

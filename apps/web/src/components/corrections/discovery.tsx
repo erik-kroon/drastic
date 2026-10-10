@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -40,7 +41,8 @@ export function CorrectionDiscovery({
   const recovery = useMutation({
     mutationFn: (key: string) =>
       readAccounting(
-        `${bookPath(book)}/correction-requests/${encodeURIComponent(key)}`,
+        (client) =>
+          client.corrections.recoverCorrectionRequest({ params: { ...bookScope(book), key: key } }),
         Corrections.CorrectionRequestRecovery,
       ),
   });

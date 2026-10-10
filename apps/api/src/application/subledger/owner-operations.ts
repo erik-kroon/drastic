@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as PayrollInputDb from "../../db/payroll/inputs";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as FundingBank from "../../db/banking/statements";
@@ -28,13 +29,11 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import {
   approveChangeInTransaction,
   executeChangeInTransaction,
-  isoNow,
-  newId,
   prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  validatePlan,
 } from "../posting";
+import { validatePlan } from "../posting-validation";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import * as PurchaseShared from "../purchases/shared";
 import * as Recognition from "../purchases/recognition";
 import { readCapacity, sealOwnerAggregateInTransaction } from "./owners";
@@ -1001,173 +1000,169 @@ export const prepareOwnerOperation = Effect.fn("owner.operations.prepare")(funct
       Effect.gen(function* () {
         const payload = yield* PurchaseShared.toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommandWithReceipt(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          prepareOperation,
-          principal.actorId,
-          payload,
-          ReviewSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireOperationAccess(transaction, true);
-        yield* requireOwnerWriteColumns(transaction);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const book = yield* readBook(transaction, command.scope);
-        yield* requireNativeProfile(book);
-
-        const decision = yield* compileOperation(transaction, command.scope, command.input);
-        const evidenceId = decision.evidenceId;
-
-        // One statement original can contain many cash events. These owners
-        // admit unused rows and atomically match each row; other document owners
-        // keep their existing whole-evidence duplicate-recognition fence.
-        const sourceBoundCash =
-          decision.input.mode === "owner_loan" ||
-          decision.input.mode === "owner_contribution" ||
-          decision.input.mode === "repay_owner_loan";
-
-        if (
-          !sourceBoundCash &&
-          (yield* PurchaseShared.evidenceHasPostedHistory(
-            transaction,
-            command.scope.bookId,
-            evidenceId,
-          ))
-        ) {
-          return yield* failure("AlreadyPosted");
-        }
-
-        const eventKey = (yield* digest({
-          operation: prepareOperation,
-          evidenceId,
-          mode: decision.input.mode,
-          input: yield* PurchaseShared.toJsonObject(decision.input),
-        })).replace("sha256:", "");
-
-        const existing = (yield* Db.readEvent(
-          transaction,
-          command.scope.bookId,
-          evidenceId,
-          eventKey,
-        ))[0];
-
-        if (existing !== undefined) {
-          if (
-            (yield* OperationDb.readReviewByEvent(transaction, command.scope.bookId, existing.id))
-              .length > 0
-          ) {
-            return yield* failure("IdempotencyConflict");
-          }
-
-          return yield* failure("AlreadyPosted");
-        }
-
-        const evidence = yield* PurchaseShared.readEvidenceReference(
-          transaction,
-          command.scope.bookId,
-          evidenceId,
-        );
-
-        const plan = yield* prepareJournalInTransaction(transaction, principal, {
-          scope: command.scope,
-          idempotencyKey: `oo_${command.idempotencyKey}_journal`,
-          input: {
-            kind: "manual_journal",
-            evidenceId,
-            eventKey,
-            accountingPeriodId: command.input.accountingPeriodId,
-            postingDate: command.input.postingDate,
-            series: command.input.series,
-            description: decision.description,
-            rationale: command.input.reason,
-            taxAssessment: "not_applicable",
-            lines: decision.lines.map((line) => ({ ...line })),
-          },
-        });
-
-        const action = plan.groups[0]?.actions[0];
-
-        if (action === undefined) return yield* failure("InternalError");
-
-        const controlLine = findControlLine(action.lines, decision.controlAccountId);
-
-        if (controlLine === undefined) return yield* failure("InternalError");
-
-        const counted = (yield* OperationDb.countReviews(
-          transaction,
-          command.scope.bookId,
-          action.eventId,
-        ))[0];
-
-        if (counted === undefined) return yield* failure("InternalError");
-
-        const ordinal = counted.total + 1;
-
-        if (ordinal > maximumGroupsPerEvent) return yield* failure("InvalidJournal");
-
-        const body = yield* PurchaseShared.toJsonObject({
-          id: newId("owner_operation_review"),
-          scope: command.scope,
-          version: 1,
-          mode: decision.input.mode,
-          ownerId: command.input.ownerId,
-          ordinal,
-          input: decision.input,
-          postingPlan: plan,
-          controlLine: {
-            lineId: controlLine.lineId,
-            accountId: decision.controlAccountId,
-            side: controlSideOf(controlLine),
-          },
-          ownerEffect: decision.ownerEffect,
-          recognition: decision.recognition,
-          reimburses: decision.reimburses,
-          discharges: decision.discharges,
-          evidence,
-          profileWitness: decision.witness,
-          profileGaps: decision.gaps,
-          changeSetId: plan.id,
-          eventId: action.eventId,
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: prepareOperation,
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          ReviewSchema,
+          Effect.gen(function* () {
+            yield* requireOperationAccess(transaction, true);
+            yield* requireOwnerWriteColumns(transaction);
+            yield* Db.lockBookForUpdate(transaction, command.scope);
+            const book = yield* readBook(transaction, command.scope);
+            yield* requireNativeProfile(book);
 
-        const review = yield* PurchaseShared.decode(ReviewSchema, {
-          ...body,
-          digest: yield* digest(body),
-        });
+            const decision = yield* compileOperation(transaction, command.scope, command.input);
+            const evidenceId = decision.evidenceId;
 
-        yield* OperationDb.insertReview(transaction, {
-          bookId: command.scope.bookId,
-          id: review.id,
-          mode: review.mode,
-          ownerId: review.ownerId,
-          ordinal: review.ordinal,
-          changeSetId: review.changeSetId,
-          eventId: review.eventId,
-          evidenceId,
-          body: yield* PurchaseShared.toJsonObject(review),
-          digest: review.digest,
-          createdAt: review.createdAt,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          prepareOperation,
-          principal.actorId,
-          yield* PurchaseShared.toJsonObject(review),
+            // One statement original can contain many cash events. These owners
+            // admit unused rows and atomically match each row; other document owners
+            // keep their existing whole-evidence duplicate-recognition fence.
+            const sourceBoundCash =
+              decision.input.mode === "owner_loan" ||
+              decision.input.mode === "owner_contribution" ||
+              decision.input.mode === "repay_owner_loan";
+
+            if (
+              !sourceBoundCash &&
+              (yield* PurchaseShared.evidenceHasPostedHistory(
+                transaction,
+                command.scope.bookId,
+                evidenceId,
+              ))
+            ) {
+              return yield* failure("AlreadyPosted");
+            }
+
+            const eventKey = (yield* digest({
+              operation: prepareOperation,
+              evidenceId,
+              mode: decision.input.mode,
+              input: yield* PurchaseShared.toJsonObject(decision.input),
+            })).replace("sha256:", "");
+
+            const existing = (yield* Db.readEvent(
+              transaction,
+              command.scope.bookId,
+              evidenceId,
+              eventKey,
+            ))[0];
+
+            if (existing !== undefined) {
+              if (
+                (yield* OperationDb.readReviewByEvent(
+                  transaction,
+                  command.scope.bookId,
+                  existing.id,
+                )).length > 0
+              ) {
+                return yield* failure("IdempotencyConflict");
+              }
+
+              return yield* failure("AlreadyPosted");
+            }
+
+            const evidence = yield* PurchaseShared.readEvidenceReference(
+              transaction,
+              command.scope.bookId,
+              evidenceId,
+            );
+
+            const plan = yield* prepareJournalInTransaction(transaction, principal, {
+              scope: command.scope,
+              idempotencyKey: `oo_${command.idempotencyKey}_journal`,
+              input: {
+                kind: "manual_journal",
+                evidenceId,
+                eventKey,
+                accountingPeriodId: command.input.accountingPeriodId,
+                postingDate: command.input.postingDate,
+                series: command.input.series,
+                description: decision.description,
+                rationale: command.input.reason,
+                taxAssessment: "not_applicable",
+                lines: decision.lines.map((line) => ({ ...line })),
+              },
+            });
+
+            const action = plan.groups[0]?.actions[0];
+
+            if (action === undefined) return yield* failure("InternalError");
+
+            const controlLine = findControlLine(action.lines, decision.controlAccountId);
+
+            if (controlLine === undefined) return yield* failure("InternalError");
+
+            const counted = (yield* OperationDb.countReviews(
+              transaction,
+              command.scope.bookId,
+              action.eventId,
+            ))[0];
+
+            if (counted === undefined) return yield* failure("InternalError");
+
+            const ordinal = counted.total + 1;
+
+            if (ordinal > maximumGroupsPerEvent) return yield* failure("InvalidJournal");
+
+            const body = yield* PurchaseShared.toJsonObject({
+              id: newId("owner_operation_review"),
+              scope: command.scope,
+              version: 1,
+              mode: decision.input.mode,
+              ownerId: command.input.ownerId,
+              ordinal,
+              input: decision.input,
+              postingPlan: plan,
+              controlLine: {
+                lineId: controlLine.lineId,
+                accountId: decision.controlAccountId,
+                side: controlSideOf(controlLine),
+              },
+              ownerEffect: decision.ownerEffect,
+              recognition: decision.recognition,
+              reimburses: decision.reimburses,
+              discharges: decision.discharges,
+              evidence,
+              profileWitness: decision.witness,
+              profileGaps: decision.gaps,
+              changeSetId: plan.id,
+              eventId: action.eventId,
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: prepareOperation,
+                actorId: principal.actorId,
+              },
+            });
+
+            const review = yield* PurchaseShared.decode(ReviewSchema, {
+              ...body,
+              digest: yield* digest(body),
+            });
+
+            yield* OperationDb.insertReview(transaction, {
+              bookId: command.scope.bookId,
+              id: review.id,
+              mode: review.mode,
+              ownerId: review.ownerId,
+              ordinal: review.ordinal,
+              changeSetId: review.changeSetId,
+              eventId: review.eventId,
+              evidenceId,
+              body: yield* PurchaseShared.toJsonObject(review),
+              digest: review.digest,
+              createdAt: review.createdAt,
+            });
+
+            return { receipt: yield* PurchaseShared.toJsonObject(review), result: review };
+          }),
         );
-
-        return review;
       }),
     "update",
   );
@@ -1309,82 +1304,74 @@ export const approveOwnerOperationInTransaction = Effect.fn(
     readonly input: typeof Operation.ApproveOwnerOperation.Type;
   },
 ) {
-  const request = yield* replay(
+  return yield* runBookCommandWithReceipt(
     transaction,
-    command.scope,
-    command.idempotencyKey,
-    approveOperation,
-    principal.actorId,
-    { id: command.id, input: command.input },
-    ApprovalSchema,
-  );
-
-  if (request.previous) return request.previous;
-
-  yield* requireOperationAccess(transaction, true);
-  yield* requireOwnerWriteColumns(transaction);
-  yield* Db.lockBookForUpdate(transaction, command.scope);
-
-  const row = (yield* OperationDb.readReview(transaction, command.scope.bookId, command.id))[0];
-
-  if (row === undefined) return yield* failure("NotFound");
-
-  const review = yield* PurchaseShared.decode(ReviewSchema, row.body);
-
-  if (command.input.version !== 1 || command.input.digest !== review.digest) {
-    return yield* failure("StaleDependency");
-  }
-
-  // The reviewer is the preparer's own decision, so an independent operator
-  // reviews it. Approval never executes and never mints a receipt.
-  if (review.receipt.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-  if ((yield* reviewBlockers(transaction, command.scope, review)).length > 0) {
-    return yield* failure("StaleDependency");
-  }
-
-  const now = yield* isoNow(transaction);
-
-  const body = yield* PurchaseShared.toJsonObject({
-    id: newId("owner_operation_approval"),
-    scope: command.scope,
-    version: 1,
-    reviewId: review.id,
-    reviewDigest: review.digest,
-    actorId: principal.actorId,
-    expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-    createdAt: now,
-    receipt: {
-      key: command.idempotencyKey,
+    {
+      scope: command.scope,
+      idempotencyKey: command.idempotencyKey,
       operation: approveOperation,
       actorId: principal.actorId,
+      input: { id: command.id, input: command.input },
     },
-  });
+    ApprovalSchema,
+    Effect.gen(function* () {
+      yield* requireOperationAccess(transaction, true);
+      yield* requireOwnerWriteColumns(transaction);
+      yield* Db.lockBookForUpdate(transaction, command.scope);
 
-  const approval = yield* PurchaseShared.decode(ApprovalSchema, body);
-  const sealed = { ...body, digest: yield* digest(body) };
+      const row = (yield* OperationDb.readReview(transaction, command.scope.bookId, command.id))[0];
 
-  yield* OperationDb.insertApproval(transaction, {
-    bookId: command.scope.bookId,
-    id: approval.id,
-    reviewId: approval.reviewId,
-    actorId: approval.actorId,
-    digest: sealed.digest,
-    expiresAt: approval.expiresAt,
-    body: yield* PurchaseShared.toJsonObject(sealed),
-    createdAt: approval.createdAt,
-  });
-  yield* saveCommand(
-    transaction,
-    command.scope,
-    command.idempotencyKey,
-    request.expected,
-    approveOperation,
-    principal.actorId,
-    yield* PurchaseShared.toJsonObject(approval),
+      if (row === undefined) return yield* failure("NotFound");
+
+      const review = yield* PurchaseShared.decode(ReviewSchema, row.body);
+
+      if (command.input.version !== 1 || command.input.digest !== review.digest) {
+        return yield* failure("StaleDependency");
+      }
+
+      // The reviewer is the preparer's own decision, so an independent operator
+      // reviews it. Approval never executes and never mints a receipt.
+      if (review.receipt.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+
+      if ((yield* reviewBlockers(transaction, command.scope, review)).length > 0) {
+        return yield* failure("StaleDependency");
+      }
+
+      const now = yield* isoNow(transaction);
+
+      const body = yield* PurchaseShared.toJsonObject({
+        id: newId("owner_operation_approval"),
+        scope: command.scope,
+        version: 1,
+        reviewId: review.id,
+        reviewDigest: review.digest,
+        actorId: principal.actorId,
+        expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+        createdAt: now,
+        receipt: {
+          key: command.idempotencyKey,
+          operation: approveOperation,
+          actorId: principal.actorId,
+        },
+      });
+
+      const approval = yield* PurchaseShared.decode(ApprovalSchema, body);
+      const sealed = { ...body, digest: yield* digest(body) };
+
+      yield* OperationDb.insertApproval(transaction, {
+        bookId: command.scope.bookId,
+        id: approval.id,
+        reviewId: approval.reviewId,
+        actorId: approval.actorId,
+        digest: sealed.digest,
+        expiresAt: approval.expiresAt,
+        body: yield* PurchaseShared.toJsonObject(sealed),
+        createdAt: approval.createdAt,
+      });
+
+      return { receipt: yield* PurchaseShared.toJsonObject(approval), result: approval };
+    }),
   );
-
-  return approval;
 });
 
 export const approveOwnerOperation = Effect.fn("owner.operations.approve")(function* (

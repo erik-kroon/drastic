@@ -1,3 +1,5 @@
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -8,7 +10,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -24,7 +26,7 @@ export function JournalDraft({
   onPrepared: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const evidence = useMutation({
@@ -34,7 +36,7 @@ export function JournalDraft({
       return readAccounting(
         path,
         Accounting.Evidence,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
   });
@@ -56,7 +58,7 @@ export function JournalDraft({
             mediaType: "text/plain",
           });
 
-          if (decoded._tag === "None") {
+          if (Option.isNone(decoded)) {
             setInputError(copy.journal_invalid);
 
             return;
@@ -146,7 +148,7 @@ function JournalForm(props: {
   const { book, setup, locale, onPrepared } = props;
   const copy = accountingCopy(locale);
   const client = useQueryClient();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const nextLine = useRef(3);
   const [lines, setLines] = useState([1, 2]);
   const [inputError, setInputError] = useState("");
@@ -158,7 +160,7 @@ function JournalForm(props: {
       return readAccounting(
         path,
         Accounting.ChangeSet,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (plan) => {
@@ -188,7 +190,7 @@ function JournalForm(props: {
       })),
     });
 
-    if (decoded._tag === "None") {
+    if (Option.isNone(decoded)) {
       setInputError(copy.journal_invalid);
 
       return;

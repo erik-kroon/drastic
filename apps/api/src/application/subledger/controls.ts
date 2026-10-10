@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as AssetDisposals from "@open-erp/contracts/asset-disposals";
 import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -13,8 +14,10 @@ import * as SchedulesDb from "../../db/subledger/schedules";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import { isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
-import { basisMatchesRevision, readOccurrenceStates } from "./schedules";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
+import { basisMatchesRevision, readOccurrenceStates } from "./schedule-basis";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -176,17 +179,23 @@ function readDependencyDigest(
     if ((yield* Db.readAllAccounts(transaction, scope.bookId)).length > accountBound) return null;
 
     if ((yield* Db.readAllPeriods(transaction, scope.bookId)).length > periodBound) return null;
+
     const preparations = yield* SchedulesDb.listBookPreparations(transaction, scope.bookId);
 
     if (preparations.length > preparationBound) return null;
+
     const reviews = yield* SchedulesDb.countPreparationReviews(transaction, scope.bookId);
 
     if ((reviews[0]?.total ?? 0) > impairmentReviewBound) return null;
+
     const impairments = yield* SchedulesDb.listBookImpairments(transaction, scope.bookId);
 
     if (impairments.length > impairmentBound) return null;
+
     const periods = yield* Db.readAllPeriods(transaction, scope.bookId);
+
     const accounts = yield* Db.readAllAccounts(transaction, scope.bookId);
+
     const digests: Array<JsonObject> = [];
 
     for (const schedule of schedules) {
@@ -201,6 +210,7 @@ function readDependencyDigest(
     }
 
     const bases = yield* SchedulesDb.listBookBases(transaction, scope.bookId);
+
     const disposals = yield* SchedulesDb.listBookDisposals(transaction, scope.bookId);
 
     const body = yield* toJsonObject({
@@ -307,7 +317,9 @@ export const getBasis = Effect.fn("subledger.getBasis")(function* (
   return yield* withSubledgerBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* requireBasisGrants(transaction);
+
       const rows = yield* ControlsDb.readBasis(transaction, command.scope.bookId, command.id);
+
       const basis = rows[0];
 
       if (!basis) return yield* failure("NotFound");
@@ -324,9 +336,11 @@ export const listBases = Effect.fn("subledger.listBases")(function* (
   return yield* withSubledgerBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* requireBasisGrants(transaction);
+
       const rows = yield* ControlsDb.listBases(transaction, command.scope.bookId);
 
       if (rows.length > retainedBasisBound) return yield* unsupported();
+
       const items = yield* Effect.forEach(rows, (row) => decode(BasisSchema, row.body));
 
       return yield* decode(BasisListSchema, { scope: command.scope, items, coverage });
@@ -354,12 +368,14 @@ function captureSchedule(
     ))[0];
 
     if (row === undefined) return undefined;
+
     const revision = yield* decode(Subledgers.ScheduleRevision, row.body);
 
     const effectiveDisposal =
       disposal === undefined || disposal.postingDate > asOfDate ? undefined : disposal;
 
     const occurrences = yield* readOccurrenceStates(transaction, scope, revision, asOfDate);
+
     let recognized = 0n;
 
     for (const occurrence of occurrences) {
@@ -390,7 +406,9 @@ function captureSchedule(
       )).length > 0;
 
     const input = objectField(basis?.body ?? {}, "input");
+
     const effectiveOn = textField(input, "effectiveOn") ?? null;
+
     const carryingBasis = textField(input, "carryingMinor") ?? null;
 
     const carrying =
@@ -425,9 +443,13 @@ function captureSchedules(
 ) {
   return Effect.gen(function* () {
     const inventory = yield* SchedulesDb.readScheduleInventory(transaction, scope.bookId);
+
     const bases = yield* SchedulesDb.listBookBases(transaction, scope.bookId);
+
     const disposals = yield* SchedulesDb.listBookDisposals(transaction, scope.bookId, asOfDate);
+
     const impairments = yield* SchedulesDb.listBookImpairments(transaction, scope.bookId);
+
     const basisBySchedule = new Map(bases.map((basis) => [basis.scheduleId, basis]));
 
     const disposalBySchedule = new Map(
@@ -435,6 +457,7 @@ function captureSchedules(
     );
 
     const impairmentAccountIds: Array<string> = [];
+
     const captured: Array<CapturedSchedule> = [];
 
     for (const schedule of inventory) {
@@ -459,19 +482,23 @@ function captureSchedules(
 
 function scheduleBasisEffects(asOfDate: string, schedule: CapturedSchedule) {
   const effects: Array<ExpectedEffect> = [];
+
   const effectiveOn = textField(objectField(schedule.basis ?? {}, "input"), "effectiveOn");
 
   if (schedule.basis === null || effectiveOn === undefined || effectiveOn > asOfDate)
     return effects;
 
   if (schedule.basisVoucherId === null) return effects;
+
   const lines = schedule.basis.lines;
 
   if (!Array.isArray(lines)) return effects;
 
   for (const line of lines) {
     if (!isJsonObject(line)) continue;
+
     const ordinal = line.ordinal;
+
     const accountId = textField(line, "accountId");
 
     if (
@@ -500,10 +527,12 @@ function scheduleBasisEffects(asOfDate: string, schedule: CapturedSchedule) {
 
 function scheduleOccurrenceEffects(schedule: CapturedSchedule) {
   const effects: Array<ExpectedEffect> = [];
+
   const accountId = schedule.revision.terms.creditAccountId;
 
   for (const occurrence of schedule.occurrences) {
     const amountMinor = minor(textField(occurrence, "amountMinor") ?? "0");
+
     const voucherId = textField(occurrence, "voucherId");
 
     if (
@@ -540,6 +569,7 @@ function scheduleOccurrenceEffects(schedule: CapturedSchedule) {
         if (!isJsonObject(correction)) continue;
 
         const reversalId = textField(correction, "reversalVoucherId");
+
         const replacementId = textField(correction, "replacementVoucherId");
 
         if (reversalId !== undefined)
@@ -737,6 +767,7 @@ function requireDeclaredCoverage(
 
     for (const line of lines) {
       if (!isJsonObject(line)) continue;
+
       const accountId = textField(line, "accountId");
 
       if (accountId === undefined || !accountIds.includes(accountId)) {
@@ -805,11 +836,14 @@ function accountControlTotals(
   }
 
   let ledger = 0n;
+
   let unexplained = 0;
 
   for (const line of lines) {
     if (line.accountId !== accountId) continue;
+
     const net = minor(line.debitMinor) - minor(line.creditMinor);
+
     const effect = index.get(`${line.voucherId}:${line.ordinal}:${line.accountId}`);
     ledger += net;
 
@@ -862,218 +896,233 @@ export const createControl = Effect.fn("subledger.createControl")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "create_subledger_control",
-          principal.actorId,
-          payload,
-          ControlSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireControlGrants(transaction);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const book = yield* readBook(transaction, command.scope);
-
-        if (
-          !isCalendarDate(command.input.asOfDate) ||
-          command.input.rationale.trim().length < 1 ||
-          command.input.rationale.length > 2000
-        ) {
-          return yield* failure("InvalidJournal");
-        }
-
-        const evidence = (yield* Db.readEvidence(
-          transaction,
-          command.scope.bookId,
-          command.input.inventoryEvidenceId,
-        ))[0];
-
-        if (evidence === undefined) return yield* failure("MissingEvidence");
-        const accountIds = command.input.accountIds;
-
-        if (
-          accountIds.length < 1 ||
-          accountIds.length > 20 ||
-          new Set(accountIds).size !== accountIds.length
-        ) {
-          return yield* failure("InvalidJournal");
-        }
-
-        const declared = yield* Db.readAccounts(transaction, command.scope.bookId, [...accountIds]);
-
-        if (declared.length !== accountIds.length) return yield* failure("InvalidJournal");
-        const dependencyDigest = yield* readDependencyDigest(transaction, command.scope, book);
-
-        if (dependencyDigest === null) return yield* unsupported();
-
-        const snapshots = yield* SchedulesDb.countControlSnapshots(
-          transaction,
-          command.scope.bookId,
-        );
-
-        if ((snapshots[0]?.total ?? 0) >= retainedControlBound) return yield* unsupported();
-        const sequence = book.committedSequence.toString();
-        const asOfDate = command.input.asOfDate;
-        const captured = yield* captureSchedules(transaction, command.scope, asOfDate, sequence);
-        yield* requireDeclaredCoverage(
-          accountIds,
-          captured.schedules,
-          yield* SchedulesDb.listBookBases(transaction, command.scope.bookId),
-        );
-
-        for (const accountId of captured.impairmentAccountIds) {
-          if (!accountIds.includes(accountId)) return yield* failure("InvalidJournal");
-        }
-
-        const effects = yield* buildExpectedEffects(
-          transaction,
-          command.scope,
-          asOfDate,
-          captured.schedules,
-        );
-
-        yield* requireDistinctEffects(effects);
-
-        const lines = yield* SchedulesDb.readLedgerContributions(
-          transaction,
-          command.scope.bookId,
-          accountIds,
-          asOfDate,
-          sequence,
-          ledgerLineBound + 1,
-        );
-
-        if (lines.length > ledgerLineBound) return yield* unsupported();
-        const index = effectIndex(effects);
-
-        const ledgerLines = yield* Effect.forEach(lines, (line) =>
-          toJsonObject(
-            controlLineBody(line, index.get(`${line.voucherId}:${line.ordinal}:${line.accountId}`)),
-          ),
-        );
-
-        if (ledgerLines.length !== lines.length) return yield* failure("InvalidJournal");
-        const ordered = [...declared].sort((left, right) => compareText(left.id, right.id));
-        const controls: Array<JsonObject> = [];
-        let reviewGaps = captured.schedules.length === 0;
-
-        for (const account of ordered) {
-          const totals = accountControlTotals(account.id, effects, lines, index);
-
-          if (totals.difference !== 0n || totals.unexplained !== 0 || totals.missing !== 0) {
-            reviewGaps = true;
-          }
-
-          controls.push(
-            yield* toJsonObject({
-              accountId: account.id,
-              code: account.code,
-              name: account.name,
-              version: account.version.toString(),
-              active: account.active,
-              expectedMinor: totals.expected.toString(),
-              ledgerMinor: totals.ledger.toString(),
-              differenceMinor: totals.difference.toString(),
-              unexplainedLineCount: totals.unexplained,
-              missingEffectCount: totals.missing,
-            }),
-          );
-        }
-
-        for (const schedule of captured.schedules) {
-          if (!scheduleHasReviewGap(schedule)) continue;
-
-          if (schedule.basis === null) {
-            reviewGaps = true;
-            continue;
-          }
-
-          if (!(yield* basisMatchesRevision(schedule.basis, schedule.revision))) {
-            reviewGaps = true;
-          }
-        }
-
-        const schedules = yield* Effect.forEach(captured.schedules, (schedule) =>
-          toJsonObject({
-            revision: schedule.revision,
-            basis: schedule.basis,
-            occurrences: schedule.occurrences,
-            basisReversed: schedule.basisReversed,
-            disposal: schedule.disposal,
-            recognizedMinor: schedule.recognized.toString(),
-            impairmentMinor: schedule.impairment.toString(),
-            carryingMinor: schedule.carrying === null ? null : schedule.carrying.toString(),
-          }),
-        );
-
-        const expectedEffects = yield* Effect.forEach(effects, (effect) =>
-          toJsonObject({
-            scheduleId: effect.scheduleId,
-            kind: effect.kind,
-            voucherId: effect.voucherId,
-            ordinal: effect.ordinal,
-            accountId: effect.accountId,
-            expectedMinor: effect.expectedMinor.toString(),
-          }),
-        );
-
-        const base = merge({
-          id: newId("schedule_control"),
-          scope: command.scope,
-          kind: "synthetic_subledger_control_v1",
-          input: yield* toJsonObject(command.input),
-          inventorySha256: evidence.sha256,
-          sequence,
-          currency: book.currency,
-          currencyScale: book.currencyScale,
-          dependencyDigest,
-          knowledgeBasis: "current_known_facts_at_capture",
-          coverage: "not_established",
-          financialCloseReady: false,
-          schedules,
-          expectedEffects,
-          ledgerLines,
-          controls,
-          hasReviewGaps: reviewGaps,
-          createdAt: yield* isoNow(transaction),
-          receipt: {
-            key: command.idempotencyKey,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
             operation: "create_subledger_control",
             actorId: principal.actorId,
+            input: payload,
           },
-        });
+          ControlSchema,
+          Effect.gen(function* () {
+            yield* requireControlGrants(transaction);
 
-        const body = yield* digestBody(base);
-        const control = yield* decode(ControlSchema, body);
+            const book = yield* readBook(transaction, command.scope);
 
-        const content = yield* canonicalNative(body);
+            if (
+              !isCalendarDate(command.input.asOfDate) ||
+              command.input.rationale.trim().length < 1 ||
+              command.input.rationale.length > 2000
+            ) {
+              return yield* failure("InvalidJournal");
+            }
 
-        const byteLength = new TextEncoder().encode(content).byteLength;
+            const evidence = (yield* Db.readEvidence(
+              transaction,
+              command.scope.bookId,
+              command.input.inventoryEvidenceId,
+            ))[0];
 
-        if (byteLength < 1 || byteLength > controlByteBound) return yield* unsupported();
-        const hash = yield* sha256Hex(content);
-        yield* SchedulesDb.insertControlSnapshot(transaction, {
-          bookId: command.scope.bookId,
-          id: control.id,
-          body,
-          content,
-          sha256: hash,
-          byteLength,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "create_subledger_control",
-          principal.actorId,
-          control,
+            if (evidence === undefined) return yield* failure("MissingEvidence");
+
+            const accountIds = command.input.accountIds;
+
+            if (
+              accountIds.length < 1 ||
+              accountIds.length > 20 ||
+              new Set(accountIds).size !== accountIds.length
+            ) {
+              return yield* failure("InvalidJournal");
+            }
+
+            const declared = yield* Db.readAccounts(transaction, command.scope.bookId, [
+              ...accountIds,
+            ]);
+
+            if (declared.length !== accountIds.length) return yield* failure("InvalidJournal");
+
+            const dependencyDigest = yield* readDependencyDigest(transaction, command.scope, book);
+
+            if (dependencyDigest === null) return yield* unsupported();
+
+            const snapshots = yield* SchedulesDb.countControlSnapshots(
+              transaction,
+              command.scope.bookId,
+            );
+
+            if ((snapshots[0]?.total ?? 0) >= retainedControlBound) return yield* unsupported();
+
+            const sequence = book.committedSequence.toString();
+
+            const asOfDate = command.input.asOfDate;
+
+            const captured = yield* captureSchedules(
+              transaction,
+              command.scope,
+              asOfDate,
+              sequence,
+            );
+
+            yield* requireDeclaredCoverage(
+              accountIds,
+              captured.schedules,
+              yield* SchedulesDb.listBookBases(transaction, command.scope.bookId),
+            );
+
+            for (const accountId of captured.impairmentAccountIds) {
+              if (!accountIds.includes(accountId)) return yield* failure("InvalidJournal");
+            }
+
+            const effects = yield* buildExpectedEffects(
+              transaction,
+              command.scope,
+              asOfDate,
+              captured.schedules,
+            );
+
+            yield* requireDistinctEffects(effects);
+
+            const lines = yield* SchedulesDb.readLedgerContributions(
+              transaction,
+              command.scope.bookId,
+              accountIds,
+              asOfDate,
+              sequence,
+              ledgerLineBound + 1,
+            );
+
+            if (lines.length > ledgerLineBound) return yield* unsupported();
+
+            const index = effectIndex(effects);
+
+            const ledgerLines = yield* Effect.forEach(lines, (line) =>
+              toJsonObject(
+                controlLineBody(
+                  line,
+                  index.get(`${line.voucherId}:${line.ordinal}:${line.accountId}`),
+                ),
+              ),
+            );
+
+            if (ledgerLines.length !== lines.length) return yield* failure("InvalidJournal");
+
+            const ordered = [...declared].sort((left, right) => compareText(left.id, right.id));
+
+            const controls: Array<JsonObject> = [];
+
+            let reviewGaps = captured.schedules.length === 0;
+
+            for (const account of ordered) {
+              const totals = accountControlTotals(account.id, effects, lines, index);
+
+              if (totals.difference !== 0n || totals.unexplained !== 0 || totals.missing !== 0) {
+                reviewGaps = true;
+              }
+
+              controls.push(
+                yield* toJsonObject({
+                  accountId: account.id,
+                  code: account.code,
+                  name: account.name,
+                  version: account.version.toString(),
+                  active: account.active,
+                  expectedMinor: totals.expected.toString(),
+                  ledgerMinor: totals.ledger.toString(),
+                  differenceMinor: totals.difference.toString(),
+                  unexplainedLineCount: totals.unexplained,
+                  missingEffectCount: totals.missing,
+                }),
+              );
+            }
+
+            for (const schedule of captured.schedules) {
+              if (!scheduleHasReviewGap(schedule)) continue;
+
+              if (schedule.basis === null) {
+                reviewGaps = true;
+                continue;
+              }
+
+              if (!(yield* basisMatchesRevision(schedule.basis, schedule.revision))) {
+                reviewGaps = true;
+              }
+            }
+
+            const schedules = yield* Effect.forEach(captured.schedules, (schedule) =>
+              toJsonObject({
+                revision: schedule.revision,
+                basis: schedule.basis,
+                occurrences: schedule.occurrences,
+                basisReversed: schedule.basisReversed,
+                disposal: schedule.disposal,
+                recognizedMinor: schedule.recognized.toString(),
+                impairmentMinor: schedule.impairment.toString(),
+                carryingMinor: schedule.carrying === null ? null : schedule.carrying.toString(),
+              }),
+            );
+
+            const expectedEffects = yield* Effect.forEach(effects, (effect) =>
+              toJsonObject({
+                scheduleId: effect.scheduleId,
+                kind: effect.kind,
+                voucherId: effect.voucherId,
+                ordinal: effect.ordinal,
+                accountId: effect.accountId,
+                expectedMinor: effect.expectedMinor.toString(),
+              }),
+            );
+
+            const base = merge({
+              id: newId("schedule_control"),
+              scope: command.scope,
+              kind: "synthetic_subledger_control_v1",
+              input: yield* toJsonObject(command.input),
+              inventorySha256: evidence.sha256,
+              sequence,
+              currency: book.currency,
+              currencyScale: book.currencyScale,
+              dependencyDigest,
+              knowledgeBasis: "current_known_facts_at_capture",
+              coverage: "not_established",
+              financialCloseReady: false,
+              schedules,
+              expectedEffects,
+              ledgerLines,
+              controls,
+              hasReviewGaps: reviewGaps,
+              createdAt: yield* isoNow(transaction),
+              receipt: {
+                key: command.idempotencyKey,
+                operation: "create_subledger_control",
+                actorId: principal.actorId,
+              },
+            });
+
+            const body = yield* digestBody(base);
+
+            const control = yield* decode(ControlSchema, body);
+
+            const content = yield* canonicalNative(body);
+
+            const byteLength = new TextEncoder().encode(content).byteLength;
+
+            if (byteLength < 1 || byteLength > controlByteBound) return yield* unsupported();
+
+            const hash = yield* sha256Hex(content);
+            yield* SchedulesDb.insertControlSnapshot(transaction, {
+              bookId: command.scope.bookId,
+              id: control.id,
+              body,
+              content,
+              sha256: hash,
+              byteLength,
+            });
+
+            return control;
+          }),
         );
-
-        return control;
       }),
     "update",
   );
@@ -1094,7 +1143,9 @@ export const getControl = Effect.fn("subledger.getControl")(function* (
       ))[0];
 
       if (saved === undefined) return yield* failure("NotFound");
+
       const book = yield* readBook(transaction, command.scope);
+
       const dependencyDigest = yield* readDependencyDigest(transaction, command.scope, book);
 
       return yield* decode(ControlViewSchema, {
@@ -1120,9 +1171,11 @@ export const listControls = Effect.fn("subledger.listControls")(function* (
   return yield* withSubledgerBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* requireControlGrants(transaction);
+
       const rows = yield* ControlsDb.listControlItems(transaction, command.scope.bookId);
 
       if (rows.length > retainedControlBound) return yield* unsupported();
+
       const items = yield* Effect.forEach(rows, (row) => toJsonObject(row.item));
 
       return yield* decode(ControlListSchema, { scope: command.scope, items, coverage });

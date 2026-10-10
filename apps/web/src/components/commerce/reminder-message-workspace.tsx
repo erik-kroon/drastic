@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import * as Collections from "@open-erp/contracts/collections";
@@ -279,7 +280,10 @@ function ReminderAttachment({
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${commercePath(book)}/legal-invoice-pdfs/${encodeURIComponent(attachment.captureId)}`,
+        (client) =>
+          client.legalInvoicePdfs.getLegalInvoicePdf({
+            params: { ...bookScope(book), id: attachment.captureId },
+          }),
         LegalPdf.LegalInvoicePdfView,
         { signal },
       );

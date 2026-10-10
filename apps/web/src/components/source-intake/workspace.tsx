@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Intake from "@open-erp/contracts/source-intake";
@@ -11,7 +14,7 @@ import { statementFormat } from "@/lib/statement-format";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { IntakeProps } from "./index";
 import { intakeCopy } from "./copy";
 import { IntakeRequestRecovery, PreviewReview } from "./review";
@@ -41,7 +44,8 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}`,
+        (client) =>
+          client.sourceIntake.getSourceOccurrence({ params: { ...bookScope(book), id: id } }),
         Intake.SourceOccurrenceView,
         { signal },
       );
@@ -228,7 +232,7 @@ function MappingForm(
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = initial?.currencyScale ?? metadata.data?.currencyScale;
   const copy = intakeCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [error, setError] = useState("");
 
   const mutation = useMutation({
@@ -238,7 +242,7 @@ function MappingForm(
       return readAccounting(
         path,
         Intake.SourcePreview,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: props.onCreated,
@@ -300,7 +304,7 @@ function MappingForm(
           },
         });
 
-        if (result._tag === "None") {
+        if (Option.isNone(result)) {
           setError(
             locale === "sv"
               ? "Kontrollera kolumner, filformat, konto, datum och saldon."

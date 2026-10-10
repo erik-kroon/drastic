@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
@@ -7,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
 import { PdfViewer, type PdfView } from "@open-erp/ui/components/pdf-viewer";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { enteredExpenseDocument, sourceDocumentOptions } from "@/lib/source-documents";
 import { downloadIntake } from "@/components/source-intake/download";
 import type { CommerceProps } from "@/components/commerce/shared";
@@ -58,7 +59,7 @@ async function readBankMatchDocument(
   if (!voucherId || !lineId) throw new Error("Matching selection is missing");
 
   const voucher = await readAccounting(
-    `${bookPath(book)}/vouchers/${encodeURIComponent(voucherId)}`,
+    (client) => client.accounting.getVoucher({ params: { ...bookScope(book), id: voucherId } }),
     Accounting.Voucher,
     { signal },
   );
@@ -70,7 +71,8 @@ async function readBankMatchDocument(
 
   for (const reference of voucher.action.evidenceRefs) {
     const evidence = await readAccounting(
-      `${bookPath(book)}/evidence/${encodeURIComponent(reference.evidenceId)}`,
+      (client) =>
+        client.accounting.getEvidence({ params: { ...bookScope(book), id: reference.evidenceId } }),
       Accounting.EvidenceContent,
       { signal },
     );

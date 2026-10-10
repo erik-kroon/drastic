@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
@@ -16,7 +17,8 @@ import * as LegalPolicyDb from "../../db/commerce/legal-policies";
 import { lockBookForUpdate, readOperatorMembership } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
-import { newId, replay, saveCommand } from "../posting";
+import { newId } from "../identifiers";
+
 import {
   decode,
   exactKeys,
@@ -194,130 +196,123 @@ export const activateLegalSalesPolicy = Effect.fn("commerce.legalPolicy.activate
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "activate_ar_legal_policy",
-        principal.actorId,
-        command.input,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "activate_ar_legal_policy",
+          actorId: principal.actorId,
+          input: command.input,
+        },
         PolicySchema,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, LegalPolicyDb.legalSalesPolicyTables, false);
+          yield* requireInsertAccess(transaction, ["ar_legal_policies"]);
+          yield* lockBookForUpdate(transaction, command.scope);
+          yield* exactKeys(yield* toJsonObject(command.input), activationFields);
+          const input = yield* decode(ActivateSchema, command.input);
+          const book = (yield* LegalPolicyDb.readBookProfile(transaction, command.scope.bookId))[0];
+
+          if (!book) return yield* failure("Forbidden");
+          yield* requireLegalSellerProfile(book);
+
+          const candidate = (yield* LegalPolicyDb.readCandidate(
+            transaction,
+            command.scope.bookId,
+            input.candidateId,
+          ))[0];
+
+          const review = (yield* LegalPolicyDb.readReview(
+            transaction,
+            command.scope.bookId,
+            input.reviewId,
+            input.candidateId,
+          ))[0];
+
+          if (!candidate || !review) return yield* failure("NotFound");
+
+          if (
+            input.candidateDigest !== textField(candidate.body, "digest") ||
+            input.reviewDigest !== textField(review.body, "digest") ||
+            textField(objectField(review.body, "input"), "candidateDigest") !==
+              textField(candidate.body, "digest")
+          ) {
+            return yield* failure("StaleDependency");
+          }
+
+          yield* requireIndependentActivation(
+            candidate.actorId,
+            review.actorId,
+            principal.actorId,
+            input.candidateDigest,
+            input.reviewDigest,
+          );
+          yield* requireSupportedRules(candidate.body, input.series);
+          yield* requireEffectiveFrom(candidate.body, book.today);
+          yield* requireSwedishSeller(candidate.body);
+          yield* requireRetainedEvidence(
+            transaction,
+            command.scope.bookId,
+            yield* toJsonObject(input.sourceEvidence),
+          );
+          yield* requireRetainedEvidence(
+            transaction,
+            command.scope.bookId,
+            yield* toJsonObject(input.activationEvidence),
+          );
+
+          if (input.reason.trim().length === 0) return yield* failure("InvalidJournal");
+          const count = yield* LegalPolicyDb.readPolicyCount(transaction, command.scope.bookId);
+
+          if ((count[0]?.count ?? 0) >= policyHistoryBound) return yield* unsupported();
+
+          const activated = yield* LegalPolicyDb.readPolicyForCandidate(
+            transaction,
+            command.scope.bookId,
+            input.candidateId,
+          );
+
+          if (activated[0]?.present === true) return yield* failure("IdempotencyConflict");
+
+          const series = yield* LegalPolicyDb.readPolicyForSeries(
+            transaction,
+            command.scope.bookId,
+            input.series,
+          );
+
+          if (series[0]?.present === true) return yield* failure("IdempotencyConflict");
+
+          const withoutDigest: JsonObject = {
+            id: newId("ar_policy"),
+            scope: command.scope,
+            candidate: candidate.body,
+            review: review.body,
+            input,
+            activatedBy: principal.actorId,
+            activatedAt: yield* retainedNow(transaction),
+            status: "active",
+            legalInvoiceEnabled: false,
+            creditEnabled: false,
+            deliveryEnabled: false,
+          };
+
+          const digest = yield* digestNative(withoutDigest);
+          const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+          const result = yield* decode(PolicySchema, body);
+          yield* LegalPolicyDb.insertPolicy(transaction, {
+            bookId: command.scope.bookId,
+            id: result.id,
+            candidateId: input.candidateId,
+            reviewId: input.reviewId,
+            series: input.series,
+            actorId: principal.actorId,
+            body,
+          });
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, LegalPolicyDb.legalSalesPolicyTables, false);
-      yield* requireInsertAccess(transaction, ["ar_legal_policies"]);
-      yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), activationFields);
-      const input = yield* decode(ActivateSchema, command.input);
-      const book = (yield* LegalPolicyDb.readBookProfile(transaction, command.scope.bookId))[0];
-
-      if (!book) return yield* failure("Forbidden");
-      yield* requireLegalSellerProfile(book);
-
-      const candidate = (yield* LegalPolicyDb.readCandidate(
-        transaction,
-        command.scope.bookId,
-        input.candidateId,
-      ))[0];
-
-      const review = (yield* LegalPolicyDb.readReview(
-        transaction,
-        command.scope.bookId,
-        input.reviewId,
-        input.candidateId,
-      ))[0];
-
-      if (!candidate || !review) return yield* failure("NotFound");
-
-      if (
-        input.candidateDigest !== textField(candidate.body, "digest") ||
-        input.reviewDigest !== textField(review.body, "digest") ||
-        textField(objectField(review.body, "input"), "candidateDigest") !==
-          textField(candidate.body, "digest")
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      yield* requireIndependentActivation(
-        candidate.actorId,
-        review.actorId,
-        principal.actorId,
-        input.candidateDigest,
-        input.reviewDigest,
-      );
-      yield* requireSupportedRules(candidate.body, input.series);
-      yield* requireEffectiveFrom(candidate.body, book.today);
-      yield* requireSwedishSeller(candidate.body);
-      yield* requireRetainedEvidence(
-        transaction,
-        command.scope.bookId,
-        yield* toJsonObject(input.sourceEvidence),
-      );
-      yield* requireRetainedEvidence(
-        transaction,
-        command.scope.bookId,
-        yield* toJsonObject(input.activationEvidence),
-      );
-
-      if (input.reason.trim().length === 0) return yield* failure("InvalidJournal");
-      const count = yield* LegalPolicyDb.readPolicyCount(transaction, command.scope.bookId);
-
-      if ((count[0]?.count ?? 0) >= policyHistoryBound) return yield* unsupported();
-
-      const activated = yield* LegalPolicyDb.readPolicyForCandidate(
-        transaction,
-        command.scope.bookId,
-        input.candidateId,
-      );
-
-      if (activated[0]?.present === true) return yield* failure("IdempotencyConflict");
-
-      const series = yield* LegalPolicyDb.readPolicyForSeries(
-        transaction,
-        command.scope.bookId,
-        input.series,
-      );
-
-      if (series[0]?.present === true) return yield* failure("IdempotencyConflict");
-
-      const withoutDigest: JsonObject = {
-        id: newId("ar_policy"),
-        scope: command.scope,
-        candidate: candidate.body,
-        review: review.body,
-        input,
-        activatedBy: principal.actorId,
-        activatedAt: yield* retainedNow(transaction),
-        status: "active",
-        legalInvoiceEnabled: false,
-        creditEnabled: false,
-        deliveryEnabled: false,
-      };
-
-      const digest = yield* digestNative(withoutDigest);
-      const body: JsonObject = Object.assign({}, withoutDigest, { digest });
-      const result = yield* decode(PolicySchema, body);
-      yield* LegalPolicyDb.insertPolicy(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        candidateId: input.candidateId,
-        reviewId: input.reviewId,
-        series: input.series,
-        actorId: principal.actorId,
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "activate_ar_legal_policy",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

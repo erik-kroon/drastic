@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { DeltaEffectsDialog } from "./delta-effects";
 import { useQuery } from "@tanstack/react-query";
@@ -104,9 +105,14 @@ function useDeltaReview(workspace: Workspace) {
   const inventory = useQuery({
     queryKey: [...bookKey(book), "onboarding", "source-deltas"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/onboarding/source-deltas`, Delta.OnboardingDeltaInventory, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.onboardingDeltas.listOnboardingDeltas({ params: { ...bookScope(book) } }),
+        Delta.OnboardingDeltaInventory,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 
@@ -119,7 +125,10 @@ function useDeltaReview(workspace: Workspace) {
     enabled: !!latest,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/onboarding/source-deltas/${encodeURIComponent(latest?.id ?? "")}`,
+        (client) =>
+          client.onboardingDeltas.getOnboardingDelta({
+            params: { ...bookScope(book), id: latest?.id ?? "" },
+          }),
         Delta.OnboardingDeltaView,
         { signal },
       ),

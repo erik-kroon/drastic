@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Inputs from "@open-erp/contracts/payroll-inputs";
 import * as InputDb from "../../db/payroll/inputs";
 import * as V from "@open-erp/contracts/variable-pay-review";
@@ -6,8 +7,8 @@ import * as Result from "effect/Result";
 import type * as Schema from "effect/Schema";
 import * as Db from "../../db/payroll/variable-pay";
 import * as Ledger from "../../db/posting";
-import { readExecutionApprovalInTransaction } from "../posting";
-import { readOnboardingResponsibility } from "../onboarding-policy";
+import { readExecutionApprovalInTransaction } from "../posting-approval";
+import { readBookResponsibility } from "../book-responsibility";
 import * as Foundation from "../../db/payroll-foundation";
 import type { Transaction } from "../../db/transaction";
 import {
@@ -19,8 +20,10 @@ import {
   type Principal,
 } from "../commerce/support";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
-import { checkedInput } from "./inputs";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { checkedInput } from "./input-admission";
 import { assessVariableBasis, duplicateSources } from "./variable-pay-assessment";
 import { readVariableSource, requireVariableSourceBinding } from "./variable-pay-source";
 import { authorize, permits } from "../authority";
@@ -243,7 +246,7 @@ export const variableReviewView = Effect.fn("variablePay.view")(function* (
 
   const disposable = actionable && financialReview === null;
 
-  const responsibility = yield* readOnboardingResponsibility(tx, scope);
+  const responsibility = yield* readBookResponsibility(tx, scope);
 
   const canApprove =
     actionable &&
@@ -306,66 +309,58 @@ export const assessVariablePay = Effect.fn("variablePay.assess")(function* (
       yield* access(tx, command.scope, principal, true);
       const operation = "assess_variable_pay";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { inputId: command.inputId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { inputId: command.inputId, input: command.input },
+        },
         V.VariablePayReviewView,
+        Effect.gen(function* () {
+          const submitted = yield* checkedInput(
+            tx,
+            command.scope,
+            command.inputId,
+            command.input.inputDigest,
+          );
+
+          const basis = yield* assessVariableBasis(
+            tx,
+            command.scope,
+            submitted,
+            command.input.sourceOccurrence,
+          );
+
+          const body = {
+            id: newId("variable_assessment"),
+            scope: command.scope,
+            inputId: submitted.id,
+            inputDigest: submitted.digest,
+            ...basis,
+            createdAt: yield* isoNow(tx),
+            createdBy: principal.actorId,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const assessment = yield* decode(
+            V.VariablePayAssessment,
+            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+          );
+
+          yield* Db.insert(
+            tx,
+            "payroll_input_assessments",
+            assessment,
+            yield* toJsonObject(assessment),
+          );
+          const result = yield* variableReviewView(tx, command.scope, assessment, principal);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const submitted = yield* checkedInput(
-        tx,
-        command.scope,
-        command.inputId,
-        command.input.inputDigest,
-      );
-
-      const basis = yield* assessVariableBasis(
-        tx,
-        command.scope,
-        submitted,
-        command.input.sourceOccurrence,
-      );
-
-      const body = {
-        id: newId("variable_assessment"),
-        scope: command.scope,
-        inputId: submitted.id,
-        inputDigest: submitted.digest,
-        ...basis,
-        createdAt: yield* isoNow(tx),
-        createdBy: principal.actorId,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const assessment = yield* decode(
-        V.VariablePayAssessment,
-        yield* toJsonObject({ ...body, digest: yield* digest(body) }),
-      );
-
-      yield* Db.insert(
-        tx,
-        "payroll_input_assessments",
-        assessment,
-        yield* toJsonObject(assessment),
-      );
-      const result = yield* variableReviewView(tx, command.scope, assessment, principal);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -383,80 +378,75 @@ export const selectVariablePay = Effect.fn("variablePay.select")(function* (
       yield* access(tx, command.scope, principal, true);
       const operation = "select_variable_pay";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { assessmentId: command.assessmentId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { assessmentId: command.assessmentId, input: command.input },
+        },
         V.VariablePayReviewView,
+        Effect.gen(function* () {
+          const assessment = yield* readAssessment(
+            tx,
+            command.scope,
+            command.assessmentId,
+            command.input.assessmentDigest,
+          );
+
+          const view = yield* variableReviewView(tx, command.scope, assessment, principal);
+
+          if (!view.current.assessmentCurrent) return yield* failure("StaleDependency");
+
+          if (view.selection) {
+            if (
+              view.selection.assessmentId === assessment.id ||
+              view.dispositions.length ||
+              view.financialReview !== null
+            )
+              return yield* failure("AlreadyPosted");
+            const previous = yield* readAssessment(tx, command.scope, view.selection.assessmentId);
+            const previousView = yield* variableReviewView(tx, command.scope, previous, principal);
+
+            if (previousView.current.assessmentCurrent) return yield* failure("AlreadyPosted");
+          }
+
+          if (
+            (yield* Db.financialReferences(tx, command.scope.bookId, assessment.inputId))[0]
+              ?.present
+          )
+            return yield* failure("AlreadyPosted");
+
+          const body = {
+            id: newId("variable_selection"),
+            scope: command.scope,
+            inputId: assessment.inputId,
+            inputDigest: assessment.inputDigest,
+            assessmentId: assessment.id,
+            assessmentDigest: assessment.digest,
+            createdAt: yield* isoNow(tx),
+            createdBy: principal.actorId,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const selection = yield* decode(
+            V.VariablePayPendingSelection,
+            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+          );
+
+          yield* Db.insert(
+            tx,
+            "payroll_input_pending_selections",
+            selection,
+            yield* toJsonObject(selection),
+          );
+          const result = yield* variableReviewView(tx, command.scope, assessment, principal);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const assessment = yield* readAssessment(
-        tx,
-        command.scope,
-        command.assessmentId,
-        command.input.assessmentDigest,
-      );
-
-      const view = yield* variableReviewView(tx, command.scope, assessment, principal);
-
-      if (!view.current.assessmentCurrent) return yield* failure("StaleDependency");
-
-      if (view.selection) {
-        if (
-          view.selection.assessmentId === assessment.id ||
-          view.dispositions.length ||
-          view.financialReview !== null
-        )
-          return yield* failure("AlreadyPosted");
-        const previous = yield* readAssessment(tx, command.scope, view.selection.assessmentId);
-        const previousView = yield* variableReviewView(tx, command.scope, previous, principal);
-
-        if (previousView.current.assessmentCurrent) return yield* failure("AlreadyPosted");
-      }
-
-      if ((yield* Db.financialReferences(tx, command.scope.bookId, assessment.inputId))[0]?.present)
-        return yield* failure("AlreadyPosted");
-
-      const body = {
-        id: newId("variable_selection"),
-        scope: command.scope,
-        inputId: assessment.inputId,
-        inputDigest: assessment.inputDigest,
-        assessmentId: assessment.id,
-        assessmentDigest: assessment.digest,
-        createdAt: yield* isoNow(tx),
-        createdBy: principal.actorId,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const selection = yield* decode(
-        V.VariablePayPendingSelection,
-        yield* toJsonObject({ ...body, digest: yield* digest(body) }),
-      );
-
-      yield* Db.insert(
-        tx,
-        "payroll_input_pending_selections",
-        selection,
-        yield* toJsonObject(selection),
-      );
-      const result = yield* variableReviewView(tx, command.scope, assessment, principal);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );
@@ -474,70 +464,62 @@ export const disposeVariablePay = Effect.fn("variablePay.dispose")(function* (
       yield* access(tx, command.scope, principal, true);
       const operation = "dispose_variable_pay";
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         tx,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { assessmentId: command.assessmentId, input: command.input },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { assessmentId: command.assessmentId, input: command.input },
+        },
         V.VariablePayReviewView,
+        Effect.gen(function* () {
+          const assessment = yield* readAssessment(
+            tx,
+            command.scope,
+            command.assessmentId,
+            command.input.assessmentDigest,
+          );
+
+          const view = yield* variableReviewView(tx, command.scope, assessment, principal);
+
+          if (!view.current.assessmentCurrent) return yield* failure("StaleDependency");
+
+          if (!view.current.canRemove || view.selection?.id !== command.input.selectionId)
+            return yield* failure("AlreadyPosted");
+
+          const body = {
+            id: newId("variable_disposition"),
+            scope: command.scope,
+            inputId: assessment.inputId,
+            inputDigest: assessment.inputDigest,
+            assessmentId: assessment.id,
+            assessmentDigest: assessment.digest,
+            selectionId: command.input.selectionId,
+            kind: command.input.kind,
+            submitterActorId: assessment.submitter.actorId,
+            createdAt: yield* isoNow(tx),
+            createdBy: principal.actorId,
+            receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
+          };
+
+          const disposition = yield* decode(
+            V.VariablePayDisposition,
+            yield* toJsonObject({ ...body, digest: yield* digest(body) }),
+          );
+
+          yield* Db.insert(
+            tx,
+            "payroll_input_dispositions",
+            disposition,
+            yield* toJsonObject(disposition),
+          );
+          const result = yield* variableReviewView(tx, command.scope, assessment, principal);
+
+          return { receipt: yield* toJsonObject(result), result: result };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const assessment = yield* readAssessment(
-        tx,
-        command.scope,
-        command.assessmentId,
-        command.input.assessmentDigest,
-      );
-
-      const view = yield* variableReviewView(tx, command.scope, assessment, principal);
-
-      if (!view.current.assessmentCurrent) return yield* failure("StaleDependency");
-
-      if (!view.current.canRemove || view.selection?.id !== command.input.selectionId)
-        return yield* failure("AlreadyPosted");
-
-      const body = {
-        id: newId("variable_disposition"),
-        scope: command.scope,
-        inputId: assessment.inputId,
-        inputDigest: assessment.inputDigest,
-        assessmentId: assessment.id,
-        assessmentDigest: assessment.digest,
-        selectionId: command.input.selectionId,
-        kind: command.input.kind,
-        submitterActorId: assessment.submitter.actorId,
-        createdAt: yield* isoNow(tx),
-        createdBy: principal.actorId,
-        receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
-      };
-
-      const disposition = yield* decode(
-        V.VariablePayDisposition,
-        yield* toJsonObject({ ...body, digest: yield* digest(body) }),
-      );
-
-      yield* Db.insert(
-        tx,
-        "payroll_input_dispositions",
-        disposition,
-        yield* toJsonObject(disposition),
-      );
-      const result = yield* variableReviewView(tx, command.scope, assessment, principal);
-      yield* saveCommand(
-        tx,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(result),
-      );
-
-      return result;
     },
     "update",
   );

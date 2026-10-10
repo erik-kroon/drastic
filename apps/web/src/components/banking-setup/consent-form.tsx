@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -9,12 +10,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 import { checkScope } from "@/components/commerce/shared";
 
 const review = Schema.Struct({
@@ -25,7 +21,7 @@ const review = Schema.Struct({
 export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/bank-connector-consents`;
 
   const save = useMutation({
@@ -33,7 +29,7 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
       const result = await readAccounting(
         path,
         Connector.ConnectorConsent,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       checkScope(book, result.scope);

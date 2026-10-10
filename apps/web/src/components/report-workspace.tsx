@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import * as Option from "effect/Option";
 import {
   ReportCatalog,
@@ -5,7 +7,7 @@ import {
   ReportCatalogFooter,
   ReportCatalogRow,
 } from "@open-erp/ui/components/report-catalog";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Reports from "@open-erp/contracts/reports";
@@ -36,7 +38,7 @@ import { PageCaption, PageEmpty, RegisterSearch } from "@open-erp/ui/components/
 import { AccountingStatus } from "@/components/accounting-status";
 import { AccountExplanation, TrialBalance } from "@/components/trial-balance";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 
 export function ReportLibrary() {
@@ -193,7 +195,7 @@ export function TrialBalanceWorkspace(props: {
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const title = props.mode === "ledger" ? labels.generalLedger : labels.trialBalance;
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const period = setup.periods.at(-1);
   const client = useQueryClient();
 
@@ -217,7 +219,7 @@ export function TrialBalanceWorkspace(props: {
       return readAccounting(
         path,
         Reports.ReportSnapshot,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (report) => {
@@ -376,7 +378,7 @@ export function ReportFamilyWorkspace(props: {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? familySwedish : familyEnglish;
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
   const [accountId, setAccountId] = useState("");
 
@@ -385,7 +387,10 @@ export function ReportFamilyWorkspace(props: {
     enabled: Boolean(props.recordId && props.recordId !== "new"),
     queryFn: async ({ signal }) => {
       const snapshot = await readAccounting(
-        `${bookPath(book)}/report-family-snapshots/${encodeURIComponent(props.recordId ?? "")}`,
+        (client) =>
+          client.reports.getReportFamily({
+            params: { ...bookScope(book), id: props.recordId ?? "" },
+          }),
         Reports.ReportFamilySnapshot,
         { signal },
       );
@@ -404,11 +409,7 @@ export function ReportFamilyWorkspace(props: {
       readAccounting(
         `${bookPath(book)}/report-family-snapshots`,
         Reports.ReportFamilySnapshot,
-        mutationOptions(
-          `${bookPath(book)}/report-family-snapshots`,
-          JSON.stringify(input),
-          keys.current,
-        ),
+        keys.current.options(`${bookPath(book)}/report-family-snapshots`, JSON.stringify(input)),
       ),
     onSuccess: (snapshot) => props.onOpen(snapshot.report.id),
   });

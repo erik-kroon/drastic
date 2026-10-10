@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { Plus, ArrowLeft } from "lucide-react";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
@@ -12,7 +14,7 @@ import {
 import { RegisterSearch, PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { ExpenseEditor, ExpenseRevisionEditor } from "./expense-editor";
 import { formatMinorAmount } from "@/lib/workspace-api";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -27,7 +29,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { expenseTaxCopy } from "./copy";
 import { ExpenseReviewForm } from "./review-editor";
@@ -57,7 +59,11 @@ export function ExpenseTaxPanel(props: Props) {
   const inventory = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/expense-tax/sources`, Tax.TaxInventory, { signal }),
+      readAccounting(
+        (client) => client.expenseTax.expenseTaxInventory({ params: { ...bookScope(book) } }),
+        Tax.TaxInventory,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -234,9 +240,14 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
   const source = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "source", sourceId],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/expense-tax/sources/${sourceId}`, Tax.TaxSourceView, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.expenseTax.getExpenseTaxSource({ params: { ...bookScope(book), id: sourceId } }),
+        Tax.TaxSourceView,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 
@@ -523,7 +534,7 @@ function ExpenseTaxSnapshots({
   const [creating, setCreating] = useState(false);
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const snapshots = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "snapshots", after],
@@ -543,7 +554,7 @@ function ExpenseTaxSnapshots({
       return readAccounting(
         path,
         Tax.TaxSnapshot,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
     },
     onSuccess: (snapshot, input) => {
@@ -706,9 +717,14 @@ function ExpenseTaxSnapshotDetail({
   const result = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "snapshot", id],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/expense-tax/snapshots/${id}`, Tax.TaxSnapshotView, {
-        signal,
-      }),
+      readAccounting(
+        (client) =>
+          client.expenseTax.getExpenseTaxSnapshot({ params: { ...bookScope(book), id: id } }),
+        Tax.TaxSnapshotView,
+        {
+          signal,
+        },
+      ),
     retry: false,
   });
 

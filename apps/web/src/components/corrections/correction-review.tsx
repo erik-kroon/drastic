@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -14,7 +16,6 @@ import {
   bookKey,
   bookPath,
   booksKey,
-  mutationOptions,
   readAccounting,
   requiresNewProposal,
   isUncertainWriteError,
@@ -64,7 +65,7 @@ export function CorrectionReview(props: {
   const labels = bundleWorkspaceCopy(locale);
   const client = useQueryClient();
   const work = useWorkReturn();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const retainedApproval = useRef<typeof Corrections.CorrectionBundleApproval.Type | null>(null);
   const [requestKey, setRequestKey] = useState("");
   const base = `${bookPath(book)}/correction-bundles/${encodeURIComponent(id)}`;
@@ -93,7 +94,10 @@ export function CorrectionReview(props: {
     queryKey: [...bookKey(book), "correction-impact", impactReference?.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/correction-impact-reviews/${encodeURIComponent(impactReference?.id ?? "")}`,
+        (client) =>
+          client.corrections.getCorrectionImpact({
+            params: { ...bookScope(book), id: impactReference?.id ?? "" },
+          }),
         Corrections.CorrectionImpactView,
         { signal },
       );
@@ -133,7 +137,7 @@ export function CorrectionReview(props: {
           keys.current.delete(`${path}:${body}`);
         }
 
-        const options = mutationOptions(path, body, keys.current);
+        const options = keys.current.options(path, body);
         setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
         approval = await readAccounting(path, Corrections.CorrectionBundleApproval, options);
 
@@ -150,7 +154,7 @@ export function CorrectionReview(props: {
         approvalId: approval.id,
       });
 
-      const options = mutationOptions(path, body, keys.current);
+      const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
       const receipt = await readAccounting(path, Corrections.CorrectionBundleReceipt, options);
@@ -180,7 +184,7 @@ export function CorrectionReview(props: {
       const snapshot = await readAccounting(
         impactPath,
         Corrections.CorrectionImpact,
-        mutationOptions(impactPath, body, keys.current),
+        keys.current.options(impactPath, body),
       );
 
       const bundlePath = `${path}/correction-bundles`;
@@ -188,10 +192,9 @@ export function CorrectionReview(props: {
       return readAccounting(
         bundlePath,
         Corrections.CorrectionBundle,
-        mutationOptions(
+        keys.current.options(
           bundlePath,
           JSON.stringify({ ...intent, impactReview: { id: snapshot.id, digest: snapshot.digest } }),
-          keys.current,
         ),
       );
     },

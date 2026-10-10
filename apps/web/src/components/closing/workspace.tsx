@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useQuery } from "@tanstack/react-query";
 import * as Closing from "@open-erp/contracts/closing";
 import { Box } from "@open-erp/ui/components/box";
@@ -18,7 +19,7 @@ import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/acco
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { PeriodClosing } from "./panel";
 import { readinessNames, readinessHelp } from "./readiness-copy";
 import { ClosingReview } from "./review";
@@ -49,7 +50,10 @@ export function ClosingWorkspace({
     enabled: !!period,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-readiness`,
+        (client) =>
+          client.closing.closingReadiness({
+            params: { ...bookScope(book), periodId: period?.id ?? "" },
+          }),
         Closing.ClosingReadiness,
         { signal },
       );

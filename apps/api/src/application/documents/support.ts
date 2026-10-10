@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Documents from "@open-erp/contracts/document-signatures";
@@ -6,7 +7,10 @@ import * as Ledger from "../../db/posting";
 import * as Annual from "../../db/reports/annual-report";
 import * as Db from "../../db/documents/records";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { sha256Hex } from "../hashing";
 import {
   commandReceipt,
   decode,
@@ -133,40 +137,32 @@ export function recordCommand<
       yield* synthetic(transaction, command.scope);
       yield* requireInsertAccess(transaction, [table, "command_receipts"]);
 
-      const request = yield* replay(
+      return yield* runBookCommandWithReceipt(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { id: command.id ?? null, input: yield* toJsonObject(command.input) },
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { id: command.id ?? null, input: yield* toJsonObject(command.input) },
+        },
         schema,
+        Effect.gen(function* () {
+          const value = yield* seal(
+            transaction,
+            command.scope,
+            schema,
+            operation,
+            principal.actorId,
+            command.idempotencyKey,
+            yield* build(transaction, principal),
+          );
+
+          yield* insert(transaction, table, value);
+
+          return { receipt: yield* toJsonObject(value), result: value };
+        }),
       );
-
-      if (request.previous) return request.previous;
-
-      const value = yield* seal(
-        transaction,
-        command.scope,
-        schema,
-        operation,
-        principal.actorId,
-        command.idempotencyKey,
-        yield* build(transaction, principal),
-      );
-
-      yield* insert(transaction, table, value);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        yield* toJsonObject(value),
-      );
-
-      return value;
     },
     "update",
   );

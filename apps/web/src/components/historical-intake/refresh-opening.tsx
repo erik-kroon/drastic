@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -9,12 +10,7 @@ import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 
 export function RefreshOpening({
   basis,
@@ -25,7 +21,7 @@ export function RefreshOpening({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const path = `${bookPath(book)}/historical-bases/${encodeURIComponent(basis.fiscalYearId)}/proposals`;
 
   const save = useMutation({
@@ -33,7 +29,7 @@ export function RefreshOpening({
       const result = await readAccounting(
         path,
         Historical.OpeningPreparation,
-        mutationOptions(path, JSON.stringify(input), keys.current),
+        keys.current.options(path, JSON.stringify(input)),
       );
 
       if (

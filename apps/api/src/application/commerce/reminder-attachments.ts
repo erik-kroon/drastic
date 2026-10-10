@@ -6,7 +6,7 @@ import * as DocumentDb from "../../db/commerce/documents";
 import type { Transaction } from "../../db/transaction";
 import { sha256HexOf } from "../bytes";
 import { failure } from "../failures";
-import { newId } from "../posting";
+import { newId } from "../identifiers";
 import {
   decodeBase64,
   legalInvoicePdfHistory,

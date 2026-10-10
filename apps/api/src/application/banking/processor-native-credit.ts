@@ -1,3 +1,4 @@
+import { runBookCommandWithReceipt } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/processor-clearing";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
@@ -13,19 +14,25 @@ import {
   withBook,
   type Scope,
 } from "../commerce/support";
-import { digest, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { newId } from "../identifiers";
+
 import { failure } from "../failures";
 import { readProcessorAccount } from "./processor-fetches";
 
 export function readProcessorNativeCredit(tx: Transaction, scope: Scope, originId: string) {
   return Effect.gen(function* () {
     const basis = (yield* Db.readNativeCreditBasis(tx, scope.bookId, originId))[0];
+
     const origin = (yield* CreditDb.readOrigin(tx, scope.bookId, originId))[0];
 
     if (!basis || !origin || origin.sourceKind !== "native_processor_credit")
       return yield* failure("UnsupportedProfile");
+
     const effects = yield* CreditDb.readEffectsForOrigin(tx, scope.bookId, originId);
+
     const witness = yield* decode(Contracts.NativeCreditOrigin, basis.body);
+
     const voucher = (yield* PostingDb.readVoucher(tx, scope.bookId, basis.sourceVoucherId))[0];
 
     if (
@@ -33,7 +40,9 @@ export function readProcessorNativeCredit(tx: Transaction, scope: Scope, originI
       (yield* PostingDb.readVoucherByReversal(tx, scope.bookId, voucher.id)).length > 0
     )
       return yield* failure("StaleDependency");
+
     const action = yield* decode(Accounting.VoucherPostingAction, voucher.action);
+
     const line = action.lines.find((row) => row.lineId === basis.sourceLineId);
 
     if (
@@ -76,133 +85,140 @@ export const registerProcessorNativeCredit = Effect.fn("processor.registerNative
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (tx, principal) {
-    const request = yield* replay(
+    return yield* runBookCommandWithReceipt(
       tx,
-      command.scope,
-      command.idempotencyKey,
-      "processor_register_native_credit",
-      principal.actorId,
-      yield* toJsonObject(command),
+      {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        operation: "processor_register_native_credit",
+        actorId: principal.actorId,
+        input: yield* toJsonObject(command),
+      },
       Contracts.NativeCreditOrigin,
+      Effect.gen(function* () {
+        yield* PostingDb.lockBookForUpdate(tx, command.scope);
+        yield* requireTableAccess(tx, [...Db.tables, ...CreditDb.receiptTables], true);
+
+        const account = yield* readProcessorAccount(tx, command.scope, command.input.accountId);
+
+        const book = (yield* PostingDb.readBook(tx, command.scope))[0];
+
+        const evidence = (yield* PostingDb.readEvidence(
+          tx,
+          command.scope.bookId,
+          command.input.evidenceId,
+        ))[0];
+
+        if (
+          !book ||
+          book.currency === account.currency ||
+          !evidence ||
+          evidence.mediaType !== "application/json"
+        )
+          return yield* failure("UnsupportedProfile");
+
+        const source = yield* Schema.decodeEffect(
+          Schema.fromJsonString(Contracts.NativeCreditEvidence),
+        )(evidence.content, { onExcessProperty: "error" }).pipe(
+          Effect.mapError(() => failure("MissingEvidence")),
+        );
+
+        if (
+          source.currency !== account.currency ||
+          source.currencyScale !== account.currencyScale ||
+          (yield* Db.readCustomer(tx, command.scope.bookId, source.customerId)).length === 0
+        )
+          return yield* failure("InvalidJournal");
+
+        if (
+          (yield* Db.readNativeCreditLine(
+            tx,
+            command.scope.bookId,
+            source.voucherId,
+            source.lineId,
+          )).length > 0 ||
+          (yield* CreditDb.readOriginByReceipt(tx, command.scope.bookId, source.voucherId)).length >
+            0
+        )
+          return yield* failure("IdempotencyConflict");
+
+        const voucher = (yield* PostingDb.readVoucher(
+          tx,
+          command.scope.bookId,
+          source.voucherId,
+        ))[0];
+
+        if (
+          !voucher ||
+          voucher.correctsVoucherId !== null ||
+          (yield* PostingDb.readVoucherByReversal(tx, command.scope.bookId, source.voucherId))
+            .length > 0
+        )
+          return yield* failure("StaleDependency");
+
+        const action = yield* decode(Accounting.VoucherPostingAction, voucher.action);
+
+        const line = action.lines.find((candidate) => candidate.lineId === source.lineId);
+
+        const accounts = yield* PostingDb.readAccounts(tx, command.scope.bookId, [
+          source.liabilityAccountId,
+          source.receivableAccountId,
+        ]);
+
+        if (
+          !line ||
+          action.currency !== book.currency ||
+          line.accountId !== source.liabilityAccountId ||
+          line.debitMinor !== "0" ||
+          BigInt(line.creditMinor) <= 0n ||
+          accounts.length !== 2 ||
+          accounts.some((candidate) => !candidate.active)
+        )
+          return yield* failure("InvalidJournal");
+
+        const body = {
+          id: newId("customer_credit_origin"),
+          accountId: account.id,
+          customerId: source.customerId,
+          currency: source.currency,
+          currencyScale: source.currencyScale,
+          originalNativeMinor: source.nativeMinor,
+          originalCarryingMinor: line.creditMinor,
+          liabilityAccountId: source.liabilityAccountId,
+          receivableAccountId: source.receivableAccountId,
+          sourceVoucherId: voucher.id,
+          sourceLineId: source.lineId,
+          evidenceId: evidence.id,
+          evidenceDigest: `sha256:${evidence.sha256}`,
+        };
+
+        const origin = yield* decode(Contracts.NativeCreditOrigin, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* CreditDb.insertOrigin(tx, {
+          bookId: command.scope.bookId,
+          id: origin.id,
+          customerId: origin.customerId,
+          currency: origin.currency,
+          originalMinor: origin.originalNativeMinor,
+          sourceKind: "native_processor_credit",
+          sourceRef: evidence.id,
+          creditLiabilityAccountId: origin.liabilityAccountId,
+          receivableControlAccountId: origin.receivableAccountId,
+          receiptId: voucher.id,
+          digest: origin.digest,
+        });
+        yield* Db.insertNativeCreditBasis(tx, {
+          bookId: command.scope.bookId,
+          originId: origin.id,
+          ...origin,
+          body: yield* toJsonObject(origin),
+        });
+
+        return { receipt: yield* toJsonObject(origin), result: origin };
+      }),
     );
-
-    if (request.previous) return request.previous;
-    yield* PostingDb.lockBookForUpdate(tx, command.scope);
-    yield* requireTableAccess(tx, [...Db.tables, ...CreditDb.receiptTables], true);
-    const account = yield* readProcessorAccount(tx, command.scope, command.input.accountId);
-    const book = (yield* PostingDb.readBook(tx, command.scope))[0];
-
-    const evidence = (yield* PostingDb.readEvidence(
-      tx,
-      command.scope.bookId,
-      command.input.evidenceId,
-    ))[0];
-
-    if (
-      !book ||
-      book.currency === account.currency ||
-      !evidence ||
-      evidence.mediaType !== "application/json"
-    )
-      return yield* failure("UnsupportedProfile");
-
-    const source = yield* Schema.decodeEffect(
-      Schema.fromJsonString(Contracts.NativeCreditEvidence),
-    )(evidence.content, { onExcessProperty: "error" }).pipe(
-      Effect.mapError(() => failure("MissingEvidence")),
-    );
-
-    if (
-      source.currency !== account.currency ||
-      source.currencyScale !== account.currencyScale ||
-      (yield* Db.readCustomer(tx, command.scope.bookId, source.customerId)).length === 0
-    )
-      return yield* failure("InvalidJournal");
-
-    if (
-      (yield* Db.readNativeCreditLine(tx, command.scope.bookId, source.voucherId, source.lineId))
-        .length > 0 ||
-      (yield* CreditDb.readOriginByReceipt(tx, command.scope.bookId, source.voucherId)).length > 0
-    )
-      return yield* failure("IdempotencyConflict");
-    const voucher = (yield* PostingDb.readVoucher(tx, command.scope.bookId, source.voucherId))[0];
-
-    if (
-      !voucher ||
-      voucher.correctsVoucherId !== null ||
-      (yield* PostingDb.readVoucherByReversal(tx, command.scope.bookId, source.voucherId)).length >
-        0
-    )
-      return yield* failure("StaleDependency");
-    const action = yield* decode(Accounting.VoucherPostingAction, voucher.action);
-    const line = action.lines.find((candidate) => candidate.lineId === source.lineId);
-
-    const accounts = yield* PostingDb.readAccounts(tx, command.scope.bookId, [
-      source.liabilityAccountId,
-      source.receivableAccountId,
-    ]);
-
-    if (
-      !line ||
-      action.currency !== book.currency ||
-      line.accountId !== source.liabilityAccountId ||
-      line.debitMinor !== "0" ||
-      BigInt(line.creditMinor) <= 0n ||
-      accounts.length !== 2 ||
-      accounts.some((candidate) => !candidate.active)
-    )
-      return yield* failure("InvalidJournal");
-
-    const body = {
-      id: newId("customer_credit_origin"),
-      accountId: account.id,
-      customerId: source.customerId,
-      currency: source.currency,
-      currencyScale: source.currencyScale,
-      originalNativeMinor: source.nativeMinor,
-      originalCarryingMinor: line.creditMinor,
-      liabilityAccountId: source.liabilityAccountId,
-      receivableAccountId: source.receivableAccountId,
-      sourceVoucherId: voucher.id,
-      sourceLineId: source.lineId,
-      evidenceId: evidence.id,
-      evidenceDigest: `sha256:${evidence.sha256}`,
-    };
-
-    const origin = yield* decode(Contracts.NativeCreditOrigin, {
-      ...body,
-      digest: yield* digest(body),
-    });
-
-    yield* CreditDb.insertOrigin(tx, {
-      bookId: command.scope.bookId,
-      id: origin.id,
-      customerId: origin.customerId,
-      currency: origin.currency,
-      originalMinor: origin.originalNativeMinor,
-      sourceKind: "native_processor_credit",
-      sourceRef: evidence.id,
-      creditLiabilityAccountId: origin.liabilityAccountId,
-      receivableControlAccountId: origin.receivableAccountId,
-      receiptId: voucher.id,
-      digest: origin.digest,
-    });
-    yield* Db.insertNativeCreditBasis(tx, {
-      bookId: command.scope.bookId,
-      originId: origin.id,
-      ...origin,
-      body: yield* toJsonObject(origin),
-    });
-    yield* saveCommand(
-      tx,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "processor_register_native_credit",
-      principal.actorId,
-      yield* toJsonObject(origin),
-    );
-
-    return origin;
   });
 });

@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Crm from "@open-erp/contracts/crm-master";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
@@ -7,7 +8,8 @@ import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
 import { lockBookForUpdate } from "../../db/posting";
 import { readInstant } from "../../db/commerce/access";
-import { digest, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+
 import { failure } from "../failures";
 import {
   decode,
@@ -252,155 +254,149 @@ const saveCustomerRecord = Effect.fn("commerce.crm.saveCustomerRecord")(function
       const operation =
         command.kind === "defaults" ? "crm_save_invoice_defaults" : "crm_save_reviewed_recipient";
 
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        operation,
-        principal.actorId,
-        { partyId: command.partyId, input: command.input },
-        CustomerRecord,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, CustomerDb.customerDefaultsTables, true);
-      yield* lockBookForUpdate(transaction, command.scope);
-
-      const party = (yield* DraftDb.readCustomerCounterparty(
-        transaction,
-        command.scope.bookId,
-        command.partyId,
-      ))[0];
-
-      if (!party || (party.role !== "customer" && party.role !== "both"))
-        return yield* failure("InvalidJournal");
-      yield* requireRetainedEvidence(
-        transaction,
-        command.scope.bookId,
-        command.input.reviewEvidence,
-      );
-
-      const pointer = (yield* CustomerDb.readCustomerPointer(
-        transaction,
-        command.scope.bookId,
-        command.partyId,
-        command.kind,
-      ))[0];
-
-      const revision = pointer?.currentRevision.toString() ?? "0";
-
-      if (revision !== command.input.expectedRevision || BigInt(revision) >= 1000n)
-        return yield* failure("StaleDependency");
-
-      if (revision === "0") {
-        if (command.input.expectedDigest !== null) return yield* failure("StaleDependency");
-      } else {
-        const previous = yield* decode(
-          CustomerRecord,
-          yield* readCustomerRecord(
-            transaction,
-            command.scope,
-            command.partyId,
-            command.kind,
-            revision,
-          ),
-        );
-
-        if (previous.digest !== command.input.expectedDigest)
-          return yield* failure("StaleDependency");
-      }
-
-      let details;
-
-      if (command.kind === "defaults") {
-        const input = command.input;
-        const book = (yield* DraftDb.readBookCurrency(transaction, command.scope.bookId))[0];
-
-        if (book?.currency !== input.currency) return yield* failure("UnsupportedProfile");
-
-        if (input.recipient !== null) {
-          if (input.recipient.partyId !== command.partyId) return yield* failure("StaleDependency");
-          yield* resolveReviewedRecipient(
-            transaction,
-            command.scope,
-            input.recipient,
-            "invoice_delivery",
-          );
-        }
-
-        details = {
-          terms: input.terms,
-          currency: input.currency,
-          language: input.language,
-          recipient: input.recipient,
-          reviewEvidence: input.reviewEvidence,
-          reason: input.reason,
-        };
-      } else {
-        const input = command.input;
-
-        if (new Set(input.purposes).size !== input.purposes.length)
-          return yield* failure("InvalidJournal");
-        details = {
-          channel: input.channel,
-          destination: input.destination,
-          purposes: input.purposes,
-          status: input.status,
-          reviewEvidence: input.reviewEvidence,
-          reason: input.reason,
-        };
-      }
-
-      const next = (BigInt(revision) + 1n).toString();
-
-      const body = yield* toJsonObject({
-        ...details,
-        scope: command.scope,
-        partyId: command.partyId,
-        revision: next,
-        recordedBy: principal.actorId,
-        recordedAt: (yield* readInstant(transaction))[0]?.instant,
-      });
-
-      const record = yield* decode(CustomerRecord, { ...body, digest: yield* digest(body) });
-
-      if (revision === "0")
-        yield* CustomerDb.insertCustomerPointer(
-          transaction,
-          command.scope.bookId,
-          command.partyId,
-          command.kind,
-        );
-      else
-        yield* CustomerDb.advanceCustomerPointer(
-          transaction,
-          command.scope.bookId,
-          command.partyId,
-          next,
-          command.kind,
-        );
-      yield* CustomerDb.insertCustomerRevision(
+      return yield* runBookCommand(
         transaction,
         {
-          bookId: command.scope.bookId,
-          partyId: command.partyId,
-          revision: next,
-          body: yield* toJsonObject(record),
-          recordedBy: principal.actorId,
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: operation,
+          actorId: principal.actorId,
+          input: { partyId: command.partyId, input: command.input },
         },
-        command.kind,
-      );
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        record,
-      );
+        CustomerRecord,
+        Effect.gen(function* () {
+          yield* requireTableAccess(transaction, CustomerDb.customerDefaultsTables, true);
+          yield* lockBookForUpdate(transaction, command.scope);
 
-      return record;
+          const party = (yield* DraftDb.readCustomerCounterparty(
+            transaction,
+            command.scope.bookId,
+            command.partyId,
+          ))[0];
+
+          if (!party || (party.role !== "customer" && party.role !== "both"))
+            return yield* failure("InvalidJournal");
+          yield* requireRetainedEvidence(
+            transaction,
+            command.scope.bookId,
+            command.input.reviewEvidence,
+          );
+
+          const pointer = (yield* CustomerDb.readCustomerPointer(
+            transaction,
+            command.scope.bookId,
+            command.partyId,
+            command.kind,
+          ))[0];
+
+          const revision = pointer?.currentRevision.toString() ?? "0";
+
+          if (revision !== command.input.expectedRevision || BigInt(revision) >= 1000n)
+            return yield* failure("StaleDependency");
+
+          if (revision === "0") {
+            if (command.input.expectedDigest !== null) return yield* failure("StaleDependency");
+          } else {
+            const previous = yield* decode(
+              CustomerRecord,
+              yield* readCustomerRecord(
+                transaction,
+                command.scope,
+                command.partyId,
+                command.kind,
+                revision,
+              ),
+            );
+
+            if (previous.digest !== command.input.expectedDigest)
+              return yield* failure("StaleDependency");
+          }
+
+          let details;
+
+          if (command.kind === "defaults") {
+            const input = command.input;
+            const book = (yield* DraftDb.readBookCurrency(transaction, command.scope.bookId))[0];
+
+            if (book?.currency !== input.currency) return yield* failure("UnsupportedProfile");
+
+            if (input.recipient !== null) {
+              if (input.recipient.partyId !== command.partyId)
+                return yield* failure("StaleDependency");
+              yield* resolveReviewedRecipient(
+                transaction,
+                command.scope,
+                input.recipient,
+                "invoice_delivery",
+              );
+            }
+
+            details = {
+              terms: input.terms,
+              currency: input.currency,
+              language: input.language,
+              recipient: input.recipient,
+              reviewEvidence: input.reviewEvidence,
+              reason: input.reason,
+            };
+          } else {
+            const input = command.input;
+
+            if (new Set(input.purposes).size !== input.purposes.length)
+              return yield* failure("InvalidJournal");
+            details = {
+              channel: input.channel,
+              destination: input.destination,
+              purposes: input.purposes,
+              status: input.status,
+              reviewEvidence: input.reviewEvidence,
+              reason: input.reason,
+            };
+          }
+
+          const next = (BigInt(revision) + 1n).toString();
+
+          const body = yield* toJsonObject({
+            ...details,
+            scope: command.scope,
+            partyId: command.partyId,
+            revision: next,
+            recordedBy: principal.actorId,
+            recordedAt: (yield* readInstant(transaction))[0]?.instant,
+          });
+
+          const record = yield* decode(CustomerRecord, { ...body, digest: yield* digest(body) });
+
+          if (revision === "0")
+            yield* CustomerDb.insertCustomerPointer(
+              transaction,
+              command.scope.bookId,
+              command.partyId,
+              command.kind,
+            );
+          else
+            yield* CustomerDb.advanceCustomerPointer(
+              transaction,
+              command.scope.bookId,
+              command.partyId,
+              next,
+              command.kind,
+            );
+          yield* CustomerDb.insertCustomerRevision(
+            transaction,
+            {
+              bookId: command.scope.bookId,
+              partyId: command.partyId,
+              revision: next,
+              body: yield* toJsonObject(record),
+              recordedBy: principal.actorId,
+            },
+            command.kind,
+          );
+
+          return record;
+        }),
+      );
     },
     "update",
   );

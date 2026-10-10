@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -38,7 +39,11 @@ export function VatFactEditor(props: Props) {
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.vatReturnBasis({ params: { ...bookScope(book) } }),
+        Vat.VatBasis,
+        { signal },
+      ),
     retry: false,
   });
 

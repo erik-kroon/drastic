@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Cash from "@open-erp/contracts/foreign-cash";
@@ -47,7 +48,10 @@ export function ForeignCashWorkspace(props: {
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
-        `${bookPath(book)}/banking/foreign-cash/reviews/${encodeURIComponent(props.reviewId ?? "")}/exchange`,
+        (client) =>
+          client.foreignCash.getForeignCashExchange({
+            params: { ...bookScope(book), id: props.reviewId ?? "" },
+          }),
         Cash.ExchangeView,
         { signal },
       );
@@ -62,7 +66,10 @@ export function ForeignCashWorkspace(props: {
         throw new Error("Foreign cash exchange identity mismatch");
 
       const evidence = await readAccounting(
-        `${bookPath(book)}/evidence/${encodeURIComponent(view.basis.feeEvidence.id)}`,
+        (client) =>
+          client.accounting.getEvidence({
+            params: { ...bookScope(book), id: view.basis.feeEvidence.id },
+          }),
         Accounting.EvidenceContent,
         { signal },
       );
@@ -73,9 +80,14 @@ export function ForeignCashWorkspace(props: {
       )
         throw new Error("Foreign cash fee evidence mismatch");
 
-      const voucher = view.execution?.voucherId
+      const voucherId = view.execution?.voucherId;
+
+      const voucher = voucherId
         ? await readAccounting(
-            `${bookPath(book)}/vouchers/${encodeURIComponent(view.execution.voucherId)}`,
+            (client) =>
+              client.accounting.getVoucher({
+                params: { ...bookScope(book), id: voucherId },
+              }),
             Accounting.Voucher,
             { signal },
           )

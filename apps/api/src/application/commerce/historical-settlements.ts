@@ -1,3 +1,4 @@
+import { runBookCommand } from "../book-commands";
 import * as Contracts from "@open-erp/contracts/historical-adoptions";
 import * as Domain from "@open-erp/domain/historical-adoptions";
 import * as Effect from "effect/Effect";
@@ -11,7 +12,9 @@ import { readHistoricalObligation } from "./historical-obligations";
 import { readPool, assertPoolBasis, checkedAdoption } from "../sie/adoption-basis";
 import { admitLineOwner, admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
 import { authorize } from "../authority";
 
 type Command = { scope: Scope; id: string; idempotencyKey: string };
@@ -107,48 +110,41 @@ export const prepareHistoricalSettlement = Effect.fn("commerce.prepareHistorical
         const { scope, input, idempotencyKey } = command,
           operation = "prepare_historical_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           tx,
-          scope,
-          idempotencyKey,
-          operation,
-          principal.actorId,
-          input,
+          {
+            scope: scope,
+            idempotencyKey: idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: input,
+          },
           Contracts.SettlementPlan,
+          Effect.gen(function* () {
+            const basis = yield* settlementBasis(tx, scope, input);
+
+            const body = {
+              id: newId("historicalsettlementplan"),
+              scope,
+              input: { ...input, adoptionId: basis.adoptionId },
+              controlAccountId: basis.pool.controlAccountId,
+              direction: basis.pool.input.direction,
+              paymentCapacityVersion: basis.payment.capacityVersion,
+              remainingAfterMinor: basis.remainingAfterMinor,
+              createdBy: principal.actorId,
+              createdAt: yield* isoNow(tx),
+            };
+
+            const result = yield* decode(Contracts.SettlementPlan, {
+              ...body,
+              digest: yield* digest(body),
+            });
+
+            yield* Db.insertPlan(tx, scope.bookId, result);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        const basis = yield* settlementBasis(tx, scope, input);
-
-        const body = {
-          id: newId("historicalsettlementplan"),
-          scope,
-          input: { ...input, adoptionId: basis.adoptionId },
-          controlAccountId: basis.pool.controlAccountId,
-          direction: basis.pool.input.direction,
-          paymentCapacityVersion: basis.payment.capacityVersion,
-          remainingAfterMinor: basis.remainingAfterMinor,
-          createdBy: principal.actorId,
-          createdAt: yield* isoNow(tx),
-        };
-
-        const result = yield* decode(Contracts.SettlementPlan, {
-          ...body,
-          digest: yield* digest(body),
-        });
-
-        yield* Db.insertPlan(tx, scope.bookId, result);
-        yield* saveCommand(
-          tx,
-          scope,
-          idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
-
-        return result;
       },
       "update",
     );
@@ -173,48 +169,40 @@ export const approveHistoricalSettlement = Effect.fn("commerce.approveHistorical
         const { scope, id, input, idempotencyKey } = command,
           operation = "approve_historical_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           tx,
-          scope,
-          idempotencyKey,
-          operation,
-          principal.actorId,
-          { planId: id, input },
+          {
+            scope: scope,
+            idempotencyKey: idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: { planId: id, input },
+          },
           Contracts.Approval,
+          Effect.gen(function* () {
+            yield* authorize(principal, "approve_historical_settlement");
+            const plan = yield* readSettlementPlan(tx, scope, id);
+
+            if (plan.digest !== input.digest) return yield* failure("StaleDependency");
+            const basis = yield* settlementBasis(tx, scope, plan.input);
+
+            if (basis.payment.capacityVersion !== plan.paymentCapacityVersion)
+              return yield* failure("StaleDependency");
+
+            const result = yield* decode(Contracts.Approval, {
+              id: newId("historicalsettlementapproval"),
+              planId: id,
+              planDigest: plan.digest,
+              actorId: principal.actorId,
+              expiresAt: yield* approvalExpiry(tx),
+              createdAt: yield* isoNow(tx),
+            });
+
+            yield* Db.insertApproval(tx, scope.bookId, result);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-
-        yield* authorize(principal, "approve_historical_settlement");
-        const plan = yield* readSettlementPlan(tx, scope, id);
-
-        if (plan.digest !== input.digest) return yield* failure("StaleDependency");
-        const basis = yield* settlementBasis(tx, scope, plan.input);
-
-        if (basis.payment.capacityVersion !== plan.paymentCapacityVersion)
-          return yield* failure("StaleDependency");
-
-        const result = yield* decode(Contracts.Approval, {
-          id: newId("historicalsettlementapproval"),
-          planId: id,
-          planDigest: plan.digest,
-          actorId: principal.actorId,
-          expiresAt: yield* approvalExpiry(tx),
-          createdAt: yield* isoNow(tx),
-        });
-
-        yield* Db.insertApproval(tx, scope.bookId, result);
-        yield* saveCommand(
-          tx,
-          scope,
-          idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
-
-        return result;
       },
       "update",
     );
@@ -231,64 +219,57 @@ export const executeHistoricalSettlement = Effect.fn("commerce.executeHistorical
         const { scope, id, input, idempotencyKey } = command,
           operation = "execute_historical_settlement";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           tx,
-          scope,
-          idempotencyKey,
-          operation,
-          principal.actorId,
-          { planId: id, input },
+          {
+            scope: scope,
+            idempotencyKey: idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: { planId: id, input },
+          },
           Contracts.Settlement,
+          Effect.gen(function* () {
+            const plan = yield* readSettlementPlan(tx, scope, id);
+
+            if (plan.digest !== input.digest) return yield* failure("StaleDependency");
+
+            if ((yield* Db.readSettlementForPlan(tx, scope.bookId, id)).length)
+              return yield* failure("AlreadyPosted");
+            const basis = yield* settlementBasis(tx, scope, plan.input);
+
+            if (
+              basis.payment.capacityVersion !== plan.paymentCapacityVersion ||
+              basis.remainingAfterMinor !== plan.remainingAfterMinor
+            )
+              return yield* failure("StaleDependency");
+            const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
+
+            if (!row) return yield* failure("ApprovalRequired");
+            const approval = yield* decode(Contracts.Approval, row.body);
+
+            if (approval.planId !== plan.id || approval.planDigest !== plan.digest)
+              return yield* failure("ApprovalRequired");
+
+            const result = yield* decode(Contracts.Settlement, {
+              id: newId("historicalsettlement"),
+              scope,
+              planId: id,
+              adoptionId: plan.input.adoptionId,
+              paymentVoucherId: plan.input.paymentVoucherId,
+              paymentLineId: plan.input.paymentLineId,
+              amountMinor: plan.input.amountMinor,
+              remainingMinor: basis.remainingAfterMinor,
+              approvalId: approval.id,
+              journalIds: [],
+              createdAt: yield* isoNow(tx),
+            });
+
+            yield* Db.insertSettlement(tx, scope.bookId, result);
+
+            return result;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        const plan = yield* readSettlementPlan(tx, scope, id);
-
-        if (plan.digest !== input.digest) return yield* failure("StaleDependency");
-
-        if ((yield* Db.readSettlementForPlan(tx, scope.bookId, id)).length)
-          return yield* failure("AlreadyPosted");
-        const basis = yield* settlementBasis(tx, scope, plan.input);
-
-        if (
-          basis.payment.capacityVersion !== plan.paymentCapacityVersion ||
-          basis.remainingAfterMinor !== plan.remainingAfterMinor
-        )
-          return yield* failure("StaleDependency");
-        const row = (yield* Db.readApproval(tx, scope.bookId, input.approvalId))[0];
-
-        if (!row) return yield* failure("ApprovalRequired");
-        const approval = yield* decode(Contracts.Approval, row.body);
-
-        if (approval.planId !== plan.id || approval.planDigest !== plan.digest)
-          return yield* failure("ApprovalRequired");
-
-        const result = yield* decode(Contracts.Settlement, {
-          id: newId("historicalsettlement"),
-          scope,
-          planId: id,
-          adoptionId: plan.input.adoptionId,
-          paymentVoucherId: plan.input.paymentVoucherId,
-          paymentLineId: plan.input.paymentLineId,
-          amountMinor: plan.input.amountMinor,
-          remainingMinor: basis.remainingAfterMinor,
-          approvalId: approval.id,
-          journalIds: [],
-          createdAt: yield* isoNow(tx),
-        });
-
-        yield* Db.insertSettlement(tx, scope.bookId, result);
-        yield* saveCommand(
-          tx,
-          scope,
-          idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
-
-        return result;
       },
       "update",
     );

@@ -1,9 +1,11 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { defaultStringifySearch } from "@tanstack/react-router";
 import { queryOptions } from "@tanstack/react-query";
 import type { Status } from "@open-erp/ui/kanon/status";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
-import { bookKey, bookPath, readAccounting } from "./accounting-api";
+import { bookKey, readAccounting } from "./accounting-api";
 import { reviewPath, workspacePath } from "./book-context";
 import {
   encodeOwnerReturn,
@@ -55,7 +57,11 @@ export function attentionQueryOptions(book: typeof Accounting.Book.Type, filters
     },
     queryFn: async ({ signal }) => {
       const page = await readAccounting(
-        `${bookPath(book)}/attention?${search}`,
+        (client) =>
+          client.workspace.listAttention({
+            params: { ...bookScope(book) },
+            query: httpQuery(Api.groups.workspace.endpoints.listAttention, `${search}`),
+          }),
         Workspace.AttentionPage,
         { signal },
       );

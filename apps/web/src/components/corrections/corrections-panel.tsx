@@ -1,3 +1,5 @@
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
 import { Navigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -11,7 +13,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SealedAction } from "@/components/journal-review";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
 import { reviewTargetPath, workspacePath } from "@/lib/book-context";
@@ -42,7 +44,8 @@ export function CorrectionsPanel(props: {
     queryKey: [...bookKey(book), "correction-original", originalId],
     queryFn: ({ signal }) =>
       readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(originalId)}`,
+        (client) =>
+          client.accounting.getVoucher({ params: { ...bookScope(book), id: originalId } }),
         Accounting.Voucher,
         { signal },
       ),
@@ -53,7 +56,10 @@ export function CorrectionsPanel(props: {
   const recovery = useMutation({
     mutationFn: (id: string) =>
       readAccounting(
-        `${bookPath(book)}/vouchers/${encodeURIComponent(id)}/correction-bundle`,
+        (client) =>
+          client.corrections.getCorrectionBundleForVoucher({
+            params: { ...bookScope(book), id: id },
+          }),
         Corrections.CorrectionBundleView,
       ),
     onSuccess: (view) => openBundle(view.bundle.id, view.bundle.bundleDigest),
@@ -204,7 +210,7 @@ function ReplacementDraft(props: {
 }) {
   const { book, setup, locale, original } = props;
   const copy = correctionCopy(locale);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const nextLine = useRef(original.action.lines.length);
   const [lines, setLines] = useState(original.action.lines.map((_, index) => index));
   const [error, setError] = useState("");
@@ -215,7 +221,7 @@ function ReplacementDraft(props: {
     mutationFn: (input: typeof Corrections.CorrectionIntent.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-impact-reviews`;
       const body = JSON.stringify(input);
-      const options = mutationOptions(path, body, keys.current);
+      const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
       return readAccounting(path, Corrections.CorrectionImpact, options);
@@ -226,7 +232,7 @@ function ReplacementDraft(props: {
     mutationFn: (input: typeof Corrections.PrepareCorrectionBundle.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-bundles`;
       const body = JSON.stringify(input);
-      const options = mutationOptions(path, body, keys.current);
+      const options = keys.current.options(path, body);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
 
       return readAccounting(path, Corrections.CorrectionBundle, options);

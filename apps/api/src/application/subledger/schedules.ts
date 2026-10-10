@@ -1,42 +1,49 @@
+import {
+  type Scope,
+  type JsonObject,
+  type Revision,
+  type OccurrenceState,
+  throughAll,
+  decode,
+  toJsonObject,
+  textField,
+  objectField,
+  withoutKey,
+  digestValue,
+  merge,
+  minor,
+  readOccurrenceStates,
+  basisMatchesRevision,
+  estimateCurrent,
+  readPostingBasis,
+} from "./schedule-basis";
+import { runBookCommand } from "../book-commands";
 import { admitAccountRole } from "../resource-admission";
-import { digest as digestNative } from "../json";
+
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
 
 import * as Db from "../../db/posting";
 import * as ValuationsDb from "../../db/subledger/valuations";
 import * as SchedulesDb from "../../db/subledger/schedules";
-import * as OccurrenceCorrections from "../../db/subledger/occurrence-corrections";
+
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
-import {
-  isoNow,
-  newId,
-  prepareJournalInTransaction,
-  replay,
-  saveCommand,
-  validatePlan,
-} from "../posting";
-
-type Scope = typeof Accounting.Scope.Type;
+import { isoNow } from "../command-receipts";
+import { newId } from "../identifiers";
+import { prepareJournalInTransaction } from "../posting";
+import { validatePlan } from "../posting-validation";
 
 type Principal = VerifiedPrincipal;
-
-type JsonObject = Schema.JsonObject;
-
-type Revision = typeof Subledgers.ScheduleRevision.Type;
 
 type Terms = typeof Subledgers.ScheduleTerms.Type;
 
 type FutureDatesInput = typeof Subledgers.AmendScheduleFutureDates.Type;
 
 type EstimateInput = typeof Subledgers.AmendScheduleEstimate.Type;
-
-export type OccurrenceState = typeof Subledgers.OccurrenceState.Type;
 
 const RevisionSchema = Subledgers.ScheduleRevision;
 
@@ -45,8 +52,6 @@ const ViewSchema = Subledgers.ScheduleView;
 const PageSchema = Subledgers.SchedulePage;
 
 const PreparationSchema = Subledgers.SchedulePreparation;
-
-const throughAll = "9999-12-31";
 
 const schedulePageBound = 25;
 
@@ -58,70 +63,12 @@ const occurrenceBound = 120;
 
 const attemptBound = 100;
 
-const amendmentKinds = [
-  "future_dates_v1",
-  "remaining_estimate_v1",
-  "remaining_lifetime_v1",
-  "impairment_v1",
-  "valuation_v1",
-];
-
 function unsupported() {
   return failure("UnsupportedProfile");
 }
 
-function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(
-    Effect.mapError((cause) => failure("InternalError", cause)),
-  );
-}
-
-export function toJsonObject(value: unknown) {
-  return Schema.decodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError((cause) => failure("InternalError", cause)),
-  );
-}
-
-function toJsonList(value: unknown) {
-  return Schema.decodeUnknownEffect(Schema.Array(Schema.JsonObject))(value).pipe(
-    Effect.mapError((cause) => failure("InternalError", cause)),
-  );
-}
-
-function textField(value: JsonObject | undefined, key: string) {
-  const candidate = value?.[key];
-
-  return typeof candidate === "string" ? candidate : undefined;
-}
-
-function isJsonObject(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function objectField(value: JsonObject | undefined, key: string): JsonObject {
-  const candidate = value?.[key];
-
-  return isJsonObject(candidate) ? candidate : {};
-}
-
-function withoutKey(value: JsonObject, key: string): JsonObject {
-  return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
-}
-
-export function digestValue(value: Schema.Json) {
-  return toJsonObject(value).pipe(Effect.flatMap((object) => digestNative(object)));
-}
-
-export function merge(...sources: ReadonlyArray<JsonObject>): JsonObject {
-  return Object.assign({}, ...sources);
-}
-
 export function digestBody(body: JsonObject) {
   return digestValue(body).pipe(Effect.map((digest) => merge(body, { digest })));
-}
-
-function minor(value: string) {
-  return BigInt(value);
 }
 
 const isCalendarDate = Accounting.isCalendarDate;
@@ -178,81 +125,6 @@ function readCurrentRevision(transaction: Transaction, scope: Scope, scheduleId:
   });
 }
 
-export function readOccurrenceStates(
-  transaction: Transaction,
-  scope: Scope,
-  revision: Revision,
-  through: string,
-) {
-  return Effect.gen(function* () {
-    const occurrences = yield* toJsonList(revision.occurrences);
-
-    const rows = yield* SchedulesDb.readOccurrenceStates(
-      transaction,
-      scope.bookId,
-      revision.scheduleId,
-      revision.terms.evidenceId,
-      occurrences,
-      through,
-    );
-
-    const states: Array<OccurrenceState> = [];
-
-    for (const row of rows) {
-      const occurrence = revision.occurrences[row.ordinal - 1];
-
-      if (occurrence === undefined) return yield* failure("InternalError");
-
-      const correctionRows = yield* OccurrenceCorrections.readHistory(
-        transaction,
-        scope.bookId,
-        revision.scheduleId,
-        occurrence.ordinal,
-        through,
-      );
-
-      if (correctionRows.length > 200) return yield* failure("UnsupportedProfile");
-
-      const corrections = yield* Effect.forEach(correctionRows, (retained) =>
-        decode(Subledgers.OccurrenceCorrectionSummary, retained.body),
-      );
-
-      const currentCorrection =
-        correctionRows.at(-1)?.current === true ? corrections.at(-1) : undefined;
-
-      let state =
-        row.voucherId !== null && row.linked === false
-          ? ("conflicted" as const)
-          : row.reversalVoucherId !== null
-            ? ("reversed" as const)
-            : row.voucherId !== null
-              ? ("posted" as const)
-              : row.changeSetId !== null
-                ? ("prepared" as const)
-                : ("unprepared" as const);
-
-      if (state !== "conflicted" && currentCorrection) state = "posted";
-
-      states.push({
-        ordinal: occurrence.ordinal,
-        postingDate: occurrence.postingDate,
-        accountingPeriodId: occurrence.accountingPeriodId,
-        eventKey: occurrence.eventKey,
-        amountMinor: occurrence.amountMinor,
-        changeSetId: row.voucherChangeSetId ?? row.changeSetId,
-        planDigest: row.planDigest,
-        voucherId: row.voucherId,
-        reversalVoucherId: row.reversalVoucherId,
-        effectiveVoucherId: currentCorrection?.replacementVoucherId ?? row.voucherId,
-        corrections,
-        state,
-      });
-    }
-
-    return states;
-  });
-}
-
 function recognizedMinor(states: ReadonlyArray<OccurrenceState>) {
   let total = 0n;
 
@@ -261,144 +133,6 @@ function recognizedMinor(states: ReadonlyArray<OccurrenceState>) {
   }
 
   return total;
-}
-
-export function basisMatchesRevision(basis: JsonObject, revision: Revision) {
-  return Effect.gen(function* () {
-    const basisDigest = textField(basis, "digest");
-    const revisionDigest = revision.digest;
-
-    if (basisDigest === undefined) return false;
-
-    if ((yield* digestValue(withoutKey(basis, "digest"))) !== basisDigest) return false;
-
-    if ((yield* digestValue(withoutKey(revision, "digest"))) !== revisionDigest) {
-      return false;
-    }
-
-    const scheduleDigest = textField(basis, "scheduleDigest");
-
-    if (scheduleDigest === revisionDigest) return true;
-    const amendment = objectField(revision, "amendment");
-    const kind = textField(amendment, "kind");
-
-    return (
-      kind !== undefined &&
-      amendmentKinds.includes(kind) &&
-      textField(amendment, "basisDigest") === basisDigest &&
-      textField(amendment, "basisScheduleDigest") === scheduleDigest
-    );
-  });
-}
-
-function estimateCurrent(transaction: Transaction, scope: Scope, revision: Revision) {
-  return Effect.gen(function* () {
-    if (revision.terms.allocationPolicy !== "explicit_remaining_minor_v1") return true;
-    const states = yield* readOccurrenceStates(transaction, scope, revision, throughAll);
-
-    if (states.length !== revision.occurrences.length) return false;
-
-    for (const state of states) {
-      if (!["unprepared", "prepared", "posted", "reversed"].includes(state.state)) return false;
-
-      if (state.state === "reversed" && state.reversalVoucherId !== null) {
-        const purpose = (yield* SchedulesDb.readVoucherPurpose(
-          transaction,
-          scope.bookId,
-          state.reversalVoucherId,
-        ))[0];
-
-        if (purpose?.postingPurpose !== "reversal") return false;
-      }
-
-      if (state.voucherId !== null) {
-        const correction = (yield* SchedulesDb.readCorrectionForVoucher(
-          transaction,
-          scope.bookId,
-          state.voucherId,
-        ))[0];
-
-        if (correction !== undefined) return false;
-      }
-    }
-
-    let effective = 0n;
-
-    for (const state of states) {
-      if (state.state !== "reversed") effective += minor(state.amountMinor);
-    }
-
-    const amendment = objectField(revision, "amendment");
-    let impairment = 0n;
-
-    if (["impairment_v1", "valuation_v1"].includes(textField(amendment, "kind") ?? "")) {
-      const net = textField(amendment, "netImpairmentMinor");
-
-      if (net === undefined) return false;
-      impairment = minor(net);
-    } else {
-      for (const row of yield* SchedulesDb.listBookImpairments(transaction, scope.bookId)) {
-        if (row.scheduleId === revision.scheduleId) impairment += minor(row.impairmentMinor);
-      }
-    }
-
-    return (
-      effective + impairment + minor(revision.terms.residualMinor) ===
-        minor(revision.terms.costMinor) && effective === minor(revision.allocatedMinor)
-    );
-  });
-}
-
-export function readPostingBasis(transaction: Transaction, scope: Scope, revision: Revision) {
-  return Effect.gen(function* () {
-    const basis = (yield* SchedulesDb.readBasis(transaction, scope.bookId, revision.scheduleId))[0];
-
-    if (basis === undefined) {
-      return yield* decode(Subledgers.SchedulePostingBasis, {
-        mode: "standalone_synthetic",
-        supported: true,
-        basisDigest: null,
-        basisVoucherId: null,
-        blocker: null,
-        legalPolicyApproved: false,
-      });
-    }
-
-    let blocker: string | null = null;
-
-    if (
-      (yield* SchedulesDb.readDisposal(transaction, scope.bookId, revision.scheduleId)).length > 0
-    ) {
-      blocker = "disposed";
-    } else if (
-      (yield* SchedulesDb.readReversalForVoucher(transaction, scope.bookId, basis.voucherId))
-        .length > 0
-    ) {
-      blocker = "basis_reversed_or_corrected";
-    } else if (!(yield* basisMatchesRevision(basis.body, revision))) {
-      blocker = "basis_mismatch";
-    } else if (!(yield* estimateCurrent(transaction, scope, revision))) {
-      blocker = "estimate_history_changed";
-    }
-
-    const value: JsonObject = {
-      mode: "linked_basis",
-      supported: blocker === null,
-      basisDigest: textField(basis.body, "digest") ?? null,
-      basisVoucherId: basis.voucherId,
-      blocker,
-      legalPolicyApproved: false,
-    };
-
-    if (revision.amendment !== undefined) {
-      return yield* decode(
-        Subledgers.SchedulePostingBasis,
-        merge(value, { scheduleDigest: revision.digest }),
-      );
-    }
-
-    return yield* decode(Subledgers.SchedulePostingBasis, value);
-  });
 }
 
 function readTaxMatches(transaction: Transaction, scope: Scope, scheduleId: string) {
@@ -573,69 +307,61 @@ export const createSchedule = Effect.fn("subledger.createSchedule")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "create_schedule",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "create_schedule",
+            actorId: principal.actorId,
+            input: payload,
+          },
           RevisionSchema,
+          Effect.gen(function* () {
+            yield* requireScheduleAccess(transaction, true);
+
+            if (
+              (yield* SchedulesDb.readScheduleBySourceKey(
+                transaction,
+                command.scope.bookId,
+                command.input.sourceKey,
+              )).length > 0
+            ) {
+              return yield* failure("IdempotencyConflict");
+            }
+
+            const scheduleId = newId("schedule");
+
+            const body = yield* readScheduleTerms(
+              transaction,
+              command.scope,
+              scheduleId,
+              command.input.sourceKey,
+              1,
+              null,
+              command.input.terms,
+              command.idempotencyKey,
+              "create_schedule",
+              principal.actorId,
+            );
+
+            const revision = yield* decode(RevisionSchema, body);
+            yield* SchedulesDb.insertSchedule(transaction, {
+              bookId: command.scope.bookId,
+              id: scheduleId,
+              sourceKey: command.input.sourceKey,
+            });
+            yield* SchedulesDb.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              scheduleId,
+              revision: 1,
+              evidenceId: command.input.terms.evidenceId,
+              body,
+            });
+
+            return revision;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireScheduleAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        if (
-          (yield* SchedulesDb.readScheduleBySourceKey(
-            transaction,
-            command.scope.bookId,
-            command.input.sourceKey,
-          )).length > 0
-        ) {
-          return yield* failure("IdempotencyConflict");
-        }
-
-        const scheduleId = newId("schedule");
-
-        const body = yield* readScheduleTerms(
-          transaction,
-          command.scope,
-          scheduleId,
-          command.input.sourceKey,
-          1,
-          null,
-          command.input.terms,
-          command.idempotencyKey,
-          "create_schedule",
-          principal.actorId,
-        );
-
-        const revision = yield* decode(RevisionSchema, body);
-        yield* SchedulesDb.insertSchedule(transaction, {
-          bookId: command.scope.bookId,
-          id: scheduleId,
-          sourceKey: command.input.sourceKey,
-        });
-        yield* SchedulesDb.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          scheduleId,
-          revision: 1,
-          evidenceId: command.input.terms.evidenceId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "create_schedule",
-          principal.actorId,
-          revision,
-        );
-
-        return revision;
       }),
     "update",
   );
@@ -809,85 +535,82 @@ export const reviseSchedule = Effect.fn("subledger.reviseSchedule")(function* (
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.scheduleId, input: command.input });
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          command.scope,
-          command.idempotencyKey,
-          "revise_schedule",
-          principal.actorId,
-          payload,
+          {
+            scope: command.scope,
+            idempotencyKey: command.idempotencyKey,
+            operation: "revise_schedule",
+            actorId: principal.actorId,
+            input: payload,
+          },
           RevisionSchema,
+          Effect.gen(function* () {
+            yield* requireScheduleAccess(transaction, true);
+
+            const current = yield* readCurrentRevision(
+              transaction,
+              command.scope,
+              command.scheduleId,
+            );
+
+            if (command.input.expectedDigest !== current.digest) {
+              return yield* failure("StaleDependency");
+            }
+
+            const preparations = yield* SchedulesDb.countPreparations(
+              transaction,
+              command.scope.bookId,
+              command.scheduleId,
+            );
+
+            const events = yield* SchedulesDb.readEventIdsForKeys(
+              transaction,
+              command.scope.bookId,
+              current.terms.evidenceId,
+              current.occurrences.map((occurrence) => occurrence.eventKey),
+            );
+
+            if ((preparations[0]?.total ?? 0) > 0 || events.length > 0) {
+              return yield* unsupported();
+            }
+
+            const periods = yield* SchedulesDb.readPeriods(
+              transaction,
+              command.scope.bookId,
+              current.occurrences.map((occurrence) => occurrence.accountingPeriodId),
+            );
+
+            if (periods.some((period) => period.locked)) return yield* failure("PeriodLocked");
+            const revision = current.revision + 1;
+
+            if (revision > revisionBound) return yield* unsupported();
+
+            const body = yield* readScheduleTerms(
+              transaction,
+              command.scope,
+              command.scheduleId,
+              current.sourceKey,
+              revision,
+              current.digest,
+              command.input.terms,
+              command.idempotencyKey,
+              "revise_schedule",
+              principal.actorId,
+            );
+
+            const revised = yield* decode(RevisionSchema, body);
+            yield* SchedulesDb.insertRevision(transaction, {
+              bookId: command.scope.bookId,
+              scheduleId: command.scheduleId,
+              revision,
+              evidenceId: command.input.terms.evidenceId,
+              body,
+            });
+
+            return revised;
+          }),
         );
-
-        if (request.previous) return request.previous;
-        yield* requireScheduleAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-        const current = yield* readCurrentRevision(transaction, command.scope, command.scheduleId);
-
-        if (command.input.expectedDigest !== current.digest) {
-          return yield* failure("StaleDependency");
-        }
-
-        const preparations = yield* SchedulesDb.countPreparations(
-          transaction,
-          command.scope.bookId,
-          command.scheduleId,
-        );
-
-        const events = yield* SchedulesDb.readEventIdsForKeys(
-          transaction,
-          command.scope.bookId,
-          current.terms.evidenceId,
-          current.occurrences.map((occurrence) => occurrence.eventKey),
-        );
-
-        if ((preparations[0]?.total ?? 0) > 0 || events.length > 0) {
-          return yield* unsupported();
-        }
-
-        const periods = yield* SchedulesDb.readPeriods(
-          transaction,
-          command.scope.bookId,
-          current.occurrences.map((occurrence) => occurrence.accountingPeriodId),
-        );
-
-        if (periods.some((period) => period.locked)) return yield* failure("PeriodLocked");
-        const revision = current.revision + 1;
-
-        if (revision > revisionBound) return yield* unsupported();
-
-        const body = yield* readScheduleTerms(
-          transaction,
-          command.scope,
-          command.scheduleId,
-          current.sourceKey,
-          revision,
-          current.digest,
-          command.input.terms,
-          command.idempotencyKey,
-          "revise_schedule",
-          principal.actorId,
-        );
-
-        const revised = yield* decode(RevisionSchema, body);
-        yield* SchedulesDb.insertRevision(transaction, {
-          bookId: command.scope.bookId,
-          scheduleId: command.scheduleId,
-          revision,
-          evidenceId: command.input.terms.evidenceId,
-          body,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          "revise_schedule",
-          principal.actorId,
-          revised,
-        );
-
-        return revised;
       }),
     "update",
   );
@@ -911,173 +634,164 @@ export const prepareScheduleOccurrence = Effect.fn("subledger.prepareScheduleOcc
         Effect.gen(function* () {
           const payload = yield* toJsonObject({ id: command.scheduleId, input: command.input });
 
-          const request = yield* replay(
+          return yield* runBookCommand(
             transaction,
-            command.scope,
-            command.idempotencyKey,
-            "prepare_schedule_occurrence",
-            principal.actorId,
-            payload,
-            PreparationSchema,
-          );
-
-          if (request.previous) return request.previous;
-          yield* requireScheduleAccess(transaction, true);
-          yield* Db.lockBookForUpdate(transaction, command.scope);
-
-          const current = yield* readCurrentRevision(
-            transaction,
-            command.scope,
-            command.scheduleId,
-          );
-
-          if (command.input.expectedDigest !== current.digest) {
-            return yield* failure("StaleDependency");
-          }
-
-          const ordinal = command.input.ordinal;
-          const occurrence = current.occurrences[ordinal - 1];
-
-          if (occurrence === undefined) return yield* failure("NotFound");
-          const postingBasis = yield* readPostingBasis(transaction, command.scope, current);
-
-          if (!postingBasis.supported) return yield* failure("StaleDependency");
-
-          const posted = yield* SchedulesDb.readPostedOccurrenceVouchers(
-            transaction,
-            command.scope.bookId,
-            current.terms.evidenceId,
-            occurrence.eventKey,
-          );
-
-          if (posted.length > 0) return yield* failure("AlreadyPosted");
-          void (yield* Db.readPeriod(
-            transaction,
-            command.scope.bookId,
-            occurrence.accountingPeriodId,
-          ));
-          void (yield* Db.readAccounts(transaction, command.scope.bookId, [
-            current.terms.debitAccountId,
-            current.terms.creditAccountId,
-          ]));
-
-          const retained = (yield* SchedulesDb.readLatestPreparation(
-            transaction,
-            command.scope.bookId,
-            command.scheduleId,
-            ordinal,
-          ))[0];
-
-          let attempt = retained?.attempt ?? 0;
-          let changeSetId = retained?.changeSetId;
-          let planDigest = retained?.planDigest;
-          let current_ = false;
-
-          if (
-            changeSetId !== undefined &&
-            retained?.revision === current.revision &&
-            equalJson(retained.basis, postingBasis)
-          ) {
-            const plan = yield* decode(Accounting.ChangeSet, retained?.plan ?? {});
-            const validated = yield* validateDependencies(transaction, command.scope, plan);
-
-            if (validated) {
-              planDigest = plan.planDigest;
-              current_ = true;
-            } else {
-              changeSetId = undefined;
-            }
-          }
-
-          if (!current_) {
-            attempt += 1;
-
-            if (attempt > attemptBound) return yield* unsupported();
-
-            const derived = `sl_${(yield* digestValue({
-              actor: principal.actorId,
-              key: command.idempotencyKey,
-              id: command.scheduleId,
-            })).slice(8)}`;
-
-            const rationale =
-              `Schedule ${command.scheduleId} revision ${current.revision} occurrence ${ordinal}: ${current.terms.rationale}`.slice(
-                0,
-                2000,
-              );
-
-            const plan = yield* prepareJournalInTransaction(transaction, principal, {
+            {
               scope: command.scope,
-              idempotencyKey: derived,
-              input: {
-                kind: "manual_journal",
-                evidenceId: current.terms.evidenceId,
-                eventKey: occurrence.eventKey,
-                accountingPeriodId: occurrence.accountingPeriodId,
-                postingDate: occurrence.postingDate,
-                series: current.terms.series,
-                description: current.terms.name,
-                rationale,
-                taxAssessment: "not_applicable",
-                lines: [
-                  {
-                    accountId: current.terms.debitAccountId,
-                    debitMinor: occurrence.amountMinor,
-                    creditMinor: "0",
-                    description: current.terms.name,
-                  },
-                  {
-                    accountId: current.terms.creditAccountId,
-                    debitMinor: "0",
-                    creditMinor: occurrence.amountMinor,
-                    description: current.terms.name,
-                  },
-                ],
-              },
-            });
-
-            changeSetId = plan.id;
-            planDigest = plan.planDigest;
-            yield* SchedulesDb.insertPreparation(transaction, {
-              bookId: command.scope.bookId,
-              scheduleId: command.scheduleId,
-              revision: current.revision,
-              ordinal,
-              attempt,
-              changeSetId: plan.id,
-              basis: postingBasis,
-            });
-          }
-
-          if (changeSetId === undefined || planDigest === undefined) {
-            return yield* failure("InternalError");
-          }
-
-          const result = yield* decode(PreparationSchema, {
-            scheduleId: command.scheduleId,
-            revisionDigest: current.digest,
-            ordinal,
-            changeSetId,
-            planDigest,
-            requiresPostingApproval: true,
-            receipt: {
-              key: command.idempotencyKey,
+              idempotencyKey: command.idempotencyKey,
               operation: "prepare_schedule_occurrence",
               actorId: principal.actorId,
+              input: payload,
             },
-          });
+            PreparationSchema,
+            Effect.gen(function* () {
+              yield* requireScheduleAccess(transaction, true);
 
-          yield* saveCommand(
-            transaction,
-            command.scope,
-            command.idempotencyKey,
-            request.expected,
-            "prepare_schedule_occurrence",
-            principal.actorId,
-            result,
+              const current = yield* readCurrentRevision(
+                transaction,
+                command.scope,
+                command.scheduleId,
+              );
+
+              if (command.input.expectedDigest !== current.digest) {
+                return yield* failure("StaleDependency");
+              }
+
+              const ordinal = command.input.ordinal;
+              const occurrence = current.occurrences[ordinal - 1];
+
+              if (occurrence === undefined) return yield* failure("NotFound");
+              const postingBasis = yield* readPostingBasis(transaction, command.scope, current);
+
+              if (!postingBasis.supported) return yield* failure("StaleDependency");
+
+              const posted = yield* SchedulesDb.readPostedOccurrenceVouchers(
+                transaction,
+                command.scope.bookId,
+                current.terms.evidenceId,
+                occurrence.eventKey,
+              );
+
+              if (posted.length > 0) return yield* failure("AlreadyPosted");
+              void (yield* Db.readPeriod(
+                transaction,
+                command.scope.bookId,
+                occurrence.accountingPeriodId,
+              ));
+              void (yield* Db.readAccounts(transaction, command.scope.bookId, [
+                current.terms.debitAccountId,
+                current.terms.creditAccountId,
+              ]));
+
+              const retained = (yield* SchedulesDb.readLatestPreparation(
+                transaction,
+                command.scope.bookId,
+                command.scheduleId,
+                ordinal,
+              ))[0];
+
+              let attempt = retained?.attempt ?? 0;
+              let changeSetId = retained?.changeSetId;
+              let planDigest = retained?.planDigest;
+              let current_ = false;
+
+              if (
+                changeSetId !== undefined &&
+                retained?.revision === current.revision &&
+                equalJson(retained.basis, postingBasis)
+              ) {
+                const plan = yield* decode(Accounting.ChangeSet, retained?.plan ?? {});
+                const validated = yield* validateDependencies(transaction, command.scope, plan);
+
+                if (validated) {
+                  planDigest = plan.planDigest;
+                  current_ = true;
+                } else {
+                  changeSetId = undefined;
+                }
+              }
+
+              if (!current_) {
+                attempt += 1;
+
+                if (attempt > attemptBound) return yield* unsupported();
+
+                const derived = `sl_${(yield* digestValue({
+                  actor: principal.actorId,
+                  key: command.idempotencyKey,
+                  id: command.scheduleId,
+                })).slice(8)}`;
+
+                const rationale =
+                  `Schedule ${command.scheduleId} revision ${current.revision} occurrence ${ordinal}: ${current.terms.rationale}`.slice(
+                    0,
+                    2000,
+                  );
+
+                const plan = yield* prepareJournalInTransaction(transaction, principal, {
+                  scope: command.scope,
+                  idempotencyKey: derived,
+                  input: {
+                    kind: "manual_journal",
+                    evidenceId: current.terms.evidenceId,
+                    eventKey: occurrence.eventKey,
+                    accountingPeriodId: occurrence.accountingPeriodId,
+                    postingDate: occurrence.postingDate,
+                    series: current.terms.series,
+                    description: current.terms.name,
+                    rationale,
+                    taxAssessment: "not_applicable",
+                    lines: [
+                      {
+                        accountId: current.terms.debitAccountId,
+                        debitMinor: occurrence.amountMinor,
+                        creditMinor: "0",
+                        description: current.terms.name,
+                      },
+                      {
+                        accountId: current.terms.creditAccountId,
+                        debitMinor: "0",
+                        creditMinor: occurrence.amountMinor,
+                        description: current.terms.name,
+                      },
+                    ],
+                  },
+                });
+
+                changeSetId = plan.id;
+                planDigest = plan.planDigest;
+                yield* SchedulesDb.insertPreparation(transaction, {
+                  bookId: command.scope.bookId,
+                  scheduleId: command.scheduleId,
+                  revision: current.revision,
+                  ordinal,
+                  attempt,
+                  changeSetId: plan.id,
+                  basis: postingBasis,
+                });
+              }
+
+              if (changeSetId === undefined || planDigest === undefined) {
+                return yield* failure("InternalError");
+              }
+
+              const result = yield* decode(PreparationSchema, {
+                scheduleId: command.scheduleId,
+                revisionDigest: current.digest,
+                ordinal,
+                changeSetId,
+                planDigest,
+                requiresPostingApproval: true,
+                receipt: {
+                  key: command.idempotencyKey,
+                  operation: "prepare_schedule_occurrence",
+                  actorId: principal.actorId,
+                },
+              });
+
+              return result;
+            }),
           );
-
-          return result;
         }),
       "update",
     );
@@ -1289,188 +1003,186 @@ const amendSchedule = Effect.fn("subledger.amendSchedule")(function* (
         const operation =
           change.kind === "dates" ? "amend_schedule_future_dates" : "amend_schedule_estimate";
 
-        const request = yield* replay(
+        return yield* runBookCommand(
           transaction,
-          scope,
-          idempotencyKey,
-          operation,
-          principal.actorId,
-          { id: scheduleId, input },
+          {
+            scope: scope,
+            idempotencyKey: idempotencyKey,
+            operation: operation,
+            actorId: principal.actorId,
+            input: { id: scheduleId, input },
+          },
           RevisionSchema,
-        );
+          Effect.gen(function* () {
+            const context = yield* readAmendmentContext(transaction, scope, scheduleId, change);
 
-        if (request.previous) return request.previous;
+            const { basis, evidence, today } = context;
 
-        const context = yield* readAmendmentContext(transaction, scope, scheduleId, change);
+            const current = context.current;
 
-        const { basis, evidence, today } = context;
+            const replacement =
+              change.kind === "dates" ? change.input.periods : change.input.installments;
 
-        const current = context.current;
+            const first = input.firstOrdinal;
+            const count = current.occurrences.length;
+            const newCount = first - 1 + replacement.length;
 
-        const replacement =
-          change.kind === "dates" ? change.input.periods : change.input.installments;
+            if (current.revision >= revisionBound) return yield* unsupported();
 
-        const first = input.firstOrdinal;
-        const count = current.occurrences.length;
-        const newCount = first - 1 + replacement.length;
+            if (
+              first < 1 ||
+              first > count ||
+              replacement.length < 1 ||
+              newCount > occurrenceBound ||
+              (change.kind === "dates" && newCount !== count)
+            )
+              return yield* failure("InvalidJournal");
+            const oldSuffix = current.occurrences.slice(first - 1);
 
-        if (current.revision >= revisionBound) return yield* unsupported();
+            const periods = yield* SchedulesDb.readPeriods(
+              transaction,
+              scope.bookId,
+              [...oldSuffix, ...replacement].map((period) => period.accountingPeriodId),
+            );
 
-        if (
-          first < 1 ||
-          first > count ||
-          replacement.length < 1 ||
-          newCount > occurrenceBound ||
-          (change.kind === "dates" && newCount !== count)
-        )
-          return yield* failure("InvalidJournal");
-        const oldSuffix = current.occurrences.slice(first - 1);
+            const periodById = new Map(periods.map((period) => [period.id, period]));
+            const years = yield* Db.readAllFiscalYears(transaction, scope.bookId);
+            const yearById = new Map(years.map((year) => [year.id, year]));
 
-        const periods = yield* SchedulesDb.readPeriods(
-          transaction,
-          scope.bookId,
-          [...oldSuffix, ...replacement].map((period) => period.accountingPeriodId),
-        );
+            const accounts = yield* Db.readAccounts(transaction, scope.bookId, [
+              current.terms.debitAccountId,
+              current.terms.creditAccountId,
+            ]);
 
-        const periodById = new Map(periods.map((period) => [period.id, period]));
-        const years = yield* Db.readAllFiscalYears(transaction, scope.bookId);
-        const yearById = new Map(years.map((year) => [year.id, year]));
+            if (accounts.length !== 2 || accounts.some((account) => !account.active))
+              return yield* failure("InvalidJournal");
+            const states = yield* readOccurrenceStates(transaction, scope, current, throughAll);
 
-        const accounts = yield* Db.readAccounts(transaction, scope.bookId, [
-          current.terms.debitAccountId,
-          current.terms.creditAccountId,
-        ]);
+            if (states.length !== count) return yield* unsupported();
 
-        if (accounts.length !== 2 || accounts.some((account) => !account.active))
-          return yield* failure("InvalidJournal");
-        const states = yield* readOccurrenceStates(transaction, scope, current, throughAll);
+            const prefix = yield* scanAmendedPrefix(
+              transaction,
+              scope,
+              change,
+              states,
+              first,
+              today,
+              periodById,
+            );
 
-        if (states.length !== count) return yield* unsupported();
+            const { recognized, reversed } = prefix;
+            const effectiveOn = textField(objectField(basis.body, "input"), "effectiveOn");
 
-        const prefix = yield* scanAmendedPrefix(
-          transaction,
-          scope,
-          change,
-          states,
-          first,
-          today,
-          periodById,
-        );
+            if (!effectiveOn) return yield* failure("InternalError");
 
-        const { recognized, reversed } = prefix;
-        const effectiveOn = textField(objectField(basis.body, "input"), "effectiveOn");
+            const amended = yield* buildAmendedOccurrences(
+              current,
+              change,
+              replacement,
+              first,
+              today,
+              effectiveOn,
+              prefix.last,
+              periodById,
+              yearById,
+            );
 
-        if (!effectiveOn) return yield* failure("InternalError");
+            const { occurrences, remaining } = amended;
+            const lifetime = newCount !== count;
 
-        const amended = yield* buildAmendedOccurrences(
-          current,
-          change,
-          replacement,
-          first,
-          today,
-          effectiveOn,
-          prefix.last,
-          periodById,
-          yearById,
-        );
+            const residual =
+              change.kind === "estimate" ? change.input.residualMinor : current.terms.residualMinor;
 
-        const { occurrences, remaining } = amended;
-        const lifetime = newCount !== count;
+            const impairments = (yield* SchedulesDb.listBookImpairments(
+              transaction,
+              scope.bookId,
+            )).filter((row) => row.scheduleId === scheduleId);
 
-        const residual =
-          change.kind === "estimate" ? change.input.residualMinor : current.terms.residualMinor;
+            const impaired = impairments.reduce(
+              (total, row) => total + minor(row.impairmentMinor),
+              0n,
+            );
 
-        const impairments = (yield* SchedulesDb.listBookImpairments(
-          transaction,
-          scope.bookId,
-        )).filter((row) => row.scheduleId === scheduleId);
+            if (
+              remaining !== minor(input.remainingMinor) ||
+              remaining + recognized + minor(residual) + impaired !== minor(current.terms.costMinor)
+            )
+              return yield* failure("StaleDependency");
 
-        const impaired = impairments.reduce((total, row) => total + minor(row.impairmentMinor), 0n);
+            if (
+              (yield* digestValue({ occurrences, residual })) ===
+                (yield* digestValue({
+                  occurrences: current.occurrences,
+                  residual: current.terms.residualMinor,
+                })) &&
+              (change.kind === "dates" || (yield* estimateCurrent(transaction, scope, current)))
+            )
+              return yield* failure("InvalidJournal");
 
-        if (
-          remaining !== minor(input.remainingMinor) ||
-          remaining + recognized + minor(residual) + impaired !== minor(current.terms.costMinor)
-        )
-          return yield* failure("StaleDependency");
+            const terms = {
+              ...current.terms,
+              periods: occurrences.map(({ postingDate, accountingPeriodId }) => ({
+                postingDate,
+                accountingPeriodId,
+              })),
+              residualMinor: residual,
+              usefulPeriods: newCount,
+              allocationPolicy:
+                change.kind === "estimate"
+                  ? "explicit_remaining_minor_v1"
+                  : current.terms.allocationPolicy,
+            };
 
-        if (
-          (yield* digestValue({ occurrences, residual })) ===
-            (yield* digestValue({
-              occurrences: current.occurrences,
-              residual: current.terms.residualMinor,
-            })) &&
-          (change.kind === "dates" || (yield* estimateCurrent(transaction, scope, current)))
-        )
-          return yield* failure("InvalidJournal");
+            const amendment = {
+              kind:
+                change.kind === "dates"
+                  ? "future_dates_v1"
+                  : lifetime
+                    ? "remaining_lifetime_v1"
+                    : "remaining_estimate_v1",
+              input,
+              basisDigest: input.expectedBasisDigest,
+              basisScheduleDigest: textField(basis.body, "scheduleDigest"),
+              reviewSha256: evidence.sha256,
+              reviewedOn: today,
+            };
 
-        const terms = {
-          ...current.terms,
-          periods: occurrences.map(({ postingDate, accountingPeriodId }) => ({
-            postingDate,
-            accountingPeriodId,
-          })),
-          residualMinor: residual,
-          usefulPeriods: newCount,
-          allocationPolicy:
-            change.kind === "estimate"
-              ? "explicit_remaining_minor_v1"
-              : current.terms.allocationPolicy,
-        };
+            if (change.kind === "estimate") {
+              Object.assign(amendment, {
+                recognizedMinor: recognized.toString(),
+                reversedMinor: reversed.toString(),
+              });
+            }
 
-        const amendment = {
-          kind:
-            change.kind === "dates"
-              ? "future_dates_v1"
-              : lifetime
-                ? "remaining_lifetime_v1"
-                : "remaining_estimate_v1",
-          input,
-          basisDigest: input.expectedBasisDigest,
-          basisScheduleDigest: textField(basis.body, "scheduleDigest"),
-          reviewSha256: evidence.sha256,
-          reviewedOn: today,
-        };
+            const body = yield* toJsonObject(
+              Object.assign({}, withoutKey(current, "digest"), {
+                revision: current.revision + 1,
+                previousDigest: current.digest,
+                terms,
+                occurrences,
+                allocatedMinor: (recognized + remaining).toString(),
+                amendment,
+                createdAt: context.now,
+                receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+              }),
+            );
 
-        if (change.kind === "estimate") {
-          Object.assign(amendment, {
-            recognizedMinor: recognized.toString(),
-            reversedMinor: reversed.toString(),
-          });
-        }
+            const result = yield* decode(
+              RevisionSchema,
+              yield* digestBody(withoutKey(body, "digest")),
+            );
 
-        const body = yield* toJsonObject(
-          Object.assign({}, withoutKey(current, "digest"), {
-            revision: current.revision + 1,
-            previousDigest: current.digest,
-            terms,
-            occurrences,
-            allocatedMinor: (recognized + remaining).toString(),
-            amendment,
-            createdAt: context.now,
-            receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+            yield* SchedulesDb.insertRevision(transaction, {
+              bookId: scope.bookId,
+              scheduleId,
+              revision: result.revision,
+              evidenceId: result.terms.evidenceId,
+              body: result,
+            });
+
+            return result;
           }),
         );
-
-        const result = yield* decode(RevisionSchema, yield* digestBody(withoutKey(body, "digest")));
-
-        yield* SchedulesDb.insertRevision(transaction, {
-          bookId: scope.bookId,
-          scheduleId,
-          revision: result.revision,
-          evidenceId: result.terms.evidenceId,
-          body: result,
-        });
-        yield* saveCommand(
-          transaction,
-          scope,
-          idempotencyKey,
-          request.expected,
-          operation,
-          principal.actorId,
-          result,
-        );
-
-        return result;
       }),
     "update",
   );

@@ -1,4 +1,6 @@
-import { useRef } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -10,13 +12,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import {
-  bookPath,
-  bookKey,
-  mutationOptions,
-  readAccounting,
-  isUncertainWriteError,
-} from "@/lib/accounting-api";
+import { bookPath, bookKey, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 import { checkScope } from "@/components/commerce/shared";
 import { SieStagingRun } from "./run";
 import { OpenItemEntry, OpenItemControlEntry, SavedOpenItems } from "./open-items";
@@ -43,7 +39,7 @@ export function SiePlanReview({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
 
   const sourceAccounts = [
     ...new Set(
@@ -74,7 +70,7 @@ export function SiePlanReview({
 
   const seal = useMutation({
     mutationFn: (input: typeof Sie.SealSiePlan.Type) =>
-      readAccounting(path, Sie.SiePlan, mutationOptions(path, JSON.stringify(input), keys.current)),
+      readAccounting(path, Sie.SiePlan, keys.current.options(path, JSON.stringify(input))),
     onSuccess: (result) => {
       checkScope(book, result.scope);
 
@@ -389,7 +385,7 @@ export function SavedSiePlan({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const startPath = `${bookPath(book)}/sie-plans/${encodeURIComponent(plan)}/runs`;
 
   const start = useMutation({
@@ -397,7 +393,7 @@ export function SavedSiePlan({
       readAccounting(
         startPath,
         Sie.SieRunStart,
-        mutationOptions(startPath, JSON.stringify({ digest }), keys.current),
+        keys.current.options(startPath, JSON.stringify({ digest })),
       ),
     onSuccess: (result) => {
       if (result.planId !== plan) throw new Error("SIE staging plan identity mismatch");
@@ -411,7 +407,8 @@ export function SavedSiePlan({
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/sie-plans/${encodeURIComponent(plan ?? "")}`,
+        (client) =>
+          client.sieImport.getSieSourcePlan({ params: { ...bookScope(book), id: plan ?? "" } }),
         Sie.SiePlan,
         { signal },
       );

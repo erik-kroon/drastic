@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -53,7 +54,10 @@ export function AssetDisposalReview(props: {
       if (!issueId) throw new Error("Invoice source is required");
 
       const value = await readAccounting(
-        `${bookPath(book)}/asset-disposals/invoice-sources/${encodeURIComponent(issueId)}`,
+        (client) =>
+          client.assetDisposals.getAssetDisposalInvoiceSource({
+            params: { ...bookScope(book), id: issueId },
+          }),
         Disposals.InvoiceSource,
         { signal },
       );

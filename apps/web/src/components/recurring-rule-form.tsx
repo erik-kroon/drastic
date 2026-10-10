@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -10,7 +12,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -27,7 +29,7 @@ export function RecurringRuleForm({
 }) {
   const copy = accountingCopy(locale);
   const descriptionId = useId();
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [inputError, setInputError] = useState("");
 
   const proposal = useMutation({
@@ -37,7 +39,7 @@ export function RecurringRuleForm({
       return readAccounting(
         path,
         Automation.RecurringRule,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: (rule) => onProposed(rule.id),
@@ -70,7 +72,7 @@ export function RecurringRuleForm({
           taxAssessment: "not_applicable",
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.journal_invalid);
 
           return;

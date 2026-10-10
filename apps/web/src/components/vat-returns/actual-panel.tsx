@@ -1,3 +1,4 @@
+import { bookScope } from "@/lib/contract-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Vat from "@open-erp/contracts/vat-returns";
@@ -34,7 +35,11 @@ export function ActualVatReturnsPanel(props: { recordId: string; onOpen: (id: st
   const list = useQuery({
     queryKey: [...bookKey(book), "vat-actuals"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/vat-returns/actuals`, Vat.ActualVatReturnList, { signal }),
+      readAccounting(
+        (client) => client.vatReturns.listActualVatReturns({ params: { ...bookScope(book) } }),
+        Vat.ActualVatReturnList,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -322,7 +327,8 @@ function ActualDetail({ id, onOpen }: { id: string; onOpen: (id: string) => void
     queryKey: [...bookKey(book), "vat-actuals", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/vat-returns/actuals/${encodeURIComponent(id)}`,
+        (client) =>
+          client.vatReturns.getActualVatReturn({ params: { ...bookScope(book), id: id } }),
         Vat.ActualVatReturnView,
         { signal },
       );

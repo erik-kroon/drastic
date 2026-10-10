@@ -1,4 +1,7 @@
-import { lazy, Suspense, useRef, useState } from "react";
+import * as Option from "effect/Option";
+import { useCommandKeys } from "@/lib/command-keys";
+import { bookScope } from "@/lib/contract-client";
+import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -11,7 +14,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
@@ -46,7 +49,8 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
     queryKey: [...bookKey(book), "bank-statement", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/bank-statements/${encodeURIComponent(id)}`,
+        (client) =>
+          client.reconciliation.getBankStatement({ params: { ...bookScope(book), id: id } }),
         Bank.BankStatementView,
         { signal },
       );
@@ -166,7 +170,11 @@ export function BankStatementDetails({
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+      readAccounting(
+        (client) => client.accounting.bookSetup({ params: { ...bookScope(book) } }),
+        Accounting.BookSetup,
+        { signal },
+      ),
     retry: false,
   });
 
@@ -274,7 +282,7 @@ function BankMatchForm({
   const copy = accountingCopy(locale);
   const matchedRows = new Set(statement.matches.map((match) => match.rowOrdinal));
   const hasUnmatched = statement.statement.rows.some((row) => !matchedRows.has(row.rowOrdinal));
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const client = useQueryClient();
   const [inputError, setInputError] = useState("");
 
@@ -285,7 +293,7 @@ function BankMatchForm({
       return readAccounting(
         path,
         Bank.BankMatchReceipt,
-        mutationOptions(path, JSON.stringify(payload), keys.current),
+        keys.current.options(path, JSON.stringify(payload)),
       );
     },
     onSuccess: () => {
@@ -312,7 +320,7 @@ function BankMatchForm({
           lineId: fields.get("lineId"),
         });
 
-        if (decoded._tag === "None") {
+        if (Option.isNone(decoded)) {
           setInputError(copy.bank_invalid);
 
           return;

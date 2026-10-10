@@ -1,3 +1,5 @@
+import { bookScope, httpQuery } from "@/lib/contract-client";
+import { Api } from "@open-erp/contracts/api";
 import { InvoiceDefaultsSelection } from "./customer-invoice-defaults";
 import { InvoiceTemplateActions } from "./invoice-templates";
 import { InvoiceEditorLayout } from "@open-erp/ui/components/invoice-editor-layout";
@@ -101,7 +103,14 @@ export function InvoiceDrafts(
       if (normalizedSearch) query.set("search", normalizedSearch);
 
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts?${query.toString()}`,
+        (client) =>
+          client.invoiceDrafts.listInvoiceDrafts({
+            params: { ...bookScope(props.book) },
+            query: httpQuery(
+              Api.groups.invoiceDrafts.endpoints.listInvoiceDrafts,
+              `${query.toString()}`,
+            ),
+          }),
         Drafts.InvoiceDraftList,
         { signal },
       );
@@ -253,7 +262,10 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
     enabled: commercial,
     queryFn: ({ signal }) =>
       readAccounting(
-        `${commercePath(props.book)}/legal-sales-policies`,
+        (client) =>
+          client.legalSalesPolicies.legalSalesPolicyHistory({
+            params: { ...bookScope(props.book) },
+          }),
         Legal.LegalSalesPolicyHistory,
         { signal },
       ),
@@ -675,7 +687,10 @@ function DraftDetail(
     queryKey: [...commerceKey(props.book), "invoice-draft-history", props.id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(props.id)}/revisions`,
+        (client) =>
+          client.invoiceDrafts.invoiceDraftHistory({
+            params: { ...bookScope(props.book), id: props.id },
+          }),
         Drafts.InvoiceDraftHistory,
         { signal },
       );

@@ -1,10 +1,13 @@
+import { runBookCommand } from "../book-commands";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Closing from "@open-erp/contracts/closing";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest } from "../json";
+import { isoNow, replay, saveCommand } from "../command-receipts";
+import { newId } from "../identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/closing/proposals";
 import * as ClosingDb from "../../db/closing/inventories";
@@ -152,106 +155,103 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         input: command.input,
       });
 
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_closing",
-        principal.actorId,
-        payload,
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_closing",
+          actorId: principal.actorId,
+          input: payload,
+        },
         ProposalSchema,
-      );
+        Effect.gen(function* () {
+          yield* requireClosingAccess(transaction, ["closing_proposals"]);
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(input, [...proposalKeys]);
+          const reason = text(input, "reason");
 
-      if (request.previous) return request.previous;
-      yield* requireClosingAccess(transaction, ["closing_proposals"]);
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(input, [...proposalKeys]);
-      const reason = text(input, "reason");
-
-      if (
-        (input.action !== "close" && input.action !== "reopen") ||
-        reason === null ||
-        reason.trim().length < 1 ||
-        reason.length > maximumReason
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (
-        (yield* ClosingDb.readPeriod(transaction, command.scope.bookId, command.periodId, "update"))
-          .length === 0
-      ) {
-        return yield* failure("NotFound");
-      }
-
-      const basis = yield* readBasis(transaction, command.scope.bookId, command.periodId);
-      yield* requireNativeProfile(transaction, command.scope.bookId);
-
-      if (
-        (input.action === "close" && basis.technicalCloseAllowed !== true) ||
-        (input.action === "reopen" && basis.locked !== true)
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (input.action === "reopen") {
-        const period = (yield* PostingDb.readPeriod(
-          transaction,
-          command.scope.bookId,
-          command.periodId,
-        ))[0];
-
-        if (!period) return yield* failure("NotFound");
-
-        for (const certificate of yield* FinancialDb.readCertificatesForYear(
-          transaction,
-          command.scope.bookId,
-          period.fiscalYearId,
-        )) {
           if (
-            (yield* FinancialDb.readReopenForCertificate(
+            (input.action !== "close" && input.action !== "reopen") ||
+            reason === null ||
+            reason.trim().length < 1 ||
+            reason.length > maximumReason
+          ) {
+            return yield* failure("InvalidJournal");
+          }
+
+          if (
+            (yield* ClosingDb.readPeriod(
               transaction,
               command.scope.bookId,
-              certificate.id,
+              command.periodId,
+              "update",
             )).length === 0
-          )
+          ) {
+            return yield* failure("NotFound");
+          }
+
+          const basis = yield* readBasis(transaction, command.scope.bookId, command.periodId);
+          yield* requireNativeProfile(transaction, command.scope.bookId);
+
+          if (
+            (input.action === "close" && basis.technicalCloseAllowed !== true) ||
+            (input.action === "reopen" && basis.locked !== true)
+          ) {
             return yield* failure("StaleDependency");
-        }
-      }
+          }
 
-      const captured = yield* decode(ReadinessSchema, basis);
-      const id = newId("closing_proposal");
+          if (input.action === "reopen") {
+            const period = (yield* PostingDb.readPeriod(
+              transaction,
+              command.scope.bookId,
+              command.periodId,
+            ))[0];
 
-      const body = yield* toJsonObject({
-        id,
-        scope: captured.scope,
-        periodId: command.periodId,
-        action: input.action,
-        reason,
-        basis,
-        proposedBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-      });
+            if (!period) return yield* failure("NotFound");
 
-      const sealed = { ...body, digest: yield* digest(body) };
-      yield* Db.insertProposal(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        periodId: command.periodId,
-        body: sealed,
-      });
-      const result = yield* decode(ProposalSchema, sealed);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_closing",
-        principal.actorId,
-        result,
+            for (const certificate of yield* FinancialDb.readCertificatesForYear(
+              transaction,
+              command.scope.bookId,
+              period.fiscalYearId,
+            )) {
+              if (
+                (yield* FinancialDb.readReopenForCertificate(
+                  transaction,
+                  command.scope.bookId,
+                  certificate.id,
+                )).length === 0
+              )
+                return yield* failure("StaleDependency");
+            }
+          }
+
+          const captured = yield* decode(ReadinessSchema, basis);
+          const id = newId("closing_proposal");
+
+          const body = yield* toJsonObject({
+            id,
+            scope: captured.scope,
+            periodId: command.periodId,
+            action: input.action,
+            reason,
+            basis,
+            proposedBy: principal.actorId,
+            createdAt: yield* isoNow(transaction),
+          });
+
+          const sealed = { ...body, digest: yield* digest(body) };
+          yield* Db.insertProposal(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            periodId: command.periodId,
+            body: sealed,
+          });
+          const result = yield* decode(ProposalSchema, sealed);
+
+          return result;
+        }),
       );
-
-      return result;
     },
     "update",
   );

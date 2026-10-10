@@ -145,13 +145,16 @@ const run = async (label: string, tool: string, args: Array<string>) => {
 
   console.log(`\n${label}`);
 
-  const child = Bun.spawn([process.execPath, path.join(binDirectory, tool), ...args], {
-    cwd: repoRoot,
-    env: { ...process.env, GOMAXPROCS: toolThreads },
-    detached: true,
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  const child = Bun.spawn(
+    [process.execPath, path.isAbsolute(tool) ? tool : path.join(binDirectory, tool), ...args],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, GOMAXPROCS: toolThreads },
+      detached: true,
+      stdout: "inherit",
+      stderr: "inherit",
+    },
+  );
 
   processGroups.add(child.pid);
 
@@ -251,6 +254,8 @@ if (
 }
 
 if (!lintOnly) {
+  await run("domain ownership", path.join(repoRoot, "scripts/check-owners.ts"), []);
+
   for (const [projectConfig, files] of typeCheckGroups) {
     await typeCheckProject(projectConfig, files);
   }

@@ -19,6 +19,29 @@ const paths = (...args) =>
 
 const failures = [];
 
+const approvedTransportEdit = (file, previousHash) => {
+  const approval = manifest.transportOnlyChanges;
+  const receipt = approval?.files.find((candidate) => candidate.path === file);
+
+  if (
+    !receipt ||
+    approval.authorization !== "Allow transport-only edits; preserve visual status and baselines"
+  )
+    return false;
+
+  const before = createHash("sha256")
+    .update(git("show", `${approval.baseRevision}:${file}`))
+    .digest("hex");
+
+  const after = createHash("sha256").update(readFileSync(file)).digest("hex");
+
+  return (
+    before === receipt.beforeSha256 &&
+    after === receipt.afterSha256 &&
+    (!previousHash || previousHash === before)
+  );
+};
+
 const inventory = readJson(inventoryPath);
 
 const allowed = new Set(inventory.imports);
@@ -177,6 +200,7 @@ for (const entry of manifest.entries) {
       for (const file of entry.files) {
         if (
           existsSync(file) &&
+          !approvedTransportEdit(file, proof.sourceHashes?.[file]) &&
           proof.sourceHashes?.[file] !==
             createHash("sha256").update(readFileSync(file)).digest("hex")
         )
@@ -236,6 +260,8 @@ const changed = new Set([
 for (const file of changed) {
   if (!existsSync(file) || !/^(apps\/web\/src|packages\/ui\/src)\/.*\.(tsx|stylex\.ts)$/.test(file))
     continue;
+
+  if (approvedTransportEdit(file)) continue;
 
   const owners = manifest.entries.filter((entry) => entry.files.includes(file));
 

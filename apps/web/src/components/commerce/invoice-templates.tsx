@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useCommandKeys } from "@/lib/command-keys";
+import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
@@ -11,7 +12,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { checkScope, commercePath, type CommerceProps } from "./shared";
 
@@ -119,7 +120,7 @@ function CommercialTemplateActions(
   const [selectedId, setSelectedId] = useState("");
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
   const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
+  const keys = useCommandKeys();
   const [draftKey] = useState(() => `template_${crypto.randomUUID().replaceAll("-", "")}`);
   const client = useQueryClient();
   const router = useRouter();
@@ -149,7 +150,7 @@ function CommercialTemplateActions(
 
   const save = useMutation({
     mutationFn: async (command: { path: string; input: unknown; apply: boolean }) => {
-      const options = mutationOptions(command.path, JSON.stringify(command.input), keys.current);
+      const options = keys.current.options(command.path, JSON.stringify(command.input));
 
       if (command.apply) {
         const result = await readAccounting(command.path, Drafts.InvoiceDraftRevision, options);

@@ -1,3 +1,4 @@
+import { runBookCommand } from "./book-commands";
 import { digest as digestNative } from "./json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as ReportContract from "@open-erp/contracts/reports";
@@ -5,7 +6,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { isoNow } from "./command-receipts";
+import { newId } from "./identifiers";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/reports";
 import * as StatementDb from "../db/report-statements";
@@ -146,105 +148,98 @@ export const prepareReport = Effect.fn("reports.prepare")(function* (
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_report",
-        principal.actorId,
-        yield* toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_report",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
+        },
         SnapshotSchema,
+        Effect.gen(function* () {
+          yield* requireReportAccess(transaction, true);
+          const book = (yield* Db.readReportBook(transaction, command.scope.bookId))[0];
+
+          if (!book) return yield* failure("NotFound");
+
+          if (
+            command.input.kind !== "trial_balance_v1" ||
+            (book.profile !== "synthetic-core-v1" && book.profile !== "company-setup-v1")
+          ) {
+            return yield* unsupported();
+          }
+
+          const startsOn = calendarDate(command.input.startsOn);
+          const endsOn = calendarDate(command.input.endsOn);
+
+          if (startsOn === null || endsOn === null) return yield* failure("InvalidJournal");
+
+          if (startsOn > endsOn) return yield* failure("InvalidJournal");
+          const sequence = book.committedSequence;
+
+          const totals = (yield* Db.readReportTotals(
+            transaction,
+            command.scope.bookId,
+            sequence,
+            startsOn,
+            endsOn,
+          ))[0];
+
+          if (!totals) return yield* failure("InternalError");
+          const debit = exact(totals.debitMinor);
+          const credit = exact(totals.creditMinor);
+
+          if (debit === null || credit === null) return yield* failure("InternalError");
+          const id = newId("report");
+
+          const body = yield* toJsonObject({
+            kind: "trial_balance_v1",
+            id,
+            scope: command.scope,
+            startsOn,
+            endsOn,
+            sequence,
+            currency: book.currency,
+            currencyScale: book.currencyScale,
+            createdAt: yield* isoNow(transaction),
+            accountCount: Number(totals.accountCount),
+            voucherCount: Number(totals.voucherCount),
+            debitMinor: totals.debitMinor,
+            creditMinor: totals.creditMinor,
+            balanced: debit === credit,
+            coverage: "not_established",
+            warnings: [
+              book.profile === "synthetic-core-v1"
+                ? "Internal synthetic trial balance only; not a statutory financial statement."
+                : "Internal ledger trial balance only; not a statutory financial statement.",
+              "A balanced ledger does not establish complete source records, tax correctness or period readiness.",
+              "Opening balances include all earlier postings; no fiscal-year profit transfer is inferred.",
+            ],
+          });
+
+          yield* Db.insertSnapshot(transaction, {
+            bookId: command.scope.bookId,
+            id,
+            startsOn,
+            endsOn,
+            sequence,
+            body,
+          });
+          yield* Db.insertTrialBalanceLines(
+            transaction,
+            command.scope.bookId,
+            id,
+            sequence,
+            startsOn,
+            endsOn,
+          );
+          const result = yield* decode(SnapshotSchema, body);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireReportAccess(transaction, true);
-      const book = (yield* Db.readReportBook(transaction, command.scope.bookId))[0];
-
-      if (!book) return yield* failure("NotFound");
-
-      if (
-        command.input.kind !== "trial_balance_v1" ||
-        (book.profile !== "synthetic-core-v1" && book.profile !== "company-setup-v1")
-      ) {
-        return yield* unsupported();
-      }
-
-      const startsOn = calendarDate(command.input.startsOn);
-      const endsOn = calendarDate(command.input.endsOn);
-
-      if (startsOn === null || endsOn === null) return yield* failure("InvalidJournal");
-
-      if (startsOn > endsOn) return yield* failure("InvalidJournal");
-      const sequence = book.committedSequence;
-
-      const totals = (yield* Db.readReportTotals(
-        transaction,
-        command.scope.bookId,
-        sequence,
-        startsOn,
-        endsOn,
-      ))[0];
-
-      if (!totals) return yield* failure("InternalError");
-      const debit = exact(totals.debitMinor);
-      const credit = exact(totals.creditMinor);
-
-      if (debit === null || credit === null) return yield* failure("InternalError");
-      const id = newId("report");
-
-      const body = yield* toJsonObject({
-        kind: "trial_balance_v1",
-        id,
-        scope: command.scope,
-        startsOn,
-        endsOn,
-        sequence,
-        currency: book.currency,
-        currencyScale: book.currencyScale,
-        createdAt: yield* isoNow(transaction),
-        accountCount: Number(totals.accountCount),
-        voucherCount: Number(totals.voucherCount),
-        debitMinor: totals.debitMinor,
-        creditMinor: totals.creditMinor,
-        balanced: debit === credit,
-        coverage: "not_established",
-        warnings: [
-          book.profile === "synthetic-core-v1"
-            ? "Internal synthetic trial balance only; not a statutory financial statement."
-            : "Internal ledger trial balance only; not a statutory financial statement.",
-          "A balanced ledger does not establish complete source records, tax correctness or period readiness.",
-          "Opening balances include all earlier postings; no fiscal-year profit transfer is inferred.",
-        ],
-      });
-
-      yield* Db.insertSnapshot(transaction, {
-        bookId: command.scope.bookId,
-        id,
-        startsOn,
-        endsOn,
-        sequence,
-        body,
-      });
-      yield* Db.insertTrialBalanceLines(
-        transaction,
-        command.scope.bookId,
-        id,
-        sequence,
-        startsOn,
-        endsOn,
-      );
-      const result = yield* decode(SnapshotSchema, body);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_report",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );
@@ -728,167 +723,161 @@ export const prepareReportFamily = Effect.fn("reports.prepareFamily")(function* 
     command.scope,
     false,
     function* (transaction, principal) {
-      const request = yield* replay(
+      return yield* runBookCommand(
         transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_report_family",
-        principal.actorId,
-        yield* toJsonObject(command.input),
+        {
+          scope: command.scope,
+          idempotencyKey: command.idempotencyKey,
+          operation: "prepare_report_family",
+          actorId: principal.actorId,
+          input: yield* toJsonObject(command.input),
+        },
         FamilySnapshotSchema,
+        Effect.gen(function* () {
+          yield* requireReportAccess(transaction, true);
+          const book = (yield* Db.readReportBook(transaction, command.scope.bookId))[0];
+
+          if (!book) return yield* failure("NotFound");
+          const input = yield* toJsonObject(command.input);
+          yield* exactKeys(input, ["kind", "sourceReportId", "mapping"]);
+          const selected = familyOrNull(text(input, "kind"));
+          const mapping = objectOrNull(input.mapping);
+
+          if (selected === null || mapping === null) return yield* unsupported();
+          yield* validateMapping(mapping, selected);
+          const sourceId = text(input, "sourceReportId");
+
+          if (sourceId === null) return yield* failure("InvalidJournal");
+          const source = (yield* Db.readSnapshot(transaction, command.scope.bookId, sourceId))[0];
+
+          if (!source) return yield* failure("NotFound");
+
+          if (text(source.body, "kind") !== "trial_balance_v1") return yield* unsupported();
+
+          if (book.profile !== "synthetic-core-v1") return yield* unsupported();
+
+          if (number(source.body, "currencyScale") === null) return yield* unsupported();
+
+          const counted = (yield* Db.countReportLines(
+            transaction,
+            command.scope.bookId,
+            sourceId,
+            maximumFamilyLines,
+          ))[0];
+
+          if (!counted) return yield* failure("InternalError");
+
+          if (BigInt(counted.count) < 1n || BigInt(counted.count) > BigInt(maximumFamilyLines)) {
+            return yield* unsupported();
+          }
+
+          const coverage = (yield* Db.readComparisonMappingRows(
+            transaction,
+            command.scope.bookId,
+            sourceId,
+            mapping,
+          ))[0];
+
+          if (!coverage) return yield* failure("InternalError");
+
+          if (coverage.unmapped !== "0" || coverage.unused !== "0") return yield* unsupported();
+          const mapped = arrayOrNull(mapping.roles);
+
+          if (mapped === null) return yield* unsupported();
+
+          if (counted.count !== String(mapped.length)) return yield* unsupported();
+          const reportId = newId("report");
+          const mappingDigest = yield* digestNative(mapping);
+
+          if (mappingDigest === undefined) return yield* failure("InternalError");
+
+          // Consume the released statement owner's admitted transfer classification
+          // at the saved source cutoff, never a live account-level exclusion. Store
+          // complete membership so an old family cannot change after a later close.
+          const components =
+            selected === "profit_and_loss"
+              ? yield* StatementDb.readStatementComponents(
+                  transaction,
+                  command.scope.bookId,
+                  source.startsOn,
+                  source.endsOn,
+                  source.sequence,
+                  null,
+                  StatementDb.maximumStatementComponents,
+                )
+              : [];
+
+          if (components.length > StatementDb.maximumStatementComponents)
+            return yield* unsupported();
+
+          const transferIds = [
+            ...new Set(
+              components
+                .filter((component) => component.ownedTransfer)
+                .map((component) => component.voucherId),
+            ),
+          ].sort((left, right) => left.localeCompare(right));
+
+          if (transferIds.length > 1000) return yield* unsupported();
+
+          const baseBody = {
+            kind: selected,
+            id: reportId,
+            scope: command.scope,
+            sourceReportId: source.id,
+            family: selected,
+            startsOn: source.startsOn,
+            endsOn: source.endsOn,
+            sequence: source.sequence,
+            currency: source.body.currency,
+            currencyScale: source.body.currencyScale,
+            createdAt: yield* isoNow(transaction),
+            accountCount: source.body.accountCount,
+            voucherCount: source.body.voucherCount,
+            debitMinor: source.body.debitMinor,
+            creditMinor: source.body.creditMinor,
+            balanced: source.body.balanced,
+            coverage: "not_established",
+            mapping,
+            mappingDigest,
+            reviewedOpening: false,
+            statutory: false,
+            financialClose: false,
+            warnings: [
+              "Synthetic report family only; no statutory financial statement, reviewed opening or financial-close readiness is established.",
+              "The report uses the saved source cutoff and explicit reviewed account-role mapping; no account classification is inferred.",
+              "Contributing entries remain the existing fixed-cutoff journal-line lineage and require the saved source report interpretation.",
+            ],
+          };
+
+          const body = yield* toJsonObject(
+            selected === "profit_and_loss"
+              ? {
+                  ...baseBody,
+                  profitBasis: "owned_result_transfer_exclusion_v1",
+                  resultTransferVoucherIds: transferIds,
+                  warnings: [
+                    ...baseBody.warnings,
+                    "Profit-and-loss amounts exclude captured owned result transfers through a signed bridge; movement, closing balances and account drill-down remain raw ledger facts.",
+                  ],
+                }
+              : baseBody,
+          );
+
+          yield* Db.insertSnapshot(transaction, {
+            bookId: command.scope.bookId,
+            id: reportId,
+            startsOn: source.startsOn,
+            endsOn: source.endsOn,
+            sequence: source.sequence,
+            body,
+          });
+          yield* Db.copyReportLines(transaction, command.scope.bookId, source.id, reportId);
+          const result = yield* readFamilySnapshot(transaction, command.scope, reportId);
+
+          return result;
+        }),
       );
-
-      if (request.previous) return request.previous;
-      yield* requireReportAccess(transaction, true);
-      const book = (yield* Db.readReportBook(transaction, command.scope.bookId))[0];
-
-      if (!book) return yield* failure("NotFound");
-      const input = yield* toJsonObject(command.input);
-      yield* exactKeys(input, ["kind", "sourceReportId", "mapping"]);
-      const selected = familyOrNull(text(input, "kind"));
-      const mapping = objectOrNull(input.mapping);
-
-      if (selected === null || mapping === null) return yield* unsupported();
-      yield* validateMapping(mapping, selected);
-      const sourceId = text(input, "sourceReportId");
-
-      if (sourceId === null) return yield* failure("InvalidJournal");
-      const source = (yield* Db.readSnapshot(transaction, command.scope.bookId, sourceId))[0];
-
-      if (!source) return yield* failure("NotFound");
-
-      if (text(source.body, "kind") !== "trial_balance_v1") return yield* unsupported();
-
-      if (book.profile !== "synthetic-core-v1") return yield* unsupported();
-
-      if (number(source.body, "currencyScale") === null) return yield* unsupported();
-
-      const counted = (yield* Db.countReportLines(
-        transaction,
-        command.scope.bookId,
-        sourceId,
-        maximumFamilyLines,
-      ))[0];
-
-      if (!counted) return yield* failure("InternalError");
-
-      if (BigInt(counted.count) < 1n || BigInt(counted.count) > BigInt(maximumFamilyLines)) {
-        return yield* unsupported();
-      }
-
-      const coverage = (yield* Db.readComparisonMappingRows(
-        transaction,
-        command.scope.bookId,
-        sourceId,
-        mapping,
-      ))[0];
-
-      if (!coverage) return yield* failure("InternalError");
-
-      if (coverage.unmapped !== "0" || coverage.unused !== "0") return yield* unsupported();
-      const mapped = arrayOrNull(mapping.roles);
-
-      if (mapped === null) return yield* unsupported();
-
-      if (counted.count !== String(mapped.length)) return yield* unsupported();
-      const reportId = newId("report");
-      const mappingDigest = yield* digestNative(mapping);
-
-      if (mappingDigest === undefined) return yield* failure("InternalError");
-
-      // Consume the released statement owner's admitted transfer classification
-      // at the saved source cutoff, never a live account-level exclusion. Store
-      // complete membership so an old family cannot change after a later close.
-      const components =
-        selected === "profit_and_loss"
-          ? yield* StatementDb.readStatementComponents(
-              transaction,
-              command.scope.bookId,
-              source.startsOn,
-              source.endsOn,
-              source.sequence,
-              null,
-              StatementDb.maximumStatementComponents,
-            )
-          : [];
-
-      if (components.length > StatementDb.maximumStatementComponents) return yield* unsupported();
-
-      const transferIds = [
-        ...new Set(
-          components
-            .filter((component) => component.ownedTransfer)
-            .map((component) => component.voucherId),
-        ),
-      ].sort((left, right) => left.localeCompare(right));
-
-      if (transferIds.length > 1000) return yield* unsupported();
-
-      const baseBody = {
-        kind: selected,
-        id: reportId,
-        scope: command.scope,
-        sourceReportId: source.id,
-        family: selected,
-        startsOn: source.startsOn,
-        endsOn: source.endsOn,
-        sequence: source.sequence,
-        currency: source.body.currency,
-        currencyScale: source.body.currencyScale,
-        createdAt: yield* isoNow(transaction),
-        accountCount: source.body.accountCount,
-        voucherCount: source.body.voucherCount,
-        debitMinor: source.body.debitMinor,
-        creditMinor: source.body.creditMinor,
-        balanced: source.body.balanced,
-        coverage: "not_established",
-        mapping,
-        mappingDigest,
-        reviewedOpening: false,
-        statutory: false,
-        financialClose: false,
-        warnings: [
-          "Synthetic report family only; no statutory financial statement, reviewed opening or financial-close readiness is established.",
-          "The report uses the saved source cutoff and explicit reviewed account-role mapping; no account classification is inferred.",
-          "Contributing entries remain the existing fixed-cutoff journal-line lineage and require the saved source report interpretation.",
-        ],
-      };
-
-      const body = yield* toJsonObject(
-        selected === "profit_and_loss"
-          ? {
-              ...baseBody,
-              profitBasis: "owned_result_transfer_exclusion_v1",
-              resultTransferVoucherIds: transferIds,
-              warnings: [
-                ...baseBody.warnings,
-                "Profit-and-loss amounts exclude captured owned result transfers through a signed bridge; movement, closing balances and account drill-down remain raw ledger facts.",
-              ],
-            }
-          : baseBody,
-      );
-
-      yield* Db.insertSnapshot(transaction, {
-        bookId: command.scope.bookId,
-        id: reportId,
-        startsOn: source.startsOn,
-        endsOn: source.endsOn,
-        sequence: source.sequence,
-        body,
-      });
-      yield* Db.copyReportLines(transaction, command.scope.bookId, source.id, reportId);
-      const result = yield* readFamilySnapshot(transaction, command.scope, reportId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_report_family",
-        principal.actorId,
-        result,
-      );
-
-      return result;
     },
     "update",
   );

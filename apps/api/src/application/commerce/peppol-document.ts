@@ -9,7 +9,7 @@ import * as CreditsDb from "../../db/commerce/credit-notes";
 import type { Transaction } from "../../db/transaction";
 import { decode, type Scope } from "./support";
 import { failure } from "../failures";
-import { digest } from "../posting";
+import { digest } from "../json";
 
 type Party = {
   readonly legalName: string;
